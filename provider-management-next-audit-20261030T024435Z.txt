@@ -1,0 +1,239 @@
+=== MIRA PROVIDER MANAGEMENT READ-ONLY AUDIT ===
+Fri Oct 30 02:44:35 UTC 2026
+PROJECT=/workspace/quiet-bose
+NODE=v24.19.0
+NPM=11.17.0
+
+=== GIT / PROJECT STATUS ===
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+
+=== PROVIDER TEST INVENTORY ===
+tests/bug-hunter-trusted-provider-test.js
+tests/custom-provider-runtime-metadata-integration.test.js
+tests/provider-activation-cleanup-failure-isolated.test.js
+tests/provider-evolution-provider-coverage-test.js
+tests/provider-fallback-runtime.test.js
+tests/provider-navigation-contract.test.js
+tests/provider-rollback-approval-boundary.test.js
+tests/provider-rollback-contract-test.js
+tests/provider-rollback-route-isolated-test.js
+tests/provider-stage-only-isolated.test.js
+tests/provider-ui-error-contract-test.js
+tests/provider-verify-fallback-contract.test.js
+tests/provider-verify-fallback-isolated.test.js
+tests/stage19-provider-transport-hardening-test.js
+tests/stage19-provider-url-policy-test.js
+tests/stage19512-custom-provider-system-instruction-test.js
+
+=== TEST SYNTAX AUDIT ===
+SYNTAX_PASS: tests/bug-hunter-trusted-provider-test.js
+SYNTAX_PASS: tests/custom-provider-runtime-metadata-integration.test.js
+SYNTAX_PASS: tests/provider-activation-cleanup-failure-isolated.test.js
+SYNTAX_PASS: tests/provider-evolution-provider-coverage-test.js
+SYNTAX_PASS: tests/provider-fallback-runtime.test.js
+SYNTAX_PASS: tests/provider-navigation-contract.test.js
+SYNTAX_PASS: tests/provider-rollback-approval-boundary.test.js
+SYNTAX_PASS: tests/provider-rollback-contract-test.js
+SYNTAX_PASS: tests/provider-rollback-route-isolated-test.js
+SYNTAX_PASS: tests/provider-stage-only-isolated.test.js
+SYNTAX_PASS: tests/provider-ui-error-contract-test.js
+SYNTAX_PASS: tests/provider-verify-fallback-contract.test.js
+SYNTAX_PASS: tests/provider-verify-fallback-isolated.test.js
+SYNTAX_PASS: tests/stage19-provider-transport-hardening-test.js
+SYNTAX_PASS: tests/stage19-provider-url-policy-test.js
+SYNTAX_PASS: tests/stage19512-custom-provider-system-instruction-test.js
+
+=== SIDE-EFFECT / NETWORK / ACTIVATION REVIEW ===
+tests/custom-provider-runtime-metadata-integration.test.js:25:  savedEnv[name] = process.env[name];
+tests/custom-provider-runtime-metadata-integration.test.js:28:const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/custom-provider-runtime-metadata-integration.test.js:35:  process.env.MIRA_CUSTOM_PROVIDER_CONFIG_PATH =
+tests/custom-provider-runtime-metadata-integration.test.js:60:  // A metadata save must not silently select or activate a provider.
+tests/custom-provider-runtime-metadata-integration.test.js:62:  process.env.AI_PROVIDER = "gemini";
+tests/custom-provider-runtime-metadata-integration.test.js:63:  process.env.CUSTOM_PROVIDER = "provider1";
+tests/custom-provider-runtime-metadata-integration.test.js:74:        process.env.AI_PROVIDER ||
+tests/custom-provider-runtime-metadata-integration.test.js:85:  assert.equal(process.env.CUSTOM_PROVIDER, "provider1");
+tests/custom-provider-runtime-metadata-integration.test.js:93:  console.log("PASS: metadata does not auto-activate a provider");
+tests/custom-provider-runtime-metadata-integration.test.js:106:    if (savedEnv[name] === undefined) delete process.env[name];
+tests/custom-provider-runtime-metadata-integration.test.js:107:    else process.env[name] = savedEnv[name];
+tests/custom-provider-runtime-metadata-integration.test.js:110:  fs.rmSync(temp, { recursive: true, force: true });
+tests/provider-activation-cleanup-failure-isolated.test.js:37:  fs.writeFileSync(
+tests/provider-activation-cleanup-failure-isolated.test.js:38:    path.join(root, "provider-runtime-config.json"),
+tests/provider-activation-cleanup-failure-isolated.test.js:48:  process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-activation-cleanup-failure-isolated.test.js:49:  process.env.MIRA_AUDIT_FILE = path.join(root, "audit-log.json");
+tests/provider-activation-cleanup-failure-isolated.test.js:50:  process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-activation-cleanup-failure-isolated.test.js:56:  service.testProviderHealth = async () => {
+tests/provider-activation-cleanup-failure-isolated.test.js:80:  const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/provider-activation-cleanup-failure-isolated.test.js:82:  fs.writeFileSync(stagingPath, JSON.stringify({
+tests/provider-activation-cleanup-failure-isolated.test.js:91:  const server = http.createServer(app);
+tests/provider-activation-cleanup-failure-isolated.test.js:100:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-activation-cleanup-failure-isolated.test.js:119:      response = await fetch(
+tests/provider-activation-cleanup-failure-isolated.test.js:121:          proposal.changeId + "/activate",
+tests/provider-activation-cleanup-failure-isolated.test.js:152:    console.log("ISOLATED_MOCK_ACTIVATE_ROUTE=USED");
+tests/provider-activation-cleanup-failure-isolated.test.js:168:    fs.rmSync(tempRoot, { recursive: true, force: true });
+tests/provider-fallback-runtime.test.js:14:  fs.writeFileSync(full, content);
+tests/provider-fallback-runtime.test.js:17:  write("provider-runtime-config.json", JSON.stringify(value));
+tests/provider-fallback-runtime.test.js:96:    fs.rmSync(temp, { recursive: true, force: true });
+tests/provider-rollback-approval-boundary.test.js:46:  fs.writeFileSync(
+tests/provider-rollback-approval-boundary.test.js:47:    path.join(root, "provider-runtime-config.json"),
+tests/provider-rollback-approval-boundary.test.js:56:  process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-rollback-approval-boundary.test.js:57:  process.env.MIRA_AUDIT_FILE = path.join(root, "audit-log.json");
+tests/provider-rollback-approval-boundary.test.js:58:  process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-rollback-approval-boundary.test.js:66:  service.testProviderHealth = async () => {
+tests/provider-rollback-approval-boundary.test.js:75:        fs.unlinkSync(snapshotPath);
+tests/provider-rollback-approval-boundary.test.js:107:    fs.writeFileSync(
+tests/provider-rollback-approval-boundary.test.js:121:  const server = http.createServer(app);
+tests/provider-rollback-approval-boundary.test.js:126:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-rollback-approval-boundary.test.js:130:    const response = await fetch(
+tests/provider-rollback-approval-boundary.test.js:131:      `http://127.0.0.1:${address.port}/${proposal.changeId}/${approved ? "activate" : "apply"}`,
+tests/provider-rollback-approval-boundary.test.js:140:    const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/provider-rollback-approval-boundary.test.js:196:      fs.rmSync(tempRoot, { recursive: true, force: true });
+tests/provider-rollback-contract-test.js:27:    restore.indexOf("fs.unlinkSync(ROLLBACK_CONFIG_PATH)"),
+tests/provider-rollback-contract-test.js:33:  source.indexOf('router.post(\n  "/:id/activate"'),
+tests/provider-rollback-route-isolated-test.js:8:const { spawnSync } = require("node:child_process");
+tests/provider-rollback-route-isolated-test.js:44:  process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-rollback-route-isolated-test.js:45:  process.env.MIRA_AUDIT_FILE = path.join(root, "audit-log.json");
+tests/provider-rollback-route-isolated-test.js:46:  process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-rollback-route-isolated-test.js:73:  service.testProviderHealth = async () => {
+tests/provider-rollback-route-isolated-test.js:78:      if (fs.existsSync(snapshot)) fs.unlinkSync(snapshot);
+tests/provider-rollback-route-isolated-test.js:88:  fs.writeFileSync(
+tests/provider-rollback-route-isolated-test.js:89:    path.join(root, "provider-runtime-config.json"),
+tests/provider-rollback-route-isolated-test.js:109:  fs.writeFileSync(
+tests/provider-rollback-route-isolated-test.js:122:  const server = http.createServer(app);
+tests/provider-rollback-route-isolated-test.js:127:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-rollback-route-isolated-test.js:131:    const response = await fetch(
+tests/provider-rollback-route-isolated-test.js:132:      `http://127.0.0.1:${address.port}/${proposal.changeId}/activate`,
+tests/provider-rollback-route-isolated-test.js:137:    const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/provider-rollback-route-isolated-test.js:173:      fs.rmSync(tempRoot, { recursive: true, force: true });
+tests/provider-stage-only-isolated.test.js:27:    fs.writeFileSync(path.join(root, "provider-runtime-config.json"), JSON.stringify(original) + "\n");
+tests/provider-stage-only-isolated.test.js:28:    process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-stage-only-isolated.test.js:29:    process.env.MIRA_AUDIT_FILE = path.join(root, "audit.json");
+tests/provider-stage-only-isolated.test.js:30:    process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-stage-only-isolated.test.js:33:    service.testProviderHealth = async () => {
+tests/provider-stage-only-isolated.test.js:52:    server = http.createServer(app);
+tests/provider-stage-only-isolated.test.js:55:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-stage-only-isolated.test.js:57:    const response = await fetch(
+tests/provider-stage-only-isolated.test.js:65:    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "provider-runtime-config.json"), "utf8")), original);
+tests/provider-stage-only-isolated.test.js:82:    try { fs.rmSync(root, { recursive: true, force: true }); }
+tests/provider-ui-error-contract-test.js:65:  '  $("miraProviderActivate").addEventListener'
+tests/provider-ui-error-contract-test.js:71:const activateHandler = extractFunction(
+tests/provider-ui-error-contract-test.js:72:  '  $("miraProviderActivate").addEventListener',
+tests/provider-ui-error-contract-test.js:75:assert.match(activateHandler, /state\.applied = Boolean\(result\.success\)/);
+tests/provider-ui-error-contract-test.js:76:assert.ok(activateHandler.includes('"/activate"'));
+tests/provider-ui-error-contract-test.js:77:assert.ok(activateHandler.includes("window.confirm"));
+tests/provider-verify-fallback-isolated.test.js:41:  process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-verify-fallback-isolated.test.js:42:  process.env.MIRA_AUDIT_FILE = path.join(root, "audit-log.json");
+tests/provider-verify-fallback-isolated.test.js:43:  process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-verify-fallback-isolated.test.js:45:  const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/provider-verify-fallback-isolated.test.js:46:  fs.writeFileSync(runtimePath, JSON.stringify(runtimeConfig, null, 2) + "\n");
+tests/provider-verify-fallback-isolated.test.js:52:  service.testProviderHealth = async () => {
+tests/provider-verify-fallback-isolated.test.js:85:  const server = http.createServer(app);
+tests/provider-verify-fallback-isolated.test.js:90:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-verify-fallback-isolated.test.js:94:    const response = await fetch(
+tests/provider-verify-fallback-isolated.test.js:186:      fs.rmSync(tempRoot, { recursive: true, force: true });
+tests/stage19-provider-transport-hardening-test.js:26:    /\bfetch\s*\(|\baxios\s*\.\s*(?:request|post|get)\s*\(/,
+tests/stage19512-custom-provider-system-instruction-test.js:32:    process.env[`CUSTOM_PROVIDER${n}_URL`] =
+tests/stage19512-custom-provider-system-instruction-test.js:34:    delete process.env[`CUSTOM_PROVIDER${n}_KEY`];
+tests/stage19512-custom-provider-system-instruction-test.js:35:    process.env.MIRA_ALLOW_PRIVATE_CUSTOM_PROVIDER_URLS = "false";
+tests/stage19512-custom-provider-system-instruction-test.js:63:    assert.strictEqual(request.url, process.env[`CUSTOM_PROVIDER${n}_URL`]);
+tests/custom-provider-runtime-metadata-integration.test.js:25:  savedEnv[name] = process.env[name];
+tests/custom-provider-runtime-metadata-integration.test.js:28:const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/custom-provider-runtime-metadata-integration.test.js:35:  process.env.MIRA_CUSTOM_PROVIDER_CONFIG_PATH =
+tests/custom-provider-runtime-metadata-integration.test.js:60:  // A metadata save must not silently select or activate a provider.
+tests/custom-provider-runtime-metadata-integration.test.js:62:  process.env.AI_PROVIDER = "gemini";
+tests/custom-provider-runtime-metadata-integration.test.js:63:  process.env.CUSTOM_PROVIDER = "provider1";
+tests/custom-provider-runtime-metadata-integration.test.js:74:        process.env.AI_PROVIDER ||
+tests/custom-provider-runtime-metadata-integration.test.js:85:  assert.equal(process.env.CUSTOM_PROVIDER, "provider1");
+tests/custom-provider-runtime-metadata-integration.test.js:93:  console.log("PASS: metadata does not auto-activate a provider");
+tests/custom-provider-runtime-metadata-integration.test.js:106:    if (savedEnv[name] === undefined) delete process.env[name];
+tests/custom-provider-runtime-metadata-integration.test.js:107:    else process.env[name] = savedEnv[name];
+tests/custom-provider-runtime-metadata-integration.test.js:110:  fs.rmSync(temp, { recursive: true, force: true });
+tests/provider-activation-cleanup-failure-isolated.test.js:37:  fs.writeFileSync(
+tests/provider-activation-cleanup-failure-isolated.test.js:38:    path.join(root, "provider-runtime-config.json"),
+tests/provider-activation-cleanup-failure-isolated.test.js:48:  process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-activation-cleanup-failure-isolated.test.js:49:  process.env.MIRA_AUDIT_FILE = path.join(root, "audit-log.json");
+tests/provider-activation-cleanup-failure-isolated.test.js:50:  process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-activation-cleanup-failure-isolated.test.js:56:  service.testProviderHealth = async () => {
+tests/provider-activation-cleanup-failure-isolated.test.js:80:  const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/provider-activation-cleanup-failure-isolated.test.js:82:  fs.writeFileSync(stagingPath, JSON.stringify({
+tests/provider-activation-cleanup-failure-isolated.test.js:91:  const server = http.createServer(app);
+tests/provider-activation-cleanup-failure-isolated.test.js:100:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-activation-cleanup-failure-isolated.test.js:119:      response = await fetch(
+tests/provider-activation-cleanup-failure-isolated.test.js:121:          proposal.changeId + "/activate",
+tests/provider-activation-cleanup-failure-isolated.test.js:152:    console.log("ISOLATED_MOCK_ACTIVATE_ROUTE=USED");
+tests/provider-activation-cleanup-failure-isolated.test.js:168:    fs.rmSync(tempRoot, { recursive: true, force: true });
+tests/provider-fallback-runtime.test.js:14:  fs.writeFileSync(full, content);
+tests/provider-fallback-runtime.test.js:17:  write("provider-runtime-config.json", JSON.stringify(value));
+tests/provider-fallback-runtime.test.js:96:    fs.rmSync(temp, { recursive: true, force: true });
+tests/provider-rollback-approval-boundary.test.js:46:  fs.writeFileSync(
+tests/provider-rollback-approval-boundary.test.js:47:    path.join(root, "provider-runtime-config.json"),
+tests/provider-rollback-approval-boundary.test.js:56:  process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-rollback-approval-boundary.test.js:57:  process.env.MIRA_AUDIT_FILE = path.join(root, "audit-log.json");
+tests/provider-rollback-approval-boundary.test.js:58:  process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-rollback-approval-boundary.test.js:66:  service.testProviderHealth = async () => {
+tests/provider-rollback-approval-boundary.test.js:75:        fs.unlinkSync(snapshotPath);
+tests/provider-rollback-approval-boundary.test.js:107:    fs.writeFileSync(
+tests/provider-rollback-approval-boundary.test.js:121:  const server = http.createServer(app);
+tests/provider-rollback-approval-boundary.test.js:126:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-rollback-approval-boundary.test.js:130:    const response = await fetch(
+tests/provider-rollback-approval-boundary.test.js:131:      `http://127.0.0.1:${address.port}/${proposal.changeId}/${approved ? "activate" : "apply"}`,
+tests/provider-rollback-approval-boundary.test.js:140:    const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/provider-rollback-approval-boundary.test.js:196:      fs.rmSync(tempRoot, { recursive: true, force: true });
+tests/provider-stage-only-isolated.test.js:27:    fs.writeFileSync(path.join(root, "provider-runtime-config.json"), JSON.stringify(original) + "\n");
+tests/provider-stage-only-isolated.test.js:28:    process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-stage-only-isolated.test.js:29:    process.env.MIRA_AUDIT_FILE = path.join(root, "audit.json");
+tests/provider-stage-only-isolated.test.js:30:    process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-stage-only-isolated.test.js:33:    service.testProviderHealth = async () => {
+tests/provider-stage-only-isolated.test.js:52:    server = http.createServer(app);
+tests/provider-stage-only-isolated.test.js:55:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-stage-only-isolated.test.js:57:    const response = await fetch(
+tests/provider-stage-only-isolated.test.js:65:    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "provider-runtime-config.json"), "utf8")), original);
+tests/provider-stage-only-isolated.test.js:82:    try { fs.rmSync(root, { recursive: true, force: true }); }
+tests/provider-verify-fallback-isolated.test.js:41:  process.env.MIRA_CHANGE_FILE = path.join(root, "changes.json");
+tests/provider-verify-fallback-isolated.test.js:42:  process.env.MIRA_AUDIT_FILE = path.join(root, "audit-log.json");
+tests/provider-verify-fallback-isolated.test.js:43:  process.env.MIRA_STORAGE_DIR = path.join(root, "storage");
+tests/provider-verify-fallback-isolated.test.js:45:  const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/provider-verify-fallback-isolated.test.js:46:  fs.writeFileSync(runtimePath, JSON.stringify(runtimeConfig, null, 2) + "\n");
+tests/provider-verify-fallback-isolated.test.js:52:  service.testProviderHealth = async () => {
+tests/provider-verify-fallback-isolated.test.js:85:  const server = http.createServer(app);
+tests/provider-verify-fallback-isolated.test.js:90:      server.listen(0, "127.0.0.1", resolve);
+tests/provider-verify-fallback-isolated.test.js:94:    const response = await fetch(
+tests/provider-verify-fallback-isolated.test.js:186:      fs.rmSync(tempRoot, { recursive: true, force: true });
+
+=== PROVIDER MODULE LOAD CHECK ===
+LOAD_PASS: ./mira-storage
+LOAD_PASS: ./change-management
+LOAD_PASS: ./audit-log
+LOAD_PASS: ./services/provider-credential-store
+LOAD_PASS: ./services/mira-provider-evolution
+LOAD_PASS: ./routes/mira-provider-evolution
+LOAD_PASS: ./services/security/provider-url-policy
+LOAD_PASS: ./providers
+
+=== PROVIDER SOURCE AND TEST HASHES ===
+ffdf8c194c1fecdc58e0675e6ee733853b87e1407e552c0374185a375bfcfefa  routes/mira-provider-evolution.js
+d7e92793ce73506ff2c42cd0850d909ff5133f3773e8de4b414f4430e0523ce3  services/custom-provider-config.js
+96e9b6ac6330e0a81d8ad69729574509ca9ae1d95945eaf802c0ed37dab48738  services/engineering/bug-hunter-trusted-provider.js
+2107066a5deb064337975045fa753e271b470f97e5e4c1e86498bb00a709741d  services/mira-provider-evolution.js
+bf8020660dc8e24f5433f4ade6f656235800b19c3ef4ac233329f599a4a60849  services/provider-credential-store.js
+5555d01058ed0da3df0e02ba52f3e1d81487b3acc6d5ccd578d9a4d329301394  services/security/provider-url-policy.js
+429b8b26ca952cb3c755d585a0549d0c451d5c8667a3c0497aaf02b24fa98f6a  services/security/secure-provider-request.js
+28e24eac256f225f01198c1d588d9bb3aafc5e87a6fca0b1f546c682264ae1a5  tests/bug-hunter-trusted-provider-test.js
+37e18f2bd2b6682aa765616f5aa0f35ccb724838ae758dfd2f206cdc6f97f3ce  tests/custom-provider-runtime-metadata-integration.test.js
+e582efab972d5846f75985fbefa6d0ff3f82b919c8ca07a9572215594e015d9a  tests/provider-activation-cleanup-failure-isolated.test.js
+da45bf482699d6f1f3921d98c2a0f3720c706ab1f4afda809cbd7d32492d957b  tests/provider-evolution-provider-coverage-test.js
+2823d9d4730493aedcca1783b7908c0c3bf89cf641e0652ed215b854257a3b57  tests/provider-fallback-runtime.test.js
+94cb28a0bdf0df9c8b4c75db03cad47d93a8ab0f82547c0fa74d66e3dc299567  tests/provider-navigation-contract.test.js
+79f89ea348bc92d7d45c3ae2b8b3fc8958a50dabe6f6592cb2148d18509d9cf6  tests/provider-rollback-approval-boundary.test.js
+4f7facc4110a84c0cf598f3dbcb1ef3643b7d5a67b07845343a5020cbf7f01d9  tests/provider-rollback-contract-test.js
+89b32ceceb02f249b286e08d919da021b903ee93125173dd3de845d79242557d  tests/provider-rollback-route-isolated-test.js
+2cbb48a514909c7909dc506ca9d42637e1ec6e5dfa017cf417e44a3751b3bad7  tests/provider-stage-only-isolated.test.js
+625bc1577308be7e866c82557aa2d26b4e64c1e1ab68a93cf1b0d7cd550ec197  tests/provider-ui-error-contract-test.js
+344b0c6d1666187cedec1a5da7ad9812a44fe1cb2e46e71fdc078742405d0f1a  tests/provider-verify-fallback-contract.test.js
+6ff6a8a0f1855ec68a4ac882ed444ca69cf1a11e59e0e5e57ea0a68f63efde2e  tests/provider-verify-fallback-isolated.test.js
+303a6b347b2b6697f35fbea456adb00c8bec4682c37d8990e93a53aea715b3b4  tests/stage19-provider-transport-hardening-test.js
+f87c9363c7491f698fd74385cfe6ca3ac244998909c9f8af3a7bc2bdae246aa6  tests/stage19-provider-url-policy-test.js
+1162f35e3f6ec49021ae30bc1ec122cae9165993a80db78d9e88def18e96ad38  tests/stage19512-custom-provider-system-instruction-test.js
+
+=== REPORT FILE ===
+provider-management-next-audit-20261030T024435Z.txt

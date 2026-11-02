@@ -1,0 +1,731 @@
+=== MIRA PROVIDER METADATA FAILURE DIAGNOSIS ===
+Fri Oct 30 02:48:35 UTC 2026
+PROJECT=/workspace/quiet-bose
+
+=== 1. FAILING TEST: COMPLETE SOURCE ===
+     1	"use strict";
+     2	
+     3	const assert = require("node:assert/strict");
+     4	const fs = require("node:fs");
+     5	const os = require("node:os");
+     6	const path = require("node:path");
+     7	
+     8	const root = process.cwd();
+     9	const temp = fs.mkdtempSync(
+    10	  path.join(os.tmpdir(), "mira-provider-metadata-runtime-")
+    11	);
+    12	
+    13	const savedEnv = {};
+    14	const envNames = [
+    15	  "MIRA_CUSTOM_PROVIDER_CONFIG_PATH",
+    16	  "AI_PROVIDER",
+    17	  "CUSTOM_PROVIDER",
+    18	  "CUSTOM_PROVIDER1_URL",
+    19	  "CUSTOM_PROVIDER1_MODEL",
+    20	  "CUSTOM_PROVIDER1_KEY",
+    21	  "MIRA_ALLOW_PRIVATE_CUSTOM_PROVIDER_URLS"
+    22	];
+    23	
+    24	for (const name of envNames) {
+    25	  savedEnv[name] = process.env[name];
+    26	}
+    27	
+    28	const runtimePath = path.join(root, "provider-runtime-config.json");
+    29	const runtimeExisted = fs.existsSync(runtimePath);
+    30	const runtimeBefore = runtimeExisted
+    31	  ? fs.readFileSync(runtimePath)
+    32	  : null;
+    33	
+    34	try {
+    35	  process.env.MIRA_CUSTOM_PROVIDER_CONFIG_PATH =
+    36	    path.join(temp, "custom-slots.json");
+    37	
+    38	  // Use a nonexistent runtime config path by isolating the module's
+    39	  // runtime config path only through its source-level fixed path contract.
+    40	  // Do not modify the production runtime config file.
+    41	  const configService = require(
+    42	    path.join(root, "services/custom-provider-config.js")
+    43	  );
+    44	
+    45	  const slots = configService.emptySlots();
+    46	  slots[0] = {
+    47	    slot: 1,
+    48	    name: "Mock Provider",
+    49	    endpoint: "https://mock-provider.invalid/api",
+    50	    model: "mock-model"
+    51	  };
+    52	
+    53	  const saved = configService.writeConfig({ slots });
+    54	  assert.equal(saved.slots[0].name, "Mock Provider");
+    55	  assert.equal(saved.slots[0].model, "mock-model");
+    56	
+    57	  const loaded = configService.readConfig();
+    58	  assert.equal(loaded.slots[0].endpoint, "https://mock-provider.invalid/api");
+    59	
+    60	  // A metadata save must not silently select or activate a provider.
+    61	  // Existing runtime selection is environment/config driven.
+    62	  process.env.AI_PROVIDER = "gemini";
+    63	  process.env.CUSTOM_PROVIDER = "provider1";
+    64	  delete require.cache[require.resolve(
+    65	    path.join(root, "providers/index.js")
+    66	  )];
+    67	
+    68	  const runtime = require(path.join(root, "providers/index.js"));
+    69	  const current = runtime.getRuntimeConfig();
+    70	
+    71	  const expectedProvider = runtimeExisted
+    72	    ? String(
+    73	        JSON.parse(runtimeBefore.toString("utf8")).provider ||
+    74	        process.env.AI_PROVIDER ||
+    75	        "gemini"
+    76	      ).trim().toLowerCase()
+    77	    : "gemini";
+    78	
+    79	  assert.equal(current.provider, expectedProvider);
+    80	  assert.equal(
+    81	    current.provider,
+    82	    "groq",
+    83	    "runtime selection should follow the existing runtime config fixture"
+    84	  );
+    85	  assert.equal(process.env.CUSTOM_PROVIDER, "provider1");
+    86	  assert.equal(
+    87	    Object.hasOwn(loaded.slots[0], "key"),
+    88	    false,
+    89	    "saved metadata must not contain an API key field"
+    90	  );
+    91	
+    92	  console.log("PASS: custom metadata save/read round-trip");
+    93	  console.log("PASS: metadata does not auto-activate a provider");
+    94	  console.log("PASS: runtime selection remains independently configured");
+    95	  console.log("PASS: metadata has no API-key field");
+    96	  console.log("LIVE_PROVIDER_CALLS=0");
+    97	  console.log("EXTERNAL_NETWORK_CALLS=0");
+    98	  console.log("PROVIDER_ACTIVATION=NOT_RUN");
+    99	  console.log("CUSTOM_PROVIDER_METADATA_RUNTIME_TEST=PASS");
+   100	} catch (error) {
+   101	  console.error("CUSTOM_PROVIDER_METADATA_RUNTIME_TEST=FAIL");
+   102	  console.error(error.stack || error.message);
+   103	  process.exitCode = 1;
+   104	} finally {
+   105	  for (const name of envNames) {
+   106	    if (savedEnv[name] === undefined) delete process.env[name];
+   107	    else process.env[name] = savedEnv[name];
+   108	  }
+   109	
+   110	  fs.rmSync(temp, { recursive: true, force: true });
+   111	
+   112	  // This test must never change the actual runtime config.
+   113	  if (runtimeExisted) {
+   114	    assert.deepEqual(fs.readFileSync(runtimePath), runtimeBefore);
+   115	  } else {
+   116	    assert.equal(fs.existsSync(runtimePath), false);
+   117	  }
+   118	}
+
+=== 2. CUSTOM PROVIDER CONFIG SERVICE ===
+     1	"use strict";
+     2	
+     3	const fs = require("node:fs");
+     4	const path = require("node:path");
+     5	
+     6	const CONFIG_PATH = path.resolve(
+     7	  process.env.MIRA_CUSTOM_PROVIDER_CONFIG_PATH ||
+     8	  path.join(process.cwd(), "data", "custom-provider-slots.json")
+     9	);
+    10	
+    11	const MODEL_PATTERN = /^[A-Za-z0-9._:/@+-]{1,200}$/;
+    12	const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._()\-]{0,79}$/;
+    13	
+    14	function emptySlots() {
+    15	  return Array.from({ length: 5 }, (_, i) => ({
+    16	    slot: i + 1,
+    17	    name: "",
+    18	    endpoint: "",
+    19	    model: ""
+    20	  }));
+    21	}
+    22	
+    23	function isPrivateIpv4(host) {
+    24	  const parts = host.split(".");
+    25	  if (parts.length !== 4 || parts.some(p => !/^\d{1,3}$/.test(p))) {
+    26	    return false;
+    27	  }
+    28	  const n = parts.map(Number);
+    29	  if (n.some(v => v < 0 || v > 255)) return true;
+    30	
+    31	  return n[0] === 0 ||
+    32	    n[0] === 10 ||
+    33	    n[0] === 127 ||
+    34	    (n[0] === 169 && n[1] === 254) ||
+    35	    (n[0] === 172 && n[1] >= 16 && n[1] <= 31) ||
+    36	    (n[0] === 192 && n[1] === 168) ||
+    37	    n[0] >= 224;
+    38	}
+    39	
+    40	function validateEndpoint(raw) {
+    41	  if (typeof raw !== "string" || !raw.trim()) {
+    42	    return { ok: false, status: "endpoint_required" };
+    43	  }
+    44	
+    45	  if (raw.length > 2048 || raw !== raw.trim()) {
+    46	    return { ok: false, status: "endpoint_invalid" };
+    47	  }
+    48	
+    49	  let url;
+    50	  try {
+    51	    url = new URL(raw);
+    52	  } catch (_) {
+    53	    return { ok: false, status: "endpoint_invalid" };
+    54	  }
+    55	
+    56	  if (url.protocol !== "https:") {
+    57	    return { ok: false, status: "https_required" };
+    58	  }
+    59	
+    60	  if (url.username || url.password || url.search || url.hash) {
+    61	    return { ok: false, status: "endpoint_contains_prohibited_data" };
+    62	  }
+    63	
+    64	  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    65	
+    66	  if (
+    67	    !host ||
+    68	    host === "localhost" ||
+    69	    host.endsWith(".localhost") ||
+    70	    host.endsWith(".local") ||
+    71	    host === "::1" ||
+    72	    host === "::" ||
+    73	    host.startsWith("fc") ||
+    74	    host.startsWith("fd") ||
+    75	    host.startsWith("fe80:")
+    76	  ) {
+    77	    return { ok: false, status: "endpoint_host_not_allowed" };
+    78	  }
+    79	
+    80	  if (isPrivateIpv4(host)) {
+    81	    return { ok: false, status: "endpoint_host_not_allowed" };
+    82	  }
+    83	
+    84	  return { ok: true, endpoint: url.toString() };
+    85	}
+    86	
+    87	function validateSlots(input) {
+    88	  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    89	    return { ok: false, status: "invalid_payload" };
+    90	  }
+    91	
+    92	  if (!Array.isArray(input.slots) || input.slots.length !== 5) {
+    93	    return { ok: false, status: "exactly_five_slots_required" };
+    94	  }
+    95	
+    96	  const slots = [];
+    97	
+    98	  for (let i = 0; i < 5; i++) {
+    99	    const row = input.slots[i];
+   100	
+   101	    if (!row || typeof row !== "object" || Array.isArray(row)) {
+   102	      return { ok: false, status: "invalid_slot" };
+   103	    }
+   104	
+   105	    if (row.slot !== i + 1) {
+   106	      return { ok: false, status: "slot_order_invalid" };
+   107	    }
+   108	
+   109	    for (const key of Object.keys(row)) {
+   110	      if (!["slot", "name", "endpoint", "model"].includes(key)) {
+   111	        return { ok: false, status: "unexpected_field" };
+   112	      }
+   113	    }
+   114	
+   115	    const name = typeof row.name === "string" ? row.name.trim() : "";
+   116	    const endpointRaw =
+   117	      typeof row.endpoint === "string" ? row.endpoint.trim() : "";
+   118	    const model = typeof row.model === "string" ? row.model.trim() : "";
+   119	
+   120	    if (
+   121	      (row.name !== undefined && typeof row.name !== "string") ||
+   122	      (row.endpoint !== undefined && typeof row.endpoint !== "string") ||
+   123	      (row.model !== undefined && typeof row.model !== "string")
+   124	    ) {
+   125	      return { ok: false, status: "invalid_field_type" };
+   126	    }
+   127	
+   128	    if (!name && !endpointRaw && !model) {
+   129	      slots.push({ slot: i + 1, name: "", endpoint: "", model: "" });
+   130	      continue;
+   131	    }
+   132	
+   133	    if (!name || !endpointRaw || !model) {
+   134	      return { ok: false, status: "slot_fields_incomplete" };
+   135	    }
+   136	
+   137	    if (!NAME_PATTERN.test(name)) {
+   138	      return { ok: false, status: "slot_name_invalid" };
+   139	    }
+   140	
+   141	    if (!MODEL_PATTERN.test(model)) {
+   142	      return { ok: false, status: "model_id_invalid" };
+   143	    }
+   144	
+   145	    const endpoint = validateEndpoint(endpointRaw);
+   146	    if (!endpoint.ok) {
+   147	      return { ok: false, status: endpoint.status };
+   148	    }
+   149	
+   150	    slots.push({
+   151	      slot: i + 1,
+   152	      name,
+   153	      endpoint: endpoint.endpoint,
+   154	      model
+   155	    });
+   156	  }
+   157	
+   158	  return { ok: true, status: "configuration_valid", slots };
+   159	}
+   160	
+   161	function readConfig() {
+   162	  if (!fs.existsSync(CONFIG_PATH)) {
+   163	    return { version: 1, slots: emptySlots() };
+   164	  }
+   165	
+   166	  const parsed = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+   167	  const checked = validateSlots({ slots: parsed.slots });
+   168	
+   169	  if (!checked.ok || parsed.version !== 1) {
+   170	    throw new Error("stored_configuration_invalid");
+   171	  }
+   172	
+   173	  return { version: 1, slots: checked.slots };
+   174	}
+   175	
+   176	function writeConfig(input) {
+   177	  const checked = validateSlots(input);
+   178	  if (!checked.ok) throw new Error(checked.status);
+   179	
+   180	  const directory = path.dirname(CONFIG_PATH);
+   181	  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+   182	
+   183	  const temporary = CONFIG_PATH + "." + process.pid + ".tmp";
+   184	  const content = JSON.stringify(
+   185	    { version: 1, slots: checked.slots },
+   186	    null,
+   187	    2
+   188	  ) + "\n";
+   189	
+   190	  try {
+   191	    fs.writeFileSync(temporary, content, { mode: 0o600, flag: "wx" });
+   192	    fs.renameSync(temporary, CONFIG_PATH);
+   193	  } catch (error) {
+   194	    try {
+   195	      if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+   196	    } catch (_) {}
+   197	    throw error;
+   198	  }
+   199	
+   200	  return { version: 1, slots: checked.slots };
+   201	}
+   202	
+   203	module.exports = {
+   204	  emptySlots,
+   205	  validateEndpoint,
+   206	  validateSlots,
+   207	  readConfig,
+   208	  writeConfig
+   209	};
+
+=== 3. RUNTIME SELECTION IMPLEMENTATION ===
+services/mira-provider-evolution.js-188-  if (!providerResult.ok) return providerResult;
+services/mira-provider-evolution.js-189-
+services/mira-provider-evolution.js-190-  const modelResult = validateModel(config.model);
+services/mira-provider-evolution.js-191-  if (!modelResult.ok) return modelResult;
+services/mira-provider-evolution.js-192-
+services/mira-provider-evolution.js:193:  const metadataSafety = scanSecretSafety(config.metadata || {});
+services/mira-provider-evolution.js:194:  if (!metadataSafety.ok) {
+services/mira-provider-evolution.js-195-    return {
+services/mira-provider-evolution.js-196-      ok: false,
+services/mira-provider-evolution.js-197-      status: "secret_safety_blocked",
+services/mira-provider-evolution.js:198:      field: metadataSafety.field
+services/mira-provider-evolution.js-199-    };
+services/mira-provider-evolution.js-200-  }
+services/mira-provider-evolution.js-201-
+services/mira-provider-evolution.js-202-  const result = {
+services/mira-provider-evolution.js-203-    ok: true,
+--
+services/mira-provider-evolution.js-257-function loadProvider(provider) {
+services/mira-provider-evolution.js-258-  if (provider === "custom") {
+services/mira-provider-evolution.js-259-    const custom = require("../providers/custom");
+services/mira-provider-evolution.js-260-
+services/mira-provider-evolution.js-261-    const customProviderName =
+services/mira-provider-evolution.js:262:      process.env.CUSTOM_PROVIDER || "provider1";
+services/mira-provider-evolution.js-263-
+services/mira-provider-evolution.js-264-    const customProvider =
+services/mira-provider-evolution.js-265-      custom.getProvider(customProviderName);
+services/mira-provider-evolution.js-266-
+services/mira-provider-evolution.js-267-    return {
+--
+services/custom-provider-config.js-2-
+services/custom-provider-config.js-3-const fs = require("node:fs");
+services/custom-provider-config.js-4-const path = require("node:path");
+services/custom-provider-config.js-5-
+services/custom-provider-config.js-6-const CONFIG_PATH = path.resolve(
+services/custom-provider-config.js:7:  process.env.MIRA_CUSTOM_PROVIDER_CONFIG_PATH ||
+services/custom-provider-config.js-8-  path.join(process.cwd(), "data", "custom-provider-slots.json")
+services/custom-provider-config.js-9-);
+services/custom-provider-config.js-10-
+services/custom-provider-config.js-11-const MODEL_PATTERN = /^[A-Za-z0-9._:/@+-]{1,200}$/;
+services/custom-provider-config.js-12-const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._()\-]{0,79}$/;
+--
+routes/mira-provider-evolution.js-28-const router = express.Router();
+routes/mira-provider-evolution.js-29-
+routes/mira-provider-evolution.js-30-const RUNTIME_CONFIG_PATH = path.join(
+routes/mira-provider-evolution.js-31-  __dirname,
+routes/mira-provider-evolution.js-32-  "..",
+routes/mira-provider-evolution.js:33:  "provider-runtime-config.json"
+routes/mira-provider-evolution.js-34-);
+routes/mira-provider-evolution.js-35-
+routes/mira-provider-evolution.js-36-const ROLLBACK_CONFIG_PATH = path.join(
+routes/mira-provider-evolution.js-37-  __dirname,
+routes/mira-provider-evolution.js-38-  "..",
+--
+routes/mira-provider-evolution.js-42-  __dirname,
+routes/mira-provider-evolution.js-43-  "..",
+routes/mira-provider-evolution.js-44-  "provider-runtime-staging.json"
+routes/mira-provider-evolution.js-45-);
+routes/mira-provider-evolution.js-46-
+routes/mira-provider-evolution.js:47:function normalizeRuntimeConfig(value = {}) {
+routes/mira-provider-evolution.js-48-  const result = {
+routes/mira-provider-evolution.js-49-    provider: String(value.provider || "").trim().toLowerCase(),
+routes/mira-provider-evolution.js-50-    model: String(value.model || "").trim()
+routes/mira-provider-evolution.js-51-  };
+routes/mira-provider-evolution.js-52-
+--
+routes/mira-provider-evolution.js-62-  }
+routes/mira-provider-evolution.js-63-
+routes/mira-provider-evolution.js-64-  return result;
+routes/mira-provider-evolution.js-65-}
+routes/mira-provider-evolution.js-66-
+routes/mira-provider-evolution.js:67:function readRuntimeConfig() {
+routes/mira-provider-evolution.js-68-  if (!fs.existsSync(RUNTIME_CONFIG_PATH)) {
+routes/mira-provider-evolution.js-69-    return { provider: "", model: "" };
+routes/mira-provider-evolution.js-70-  }
+routes/mira-provider-evolution.js:71:  return normalizeRuntimeConfig(
+routes/mira-provider-evolution.js-72-    JSON.parse(fs.readFileSync(RUNTIME_CONFIG_PATH, "utf8"))
+routes/mira-provider-evolution.js-73-  );
+routes/mira-provider-evolution.js-74-}
+routes/mira-provider-evolution.js-75-
+routes/mira-provider-evolution.js:76:function writeRuntimeConfig(config) {
+routes/mira-provider-evolution.js:77:  const safeConfig = normalizeRuntimeConfig(config);
+routes/mira-provider-evolution.js-78-  const temporaryPath = RUNTIME_CONFIG_PATH + ".tmp";
+routes/mira-provider-evolution.js-79-
+routes/mira-provider-evolution.js-80-  fs.writeFileSync(
+routes/mira-provider-evolution.js-81-    temporaryPath,
+routes/mira-provider-evolution.js-82-    JSON.stringify(safeConfig, null, 2) + "\n",
+routes/mira-provider-evolution.js-83-    "utf8"
+routes/mira-provider-evolution.js-84-  );
+routes/mira-provider-evolution.js-85-  fs.renameSync(temporaryPath, RUNTIME_CONFIG_PATH);
+routes/mira-provider-evolution.js-86-}
+routes/mira-provider-evolution.js-87-
+routes/mira-provider-evolution.js:88:function restoreRuntimeConfig() {
+routes/mira-provider-evolution.js-89-  if (!fs.existsSync(ROLLBACK_CONFIG_PATH)) return false;
+routes/mira-provider-evolution.js-90-
+routes/mira-provider-evolution.js:91:  const snapshot = normalizeRuntimeConfig(
+routes/mira-provider-evolution.js-92-    JSON.parse(fs.readFileSync(ROLLBACK_CONFIG_PATH, "utf8"))
+routes/mira-provider-evolution.js-93-  );
+routes/mira-provider-evolution.js:94:  writeRuntimeConfig(snapshot);
+routes/mira-provider-evolution.js-95-
+routes/mira-provider-evolution.js:96:  const restored = readRuntimeConfig();
+routes/mira-provider-evolution.js-97-  if (JSON.stringify(restored) !== JSON.stringify(snapshot)) {
+routes/mira-provider-evolution.js-98-    throw new Error("runtime_config_restore_verification_failed");
+routes/mira-provider-evolution.js-99-  }
+routes/mira-provider-evolution.js-100-
+routes/mira-provider-evolution.js-101-  fs.unlinkSync(ROLLBACK_CONFIG_PATH);
+--
+routes/mira-provider-evolution.js-103-}
+routes/mira-provider-evolution.js-104-
+routes/mira-provider-evolution.js-105-function saveRollbackSnapshot(config) {
+routes/mira-provider-evolution.js-106-  fs.writeFileSync(
+routes/mira-provider-evolution.js-107-    ROLLBACK_CONFIG_PATH,
+routes/mira-provider-evolution.js:108:    JSON.stringify(normalizeRuntimeConfig(config), null, 2) + "\n",
+routes/mira-provider-evolution.js-109-    "utf8"
+routes/mira-provider-evolution.js-110-  );
+routes/mira-provider-evolution.js-111-}
+routes/mira-provider-evolution.js-112-
+routes/mira-provider-evolution.js-113-function audit({
+--
+routes/mira-provider-evolution.js-296-          testRequired: true,
+routes/mira-provider-evolution.js-297-
+routes/mira-provider-evolution.js-298-          proposalSource:
+routes/mira-provider-evolution.js-299-            "provider-evolution",
+routes/mira-provider-evolution.js-300-
+routes/mira-provider-evolution.js:301:          metadata: {
+routes/mira-provider-evolution.js-302-            evolution: true,
+routes/mira-provider-evolution.js-303-            stage: "4.11",
+routes/mira-provider-evolution.js-304-
+routes/mira-provider-evolution.js-305-            provider:
+routes/mira-provider-evolution.js-306-              validation.provider,
+--
+routes/mira-provider-evolution.js-437-            "This proposal is not a Provider Evolution proposal."
+routes/mira-provider-evolution.js-438-        });
+routes/mira-provider-evolution.js-439-      }
+routes/mira-provider-evolution.js-440-
+routes/mira-provider-evolution.js-441-      const provider =
+routes/mira-provider-evolution.js:442:        proposal.metadata?.provider;
+routes/mira-provider-evolution.js-443-
+routes/mira-provider-evolution.js-444-      const model =
+routes/mira-provider-evolution.js:445:        proposal.metadata?.model;
+routes/mira-provider-evolution.js-446-
+routes/mira-provider-evolution.js-447-      const validation =
+routes/mira-provider-evolution.js-448-        validateProviderConfiguration({
+routes/mira-provider-evolution.js-449-          provider,
+routes/mira-provider-evolution.js-450-          model
+--
+routes/mira-provider-evolution.js-584-      }
+routes/mira-provider-evolution.js-585-
+routes/mira-provider-evolution.js-586-      const safeAudit =
+routes/mira-provider-evolution.js-587-        buildSafeAuditDetails({
+routes/mira-provider-evolution.js-588-          provider:
+routes/mira-provider-evolution.js:589:            approved.metadata?.provider,
+routes/mira-provider-evolution.js-590-          model:
+routes/mira-provider-evolution.js:591:            approved.metadata?.model
+routes/mira-provider-evolution.js-592-        });
+routes/mira-provider-evolution.js-593-
+routes/mira-provider-evolution.js-594-      audit({
+routes/mira-provider-evolution.js-595-        actorRole: actor,
+routes/mira-provider-evolution.js-596-
+--
+routes/mira-provider-evolution.js-649-          error: "Provider proposal must be approved before staging."
+routes/mira-provider-evolution.js-650-        });
+routes/mira-provider-evolution.js-651-      }
+routes/mira-provider-evolution.js-652-
+routes/mira-provider-evolution.js-653-      const config = {
+routes/mira-provider-evolution.js:654:        provider: proposal.metadata?.provider || "",
+routes/mira-provider-evolution.js:655:        model: proposal.metadata?.model || "",
+routes/mira-provider-evolution.js:656:        fallbackEnabled: proposal.metadata?.fallbackEnabled === true,
+routes/mira-provider-evolution.js:657:        fallbackProvider: proposal.metadata?.fallbackProvider || "",
+routes/mira-provider-evolution.js:658:        fallbackModel: proposal.metadata?.fallbackModel || ""
+routes/mira-provider-evolution.js-659-      };
+routes/mira-provider-evolution.js-660-      const validation = validateProviderConfiguration(config);
+routes/mira-provider-evolution.js-661-      if (!validation.ok) {
+routes/mira-provider-evolution.js-662-        return res.status(400).json({
+routes/mira-provider-evolution.js-663-          success: false,
+routes/mira-provider-evolution.js-664-          status: "configuration_validation_failed",
+routes/mira-provider-evolution.js-665-          result: validation.status
+routes/mira-provider-evolution.js-666-        });
+routes/mira-provider-evolution.js-667-      }
+routes/mira-provider-evolution.js-668-
+routes/mira-provider-evolution.js:669:      const stagedConfig = normalizeRuntimeConfig({
+routes/mira-provider-evolution.js-670-        provider: validation.provider,
+routes/mira-provider-evolution.js-671-        model: validation.model || "",
+routes/mira-provider-evolution.js-672-        fallbackEnabled: validation.fallbackEnabled === true,
+routes/mira-provider-evolution.js-673-        fallbackProvider: validation.fallbackProvider || "",
+routes/mira-provider-evolution.js-674-        fallbackModel: validation.fallbackModel || ""
+--
+routes/mira-provider-evolution.js-739-            "Provider proposal must be approved before apply."
+routes/mira-provider-evolution.js-740-        });
+routes/mira-provider-evolution.js-741-      }
+routes/mira-provider-evolution.js-742-
+routes/mira-provider-evolution.js-743-      const config = {
+routes/mira-provider-evolution.js:744:        provider: proposal.metadata?.provider || "",
+routes/mira-provider-evolution.js:745:        model: proposal.metadata?.model || "",
+routes/mira-provider-evolution.js:746:        fallbackEnabled: proposal.metadata?.fallbackEnabled === true,
+routes/mira-provider-evolution.js:747:        fallbackProvider: proposal.metadata?.fallbackProvider || "",
+routes/mira-provider-evolution.js:748:        fallbackModel: proposal.metadata?.fallbackModel || ""
+routes/mira-provider-evolution.js-749-      };
+routes/mira-provider-evolution.js-750-
+routes/mira-provider-evolution.js-751-      const validation =
+routes/mira-provider-evolution.js-752-        validateProviderConfiguration(config);
+routes/mira-provider-evolution.js-753-
+--
+routes/mira-provider-evolution.js-774-          success: false,
+routes/mira-provider-evolution.js-775-          status: "staging_invalid"
+routes/mira-provider-evolution.js-776-        });
+routes/mira-provider-evolution.js-777-      }
+routes/mira-provider-evolution.js-778-
+routes/mira-provider-evolution.js:779:      const expectedStagedConfig = normalizeRuntimeConfig({
+routes/mira-provider-evolution.js-780-        provider: validation.provider,
+routes/mira-provider-evolution.js-781-        model: validation.model || "",
+routes/mira-provider-evolution.js-782-        fallbackEnabled: validation.fallbackEnabled === true,
+routes/mira-provider-evolution.js-783-        fallbackProvider: validation.fallbackProvider || "",
+routes/mira-provider-evolution.js-784-        fallbackModel: validation.fallbackModel || ""
+routes/mira-provider-evolution.js-785-      });
+routes/mira-provider-evolution.js-786-      if (
+routes/mira-provider-evolution.js-787-        staged.changeId !== proposal.changeId ||
+routes/mira-provider-evolution.js:788:        JSON.stringify(normalizeRuntimeConfig(staged.config)) !==
+routes/mira-provider-evolution.js-789-          JSON.stringify(expectedStagedConfig)
+routes/mira-provider-evolution.js-790-      ) {
+routes/mira-provider-evolution.js-791-        return res.status(409).json({
+routes/mira-provider-evolution.js-792-          success: false,
+routes/mira-provider-evolution.js-793-          status: "staging_mismatch"
+routes/mira-provider-evolution.js-794-        });
+routes/mira-provider-evolution.js-795-      }
+routes/mira-provider-evolution.js-796-
+routes/mira-provider-evolution.js-797-      const currentConfig =
+routes/mira-provider-evolution.js:798:        readRuntimeConfig();
+routes/mira-provider-evolution.js-799-
+routes/mira-provider-evolution.js-800-      saveRollbackSnapshot(currentConfig);
+routes/mira-provider-evolution.js-801-      snapshotCreated = true;
+routes/mira-provider-evolution.js-802-
+routes/mira-provider-evolution.js:803:      writeRuntimeConfig({
+routes/mira-provider-evolution.js-804-        provider: validation.provider,
+routes/mira-provider-evolution.js-805-        model: validation.model || "",
+routes/mira-provider-evolution.js-806-        fallbackEnabled: validation.fallbackEnabled === true,
+routes/mira-provider-evolution.js-807-        fallbackProvider: validation.fallbackProvider || "",
+routes/mira-provider-evolution.js-808-        fallbackModel: validation.fallbackModel || ""
+--
+routes/mira-provider-evolution.js-816-
+routes/mira-provider-evolution.js-817-      if (!verification.ok) {
+routes/mira-provider-evolution.js-818-        let rollbackCompleted = false;
+routes/mira-provider-evolution.js-819-
+routes/mira-provider-evolution.js-820-        try {
+routes/mira-provider-evolution.js:821:          rollbackCompleted = restoreRuntimeConfig();
+routes/mira-provider-evolution.js-822-        } catch (_) {
+routes/mira-provider-evolution.js-823-          rollbackCompleted = false;
+routes/mira-provider-evolution.js-824-        }
+routes/mira-provider-evolution.js-825-
+routes/mira-provider-evolution.js-826-        if (!rollbackCompleted) {
+--
+routes/mira-provider-evolution.js-935-        throw completionError;
+routes/mira-provider-evolution.js-936-      }
+routes/mira-provider-evolution.js-937-    } catch (error) {
+routes/mira-provider-evolution.js-938-      if (snapshotCreated) {
+routes/mira-provider-evolution.js-939-        try {
+routes/mira-provider-evolution.js:940:          const restored = restoreRuntimeConfig();
+routes/mira-provider-evolution.js-941-
+routes/mira-provider-evolution.js-942-          if (!restored) {
+routes/mira-provider-evolution.js-943-            throw new Error("rollback_snapshot_missing");
+routes/mira-provider-evolution.js-944-          }
+routes/mira-provider-evolution.js-945-        } catch (rollbackError) {
+--
+routes/mira-provider-evolution.js-1010-        });
+routes/mira-provider-evolution.js-1011-      }
+routes/mira-provider-evolution.js-1012-
+routes/mira-provider-evolution.js-1013-      const config = {
+routes/mira-provider-evolution.js-1014-        provider:
+routes/mira-provider-evolution.js:1015:          proposal.metadata?.provider || "",
+routes/mira-provider-evolution.js-1016-        model:
+routes/mira-provider-evolution.js:1017:          proposal.metadata?.model || "",
+routes/mira-provider-evolution.js-1018-        fallbackEnabled:
+routes/mira-provider-evolution.js:1019:          proposal.metadata?.fallbackEnabled === true,
+routes/mira-provider-evolution.js-1020-        fallbackProvider:
+routes/mira-provider-evolution.js:1021:          proposal.metadata?.fallbackProvider || "",
+routes/mira-provider-evolution.js-1022-        fallbackModel:
+routes/mira-provider-evolution.js:1023:          proposal.metadata?.fallbackModel || ""
+routes/mira-provider-evolution.js-1024-      };
+routes/mira-provider-evolution.js-1025-
+routes/mira-provider-evolution.js-1026-      const validation =
+routes/mira-provider-evolution.js-1027-        validateProviderConfiguration(config);
+routes/mira-provider-evolution.js-1028-
+--
+routes/mira-provider-evolution.js-1033-          result: validation.status
+routes/mira-provider-evolution.js-1034-        });
+routes/mira-provider-evolution.js-1035-      }
+routes/mira-provider-evolution.js-1036-
+routes/mira-provider-evolution.js-1037-      const runtime =
+routes/mira-provider-evolution.js:1038:        readRuntimeConfig();
+routes/mira-provider-evolution.js-1039-
+routes/mira-provider-evolution.js-1040-      const expectedFallbackEnabled =
+routes/mira-provider-evolution.js-1041-        validation.fallbackEnabled === true;
+routes/mira-provider-evolution.js-1042-
+routes/mira-provider-evolution.js-1043-      const runtimeFallbackEnabled =
+--
+routes/mira-provider-evolution.js-1178-
+routes/mira-provider-evolution.js-1179-    const saved = service.writeConfig({ slots: validation.slots });
+routes/mira-provider-evolution.js-1180-
+routes/mira-provider-evolution.js-1181-    audit({
+routes/mira-provider-evolution.js-1182-      actorRole: req.role || "admin",
+routes/mira-provider-evolution.js:1183:      action: "MIRA_CUSTOM_PROVIDER_CONFIGURATION_SAVED",
+routes/mira-provider-evolution.js-1184-      status: "success",
+routes/mira-provider-evolution.js-1185-      details: {
+routes/mira-provider-evolution.js-1186-        configuredSlots: saved.slots.filter(slot => slot.endpoint).length,
+routes/mira-provider-evolution.js-1187-        secretValuesAccepted: false,
+routes/mira-provider-evolution.js-1188-        providerActivated: false
+--
+routes/mira-provider-evolution.js-1205-
+routes/mira-provider-evolution.js-1206-
+routes/mira-provider-evolution.js-1207-
+routes/mira-provider-evolution.js-1208-// MIRA_PROVIDER_CREDENTIAL_ROUTES_V1
+routes/mira-provider-evolution.js-1209-// This router is mounted behind the existing SYSTEM_ADMIN permission middleware.
+routes/mira-provider-evolution.js:1210:// Never return plaintext credentials from the metadata endpoint.
+routes/mira-provider-evolution.js-1211-const CREDENTIAL_PROVIDER_ENV = Object.freeze({
+routes/mira-provider-evolution.js-1212-  openai: ["OPENAI_API_KEY", "OPENAI_MODEL"],
+routes/mira-provider-evolution.js-1213-  gemini: ["GEMINI_API_KEY", "GEMINI_MODEL"],
+routes/mira-provider-evolution.js-1214-  groq: ["GROQ_API_KEY", "GROQ_MODEL"],
+routes/mira-provider-evolution.js-1215-  deepseek: ["DEEPSEEK_API_KEY", "DEEPSEEK_MODEL"],
+routes/mira-provider-evolution.js-1216-  openrouter: ["OPENROUTER_API_KEY", "OPENROUTER_MODEL"],
+routes/mira-provider-evolution.js-1217-  huggingface: ["HF_TOKEN", "HF_MODEL"],
+routes/mira-provider-evolution.js-1218-  anthropic: ["ANTHROPIC_API_KEY", "ANTHROPIC_MODEL"],
+routes/mira-provider-evolution.js-1219-  xai: ["XAI_API_KEY", "XAI_MODEL"],
+routes/mira-provider-evolution.js:1220:  custom1: ["CUSTOM_PROVIDER1_KEY", "CUSTOM_PROVIDER1_MODEL"],
+routes/mira-provider-evolution.js:1221:  custom2: ["CUSTOM_PROVIDER2_KEY", "CUSTOM_PROVIDER2_MODEL"],
+routes/mira-provider-evolution.js:1222:  custom3: ["CUSTOM_PROVIDER3_KEY", "CUSTOM_PROVIDER3_MODEL"],
+routes/mira-provider-evolution.js:1223:  custom4: ["CUSTOM_PROVIDER4_KEY", "CUSTOM_PROVIDER4_MODEL"],
+routes/mira-provider-evolution.js:1224:  custom5: ["CUSTOM_PROVIDER5_KEY", "CUSTOM_PROVIDER5_MODEL"]
+routes/mira-provider-evolution.js-1225-});
+routes/mira-provider-evolution.js-1226-
+routes/mira-provider-evolution.js-1227-function credentialNoStore(res) {
+routes/mira-provider-evolution.js-1228-  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+routes/mira-provider-evolution.js-1229-  res.set("Pragma", "no-cache");
+
+=== 4. RUNTIME CONFIG FILE INVENTORY ===
+
+=== 5. TEST FIXTURE AND ENVIRONMENT REFERENCES ===
+tests/custom-provider-runtime-metadata-integration.test.js:15:  "MIRA_CUSTOM_PROVIDER_CONFIG_PATH",
+tests/custom-provider-runtime-metadata-integration.test.js:16:  "AI_PROVIDER",
+tests/custom-provider-runtime-metadata-integration.test.js:17:  "CUSTOM_PROVIDER",
+tests/custom-provider-runtime-metadata-integration.test.js:18:  "CUSTOM_PROVIDER1_URL",
+tests/custom-provider-runtime-metadata-integration.test.js:19:  "CUSTOM_PROVIDER1_MODEL",
+tests/custom-provider-runtime-metadata-integration.test.js:20:  "CUSTOM_PROVIDER1_KEY",
+tests/custom-provider-runtime-metadata-integration.test.js:21:  "MIRA_ALLOW_PRIVATE_CUSTOM_PROVIDER_URLS"
+tests/custom-provider-runtime-metadata-integration.test.js:28:const runtimePath = path.join(root, "provider-runtime-config.json");
+tests/custom-provider-runtime-metadata-integration.test.js:35:  process.env.MIRA_CUSTOM_PROVIDER_CONFIG_PATH =
+tests/custom-provider-runtime-metadata-integration.test.js:62:  process.env.AI_PROVIDER = "gemini";
+tests/custom-provider-runtime-metadata-integration.test.js:63:  process.env.CUSTOM_PROVIDER = "provider1";
+tests/custom-provider-runtime-metadata-integration.test.js:74:        process.env.AI_PROVIDER ||
+tests/custom-provider-runtime-metadata-integration.test.js:85:  assert.equal(process.env.CUSTOM_PROVIDER, "provider1");
+tests/custom-provider-runtime-metadata-integration.test.js:99:  console.log("CUSTOM_PROVIDER_METADATA_RUNTIME_TEST=PASS");
+tests/custom-provider-runtime-metadata-integration.test.js:101:  console.error("CUSTOM_PROVIDER_METADATA_RUNTIME_TEST=FAIL");
+services/custom-provider-config.js:7:  process.env.MIRA_CUSTOM_PROVIDER_CONFIG_PATH ||
+services/mira-provider-evolution.js:262:      process.env.CUSTOM_PROVIDER || "provider1";
+
+=== 6. RELEVANT MODULE IMPORTS ===
+LOAD_PASS: ./services/custom-provider-config
+EXPORTS: [
+  'emptySlots',
+  'validateEndpoint',
+  'validateSlots',
+  'readConfig',
+  'writeConfig'
+]
+LOAD_PASS: ./services/mira-provider-evolution
+EXPORTS: [
+  'SUPPORTED_PROVIDERS',
+  'normalizeProvider',
+  'normalizeModel',
+  'containsSecretValue',
+  'containsSecretKey',
+  'validateProviderName',
+  'validateModel',
+  'scanSecretSafety',
+  'validateProviderConfiguration',
+  'sanitizeHealthError',
+  'testProviderHealth',
+  'buildSafeAuditDetails'
+]
+LOAD_PASS: ./services/provider-credential-store
+EXPORTS: [ 'createStore', 'list', 'set', 'reveal', 'remove' ]
+
+=== 7. SOURCE HASH CHECKPOINT ===
+37e18f2bd2b6682aa765616f5aa0f35ccb724838ae758dfd2f206cdc6f97f3ce  tests/custom-provider-runtime-metadata-integration.test.js
+d7e92793ce73506ff2c42cd0850d909ff5133f3773e8de4b414f4430e0523ce3  services/custom-provider-config.js
+2107066a5deb064337975045fa753e271b470f97e5e4c1e86498bb00a709741d  services/mira-provider-evolution.js
+ffdf8c194c1fecdc58e0675e6ee733853b87e1407e552c0374185a375bfcfefa  routes/mira-provider-evolution.js
+
+=== 8. GIT STATUS LIMITATION ===
+fatal: not a git repository (or any of the parent directories): .git
+
+=== DIAGNOSIS COMPLETE ===
+NO_TEST_EXECUTED=YES
+NO_SOURCE_EDIT=YES
+NO_LIVE_PROVIDER_REQUEST=YES
+NO_ACTIVATION=YES
+REPORT=provider-metadata-failure-diagnosis-20261030T024835Z.txt

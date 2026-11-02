@@ -1,0 +1,59 @@
+=== PROVIDER ISOLATED REGRESSION ===
+Fri Oct 30 02:47:12 UTC 2026
+PROJECT=/workspace/quiet-bose
+
+=== PRE-TEST HASHES ===
+2cbb48a514909c7909dc506ca9d42637e1ec6e5dfa017cf417e44a3751b3bad7  tests/provider-stage-only-isolated.test.js
+6ff6a8a0f1855ec68a4ac882ed444ca69cf1a11e59e0e5e57ea0a68f63efde2e  tests/provider-verify-fallback-isolated.test.js
+37e18f2bd2b6682aa765616f5aa0f35ccb724838ae758dfd2f206cdc6f97f3ce  tests/custom-provider-runtime-metadata-integration.test.js
+
+=== RUN APPROVED TEST SET ===
+
+----- RUN: tests/provider-stage-only-isolated.test.js -----
+PASS: apply stages approved config without changing live runtime
+PASS: no rollback snapshot or health call during staging
+ISOLATED_STAGE_ONLY_TEST=PASS
+LIVE_PROVIDER_REQUESTS=0
+EXTERNAL_NETWORK_REQUESTS=0
+EXIT_CODE=0
+RESULT=PASS
+
+----- RUN: tests/provider-verify-fallback-isolated.test.js -----
+PASS: incomplete proposal returns 409 without health call
+PASS: fallback provider mismatch returns 409 without health call
+PASS: fallback enabled-state mismatch returns 409 without health call
+PASS: fallback model mismatch returns 409 without health call
+PASS: matching fallback configuration uses mock health check
+ISOLATED_VERIFY_FALLBACK_BEHAVIOR=PASS
+LIVE_PROVIDER_REQUESTS=0
+EXTERNAL_NETWORK_REQUESTS=0
+EXIT_CODE=0
+RESULT=PASS
+
+----- RUN: tests/custom-provider-runtime-metadata-integration.test.js -----
+CUSTOM_PROVIDER_METADATA_RUNTIME_TEST=FAIL
+AssertionError [ERR_ASSERTION]: runtime selection should follow the existing runtime config fixture
+
+'gemini' !== 'groq'
+
+    at Object.<anonymous> (/workspace/quiet-bose/tests/custom-provider-runtime-metadata-integration.test.js:80:10)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+EXIT_CODE=1
+RESULT=FAIL
+
+=== POST-TEST HASHES ===
+2cbb48a514909c7909dc506ca9d42637e1ec6e5dfa017cf417e44a3751b3bad7  tests/provider-stage-only-isolated.test.js
+6ff6a8a0f1855ec68a4ac882ed444ca69cf1a11e59e0e5e57ea0a68f63efde2e  tests/provider-verify-fallback-isolated.test.js
+37e18f2bd2b6682aa765616f5aa0f35ccb724838ae758dfd2f206cdc6f97f3ce  tests/custom-provider-runtime-metadata-integration.test.js
+
+=== FINAL RESULT ===
+THREE_TESTS=FAIL_OR_INCONCLUSIVE
+LIVE_PROVIDER_API=NOT_USED_BY_TEST_DESIGN
+PROVIDER_ACTIVATION=NOT_AUTHORIZED
+REPORT=provider-isolated-regression-20261030T024712Z.txt

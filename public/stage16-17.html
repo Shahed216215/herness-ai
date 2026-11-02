@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mira — Orchestrator &amp; Governance</title>
+<style>
+body{font:16px system-ui;max-width:900px;margin:24px auto;padding:0 16px;background:#111827;color:#e5e7eb}
+section{border:1px solid #374151;border-radius:12px;padding:18px;margin:16px 0}
+textarea,button{font:inherit;padding:10px;border-radius:8px;max-width:100%}
+textarea{width:95%;min-height:90px;background:#1f2937;color:white}
+button{cursor:pointer;margin:6px 4px 6px 0}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#030712;padding:12px;border-radius:8px}
+.muted{color:#9ca3af}
+</style>
+</head>
+<body>
+<h1>Mira AI Agent</h1>
+<p class="muted">Stage 16 — Autonomous Orchestrator · Stage 17 — Global Safety &amp; Governance</p>
+<section>
+<h2>What do you want Mira to do?</h2>
+<textarea id="command" placeholder="Excel-এর নতুন কাজ খুঁজে দেখো"></textarea>
+<p><button id="run">Create workflow</button> <button id="refresh">Refresh status</button></p>
+<pre id="workflow">Connecting to authenticated backend…</pre>
+<p class="muted">Creating a workflow does not itself discover jobs or execute external work. Each stage requires explicit permission and applicable approvals.</p>
+</section>
+<section>
+<h2>Security &amp; Governance</h2>
+<p id="auth" class="muted">Checking server authorization…</p>
+<button id="advance">Advance current stage (explicit permission)</button>
+<button id="approve">Approve pending stage (admin only)</button>
+<button id="stop">Emergency stop (admin only)</button>
+<button id="resume">Resume (admin only)</button>
+<pre id="security">Loading governance status…</pre>
+</section>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+let selectedId=null;
+async function api(path, options={}){
+ const response=await fetch(path,{
+  credentials:'same-origin',
+  headers:{'Content-Type':'application/json',...(options.headers||{})},
+  ...options
+ });
+ let body;
+ try{body=await response.json();}catch(_){body={success:false,error:'Invalid server response'};}
+ if(!response.ok||body.success===false){
+  const e=new Error(body.error||('HTTP '+response.status));e.status=response.status;throw e;
+ }
+ return body;
+}
+function showError(target,e){
+ $(target).textContent='Request failed: '+e.message+
+  (e.status===401?' (login required)':
+   e.status===403?' (permission/admin access denied)':
+   e.status===503?' (safety or persistence integrity check failed)':'');
+}
+async function refresh(){
+ try{
+  const data=await api('/api/stage16-17/status');
+  const jobs=data.workflows||[];
+  if(!selectedId&&jobs.length)selectedId=jobs[jobs.length-1].id;
+  if(selectedId&&!jobs.some(j=>j.id===selectedId))selectedId=null;
+  $('workflow').textContent=JSON.stringify({
+   selectedWorkflow:jobs.find(j=>j.id===selectedId)||null,
+   workflows:jobs,
+   capabilities:data.capabilities
+  },null,2);
+  $('security').textContent=JSON.stringify(data.governance,null,2);
+  $('auth').textContent='Backend connected. Admin-only operations are enforced by server middleware.';
+ }catch(e){showError('workflow',e);showError('security',e);$('auth').textContent='Backend connection or authorization unavailable.';}
+}
+$('run').addEventListener('click',async()=>{
+ const command=$('command').value.trim();
+ if(!command){$('workflow').textContent='Enter a command first.';return;}
+ try{
+  const data=await api('/api/stage16-17/workflows',{
+   method:'POST',body:JSON.stringify({command})
+  });
+  selectedId=data.job.id;
+  await refresh();
+ }catch(e){showError('workflow',e);}
+});
+$('refresh').addEventListener('click',refresh);
+$('advance').addEventListener('click',async()=>{
+ if(!selectedId){$('workflow').textContent='Create or select a workflow first.';return;}
+ try{
+  const data=await api('/api/stage16-17/workflows/'+encodeURIComponent(selectedId)+'/advance',{
+   method:'POST',body:JSON.stringify({permitted:true})
+  });
+  $('workflow').textContent=JSON.stringify(data,null,2);
+  await refresh();
+ }catch(e){showError('workflow',e);}
+});
+$('approve').addEventListener('click',async()=>{
+ if(!selectedId){$('workflow').textContent='Create or select a workflow first.';return;}
+ try{
+  await api('/api/stage16-17/workflows/'+encodeURIComponent(selectedId)+'/approve',{
+   method:'POST',body:JSON.stringify({})
+  });
+  await refresh();
+ }catch(e){showError('workflow',e);}
+});
+$('stop').addEventListener('click',async()=>{
+ try{await api('/api/stage16-17/emergency-stop',{method:'POST',body:'{}'});await refresh();}
+ catch(e){showError('security',e);}
+});
+$('resume').addEventListener('click',async()=>{
+ try{await api('/api/stage16-17/resume',{method:'POST',body:'{}'});await refresh();}
+ catch(e){showError('security',e);}
+});
+refresh();
+})();
+</script>
+</body>
+</html>

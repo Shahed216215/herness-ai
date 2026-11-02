@@ -1,0 +1,182 @@
+"use strict";
+
+const express = require("express");
+
+const {
+  listLearningHistory,
+  getLearningHistory,
+  getLearningHistoryTimeline,
+  getLearningHistoryStats
+} = require("../services/mira-learning-history");
+
+const {
+  listLessons
+} = require("../services/mira-experience-memory");
+
+function registerLearningHistoryRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+) {
+  const router = express.Router();
+
+  const requireSystemAdmin =
+    requireAdminPermission(
+      PERMISSIONS.SYSTEM_ADMIN
+    );
+
+  router.get(
+    "/stats",
+    requireSystemAdmin,
+    (req, res) => {
+      try {
+        return res.json({
+          success: true,
+          stats:
+            getLearningHistoryStats()
+        });
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    }
+  );
+
+  router.get(
+    "/lessons",
+    requireSystemAdmin,
+    (req, res) => {
+      try {
+        const limit =
+          Math.min(
+            Number(req.query.limit) || 100,
+            100
+          );
+
+        return res.json({
+          success: true,
+          lessons:
+            listLessons({
+              limit
+            })
+        });
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    }
+  );
+
+  router.get(
+    "/",
+    requireSystemAdmin,
+    (req, res) => {
+      try {
+        const limit =
+          Math.min(
+            Number(req.query.limit) || 100,
+            100
+          );
+
+        return res.json({
+          success: true,
+          history:
+            listLearningHistory({
+              historyId:
+                req.query.historyId,
+              taskId:
+                req.query.taskId,
+              status:
+                req.query.status,
+              qaStatus:
+                req.query.qaStatus,
+              executionStatus:
+                req.query.executionStatus,
+              success:
+                req.query.success,
+              limit
+            })
+        });
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    }
+  );
+
+  router.get(
+    "/:id/timeline",
+    requireSystemAdmin,
+    (req, res) => {
+      try {
+        const history =
+          getLearningHistoryTimeline(
+            String(req.params.id || "")
+          );
+
+        if (!history) {
+          return res.status(404).json({
+            success: false,
+            error:
+              "Learning history was not found."
+          });
+        }
+
+        return res.json({
+          success: true,
+          ...history
+        });
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    }
+  );
+
+  router.get(
+    "/:id",
+    requireSystemAdmin,
+    (req, res) => {
+      try {
+        const history =
+          getLearningHistory(
+            String(req.params.id || "")
+          );
+
+        if (!history) {
+          return res.status(404).json({
+            success: false,
+            error:
+              "Learning history was not found."
+          });
+        }
+
+        return res.json({
+          success: true,
+          history
+        });
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    }
+  );
+
+  app.use(
+    "/api/admin/learning-history",
+    router
+  );
+}
+
+module.exports =
+  registerLearningHistoryRoutes;

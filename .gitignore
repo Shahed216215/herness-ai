@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+**/.env
+**/.env.*
+*.log
+logs/
+data/
+reports/
+backups/
+.pocketdev/
+coverage/
+.DS_Store

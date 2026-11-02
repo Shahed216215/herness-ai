@@ -1,0 +1,36 @@
+=== PROVIDER OFFLINE TEST REPORT ===
+Fri Oct 30 02:43:12 UTC 2026
+
+=== PRE-TEST GIT STATUS ===
+fatal: not a git repository (or any of the parent directories): .git
+
+=== PRE-TEST HASHES ===
+f87c9363c7491f698fd74385cfe6ca3ac244998909c9f8af3a7bc2bdae246aa6  tests/stage19-provider-url-policy-test.js
+2823d9d4730493aedcca1783b7908c0c3bf89cf641e0652ed215b854257a3b57  tests/provider-fallback-runtime.test.js
+
+=== TEST 1: PROVIDER URL POLICY ===
+PASS: unsafe schemes and URL credentials rejected
+PASS: private IPs and local names blocked by default
+PASS: private DNS resolution rejected by default
+PASS: public HTTPS endpoint accepted with public DNS
+PASS: explicit private-provider opt-in supports local inference
+STAGE19_PROVIDER_URL_POLICY=PASS
+TEST1_EXIT_CODE=0
+
+=== TEST 2: PROVIDER FALLBACK RUNTIME ===
+PROVIDER_FALLBACK_RUNTIME_TEST=PASS
+LIVE_PROVIDER_REQUESTS=0
+EXTERNAL_NETWORK_REQUESTS=0
+TEST2_EXIT_CODE=0
+
+=== POST-TEST GIT STATUS ===
+fatal: not a git repository (or any of the parent directories): .git
+
+=== POST-TEST HASHES ===
+f87c9363c7491f698fd74385cfe6ca3ac244998909c9f8af3a7bc2bdae246aa6  tests/stage19-provider-url-policy-test.js
+2823d9d4730493aedcca1783b7908c0c3bf89cf641e0652ed215b854257a3b57  tests/provider-fallback-runtime.test.js
+
+=== FINAL RESULT ===
+URL_POLICY=PASS
+FALLBACK_RUNTIME=PASS
+REPORT=provider-two-offline-tests-20261030T024312Z.txt

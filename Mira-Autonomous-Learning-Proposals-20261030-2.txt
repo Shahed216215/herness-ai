@@ -1,0 +1,761 @@
+MIRA-SOURCE-PACKAGE-V1
+FILE: autonomous-learning-proposals.js
+SHA256: fa0392e8f336a84e15c48bcc3ec5c6195ee9cf67b76275458e8d2bcf712f4f95
+LENGTH: 12115
+CONTENT:
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const storagePath = require('./mira-storage');
+const crypto = require("crypto");
+
+const PROPOSAL_FILE = storagePath("autonomous-learning-proposals.json");
+
+const MAX_HISTORY = 200;
+
+const VALID_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "applied"
+];
+
+function createId() {
+  return (
+    "alp_" +
+    Date.now().toString(36) +
+    "_" +
+    crypto.randomBytes(5).toString("hex")
+  );
+}
+
+function cleanText(value, maxLength = 5000) {
+  return String(value || "")
+    .replace(/\u0000/g, "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function hashContent(value) {
+  return crypto
+    .createHash("sha256")
+    .update(
+      typeof value === "string"
+        ? value
+        : JSON.stringify(value)
+    )
+    .digest("hex");
+}
+
+function defaultStore() {
+  return {
+    version: 1,
+    proposals: []
+  };
+}
+
+function loadStore() {
+  if (!fs.existsSync(PROPOSAL_FILE)) {
+    return defaultStore();
+  }
+
+  try {
+    const parsed = JSON.parse(
+      fs.readFileSync(
+        PROPOSAL_FILE,
+        "utf8"
+      )
+    );
+
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !Array.isArray(parsed.proposals)
+    ) {
+      throw new Error(
+        "Invalid autonomous proposal store structure."
+      );
+    }
+
+    return {
+      version: Number(parsed.version) || 1,
+      proposals: parsed.proposals
+    };
+  } catch (error) {
+    throw new Error(
+      `Autonomous proposal store could not be loaded: ${error.message}`
+    );
+  }
+}
+
+function saveStore(store) {
+  const tempFile =
+    `${PROPOSAL_FILE}.tmp`;
+
+  fs.writeFileSync(
+    tempFile,
+    JSON.stringify(store, null, 2),
+    "utf8"
+  );
+
+  fs.renameSync(
+    tempFile,
+    PROPOSAL_FILE
+  );
+}
+
+function normalizeProposalInput(input) {
+  if (
+    !input ||
+    typeof input !== "object" ||
+    Array.isArray(input)
+  ) {
+    throw new Error(
+      "Proposal input must be an object."
+    );
+  }
+
+  if (
+    !input.learning ||
+    typeof input.learning !== "object" ||
+    Array.isArray(input.learning)
+  ) {
+    throw new Error(
+      "Proposal learning data is required."
+    );
+  }
+
+  const learning = {
+    title: cleanText(
+      input.learning.title,
+      500
+    ),
+    topic: cleanText(
+      input.learning.topic,
+      500
+    ),
+    category: cleanText(
+      input.learning.category,
+      100
+    ),
+    track: cleanText(
+      input.learning.track,
+      100
+    ),
+    difficulty: cleanText(
+      input.learning.difficulty,
+      100
+    ),
+    concept: cleanText(
+      input.learning.concept,
+      5000
+    ),
+    technique: cleanText(
+      input.learning.technique,
+      5000
+    ),
+    safeLabExample: cleanText(
+      input.learning.safeLabExample,
+      5000
+    ),
+    defense: cleanText(
+      input.learning.defense,
+      5000
+    ),
+    detection: cleanText(
+      input.learning.detection,
+      5000
+    ),
+    content: cleanText(
+      input.learning.content,
+      20000
+    ),
+    tags: Array.isArray(input.learning.tags)
+      ? input.learning.tags
+          .map(tag => cleanText(tag, 50))
+          .filter(Boolean)
+          .slice(0, 20)
+      : []
+  };
+
+  const required = [
+    "title",
+    "topic",
+    "content"
+  ];
+
+  for (const field of required) {
+    if (!learning[field]) {
+      throw new Error(
+        `Learning field "${field}" is required.`
+      );
+    }
+  }
+
+  if (
+    !learning.category
+  ) {
+    learning.category = "General";
+  }
+
+  if (!learning.difficulty) {
+    learning.difficulty = "Beginner";
+  }
+
+  if (
+    ![
+      "Beginner",
+      "Intermediate",
+      "Advanced",
+      "Expert"
+    ].includes(learning.difficulty)
+  ) {
+    throw new Error(
+      `Invalid learning difficulty: ${learning.difficulty}`
+    );
+  }
+
+  const sources = Array.isArray(
+    input.sources
+  )
+    ? input.sources
+        .map(source => {
+          if (
+            !source ||
+            typeof source !== "object"
+          ) {
+            return null;
+          }
+
+          return {
+            title: cleanText(
+              source.title,
+              500
+            ),
+            url: cleanText(
+              source.url,
+              1500
+            ),
+            snippet: cleanText(
+              source.snippet,
+              8000
+            ),
+            sourceHash: cleanText(
+              source.sourceHash,
+              128
+            )
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  const proposalSource =
+    cleanText(
+      input.proposalSource,
+      50
+    ) || "mira";
+
+  if (
+    ![
+      "mira",
+      "admin"
+    ].includes(proposalSource)
+  ) {
+    throw new Error(
+      `Invalid proposal source: ${proposalSource}`
+    );
+  }
+
+  return {
+    learning,
+    sources,
+    researchSummary: cleanText(
+      input.researchSummary,
+      10000
+    ),
+    selectedTopic: cleanText(
+      input.selectedTopic,
+      500
+    ),
+    researchMethod: cleanText(
+      input.researchMethod,
+      500
+    ),
+    proposalSource,
+    createdBy: cleanText(
+      input.createdBy,
+      200
+    ),
+    sourceEvidenceHash: hashContent(
+      sources
+    )
+  };
+}
+
+function findDuplicateProposal(
+  store,
+  learning
+) {
+  const title =
+    learning.title
+      .trim()
+      .toLowerCase();
+
+  const topic =
+    learning.topic
+      .trim()
+      .toLowerCase();
+
+  return store.proposals.find(
+    proposal => {
+      const existing =
+        proposal.learning || {};
+
+      return (
+        String(existing.title || "")
+          .trim()
+          .toLowerCase() === title &&
+        String(existing.topic || "")
+          .trim()
+          .toLowerCase() === topic &&
+        [
+          "pending",
+          "approved",
+          "applied"
+        ].includes(proposal.status)
+      );
+    }
+  );
+}
+
+function createProposal(input) {
+  const normalized =
+    normalizeProposalInput(input);
+
+  const store = loadStore();
+
+  const duplicate =
+    findDuplicateProposal(
+      store,
+      normalized.learning
+    );
+
+  if (duplicate) {
+    return {
+      success: true,
+      created: false,
+      duplicate: true,
+      proposal: duplicate
+    };
+  }
+
+  const now =
+    new Date().toISOString();
+
+  const proposal = {
+    id: createId(),
+    status: "pending",
+
+    selectedTopic:
+      normalized.selectedTopic,
+
+    researchMethod:
+      normalized.researchMethod,
+
+    proposalSource:
+      normalized.proposalSource,
+
+    createdBy:
+      normalized.createdBy,
+
+    researchSummary:
+      normalized.researchSummary,
+
+    sources:
+      normalized.sources,
+
+    sourceEvidenceHash:
+      normalized.sourceEvidenceHash,
+
+    learning:
+      normalized.learning,
+
+    createdAt: now,
+
+    approvedAt: null,
+    approvedBy: null,
+
+    rejectedAt: null,
+    rejectedBy: null,
+    rejectionReason: null,
+
+    appliedAt: null,
+    appliedBy: null,
+    snapshotId: null
+  };
+
+  store.proposals.push(proposal);
+
+  store.proposals =
+    store.proposals.slice(
+      -MAX_HISTORY
+    );
+
+  saveStore(store);
+
+  return {
+    success: true,
+    created: true,
+    duplicate: false,
+    proposal
+  };
+}
+
+function getProposal(id) {
+  const store = loadStore();
+
+  return (
+    store.proposals.find(
+      proposal =>
+        proposal.id === id
+    ) || null
+  );
+}
+
+function listProposals({
+  status = null,
+  limit = 50
+} = {}) {
+  const store = loadStore();
+
+  let proposals =
+    store.proposals.slice();
+
+  if (
+    status !== null
+  ) {
+    if (
+      !VALID_STATUSES.includes(
+        status
+      )
+    ) {
+      throw new Error(
+        `Invalid proposal status: ${status}`
+      );
+    }
+
+    proposals =
+      proposals.filter(
+        proposal =>
+          proposal.status ===
+          status
+      );
+  }
+
+  const safeLimit = Math.min(
+    Math.max(
+      Number(limit) || 50,
+      1
+    ),
+    200
+  );
+
+  return proposals
+    .slice(-safeLimit)
+    .reverse();
+}
+
+function approveProposal(
+  id,
+  actor = "system-admin"
+) {
+  const store = loadStore();
+
+  const proposal =
+    store.proposals.find(
+      item => item.id === id
+    );
+
+  if (!proposal) {
+    return {
+      success: false,
+      status: "proposal_not_found"
+    };
+  }
+
+  if (
+    proposal.status !==
+    "pending"
+  ) {
+    return {
+      success: false,
+      status: "invalid_transition",
+      currentStatus:
+        proposal.status
+    };
+  }
+
+  const now =
+    new Date().toISOString();
+
+  proposal.status =
+    "approved";
+
+  proposal.approvedAt =
+    now;
+
+  proposal.approvedBy =
+    cleanText(actor, 200) ||
+    "system-admin";
+
+  saveStore(store);
+
+  return {
+    success: true,
+    status: "approved",
+    proposal
+  };
+}
+
+function editProposal(
+  id,
+  input,
+  actor = "system-admin"
+) {
+  const store = loadStore();
+
+  const proposal =
+    store.proposals.find(
+      item => item.id === id
+    );
+
+  if (!proposal) {
+    return {
+      success: false,
+      status: "proposal_not_found"
+    };
+  }
+
+  if (
+    proposal.status !==
+    "pending"
+  ) {
+    return {
+      success: false,
+      status: "invalid_transition",
+      currentStatus:
+        proposal.status
+    };
+  }
+
+  let normalized;
+
+  try {
+    normalized =
+      normalizeProposalInput(
+        input
+      );
+  } catch (error) {
+    return {
+      success: false,
+      status: "validation_error",
+      error: error.message
+    };
+  }
+
+  const now =
+    new Date().toISOString();
+
+  proposal.learning =
+    normalized.learning;
+
+  proposal.sources =
+    normalized.sources;
+
+  proposal.researchSummary =
+    normalized.researchSummary;
+
+  proposal.selectedTopic =
+    normalized.selectedTopic;
+
+  proposal.researchMethod =
+    normalized.researchMethod;
+
+  proposal.sourceEvidenceHash =
+    normalized.sourceEvidenceHash;
+
+  proposal.editedAt =
+    now;
+
+  proposal.editedBy =
+    cleanText(actor, 200) ||
+    "system-admin";
+
+  saveStore(store);
+
+  return {
+    success: true,
+    status: "edited",
+    proposal
+  };
+}
+
+function rejectProposal(
+  id,
+  actor = "system-admin",
+  reason = ""
+) {
+  const store = loadStore();
+
+  const proposal =
+    store.proposals.find(
+      item => item.id === id
+    );
+
+  if (!proposal) {
+    return {
+      success: false,
+      status: "proposal_not_found"
+    };
+  }
+
+  if (
+    proposal.status !==
+    "pending"
+  ) {
+    return {
+      success: false,
+      status: "invalid_transition",
+      currentStatus:
+        proposal.status
+    };
+  }
+
+  const now =
+    new Date().toISOString();
+
+  proposal.status =
+    "rejected";
+
+  proposal.rejectedAt =
+    now;
+
+  proposal.rejectedBy =
+    cleanText(actor, 200) ||
+    "system-admin";
+
+  proposal.rejectionReason =
+    cleanText(reason, 2000);
+
+  saveStore(store);
+
+  return {
+    success: true,
+    status: "rejected",
+    proposal
+  };
+}
+
+function markProposalApplied(
+  id,
+  actor = "system",
+  snapshotId = null
+) {
+  const store = loadStore();
+
+  const proposal =
+    store.proposals.find(
+      item => item.id === id
+    );
+
+  if (!proposal) {
+    return {
+      success: false,
+      status: "proposal_not_found"
+    };
+  }
+
+  if (
+    proposal.status !==
+    "approved"
+  ) {
+    return {
+      success: false,
+      status: "invalid_transition",
+      currentStatus:
+        proposal.status
+    };
+  }
+
+  const now =
+    new Date().toISOString();
+
+  proposal.status =
+    "applied";
+
+  proposal.appliedAt =
+    now;
+
+  proposal.appliedBy =
+    cleanText(actor, 200) ||
+    "system";
+
+  proposal.snapshotId =
+    cleanText(snapshotId, 500) ||
+    null;
+
+  saveStore(store);
+
+  return {
+    success: true,
+    status: "applied",
+    proposal
+  };
+}
+
+function getProposalStats() {
+  const store = loadStore();
+
+  const stats = {
+    total: store.proposals.length,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    applied: 0
+  };
+
+  for (
+    const proposal of
+    store.proposals
+  ) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        stats,
+        proposal.status
+      )
+    ) {
+      stats[proposal.status] += 1;
+    }
+  }
+
+  return stats;
+}
+
+module.exports = {
+  name:
+    "autonomous_learning_proposals",
+
+  PROPOSAL_FILE,
+
+  loadStore,
+  createProposal,
+  editProposal,
+  getProposal,
+  listProposals,
+  approveProposal,
+  rejectProposal,
+  markProposalApplied,
+  getProposalStats,
+  hashContent
+};

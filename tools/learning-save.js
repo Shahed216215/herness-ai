@@ -1,0 +1,71 @@
+const {
+  learnFromContent
+} = require("../services/learning");
+
+module.exports = {
+  name: "learning_save",
+
+  declaration: {
+    name: "learning_save",
+    description:
+      "Learn structured cybersecurity knowledge from provided source content and save it to Mira's knowledge base. Learning is restricted to safe, authorized, defensive, and educational content.",
+
+    parameters: {
+      type: "object",
+
+      properties: {
+        sourceTitle: {
+          type: "string"
+        },
+
+        sourceUrl: {
+          type: "string"
+        },
+
+        content: {
+          type: "string"
+        }
+      },
+
+      required: [
+        "content"
+      ]
+    }
+  },
+
+  execute: async ({
+    sourceTitle,
+    sourceUrl,
+    content
+  }) => {
+    const result = await learnFromContent({
+      content,
+      sourceTitle,
+      sourceUrl
+    });
+
+    if (!result || result.success !== true) {
+      return JSON.stringify({
+        success: false,
+        learned: false,
+        saved: false,
+        reason:
+          result?.reason ||
+          "Learning operation failed."
+      });
+    }
+
+    return JSON.stringify({
+      success: true,
+      learned: result.learned === true,
+      saved: result.saved === true,
+      duplicate: result.duplicate === true,
+      drive: result.drive === true,
+      title: result.title || null,
+      topic: result.topic || null,
+      track: result.track || null,
+      difficulty: result.difficulty || null,
+      reason: result.reason || null
+    });
+  }
+};
