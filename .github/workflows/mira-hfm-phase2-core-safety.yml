@@ -7,6 +7,7 @@ name: Mira Hybrid Memory Phase 2 Core Safety
 # Resolution records bind affected versions, sources, hashes, access/trust, loss risks and recovery/verification plan.
 # Conflict lifecycle explicitly records QUARANTINED -> UNDER_REVIEW -> RESOLVED/REJECTED transitions.
 # Resolution is blocked unless an authorized, integrity-verified UNDER_REVIEW record exists.
+# Structural conflict assessment exposes the initial DETECTED state before quarantine.
 
 on:
   push:
