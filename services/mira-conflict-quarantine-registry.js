@@ -50,17 +50,39 @@ function readRegularJson(filePath) {
 }
 function writeImmutableJson(filePath, value) {
   const bytes = JSON.stringify(value, null, 2) + '\n';
-  const fd = fs.openSync(filePath, 'wx', 0o600);
+  const directory = path.dirname(filePath);
+  const tempPath = path.join(
+    directory,
+    '.mira-quarantine-tmp-' + process.pid + '-' + crypto.randomBytes(12).toString('hex')
+  );
+  let fd;
+  let linked = false;
   try {
+    fd = fs.openSync(tempPath, 'wx', 0o600);
     fs.writeFileSync(fd, bytes, 'utf8');
     fs.fsyncSync(fd);
-  } finally {
     fs.closeSync(fd);
+    fd = undefined;
+
+    // Hard-link publication is atomic and refuses to overwrite an existing
+    // immutable destination. The final name is visible only after full write+fsync.
+    fs.linkSync(tempPath, filePath);
+    linked = true;
+    fs.unlinkSync(tempPath);
+
+    const dirFd = fs.openSync(directory, 'r');
+    try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
+    const readback = readRegularJson(filePath);
+    if (digest(readback) !== digest(value)) throw new Error('Quarantine immutable-write readback mismatch.');
+  } catch (error) {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+    try { fs.unlinkSync(tempPath); } catch {}
+    if (linked) {
+      error.stateCommitted = true;
+      error.code = error.code || 'IMMUTABLE_WRITE_COMMITTED_VERIFY_FAILED';
+    }
+    throw error;
   }
-  const dirFd = fs.openSync(path.dirname(filePath), 'r');
-  try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
-  const readback = readRegularJson(filePath);
-  if (digest(readback) !== digest(value)) throw new Error('Quarantine immutable-write readback mismatch.');
 }
 function validateRecord(record, projectId) {
   const errors = validateCanonicalMemoryRecord(record);
