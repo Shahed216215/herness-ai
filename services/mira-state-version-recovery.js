@@ -22,6 +22,10 @@ function verifyVersionFile(filePath, versionFile) {
     throw new Error('A safe version filename is required.');
   }
   const directory = versionDirectory(filePath);
+  const directoryStat = fs.lstatSync(directory);
+  if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
+    throw new Error('Version snapshot directory is not a safe directory.');
+  }
   const fullPath = path.join(directory, versionFile);
   const stat = fs.lstatSync(fullPath);
   if (stat.isSymbolicLink() || !stat.isFile()) throw new Error('Version snapshot is not a safe regular file.');
