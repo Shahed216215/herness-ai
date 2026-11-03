@@ -46,9 +46,14 @@ try {
   assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'PENDING_REVIEW');
 
-  const visibleBefore = filterTrustedRecords([originalA, originalB, record({ memoryId: 'memory-0002' })],
-    listConflicts({ directory, projectId: 'project-a' }));
-  assert.deepEqual(visibleBefore.map(item => item.memoryId), ['memory-0002']);
+  const visibleBefore = filterTrustedRecords([
+    originalA, originalB, record({ memoryId: 'memory-0002' }),
+    record({ memoryId: 'memory-0001', projectId: 'project-b',
+      access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-b'] } })
+  ], listConflicts({ directory, projectId: 'project-a' }), 'project-a');
+  assert.deepEqual(visibleBefore.map(item => item.projectId + ':' + item.memoryId),
+    ['project-a:memory-0002', 'project-b:memory-0001']);
+  assert.throws(() => filterTrustedRecords([], [], ''), /projectId is required/);
 
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
@@ -188,6 +193,7 @@ try {
   console.log('LOCAL_SHA256_INTEGRITY_VERIFICATION=PASS');
   console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
+  console.log('PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS');
   console.log('GOVERNED_KEEP_BOTH_RESOLUTION=PASS');
   console.log('GOVERNED_REJECT_INCOMING_RESOLUTION=PASS');
   console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
