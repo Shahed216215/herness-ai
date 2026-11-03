@@ -128,7 +128,7 @@ function assessMemoryConflict(existing, incoming) {
 
   const conflictTypes = [...new Set(conflicts)];
   if (conflictTypes.length) {
-    return { status: 'CONFLICT', conflictTypes, validationErrors: [], cryptographicVerification: 'NOT_PERFORMED' };
+    return { status: 'CONFLICT', state: 'DETECTED', conflictTypes, validationErrors: [], cryptographicVerification: 'NOT_PERFORMED' };
   }
   if (existing.integrity.status !== 'VERIFIED' || incoming.integrity.status !== 'VERIFIED') {
     return {
