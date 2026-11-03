@@ -1,0 +1,50 @@
+name: Mira HFM Phase 2 Core Contract Tests
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-phase2-core-implementation
+    paths:
+      - 'services/mira-hfm/**'
+      - 'tests/mira-hfm-phase2-core.test.js'
+      - '.github/workflows/mira-hfm-phase2-core.yml'
+  pull_request:
+    branches:
+      - work/mira-hfm-phase2-core-implementation
+    paths:
+      - 'services/mira-hfm/**'
+      - 'tests/mira-hfm-phase2-core.test.js'
+      - '.github/workflows/mira-hfm-phase2-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-core-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.4'
+      - name: Verify branch and source baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "work/mira-hfm-phase2-core-implementation"
+          git cat-file -e 720a03bcc1e380db739f04ae2936cc92e8ca4a9c^{commit}
+          git merge-base --is-ancestor 720a03bcc1e380db739f04ae2936cc92e8ca4a9c HEAD
+          echo "BASELINE_ANCESTRY=PASS"
+      - name: Run isolated core contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          env -u OPENAI_API_KEY -u ANTHROPIC_API_KEY -u GOOGLE_APPLICATION_CREDENTIALS \
+            -u MIRA_CREDENTIALS_ENCRYPTION_KEY -u MIRA_AUDIT_HMAC_KEY \
+            node tests/mira-hfm-phase2-core.test.js
