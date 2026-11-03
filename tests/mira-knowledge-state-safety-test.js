@@ -24,6 +24,7 @@ async function main() {
       'isolated knowledge state safety fixture'
     );
     assert.equal(added.added, true);
+    assert.equal(added.drive, false);
     assert.equal(knowledge.getKnowledge().length, 1);
 
     const secondAdded = await knowledge.addKnowledge(
@@ -32,6 +33,7 @@ async function main() {
       'second isolated knowledge state safety fixture'
     );
     assert.equal(secondAdded.added, true);
+    assert.equal(secondAdded.drive, false);
     assert.equal(knowledge.getKnowledge().length, 2);
 
     const versionsDir = file + '.versions';
@@ -53,7 +55,7 @@ async function main() {
     fs.writeFileSync(file, validBeforeCorruption);
     assert.equal(knowledge.getKnowledge().length, 2);
 
-    console.log('TESTS_PASSED=12');
+    console.log('TESTS_PASSED=14');
     console.log('TESTS_FAILED=0');
     console.log('PRODUCTION_KNOWLEDGE_TOUCHED=NO');
     console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
