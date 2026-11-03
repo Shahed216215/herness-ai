@@ -65,12 +65,36 @@ try {
   fs.symlinkSync(outside, symlinkTarget);
   assert.throws(() => store.writeArrayState(symlinkTarget, first, 'Fixture Symlink'), /safe regular file/i);
 
+  const versionTarget = path.join(root, 'version-boundary.json');
+  store.writeArrayState(versionTarget, first, 'Fixture Version Boundary');
+  const externalVersions = path.join(root, 'external-versions');
+  fs.mkdirSync(externalVersions);
+  fs.symlinkSync(externalVersions, versionTarget + '.versions', 'dir');
+  assert.throws(
+    () => store.writeArrayState(versionTarget, second, 'Fixture Version Boundary'),
+    /version directory is not a safe directory/i
+  );
+  assert.deepEqual(
+    store.readJsonArray(versionTarget, 'Fixture Version Boundary'),
+    first
+  );
+
+  const conflictRoot = path.join(root, 'conflict-boundary');
+  fs.mkdirSync(conflictRoot);
+  const externalConflicts = path.join(root, 'external-conflicts');
+  fs.mkdirSync(externalConflicts);
+  fs.symlinkSync(externalConflicts, path.join(conflictRoot, 'memory-conflicts'), 'dir');
+  assert.throws(
+    () => store.quarantineConflict(conflictRoot, 'blocked', { local: first }, {}),
+    /quarantine directory is not safe/i
+  );
+
   const knowledgeSource = fs.readFileSync(path.join(__dirname, '..', 'knowledge.js'), 'utf8');
   assert.match(knowledgeSource, /jsonStateStore\.readJsonArray/);
   assert.match(knowledgeSource, /jsonStateStore\.writeArrayState/);
   assert.doesNotMatch(knowledgeSource, /return Array\.isArray\(data\) \? data : \[\]/);
 
-  console.log('TESTS_PASSED=20');
+  console.log('TESTS_PASSED=24');
   console.log('TESTS_FAILED=0');
   console.log('PRODUCTION_MEMORY_TOUCHED=NO');
   console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
