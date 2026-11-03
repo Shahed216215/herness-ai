@@ -142,7 +142,7 @@ function readMemory() {
   try {
     return readArray(MEMORY_FILE, 'Mira Memory', false);
   } catch (error) {
-    if (!/Mira Memory is missing\\.$/.test(error.message)) throw error;
+    if (!/Mira Memory is missing\.$/.test(error.message)) throw error;
 
     // If the primary file disappeared but a verified backup exists, expose
     // that data read-only. Never turn this condition into an empty write.
