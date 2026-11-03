@@ -200,14 +200,20 @@ FULL_PHASE2=REVIEW_REQUIRED
 PRODUCTION_READINESS=NOT_CERTIFIED
 
 
-11. POST-RUN-155 QUARANTINE HARDENING — PENDING CI
+11. POST-RUN-155 QUARANTINE HARDENING — VERIFIED BY RUN 166
 
 After run 155, the isolated quarantine writer was changed to publish immutable records by writing and fsyncing a private temporary file, then atomically hard-linking it to the final immutable name without overwrite. Temporary files are cleaned up on handled failures. Regression coverage now includes temporary-file cleanup and the REJECT_INCOMING resolution decision.
 
-The latest service and test source were fetched from the branch and syntax-parsed successfully. However, no fresh GitHub Actions run/job log has been returned for these post-run-155 changes. Therefore:
-- Atomic hard-link publication and temporary-file cleanup: INCONCLUSIVE pending CI.
-- REJECT_INCOMING resolution test: INCONCLUSIVE pending CI.
-- The previously recorded run-155 PASS applies only to the exact source/test version executed by that run.
-- No claim is made that the current branch head has passed CI after these additional edits.
+GitHub Actions run 41671493565 (run 166), job 126040740020, completed SUCCESS on branch head commit 472c83f8c9e47c95060ccb98030a1dbb1d750c15. The job log explicitly reports:
+- ATOMIC_IMMUTABLE_PUBLICATION_AND_TEMP_CLEANUP=PASS
+- GOVERNED_REJECT_INCOMING_RESOLUTION=PASS
+- EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
+- RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS
+- FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS
+- SYMLINK_PATH_REJECTION=PASS
+- TESTS_FAILED=0
+- RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
 
-A harmless workflow comment was added to the workflow file to make the latest isolated coverage intent explicit; no workflow execution result is yet available for the latest head.
+Run 166 logs also confirm PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+This PASS is scoped to the isolated local-only service/test. It does not establish universal production retrieval exclusion, provider write-boundary integration, provider atomicity or production readiness.
