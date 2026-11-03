@@ -194,6 +194,7 @@ Current scoped statuses:
 - Core state safety, Knowledge state safety, recovery, local store contract and Evolution integration: PASS_SCOPED to the recorded CI commits.
 - Structural conflict assessment: PASS_SCOPED to the recorded CI commits.
 - Isolated conflict quarantine lifecycle: PASS_SCOPED to run 249.
+- Isolated audit-chain verifier: PASS_SCOPED to run 267.
 - Universal production retrieval exclusion: REVIEW_REQUIRED.
 - Every-provider write-boundary integration: REVIEW_REQUIRED.
 - Canonical content-hash recomputation under an approved JCS profile: NOT_IMPLEMENTED.
@@ -298,3 +299,17 @@ TESTS_FAILED=0
 RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
 
 The registry remains an isolated additive service. The current Memory/Knowledge/route callsites are not yet wired to this lifecycle.
+
+
+15. U03/E-15 ISOLATED VERIFIER PROTOTYPE — VERIFIED BY RUN 267
+
+Added services/mira-audit-chain-independent-verifier.js and tests/mira-audit-chain-independent-verifier.test.js. The verifier is a separate read-only module from audit-log.js and validates a synthetic exported chain using a bounded RFC 8785/JCS-compatible profile, UTF-8 SHA-256, externally pinned genesis/checkpoint hashes, event sequence/identity/project boundaries, previous-hash linkage, strict UTC millisecond timestamps and checkpoint head binding.
+
+Run 41678192509 (run 267), job 126064407377, SUCCESS. The verifier test reports all named JCS/U03/E15 markers PASS, TESTS_FAILED=0 and RESULT=PHASE2_INDEPENDENT_AUDIT_CHAIN_VERIFIER_ISOLATED_PASS.
+
+Scope limits:
+- U03 genesis hash verification is implemented in the verifier, but no genesis creation/persistence service or signing authority exists.
+- E-15 verifier prototype is separate and read-only, but trust-anchor provisioning/custody, digital signature/writer-authenticity verification and independent third-party review remain open.
+- U04 provider append arbitration and durable acknowledgement remain NOT_ESTABLISHED.
+- The verifier is not integrated with audit-log.js or production audit storage.
+- U06 strict timestamp handling is implemented only within this verifier prototype; the global Memory/audit profile remains unapproved.
