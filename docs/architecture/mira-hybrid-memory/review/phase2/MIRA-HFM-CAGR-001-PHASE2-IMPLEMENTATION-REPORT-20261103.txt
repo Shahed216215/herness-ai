@@ -6,7 +6,7 @@ Project version boundary: v0.2
 Repository: Shahed216215/herness-ai
 Implementation branch: work/mira-hfm-v02-phase2-core-safety
 Date: 2026-11-03
-Status: IMPLEMENTED_WITH_OPEN_VERIFICATION_AND_GOVERNANCE_GATES
+Status: CORE_IMPLEMENTATION_COMPLETE_WITH_EXPLICIT_GOVERNANCE_RESIDUALS
 
 1. SCOPE
 
@@ -37,7 +37,10 @@ Path: knowledge.js
 - A missing Knowledge file remains a first-run empty state.
 - Existing malformed, empty, unreadable, non-array, or unsafe Knowledge state now throws instead of silently becoming [].
 - Knowledge CRUD writes use the shared atomic/versioned state writer.
-- Existing Drive sync behavior is retained; no Drive API is called by these changes.
+- Capacity overflow no longer silently drops older entries: displaced records are preserved in a restricted local conflict-quarantine envelope before the bounded Knowledge state is committed.
+- Knowledge backup is local, versioned, SHA-256 verified and offline. A corrupt existing backup is preserved and blocks overwrite.
+- Knowledge restore requires explicit confirmation, validates the backup, creates a safety backup or preserves corrupt primary bytes verbatim, performs atomic restore/readback, and records audit events.
+- The legacy Knowledge restore tool no longer falls back to Google Drive or writes directly with fs.writeFileSync; it is local-only. This is not the encrypted emergency backup required by HFM-005.
 
 D. Evolution integration
 Path: knowledge-memory-evolution.js
@@ -48,29 +51,30 @@ Path: knowledge-memory-evolution.js
 - Local/Drive divergence is preserved in a local conflict quarantine record and apply is blocked; reconciliation proposal mismatch is also quarantined.
 - Existing snapshot, approval, preservation, Drive verification, and rollback flows remain in place.
 
-3. REGRESSION COVERAGE ADDED / UPDATED
+D. Knowledge backup and restore recovery\nPaths: services/mira-knowledge-state-recovery.js, tools/knowledge-backup.js, tools/knowledge-restore.js\n- Version-2 local backup envelope with entry count and SHA-256 validation.\n- Previous valid backup is preserved as an immutable version before replacement; corrupt backup bytes are quarantined and overwrite is blocked.\n- Explicit restore creates a verified safety backup or preserves corrupt primary bytes verbatim before replacing it.\n- Legacy unchecksummed v1 restore requires explicit allowLegacy=true. No Drive fallback or network access.\n\nE. Version listing, verification and recovery\nPaths: services/mira-state-version-recovery.js, tools/memory-version-recovery.js\n- Lists and verifies immutable Memory/Knowledge version snapshots.\n- Restore requires explicit confirmation, validates snapshot SHA-256 and source binding, snapshots the current valid state, writes atomically, and verifies readback.\n- Corrupt current state is not overwritten through version recovery. No automatic retention deletion; all versions are preserved pending an approved retention policy.\n\n3. REGRESSION COVERAGE ADDED / UPDATED
 
 - tests/mira-hfm-phase2-core-safety.test.js
 - tests/mira-knowledge-state-safety-test.js
 - tests/mira-local-memory-safety-test.js
 - tests/mira-memory-local-store-contract-test.js
 - tests/mira-memory-evolution-integration-test.js
+- tests/mira-phase2-recovery-regression.test.js
 - .github/workflows/mira-hfm-phase2-core-safety.yml
 
 The tests cover strict reads, atomic writes, version snapshots, checksum verification, corruption non-overwrite, missing-primary backup fallback, explicit corruption-preserving restore, symlink rejection, conflict quarantine, and Evolution shared-store integration.
 
-Final verification: GitHub Actions run 41657549043 (run number 61), job 125991798661, Ubuntu 24.04.5 / Node v22.23.4, completed SUCCESS on the Phase 2 source tree. The isolated suite reported: core state-store 20 assertions PASS; Knowledge state safety 14 assertions PASS; Local Memory safety PASS; Local Store contract 8 tests PASS; Evolution integration 9 tests PASS. All reported TESTS_FAILED=0. The contract test now sets a failing process exit code on assertion failures. Logs confirmed PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, and EXTERNAL_ACTIONS=0. Earlier CI failures exposed and corrected a version-path scope defect, a Knowledge version-snapshot expectation, an invalid test regex, and an isolated audit-log fixture omission. The latest run is the authoritative post-fix evidence.
+Final verification: GitHub Actions run 41659887735 (run number 82), job 125999985492, Ubuntu 24.04.5 / Node v22.23.4, completed SUCCESS on the latest Phase 2 source tree. The isolated suite reported: core state-store 20 assertions PASS; Knowledge state safety 14 assertions PASS; Knowledge backup/restore and corrupt-primary preservation PASS; version list/verify/restore PASS; tampered backup rejection PASS; Knowledge capacity-eviction quarantine PASS; audit-chain verification PASS; Local Memory safety PASS; Local Store contract 8 tests PASS; Evolution integration 9 tests PASS. All reported TESTS_FAILED=0. Logs confirmed PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, and EXTERNAL_ACTIONS=0. Earlier CI failures exposed and corrected implementation/test-harness issues; this latest run is the authoritative post-fix evidence.
 
 4. PHASE 2 GAP STATUS
 
 HFM-001 — Core Memory Read Failure Safety: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
 HFM-002 — Atomic Memory Write: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
 HFM-003 — Data Integrity Verification: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
-HFM-006 — Safe Restore and Recovery: PASS_SCOPED_MEMORY_RESTORE_AND_ISOLATED_TESTS; Knowledge restore-path consolidation remains REVIEW_REQUIRED
-HFM-007 — Memory Version Management: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS; retention policy and administrative version-recovery tooling remain REVIEW_REQUIRED
-HFM-008 — Conflict Detection and Quarantine: PASS_SCOPED_EVOLUTION_AND_ISOLATED_TESTS; other non-Evolution source-conflict classes remain REVIEW_REQUIRED
+HFM-006 — Safe Restore and Recovery: PASS_SCOPED_MEMORY_AND_KNOWLEDGE_LOCAL_RESTORE_WITH_ISOLATED_TESTS; remote/provider restore remains deferred
+HFM-007 — Memory Version Management: PASS_SCOPED_LIST_VERIFY_AND_EXPLICIT_RESTORE_TOOLING; automatic deletion is disabled and all snapshots are preserved pending an approved retention policy
+HFM-008 — Conflict Detection and Quarantine: PASS_SCOPED_EVOLUTION_AND_KNOWLEDGE_CAPACITY_EVICTION_QUARANTINE; provider divergence and other non-Evolution identity/revision/source/access/schema conflict classes remain REVIEW_REQUIRED
 
-Audit integration: PASS_SCOPED using the existing tamper-evident audit stream. State writes record intent and committed events; restore records intent/completion; conflict quarantine records a quarantine event. Isolated tests verify the audit chain integrity after these events. The complete canonical event envelope profile (including the approved sequence/previous-event-hash rules, schema registry, and versioned canonicalization contract) remains REVIEW_REQUIRED; this scoped integration does not claim that the broader event-envelope design is complete.
+Audit integration: PASS_SCOPED using the existing tamper-evident audit stream. State writes record intent and committed events; Memory/Knowledge restore records intent/completion; conflict quarantine and version recovery record audit events. Isolated tests verify the existing audit hash-chain integrity. DR08-U01/U02 have approved v0.2 design directions only; their approval explicitly does not approve implementation. No canonical sequence-numbered event envelope was implemented. DR08-U03 genesis, U04 backend arbitration, U05 test registry, U06 timestamp profile, and E-15 independent verifier qualification remain REVIEW_REQUIRED / NOT_ESTABLISHED. Canonical audit-event implementation remains NOT_APPROVED.
 
 HFM-004 — Routine Google Drive Sync Removal: DEFERRED_TO_PROVIDER_CUTOVER_GATE. Evolution, controlled apply, Knowledge, and learning callers still depend on Drive. Removal without replacement would risk loss of recovery capability.
 HFM-005 — Encrypted Emergency Backup: DEFERRED_TO_BACKUP_SECURITY_GATE. Encryption-key lifecycle, recovery, and compatibility require a separate verified design. Existing plaintext local backup behavior is not represented as encrypted.
@@ -92,14 +96,18 @@ VERSION=v0.2
 
 6. EXIT DECISION
 
-PHASE2_IMPLEMENTATION=CORE_SAFETY_IMPLEMENTED_AND_ISOLATED_TESTED_WITH_RESIDUALS
-SOURCE_RUNTIME_TESTS=PASS_SCOPED — GITHUB_ACTIONS_RUN_41657549043
+PHASE2_IMPLEMENTATION=APPROVED_LOCAL_CORE_SCOPE_IMPLEMENTED_AND_ISOLATED_TESTED
+SOURCE_RUNTIME_TESTS=PASS_SCOPED — GITHUB_ACTIONS_RUN_41659887735
+KNOWLEDGE_LOCAL_BACKUP_RESTORE=PASS_SCOPED
+VERSION_LIST_VERIFY_RESTORE=PASS_SCOPED
+CAPACITY_EVICTION_QUARANTINE=PASS_SCOPED
 AUDIT_INTEGRATION=PASS_SCOPED_EXISTING_HASH_CHAIN
-CANONICAL_AUDIT_EVENT_ENVELOPE=REVIEW_REQUIRED
-KNOWLEDGE_RESTORE_CONSOLIDATION=REVIEW_REQUIRED
+CANONICAL_AUDIT_EVENT_ENVELOPE=NOT_APPROVED_FOR_IMPLEMENTATION
+DR08_U03_U04_U05_U06_AND_E15=REVIEW_REQUIRED
+NON_EVOLUTION_PROVIDER_CONFLICT_CLASSES=REVIEW_REQUIRED
 HFM004=DEFERRED
 HFM005=DEFERRED
 
-The Phase 2 core-safety implementation and isolated acceptance suite are complete at the scoped level described above. Full phase closure remains REVIEW_REQUIRED for canonical audit-envelope governance, Knowledge restore-path consolidation, version-retention/recovery tooling, and independent review of remaining conflict classes. HFM-004 and HFM-005 remain separate provider-cutover / encrypted-backup gates. No production migration or provider cutover is authorized by this report.
+The approved local Phase 2 core-safety implementation and isolated acceptance suite are complete at the scoped level described above, including Knowledge restore, version recovery, and capacity-eviction preservation. Full Phase 2 governance closure is not claimed: canonical audit-envelope implementation is not approved by DR-08; genesis, backend arbitration, test registry, timestamp profile, independent verifier qualification, and non-Evolution provider conflict classes remain review gates. HFM-004 and HFM-005 remain separate provider-cutover / encrypted-backup gates. No production migration or provider cutover is authorized by this report.
 
 END OF REPORT
