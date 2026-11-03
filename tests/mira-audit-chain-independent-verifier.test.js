@@ -112,7 +112,7 @@ function run() {
     ...fixture, trustedCheckpointHash: undefined
   }).status, 'INCONCLUSIVE');
 
-  const tamperedEvents = fixture.events.map(event => ({ ...event }));
+  const tamperedEvents = fixture.events.map(event => ({ ...event, payload: structuredClone(event.payload) }));
   tamperedEvents[0].payload.text = 'tampered';
   assert.equal(verifyAuditChainExport({ ...fixture, events: tamperedEvents }).reason, 'EVENT_HASH_MISMATCH');
 
