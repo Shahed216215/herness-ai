@@ -54,7 +54,7 @@ async function main() {
     { role: "user", content: "fixture-new-entry" }
   ];
 
-  writeJson(path.join(storeRoot, "memory.json"), initial);
+  writeJson(path.join(root, "memory.json"), initial);
   writeJson(path.join(root, "drive-memory.json"), initial);
 
   copy(
@@ -117,14 +117,14 @@ module.exports = {
 `);
 
   process.env.MIRA_STORAGE_DIR = root;
-  process.env.MIRA_MEMORY_FILE = path.join(storeRoot, "memory.json");
+  process.env.MIRA_MEMORY_FILE = path.join(root, "memory.json");
 
   const engine = require(
     path.join(root, "knowledge-memory-evolution.js")
   );
   const drive = require(path.join(root, "google-drive.js"));
 
-  const localFile = path.join(storeRoot, "memory.json");
+  const localFile = path.join(root, "memory.json");
   const driveFile = path.join(root, "drive-memory.json");
 
   const proposal = (state, expected = initial) => ({
