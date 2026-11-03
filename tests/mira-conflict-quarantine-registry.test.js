@@ -101,6 +101,11 @@ try {
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'RESOLVED');
   assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   assert.equal(verifyResolution({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const acceptedResolution = JSON.parse(fs.readFileSync(path.join(directory, created.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(acceptedResolution.proposal.affectedVersions.length, 2);
+  assert.equal(acceptedResolution.proposal.originalHashes.length, 2);
+  assert.equal(acceptedResolution.proposal.requiredAuthority, 'authorized-human-reviewer');
+  assert.ok(acceptedResolution.proposal.verificationPlan.length > 0);
   const repeatedResolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
@@ -188,7 +193,7 @@ try {
   assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
 
   const resolutionTamper = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
-  resolutionTamper.policyDecision = 'TAMPERED';
+  resolutionTamper.proposal.requiredAuthority = 'TAMPERED';
   fs.writeFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), JSON.stringify(resolutionTamper));
   assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'INTEGRITY_FAILED');
   assert.equal(listConflicts({ directory: mergeDirectory, projectId: 'project-a' })[0].status, 'INTEGRITY_FAILED');
@@ -304,6 +309,7 @@ try {
   console.log('GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS');
   console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
   console.log('CONTRACT_RESOLUTION_PROPOSAL_REQUIRED=PASS');
+  console.log('RESOLUTION_PROPOSAL_TRACEABILITY_AND_TAMPER_DETECTION=PASS');
   console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
   console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
   console.log('RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS');
