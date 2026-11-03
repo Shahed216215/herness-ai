@@ -123,6 +123,10 @@ function writeArrayState(filePath, entries, label = 'State') {
   if (previous !== null) {
     const versionDir = `${filePath}.versions`;
     fs.mkdirSync(versionDir, { recursive: true, mode: 0o700 });
+    const versionDirStat = fs.lstatSync(versionDir);
+    if (versionDirStat.isSymbolicLink() || !versionDirStat.isDirectory()) {
+      throw new Error(`${label} version directory is not a safe directory.`);
+    }
     const versionName = `${Date.now()}-${process.pid}-${crypto.randomBytes(4).toString('hex')}.json`;
     versionFile = path.join(versionDir, versionName);
     version = {
@@ -154,6 +158,10 @@ function writeArrayState(filePath, entries, label = 'State') {
 function quarantineConflict(directory, name, payload, metadata = {}) {
   const quarantineDir = path.join(directory, 'memory-conflicts');
   fs.mkdirSync(quarantineDir, { recursive: true, mode: 0o700 });
+  const quarantineDirStat = fs.lstatSync(quarantineDir);
+  if (quarantineDirStat.isSymbolicLink() || !quarantineDirStat.isDirectory()) {
+    throw new Error('Conflict quarantine directory is not safe.');
+  }
   const safeName = String(name || 'conflict').replace(/[^a-z0-9._-]/gi, '_').slice(0, 80);
   const filePath = path.join(
     quarantineDir,
