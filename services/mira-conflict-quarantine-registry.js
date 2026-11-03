@@ -95,25 +95,49 @@ function createConflictQuarantine({
   };
   safeDirectory(directory);
   const target = conflictPath(directory, conflictId);
+  let alreadyExists = false;
   try {
     const existing = readRegularJson(target);
-    if (digest(existing) !== digest(envelope)) throw new Error('Conflict ID collision with different immutable content.');
-    return { status: 'ALREADY_EXISTS', conflictId, envelopeDigest: existing.envelopeDigest };
+    if (digest(existing) !== digest(envelope) &&
+        (digest(existing.originals.map(item => item.record)) !== digest(records) ||
+         existing.projectId !== projectId ||
+         digest(existing.conflictTypes) !== digest(identity.conflictTypes) ||
+         existing.reason !== envelope.reason)) {
+      throw new Error('Conflict ID collision with different immutable content.');
+    }
+    alreadyExists = true;
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  writeImmutableJson(target, envelope);
+  if (!alreadyExists) {
+    try {
+      writeImmutableJson(target, envelope);
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      const existing = readRegularJson(target);
+      if (digest(existing.originals.map(item => item.record)) !== digest(records) ||
+          existing.projectId !== projectId ||
+          digest(existing.conflictTypes) !== digest(identity.conflictTypes) ||
+          existing.reason !== envelope.reason) throw new Error('Concurrent conflict ID collision.');
+      alreadyExists = true;
+    }
+  }
   try {
     requireAudit(auditWriter, {
       action: 'memory_conflict_quarantined',
-      conflictId, projectId, actor, envelopeDigest: envelope.envelopeDigest
+      conflictId, projectId, actor, envelopeDigest: alreadyExists
+        ? readRegularJson(target).envelopeDigest : envelope.envelopeDigest
     });
   } catch (error) {
     error.code = 'CONFLICT_QUARANTINED_AUDIT_FAILED';
     error.stateCommitted = true;
     throw error;
   }
-  return { status: 'QUARANTINED', conflictId, envelopeDigest: envelope.envelopeDigest };
+  return {
+    status: alreadyExists ? 'ALREADY_EXISTS' : 'QUARANTINED',
+    conflictId,
+    envelopeDigest: readRegularJson(target).envelopeDigest
+  };
 }
 function readConflict({ directory, conflictId, projectId }) {
   safeDirectory(directory);
@@ -154,12 +178,16 @@ function listConflicts({ directory, projectId }) {
     .map(name => {
       const envelope = readRegularJson(path.join(directory, name));
       if (projectId && envelope.projectId !== projectId) return null;
+      const integrity = verifyConflict({
+        directory, conflictId: envelope.conflictId, projectId: envelope.projectId
+      }).status;
       const hasResolution = fs.existsSync(resolutionPath(directory, envelope.conflictId));
       return {
         conflictId: envelope.conflictId,
         projectId: envelope.projectId,
         conflictTypes: envelope.conflictTypes,
-        status: hasResolution ? 'RESOLVED' : 'PENDING_REVIEW',
+        status: integrity !== 'VERIFIED' ? 'INTEGRITY_FAILED' : (hasResolution ? 'RESOLVED' : 'PENDING_REVIEW'),
+        integrity,
         originalMemoryIds: envelope.originals.map(item => item.memoryId)
       };
     }).filter(Boolean);
@@ -195,30 +223,56 @@ function resolveConflict({
   };
   resolution.resolutionDigest = digest(resolution);
   const target = resolutionPath(directory, conflictId);
+  let alreadyResolved = false;
   try {
     const existing = readRegularJson(target);
-    if (digest(existing) !== digest(resolution)) throw new Error('Conflict already has a different immutable resolution.');
-    return { status: 'ALREADY_RESOLVED', conflictId, resolutionDigest: existing.resolutionDigest };
+    if (existing.conflictId !== conflictId || existing.projectId !== projectId ||
+        existing.decision !== decision || existing.actor !== actor ||
+        existing.policyDecision !== policyDecision ||
+        digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
+        digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
+      throw new Error('Conflict already has a different immutable resolution.');
+    }
+    alreadyResolved = true;
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  writeImmutableJson(target, resolution);
+  if (!alreadyResolved) {
+    try {
+      writeImmutableJson(target, resolution);
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      const existing = readRegularJson(target);
+      if (existing.conflictId !== conflictId || existing.decision !== decision ||
+          existing.actor !== actor || existing.policyDecision !== policyDecision ||
+          digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
+          digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
+        throw new Error('Concurrent conflicting resolution rejected.');
+      }
+      alreadyResolved = true;
+    }
+  }
   try {
     requireAudit(auditWriter, {
       action: 'memory_conflict_resolved', conflictId, projectId,
-      actor, decision, policyDecision, resolutionDigest: resolution.resolutionDigest
+      actor, decision, policyDecision,
+      resolutionDigest: readRegularJson(target).resolutionDigest
     });
   } catch (error) {
     error.code = 'CONFLICT_RESOLUTION_AUDIT_FAILED';
     error.stateCommitted = true;
     throw error;
   }
-  return { status: 'RESOLVED', conflictId, resolutionDigest: resolution.resolutionDigest };
+  return {
+    status: alreadyResolved ? 'ALREADY_RESOLVED' : 'RESOLVED',
+    conflictId,
+    resolutionDigest: readRegularJson(target).resolutionDigest
+  };
 }
 function filterTrustedRecords(records, pendingConflicts) {
   if (!Array.isArray(records) || !Array.isArray(pendingConflicts)) throw new Error('Arrays are required.');
   const blocked = new Set(pendingConflicts
-    .filter(item => item.status === 'PENDING_REVIEW')
+    .filter(item => ['PENDING_REVIEW', 'INTEGRITY_FAILED'].includes(item.status))
     .flatMap(item => item.originalMemoryIds || []));
   return records.filter(record => !blocked.has(record.memoryId));
 }
