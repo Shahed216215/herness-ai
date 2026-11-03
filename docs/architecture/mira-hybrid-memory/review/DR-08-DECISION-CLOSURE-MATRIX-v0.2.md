@@ -44,7 +44,7 @@ This discrepancy must be reconciled against an authoritative baseline before cla
 | ID | Decision | Current status | Proposed direction |
 |---|---|---|---|
 | DR08-U01 | Sequence gap and abandoned allocation policy | USER_APPROVED_FOR_V0.2_DESIGN | Atomic Append First; otherwise Durable Reservation with Explicit Gap Closure |
-| DR08-U02 | Canonical audit event schema | REVIEW_REQUIRED | Define one versioned event envelope including sequence identity |
+| DR08-U02 | Canonical audit event schema | USER_APPROVED_FOR_V0.2_DESIGN | Single Canonical Versioned Audit Event Envelope |
 | DR08-U03 | Genesis record and chain initialization | REVIEW_REQUIRED | Define an authenticated, independently verifiable genesis record |
 | DR08-U04 | Backend atomicity and append arbitration | NOT_ESTABLISHED | Require one authoritative per-project arbitration mechanism |
 | DR08-U05 | Canonical test registry and legacy ID mapping | REVIEW_REQUIRED | One canonical test ID per test definition |
@@ -151,45 +151,35 @@ Contract §19 lists the event fields but does not explicitly list `sequenceNumbe
 
 The final schema must also distinguish event data from allocation references, proof metadata, and chain/checkpoint metadata.
 
-**Proposed direction — NOT_APPROVED**
+**Decision disposition: USER_APPROVED_FOR_V0.2_DESIGN.**
 
-Define a versioned canonical event envelope with at least:
+**Approved direction — Single Canonical Versioned Audit Event Envelope**
 
-- `eventId`
-- `eventType`
-- `occurredAt`
-- `actorId` or authenticated system identity
-- `projectId`
-- `operationId`, where applicable
-- `idempotencyKey`, where applicable
-- `targetMemoryId`, where applicable
-- `action`
-- `authorizationDecision`
-- `capabilityState`
-- `beforeRevision` and `afterRevision`, where applicable
-- `resultStatus`
-- `errorCode`, where applicable
-- `sourceReference`, where applicable
-- `payloadHash`, where applicable
-- `sequenceNumber`
-- `previousEventHash`
-- canonical profile ID/version
-- hash algorithm ID/version
-- `eventHash`
+The canonical envelope is to contain:
 
-Optional fields must have explicitly defined absent/null semantics. The schema must define which fields are mandatory for each event type.
+- Event identity.
+- Project identity.
+- Per-project sequence number.
+- Event/business fields.
+- Authorization and operation results.
+- Chain linkage.
+- Authenticated writer identity.
+- Versioned hash-profile metadata.
 
-Proof fields dependent on `eventHash` must not be included in the bytes used to calculate that same hash. Their independent authenticity coverage must be specified.
+**Approved hash-profile requirements**
 
-**Alternatives**
+- Include the sequence number and previous-event hash in the defined canonical hash input.
+- Exclude `eventHash` itself and dependent proof fields that would create circular hashing.
+- Explicitly define included/excluded fields, required/optional fields, null-versus-absent semantics, encoding, and schema-version behavior.
+- Use Contract §26 RFC 8785 JCS, subject to the final versioned profile.
+- Unsupported schema/hash-profile versions fail closed.
+- Historical events remain immutable during any future migration.
 
-- A. Put `sequenceNumber` directly in the canonical event schema.
-- B. Put sequence and allocation information in a separately authenticated chain envelope bound to the event hash.
-- C. Use a hybrid schema with an event body and a versioned chain envelope.
+**Approval boundary and remaining technical qualification**
 
-**Recommendation for review**
+This approval accepts the design direction for v0.2 only. It does not approve an implementation, select a backend, authorize production writes, or establish runtime conformance.
 
-Prefer A or C, provided the canonical bytes and hash boundary are unambiguous. Do not leave sequence identity outside the authenticated event/chain binding.
+The exact machine-readable field registry, event-type required fields, timestamp/null semantics (U06), genesis compatibility (U03), backend guarantee (U04), canonical test mapping (U05), canonical test vectors, and independent verifier qualification (E-15) remain open. The earlier JSON illustration is conceptual, not a final schema.
 
 **Required tests**
 
@@ -205,7 +195,7 @@ Prefer A or C, provided the canonical bytes and hash boundary are unambiguous. D
 
 Approved schema, field-level inclusion/exclusion table, profile version, canonical test vectors, and traceability to Contract §§19 and 32.
 
-**Status: REVIEW_REQUIRED — NOT_APPROVED.**
+**Status: USER_APPROVED_FOR_V0.2_DESIGN — TECHNICAL QUALIFICATION OPEN.**
 
 ---
 
