@@ -35,7 +35,10 @@ function createAuditEventHash(event, previousEventHash, sequence) {
 
 function validateAuditEvent(event) {
   const required = ['eventId', 'eventType', 'projectId', 'operationId', 'payloadHash', 'requestId', 'actor', 'policyDecisionId', 'timestamp'];
-  const allowed = new Set(required.concat(['idempotencyKey', 'purpose', 'revision', 'memoryId']));
+  const allowed = new Set(required.concat([
+    'idempotencyKey', 'purpose', 'revision', 'memoryId',
+    'evolutionProposalId', 'approvalEvidenceReference', 'recoveryPointEvidenceReference'
+  ]));
   if (!event || typeof event !== 'object' || Array.isArray(event) ||
       Object.keys(event).some(key => !allowed.has(key)) ||
       required.some(key => typeof event[key] !== 'string' || !event[key].trim()) ||
@@ -44,6 +47,12 @@ function validateAuditEvent(event) {
       !/T/.test(event.timestamp) || !/(?:Z|[+-][0-9]{2}:[0-9]{2})$/.test(event.timestamp) ||
       Number.isNaN(Date.parse(event.timestamp))) {
     return { valid: false, reason: 'AUDIT_EVENT_SCHEMA_INVALID' };
+  }
+  for (const key of ['evolutionProposalId', 'approvalEvidenceReference', 'recoveryPointEvidenceReference']) {
+    if (Object.prototype.hasOwnProperty.call(event, key) &&
+        (typeof event[key] !== 'string' || !event[key].trim())) {
+      return { valid: false, reason: 'AUDIT_GOVERNANCE_EVIDENCE_INVALID' };
+    }
   }
   if (event.eventType === 'MEMORY_WRITE_INTENT' &&
       (typeof event.idempotencyKey !== 'string' || !event.idempotencyKey.trim() ||
