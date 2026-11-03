@@ -9,6 +9,7 @@ const audit = require('./audit-contract');
 const registry = require('./operation-registry');
 const capabilities = require('./capability-observations');
 const encryption = require('./encryption-contract');
+const keyRotation = require('./key-rotation');
 const backup = require('./backup-manifest');
 const backupPackage = require('./backup-package');
 const conflict = require('./conflict');
@@ -27,6 +28,7 @@ module.exports = Object.freeze({
   registry,
   capabilities,
   encryption,
+  keyRotation,
   backup,
   backupPackage,
   conflict,

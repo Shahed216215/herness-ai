@@ -12,6 +12,7 @@ const { createProviderCatalog } = require('../services/mira-hfm/provider-catalog
 const { validateCapabilityObservation, evaluateCapabilitySet } = require('../services/mira-hfm/capability-observations');
 const { operationRegistryReadiness, claimOperation } = require('../services/mira-hfm/operation-registry');
 const { encryptPayload, decryptPayload, cryptoProviderReadiness } = require('../services/mira-hfm/encryption-contract');
+const { prepareKeyRotation } = require('../services/mira-hfm/key-rotation');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
 const { previewLegacyMigration } = require('../services/mira-hfm/migration-preview');
 const { executeEvolutionMemoryWrite } = require('../services/mira-hfm/evolution-memory-bridge');
@@ -385,6 +386,23 @@ async function main() {
     const result = await decryptPayload(provider, envelope, testContext);
     assert.equal(result.status, 'DECRYPTION_FAILED');
     assert.equal(Object.prototype.hasOwnProperty.call(result, 'plaintext'), false);
+  });
+
+  await checkAsync('Key rotation requires approved human authorization and verified recovery evidence', async () => {
+    const envelope = { algorithm: 'TEST-AEAD-V1', keyId: 'fixture-key', keyVersion: '1', nonce: 'bm9uY2U=', authTag: 'dGFn', ciphertext: 'c2VjcmV0', aadProfile: 'fixture-aad-v1' };
+    const provider = { approvedProfile: true, testOnly: true, algorithmProfile: 'TEST-AEAD-V1',
+      encrypt: async () => envelope, decrypt: async () => 'fixture-plaintext',
+      rewrap: async value => Object.assign({}, value, { keyVersion: '2', nonce: 'bmV3bm9uY2U=' }) };
+    const ctx = Object.assign(context(), { action: 'rotate_key', testOnly: true });
+    const denied = await prepareKeyRotation({ envelope, provider, context: ctx });
+    assert.equal(denied.status, 'NOT_APPROVED');
+    const prepared = await prepareKeyRotation({ envelope, provider, context: ctx,
+      approval: { approved: true, approver: 'fixture-actor', policyDecisionId: 'policy-fixture-1', evidenceReference: 'fixture:rotation-approval' },
+      recoveryPoint: { status: 'VERIFIED', verified: true, projectId: 'project-fixture', payloadHash: core.sha256Canonical(envelope), evidenceReference: 'fixture:rotation-recovery' } });
+    assert.equal(prepared.status, 'ROTATION_PREPARED_NOT_PERSISTED');
+    assert.equal(prepared.newEnvelope.keyVersion, '2');
+    assert.equal(prepared.persistencePerformed, false);
+    assert.equal(prepared.oldKeyRetired, false);
   });
 
   check('Provider contract requires independent verification support', () => {
