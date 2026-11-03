@@ -100,11 +100,12 @@ function writeArrayState(filePath, entries, label = 'State') {
   }
 
   let version = null;
+  let versionFile = null;
   if (previous !== null) {
     const versionDir = `${filePath}.versions`;
     fs.mkdirSync(versionDir, { recursive: true, mode: 0o700 });
     const versionName = `${Date.now()}-${process.pid}-${crypto.randomBytes(4).toString('hex')}.json`;
-    const versionFile = path.join(versionDir, versionName);
+    versionFile = path.join(versionDir, versionName);
     version = {
       version: 1,
       createdAt: new Date().toISOString(),
