@@ -1,6 +1,6 @@
 'use strict';
 
-const { sha256Canonical } = require('./core');
+const { sha256Canonical, validateCanonicalRecord } = require('./core');
 
 function manifestPayload(manifest) {
   const copy = Object.assign({}, manifest);
@@ -17,8 +17,10 @@ function createBackupManifest(input) {
     return { ok: false, status: 'VALIDATION_FAILED', reason: 'BACKUP_INPUT_INVALID' };
   }
   for (const record of input.records) {
-    if (!record || record.projectId !== input.projectId) {
-      return { ok: false, status: 'VALIDATION_FAILED', reason: 'BACKUP_PROJECT_SCOPE_MISMATCH' };
+    const validation = validateCanonicalRecord(record);
+    if (!validation.valid || record.projectId !== input.projectId ||
+        record.integrity.status !== 'VERIFIED') {
+      return { ok: false, status: 'VALIDATION_FAILED', reason: 'BACKUP_RECORD_OR_PROJECT_INVALID', errors: validation.errors || [] };
     }
   }
   const base = {
@@ -53,7 +55,11 @@ function createBackupManifest(input) {
 }
 
 function verifyBackupManifest(manifest, records, authenticityVerifier) {
-  if (!manifest || !Array.isArray(records) ||
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(records) ||
+      typeof manifest.backupId !== 'string' || !manifest.backupId ||
+      typeof manifest.projectId !== 'string' || !manifest.projectId ||
+      manifest.manifestVersion !== '1.0.0' || manifest.formatVersion !== 1 ||
+      manifest.schemaVersion !== '1.0.0' ||
       manifest.recordCount !== records.length ||
       manifest.payloadHash !== sha256Canonical(records) ||
       manifest.manifestHash !== sha256Canonical(manifestPayload(manifest)) ||
@@ -69,7 +75,14 @@ function verifyBackupManifest(manifest, records, authenticityVerifier) {
   } catch (_) {
     return { valid: false, status: 'AUTHENTICITY_UNVERIFIED' };
   }
-  if (!proof || proof.verified !== true || proof.trustAnchorVerified !== true) {
+  if (!manifest.authenticity || manifest.authenticity.status !== 'SIGNED' ||
+      typeof manifest.authenticity.algorithm !== 'string' || !manifest.authenticity.algorithm ||
+      typeof manifest.authenticity.keyId !== 'string' || !manifest.authenticity.keyId ||
+      typeof manifest.authenticity.proof !== 'string' || !manifest.authenticity.proof ||
+      !proof || proof.verified !== true || proof.trustAnchorVerified !== true ||
+      proof.keyNotRevoked !== true || proof.manifestHash !== manifest.manifestHash ||
+      proof.algorithm !== manifest.authenticity.algorithm ||
+      proof.keyId !== manifest.authenticity.keyId) {
     return { valid: false, status: 'AUTHENTICITY_FAILED' };
   }
   return { valid: true, status: 'VERIFIED', authenticity: 'VERIFIED' };
@@ -80,7 +93,12 @@ function authorizeRestore(input) {
       input.targetCapabilityAvailable !== true ||
       input.accessPolicyAllowed !== true ||
       input.encryptionVerified !== true ||
-      !input.manifestVerification || input.manifestVerification.valid !== true) {
+      !input.manifestVerification || input.manifestVerification.valid !== true ||
+      input.manifestVerification.status !== 'VERIFIED' ||
+      input.manifestVerification.authenticity !== 'VERIFIED' ||
+      typeof input.sourceProjectId !== 'string' || typeof input.targetProjectId !== 'string' ||
+      !input.sourceProjectId || !input.targetProjectId ||
+      (input.sourceProjectId !== input.targetProjectId && input.crossProjectApproval !== true)) {
     return { allowed: false, status: 'NOT_APPROVED', reason: 'RESTORE_GATES_NOT_SATISFIED' };
   }
   return {

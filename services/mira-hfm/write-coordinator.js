@@ -1,5 +1,7 @@
 'use strict';
 
+const { auditProviderReadiness, verifyDurableAuditEvent } = require('./audit-contract');
+
 const {
   validateCanonicalRecord,
   verifyContentHash,
@@ -19,8 +21,9 @@ function auditEventId(context, phase) {
 }
 
 async function appendDurableAudit(audit, event, context) {
-  if (!audit || audit.durable !== true || typeof audit.append !== 'function') {
-    return { confirmed: false, status: 'NOT_CONFIGURED', reason: 'DURABLE_AUDIT_REQUIRED' };
+  const readiness = auditProviderReadiness(audit);
+  if (!readiness.ready) {
+    return { confirmed: false, status: 'NOT_CONFIGURED', reason: readiness.reason };
   }
   let result;
   try {
@@ -29,7 +32,10 @@ async function appendDurableAudit(audit, event, context) {
     result = { status: 'UNKNOWN', errorCode: normalizeAdapterError(error) };
   }
   if (result && (result.status === 'APPENDED' || result.status === 'ALREADY_APPENDED')) {
-    return { confirmed: true, status: result.status };
+    const proof = await verifyDurableAuditEvent(audit, event, context);
+    return proof.valid
+      ? { confirmed: true, status: result.status, verification: proof }
+      : { confirmed: false, status: proof.status, reason: proof.reason };
   }
   if (result && result.status === 'UNKNOWN' &&
       typeof audit.reconcileEvent === 'function') {
@@ -37,7 +43,10 @@ async function appendDurableAudit(audit, event, context) {
       const reconciled = await audit.reconcileEvent(event.eventId, context);
       if (reconciled && (reconciled.status === 'APPENDED' ||
           reconciled.status === 'ALREADY_APPENDED')) {
-        return { confirmed: true, status: reconciled.status, reconciled: true };
+        const proof = await verifyDurableAuditEvent(audit, event, context);
+        return proof.valid
+          ? { confirmed: true, status: reconciled.status, reconciled: true, verification: proof }
+          : { confirmed: false, status: proof.status, reason: proof.reason };
       }
     } catch (_) {
       // Uncertain audit state remains uncertain; never retry blindly.
@@ -192,6 +201,7 @@ async function executeGovernedWrite(input) {
       readback.projectId !== record.projectId ||
       readback.version.revision !== writeResult.revision ||
       readback.version.contentHash !== record.version.contentHash ||
+      sha256Canonical(readback) !== sha256Canonical(record) ||
       !verifyContentHash(readback).valid) {
     return fail('INTEGRITY_FAILED', 'READBACK_VERIFICATION_FAILED', {
       revision: writeResult.revision,

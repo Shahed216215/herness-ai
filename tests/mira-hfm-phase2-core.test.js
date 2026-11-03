@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const core = require('../services/mira-hfm/core');
 const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator');
+const { auditProviderReadiness, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
 const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
 const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
@@ -73,6 +74,27 @@ function operation(record) {
     purpose: 'isolated-test',
     policyDecisionId: 'policy-fixture-1',
     requestId: 'request-fixture-1'
+  };
+}
+const auditCapabilities = {
+  DURABLE_APPEND: true, APPEND_ONLY: true, LOOKUP: true,
+  RECONCILE: true, VERIFY: true, PROJECT_ISOLATED: true
+};
+function fakeAudit(events) {
+  return {
+    durable: true, capabilities: auditCapabilities,
+    append: async event => { events.push(event); return { status: 'APPENDED' }; },
+    lookup: async eventId => events.find(event => event.eventId === eventId) || null,
+    reconcileEvent: async eventId => events.some(event => event.eventId === eventId)
+      ? { status: 'ALREADY_APPENDED' } : { status: 'UNKNOWN' },
+    verifyEvent: async eventId => {
+      const event = events.find(item => item.eventId === eventId);
+      return event ? {
+        valid: true, chainVerified: true, authenticityVerified: true,
+        eventId, projectId: event.projectId, sequence: events.indexOf(event) + 1,
+        eventHash: 'a'.repeat(64)
+      } : { valid: false };
+    }
   };
 }
 const capabilities = {
@@ -181,6 +203,16 @@ async function main() {
     assert.equal(core.classifyIdempotency(Object.assign({}, op, { status: 'COMMITTED' }), op), 'REPLAY_COMMITTED');
     assert.equal(core.classifyIdempotency(op, Object.assign({}, op, { payloadHash: 'f'.repeat(64) })), 'PAYLOAD_CONFLICT');
   });
+  check('Durable audit provider requires append-only, reconciliation, verification and project isolation', () => {
+    assert.equal(auditProviderReadiness({ durable: true, capabilities: auditCapabilities,
+      append() {}, lookup() {}, reconcileEvent() {}, verifyEvent() {} }).ready, true);
+    assert.equal(auditProviderReadiness({ durable: true, append() {} }).ready, false);
+  });
+  check('Audit event hashes bind sequence and previous-event hash', () => {
+    const event = { eventId: 'event-1', projectId: 'project-fixture' };
+    assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, null, 2));
+    assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, 'b'.repeat(64), 1));
+  });
   check('Adapter error taxonomy maps unknown errors to UNKNOWN', () => {
     assert.equal(core.normalizeAdapterError({ code: 'TIMEOUT' }), 'TIMEOUT');
     assert.equal(core.normalizeAdapterError({ code: 'SECRET_LEAK' }), 'UNKNOWN');
@@ -221,10 +253,7 @@ async function main() {
       },
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
-    const audit = {
-      durable: true,
-      append: async event => { events.push(event); return { status: 'APPENDED' }; }
-    };
+    const audit = fakeAudit(events);
     const result = await executeGovernedWrite({
       record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
     });
@@ -242,7 +271,8 @@ async function main() {
       read: async () => record,
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
-    const audit = { durable: true, append: async () => ({ status: 'APPENDED' }) };
+    const auditEvents = [];
+    const audit = fakeAudit(auditEvents);
     const result = await executeGovernedWrite({
       record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
     });
@@ -259,12 +289,15 @@ async function main() {
       read: async () => record,
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
-    const audit = {
-      durable: true,
-      append: async () => {
-        appendCount += 1;
-        return appendCount === 1 ? { status: 'APPENDED' } : { status: 'UNKNOWN' };
+    const auditEvents = [];
+    const audit = fakeAudit(auditEvents);
+    audit.append = async event => {
+      appendCount += 1;
+      if (appendCount === 1) {
+        auditEvents.push(event);
+        return { status: 'APPENDED' };
       }
+      return { status: 'UNKNOWN' };
     };
     const result = await executeGovernedWrite({
       record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
@@ -350,7 +383,14 @@ async function main() {
       backupId: 'fixture-backup-2', projectId: 'project-fixture',
       createdAt: '2026-11-03T00:00:00.000Z', records: [record]
     });
-    const verifier = () => ({ verified: true, trustAnchorVerified: true });
+    result.manifest.authenticity = {
+      status: 'SIGNED', algorithm: 'TEST-ONLY-MOCK', keyId: 'test-key-1', proof: 'fixture-proof'
+    };
+    const verifier = manifest => ({
+      verified: true, trustAnchorVerified: true, keyNotRevoked: true,
+      manifestHash: manifest.manifestHash, algorithm: manifest.authenticity.algorithm,
+      keyId: manifest.authenticity.keyId
+    });
     assert.equal(verifyBackupManifest(result.manifest, [record], verifier).valid, true);
     const changed = Object.assign({}, record, { content: 'tampered' });
     assert.equal(verifyBackupManifest(result.manifest, [changed], verifier).status, 'INTEGRITY_FAILED');
@@ -360,7 +400,8 @@ async function main() {
     assert.equal(authorizeRestore({
       explicitApproval: true, targetCapabilityAvailable: true,
       accessPolicyAllowed: true, encryptionVerified: true,
-      manifestVerification: { valid: true }
+      sourceProjectId: 'project-fixture', targetProjectId: 'project-fixture',
+      manifestVerification: { valid: true, status: 'VERIFIED', authenticity: 'VERIFIED' }
     }).allowed, true);
   });
 
