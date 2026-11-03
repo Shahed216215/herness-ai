@@ -1,0 +1,111 @@
+MIRA HYBRID MEMORY — PHASE 2 CONFLICT QUARANTINE LIFECYCLE GAP ASSESSMENT
+Document ID: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-LIFECYCLE-GAP-ASSESSMENT-20261103
+Version boundary: v0.2
+Date: 2026-11-03
+Branch: work/mira-hfm-v02-phase2-core-safety
+Status: READ-ONLY SOURCE ASSESSMENT — NO RUNTIME CHANGE
+
+1. PURPOSE
+
+Assess the remaining gap between the current local quarantine primitives/read-only conflict classifier and the complete conflict lifecycle required by the v0.2.4 contract Section 5. This is a source inspection only. No production data was accessed and no code was changed by this assessment.
+
+2. SOURCES INSPECTED
+
+- services/mira-json-state-store.js
+- services/mira-memory-conflict-assessment.js
+- knowledge.js
+- services/mira-local-memory-store.js
+- knowledge-memory-evolution.js
+- tests/mira-memory-conflict-assessment.test.js
+
+3. VERIFIED CURRENT BEHAVIOR
+
+A. Local quarantine primitive
+services/mira-json-state-store.js provides quarantineConflict(directory, name, payload, metadata):
+- Creates a project-local memory-conflicts directory.
+- Rejects a symlink or non-directory quarantine path.
+- Writes a timestamped JSON envelope with quarantineVersion, quarantinedAt, reason, metadata and payload.
+- Uses the shared atomic writer and records a memory_conflict_quarantined audit event.
+- Returns the quarantine file path and SHA-256 digest.
+- If audit recording fails after the quarantine write, throws with stateCommitted=true.
+
+B. Knowledge capacity eviction
+knowledge.js preserves capacity-evicted records in local quarantine before committing the bounded active Knowledge set. The normal Knowledge search path loads the active Knowledge state; the quarantine directory is not included in the ordinary search result set.
+
+C. Evolution divergence
+knowledge-memory-evolution.js detects Local/Drive divergence and reconciliation-proposal mismatch, attempts to preserve the competing states/proposal in quarantine, and blocks the operation. Quarantine write failure is returned as conflict_quarantine_failed.
+
+D. Structural assessment
+services/mira-memory-conflict-assessment.js validates canonical record structure and classifies the seven contract conflict categories. It is read-only and explicitly reports cryptographicVerification=NOT_PERFORMED.
+
+4. REMAINING LIFECYCLE GAPS
+
+CLG-01 — Durable conflict identity and envelope contract: REVIEW_REQUIRED
+The generic quarantine envelope does not yet define a canonical conflictId, sourceRecordIds, per-version schema/profile identifiers, immutable original version references, conflict state, resolution state or a stable correlation ID. The Evolution payload preserves local/Drive/proposal objects, but it is not yet a canonical reusable conflict record.
+
+CLG-02 — Quarantine read/list/verify API: REVIEW_REQUIRED
+The inspected state-store exports a quarantine write helper but no dedicated list, read, verify, status-transition or retention API for conflict records was identified in the inspected module.
+
+CLG-03 — Trusted retrieval exclusion: REVIEW_REQUIRED
+The Knowledge active search path naturally excludes files stored only in its separate quarantine directory. However, no repository-wide quarantine registry or shared retrieval guard was found in the inspected call paths to enforce exclusion for every provider, adapter, cache, search and Evolution retrieval path. This must not be inferred from the local Knowledge behavior.
+
+CLG-04 — Governed resolution workflow: REVIEW_REQUIRED
+No complete resolution workflow was found that preserves both originals, records merge/reject decision, actor, policy decision, resulting revision, source provenance and audit correlation while preventing silent last-write-wins.
+
+CLG-05 — Write-boundary integration: REVIEW_REQUIRED
+The structural assessor is not demonstrated to be invoked at every provider/adaptor write boundary. No universal guarantee exists yet that all incoming writes are validated and conflict-checked before commit.
+
+CLG-06 — Cryptographic content verification: NOT_PERFORMED
+The structural assessor checks contentHash shape only. It does not recompute contentHash from an approved canonical serialization profile. No cryptographic verification claim is made.
+
+CLG-07 — Concurrent arbitration and uncertain writes: REVIEW_REQUIRED
+No chain-level authoritative append-arbitration or provider-native compare-and-swap qualification is established by these local primitives.
+
+CLG-08 — Independent evidence verification: REVIEW_REQUIRED
+No independent verifier qualification is established. The existing audit stream and quarantine SHA-256 are not substitutes for E-15.
+
+5. REQUIRED SAFE IMPLEMENTATION ORDER AFTER APPROVAL
+
+1. Approve a canonical conflict record schema and immutable original-version reference model.
+2. Define quarantine state transitions and access policy.
+3. Implement isolated list/read/verify APIs over synthetic fixtures only.
+4. Prove trusted retrieval excludes quarantined IDs across every registered retrieval entry point.
+5. Define governed merge/reject resolution with immutable source preservation and audit correlation.
+6. Integrate pre-write validation at each approved adapter boundary.
+7. Add concurrency, uncertain-write and replay tests.
+8. Qualify independent evidence verification.
+9. Only after separate migration/production authorization, consider production adapters or data.
+
+6. TEST REQUIREMENTS
+
+- Both original versions survive every conflict transition unchanged.
+- Quarantine write failure blocks the parent operation.
+- Quarantined record is never returned by trusted retrieval.
+- Cross-project access is denied.
+- Duplicate conflict IDs are idempotent only for identical payload; differing payload is CONFLICT.
+- Invalid state transitions are rejected.
+- Resolution requires authorized actor and policy decision.
+- Resolution output references both originals and increments revision exactly once.
+- Audit failure prevents resolution from reporting success.
+- Hash verification uses a frozen canonical profile and independent test vectors.
+- All tests use synthetic fixtures and record productionDataTouched=NO and networkRequests=0.
+
+7. STATUS
+
+LOCAL_QUARANTINE_WRITE_PRIMITIVE=PASS_SCOPED_SOURCE_INSPECTION
+KNOWLEDGE_CAPACITY_EVICTION_PRESERVATION=PASS_SCOPED_EXISTING_CI_EVIDENCE
+EVOLUTION_DIVERGENCE_BLOCK_AND_QUARANTINE=PASS_SCOPED_EXISTING_CI_EVIDENCE
+CONFLICT_ASSESSMENT=PASS_SCOPED_EXISTING_CI_EVIDENCE
+UNIVERSAL_QUARANTINE_RETRIEVAL_EXCLUSION=REVIEW_REQUIRED
+CONFLICT_READ_LIST_RESOLUTION_LIFECYCLE=REVIEW_REQUIRED
+ALL_PROVIDER_WRITE_BOUNDARY_INTEGRATION=REVIEW_REQUIRED
+CANONICAL_CONTENT_HASH_RECOMPUTATION=NOT_PERFORMED
+CONCURRENT_APPEND_ARBITRATION=NOT_ESTABLISHED
+E15_INDEPENDENT_VERIFICATION=REVIEW_REQUIRED
+PRODUCTION_DATA_ACCESSED=NO
+RUNTIME_CHANGED_BY_THIS_ASSESSMENT=NO
+IMPLEMENTATION_APPROVAL=NOT_GRANTED
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF ASSESSMENT
