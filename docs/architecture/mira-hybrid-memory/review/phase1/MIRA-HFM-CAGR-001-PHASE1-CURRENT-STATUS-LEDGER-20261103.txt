@@ -105,6 +105,12 @@ Commit: 021e36f5ce6528307e357973afea4de0af04839f
 Verification: GitHub Actions run 41638703895 completed successfully at tested HEAD 720309923223c4f287ec3ede0fb0c16aff80f213; all six isolated fixture tests PASS; source baseline guard PASS; no source-code diff.
 Key additions: C06 PASS; Phase 1 closure COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS. Phase 2 remains NOT_STARTED.
 
+O. Isolated Fixture Test Runbook Execution Update
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-ISOLATED-FIXTURE-TEST-RUNBOOK-20261103.txt
+Commit: 70013426c68a5f673c5131cce443132a17f6a73a
+Verification: runbook updated with successful GitHub Actions run 41638703895, six PASS results, source-baseline guard, and corrected full-history checkout requirement.
+Key additions: CI execution PASS; local Termux reproduction instructions retained.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -148,18 +154,21 @@ Six selected fixture-only tests passed in GitHub Actions run 41638703895 at HEAD
 C07 — PROVIDER SOURCE/POLICY INVENTORY: PASS (SCOPED); ACCOUNT CONFIGURATION UNKNOWN.
 All identified provider adapters, five custom slots, Tavily, and Google Drive scope guidance have been reviewed against public official documentation. Effective OAuth scopes, account ZDR/tier settings, selected OpenRouter/Hugging Face downstream provider terms, custom provider vendor terms, and consent/data-minimization enforcement remain UNKNOWN and must be checked before any live provider use.
 
-5. NEXT READ-ONLY WORK
+5. POST-CLOSURE BOUNDARY
 
-1. Execute the six selected tests in the Isolated Fixture Test Runbook from the exact local feature-branch checkout.
-2. Return the concise per-test terminal results and any failure tails; do not run unrelated suites or use production paths.
-3. Reconcile any FAIL/INCONCLUSIVE result with source evidence and update the ledger.
-4. If all selected fixture tests PASS, publish a Phase 1 closure report with exact commands, test evidence, branch HEAD, and residual account-level unknowns. If any test cannot run or fails, keep Phase 1 INCONCLUSIVE/BLOCKED and record the exact reason.
+Phase 1 source reconciliation and selected isolated fixture verification are complete. No additional Phase 1 test run is required by the current exit criteria.
 
-No Phase 2 implementation should start under the current authorization. No routine Drive behavior should be removed. No production data should be read, copied, migrated, restored, or modified.
+The next project stage is outside this Phase 1 authorization. Do not begin Phase 2 implementation, modify application source, change provider/OAuth configuration, remove Drive synchronization, add Facebook integration, or migrate production data until the user gives a separate explicit Phase 2 scope and approval.
+
+The residual risk register in the Phase 1 Baseline Report remains open for future implementation planning. Phase 1 closure means the existing architecture has been reconciled to the stated static/fixture scope; it does not mean those residual defects have been fixed.
 
 6. STATUS
 
 PHASE1=COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS
+LATEST_PRE_LEDGER_HEAD=70013426c68a5f673c5131cce443132a17f6a73a
+LATEST_TREE_ENTRIES=638
+LATEST_TREE_BLOBS=618
+TREE_TRUNCATED=false
 PHASE1_CLOSURE=COMPLETE
 CLOSURE_REPORT=MIRA-HFM-CAGR-001-PHASE1-BASELINE-REPORT-20261103.txt
 SOURCE_TEXT_SCAN=540_JS_FAMILY_FILES_SCANNED
