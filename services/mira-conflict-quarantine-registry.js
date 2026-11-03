@@ -248,6 +248,9 @@ function createConflictQuarantine({
 function readConflict({ directory, conflictId, projectId }) {
   safeDirectory(directory);
   const envelope = readRegularJson(conflictPath(directory, conflictId));
+  if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {
+    throw new Error('Conflict envelope is malformed.');
+  }
   if (envelope.conflictId !== conflictId) throw new Error('Conflict identity mismatch.');
   if (projectId && envelope.projectId !== projectId) throw new Error('Cross-project conflict access denied.');
   return envelope;
