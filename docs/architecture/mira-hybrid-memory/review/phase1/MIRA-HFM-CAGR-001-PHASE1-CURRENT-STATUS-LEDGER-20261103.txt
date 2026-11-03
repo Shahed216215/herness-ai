@@ -93,6 +93,12 @@ Commit: 9a3da1569c36ced421e1caa5b17e5a88d94f8b16
 Verification: data-class-specific source-of-truth policy recorded for private Memory, public/shared Knowledge, research evidence, client/conversation data, governance/credentials, and derived Learning.
 Key additions: C03 Phase 1 authority/conflict policy defined; Local-first private Memory, Page-canonical public Knowledge, Group secondary, Web Search evidence-only, Drive encrypted emergency backup target. No connector or cutover implemented.
 
+M. Isolated Fixture Test Runbook
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-ISOLATED-FIXTURE-TEST-RUNBOOK-20261103.txt
+Commit: 59c6139bbe6772bacccd299eee44d31f28298305
+Verification: runbook re-read; exact branch and source-baseline guards; six fixture-only tests; temp-root overrides; provider credentials unset; no package install/network command.
+Key additions: C06 test plan is executable from an exact local checkout; test execution remains INCONCLUSIVE until terminal evidence is returned.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -130,8 +136,8 @@ C04 — CALLER COMPATIBILITY: PASS (SCOPED SOURCE MATRIX).
 C05 — STATIC DRIVE CALLSITE INVENTORY: PASS (SCOPED).
 All 540 JavaScript-family files were scanned; direct googleapis modules, shared adapter callers, indirect Learning callers, and governed routes are line-numbered in the Drive Callsite Allowlist. This does not authorize Drive sync removal, OAuth changes, or live API use.
 
-C06 — ISOLATED FIXTURE TESTS: PLAN READY / EXECUTION INCONCLUSIVE.
-Memory safety, Local Store contract, Memory Evolution integration, Research Governance, and consent fixture candidates were source-reviewed. Exact branch checkout/runtime was unavailable; clone failed due DNS/network unavailability. No test was run; no test PASS is claimed.
+C06 — ISOLATED FIXTURE TESTS: RUNBOOK READY / EXECUTION INCONCLUSIVE.
+Six fixture-only tests are selected and guarded by branch/source-baseline checks, temp storage overrides, and provider credential removal. The available reviewer environment cannot execute the exact branch checkout; no test was run and no PASS is claimed.
 
 C07 — PROVIDER SOURCE/POLICY INVENTORY: PASS (SCOPED); ACCOUNT CONFIGURATION UNKNOWN.
 All identified provider adapters, five custom slots, Tavily, and Google Drive scope guidance have been reviewed against public official documentation. Effective OAuth scopes, account ZDR/tier settings, selected OpenRouter/Hugging Face downstream provider terms, custom provider vendor terms, and consent/data-minimization enforcement remain UNKNOWN and must be checked before any live provider use.
