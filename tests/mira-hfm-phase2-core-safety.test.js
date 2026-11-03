@@ -1,5 +1,7 @@
 'use strict';
 
+// Regression rerun trigger after version snapshot scope correction.
+
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
