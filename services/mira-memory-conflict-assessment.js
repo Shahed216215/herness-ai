@@ -34,7 +34,7 @@ function validDate(value) {
   if (typeof value !== 'string') return false;
   // Match the contract's RFC 3339 date-time shape. Date.parse alone is
   // permissive (for example, it accepts date-only strings).
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})[Tt](\\d{2}):(\\d{2}):(\\d{2})(?:\\.(\\d+))?([Zz]|[+-]\\d{2}:\\d{2})$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?([Zz]|[+-]\d{2}:\d{2})$/.exec(value);
   if (!match) return false;
   const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone] = match;
   const year = Number(yearText), month = Number(monthText), day = Number(dayText);
