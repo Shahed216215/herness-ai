@@ -1,0 +1,113 @@
+MIRA HYBRID MEMORY — PHASE 1 CURRENT STATUS LEDGER
+Document: MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD: 8fa178ae017b8cdf12e33bac9efe8093d70e06d5
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Project version boundary: v0.2
+Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
+
+1. CURRENT BRANCH INVENTORY
+
+Feature branch HEAD was re-read from GitHub. Recursive tree at this exact HEAD:
+- Entries: 624
+- Blob files: 606
+- Tree truncated: false
+- Route files: 26
+- Service files: 143
+
+This is a complete path inventory for the current branch tree. It is not a repository-wide source-text scan. Main/default branch was not modified. No application source files were modified.
+
+2. NEW ADDITIVE REPORTS COMMITTED AND VERIFIED
+
+A. Drive & Provider Callsite Reconciliation
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-DRIVE-PROVIDER-CALLSITE-RECONCILIATION-20261103.txt
+Commit: 6152148d84f2611f444602900ace4439991ff02f
+Verification: branch head matched commit; 8/8 content checks passed.
+Key additions: direct Drive OAuth implementations in Knowledge backup/restore; D17-D27 callsites; search source precedence; effective OAuth scopes unknown.
+
+B. Read Safety & Storage Root Reconciliation
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-READ-SAFETY-STORAGE-ROOT-RECONCILIATION-20261103.txt
+Commit: 783de5a3efc0e92d890ce67654a450211ad33d71
+Verification: branch head matched commit; 8/8 content checks passed.
+Key additions: Knowledge missing/corrupt/non-array read silently maps to []; General Memory missing primary file maps to []; Knowledge CRUD direct writes; storage root and path override matrix; isolated fixture test design outline.
+
+C. Knowledge Caller Compatibility Matrix
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-KNOWLEDGE-CALLER-COMPATIBILITY-MATRIX-20261103.txt
+Commit: bdb0d69d02155f799065f962601a7015d3662ab6
+Verification: branch head matched commit; 8/8 content checks passed.
+Key additions: K01-K13 caller compatibility matrix for CRUD, Learning, search, cleanup, backup, restore, controlled apply, autonomous learning, and Evolution.
+
+D. Provider Egress & Governance Reconciliation
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-PROVIDER-EGRESS-GOVERNANCE-RECONCILIATION-20261103.txt
+Commit: 8fa178ae017b8cdf12e33bac9efe8093d70e06d5
+Verification: branch head matched commit; 9/9 content checks passed.
+Key additions: model-provider egress paths; custom provider endpoints; secure transport controls; privileged credential routes; OAuth scope limitation; no Facebook connector path evidence.
+
+These are additive reports. Prior reports remain intact and were not rewritten.
+
+3. CURRENT EVIDENCE-BASED FINDINGS
+
+- General Memory Store has strong atomic write/readback behavior, but missing primary memory.json is interpreted as [].
+- Knowledge load converts missing, malformed, and non-array state to [] and Knowledge CRUD writes directly without equivalent atomic/readback safeguards. HFM-001 and HFM-002 remain critical.
+- Knowledge search allows any Drive array, including empty, to replace Local search data. Authority/conflict policy remains undecided.
+- Ordinary Knowledge/Learning CRUD performs local write then Drive sync; partial success and split-brain are possible.
+- Knowledge backup/restore independently construct Google OAuth clients and use project-root paths; restore can overwrite data. Neither tool was invoked.
+- Controlled apply and Evolution depend on Drive preflight, snapshots, verification, rollback, and recovery. Drive sync removal is blocked.
+- MIRA_STORAGE_DIR does not contain every path: several overrides, provider credentials, snapshots, and legacy Knowledge tools use separate roots.
+- AI and web-search provider calls can transmit prompts/source material outside the local process. No provider call was made.
+- Google OAuth effective scopes cannot be inferred from reviewed source and remain unknown.
+- No Facebook/Meta/Graph API connector-named path exists in the current branch tree. This is path-level evidence only; source-text scan remains incomplete.
+- No production Memory data, credential values, or token files were accessed.
+
+4. PHASE 1 CLOSURE BLOCKERS
+
+C01 — REPOSITORY-WIDE SOURCE-TEXT SCAN: OPEN.
+Current tree path inventory is complete; source content scan is targeted/partial. Need a reliable branch-specific scan of all relevant source blobs or an equivalent reproducible method.
+
+C02 — ALL PERSISTENCE ROOTS AND CALLERS: PARTIAL.
+Known stores, environment overrides, project-root bypasses, and selected routes/services are mapped. Full reconciliation across all routes, services, tools, scripts, background jobs, and dynamic imports is not yet proven.
+
+C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
+Current code behavior is known, but canonical source, stale/empty semantics, conflict quarantine, and transition policy need explicit architecture decision.
+
+C04 — CALLER-BY-CALLER COMPATIBILITY: PARTIAL.
+K01-K13 matrix added. Need final complete return/error/audit ordering/rollback table and route-level consumption verification for every relevant caller.
+
+C05 — EXHAUSTIVE DRIVE CALLSITE INVENTORY: OPEN.
+D01-D27 targeted register exists. It is not proven exhaustive. Direct OAuth and shared-adapter callsites need branch-wide proof.
+
+C06 — ISOLATED FIXTURE TEST PLAN AND EXECUTION: DRAFTED / NOT EXECUTED.
+Read-safety/storage report contains isolated fixture test design. No fixture was created and no tests were run. Execution is not authorized by the current documentation/source-review scope.
+
+C07 — PROVIDER PERMISSION AND DATA-EGRESS REVIEW: PARTIAL.
+Model providers, Tavily, custom endpoints, credential store, and admin credential routes were inspected. Effective OAuth scopes, all egress callsites, provider retention terms, and data minimization/consent remain unverified.
+
+5. NEXT READ-ONLY WORK
+
+1. Continue branch-specific source retrieval in small batches for remaining routes/services that may touch Memory, Knowledge, Learning, provider calls, or persistence.
+2. Reconcile route-to-service-to-store call paths and audit ordering.
+3. Expand exact Drive and Google OAuth caller evidence without reading credential files or invoking APIs.
+4. Record unresolved C01-C07 evidence gaps rather than inferring closure.
+5. Once evidence is complete, prepare a Phase 1 closure recommendation for human review.
+
+No Phase 2 implementation should start under the current authorization. No routine Drive behavior should be removed. No production data should be read, copied, migrated, restored, or modified.
+
+6. STATUS
+
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+SOURCE_TEXT_SCAN=TARGETED_PARTIAL
+TESTS=NOT_EXECUTED
+PRODUCTION_MEMORY_ACCESS=NONE
+CREDENTIAL_OR_TOKEN_ACCESS=NONE
+EXTERNAL_PROVIDER_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+VERSION=v0.2
+
+END OF LEDGER
