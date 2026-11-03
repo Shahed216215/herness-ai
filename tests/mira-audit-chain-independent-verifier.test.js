@@ -120,9 +120,10 @@ function run() {
     ...fixture, events: [fixture.events[1]]
   }).reason, 'EVENT_SCHEMA_OR_SEQUENCE_MISMATCH');
 
-  const forkEvents = fixture.events.map(event => ({ ...event }));
-  forkEvents[1].previousHash = '0'.repeat(64);
-  forkEvents[1].eventHash = sha256Canonical(forkEvents[1], 'eventHash');
+  const forkEvents = [
+    fixture.events[0],
+    makeEvent(fixture.genesis, 2, '0'.repeat(64))
+  ];
   assert.equal(verifyAuditChainExport({ ...fixture, events: forkEvents }).reason, 'PREVIOUS_HASH_LINK_MISMATCH');
 
   const duplicateEvents = [
