@@ -197,7 +197,7 @@ async function main() {
     };
     const result = await executeGovernedWrite({
       record, context: context(), operation: operation(record), provider,
-      audit: { durable: false, append: async () => ({ status: 'APPENDED' }) }
+      audit: { durable: false, append: async () => ({ status: 'APPENDED' }) }, expectedRevision: 0
     });
     assert.equal(result.status, 'NOT_CONFIGURED');
     assert.equal(writes, 0);
@@ -213,11 +213,11 @@ async function main() {
         assert.equal(events.length, 1);
         assert.equal(events[0].eventType, 'MEMORY_WRITE_INTENT');
         written = true;
-        return { status: 'COMMITTED', revision: 2 };
+        return { status: 'COMMITTED', revision: 1 };
       },
       read: async () => {
         assert.equal(written, true);
-        return Object.assign({}, record, { version: Object.assign({}, record.version, { revision: 2 }) });
+        return record;
       },
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
