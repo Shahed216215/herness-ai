@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
 const crypto = require("crypto");
+const jsonStateStore = require("./services/mira-json-state-store");
+const localMemoryStore = require("./services/mira-local-memory-store");
 
 const {
   saveKnowledgeToDrive,
@@ -22,7 +24,9 @@ const {
   recordAudit
 } = require("./audit-log");
 
-const MEMORY_FILE = storagePath("memory.json");
+const MEMORY_FILE = process.env.MIRA_MEMORY_FILE
+  ? path.resolve(process.env.MIRA_MEMORY_FILE)
+  : storagePath("memory.json");
 const KNOWLEDGE_FILE = storagePath("knowledge.json");
 
 const STAGE_NAME =
@@ -70,16 +74,22 @@ function readJsonFile(filePath) {
 }
 
 function atomicWriteJson(filePath, value) {
-  const tempPath =
-    `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  if (Array.isArray(value)) {
+    if (path.resolve(filePath) === path.resolve(MEMORY_FILE)) {
+      return localMemoryStore.writeMemory(value);
+    }
+    return jsonStateStore.writeArrayState(
+      filePath,
+      value,
+      path.basename(filePath)
+    );
+  }
 
-  fs.writeFileSync(
-    tempPath,
-    JSON.stringify(value, null, 2),
-    "utf8"
+  return jsonStateStore.atomicWriteJson(
+    filePath,
+    value,
+    path.basename(filePath)
   );
-
-  fs.renameSync(tempPath, filePath);
 }
 
 
@@ -241,15 +251,14 @@ function getTargetFile(target) {
 
 function loadLocalState(target) {
   const filePath = getTargetFile(target);
-  const data = readJsonFile(filePath);
-
-  if (!Array.isArray(data)) {
-    throw new Error(
-      `${path.basename(filePath)} must contain an array.`
-    );
+  if (target === "memory") {
+    return localMemoryStore.readMemory();
   }
-
-  return data;
+  return jsonStateStore.readJsonArray(
+    filePath,
+    path.basename(filePath),
+    { missing: "empty" }
+  );
 }
 
 function validateMemoryState(data) {
