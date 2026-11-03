@@ -87,6 +87,12 @@ Commit: 45785fc72dd34cb8b7f3bfc910fd0664942335bf
 Verification: 17 direct workflow/caller classes consolidated with status, result, error, audit, snapshot, rollback, and migration requirements.
 Key additions: C04 source-level compatibility matrix PASS (scoped); audit failure policy remains REVIEW_REQUIRED; runtime behavior remains unexecuted.
 
+L. Authority, Conflict & Data-Classification Decision
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-AUTHORITY-CONFLICT-AND-DATA-CLASSIFICATION-DECISION-20261103.txt
+Commit: 9a3da1569c36ced421e1caa5b17e5a88d94f8b16
+Verification: data-class-specific source-of-truth policy recorded for private Memory, public/shared Knowledge, research evidence, client/conversation data, governance/credentials, and derived Learning.
+Key additions: C03 Phase 1 authority/conflict policy defined; Local-first private Memory, Page-canonical public Knowledge, Group secondary, Web Search evidence-only, Drive encrypted emergency backup target. No connector or cutover implemented.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -112,8 +118,8 @@ These are additive reports. Prior reports remain intact; the status ledger is re
 C01 — EXECUTABLE SOURCE-TEXT SCAN: PASS (SCOPED).
 All 540 JavaScript-family source/test files across root, services, routes, tools, providers, scripts, and tests were retrieved and lexically scanned at the exact feature-branch HEAD. Documentation/assets and package metadata are excluded from executable-source scope.
 
-C02 — PERSISTENCE ROOTS: SUBSTANTIALLY MAPPED / REVIEW REQUIRED.
-The new 42-entry persistence matrix and 15-setting environment register map the known domains, roots, and major bypasses. All 540 JS-family files were scanned. Remaining work is proving dynamic/indirect caller reachability and resolving the missing schedule-store reference; do not infer runtime completeness.
+C02 — PERSISTENCE ROOT INVENTORY: PASS (SCOPED STATIC BASELINE).
+The 42-entry persistence matrix and 15-setting environment register map the known domains, roots, overrides, and major bypasses. All 540 JS-family files were scanned. Dynamic runtime path selection and the broken schedule-store import remain explicit exceptions; no runtime completeness is claimed.
 
 C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
 Current code behavior is known, but canonical source, stale/empty semantics, conflict quarantine, and transition policy need explicit architecture decision.
