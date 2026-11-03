@@ -61,7 +61,7 @@ async function readMemory(provider, memoryId, context) {
   } catch (error) {
     return { ok: false, status: normalizeAdapterError(error) };
   }
-  if (!record) return { ok: false, status: 'NOT_FOUND' };
+  if (!record || record.memoryId !== memoryId) return deniedResult();
   const checked = validateVisibleRecord(record, context, 'read');
   if (!checked.ok) return checked;
   return { ok: true, status: 'SUCCESS', record: checked.record };
