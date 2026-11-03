@@ -565,6 +565,23 @@ function audit(
   }
 }
 
+function requireAudit(
+  action,
+  status,
+  resourceId,
+  details = {}
+) {
+  const result = audit(action, status, resourceId, details);
+  if (result && result.logged === false) {
+    const error = new Error(
+      "Required Evolution audit event was not recorded: " + result.error
+    );
+    error.code = "STAGE412_REQUIRED_AUDIT_FAILED";
+    throw error;
+  }
+  return result;
+}
+
 function validateProposal(proposal) {
   const errors = [];
   let target;
@@ -887,7 +904,7 @@ async function prepareEvolution(
       preparedAt: now()
     };
 
-    audit(
+    requireAudit(
       "stage412_prepare",
       "success",
       proposalId,
@@ -1039,7 +1056,7 @@ async function applyEvolution(
       );
     }
 
-    audit(
+    requireAudit(
       "stage412_snapshot_created",
       "success",
       proposalId,
@@ -1125,7 +1142,7 @@ async function applyEvolution(
       );
     }
 
-    audit(
+    requireAudit(
       "stage412_apply",
       "success",
       proposalId,
@@ -1372,7 +1389,7 @@ async function rollbackEvolution(
       };
     }
 
-    audit(
+    requireAudit(
       "stage412_rollback",
       "success",
       proposalId,
