@@ -59,7 +59,7 @@ function canonicalizeJcs(value) {
 }
 
 function sha256Canonical(value, excludedField) {
-  const body = {};
+  const body = Object.create(null);
   for (const key of Object.keys(value)) {
     if (key !== excludedField) body[key] = value[key];
   }
