@@ -1,0 +1,193 @@
+MIRA HYBRID MEMORY — DEEP DEPENDENCY AUDIT
+MODE=READ_ONLY_OFFLINE
+UTC_TIME=2026-11-01T10:47:02.352Z
+
+
+===== FILE: memory.js =====
+STATUS=FOUND
+LINE_COUNT=82
+FUNCTIONS=getMaxMemory,loadMemory,saveMemory,isDuplicateMessage,addMemory,getMemory
+IMPORT_LINES=3,4
+MEMORY_API_LINES=11,22,34,74,79,80
+EXPORT_DECLARATION_LINES=78
+
+===== FILE: services/mira-local-memory-store.js =====
+STATUS=FOUND
+LINE_COUNT=283
+FUNCTIONS=sha256,entriesHash,readArray,atomicWriteJson,readMemory,writeMemory,makeBackup,validateBackup,readBackupFile,createBackup,restoreMemory
+IMPORT_LINES=3,4,5,6
+LOCAL_STORAGE_PATH_LINES=6,8,9,10,12,141,148,271
+FILE_READ_LINES=31,46,84,114,206,210
+FILE_WRITE_LINES=93,99
+MEMORY_API_LINES=140,144,225,238,242,257,276,277,281
+EXPORT_DECLARATION_LINES=270
+
+===== FILE: services/mira-work-learning-engine.js =====
+STATUS=FOUND
+LINE_COUNT=2274
+FUNCTIONS=now,cleanText,cleanList,safePrimitive,safeValue,ensureStore,loadStore,ensureDirectoryOnly,saveStore,sha256,stableStringify,createLearningId,getExecutionId,normalizeTask,normalizeExecution,normalizeCheck,normalizeApproach,normalizeSubtask,normalizeExecutionStep,normalizeVerification,normalizeQA,normalizeFeedback,summarizeWorked,summarizeFailed,deriveLessons,deriveKnowledgeCandidates,deriveSkillCandidates,hasActionableImprovement,buildImprovementFingerprint,normalizeProposalForComparison,findDuplicateProposal,createImprovementProposal,calculateRecordHash,persistLearningRecord,validateLearningInput,findExistingLearningRecord,learnFromWork,getLearningRecord,listLearningRecords,calculateLegacyRecordHash,verifyLearningRecordIntegrity,getLearningStats
+IMPORT_LINES=3,4,5,6,11,15
+LOCAL_STORAGE_PATH_LINES=5,21
+FILE_READ_LINES=190,206,218
+FILE_WRITE_LINES=282,294
+EXPORT_DECLARATION_LINES=2242
+
+===== FILE: services/mira-experience-memory.js =====
+STATUS=FOUND
+LINE_COUNT=712
+FUNCTIONS=cleanText,cleanList,stableStringify,sha256,normalizeApproach,normalizeResult,normalizeFeedback,normalizePerformance,normalizeError,normalizeCorrection,normalizeLesson,normalizeFutureStrategy,normalizeLessonEntry,getLessons,listLessons,calculateExperienceHash,normalizeExperience,verifyExperienceIntegrity,getExperience,listExperiences,getExperienceStats
+IMPORT_LINES=3,4,5,7
+EXPORT_DECLARATION_LINES=694
+
+===== FILE: services/mira-experience-retrieval-engine.js =====
+STATUS=FOUND
+LINE_COUNT=400
+FUNCTIONS=cleanText,cleanList,tokenize,buildExperienceText,calculateRelevance,normalizeRetrievedExperience,retrieveExperiences,getExperiencesForTask,getRetrievalStats
+IMPORT_LINES=4
+EXPORT_DECLARATION_LINES=382
+
+===== FILE: services/mira-work-knowledge-consolidation.js =====
+STATUS=FOUND
+LINE_COUNT=973
+FUNCTIONS=asObject,cleanText,cleanList,sha256,stableNormalize,stableStringify,calculateIntegrityHash,emptyStore,normalizeStore,loadStore,saveStore,calculateLearningRecordIntegrityHash,normalizeSource,validateLearningRecord,normalizeCandidate,deriveCandidates,createConsolidationItem,mergeEvidence,proposalFingerprint,findExistingProposal,createKnowledgeProposal,consolidateLearningRecord,verifyStoreIntegrity,getConsolidatedKnowledge,getConsolidationStats
+IMPORT_LINES=3,4,5,6,11,15
+LOCAL_STORAGE_PATH_LINES=5,19
+FILE_READ_LINES=139,889
+FILE_WRITE_LINES=185,191
+EXPORT_DECLARATION_LINES=953
+
+===== FILE: services/mira-cross-task-learning-engine.js =====
+STATUS=FOUND
+LINE_COUNT=286
+FUNCTIONS=cleanText,cleanList,buildTaskText,isCrossTaskExperience,normalizeTransfer,getCrossTaskLearning,getCrossTaskLearningStats
+IMPORT_LINES=4,7
+EXPORT_DECLARATION_LINES=280
+
+===== FILE: services/mira-conversation-memory-engine.js =====
+STATUS=FOUND
+LINE_COUNT=400
+FUNCTIONS=cleanText,unique,addUnique,extractDeadline,extractRequirements,extractScope,extractDeliverables,extractQuestions,extractRevisions,extractConstraints,extractDecisions,getConversationHistory,mergeContext,extractContextFromMessage,updateConversationMemory,getConversationMemory
+IMPORT_LINES=5,8
+EXPORT_DECLARATION_LINES=394
+
+===== FILE: services/mira-learning-history.js =====
+STATUS=FOUND
+LINE_COUNT=726
+FUNCTIONS=cleanText,cleanList,normalizeHistoryEntry,listLearningHistory,getLearningHistory,getLearningHistoryTimeline,addEvent,getLearningHistoryDetail,getLearningHistoryStats
+IMPORT_LINES=4,7
+EXPORT_DECLARATION_LINES=715
+
+===== FILE: services/mira-conversation-response-planner.js =====
+STATUS=FOUND
+LINE_COUNT=287
+FUNCTIONS=cleanText,detectIntent,determineResponseType,determinePriority,findMissingContext,planResponse
+IMPORT_LINES=4,7
+EXPORT_DECLARATION_LINES=279
+
+===== FILE: knowledge-memory-evolution.js =====
+STATUS=FOUND
+LINE_COUNT=1456
+FUNCTIONS=now,createId,sha256,deepClone,readJsonFile,atomicWriteJson,getPersistedDriveSnapshotPath,persistDriveSnapshot,loadPersistedDriveSnapshot,normalizeTarget,getTargetFile,loadLocalState,validateMemoryState,validateKnowledgeState,validateState,canonicalEntry,countPreservedEntries,validatePreservation,compareDrivePrefix,loadDriveState,saveDriveState,audit,validateProposal,extractProposalId,validateExpectedPreState,prepareEvolution,applyEvolution,rollbackEvolution,verifyEvolutionState
+IMPORT_LINES=3,4,5,6,13,19,23
+LOCAL_STORAGE_PATH_LINES=5,25,26,238
+FILE_READ_LINES=55,61,169
+FILE_WRITE_LINES=76,82
+DRIVE_API_LINES=9,10,11,12,493,505,521,524
+SNAPSHOT_API_LINES=16,17,18,919,946,1194,1210
+EXPORT_DECLARATION_LINES=1446
+
+===== FILE: snapshot-manager.js =====
+STATUS=FOUND
+LINE_COUNT=643
+FUNCTIONS=now,createId,ensureDir,validateChangeId,validateSnapshotId,assertNoSymlinkPath,safeProjectPath,sha256,atomicWriteJson,snapshotDir,createSnapshot,loadMetadata,verifySnapshot,restoreSnapshot,listSnapshots,getSnapshotStatus
+IMPORT_LINES=3,4,5
+FILE_READ_LINES=72,134,215,221,303,310,355,366,511,539
+FILE_WRITE_LINES=142,148,244,468,473
+SNAPSHOT_API_LINES=165,333,406,433,637,638,639
+EXPORT_DECLARATION_LINES=636
+
+===== FILE: google-drive.js =====
+STATUS=FOUND
+LINE_COUNT=277
+FUNCTIONS=readJson,getDrive,getFolderId,saveJsonFileToDrive,loadJsonFileFromDrive,saveKnowledgeToDrive,loadKnowledgeFromDrive,saveMemoryToDrive,loadMemoryFromDrive
+IMPORT_LINES=1,2,37
+LOCAL_STORAGE_PATH_LINES=22,250,267
+FILE_READ_LINES=6,12,25,30
+DRIVE_API_LINES=201,220,236,255,272,273,274,275
+EXPORT_DECLARATION_LINES=271
+
+===== FILE: tools/web-search.js =====
+STATUS=FOUND
+LINE_COUNT=61
+FUNCTIONS=
+IMPORT_LINES=4
+EXPORT_DECLARATION_LINES=6
+
+===== FILE: tools/memory-save.js =====
+STATUS=FOUND
+LINE_COUNT=61
+FUNCTIONS=
+IMPORT_LINES=1
+MEMORY_API_LINES=1,40
+EXPORT_DECLARATION_LINES=3
+
+===== FILE: tools/memory-count.js =====
+STATUS=FOUND
+LINE_COUNT=35
+FUNCTIONS=
+IMPORT_LINES=3
+MEMORY_API_LINES=3,20
+EXPORT_DECLARATION_LINES=5
+
+===== FILE: tools/memory-restore.js =====
+STATUS=FOUND
+LINE_COUNT=46
+FUNCTIONS=
+IMPORT_LINES=3
+MEMORY_API_LINES=3,35
+EXPORT_DECLARATION_LINES=5
+
+===== FILE: routes/learning-history.js =====
+STATUS=FOUND
+LINE_COUNT=183
+FUNCTIONS=registerLearningHistoryRoutes
+IMPORT_LINES=3,10,14
+EXPORT_DECLARATION_LINES=181
+
+===== FILE: routes/conversations.js =====
+STATUS=FOUND
+LINE_COUNT=573
+FUNCTIONS=registerConversationRoutes
+IMPORT_LINES=11,16,20
+EXPORT_DECLARATION_LINES=571
+
+===== FILE: routes/knowledge-improvements.js =====
+STATUS=FOUND
+LINE_COUNT=670
+FUNCTIONS=writeAudit,registerKnowledgeImprovementRoutes
+IMPORT_LINES=9,14,16,20,27,31
+EXPORT_DECLARATION_LINES=668
+
+===== FACEBOOK / GRAPH API SOURCE SCAN =====
+
+===== PUBLIC SEARCH / SOURCE PROVENANCE MARKERS =====
+FILE=tools/web-search.js
+FILE=knowledge-memory-evolution.js
+TIMESTAMP_LINES=144
+FAILURE_HANDLING_LINES=56,64,103,111,170,187,198,210,231,247,256,261,272,282,291,300,307,308,313,318,329,339,348,355,356,435,496,508,542,543
+FILE=services/mira-experience-retrieval-engine.js
+FAILURE_HANDLING_LINES=93,94,121,122,124,127,130,232,233
+
+===== DATA-SAFETY BOUNDARY =====
+LIVE_MEMORY_CONTENT_READ=NO
+LIVE_MEMORY_CONTENT_HASHED=NO
+SECRETS_OR_TOKEN_VALUES_PRINTED=NO
+SOURCE_CONTENT_DUMPED=NO
+NETWORK_REQUESTS=0
+PRODUCTION_FILES_MODIFIED=NO
+MIGRATION_OR_RESTORE=NO
+
+===== BASELINE HASH VERIFICATION =====
+HASH_OK_COUNT=540
+HASH_FAILURE_COUNT=0
+BASELINE_STATUS=PASS
