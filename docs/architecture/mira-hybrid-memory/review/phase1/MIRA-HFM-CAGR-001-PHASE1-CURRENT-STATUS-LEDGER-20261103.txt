@@ -99,6 +99,12 @@ Commit: 1a2ee38958dfaef13be0746cfa066118a670ea05
 Verification: runbook re-read; Termux default checkout path $HOME/herness-ai with MIRA_HFM_REPO_DIR override; clean-tree/origin guard; one explicit GitHub fetch plus fast-forward-only update; six fixture-only tests; temp-root overrides; provider credentials unset; no package install or provider/Drive/Facebook API call.
 Key additions: C06 test plan is ready for exact local checkout execution; test execution remains INCONCLUSIVE until terminal evidence is returned.
 
+N. Phase 1 Baseline Report & Closure Evidence
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-BASELINE-REPORT-20261103.txt
+Commit: 021e36f5ce6528307e357973afea4de0af04839f
+Verification: GitHub Actions run 41638703895 completed successfully at tested HEAD 720309923223c4f287ec3ede0fb0c16aff80f213; all six isolated fixture tests PASS; source baseline guard PASS; no source-code diff.
+Key additions: C06 PASS; Phase 1 closure COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS. Phase 2 remains NOT_STARTED.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -136,8 +142,8 @@ C04 — CALLER COMPATIBILITY: PASS (SCOPED SOURCE MATRIX).
 C05 — STATIC DRIVE CALLSITE INVENTORY: PASS (SCOPED).
 All 540 JavaScript-family files were scanned; direct googleapis modules, shared adapter callers, indirect Learning callers, and governed routes are line-numbered in the Drive Callsite Allowlist. This does not authorize Drive sync removal, OAuth changes, or live API use.
 
-C06 — ISOLATED FIXTURE TESTS: RUNBOOK READY / EXECUTION INCONCLUSIVE.
-Six fixture-only tests are selected and guarded by a clean working tree, exact origin, one explicit GitHub branch fetch, fast-forward-only update, reviewed source-baseline diff, temp storage overrides, and provider credential removal. The available reviewer environment cannot execute the Termux checkout; no test was run and no PASS is claimed.
+C06 — ISOLATED FIXTURE TESTS: PASS.
+Six selected fixture-only tests passed in GitHub Actions run 41638703895 at HEAD 720309923223c4f287ec3ede0fb0c16aff80f213. Source-baseline ancestry and zero JS/CJS/MJS/TS diff were verified; Node v22.23.4. Tests used disposable temporary roots, unset provider/Google credentials, disabled workers, and a mocked Drive adapter. Test-step logs report zero provider/Drive/Facebook/network calls. The first shallow-checkout preflight attempt ran no tests and is not counted.
 
 C07 — PROVIDER SOURCE/POLICY INVENTORY: PASS (SCOPED); ACCOUNT CONFIGURATION UNKNOWN.
 All identified provider adapters, five custom slots, Tavily, and Google Drive scope guidance have been reviewed against public official documentation. Effective OAuth scopes, account ZDR/tier settings, selected OpenRouter/Hugging Face downstream provider terms, custom provider vendor terms, and consent/data-minimization enforcement remain UNKNOWN and must be checked before any live provider use.
@@ -153,19 +159,22 @@ No Phase 2 implementation should start under the current authorization. No routi
 
 6. STATUS
 
-PHASE1=INCOMPLETE_REVIEW_REQUIRED
-PHASE1_CLOSURE=BLOCKED_ONLY_C06_TEST_EXECUTION
+PHASE1=COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS
+PHASE1_CLOSURE=COMPLETE
+CLOSURE_REPORT=MIRA-HFM-CAGR-001-PHASE1-BASELINE-REPORT-20261103.txt
 SOURCE_TEXT_SCAN=540_JS_FAMILY_FILES_SCANNED
-TESTS=NOT_EXECUTED
-TEST_RESULT=INCONCLUSIVE
+ISOLATED_FIXTURE_TESTS=6_PASS
+TEST_RUN_ID=41638703895
+TESTED_HEAD=720309923223c4f287ec3ede0fb0c16aff80f213
 PRODUCTION_MEMORY_ACCESS=NONE
 CREDENTIAL_OR_TOKEN_ACCESS=NONE
 EXTERNAL_PROVIDER_CALLS=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
 FACEBOOK_API_CALLS=NONE
-SOURCE_CODE_CHANGES=NONE
+APPLICATION_SOURCE_CODE_CHANGES=NONE
 PRODUCTION_DATA_CHANGES=NONE
-IMPLEMENTATION=NOT_STARTED
-PRODUCTION_MIGRATION=NOT_APPROVED
+PHASE2_IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_AUTHORIZED
 VERSION=v0.2
 
 END OF LEDGER
