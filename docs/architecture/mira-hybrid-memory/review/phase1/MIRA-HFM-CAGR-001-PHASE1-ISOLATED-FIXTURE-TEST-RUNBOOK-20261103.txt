@@ -38,10 +38,15 @@ The execution uses the known Termux checkout path. It first checks for a clean w
 
 4. SINGLE GUARDED COMMAND — ONE GITHUB FETCH, THEN OFFLINE TESTS
 
-Run once from the local Termux checkout. It performs one visible GitHub fetch to synchronize the feature branch, then runs the six selected Node tests offline. It refuses to proceed if the working tree is dirty, origin is wrong, fast-forward is impossible, source code changed after the reviewed baseline, or Node is unavailable. It never uses git reset or force checkout. It redirects known persistence overrides to a fresh temporary directory, unsets provider credentials, prints concise per-test status, and deletes the temporary fixture directory.
+Run once from the local Termux checkout. Default path is $HOME/herness-ai; if the repository is elsewhere, set MIRA_HFM_REPO_DIR to its exact path before running. It performs one visible GitHub fetch to synchronize the feature branch, then runs the six selected Node tests offline. It refuses to proceed if the working tree is dirty, origin is wrong, fast-forward is impossible, source code changed after the reviewed baseline, or Node is unavailable. It never uses git reset or force checkout. It redirects known persistence overrides to a fresh temporary directory, unsets provider credentials, prints concise per-test status, and deletes the temporary fixture directory.
 
 ```bash
-cd "/root/mira-github-upload-staging/herness-ai" 2>/dev/null || { echo "INCONCLUSIVE: repository checkout not found"; exit 2; }
+# Termux default: ~/herness-ai. Override MIRA_HFM_REPO_DIR if the checkout is elsewhere.
+REPO_DIR="${MIRA_HFM_REPO_DIR:-$HOME/herness-ai}"
+if [ ! -d "$REPO_DIR/.git" ] && [ -d "$HOME/mira-github-upload-staging/herness-ai/.git" ]; then
+  REPO_DIR="$HOME/mira-github-upload-staging/herness-ai"
+fi
+cd "$REPO_DIR" 2>/dev/null || { echo "INCONCLUSIVE: repository checkout not found; set MIRA_HFM_REPO_DIR"; exit 2; }
 EXPECTED_BRANCH="work/mira-hfm-v025-six-documents"
 BASELINE_HEAD="90b48f2816e28686cd499650ff6a5fc6217f0e8a"
 [ -z "$(git status --porcelain 2>/dev/null)" ] || { echo "INCONCLUSIVE: working tree is not clean; no changes made"; exit 2; }
