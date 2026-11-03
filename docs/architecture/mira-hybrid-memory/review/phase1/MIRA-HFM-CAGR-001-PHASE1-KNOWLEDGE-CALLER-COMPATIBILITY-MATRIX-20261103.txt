@@ -1,0 +1,232 @@
+MIRA HYBRID MEMORY — PHASE 1 ADDITIVE REVIEW
+Document: MIRA-HFM-CAGR-001-PHASE1-KNOWLEDGE-CALLER-COMPATIBILITY-MATRIX
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD: 783de5a3efc0e92d890ce67654a450211ad33d71
+Version boundary: v0.2
+
+1. SCOPE AND LIMITS
+
+This report consolidates targeted source evidence for Knowledge CRUD, Learning CRUD, search, cleanup, backup, restore, controlled apply, autonomous learning, and Evolution. It is additive to prior Phase 1 reports. The branch tree path inventory is complete at the prior reviewed commit (621 entries, 603 files, truncated=false), but repository-wide source-text scanning and exhaustive callsite discovery are not complete.
+
+No production Memory/Knowledge data was accessed. No credentials or OAuth tokens were read. No external provider calls, tests, restores, migrations, or source modifications were performed.
+
+2. SOURCE EVIDENCE
+
+knowledge.js — c259ecda72e0714e49852e591f1deff42bc7e187
+google-drive.js — 530b9fad101042e2e82f76a0e360ead5d092ec3c
+tools/knowledge-search.js — 4b658f6b10db9ad74c9947268f64a8f2c4e1347d
+tools/knowledge-cleanup.js — 70410a2cdcae2af97a6fc4251a2c19f7b6a621b0
+tools/knowledge-backup.js — 0b17fc4e4a77c255db07ec9c43911620990df882
+tools/knowledge-restore.js — 0d6da23adc59a90f3b8c545d8e728a3d7e567941
+tools/knowledge-save.js — aa31b6b058d6f8a6b9419e56d4c086d31e5fe81b
+tools/learning-save.js — deaaac511ff72d30b52ce6cfac996b4ad2e6b786
+services/learning.js — be66edd9aa46b2ee84317a5f2dbf4e1ac11a2461
+knowledge-controlled-apply.js — 222a0fa5edee729ed9c33d7367cb757c7a4419bb
+autonomous-learning-controlled-apply.js — d7d67669e6b6a8390147f75ee46c647ca15c91fa
+knowledge-memory-evolution.js — 9bbbebc2ffe0af1a90c4d3aa22664467a770cac2
+snapshot-manager.js — 91a5c81aa12333ee32521da695937d8795c4b5a5
+audit-log.js — 224e67fa39b3bc1f516fc3094a7f989691e6dd19
+
+3. BASE KNOWLEDGE CONTRACT
+
+knowledge.js uses storagePath("knowledge.json"), but its read/write contract is weaker than the General Memory Store:
+- Missing file -> [].
+- JSON parse failure -> log error and [].
+- Non-array JSON -> [].
+- saveLocalKnowledge() -> direct writeFileSync, without temp/rename/readback verification.
+- The async CRUD methods write Local first, then call syncToDrive().
+- syncToDrive() catches Drive exceptions and returns false. This can make the operation's local result successful while Drive remains stale.
+
+This is a critical compatibility constraint: any replacement must distinguish missing, empty, malformed, unreadable, and valid-empty states. It must not treat a failed read as a valid empty database.
+
+4. CALLER-BY-CALLER COMPATIBILITY MATRIX
+
+K01 addKnowledge — direct caller tools/knowledge-save.js and other services.
+- Reads through loadKnowledge().
+- Duplicate key: normalized title + URL + content.
+- Duplicate result: status=duplicate_skipped, added=false, duplicate=true, plus drive boolean; even duplicate path attempts Drive sync.
+- New record gets stable generated id and savedAt; list is capacity-trimmed; local write then Drive sync.
+- Success status=added, added=true, duplicate=false, drive boolean, savedAt.
+- Risk: a missing/corrupt read mapped to [] can permit a new array to overwrite prior data; local success can coexist with drive=false.
+
+K02 addLearning — caller services/learning.js and tools/learning-save.js.
+- Validates structured learning fields; invalid -> validation_error, added=false, drive=false, errors[].
+- Duplicate key: normalized title + topic + content.
+- Duplicate -> duplicate_skipped, added=false, duplicate=true, and Drive sync attempt.
+- New record has type=learning, topic/category/track/difficulty/title/concept/technique/safeLabExample/defense/detection/source/content/savedAt/id.
+- Capacity-trimmed local write then Drive sync.
+- Success status=learned, added=true, duplicate=false, drive boolean, entry metadata.
+- Same read-failure and partial dual-write risks as K01.
+
+K03 deleteKnowledge — direct/indirect callers not proven exhaustive.
+- Loads Knowledge, matches stable id.
+- Missing target -> not_found, deleted=false, drive=false.
+- Match -> filters entry, local direct write, then Drive sync.
+- Result status=deleted, deleted=true, drive boolean, deleted-entry metadata.
+- Risk: silent-empty read can turn a delete into not_found or a later unrelated operation into overwrite; deletion is not transactional with Drive.
+
+K04 updateKnowledge.
+- Matches stable id.
+- Missing target -> not_found.
+- Requires non-empty title/content; invalid -> validation_error.
+- Duplicate key: normalized title + URL + content, excluding target.
+- Duplicate -> duplicate_skipped, updated=false, drive=false.
+- Preserves existing stable ID; writes Local, then Drive.
+- Result includes status=updated, updated=true, drive boolean, previous and entry metadata.
+- Same dual-write/read-failure risks.
+
+K05 updateLearning — callers include services/learning.js and controlled apply.
+- Validates structured input; invalid -> validation_error.
+- Finds by object title+topic, or id/title string.
+- Missing target -> not_found.
+- Duplicate equivalent learning -> duplicate_skipped, updated=false, drive=false.
+- Preserves existing record fields/ID, writes Local then Drive.
+- Result status=updated, updated=true, drive boolean, previous and entry metadata.
+- Important: controlled apply explicitly treats updated=true with drive!==true as failure and attempts rollback.
+
+K06 searchKnowledge / tools/knowledge-search.js.
+- Reads Local first.
+- Loads Drive.
+- Any Drive array replaces Local, including [].
+- Drive exception logs and keeps Local.
+- Empty final array returns "No knowledge entries are currently stored."
+- Search performs lexical ranking and duplicate filtering.
+- No authoritative source, freshness, version, or conflict resolution is recorded.
+- A valid empty Drive response can mask non-empty Local data.
+
+K07 cleanup inspect.
+- getKnowledge() -> duplicate grouping only.
+- Returns success/action=inspect/totalEntries/duplicateGroups/duplicateEntries/dataModified=false/groups[].
+- No write in inspect path.
+
+K08 cleanup remove.
+- Re-reads getKnowledge(), removes exact duplicates by normalized title/URL/content.
+- If no duplicates: success=true, removed=0, remaining count, driveSync=false; no write.
+- If duplicates: direct project-root knowledge.json write (not storagePath), then shared adapter saveKnowledgeToDrive.
+- Returns success=true, removed/remaining, driveSync=true and driveAction without independently validating the returned Drive result.
+- Direct path divergence and non-atomic write. Not invoked.
+
+K09 Knowledge backup.
+- getKnowledge() must return an array.
+- Builds backupVersion=1 with createdAt/source/entryCount/entries.
+- Writes project-root knowledge.json and knowledge-backup.json directly.
+- Independently initializes Google OAuth and uses Drive list/create/update.
+- Not a read-only backup. No encryption or independent hash/authenticity check evidenced in inspected backup schema.
+- Uses direct project-root path and independent Drive implementation. Not invoked.
+
+K10 Knowledge restore.
+- Reads local or Drive backup depending on tool path; Drive OAuth implementation is inline and separate.
+- Validates backupVersion=1 and entries array; no cryptographic authenticity check evidenced.
+- Creates knowledge-before-restore.json from current project-root file, then overwrites project-root knowledge.json and syncs Drive.
+- Existing non-array current content may be treated as [] in safety-backup construction.
+- Destructive restore. Never invoked in this review.
+
+K11 Knowledge controlled apply.
+- Requires approved proposal with existing/proposed payload.
+- Reads Local and Drive; Drive must be array and exactly equal to Local before apply.
+- Validates existing entry and expected content hash.
+- Creates and verifies local snapshot of knowledge.json.
+- Calls updateLearning().
+- If update throws, updated!==true, or drive!==true, attempts local snapshot rollback plus Drive restoration/readback.
+- Verifies updated Local entry/content and reloads Drive; mismatch triggers rollback.
+- The visible source explicitly protects against updateLearning reporting local updated=true while Drive sync failed.
+- Rollback success depends on local snapshot restoration and Drive restoration/readback; audit/approval proposal state finalization needs caller-specific verification.
+
+K12 Autonomous learning controlled apply.
+- Requires approved proposal and valid learning payload.
+- Reads raw Local file and module Local state; requires exact match.
+- Reads Drive; requires array and exact Local/Drive match.
+- Rejects duplicate, creates and verifies local snapshot, calls addLearning.
+- Verifies local count increase, entry existence, Drive array, exact Local/Drive equality and matching hashes.
+- Marks proposal applied only after checks.
+- Catch path attempts snapshot rollback plus Drive restore/readback; fallback attempts local rewrite and Drive restore if no snapshot.
+- Return includes driveSynced=true and verified=true only after the checks.
+- Still depends on Knowledge CRUD's read/write semantics and Drive availability.
+
+K13 Stage 4.12 Knowledge/Memory Evolution.
+- Uses storagePath for local Memory and Knowledge.
+- Uses Drive read/write for both Memory and Knowledge.
+- Validates record arrays and record fields.
+- Checks preservation of existing entries.
+- Compares Local and Drive; permits a constrained prefix reconciliation case only when proposed state equals Local.
+- Creates local snapshot, persists a Drive snapshot under project-root backups/changes, verifies both, writes target state, verifies Local/Drive and hashes, audits lifecycle events, and attempts rollback.
+- Drive snapshot is JSON with SHA-256 integrity hash; no encryption/authenticity key layer established.
+- Snapshot Manager path remains project-root even if MIRA_STORAGE_DIR is configured.
+- This is a critical Drive-removal blocker until replacement preserves prepare/apply/verify/audit/rollback/recovery.
+
+5. DRIVE CALLSITE REGISTER — UPDATED INTERPRETATION
+
+Earlier D01-D16 register plus D17-D27 additive register remains current. Targeted inspection supports:
+- D01-D05 ordinary Knowledge/Learning CRUD via shared adapter.
+- D06-D07 tool-level indirect Knowledge/Learning save.
+- D08 Knowledge search Drive override.
+- D09 cleanup direct local write + adapter Drive sync.
+- D10 backup direct OAuth/API + local backup writes.
+- D11 restore direct OAuth/API + destructive local write + Drive sync.
+- D12 controlled Knowledge apply, Drive preflight/write/readback/rollback.
+- D13 autonomous learning controlled apply, Drive preflight/write/readback/rollback.
+- D14 Evolution, Drive Memory/Knowledge snapshots and recovery.
+- D15 autonomous-learning route indirect controlled apply.
+- D16 knowledge-improve proposal route indirect controlled apply.
+- D17-D27 detailed in DRIVE-PROVIDER-CALLSITE-RECONCILIATION report.
+
+This is not an exhaustive repository-wide callsite certification.
+
+6. COMPATIBILITY REQUIREMENTS FOR FUTURE REPLACEMENT
+
+Any future common provider/contract must preserve or deliberately version:
+- Every result status/boolean and error shape consumed by tools/routes.
+- Stable Knowledge IDs and learning record fields.
+- Duplicate semantics for knowledge vs learning.
+- Capacity trimming behavior and ordering.
+- Approval gate and stale proposal hash check.
+- Local/Drive preflight mismatch behavior.
+- Snapshot contents and snapshot ID linkage.
+- Drive snapshot persistence and integrity checks or an approved replacement.
+- Rollback ordering, partial rollback reporting, and post-rollback readback.
+- Audit event order and failure semantics.
+- Distinction between proposal creation and proposal apply.
+- Path override compatibility and current root divergences.
+- Search behavior replacement policy for empty, missing, stale, and conflicting sources.
+
+No adapter replacement or behavior change was performed.
+
+7. PHASE 1 BLOCKER UPDATE
+
+C01 repository-wide source-text scan: OPEN.
+C02 path roots and all callers: PARTIAL; known Knowledge direct-path divergences are now explicit.
+C03 Local/Drive authority and conflict policy: OPEN.
+C04 caller compatibility matrix: SUBSTANTIALLY EXPANDED but still PARTIAL; complete caller/audit/error-path coverage not established.
+C05 exhaustive Drive callsite inventory: OPEN.
+C06 isolated fixture test plan: DRAFTED in prior report; no execution evidence.
+C07 provider permission/data-egress inventory: PARTIAL; effective OAuth scopes remain unknown.
+
+HFM-001=IDENTIFIED/PARTIAL
+HFM-002=IDENTIFIED/PARTIAL
+HFM-004=IDENTIFIED
+HFM-006=IDENTIFIED
+HFM-008=REVIEW_REQUIRED
+HFM-018=REVIEW_REQUIRED
+HFM-019=REVIEW_REQUIRED
+HFM-020=REVIEW_REQUIRED
+HFM-021=IDENTIFIED
+HFM-025=REVIEW_REQUIRED
+
+8. EXECUTION STATUS
+
+PRODUCTION_MEMORY_ACCESS=NONE
+CREDENTIAL_OR_TOKEN_ACCESS=NONE
+EXTERNAL_PROVIDER_CALLS=NONE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+TESTS=NOT_EXECUTED
+SOURCE_TEXT_SCAN=TARGETED_PARTIAL
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+VERSION=v0.2
+
+END OF REPORT
