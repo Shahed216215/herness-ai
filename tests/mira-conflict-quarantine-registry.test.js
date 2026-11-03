@@ -61,6 +61,11 @@ try {
   assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'QUARANTINED');
 
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }), /UNDER_REVIEW state/);
   const visibleBefore = filterTrustedRecords([
     originalA, originalB, record({ memoryId: 'memory-0002' }),
     record({ memoryId: 'memory-0001', projectId: 'project-b',
@@ -72,6 +77,12 @@ try {
   assert.equal(mainReview.status, 'UNDER_REVIEW');
   assert.equal(verifyReview({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'UNDER_REVIEW');
+  assert.equal(startReview(directory, created.conflictId).status, 'ALREADY_UNDER_REVIEW');
+  assert.throws(() => beginConflictReview({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    actor: 'other-reviewer', policyDecision: 'POLICY-REVIEW-2',
+    authorizeReview: () => true, auditWriter
+  }), /different review authority/);
   assert.throws(() => filterTrustedRecords([], [], ''), /projectId is required/);
 
   assert.throws(() => resolveConflict({
@@ -224,6 +235,34 @@ try {
     directory: malformedResolutionDir, conflictId: malformedResolutionConflict.conflictId, projectId: 'project-a'
   }).status, 'INTEGRITY_FAILED');
 
+  const reviewDeniedDir = path.join(directory, 'review-denied');
+  const reviewDeniedConflict = createConflictQuarantine({
+    directory: reviewDeniedDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  assert.throws(() => beginConflictReview({
+    directory: reviewDeniedDir, conflictId: reviewDeniedConflict.conflictId, projectId: 'project-a',
+    actor: 'reviewer', policyDecision: 'POLICY-REVIEW-DENIED',
+    authorizeReview: () => false, auditWriter
+  }), /review authorization denied/);
+  assert.equal(listConflicts({ directory: reviewDeniedDir, projectId: 'project-a' })[0].status, 'QUARANTINED');
+
+  const reviewAuditDir = path.join(directory, 'review-audit-fail');
+  const reviewAuditConflict = createConflictQuarantine({
+    directory: reviewAuditDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  assert.throws(() => beginConflictReview({
+    directory: reviewAuditDir, conflictId: reviewAuditConflict.conflictId, projectId: 'project-a',
+    actor: 'reviewer', policyDecision: 'POLICY-REVIEW-FAIL',
+    authorizeReview, auditWriter: () => { throw new Error('review audit unavailable'); }
+  }), error => error.code === 'CONFLICT_REVIEW_AUDIT_FAILED' && error.stateCommitted === true);
+  assert.equal(listConflicts({ directory: reviewAuditDir, projectId: 'project-a' })[0].status, 'UNDER_REVIEW');
+  assert.equal(beginConflictReview({
+    directory: reviewAuditDir, conflictId: reviewAuditConflict.conflictId, projectId: 'project-a',
+    actor: 'reviewer', policyDecision: 'POLICY-REVIEW-FAIL', authorizeReview, auditWriter
+  }).status, 'ALREADY_UNDER_REVIEW');
+
   const auditFailDir = path.join(directory, 'audit-fail');
   assert.throws(() => createConflictQuarantine({
     directory: auditFailDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
@@ -317,6 +356,8 @@ try {
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS');
   console.log('CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS');
+  console.log('REVIEW_AUTHORIZATION_AND_IDEMPOTENCY=PASS');
+  console.log('REVIEW_AUDIT_FAILURE_RECOVERY=PASS');
   console.log('GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS');
   console.log('GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS');
   console.log('GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS');
