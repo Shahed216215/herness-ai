@@ -1,0 +1,80 @@
+MIRA HYBRID MEMORY — U04 BACKEND APPEND-ARBITRATION CAPABILITY ASSESSMENT
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-U04-BACKEND-ATOMICITY-ASSESSMENT-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-DR08-TECHNICAL-REFINEMENT-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: READ-ONLY SOURCE CAPABILITY ASSESSMENT
+
+1. PURPOSE
+
+Determine whether the current local JSON store or Google Drive adapter provides the atomic compare-and-swap/transaction semantics required by U04 for a single authoritative audit-chain append arbiter. This is source inspection only; no provider credentials, live API calls or concurrency tests were used.
+
+2. SOURCES INSPECTED
+
+- services/mira-json-state-store.js — blob SHA aae290fa15a4cd558a537f5e0436090a1bb045ec
+- services/mira-local-memory-store.js — blob SHA 8f153b543d4ba75a2f498c02856ff57a87ed9747
+- google-drive.js — blob SHA 530b9fad101042e2e82f76a0e360ead5d092ec3c
+- knowledge-memory-evolution.js — blob SHA b5a6bd7137fb0370fb8a8f1eb86825d54d3d2030
+
+3. LOCAL JSON STORE
+
+Observed:
+- atomicWriteJson() writes a unique temporary file, fsyncs it, renames it over the target and verifies readback hash.
+- writeArrayState() reads the previous array, writes a version snapshot, then writes the new array.
+- No lock, compare-and-swap token, expected-head parameter, transaction coordinator or cross-process sequence allocator was identified in the inspected write path.
+
+Capability:
+- Atomic replacement of one local file is implemented for a single write operation.
+- The read-previous -> snapshot -> replace sequence is not an atomic transaction across concurrent writers.
+- Two processes may read the same prior state and both publish different next states; last rename can replace the earlier result.
+- File rename atomicity does not establish append arbitration, sequence uniqueness or crash-safe resolution of uncertain append acknowledgement.
+
+Status: SINGLE-FILE_ATOMIC_REPLACEMENT=PASS_SCOPED_SOURCE_INSPECTION; MULTI_WRITER_CAS=NOT_ESTABLISHED.
+
+4. GOOGLE DRIVE ADAPTER
+
+Observed:
+- saveJsonFileToDrive() lists files by parent/name.
+- If a matching file exists, it calls drive.files.update({fileId, requestBody, media}) without an observed ETag/If-Match precondition, expected revision, generation number or compare-and-swap token.
+- If no file exists, it calls drive.files.create().
+- saveKnowledgeToDrive() and saveMemoryToDrive() call this helper.
+- The inspected source does not show an append-only audit event store or a single sequence allocator.
+
+Capability:
+- The adapter performs a list-then-update/create workflow.
+- The inspected implementation does not establish atomic conditional update semantics or a unique per-project append arbiter.
+- A list-then-unconditional-update is not sufficient for U04. No provider guarantee is claimed.
+- No live Drive test or API call was made.
+
+Status: DRIVE_NATIVE_CAS_IN_CODE=NOT_OBSERVED; PROVIDER_ATOMICITY=NOT_QUALIFIED.
+
+5. U04 REQUIRED QUALIFICATION
+
+Before selecting a backend for the audit chain:
+1. Identify the actual authoritative storage provider and its documented atomic transaction/CAS primitive.
+2. Define the expected chain-head and next-sequence token.
+3. Bind event identity, canonical payload hash, sequence allocation, durable append and head update in one atomic operation.
+4. Verify authoritative readback after success and after uncertain timeout.
+5. Prove N concurrent writers produce exactly one committed event per sequence.
+6. Inject crashes before append, after append/before acknowledgement, and during recovery.
+7. Prove no sequence reuse, duplicate commit, fork or stale-head overwrite.
+8. If provider atomicity is unavailable, design and qualify a durable single-writer arbiter; a process-local mutex is insufficient for multiple processes/instances.
+
+6. STATUS
+
+LOCAL_SINGLE_FILE_ATOMIC_REPLACE=PASS_SCOPED_SOURCE_INSPECTION
+LOCAL_MULTI_WRITER_CAS=NOT_ESTABLISHED
+DRIVE_LIST_THEN_UNCONDITIONAL_UPDATE=OBSERVED
+DRIVE_NATIVE_ATOMIC_CAS=NOT_OBSERVED_IN_CODE
+LIVE_PROVIDER_TEST=NOT_EXECUTED
+PROVIDER_SELECTED_FOR_AUDIT_CHAIN=NO
+U04_IMPLEMENTATION=NOT_APPROVED
+PRODUCTION_OR_NETWORK_ACCESS=NO
+VERSION=v0.2
+DR08_U04=REVIEW_REQUIRED
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF ASSESSMENT
