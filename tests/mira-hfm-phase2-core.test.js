@@ -6,6 +6,8 @@ const path = require('node:path');
 const core = require('../services/mira-hfm/core');
 const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator');
 const { auditProviderReadiness, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
+const { readMemory, searchMemory } = require('../services/mira-hfm/memory-service');
+const { inspectProviderAdapter, requireCapability, createUnavailableProvider } = require('../services/mira-hfm/provider-contract');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
 const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
 const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
@@ -213,9 +215,77 @@ async function main() {
     assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, null, 2));
     assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, 'b'.repeat(64), 1));
   });
+  check('Provider contract reports independent capability states and no implicit fallback', () => {
+    const unavailable = createUnavailableProvider('fixture-provider');
+    assert.equal(inspectProviderAdapter(unavailable).valid, true);
+    assert.equal(inspectProviderAdapter(unavailable).capabilities.READ, 'NOT_CONFIGURED');
+    assert.equal(requireCapability(unavailable, 'WRITE').allowed, false);
+    assert.equal(inspectProviderAdapter(unavailable).noFallback, true);
+  });
   check('Adapter error taxonomy maps unknown errors to UNKNOWN', () => {
     assert.equal(core.normalizeAdapterError({ code: 'TIMEOUT' }), 'TIMEOUT');
     assert.equal(core.normalizeAdapterError({ code: 'SECRET_LEAK' }), 'UNKNOWN');
+  });
+
+  await checkAsync('Read service requires READ capability and verifies canonical integrity', async () => {
+    const record = fixtureRecord();
+    const provider = {
+      getCapabilities: async () => capabilities,
+      read: async () => record,
+      search: async () => ({ records: [record] })
+    };
+    const readContext = Object.assign(context(), { action: 'read' });
+    const result = await readMemory(provider, record.memoryId, readContext);
+    assert.equal(result.status, 'SUCCESS');
+    assert.equal(result.record.memoryId, record.memoryId);
+    const unavailable = await readMemory({
+      getCapabilities: async () => Object.assign({}, capabilities, { READ: 'UNKNOWN' }),
+      read: async () => record
+    }, record.memoryId, readContext);
+    assert.equal(unavailable.status, 'NOT_APPROVED');
+  });
+
+  await checkAsync('Read service hides inaccessible records without existence disclosure', async () => {
+    const record = fixtureRecord({ access: { classification: 'PROJECT_PRIVATE' } });
+    const provider = {
+      getCapabilities: async () => capabilities,
+      read: async () => record
+    };
+    const denied = await readMemory(provider, record.memoryId, Object.assign(context(), {
+      action: 'read', projectId: 'other'
+    }));
+    assert.equal(denied.status, 'NOT_FOUND');
+  });
+
+  await checkAsync('Search service filters unauthorized and quarantined records before returning results', async () => {
+    const visible = fixtureRecord();
+    const hidden = fixtureRecord({
+      memoryId: 'memory-fixture-0002',
+      access: { classification: 'PROJECT_PRIVATE' }
+    });
+    const quarantined = fixtureRecord({
+      memoryId: 'memory-fixture-0003',
+      trust: { status: 'QUARANTINED' }
+    });
+    const provider = {
+      getCapabilities: async () => capabilities,
+      search: async () => ({ records: [visible, hidden, quarantined], nextCursor: 'fixture-cursor' })
+    };
+    const result = await searchMemory(provider, 'fixture', { limit: 10 }, Object.assign(context(), { action: 'search' }));
+    assert.equal(result.status, 'SUCCESS');
+    assert.equal(result.records.length, 1);
+    assert.equal(result.records[0].memoryId, visible.memoryId);
+    assert.equal(result.filteredUnauthorizedOrUntrusted, 2);
+  });
+
+  await checkAsync('Search service rejects unsafe retrieval limits and malformed provider responses', async () => {
+    const provider = {
+      getCapabilities: async () => capabilities,
+      search: async () => ({ records: 'not-an-array' })
+    };
+    const ctx = Object.assign(context(), { action: 'search' });
+    assert.equal((await searchMemory(provider, 'q', { limit: 101 }, ctx)).status, 'VALIDATION_FAILED');
+    assert.equal((await searchMemory(provider, 'q', {}, ctx)).status, 'PROVIDER_ERROR');
   });
 
   await checkAsync('Write coordinator blocks when durable audit is unavailable', async () => {
