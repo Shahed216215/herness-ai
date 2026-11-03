@@ -81,7 +81,7 @@ async function main() {
   writeJson(path.join(root, "audit-log.js"), {});
   fs.writeFileSync(
     path.join(root, "audit-log.js"),
-    '"use strict"; module.exports = { recordAudit: () => ({ logged: true }) };'
+    '"use strict"; let failNext = false; module.exports = { recordAudit: () => { if (failNext) { failNext = false; throw new Error("INJECTED_AUDIT_FAILURE"); } return { logged: true }; }, failNext: () => { failNext = true; } };'
   );
 
   fs.writeFileSync(path.join(root, "google-drive.js"), `
@@ -168,6 +168,19 @@ module.exports = {
   assert.deepEqual(readJson(localFile), initial);
   assert.deepEqual(readJson(driveFile), initial);
   pass("Memory snapshot rollback + local/Drive consistency");
+
+  const auditMock = require(path.join(root, "audit-log.js"));
+  auditMock.failNext();
+  const auditFailurePrepare = await engine.prepareEvolution(
+    proposal(proposed),
+    { changeId: "memory-fixture-audit-failure" }
+  );
+  assert.equal(auditFailurePrepare.ok, false);
+  assert.equal(auditFailurePrepare.status, "prepare_failed");
+  assert.match(auditFailurePrepare.error, /Required Evolution audit event was not recorded/);
+  assert.deepEqual(readJson(localFile), initial);
+  assert.deepEqual(readJson(driveFile), initial);
+  pass("Evolution success blocked when required audit record fails");
 
   // 4. Divergent Local/Drive state must be preserved in quarantine and block apply.
   const divergentDrive = [
