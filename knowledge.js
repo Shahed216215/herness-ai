@@ -221,6 +221,7 @@ async function addKnowledge(
     added: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
     savedAt: entry.savedAt
   };
 }
@@ -455,6 +456,7 @@ async function addLearning(input) {
     added: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
 
     entry: {
       type:
@@ -673,6 +675,7 @@ async function updateKnowledge(id, input = {}) {
     updated: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
 
     previous: {
       id: existing.id || "",
@@ -810,6 +813,7 @@ async function updateLearning(idOrMatch, input) {
     updated: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
 
     previous: {
       title: existing.title,
