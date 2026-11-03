@@ -169,7 +169,26 @@ module.exports = {
   assert.deepEqual(readJson(driveFile), initial);
   pass("Memory snapshot rollback + local/Drive consistency");
 
-  // 4. Drive failure after local apply must trigger rollback.
+  // 4. Divergent Local/Drive state must be preserved in quarantine and block apply.
+  const divergentDrive = [
+    ...initial,
+    { role: "user", content: "fixture-conflicting-remote-entry" }
+  ];
+  writeJson(driveFile, divergentDrive);
+  const conflict = await engine.prepareEvolution(
+    proposal(proposed),
+    { changeId: "memory-fixture-conflict" }
+  );
+  assert.equal(conflict.ok, false);
+  assert.equal(conflict.status, "local_drive_mismatch", JSON.stringify(conflict));
+  assert.equal(fs.existsSync(conflict.quarantine.file), true);
+  const quarantineEnvelope = readJson(conflict.quarantine.file);
+  assert.deepEqual(quarantineEnvelope.payload.local, initial);
+  assert.deepEqual(quarantineEnvelope.payload.drive, divergentDrive);
+  writeJson(driveFile, initial);
+  pass("Local/Drive conflict quarantined without overwriting either source");
+
+  // 5. Drive failure after local apply must trigger rollback.
   drive.failNextMemorySave();
 
   const failedApply = await engine.applyEvolution(
