@@ -3,7 +3,7 @@ Document: MIRA-HFM-CAGR-001-PHASE1-ISOLATED-FIXTURE-TEST-RUNBOOK
 Date: 2026-11-03
 Repository: Shahed216215/herness-ai
 Branch: work/mira-hfm-v025-six-documents
-Required HEAD: 90b48f2816e28686cd499650ff6a5fc6217f0e8a
+Required source baseline commit: 90b48f2816e28686cd499650ff6a5fc6217f0e8a (documentation-only commits after this baseline are allowed)
 Version boundary: v0.2
 Status: READY FOR LOCAL EXECUTION — NOT EXECUTED BY REVIEWER
 
@@ -43,11 +43,12 @@ Run from the local clone only. It performs no git fetch, branch switch, package 
 ```bash
 cd "$HOME/herness-ai" 2>/dev/null || { echo "INCONCLUSIVE: repository checkout not found"; exit 2; }
 EXPECTED_BRANCH="work/mira-hfm-v025-six-documents"
-EXPECTED_HEAD="90b48f2816e28686cd499650ff6a5fc6217f0e8a"
+BASELINE_HEAD="90b48f2816e28686cd499650ff6a5fc6217f0e8a"
 ACTUAL_BRANCH="$(git branch --show-current 2>/dev/null)"
 ACTUAL_HEAD="$(git rev-parse HEAD 2>/dev/null)"
 [ "$ACTUAL_BRANCH" = "$EXPECTED_BRANCH" ] || { echo "INCONCLUSIVE: branch mismatch"; exit 2; }
-[ "$ACTUAL_HEAD" = "$EXPECTED_HEAD" ] || { echo "INCONCLUSIVE: HEAD mismatch; no tests run"; exit 2; }
+git merge-base --is-ancestor "$BASELINE_HEAD" HEAD || { echo "INCONCLUSIVE: reviewed baseline is not an ancestor"; exit 2; }
+git diff --quiet "$BASELINE_HEAD" HEAD -- "*.js" "*.cjs" "*.mjs" "*.ts" || { echo "INCONCLUSIVE: source/test code changed since reviewed baseline"; exit 2; }
 command -v node >/dev/null 2>&1 || { echo "INCONCLUSIVE: Node.js unavailable"; exit 2; }
 
 TMP_ROOT="$(mktemp -d 2>/dev/null)" || { echo "INCONCLUSIVE: temp directory unavailable"; exit 2; }
@@ -95,6 +96,7 @@ run_test() {
 echo "=== MIRA HFM ISOLATED FIXTURE TESTS ==="
 echo "BRANCH=$ACTUAL_BRANCH"
 echo "HEAD=$ACTUAL_HEAD"
+echo "SOURCE_BASELINE=$BASELINE_HEAD"
 run_test tests/mira-local-memory-safety-test.js
 run_test tests/mira-memory-local-store-contract-test.js
 run_test tests/mira-memory-evolution-integration-test.js
