@@ -1,0 +1,188 @@
+MIRA HYBRID MEMORY — CAGR-001 PHASE 1 GITHUB SOURCE RECONCILIATION
+Document: MIRA-HFM-CAGR-001
+Audit date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Inspected branch commit: 0ed7502692625e91a217c332560315e2372f097e
+Mode: GitHub source inspection; read-only with additive report publication
+Scope: Phase 1 Existing Architecture Reconciliation
+Implementation: NOT_STARTED
+Production Memory content: NOT_READ
+Production Memory: NOT_TOUCHED
+Facebook API calls: 0
+Google Drive API calls: 0
+Runtime tests: NOT_EXECUTED
+
+1. EXECUTIVE RESULT
+
+PHASE1_SOURCE_RECONCILIATION=COMPLETE_WITH_GAPS
+SOURCE_TREE_RECONCILED=YES
+PREVIOUS_PATH_CLASSIFICATION_ERROR=CORRECTED
+IMPLEMENTATION=NOT_STARTED
+TEST_EXECUTION=NOT_PERFORMED
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+This report reconciles the supplied MIRA-HFM-CAGR-001 gap register against the GitHub branch above. It is an additive review artifact only. No source code, production data, credentials, Drive files, Facebook content, or Memory stores were changed.
+
+2. IMPORTANT CORRECTION TO PREVIOUS BASELINE
+
+The earlier baseline report MIRA-HFM-BASELINE-REPORT-20261101T104256Z.txt marked four learning/experience components MISSING because it searched for them at repository root. The current GitHub tree and the later Deep Dependency Audit confirm that they exist under services/:
+
+- services/mira-work-learning-engine.js
+- services/mira-experience-memory.js
+- services/mira-experience-retrieval-engine.js
+- services/mira-work-knowledge-consolidation.js
+
+These are FOUND, not missing. This is a path-resolution/classification correction, not a source-code change. The later Deep Dependency Audit and Dependency Map already recorded the correct paths.
+
+3. VERIFIED SOURCE INVENTORY
+
+Component | GitHub path | Git blob SHA | Finding
+General Memory API | memory.js | 6765fed022a1e1beadcc035262ac5ad03443e5a6 | FOUND
+Local Memory Store | services/mira-local-memory-store.js | 4a91e885e084553e618eba294413aceb0e2dd188 | FOUND
+Storage Path Manager | mira-storage.js | 9164bca1cc0b6f9b41000340b4454be2f295aefe | FOUND
+Capacity Config | capacity-config.js | 6f824a2a628a9c6d1fde223ee778dedbccbfde64 | FOUND
+Conversation Store | conversation-store.js | 4c38ab57a51972fb9410d9ba3464292dfd235a06 | FOUND
+Google Drive Adapter | google-drive.js | 530b9fad101042e2e82f76a0e360ead5d092ec3c | FOUND
+Work Learning Engine | services/mira-work-learning-engine.js | 1b69f5e76ef0b62426853a8ee93b44f2c1acaeb6 | FOUND
+Experience Memory | services/mira-experience-memory.js | d72091ef6d06ef81b2739db7bd69f9c1714efef1 | FOUND
+Experience Retrieval | services/mira-experience-retrieval-engine.js | a789b812145975baff77ac540c6be0b2c85947bc | FOUND
+Knowledge Consolidation | services/mira-work-knowledge-consolidation.js | bd953fafa25e106290466c6b8bef6c5d0adbf45d | FOUND
+Evolution Engine | knowledge-memory-evolution.js | 9bbbebc2ffe0af1a90c4d3aa22664467a770cac2 | FOUND
+Snapshot Manager | snapshot-manager.js | 91a5c81aa12333ee32521da695937d8795c4b5a5 | FOUND
+Audit Log | audit-log.js | 224e67fa39b3bc1f516fc3094a7f989691e6dd19 | FOUND
+Memory Restore Tool | tools/memory-restore.js | 8d33d16737e009271cbba8abe80590b25c96acd7 | FOUND
+Memory Backup CLI | scripts/mira-memory-backup.js | e272046dc94dd8bcd42f0e8cd864e60ed91bdf60 | FOUND
+
+Note: Git blob identifiers above are Git object SHAs, not SHA-256 integrity manifests.
+
+4. DRIVE DEPENDENCY FINDING
+
+Routine Drive synchronization is still present and must not be removed yet.
+
+Direct source dependencies observed:
+- knowledge-memory-evolution.js imports load/save Memory and Knowledge Drive functions; its prepare/apply/rollback/verification workflow reads and writes Drive state.
+- knowledge.js imports saveKnowledgeToDrive.
+- knowledge-controlled-apply.js imports loadKnowledgeFromDrive and saveKnowledgeToDrive.
+- autonomous-learning-controlled-apply.js imports loadKnowledgeFromDrive and saveKnowledgeToDrive.
+
+google-drive.js serializes data using JSON.stringify and sends it through Google Drive API operations. No encryption layer was established in the inspected adapter. Existing Evolution snapshots and rollback do not mean Drive is only an emergency backup. Drive sync removal remains BLOCKED until each dependent workflow has a verified replacement and regression evidence.
+
+No Google Drive API call was made during this audit.
+
+5. CORE MEMORY SAFETY FINDINGS
+
+5.1 Read failure
+services/mira-local-memory-store.js rejects invalid JSON, empty files, non-array content, symlinks, and read failures. However, readMemory() calls readArray(..., missingIsEmpty=true), so a missing primary Memory file is interpreted as an empty array. The implementation does not distinguish a first-time uninitialized store from an unexpectedly missing/deleted store. Therefore the strict no-silent-empty requirement is only PARTIAL.
+
+5.2 Atomic write
+The Local Memory Store writes to an exclusive temporary file, fsyncs it, renames it into place, attempts directory fsync, and verifies readback against a calculated hash. However, Evolution has a separate private atomic writer. A shared adapter, cross-writer concurrency/compare-and-swap protection, and full crash guarantees have not been established.
+
+5.3 Integrity
+Write readback and version-2 backup SHA-256 checks exist. The ordinary primary Memory read path does not compare records against a previously persisted integrity manifest/hash. SHA-256 alone does not provide authenticity.
+
+5.4 Backup and restore
+Local backup format versions 1 and 2 exist. Version 2 validates entry count and SHA-256. Restore creates a safety backup before replacing the Memory file and uses the atomic writer/readback path. However, the backup is not encrypted or cryptographically authenticated; backup record schema validation is limited; and independent restore/recovery execution was not performed in this audit.
+
+5.5 Conflict
+Evolution compares Local and Drive state and rejects mismatches in its reconciliation path. A durable conflict quarantine registry, preserved competing-version model, and operator resolution workflow were not established.
+
+6. FACEBOOK / WEB SEARCH FINDINGS
+
+No Facebook Page or Group connector implementation was found in the inspected source tree. GitHub code searches for Facebook Page, Facebook Graph API, and Facebook Group returned no matching source results. This is evidence of NO_EVIDENCE in the inspected repository scope, not proof that no external/manual workflow exists outside the repository.
+
+Not established in source:
+- Independent Facebook Read and Write capability detection
+- Facebook Page automatic read or write
+- Manual post draft / posting workflow
+- Post URL readback and version verification
+- Public Facebook Memory ID / Project ID search integration
+- Facebook Group manual import/export processing
+- Facebook-specific duplicate and conflict validation
+
+Web search must remain an alternative retrieval channel, not be treated as durable storage or as a publishing mechanism.
+
+7. CONSOLIDATED 28-GAP STATUS
+
+Status meanings in this report:
+SOURCE_PRESENT = relevant source behavior exists, but full acceptance is not implied.
+PARTIAL = some required behavior exists, with material gaps remaining.
+NO_EVIDENCE = no supporting implementation evidence found in inspected source scope.
+NOT_IMPLEMENTED = required architecture/workflow is not implemented in inspected source.
+NOT_VERIFIED = measurement or execution evidence is absent.
+REVIEW_REQUIRED = source hints exist but semantic/security review is still required.
+
+ID | Current GitHub finding | Status | Next required work
+HFM-001 | Corrupt/empty/unreadable files fail closed, but missing Memory is treated as [] | PARTIAL | Distinguish first initialization from unexpected missing store; isolated failure tests
+HFM-002 | Local Store atomic temp/fsync/rename/readback exists; Evolution has separate writer and no shared CAS guarantee | PARTIAL | Unify writer contract; concurrency and crash tests
+HFM-003 | Write readback and backup SHA-256 exist; primary read has no persisted digest verification | PARTIAL | Define record/manifest integrity and independent verification
+HFM-004 | Drive sync remains in Evolution, Knowledge and autonomous-learning workflows | NOT_IMPLEMENTED | Migrate and verify every dependent workflow before removal
+HFM-005 | No encryption layer found in Drive JSON adapter or local backup format | NO_EVIDENCE | Design authenticated encryption, key custody and recovery before backup implementation
+HFM-006 | Local backup validation, pre-restore safety copy and atomic readback exist; schema/authenticity/rollback gaps remain | PARTIAL | Complete restore contract and isolated recovery tests
+HFM-007 | Backup versions exist; canonical primary Memory record version/revision contract not established | PARTIAL | Define record schemaVersion, record revision and migration rules
+HFM-008 | Local/Drive mismatch can be rejected; durable quarantine and resolution workflow not found | PARTIAL | Add conflict record, preserve both versions and governed resolution design
+HFM-009 | General Memory, Learning, Experience, Conversation and Consolidation use distinct shapes/stores | NOT_IMPLEMENTED | Define one canonical validated record contract
+HFM-010 | No Facebook API capability detector found | NO_EVIDENCE | Design separate read/write capability discovery
+HFM-011 | No Facebook Page automatic read connector found | NO_EVIDENCE | Implement only after permissions and data scope approval
+HFM-012 | No Facebook Page automatic write connector found | NO_EVIDENCE | Implement only after permissions, approval and idempotency design
+HFM-013 | No manual Facebook post draft/posting workflow found | NOT_IMPLEMENTED | Create user-controlled manual fallback workflow
+HFM-014 | No Facebook post readback/version verification connector found | NO_EVIDENCE | Define post identity and independent readback verification
+HFM-015 | No Facebook-specific public Memory retrieval found | NO_EVIDENCE | Design public search adapter and provenance validation
+HFM-016 | No Facebook Group manual import workflow found | NO_EVIDENCE | Design user-supplied content/URL import with authorization checks
+HFM-017 | No Facebook Group export parser/validator found | NO_EVIDENCE | Define supported export formats and bounded parser
+HFM-018 | Learning/Experience records carry source/provenance fields; base Memory does not have a unified provenance contract | PARTIAL | Add required provenance to canonical records
+HFM-019 | Multiple independent persistent stores; no unified Project Memory adapter/contract | NOT_IMPLEMENTED | Map store ownership and define provider-neutral Project Memory
+HFM-020 | Learning, Experience, Retrieval and Consolidation engines exist; Hybrid provider integration is absent | PARTIAL | Add compatibility adapter without removing current retrieval
+HFM-021 | Evolution still uses local state plus Drive read/write and private writer | NOT_IMPLEMENTED | Migrate through staged adapter with snapshot/rollback verification
+HFM-022 | Lexical retrieval exists; token-budget-aware retrieval not established | NO_EVIDENCE | Define tokenizer, context budget and measured retrieval tests
+HFM-023 | Experience retrieval is local/derived; unified Facebook/Group/Web/Drive multi-source retrieval not established | NOT_IMPLEMENTED | Define provider search fan-out, ranking, provenance and failure states
+HFM-024 | Capacity config supports configured limits; no 100x baseline/benchmark evidence | NOT_VERIFIED | Establish baseline and reproducible load/latency/storage benchmarks
+HFM-025 | Hash-linked audit log and Learning/Consolidation audit calls exist; base Memory write lifecycle is not fully audited | PARTIAL | Add Memory operation event coverage and failure-path verification
+HFM-026 | Local/Drive consistency checks and rollback exist; independent replication/failover guarantee not established | PARTIAL | Define replica semantics, RPO/RTO and isolated failover tests
+HFM-027 | File permissions, secret filtering and normalization exist in parts; imported Memory prompt-injection policy is not established | REVIEW_REQUIRED | Threat-model untrusted content and enforce data/instruction separation
+HFM-028 | Google OAuth Drive adapter exists; Facebook permission/capability governance and independent read/write authorization not established | NOT_IMPLEMENTED | Define least-privilege capability model and human approval boundaries
+
+8. EXISTING TEST EVIDENCE
+
+Relevant test source files exist:
+- tests/mira-local-memory-safety-test.js
+- tests/mira-memory-local-store-contract-test.js
+- tests/mira-memory-evolution-integration-test.js
+- tests/stage62-work-learning-e2e-test.js
+- tests/stage623-work-knowledge-consolidation-e2e-test.js
+- tests/stage647-experience-retrieval-e2e-test.js
+
+The test files were inspected as source references only. They were NOT executed in this GitHub inspection. Their presence does not establish PASS. No live provider, Facebook, Google Drive, production Memory or migration test was performed.
+
+9. PHASE 1 REMAINING WORK
+
+Completed in this reconciliation:
+- Corrected component paths for the four Learning/Experience components.
+- Reconciled Memory, Drive, storage, backup, restore, Evolution and audit source ownership.
+- Identified direct Drive dependent workflows.
+- Reconciled all 28 CAGR gap IDs against current GitHub source evidence.
+- Recorded Facebook/Group/Web Search implementation evidence gaps.
+- Preserved implementation and production approval boundaries.
+
+Still required before Phase 1 can be fully closed:
+- Verify all persistence paths and callsites against the full current branch, including any newly added files.
+- Produce a final dependency matrix with owner, file path, read/write behavior, data contract, and migration blocker for every persistent store.
+- Review the source audit scope and the four corrected component path classifications.
+- Establish a reproducible isolated test execution record; tests are not executed by this report.
+- Review the full source and test evidence before authorizing Phase 2 changes.
+
+10. SAFETY AND APPROVAL
+
+SOURCE_CODE_MODIFIED=NO
+PRODUCTION_MEMORY_CONTENT_READ=NO
+PRODUCTION_MEMORY_TOUCHED=NO
+LOCAL_OR_DRIVE_DATA_MODIFIED=NO
+FACEBOOK_API_CALLED=NO
+GOOGLE_DRIVE_API_CALLED=NO
+MIGRATION_OR_RESTORE=NO
+RUNTIME_TESTS_EXECUTED=NO
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION=NOT_APPROVED
+RESULT=PHASE1_RECONCILIATION_COMPLETE_WITH_GAPS
+
+This report does not authorize Facebook permissions, Google Drive changes, production migration, restore, deletion, paid services, or deployment. Routine Drive synchronization must remain intact until every dependent workflow has a verified replacement.
