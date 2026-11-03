@@ -90,7 +90,7 @@ try {
   const snapshot = readProjectFile('snapshot-manager.js');
   const localStore = readProjectFile('services/mira-local-memory-store.js');
 
-  check('Evolution source has its own local atomic writer', () => {
+  check('Evolution keeps an atomic adapter over the shared state stores', () => {
     assert.match(evolution, /function\s+atomicWriteJson\s*\(/);
     assert.match(evolution, /atomicWriteJson\s*\(\s*getTargetFile\(target\)\s*,\s*proposed\s*\)/);
   });
