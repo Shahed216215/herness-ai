@@ -121,6 +121,17 @@ try {
   fs.writeFileSync(tamperPath, JSON.stringify(tamperEnvelope));
   assert.equal(verifyConflict({ directory: tamperDir, conflictId: tampered.conflictId }).status, 'INTEGRITY_FAILED');
 
+  const metadataTamperDir = path.join(directory, 'metadata-tamper');
+  const metadataConflict = createConflictQuarantine({
+    directory: metadataTamperDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  const metadataPath = path.join(metadataTamperDir, metadataConflict.conflictId + '.conflict.json');
+  const metadataEnvelope = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+  metadataEnvelope.createdBy = 'tampered-actor';
+  fs.writeFileSync(metadataPath, JSON.stringify(metadataEnvelope));
+  assert.equal(verifyConflict({ directory: metadataTamperDir, conflictId: metadataConflict.conflictId }).status, 'INTEGRITY_FAILED');
+
   const symlinkDir = path.join(directory, 'symlink');
   fs.mkdirSync(symlinkDir);
   const outside = path.join(directory, 'outside');
