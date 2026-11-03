@@ -1,0 +1,136 @@
+MIRA HYBRID MEMORY — PHASE 1 ISOLATED FIXTURE TEST RUNBOOK
+Document: MIRA-HFM-CAGR-001-PHASE1-ISOLATED-FIXTURE-TEST-RUNBOOK
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Required HEAD: 90b48f2816e28686cd499650ff6a5fc6217f0e8a
+Version boundary: v0.2
+Status: READY FOR LOCAL EXECUTION — NOT EXECUTED BY REVIEWER
+
+1. PURPOSE
+
+This runbook executes only source-reviewed, fixture-oriented Memory/Knowledge/Governance tests. It does not run npm test, install packages, fetch remote content, invoke a live model, contact Google Drive, contact Facebook, start the autonomous worker, or run destructive production workflows.
+
+The execution must occur from the exact branch/HEAD above. If the checkout is missing, branch differs, or HEAD differs, the script exits before running tests. It does not git fetch or change branches.
+
+2. SELECTED TESTS
+
+1. tests/mira-local-memory-safety-test.js
+   - MIRA_MEMORY_FILE is fixture-overridden by the test; MIRA_STORAGE_DIR is additionally redirected to an empty temp root to isolate capacity-config.
+2. tests/mira-memory-local-store-contract-test.js
+   - Copies source modules into temp project/store roots and uses temp MIRA_STORAGE_DIR/MIRA_MEMORY_FILE.
+3. tests/mira-memory-evolution-integration-test.js
+   - Uses temp roots and a mocked google-drive adapter; no live Drive API.
+4. tests/mira-research-audit-fail-closed.test.js
+   - Uses a temporary governance ledger and injected audit callback.
+5. tests/mira-research-governance.test.js
+   - Uses temporary governance state.
+6. tests/mira-client-consent.test.js
+   - Uses a temporary consent store and injected audit callback.
+
+3. EXPLICITLY EXCLUDED
+
+- tests/chat36-37-stage16-17.test.js: writes default audit/Stage16-17 state files and restores snapshots.
+- tests/stage121-122-earnings-profitability-e2e-test.js and stage121-122-final-hardening-e2e-test.js: replace existing earnings/cost files.
+- tests/stage62-work-learning-e2e-test.js and stage623-work-knowledge-consolidation-e2e-test.js: default work-learning/consolidation data path requires more isolation proof.
+- Broad npm test: unrelated provider and project tests; not the Hybrid Memory fixture subset.
+- All live provider, Google Drive, Facebook, network, DNS, TLS, socket, SSRF and production restore tests.
+
+4. SINGLE OFFLINE COMMAND
+
+Run from the local clone only. It performs no git fetch, branch switch, package install, or network command. It checks the exact HEAD, redirects known persistence overrides to a fresh temporary directory, unsets provider credentials in the child environment, runs the six selected Node tests, prints concise per-test status, and deletes the temporary fixture directory.
+
+```bash
+cd "$HOME/herness-ai" 2>/dev/null || { echo "INCONCLUSIVE: repository checkout not found"; exit 2; }
+EXPECTED_BRANCH="work/mira-hfm-v025-six-documents"
+EXPECTED_HEAD="90b48f2816e28686cd499650ff6a5fc6217f0e8a"
+ACTUAL_BRANCH="$(git branch --show-current 2>/dev/null)"
+ACTUAL_HEAD="$(git rev-parse HEAD 2>/dev/null)"
+[ "$ACTUAL_BRANCH" = "$EXPECTED_BRANCH" ] || { echo "INCONCLUSIVE: branch mismatch"; exit 2; }
+[ "$ACTUAL_HEAD" = "$EXPECTED_HEAD" ] || { echo "INCONCLUSIVE: HEAD mismatch; no tests run"; exit 2; }
+command -v node >/dev/null 2>&1 || { echo "INCONCLUSIVE: Node.js unavailable"; exit 2; }
+
+TMP_ROOT="$(mktemp -d 2>/dev/null)" || { echo "INCONCLUSIVE: temp directory unavailable"; exit 2; }
+trap 'rm -rf "$TMP_ROOT"' EXIT INT TERM
+
+export MIRA_STORAGE_DIR="$TMP_ROOT/storage"
+export MIRA_MEMORY_FILE="$TMP_ROOT/memory/memory.json"
+export MIRA_AUDIT_FILE="$TMP_ROOT/audit/audit-log.json"
+export MIRA_LEARNING_FILE="$TMP_ROOT/learning/work-learning-records.json"
+export MIRA_STAGE13_STORE="$TMP_ROOT/stage13/stage13-learning-governance.json"
+export MIRA_STAGE13_CAPABILITY_INTEGRATION_STORE="$TMP_ROOT/stage13-capability/stage13-capability-integration.json"
+export MIRA_STAGE16_17_WORKFLOWS_FILE="$TMP_ROOT/workflows/stage16-17-workflows.json"
+export MIRA_WORKER_RESULTS_FILE="$TMP_ROOT/worker/results.jsonl"
+export MIRA_TASK_FILE="$TMP_ROOT/tasks/tasks.json"
+export MIRA_OPPORTUNITY_FILE="$TMP_ROOT/opportunities/opportunities.json"
+export MIRA_RESEARCH_GOVERNANCE_FILE="$TMP_ROOT/research/research-governance.json"
+export MIRA_CHANGE_FILE="$TMP_ROOT/changes/change-proposals.json"
+export MIRA_CAPABILITY_PROFILE_FILE="$TMP_ROOT/capability/capability-profile.json"
+export MIRA_CUSTOM_PROVIDER_CONFIG_PATH="$TMP_ROOT/providers/custom-provider-slots.json"
+export MIRA_AUTONOMOUS_WORKER_ENABLED="false"
+export MIRA_AUTONOMOUS_RESEARCH_ENABLED="false"
+
+unset OPENAI_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY GOOGLE_API_KEY GROQ_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY HF_TOKEN HUGGINGFACEHUB_API_TOKEN XAI_API_KEY TAVILY_API_KEY
+unset MIRA_CREDENTIALS_ENCRYPTION_KEY
+
+FAILED=0
+run_test() {
+  TEST_PATH="$1"
+  TEST_LOG="$TMP_ROOT/$(basename "$TEST_PATH").log"
+  if [ ! -f "$TEST_PATH" ]; then
+    printf 'INCONCLUSIVE  %s  (file missing)\n' "$TEST_PATH"
+    FAILED=1
+    return
+  fi
+  if node "$TEST_PATH" >"$TEST_LOG" 2>&1; then
+    printf 'PASS          %s\n' "$TEST_PATH"
+  else
+    CODE=$?
+    printf 'FAIL          %s  (exit=%s)\n' "$TEST_PATH" "$CODE"
+    tail -n 12 "$TEST_LOG"
+    FAILED=1
+  fi
+}
+
+echo "=== MIRA HFM ISOLATED FIXTURE TESTS ==="
+echo "BRANCH=$ACTUAL_BRANCH"
+echo "HEAD=$ACTUAL_HEAD"
+run_test tests/mira-local-memory-safety-test.js
+run_test tests/mira-memory-local-store-contract-test.js
+run_test tests/mira-memory-evolution-integration-test.js
+run_test tests/mira-research-audit-fail-closed.test.js
+run_test tests/mira-research-governance.test.js
+run_test tests/mira-client-consent.test.js
+
+if [ "$FAILED" -eq 0 ]; then
+  echo "FIXTURE_TEST_RESULT=PASS"
+else
+  echo "FIXTURE_TEST_RESULT=FAIL_OR_INCONCLUSIVE"
+  exit 1
+fi
+```
+
+5. INTERPRETATION
+
+- A PASS means only that the selected test process exited 0 under the fixture environment; it does not certify production data, provider accounts, Facebook/Drive connectors, or deployment readiness.
+- Any missing file, wrong branch/HEAD, missing Node runtime, or test not run is INCONCLUSIVE, never PASS.
+- Logs are stored only under TMP_ROOT and deleted by the trap.
+- No test modifies the Git working tree by design; if any selected test unexpectedly creates a repository-root data file, stop and report the path rather than cleaning it automatically.
+
+6. CURRENT STATUS
+
+RUNBOOK=READY
+TESTS=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+REQUIRED_EXECUTION_ENVIRONMENT=EXACT_LOCAL_BRANCH_CHECKOUT
+PRODUCTION_MEMORY_ACCESS=NONE
+EXTERNAL_PROVIDER_CALLS=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+PACKAGE_INSTALL=NONE
+NETWORK_COMMANDS=NONE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+VERSION=v0.2
+
+END OF RUNBOOK
