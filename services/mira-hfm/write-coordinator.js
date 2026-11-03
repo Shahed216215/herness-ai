@@ -63,6 +63,19 @@ async function appendDurableAudit(audit, event, context) {
   };
 }
 
+function attachGovernanceEvidence(event, context) {
+  for (const key of [
+    'evolutionProposalId',
+    'approvalEvidenceReference',
+    'recoveryPointEvidenceReference'
+  ]) {
+    if (typeof context[key] === 'string' && context[key].trim()) {
+      event[key] = context[key];
+    }
+  }
+  return event;
+}
+
 async function executeGovernedWrite(input) {
   const fail = (status, reason, extra) =>
     Object.assign({ ok: false, status, reason }, extra || {});
@@ -167,7 +180,7 @@ async function executeGovernedWrite(input) {
   }
   const claimId = claim.claimId;
 
-  const intent = {
+  const intent = attachGovernanceEvidence({
     eventId: auditEventId(identity, 'intent'),
     eventType: 'MEMORY_WRITE_INTENT',
     projectId: identity.projectId,
@@ -277,7 +290,7 @@ async function executeGovernedWrite(input) {
     return fail('INTEGRITY_FAILED', 'PROVIDER_VERIFY_MISMATCH', { registry: registryState });
   }
 
-  const completion = {
+  const completion = attachGovernanceEvidence({
     eventId: auditEventId(identity, 'completion'),
     eventType: 'MEMORY_WRITE_COMPLETED',
     projectId: identity.projectId,
