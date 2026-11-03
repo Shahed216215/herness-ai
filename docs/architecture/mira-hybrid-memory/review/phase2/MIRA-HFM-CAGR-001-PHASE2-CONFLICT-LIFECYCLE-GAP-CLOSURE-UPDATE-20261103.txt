@@ -1,0 +1,79 @@
+MIRA HYBRID MEMORY — CONFLICT LIFECYCLE GAP STATUS UPDATE
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-LIFECYCLE-GAP-CLOSURE-UPDATE-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-LIFECYCLE-GAP-ASSESSMENT-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: ISOLATED LIFECYCLE GAPS PARTIALLY CLOSED; PRODUCTION INTEGRATION OPEN
+
+1. VERIFIED IMPLEMENTATION
+
+The additive local-only conflict quarantine registry and synthetic test suite now cover:
+- stable project-scoped conflict identity;
+- two or more competing original versions preserved immutably;
+- malformed/schema-invalid and integrity-failed originals preserved when projectId and memoryId remain identifiable;
+- full-envelope and original-byte SHA-256 integrity verification;
+- project-scoped list/read/verify;
+- project-scoped trusted retrieval-exclusion helper for pending/integrity-failed/retained-quarantined conflicts;
+- exact v0.2.4 Contract §30 outcomes:
+  ACCEPT_EXISTING_VERSION
+  ACCEPT_ALTERNATE_VERSION
+  APPROVED_FIELD_MERGE
+  REJECT_CONFLICTING_CHANGE
+  RETAIN_QUARANTINED
+- explicit accepted-original index for alternate selection and bounds validation;
+- APPROVED_FIELD_MERGE requires one shared memoryId and revision max(original revisions)+1;
+- required resolution proposal binding affected versions, source references, original hashes, access classes, trust states, field-level changes, data-loss risks, required authority, recovery point and verification plan;
+- explicit caller-supplied authorization callback;
+- immutable resolution record and separate resolution verification;
+- idempotent create/resolve retry;
+- atomic immutable publication through fsynced temp file plus exclusive hard-link publication;
+- audit failure fail-closed and retry recovery;
+- invalid conflict ID/path traversal rejection and symlink component rejection.
+
+2. LATEST EVIDENCE
+
+GitHub Actions run 41673854536 (run 215), job 126049053444, SUCCESS.
+The log reports the named outcome, proposal, multi-original, integrity-failed-original, project-scope, atomic-publication and audit-failure regression markers as PASS, TESTS_FAILED=0 and:
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+The run is isolated and synthetic. Logs confirm Production Memory/Knowledge untouched, real Google Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+3. UPDATED GAP REGISTER
+
+CLG-01 — Durable conflict identity and immutable original envelope: PASS_SCOPED_RUN_215.
+CLG-02 — Local quarantine list/read/verify and immutable resolution record: PASS_SCOPED_RUN_215.
+CLG-03 — Project-scoped exclusion helper: PASS_SCOPED_RUN_215; universal trusted retrieval integration: REVIEW_REQUIRED.
+CLG-04 — Contract §30 governed resolution outcomes and proposal binding: PASS_SCOPED_RUN_215.
+CLG-05 — Pre-write conflict validation at every Memory/Knowledge/provider boundary: REVIEW_REQUIRED; no runtime integration.
+CLG-06 — Canonical JCS contentHash recomputation against Contract §26: NOT_IMPLEMENTED; local envelope SHA-256 is not a substitute.
+CLG-07 — Authoritative concurrent append arbitration/provider atomicity: NOT_ESTABLISHED.
+CLG-08 — E-15 independent verifier qualification and evidence custody: REVIEW_REQUIRED.
+
+4. INTEGRATION BOUNDARY
+
+The new registry is not wired into:
+- memory.js / services/mira-local-memory-store.js retrieval or write paths;
+- knowledge.js load/search/get/add/update/delete paths;
+- knowledge-memory-evolution.js direct local state load/write paths;
+- all server routes, background workers, tools, caches, indexes and exports;
+- any production provider adapter.
+
+The existing conversation Memory array (role/content/time) and canonical Memory records are different data models. A separate adapter is required. The legacy Knowledge capacity quarantine envelope is not automatically equivalent to the canonical conflict envelope.
+
+5. STATUS
+
+ISOLATED_CONFLICT_LIFECYCLE=PASS_SCOPED_RUN_215
+UNIVERSAL_RETRIEVAL_EXCLUSION=REVIEW_REQUIRED
+ALL_PROVIDER_PREWRITE_CONFLICT_CHECKS=REVIEW_REQUIRED
+CANONICAL_JCS_CONTENT_HASH_VERIFICATION=NOT_IMPLEMENTED
+CONCURRENT_APPEND_ARBITRATION=NOT_ESTABLISHED
+INDEPENDENT_VERIFIER_E15=REVIEW_REQUIRED
+PRODUCTION_DATA_ACCESSED=NO
+RUNTIME_PRODUCTION_INTEGRATION=NO
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF UPDATE
