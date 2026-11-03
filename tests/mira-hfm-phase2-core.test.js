@@ -8,6 +8,7 @@ const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator
 const { auditProviderReadiness, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
 const { readMemory, searchMemory } = require('../services/mira-hfm/memory-service');
 const { inspectProviderAdapter, requireCapability, createUnavailableProvider } = require('../services/mira-hfm/provider-contract');
+const { validateCapabilityObservation, evaluateCapabilitySet } = require('../services/mira-hfm/capability-observations');
 const { operationRegistryReadiness, claimOperation } = require('../services/mira-hfm/operation-registry');
 const { encryptPayload, decryptPayload, cryptoProviderReadiness } = require('../services/mira-hfm/encryption-contract');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
@@ -79,6 +80,15 @@ function operation(record) {
     policyDecisionId: 'policy-fixture-1',
     requestId: 'request-fixture-1'
   };
+}
+function capabilityObservations(overrides) {
+  const states = Object.assign({ READ: 'AVAILABLE', WRITE: 'AVAILABLE', SEARCH: 'AVAILABLE', VERIFY: 'AVAILABLE', BACKUP: 'UNAVAILABLE', RESTORE: 'UNAVAILABLE' }, overrides || {});
+  return Object.keys(states).map(capability => ({
+    providerId: 'fixture-provider', projectId: 'project-fixture', capability,
+    state: states[capability], checkedAt: '2026-11-03T00:00:00.000Z',
+    expiresAt: '2026-11-03T23:59:00.000Z', permissionScope: [capability],
+    policyVersion: 'fixture-policy', evidenceReference: 'fixture-capability:' + capability
+  }));
 }
 const auditCapabilities = {
   DURABLE_APPEND: true, APPEND_ONLY: true, LOOKUP: true,
@@ -257,6 +267,20 @@ async function main() {
     assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, null, 2));
     assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, 'b'.repeat(64), 1));
   });
+  check('Capability observations enforce project scope, permission scope and expiry', () => {
+    const observation = capabilityObservations()[0];
+    assert.equal(validateCapabilityObservation(observation, {
+      providerId: 'fixture-provider', projectId: 'project-fixture', capability: 'READ'
+    }, '2026-11-03T12:00:00.000Z').status, 'AVAILABLE');
+    assert.equal(validateCapabilityObservation(observation, {
+      providerId: 'fixture-provider', projectId: 'another-project', capability: 'READ'
+    }, '2026-11-03T12:00:00.000Z').status, 'PERMISSION_DENIED');
+    assert.equal(validateCapabilityObservation(Object.assign({}, observation, {
+      expiresAt: '2026-11-03T11:00:00.000Z'
+    }), { providerId: 'fixture-provider', projectId: 'project-fixture', capability: 'READ' },
+    '2026-11-03T12:00:00.000Z').status, 'EXPIRED');
+    assert.equal(evaluateCapabilitySet(capabilityObservations(), ['READ'], context(), 'fixture-provider').valid, true);
+  });
   check('Operation registry requires durable atomic project-scoped claim and completion', () => {
     assert.equal(operationRegistryReadiness(fakeRegistry()).ready, true);
     assert.equal(operationRegistryReadiness({ durable: true }).ready, false);
@@ -340,7 +364,9 @@ async function main() {
   await checkAsync('Read service requires READ capability and verifies canonical integrity', async () => {
     const record = fixtureRecord();
     const provider = {
+      providerId: 'fixture-provider',
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       read: async () => record,
       search: async () => ({ records: [record] })
     };
@@ -349,7 +375,9 @@ async function main() {
     assert.equal(result.status, 'SUCCESS');
     assert.equal(result.record.memoryId, record.memoryId);
     const unavailable = await readMemory({
+      providerId: 'fixture-provider',
       getCapabilities: async () => Object.assign({}, capabilities, { READ: 'UNKNOWN' }),
+      getCapabilityObservations: async () => capabilityObservations({ READ: 'UNKNOWN' }),
       read: async () => record
     }, record.memoryId, readContext);
     assert.equal(unavailable.status, 'NOT_APPROVED');
@@ -361,7 +389,9 @@ async function main() {
   await checkAsync('Read service hides inaccessible records without existence disclosure', async () => {
     const record = fixtureRecord({ access: { classification: 'PROJECT_PRIVATE' } });
     const provider = {
+      providerId: 'fixture-provider',
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       read: async () => record
     };
     const denied = await readMemory(provider, record.memoryId, Object.assign(context(), {
@@ -381,7 +411,9 @@ async function main() {
       trust: { status: 'QUARANTINED' }
     });
     const provider = {
+      providerId: 'fixture-provider',
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       search: async () => ({ records: [visible, hidden, quarantined], nextCursor: 'fixture-cursor' })
     };
     const searchContext = Object.assign(context(), { action: 'search' });
@@ -396,7 +428,9 @@ async function main() {
 
   await checkAsync('Search service rejects unsafe retrieval limits and malformed provider responses', async () => {
     const provider = {
+      providerId: 'fixture-provider',
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       search: async () => ({ records: 'not-an-array' })
     };
     const ctx = Object.assign(context(), { action: 'search' });
@@ -408,8 +442,10 @@ async function main() {
     const record = fixtureRecord();
     let writes = 0;
     const provider = {
+      providerId: 'fixture-provider',
       guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       write: async () => { writes += 1; return { status: 'COMMITTED', revision: 1 }; },
       read: async () => record,
       reconcileOperation: async () => ({ status: 'UNKNOWN' })

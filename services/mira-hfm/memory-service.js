@@ -7,6 +7,7 @@ const {
   isCapabilityAvailable,
   normalizeAdapterError
 } = require('./core');
+const { evaluateCapabilitySet } = require('./capability-observations');
 
 function deniedResult() {
   // Do not reveal whether an inaccessible record exists.
@@ -27,12 +28,13 @@ function validateVisibleRecord(record, context, action) {
 }
 
 async function capabilitiesFor(provider, context) {
-  if (!provider || typeof provider.getCapabilities !== 'function') {
+  if (!provider || typeof provider.getCapabilityObservations !== 'function' || typeof provider.providerId !== 'string') {
     return { ok: false, status: 'NOT_CONFIGURED' };
   }
   try {
-    const capabilities = await provider.getCapabilities(context);
-    return { ok: true, capabilities };
+    const observations = await provider.getCapabilityObservations(context);
+    const evaluated = evaluateCapabilitySet(observations, ['READ', 'SEARCH', 'WRITE', 'VERIFY', 'BACKUP', 'RESTORE'], context, provider.providerId);
+    return { ok: true, capabilities: evaluated.states, observationsValid: evaluated.valid };
   } catch (error) {
     return { ok: false, status: 'UNKNOWN', errorCode: normalizeAdapterError(error) };
   }

@@ -2,6 +2,7 @@
 
 const { auditProviderReadiness, verifyDurableAuditEvent } = require('./audit-contract');
 const { operationRegistryReadiness, claimOperation, markOperationUncertain, completeOperation } = require('./operation-registry');
+const { evaluateCapabilitySet } = require('./capability-observations');
 
 const {
   validateCanonicalRecord,
@@ -101,7 +102,7 @@ async function executeGovernedWrite(input) {
   const accessCheck = evaluateAccess(record, context);
   if (!accessCheck.allowed) return fail('NOT_APPROVED', 'WRITE_ACCESS_DENIED', { accessReason: accessCheck.reason });
 
-  if (typeof provider.getCapabilities !== 'function' ||
+  if (typeof provider.getCapabilityObservations !== 'function' ||
       typeof provider.write !== 'function' ||
       typeof provider.read !== 'function' ||
       typeof provider.reconcileOperation !== 'function') {
@@ -111,13 +112,16 @@ async function executeGovernedWrite(input) {
     return fail('NOT_CONFIGURED', 'DURABLE_AUDIT_REQUIRED');
   }
 
-  let capabilities;
+  let capabilityResult;
   try {
-    capabilities = await provider.getCapabilities(context);
+    const observations = await provider.getCapabilityObservations(context);
+    capabilityResult = evaluateCapabilitySet(observations, ['READ', 'WRITE', 'VERIFY'], context, provider.providerId);
   } catch (error) {
     return fail('UNKNOWN', 'CAPABILITY_LOOKUP_FAILED', { errorCode: normalizeAdapterError(error) });
   }
-  if (!isCapabilityAvailable(capabilities, 'READ') ||
+  const capabilities = capabilityResult.states;
+  if (!capabilityResult.valid ||
+      !isCapabilityAvailable(capabilities, 'READ') ||
       !isCapabilityAvailable(capabilities, 'WRITE') ||
       !isCapabilityAvailable(capabilities, 'VERIFY')) {
     return fail('NOT_APPROVED', 'WRITE_AND_VERIFY_CAPABILITIES_REQUIRED', {
