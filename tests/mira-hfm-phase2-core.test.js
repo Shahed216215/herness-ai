@@ -601,14 +601,14 @@ async function main() {
   });
 
   await checkAsync('Write coordinator rejects stale pre-state revisions before claiming or writing', async () => {
-    const content = 'Phase 2 isolated fixture record'; const record = fixtureRecord({ version: { revision: 2, contentHash: core.createContentHash(content) } });
+    const content = 'Phase 2 isolated fixture record'; const record = fixtureRecord({ version: { revision: 3, contentHash: core.createContentHash(content) } });
     const stale = fixtureRecord(); let writes = 0;
     const provider = { providerId: 'fixture-provider', guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilityObservations: async () => capabilityObservations(), read: async () => stale,
       write: async () => { writes += 1; return commitReceipt(record); },
-      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 2, contentHash: record.version.contentHash }),
+      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 3, contentHash: record.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' }) };
-    const result = await executeGovernedWrite({ record, context: context(), operation: operation(record), provider, registry: fakeRegistry(), audit: fakeAudit([]), expectedRevision: 1 });
+    const result = await executeGovernedWrite({ record, context: context(), operation: operation(record), provider, registry: fakeRegistry(), audit: fakeAudit([]), expectedRevision: 2 });
     assert.equal(result.status, 'CONFLICT'); assert.equal(writes, 0);
   });
 
@@ -857,7 +857,7 @@ async function main() {
       sign: async manifestHash => ({ algorithm: 'TEST-SIGNATURE-V1', keyId: 'fixture-signing-key', proof: 'proof:' + manifestHash }),
       verify: async manifest => ({ verified: true, trustAnchorVerified: true, keyNotRevoked: true, manifestHash: manifest.manifestHash, algorithm: manifest.authenticity.algorithm, keyId: manifest.authenticity.keyId }) };
     const ctx = Object.assign(context(), { action: 'backup', testOnly: true });
-    const pkg = await createEncryptedBackupPackage({ backupId: 'fixture-encrypted-backup', projectId: 'project-fixture', sourceRevision: 'fixture-r1', createdAt: '2026-11-03T00:00:00.000Z', records: [record], context: ctx, backupCapabilityAvailable: true, cryptoProvider, signingProvider });
+    const pkg = await createEncryptedBackupPackage({ backupId: 'fixture-encrypted-backup', projectId: 'project-fixture', sourceRevision: 'fixture-r1', createdAt: '2026-11-03T00:00:00.000Z', records: [record], context: ctx, backupCapabilityAvailable: true, providerId: 'fixture-provider', capabilityObservations: capabilityObservations({ BACKUP: 'AVAILABLE' }), cryptoProvider, signingProvider });
     assert.equal(pkg.status, 'ENCRYPTED_BACKUP_PACKAGE_VERIFIED'); assert.equal(pkg.plaintextPayloadReturned, false); assert.equal(pkg.persistencePerformed, false);
     const verified = await verifyEncryptedBackupPackage({ package: pkg, context: ctx, cryptoProvider, signingProvider });
     assert.equal(verified.valid, true); assert.equal(verified.recordCount, 1); assert.equal(verified.plaintextRecordsReturned, false);

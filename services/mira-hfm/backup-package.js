@@ -1,5 +1,6 @@
 'use strict';
 const { canonicalize, sha256Canonical } = require('./core');
+const { evaluateCapabilitySet } = require('./capability-observations');
 const { encryptPayload, decryptPayload, cryptoProviderReadiness } = require('./encryption-contract');
 const { createBackupManifest, verifyBackupManifest } = require('./backup-manifest');
 function signingProviderReadiness(provider, context) {
@@ -13,7 +14,11 @@ function manifestHashMatches(manifest) {
   try { return manifest.manifestHash === sha256Canonical(base); } catch (_) { return false; }
 }
 async function createEncryptedBackupPackage(input) {
-  if (!input || !input.context || input.context.action !== 'backup' || input.backupCapabilityAvailable !== true || !Array.isArray(input.records) || !input.records.length) return { ok: false, status: 'NOT_APPROVED', reason: 'BACKUP_SCOPE_AND_CAPABILITY_REQUIRED' };
+  if (!input || !input.context || input.context.action !== 'backup' || !Array.isArray(input.records) || !input.records.length || typeof input.providerId !== 'string' || !input.providerId.trim() || !Array.isArray(input.capabilityObservations)) return { ok: false, status: 'NOT_APPROVED', reason: 'BACKUP_SCOPE_AND_CAPABILITY_REQUIRED' };
+  const capability = evaluateCapabilitySet(input.capabilityObservations, ['BACKUP'], input.context, input.providerId);
+  if (!capability.valid || capability.states.BACKUP !== 'AVAILABLE') return { ok: false, status: 'NOT_APPROVED', reason: 'BACKUP_CAPABILITY_UNAVAILABLE_OR_EXPIRED' };
+  const preflight = createBackupManifest(Object.assign({}, input, { encryptionProfile: 'PENDING', keyId: 'PENDING', keyVersion: 'PENDING', backupCapabilityAvailable: true }));
+  if (!preflight.ok) return preflight;
   const cryptoReady = cryptoProviderReadiness(input.cryptoProvider, input.context);
   if (!cryptoReady.ready) return { ok: false, status: cryptoReady.status, reason: cryptoReady.reason };
   const signerReady = signingProviderReadiness(input.signingProvider, input.context);
@@ -38,7 +43,12 @@ async function createEncryptedBackupPackage(input) {
 async function verifyEncryptedBackupPackage(input) {
   if (!input || !input.package || !input.context || !input.package.manifest || !input.package.encryptedPayload) return { valid: false, status: 'VALIDATION_FAILED', reason: 'BACKUP_PACKAGE_INVALID' };
   const manifest = input.package.manifest, envelope = input.package.encryptedPayload;
-  if (!manifestHashMatches(manifest) || manifest.encryptionProfile !== envelope.algorithm || manifest.keyId !== envelope.keyId || manifest.keyVersion !== envelope.keyVersion) return { valid: false, status: 'INTEGRITY_FAILED', reason: 'BACKUP_ENVELOPE_OR_MANIFEST_MISMATCH' };
+  if (input.context.projectId !== manifest.projectId) return { valid: false, status: 'NOT_APPROVED', reason: 'BACKUP_PROJECT_SCOPE_MISMATCH' };
+  if (!manifest.authenticity || manifest.authenticity.status !== 'SIGNED' ||
+      typeof manifest.authenticity.algorithm !== 'string' || !manifest.authenticity.algorithm ||
+      typeof manifest.authenticity.keyId !== 'string' || !manifest.authenticity.keyId ||
+      typeof manifest.authenticity.proof !== 'string' || !manifest.authenticity.proof ||
+      !manifestHashMatches(manifest) || manifest.encryptionProfile !== envelope.algorithm || manifest.keyId !== envelope.keyId || manifest.keyVersion !== envelope.keyVersion) return { valid: false, status: 'INTEGRITY_FAILED', reason: 'BACKUP_ENVELOPE_OR_MANIFEST_MISMATCH' };
   const cryptoReady = cryptoProviderReadiness(input.cryptoProvider, input.context);
   if (!cryptoReady.ready) return { valid: false, status: cryptoReady.status, reason: cryptoReady.reason };
   const signerReady = signingProviderReadiness(input.signingProvider, input.context);
@@ -52,7 +62,6 @@ async function verifyEncryptedBackupPackage(input) {
   try { records = JSON.parse(decrypted.plaintext); if (!Array.isArray(records) || canonicalize(records) !== decrypted.plaintext) return { valid: false, status: 'INTEGRITY_FAILED', reason: 'BACKUP_PAYLOAD_CANONICALIZATION_FAILED' }; } catch (_) { return { valid: false, status: 'INTEGRITY_FAILED', reason: 'BACKUP_PAYLOAD_PARSE_FAILED' }; }
   const verification = verifyBackupManifest(manifest, records, () => proof);
   if (!verification.valid) return { valid: false, status: verification.status, reason: 'BACKUP_MANIFEST_VERIFICATION_FAILED' };
-  if (input.context.projectId !== manifest.projectId) return { valid: false, status: 'NOT_APPROVED', reason: 'BACKUP_PROJECT_SCOPE_MISMATCH' };
   return { valid: true, status: 'VERIFIED', projectId: manifest.projectId, backupId: manifest.backupId, recordCount: manifest.recordCount, payloadHash: manifest.payloadHash, manifestHash: manifest.manifestHash, plaintextRecordsReturned: false, restoreAuthorized: false };
 }
 module.exports = { signingProviderReadiness, createEncryptedBackupPackage, verifyEncryptedBackupPackage };
