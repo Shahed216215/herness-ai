@@ -74,6 +74,23 @@ async function main() {
     );
     fs.writeFileSync(backupPath, backupRaw);
 
+    const corruptKnowledgeBytes = '{corrupt-knowledge-primary';
+    fs.writeFileSync(knowledgeFile, corruptKnowledgeBytes);
+    const corruptRestore = knowledgeRecovery.restoreKnowledge({ confirm: true });
+    assert.equal(corruptRestore.restored, true);
+    assert.deepEqual(
+      stateStore.readJsonArray(knowledgeFile, 'Mira Knowledge'),
+      original
+    );
+    const corruptPrimaryFiles = fs.readdirSync(path.join(root, 'memory-conflicts'))
+      .filter(name => name.startsWith('corrupt-knowledge-primary-'));
+    assert.ok(corruptPrimaryFiles.length >= 1);
+    const preservedCorruptPrimary = JSON.parse(
+      fs.readFileSync(path.join(root, 'memory-conflicts', corruptPrimaryFiles[0]), 'utf8')
+    );
+    assert.equal(preservedCorruptPrimary.rawContent, corruptKnowledgeBytes);
+    assert.equal(preservedCorruptPrimary.sha256, stateStore.sha256(corruptKnowledgeBytes));
+
     // Capacity reduction must preserve every displaced entry in quarantine.
     fs.writeFileSync(
       path.join(root, 'capacity-config.json'),
@@ -117,6 +134,7 @@ async function main() {
     assert.ok(audit.loadAuditLog().some(e => e.action === 'memory_version_restore_committed'));
 
     console.log('KNOWLEDGE_BACKUP_RESTORE=PASS');
+    console.log('CORRUPT_KNOWLEDGE_PRESERVATION=PASS');
     console.log('VERSION_LIST_VERIFY_RESTORE=PASS');
     console.log('TAMPERED_BACKUP_REJECTED=PASS');
     console.log('AUDIT_CHAIN=PASS');
