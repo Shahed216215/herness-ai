@@ -45,7 +45,7 @@ async function main() {
     fs.writeFileSync(file, validBeforeCorruption);
     assert.equal(knowledge.getKnowledge().length, 1);
 
-    console.log('TESTS_PASSED=9');
+    console.log('TESTS_PASSED=10');
     console.log('TESTS_FAILED=0');
     console.log('PRODUCTION_KNOWLEDGE_TOUCHED=NO');
     console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
