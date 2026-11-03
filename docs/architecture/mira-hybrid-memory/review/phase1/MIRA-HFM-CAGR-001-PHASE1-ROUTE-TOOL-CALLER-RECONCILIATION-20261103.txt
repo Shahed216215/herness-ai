@@ -87,7 +87,7 @@ tools/web-search.js
 - /api/admin/mira-provider-evolution -> provider-credential-store.js, custom-provider-config.js, provider status and audit services. Route handles privileged provider credential metadata/set/reveal/delete and runtime/staging configuration files. Reveal returns plaintext credential material to the authorized response; credential file/key contents were not read.
 - /api/mira-evolution -> change-management, apply-engine, artifact-apply-engine, staging, verification, snapshot, and audit services. Its prompts preserve current Memory/Drive behavior; it is not evidence that Drive can be removed.
 - Marketing workflow route -> SEO research route and marketing workflow orchestrator; client profile/consent checks are delegated to tools/services. Consent lookup and public research confirmation are distinct.
-- Client communication/follow-up/profile, opportunity, work acceptance, deliverable, task, capability, and work-economics routes delegate to their corresponding stores/services. No direct fs calls were found in the selected route modules for these domains, but indirect service side effects are not ruled out.
+- Client communication/follow-up/profile, opportunity, work acceptance, deliverable, task, capability, and work-economics routes delegate to their corresponding stores/services. The reviewed provider-evolution route is an exception to the no-direct-route-I/O pattern: it directly reads/writes runtime and staging configuration files and also calls the provider credential store. No direct fs calls were found in most of the other selected route modules, but indirect service side effects are not ruled out.
 
 3. TOOL-TO-STORE / TOOL-TO-PROVIDER GRAPH
 
