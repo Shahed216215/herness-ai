@@ -42,11 +42,16 @@ Prototype C §11.7 references HFM-LOG-001 through HFM-LOG-007 and says they are 
 
 Crosswalk status: REVIEW_REQUIRED. The Blueprint definitions are individually identifiable, but Prototype C's extension semantics cannot be silently folded into the same immutable definitions. Preserve the Blueprint meaning and record C's extended fixture scope as a separate proposed definition or explicit version/supersession only after owner review.
 
-B. HFM-LOG-008 through HFM-LOG-010
+B. Prototype B HFM-LOG-001 through HFM-LOG-010
 
-The DR-08 decision matrix attributes HFM-LOG-001 through HFM-LOG-010 to Prototype B §10. The authoritative Prototype B source and exact per-ID definitions were not available among the source paths inspected in this pass.
+Authoritative source located:
+docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-GAP-CLOSURE-PROTOTYPE-B.md
+Git blob SHA: 3ec3c1fe18c1554539e3e423bb95d76a921aaaf4
+SHA-256: 61562609ad9e8f590010986b69e60a81f161ef5640baa3713141d504016b0b11
 
-Crosswalk status: UNMAPPED / REVIEW_REQUIRED. Do not infer definitions from neighbouring IDs or from HFM-CHAIN tests. Import and hash the authoritative Prototype B source before mapping.
+Prototype B §10 references the family "HFM-LOG-001 through HFM-LOG-010" but does not enumerate individual test definitions in that section. Therefore the source identity/hash is now verified, but semantic per-ID mapping remains unresolved. In particular, HFM-LOG-008 through HFM-LOG-010 have no individually stated definitions in the inspected Prototype B §10 excerpt and must remain unmapped until another authoritative section or source supplies them.
+
+Crosswalk status: SOURCE_LOCATED_AND_HASH_RECONCILED; PER_ID_DEFINITIONS_UNMAPPED / REVIEW_REQUIRED. Do not infer definitions from neighbouring IDs or from HFM-CHAIN tests.
 
 C. HFM-CHAIN-001 through HFM-CHAIN-012
 
@@ -91,7 +96,9 @@ Prototype E §9.2–9.4 requires one definition per test ID, explicit requiremen
 
 BLUEPRINT_HFM_LOG_001_TO_007=DEFINITION_IDENTIFIED
 PROTOTYPE_C_HFM_LOG_001_TO_007=EXTENDED_SCOPE_AMBIGUOUS
-PROTOTYPE_B_HFM_LOG_008_TO_010=UNMAPPED_SOURCE_NOT_RETRIEVED
+PROTOTYPE_B_SOURCE=LOCATED_AND_HASH_RECONCILED
+PROTOTYPE_B_HFM_LOG_001_TO_010=RANGE_ONLY_NO_PER_ID_DEFINITIONS
+PROTOTYPE_B_HFM_LOG_008_TO_010=UNMAPPED_PER_ID_DEFINITION_NOT_ENUMERATED
 PROTOTYPE_D_HFM_CHAIN_001_TO_012=DEFINITION_IDENTIFIED_EXECUTION_NOT_TESTED
 PROTOTYPE_E_REGISTRY_RULES=DESIGN_RULES_IDENTIFIED
 LEGACY_ALIASES_ASSIGNED=0
