@@ -59,18 +59,18 @@ Path: knowledge-memory-evolution.js
 
 The tests cover strict reads, atomic writes, version snapshots, checksum verification, corruption non-overwrite, missing-primary backup fallback, explicit corruption-preserving restore, symlink rejection, conflict quarantine, and Evolution shared-store integration.
 
-Execution evidence: GitHub Actions run 41656326427 checked out the PR merge ref and started the isolated suite. It FAILED at the first test with ReferenceError: versionFile is not defined in services/mira-json-state-store.js:119. The scope defect was corrected in commit 9ce519255377eeb501de34d2018e822b00515a0a by declaring the snapshot path in the enclosing function scope. A Knowledge-specific integration regression test was added afterward. No successful post-fix run/check result has been retrieved yet. Therefore SOURCE_RUNTIME_TESTS=INCONCLUSIVE_PENDING_POST_FIX_RUN; the initial run is recorded as FAIL, not PASS.
+Final verification: GitHub Actions run 41657549043 (run number 61), job 125991798661, Ubuntu 24.04.5 / Node v22.23.4, completed SUCCESS on the Phase 2 source tree. The isolated suite reported: core state-store 20 assertions PASS; Knowledge state safety 14 assertions PASS; Local Memory safety PASS; Local Store contract 8 tests PASS; Evolution integration 9 tests PASS. All reported TESTS_FAILED=0. The contract test now sets a failing process exit code on assertion failures. Logs confirmed PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, and EXTERNAL_ACTIONS=0. Earlier CI failures exposed and corrected a version-path scope defect, a Knowledge version-snapshot expectation, an invalid test regex, and an isolated audit-log fixture omission. The latest run is the authoritative post-fix evidence.
 
 4. PHASE 2 GAP STATUS
 
-HFM-001 — Core Memory Read Failure Safety: PASS_SCOPED_SOURCE_IMPLEMENTATION
-HFM-002 — Atomic Memory Write: PASS_SCOPED_SOURCE_IMPLEMENTATION
-HFM-003 — Data Integrity Verification: PASS_SCOPED_SOURCE_IMPLEMENTATION
-HFM-006 — Safe Restore and Recovery: PASS_SCOPED_MEMORY_IMPLEMENTATION; Knowledge restore-path consolidation remains REVIEW_REQUIRED
-HFM-007 — Memory Version Management: PASS_SCOPED_SOURCE_IMPLEMENTATION; retention/restore tooling remains REVIEW_REQUIRED
-HFM-008 — Conflict Detection and Quarantine: PASS_SCOPED_EVOLUTION_IMPLEMENTATION; other source-conflict classes remain REVIEW_REQUIRED
+HFM-001 — Core Memory Read Failure Safety: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
+HFM-002 — Atomic Memory Write: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
+HFM-003 — Data Integrity Verification: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
+HFM-006 — Safe Restore and Recovery: PASS_SCOPED_MEMORY_RESTORE_AND_ISOLATED_TESTS; Knowledge restore-path consolidation remains REVIEW_REQUIRED
+HFM-007 — Memory Version Management: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS; retention policy and administrative version-recovery tooling remain REVIEW_REQUIRED
+HFM-008 — Conflict Detection and Quarantine: PASS_SCOPED_EVOLUTION_AND_ISOLATED_TESTS; other non-Evolution source-conflict classes remain REVIEW_REQUIRED
 
-Audit integration and consistent audit-failure policy: REVIEW_REQUIRED. The repository's existing audit stream has legacy/HMAC versioning and key-dependent fail-closed behavior. A canonical event envelope and complete state-store audit integration must be implemented against the approved versioned event profile; this report does not invent or certify that profile.
+Audit integration: PASS_SCOPED using the existing tamper-evident audit stream. State writes record intent and committed events; restore records intent/completion; conflict quarantine records a quarantine event. Isolated tests verify the audit chain integrity after these events. The complete canonical event envelope profile (including the approved sequence/previous-event-hash rules, schema registry, and versioned canonicalization contract) remains REVIEW_REQUIRED; this scoped integration does not claim that the broader event-envelope design is complete.
 
 HFM-004 — Routine Google Drive Sync Removal: DEFERRED_TO_PROVIDER_CUTOVER_GATE. Evolution, controlled apply, Knowledge, and learning callers still depend on Drive. Removal without replacement would risk loss of recovery capability.
 HFM-005 — Encrypted Emergency Backup: DEFERRED_TO_BACKUP_SECURITY_GATE. Encryption-key lifecycle, recovery, and compatibility require a separate verified design. Existing plaintext local backup behavior is not represented as encrypted.
@@ -92,15 +92,14 @@ VERSION=v0.2
 
 6. EXIT DECISION
 
-PHASE2_IMPLEMENTATION=IMPLEMENTED_WITH_OPEN_VERIFICATION_AND_GOVERNANCE_GATES
-SOURCE_RUNTIME_TESTS=INCONCLUSIVE_PENDING_POST_FIX_RUN
-INITIAL_CI_RUN=FAIL — VERSION_FILE_SCOPE_REFERENCE_ERROR
-FIX_COMMIT=9ce519255377eeb501de34d2018e822b00515a0a
-AUDIT_POLICY=REVIEW_REQUIRED
+PHASE2_IMPLEMENTATION=CORE_SAFETY_IMPLEMENTED_AND_ISOLATED_TESTED_WITH_RESIDUALS
+SOURCE_RUNTIME_TESTS=PASS_SCOPED — GITHUB_ACTIONS_RUN_41657549043
+AUDIT_INTEGRATION=PASS_SCOPED_EXISTING_HASH_CHAIN
+CANONICAL_AUDIT_EVENT_ENVELOPE=REVIEW_REQUIRED
 KNOWLEDGE_RESTORE_CONSOLIDATION=REVIEW_REQUIRED
 HFM004=DEFERRED
 HFM005=DEFERRED
 
-Phase 2 must not be declared fully closed until the isolated workflow has a verified successful run, audit integration/failure policy is reconciled, and the remaining restore/version/conflict limitations are independently reviewed. No production migration or provider cutover is authorized by this report.
+The Phase 2 core-safety implementation and isolated acceptance suite are complete at the scoped level described above. Full phase closure remains REVIEW_REQUIRED for canonical audit-envelope governance, Knowledge restore-path consolidation, version-retention/recovery tooling, and independent review of remaining conflict classes. HFM-004 and HFM-005 remain separate provider-cutover / encrypted-backup gates. No production migration or provider cutover is authorized by this report.
 
 END OF REPORT
