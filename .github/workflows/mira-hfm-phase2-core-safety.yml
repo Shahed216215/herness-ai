@@ -10,6 +10,7 @@ name: Mira Hybrid Memory Phase 2 Core Safety
 # Structural conflict assessment exposes the initial DETECTED state before quarantine.
 # Trusted retrieval excludes originals during both QUARANTINED and UNDER_REVIEW states.
 # Independent verifier consumes only exported fixtures and externally pinned trust-anchor hashes.
+# Fork regression uses a correctly hashed event with a deliberately invalid predecessor link.
 
 on:
   push:
