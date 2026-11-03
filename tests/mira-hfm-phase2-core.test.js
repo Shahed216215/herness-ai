@@ -394,6 +394,10 @@ async function main() {
     const result = await readMemory(provider, record.memoryId, readContext);
     assert.equal(result.status, 'SUCCESS');
     assert.equal(result.record.memoryId, record.memoryId);
+    const wrongIdentity = await readMemory(Object.assign({}, provider, {
+      read: async () => fixtureRecord({ memoryId: 'memory-fixture-other' })
+    }), record.memoryId, readContext);
+    assert.equal(wrongIdentity.status, 'NOT_FOUND');
     const unavailable = await readMemory({
       providerId: 'fixture-provider',
       getCapabilities: async () => Object.assign({}, capabilities, { READ: 'UNKNOWN' }),
