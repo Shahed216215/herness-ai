@@ -20,10 +20,26 @@ function digest(value) {
   return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 function safeDirectory(directory) {
-  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const stat = fs.lstatSync(directory);
-  if (stat.isSymbolicLink() || !stat.isDirectory()) {
-    throw new Error('Conflict quarantine path is not a safe directory.');
+  const resolved = path.resolve(directory);
+  const root = path.parse(resolved).root;
+  let current = root;
+  const segments = resolved.slice(root.length).split(path.sep).filter(Boolean);
+  for (const segment of segments) {
+    current = path.join(current, segment);
+    try {
+      fs.lstatSync(current);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      try {
+        fs.mkdirSync(current, { mode: 0o700 });
+      } catch (mkdirError) {
+        if (mkdirError.code !== 'EEXIST') throw mkdirError;
+      }
+    }
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) {
+      throw new Error('Conflict quarantine path contains an unsafe directory component.');
+    }
   }
 }
 function readRegularJson(filePath) {
@@ -90,9 +106,9 @@ function createConflictQuarantine({
     reason: String(reason || 'CONFLICT_REQUIRES_REVIEW'),
     createdAt: new Date().toISOString(),
     createdBy: actor,
-    originals,
-    envelopeDigest: digest({ ...identity, conflictId, reason: String(reason || 'CONFLICT_REQUIRES_REVIEW') })
+    originals
   };
+  envelope.envelopeDigest = digest(envelope);
   safeDirectory(directory);
   const target = conflictPath(directory, conflictId);
   let alreadyExists = false;
@@ -149,14 +165,7 @@ function readConflict({ directory, conflictId, projectId }) {
 function verifyConflict({ directory, conflictId, projectId }) {
   const envelope = readConflict({ directory, conflictId, projectId });
   const { envelopeDigest, ...rest } = envelope;
-  const expected = digest({
-    quarantineSchemaVersion: rest.quarantineSchemaVersion,
-    projectId: rest.projectId,
-    conflictTypes: rest.conflictTypes,
-    originals: rest.originals.map(({ memoryId, revision, recordDigest }) => ({ memoryId, revision, recordDigest })),
-    conflictId: rest.conflictId,
-    reason: rest.reason
-  });
+  const expected = digest(rest);
   const originalsValid = rest.originals.length === 2 && rest.originals.every(item =>
     digest(item.record) === item.recordDigest &&
     item.record.memoryId === item.memoryId &&
