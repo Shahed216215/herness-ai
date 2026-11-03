@@ -9,6 +9,7 @@ const {
   canonicalize
 } = require('./core');
 const { evaluateCapabilitySet } = require('./capability-observations');
+const { executeGovernedWrite } = require('./write-coordinator');
 
 function deniedResult() {
   // Do not reveal whether an inaccessible record exists.
@@ -154,4 +155,13 @@ async function searchMemory(provider, query, filters, context) {
   };
 }
 
-module.exports = { readMemory, searchMemory, validateVisibleRecord };
+async function writeMemory(input) {
+  if (!input || !input.context || input.context.action !== 'write' ||
+      input.context.authenticated !== true || input.context.actorAuthorized !== true ||
+      input.context.actionAuthorized !== true || input.context.policyAllowed !== true) {
+    return { ok: false, status: 'NOT_APPROVED', reason: 'GOVERNED_WRITE_CONTEXT_REQUIRED' };
+  }
+  return executeGovernedWrite(input);
+}
+
+module.exports = { readMemory, searchMemory, writeMemory, validateVisibleRecord };

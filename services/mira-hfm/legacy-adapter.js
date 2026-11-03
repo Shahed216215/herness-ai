@@ -8,8 +8,16 @@ const DOMAIN_TYPES = Object.freeze({
   memory: 'fact',
   work_learning: 'lesson',
   conversation_reference: 'conversation_reference',
+  conversation_store: 'conversation_reference',
   experience: 'experience',
-  strategy: 'strategy'
+  experience_memory: 'experience',
+  experience_retrieval: 'research_reference',
+  strategy: 'strategy',
+  future_strategy: 'strategy',
+  cross_task_learning: 'strategy',
+  learning_history: 'lesson',
+  knowledge_consolidation: 'knowledge',
+  google_drive_backup: 'knowledge'
 });
 
 function stableLegacyId(domain, legacyId, projectId) {

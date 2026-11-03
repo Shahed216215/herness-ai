@@ -6,7 +6,7 @@ const path = require('node:path');
 const core = require('../services/mira-hfm/core');
 const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator');
 const { auditProviderReadiness, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
-const { readMemory, searchMemory } = require('../services/mira-hfm/memory-service');
+const { readMemory, searchMemory, writeMemory } = require('../services/mira-hfm/memory-service');
 const { inspectProviderAdapter, requireCapability, createUnavailableProvider } = require('../services/mira-hfm/provider-contract');
 const { validateCapabilityObservation, evaluateCapabilitySet } = require('../services/mira-hfm/capability-observations');
 const { operationRegistryReadiness, claimOperation } = require('../services/mira-hfm/operation-registry');
@@ -352,6 +352,11 @@ async function main() {
     assert.equal(Object.prototype.hasOwnProperty.call(result, 'plaintext'), false);
   });
 
+  check('Provider contract requires independent verification support', () => {
+    const incomplete = { getCapabilityObservations() {}, read() {}, search() {}, write() {}, reconcileOperation() {} };
+    assert.equal(inspectProviderAdapter(incomplete).valid, false);
+    assert.ok(inspectProviderAdapter(incomplete).missingMethods.includes('verify'));
+  });
   check('Provider contract reports independent capability states and no implicit fallback', () => {
     const unavailable = createUnavailableProvider('fixture-provider');
     assert.equal(inspectProviderAdapter(unavailable).valid, true);
@@ -480,6 +485,11 @@ async function main() {
     assert.equal(writes, 0);
   });
 
+  await checkAsync('Canonical write service refuses calls without governed approval context', async () => {
+    const result = await writeMemory({ context: Object.assign(context(), { policyAllowed: false }) });
+    assert.equal(result.status, 'NOT_APPROVED');
+  });
+
   await checkAsync('Write coordinator blocks when durable audit is unavailable', async () => {
     const record = fixtureRecord();
     let writes = 0;
@@ -492,6 +502,7 @@ async function main() {
       getCapabilityObservations: async () => capabilityObservations(),
       write: async () => { writes += 1; return { status: 'COMMITTED', revision: 1 }; },
       read: async () => record,
+      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: record.version.revision, contentHash: record.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
     const result = await executeGovernedWrite({
@@ -518,9 +529,10 @@ async function main() {
         return { status: 'COMMITTED', revision: 1 };
       },
       read: async () => {
-        assert.equal(written, true);
+        if (!written) return null;
         return record;
       },
+      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 1, contentHash: record.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
     const audit = fakeAudit(events);
@@ -541,7 +553,8 @@ async function main() {
       getCapabilities: async () => capabilities,
       getCapabilityObservations: async () => capabilityObservations(),
       write: async () => { writeCalls += 1; return { status: 'UNKNOWN' }; },
-      read: async () => record,
+      read: async () => null,
+      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 1, contentHash: record.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
     const auditEvents = [];
@@ -562,7 +575,8 @@ async function main() {
       getCapabilities: async () => capabilities,
       getCapabilityObservations: async () => capabilityObservations(),
       write: async () => ({ status: 'COMMITTED', revision: 1 }),
-      read: async () => record,
+      read: async () => appendCount === 0 ? null : record,
+      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 1, contentHash: record.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
     const auditEvents = [];
@@ -592,6 +606,14 @@ async function main() {
     assert.equal(mapped.migrationPerformed, false);
     assert.equal(mapped.record.trust.status, 'UNVERIFIED');
     assert.equal(mapped.record.lifecycle, 'PENDING_REVIEW');
+  });
+  check('Legacy mapper supports all documented v0.2 domains without migration', () => {
+    const domains = ['conversation_store', 'experience_memory', 'experience_retrieval', 'future_strategy', 'cross_task_learning', 'learning_history', 'knowledge_consolidation', 'google_drive_backup'];
+    for (const domain of domains) {
+      const result = mapLegacyRecord({ domain, projectId: 'project-fixture', observedAt: '2026-11-03T00:00:00.000Z', record: { id: domain + '-1', content: 'fixture content' } });
+      assert.equal(result.ok, true, domain);
+      assert.equal(result.migrationPerformed, false, domain);
+    }
   });
   check('Legacy mapper rejects missing provenance and content', () => {
     assert.equal(mapLegacyRecord({ domain: 'memory', projectId: 'p', observedAt: '2026-11-03T00:00:00Z', record: { id: '1' } }).ok, false);

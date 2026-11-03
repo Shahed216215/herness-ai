@@ -4,7 +4,7 @@ const { CAPABILITIES, capabilityState } = require('./core');
 const { evaluateCapabilitySet } = require('./capability-observations');
 
 function inspectProviderAdapter(adapter) {
-  const requiredMethods = ['getCapabilityObservations', 'read', 'search', 'write', 'reconcileOperation'];
+  const requiredMethods = ['getCapabilityObservations', 'read', 'search', 'write', 'verify', 'reconcileOperation'];
   const missingMethods = requiredMethods.filter(name => !adapter || typeof adapter[name] !== 'function');
   const states = {};
   for (const capability of CAPABILITIES) {
@@ -55,6 +55,7 @@ function createUnavailableProvider(providerId) {
     read: unavailable,
     search: unavailable,
     write: unavailable,
+    verify: unavailable,
     reconcileOperation: unavailable
   });
 }

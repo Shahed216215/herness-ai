@@ -105,6 +105,7 @@ async function executeGovernedWrite(input) {
   if (typeof provider.getCapabilityObservations !== 'function' ||
       typeof provider.write !== 'function' ||
       typeof provider.read !== 'function' ||
+      typeof provider.verify !== 'function' ||
       typeof provider.reconcileOperation !== 'function') {
     return fail('NOT_SUPPORTED', 'PROVIDER_CONTRACT_INCOMPLETE');
   }
@@ -133,6 +134,26 @@ async function executeGovernedWrite(input) {
       writeCapability: capabilities && capabilities.WRITE || 'UNKNOWN',
       verifyCapability: capabilities && capabilities.VERIFY || 'UNKNOWN'
     });
+  }
+
+  let preState;
+  try {
+    preState = await provider.read(record.memoryId, context);
+  } catch (error) {
+    return fail('PROVIDER_ERROR', 'PREWRITE_STATE_READ_FAILED', { errorCode: normalizeAdapterError(error) });
+  }
+  if (input.expectedRevision === 0) {
+    if (preState !== null && preState !== undefined) {
+      return fail('CONFLICT', 'CREATE_TARGET_ALREADY_EXISTS');
+    }
+  } else {
+    const preCheck = validateCanonicalRecord(preState);
+    if (!preCheck.valid || preState.memoryId !== record.memoryId ||
+        preState.projectId !== record.projectId ||
+        preState.version.revision !== input.expectedRevision ||
+        preState.integrity.status !== 'VERIFIED' || !verifyContentHash(preState).valid) {
+      return fail('CONFLICT', 'PREWRITE_REVISION_OR_INTEGRITY_MISMATCH', { errors: preCheck.errors || [] });
+    }
   }
 
   const claim = await claimOperation(input.registry, identity, context);
@@ -232,6 +253,25 @@ async function executeGovernedWrite(input) {
     return fail('INTEGRITY_FAILED', 'READBACK_VERIFICATION_FAILED', {
       revision: writeResult.revision, errors: readbackCheck.errors || [], registry: registryState
     });
+  }
+
+  let providerVerification;
+  try {
+    providerVerification = await provider.verify(record.memoryId, Object.assign({}, context, {
+      expectedRevision: writeResult.revision,
+      expectedContentHash: record.version.contentHash
+    }));
+  } catch (error) {
+    const registryState = await markOperationUncertain(input.registry, identity, claimId, 'PROVIDER_VERIFY_FAILED', context);
+    return fail('RECOVERY_REQUIRED', 'PROVIDER_VERIFY_FAILED', { errorCode: normalizeAdapterError(error), registry: registryState });
+  }
+  if (!providerVerification || providerVerification.status !== 'VERIFIED' ||
+      providerVerification.memoryId !== record.memoryId ||
+      providerVerification.projectId !== record.projectId ||
+      providerVerification.revision !== writeResult.revision ||
+      providerVerification.contentHash !== record.version.contentHash) {
+    const registryState = await markOperationUncertain(input.registry, identity, claimId, 'PROVIDER_VERIFY_MISMATCH', context);
+    return fail('INTEGRITY_FAILED', 'PROVIDER_VERIFY_MISMATCH', { registry: registryState });
   }
 
   const completion = {
