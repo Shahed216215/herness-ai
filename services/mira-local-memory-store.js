@@ -311,11 +311,30 @@ function restoreMemory() {
     corruptPrimaryPreserved = true;
   }
 
+  jsonStateStore.recordStateAudit('memory_restore_intent', 'pending', MEMORY_FILE, {
+    backupHash: entriesHash(backup.entries),
+    backupIntegrity: backup.integrity,
+    entryCount: backup.entries.length
+  });
+
   // Corrupt bytes have been preserved verbatim, so explicit restore may replace
   // that known-bad regular file using the verified atomic writer.
   const result = corruptPrimaryPreserved
     ? atomicWriteJson(MEMORY_FILE, backup.entries, 'Mira Memory restore')
     : writeMemory(backup.entries);
+
+  try {
+    jsonStateStore.recordStateAudit('memory_restore_committed', 'success', MEMORY_FILE, {
+      stateHash: result.sha256,
+      entryCount: result.entries,
+      backupIntegrity: backup.integrity,
+      corruptPrimaryPreserved
+    });
+  } catch (error) {
+    error.code = 'MEMORY_RESTORE_COMMITTED_AUDIT_FAILED';
+    error.stateCommitted = true;
+    throw error;
+  }
 
   return {
     success: true,
