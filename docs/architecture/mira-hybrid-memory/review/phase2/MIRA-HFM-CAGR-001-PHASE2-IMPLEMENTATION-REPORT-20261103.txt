@@ -198,3 +198,16 @@ No production Memory/Knowledge access, provider cutover, Drive API call, Faceboo
 
 FULL_PHASE2=REVIEW_REQUIRED
 PRODUCTION_READINESS=NOT_CERTIFIED
+
+
+11. POST-RUN-155 QUARANTINE HARDENING — PENDING CI
+
+After run 155, the isolated quarantine writer was changed to publish immutable records by writing and fsyncing a private temporary file, then atomically hard-linking it to the final immutable name without overwrite. Temporary files are cleaned up on handled failures. Regression coverage now includes temporary-file cleanup and the REJECT_INCOMING resolution decision.
+
+The latest service and test source were fetched from the branch and syntax-parsed successfully. However, no fresh GitHub Actions run/job log has been returned for these post-run-155 changes. Therefore:
+- Atomic hard-link publication and temporary-file cleanup: INCONCLUSIVE pending CI.
+- REJECT_INCOMING resolution test: INCONCLUSIVE pending CI.
+- The previously recorded run-155 PASS applies only to the exact source/test version executed by that run.
+- No claim is made that the current branch head has passed CI after these additional edits.
+
+A harmless workflow comment was added to the workflow file to make the latest isolated coverage intent explicit; no workflow execution result is yet available for the latest head.
