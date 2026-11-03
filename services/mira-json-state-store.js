@@ -116,7 +116,7 @@ function writeArrayState(filePath, entries, label = 'State') {
   }
 
   const result = atomicWriteJson(filePath, entries, label);
-  return { ...result, versionFile: version ? path.basename(version.source || '') : null };
+  return { ...result, versionFile: version ? versionFile : null };
 }
 
 function quarantineConflict(directory, name, payload, metadata = {}) {
