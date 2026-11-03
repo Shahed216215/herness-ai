@@ -6,6 +6,12 @@ on:
       - work/mira-hfm-v02-phase2-core-safety
     paths:
       - 'knowledge.js'
+      - 'tools/knowledge-backup.js'
+      - 'tools/knowledge-restore.js'
+      - 'tools/memory-version-recovery.js'
+      - 'services/mira-knowledge-state-recovery.js'
+      - 'services/mira-state-version-recovery.js'
+      - 'tests/mira-phase2-recovery-regression.test.js'
       - 'services/mira-json-state-store.js'
       - 'services/mira-local-memory-store.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
@@ -19,6 +25,12 @@ on:
       - main
     paths:
       - 'knowledge.js'
+      - 'tools/knowledge-backup.js'
+      - 'tools/knowledge-restore.js'
+      - 'tools/memory-version-recovery.js'
+      - 'services/mira-knowledge-state-recovery.js'
+      - 'services/mira-state-version-recovery.js'
+      - 'tests/mira-phase2-recovery-regression.test.js'
       - 'services/mira-json-state-store.js'
       - 'services/mira-local-memory-store.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
@@ -54,6 +66,7 @@ jobs:
           export MIRA_TEST_OFFLINE_DRIVE=1
           node tests/mira-hfm-phase2-core-safety.test.js
           node tests/mira-knowledge-state-safety-test.js
+          node tests/mira-phase2-recovery-regression.test.js
           node tests/mira-local-memory-safety-test.js
           node tests/mira-memory-local-store-contract-test.js
           node tests/mira-memory-evolution-integration-test.js
