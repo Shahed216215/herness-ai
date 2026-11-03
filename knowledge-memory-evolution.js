@@ -767,16 +767,39 @@ async function prepareEvolution(
         );
 
       if (!reconciliation.valid) {
+        let quarantine;
+        try {
+          quarantine = jsonStateStore.quarantineConflict(
+            path.dirname(getTargetFile(target)),
+            `evolution-${target}`,
+            { local: current, drive: driveState },
+            {
+              target,
+              proposalId,
+              localHash,
+              driveHash,
+              reason: reconciliation.reason,
+              firstDifferenceIndex: reconciliation.firstDifferenceIndex
+            }
+          );
+        } catch (quarantineError) {
+          return {
+            ok: false,
+            status: "conflict_quarantine_failed",
+            localHash,
+            driveHash,
+            error: quarantineError.message
+          };
+        }
+
         return {
           ok: false,
-          status:
-            "local_drive_mismatch",
+          status: "local_drive_mismatch",
           localHash,
           driveHash,
-          reason:
-            reconciliation.reason,
-          firstDifferenceIndex:
-            reconciliation.firstDifferenceIndex
+          reason: reconciliation.reason,
+          firstDifferenceIndex: reconciliation.firstDifferenceIndex,
+          quarantine
         };
       }
 
@@ -786,14 +809,39 @@ async function prepareEvolution(
       if (
         proposedHash !== localHash
       ) {
+        let quarantine;
+        try {
+          quarantine = jsonStateStore.quarantineConflict(
+            path.dirname(getTargetFile(target)),
+            `evolution-${target}-proposal`,
+            { local: current, drive: driveState, proposed },
+            {
+              target,
+              proposalId,
+              localHash,
+              driveHash,
+              proposedHash,
+              reason: "RECONCILIATION_PROPOSAL_DIFFERS_FROM_LOCAL"
+            }
+          );
+        } catch (quarantineError) {
+          return {
+            ok: false,
+            status: "conflict_quarantine_failed",
+            localHash,
+            driveHash,
+            proposedHash,
+            error: quarantineError.message
+          };
+        }
+
         return {
           ok: false,
-          status:
-            "reconciliation_proposal_mismatch",
-          error:
-            "For reconciliation, proposed state must exactly equal the verified Local state.",
+          status: "reconciliation_proposal_mismatch",
+          error: "For reconciliation, proposed state must exactly equal the verified Local state.",
           localHash,
-          proposedHash
+          proposedHash,
+          quarantine
         };
       }
     }
