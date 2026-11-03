@@ -1,0 +1,113 @@
+MIRA HYBRID MEMORY
+PHASE 1 — WORKER AND STORE RECONCILIATION ADDENDUM
+Document ID: MIRA-HFM-CAGR-001-PHASE1-WORKER-STORE-RECONCILIATION-20261103
+Version: v0.2 review artifact (additive; no release/version promotion)
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed branch HEAD before this report: afbb0a409b0caa4b16e3e2b7118c6c7ef0393051
+Review date: 2026-11-03
+Status: PARTIAL SOURCE REVIEW — PHASE 1 REMAINS INCOMPLETE
+
+1. SAFETY AND SCOPE
+This is an additive Phase 1 documentation/source review only.
+No application source code was changed. No tests were executed. No production Memory content or provider credentials were read. No Drive/Facebook/API call was made. No production data was backed up, restored, migrated, or modified. No package was installed.
+The report is based on targeted source retrieval from the named GitHub branch. It is not a repository-wide source-text scan.
+
+2. CURRENT BRANCH TREE
+Before adding this report:
+- BRANCH_HEAD=afbb0a409b0caa4b16e3e2b7118c6c7ef0393051
+- TREE_ENTRIES=617
+- TREE_TRUNCATED=NO
+The earlier tree count of 616 was measured before the preceding report commit. The count of 617 includes the preceding report artifact. This is a path inventory only.
+
+3. NEW FINDING — PROJECT SCHEDULE STORE IMPORT TARGET MISSING
+The following source files import ../project-schedule-store:
+- services/mira-project-schedule-planning-service.js
+- tests/stage925-project-schedule-store-unit-test.js
+- tests/stage925-project-schedule-planning-service-unit-test.js
+
+The current recursive branch tree contains no project-schedule-store.js and no alternative path with a schedule-store name. A direct GitHub fetch for project-schedule-store.js returned NOT_FOUND (404).
+The service import is therefore unresolved in the inspected branch tree. Any runtime path that requires services/mira-project-schedule-planning-service.js is at risk of a MODULE_NOT_FOUND failure. This is a source-level finding; no runtime test was executed, so runtime impact remains REVIEW_REQUIRED until a safe isolated verification can be designed.
+The inspected server.js and routes/task-planning.js did not show a direct import of this planning service in the targeted search. Therefore do not claim the main server startup is currently blocked by this missing module. The schedule planning service and its Stage 9.2.5 tests are the confirmed affected importers.
+The Stage 9.2.5 store and planning-service tests directly read and write project, acceptance, schedule, and task store files to preserve/restore state. They were not run. These tests must not be run against production data or a live storage root; future verification must use isolated temporary fixtures and injected paths.
+
+4. AUTONOMOUS WORKER — STARTUP, OPT-IN, AND PERSISTENCE
+server.js imports startAutonomousWorker and calls it after the HTTP server listen callback. The worker is therefore part of the server startup path.
+services/mira-autonomous-worker.js has an explicit opt-in:
+- MIRA_AUTONOMOUS_WORKER_ENABLED must equal "true"; otherwise it returns disabled.
+- MIRA_AUTONOMOUS_WORKER_INTERVAL_MS is bounded to 10,000–300,000 ms; default is 30,000 ms.
+- On opt-in, it starts an interval and immediately invokes runOnce().
+- A second opt-in, MIRA_AUTONOMOUS_RESEARCH_ENABLED, is required for the research branch.
+- It processes at most one task per tick and uses low-risk/new task selection in the inspected path.
+Persistence and side effects:
+- Worker result JSONL: MIRA_WORKER_RESULTS_FILE override, otherwise storagePath("data/autonomous-worker-results.jsonl").
+- Research budget: storagePath("data/autonomous-research-budget.json").
+- Research reports: storagePath("reports") with a task-derived filename.
+- It reads/writes the budget file, appends worker result records, writes research reports, and updates task status through task-store.
+- task-store itself uses MIRA_TASK_FILE override or storagePath("data/tasks.json").
+This adds worker output, research budget, reports, and task status to the persistence/caller inventory. The worker was not started or invoked during this review. No network search or task execution was performed.
+
+5. ADDITIONAL STORE INVENTORY
+The following durable stores were inspected and should be added to the Phase 1 persistence matrix:
+- project-store.js: storagePath("data/projects.json")
+- task-store.js: MIRA_TASK_FILE override or storagePath("data/tasks.json")
+- work-acceptance-store.js: storagePath("data/work-acceptances.json")
+- client-profile-store.js: storagePath("client-profiles.json")
+- client-communication-store.js: storagePath("data/client-communications.json")
+- client-follow-up-store.js: storagePath("data/client-follow-ups.json")
+- deliverable-store.js: storagePath("data/deliverables.json")
+- opportunity-store.js: MIRA_OPPORTUNITY_FILE override or storagePath("data/opportunities.json")
+- services/mira-client-consent-store.js: storagePath("client-consents.json")
+- services/mira-seo-workflow-store.js: storagePath("mira-seo-workflow-records.json"), with lock directory operations
+These stores use the shared storage resolver, but their different relative paths and caller/retention/backup/audit behavior still need compatibility mapping.
+
+6. ADDITIONAL STORAGE-ROOT DIVERGENCE — PROVIDER CREDENTIAL STORE
+services/provider-credential-store.js sets its default file to path.join(__dirname, '..', 'data', 'provider-credentials.enc.json'), rather than storagePath(...). This default is project-root scoped and does not follow MIRA_STORAGE_DIR. The source implements AES-256-GCM encryption and requires MIRA_CREDENTIALS_ENCRYPTION_KEY of at least 32 UTF-8 bytes when accessing encrypted data. No credential file or key value was read. This is a path-governance divergence to assess, not an instruction to move or alter credential storage. Credential handling remains outside the authorized work.
+
+7. EXISTING ROOT DIVERGENCE RECONFIRMED
+- snapshot-manager.js uses PROJECT_ROOT/backups/changes and does not use mira-storage in its inspected initialization.
+- mira-storage.js resolves MIRA_STORAGE_DIR and seeds a missing target from a bounded regular non-symlink project-root file, excluding selected credential/token filenames. The seed operation is a storage side effect when storagePath is invoked with MIRA_STORAGE_DIR enabled; it was not invoked in this review.
+- MIRA_MEMORY_FILE, MIRA_AUDIT_FILE, MIRA_LEARNING_FILE, MIRA_STAGE13_STORE, MIRA_WORKER_RESULTS_FILE, MIRA_TASK_FILE, and MIRA_OPPORTUNITY_FILE are distinct path overrides found across inspected components. They require a consolidated precedence/containment matrix.
+- Legacy Knowledge cleanup/backup/restore direct project-root paths remain as recorded in earlier addenda.
+
+8. REVIEW STATUS
+- Additional source files listed in this review: 18 (server, worker, queue/schedule, stores, storage, audit, snapshot modules; some were reviewed in targeted line ranges).
+- Current recursive tree: 617 entries, not truncated.
+- Full repository source-text scan: NOT_EXECUTED.
+- Persistence matrix: EXPANDED, STILL PARTIAL.
+- Background worker persistence/callers: PARTIALLY RECONCILED.
+- Project schedule store import: MISSING_FROM_BRANCH_TREE / REVIEW_REQUIRED.
+- Provider credential store storage root: PROJECT_ROOT_DEFAULT / DIVERGENCE_CONFIRMED.
+- Tests: NOT_EXECUTED.
+- Production data access: NONE.
+- Application source changes: NONE.
+- Phase 1 closure: BLOCKED.
+- Implementation: NOT_STARTED.
+- Production migration: NOT_APPROVED.
+
+9. NEXT REQUIRED WORK
+1. Confirm the intended project-schedule-store module location from branch history/commit context or an explicitly supplied source; do not invent or recreate it during review.
+2. Extend caller compatibility mapping for project, task, acceptance, client, deliverable, opportunity, consent, SEO workflow, and worker stores.
+3. Consolidate all path overrides and defaults, including credential storage and snapshot artifacts, into one path-governance table.
+4. Continue inventory of routes, scripts, services, background workers, and indirect call chains.
+5. Design isolated temporary-fixture tests only; do not execute tests that write to the project’s active stores.
+6. Complete C01–C07 evidence before declaring Phase 1 closed.
+
+FINAL STATUS
+TREE_ENTRIES_BEFORE_REPORT=617
+TREE_TRUNCATED=NO
+PROJECT_SCHEDULE_STORE_IMPORT=MISSING_FROM_BRANCH_TREE
+SCHEDULE_TESTS=NOT_EXECUTED
+AUTONOMOUS_WORKER=EXPLICIT_OPT_IN_CONFIRMED
+WORKER_PERSISTENCE=PARTIALLY_RECONCILED
+PROVIDER_CREDENTIAL_STORAGE_ROOT_DIVERGENCE=CONFIRMED
+REPOSITORY_WIDE_SOURCE_TEXT_SCAN=NOT_EXECUTED
+PRODUCTION_DATA_ACCESS=NONE
+SOURCE_CODE_CHANGES=NONE
+TESTS=NOT_EXECUTED
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+
+END OF REPORT
