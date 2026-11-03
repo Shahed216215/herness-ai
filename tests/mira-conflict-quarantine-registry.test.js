@@ -77,6 +77,8 @@ try {
   assert.equal(mainReview.status, 'UNDER_REVIEW');
   assert.equal(verifyReview({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'UNDER_REVIEW');
+  assert.deepEqual(filterTrustedRecords([originalA, originalB],
+    listConflicts({ directory, projectId: 'project-a' }), 'project-a'), []);
   assert.equal(startReview(directory, created.conflictId).status, 'ALREADY_UNDER_REVIEW');
   assert.throws(() => beginConflictReview({
     directory, conflictId: created.conflictId, projectId: 'project-a',
@@ -359,6 +361,7 @@ try {
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS');
   console.log('CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS');
+  console.log('UNDER_REVIEW_RETRIEVAL_EXCLUSION=PASS');
   console.log('CONTRACT_REJECTED_AND_RETAINED_STATES=PASS');
   console.log('REVIEW_AUTHORIZATION_AND_IDEMPOTENCY=PASS');
   console.log('REVIEW_AUDIT_FAILURE_RECOVERY=PASS');
