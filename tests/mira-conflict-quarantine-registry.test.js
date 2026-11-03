@@ -63,7 +63,7 @@ try {
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
     decision: 'MERGE', actor: 'reviewer', policyDecision: 'POLICY-1',
-    mergedRecord: invalidMerge, auditWriter
+    mergedRecord: invalidMerge, auditWriter, authorizeResolution
   }), /increment exactly once/);
 
   const resolution = resolveConflict({
