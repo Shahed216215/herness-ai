@@ -1,0 +1,61 @@
+name: Mira Hybrid Memory Phase 2 Core Safety
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase2-core-safety
+    paths:
+      - 'knowledge.js'
+      - 'services/mira-json-state-store.js'
+      - 'services/mira-local-memory-store.js'
+      - 'tests/mira-hfm-phase2-core-safety.test.js'
+      - 'tests/mira-local-memory-safety-test.js'
+      - 'tests/mira-memory-local-store-contract-test.js'
+      - 'tests/mira-memory-evolution-integration-test.js'
+      - '.github/workflows/mira-hfm-phase2-core-safety.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'knowledge.js'
+      - 'services/mira-json-state-store.js'
+      - 'services/mira-local-memory-store.js'
+      - 'tests/mira-hfm-phase2-core-safety.test.js'
+      - 'tests/mira-local-memory-safety-test.js'
+      - 'tests/mira-memory-local-store-contract-test.js'
+      - 'tests/mira-memory-evolution-integration-test.js'
+      - '.github/workflows/mira-hfm-phase2-core-safety.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-core-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run isolated Phase 2 core safety tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset OPENAI_API_KEY GROQ_API_KEY GEMINI_API_KEY GOOGLE_APPLICATION_CREDENTIALS
+          unset GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_REFRESH_TOKEN
+          export MIRA_TEST_OFFLINE_DRIVE=1
+          node tests/mira-hfm-phase2-core-safety.test.js
+          node tests/mira-local-memory-safety-test.js
+          node tests/mira-memory-local-store-contract-test.js
+          node tests/mira-memory-evolution-integration-test.js
+          echo "PRODUCTION_MEMORY_TOUCHED=NO"
+          echo "REAL_GOOGLE_DRIVE_TOUCHED=NO"
+          echo "NETWORK_REQUESTS=0"
+          echo "EXTERNAL_ACTIONS=0"
