@@ -9,6 +9,7 @@ on:
       - 'services/mira-json-state-store.js'
       - 'services/mira-local-memory-store.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
+      - 'tests/mira-knowledge-state-safety-test.js'
       - 'tests/mira-local-memory-safety-test.js'
       - 'tests/mira-memory-local-store-contract-test.js'
       - 'tests/mira-memory-evolution-integration-test.js'
@@ -52,6 +53,7 @@ jobs:
           unset GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_REFRESH_TOKEN
           export MIRA_TEST_OFFLINE_DRIVE=1
           node tests/mira-hfm-phase2-core-safety.test.js
+          node tests/mira-knowledge-state-safety-test.js
           node tests/mira-local-memory-safety-test.js
           node tests/mira-memory-local-store-contract-test.js
           node tests/mira-memory-evolution-integration-test.js
