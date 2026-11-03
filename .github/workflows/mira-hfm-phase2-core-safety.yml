@@ -1,6 +1,7 @@
 name: Mira Hybrid Memory Phase 2 Core Safety
 # v0.2 follow-up: include isolated conflict-quarantine lifecycle regression coverage.
 # Retrieval exclusion tests assert project-scoped filtering; no provider or production integration.
+# Resolution outcome set is aligned to Contract v0.2.4 Section 30.
 
 on:
   push:
