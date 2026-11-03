@@ -77,3 +77,23 @@ VERSION=v0.2
 FULL_PHASE2=REVIEW_REQUIRED
 
 END OF UPDATE
+
+
+6. CONTRACT STATE MACHINE FOLLOW-UP — RUN 249
+
+The structural assessor now exposes state DETECTED for classified conflicts. The registry implements the next state transitions:
+DETECTED (assessor result) -> QUARANTINED -> UNDER_REVIEW -> RESOLVED or REJECTED.
+RETAIN_QUARANTINED leaves the record in QUARANTINED.
+
+Resolution is blocked unless a separately authorized, integrity-verified UNDER_REVIEW record exists. Retrieval filtering blocks originals while QUARANTINED and UNDER_REVIEW, as well as integrity-failed and retained-quarantined cases.
+
+GitHub Actions run 41676126277 (run 249), job 126057092567, SUCCESS. Named markers:
+CONFLICT_STATE_DETECTED=PASS
+CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS
+UNDER_REVIEW_RETRIEVAL_EXCLUSION=PASS
+REVIEW_AUTHORIZATION_AND_IDEMPOTENCY=PASS
+REVIEW_AUDIT_FAILURE_RECOVERY=PASS
+CONTRACT_REJECTED_AND_RETAINED_STATES=PASS
+TESTS_FAILED=0
+
+These results remain scoped to isolated synthetic fixtures. They do not establish production integration or provider write-boundary enforcement.
