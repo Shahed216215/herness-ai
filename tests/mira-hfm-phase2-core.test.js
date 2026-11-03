@@ -9,6 +9,7 @@ const { auditProviderReadiness, createAuditEventHash } = require('../services/mi
 const { readMemory, searchMemory } = require('../services/mira-hfm/memory-service');
 const { inspectProviderAdapter, requireCapability, createUnavailableProvider } = require('../services/mira-hfm/provider-contract');
 const { operationRegistryReadiness, claimOperation } = require('../services/mira-hfm/operation-registry');
+const { encryptPayload, decryptPayload, cryptoProviderReadiness } = require('../services/mira-hfm/encryption-contract');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
 const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
 const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
@@ -260,6 +261,70 @@ async function main() {
     assert.equal(operationRegistryReadiness(fakeRegistry()).ready, true);
     assert.equal(operationRegistryReadiness({ durable: true }).ready, false);
   });
+  await checkAsync('Operation registry atomically prevents concurrent duplicate claims and changed-payload reuse', async () => {
+    const store = fakeRegistry();
+    const record = fixtureRecord();
+    const op = operation(record);
+    const [first, second] = await Promise.all([
+      claimOperation(store, op, context()),
+      claimOperation(store, op, context())
+    ]);
+    assert.deepEqual([first.status, second.status].sort(), ['CLAIMED', 'IN_PROGRESS']);
+    const claimed = first.status === 'CLAIMED' ? first : second;
+    await store.complete({
+      identity: op, claimId: claimed.claimId,
+      identityHash: core.sha256Canonical(op),
+      result: { status: 'COMPLETED', revision: 1 }
+    }, context());
+    assert.equal((await claimOperation(store, op, context())).status, 'REPLAY_COMMITTED');
+    assert.equal((await claimOperation(store, Object.assign({}, op, {
+      payloadHash: 'f'.repeat(64)
+    }), context())).status, 'PAYLOAD_CONFLICT');
+  });
+
+  await checkAsync('Encryption contract fails closed without approved key provider', async () => {
+    assert.equal(cryptoProviderReadiness(null, context()).ready, false);
+    assert.equal((await encryptPayload(null, 'fixture', context())).status, 'NOT_APPROVED');
+    assert.equal((await decryptPayload(null, {}, context())).status, 'NOT_APPROVED');
+  });
+
+  await checkAsync('AEAD envelope contract rejects malformed envelopes and never returns plaintext on encrypt', async () => {
+    const provider = {
+      approvedProfile: true, algorithmProfile: 'TEST-ONLY-AEAD', testOnly: true,
+      encrypt: async plaintext => ({
+        algorithm: 'TEST-ONLY-AEAD', keyId: 'fixture-key', keyVersion: '1',
+        nonce: 'bm9uY2U=', authTag: 'dGFn', ciphertext: Buffer.from(plaintext).toString('base64'),
+        aadProfile: 'fixture-aad-v1'
+      }),
+      decrypt: async envelope => Buffer.from(envelope.ciphertext, 'base64').toString('utf8')
+    };
+    const testContext = Object.assign(context(), { testOnly: true });
+    const encrypted = await encryptPayload(provider, 'private fixture', testContext);
+    assert.equal(encrypted.status, 'ENCRYPTED');
+    assert.equal(encrypted.plaintextReturned, false);
+    const decrypted = await decryptPayload(provider, encrypted.envelope, testContext);
+    assert.equal(decrypted.status, 'DECRYPTED');
+    assert.equal(decrypted.plaintext, 'private fixture');
+    assert.equal((await encryptPayload(provider, 'x', context())).status, 'NOT_APPROVED');
+  });
+
+  await checkAsync('AEAD authentication failure never falls back to plaintext', async () => {
+    const provider = {
+      approvedProfile: true, algorithmProfile: 'TEST-ONLY-AEAD', testOnly: true,
+      encrypt: async () => ({}),
+      decrypt: async () => { throw new Error('AUTH_TAG_INVALID'); }
+    };
+    const testContext = Object.assign(context(), { testOnly: true });
+    const envelope = {
+      algorithm: 'TEST-ONLY-AEAD', keyId: 'fixture-key', keyVersion: '1',
+      nonce: 'bm9uY2U=', authTag: 'dGFn', ciphertext: 'c2VjcmV0',
+      aadProfile: 'fixture-aad-v1'
+    };
+    const result = await decryptPayload(provider, envelope, testContext);
+    assert.equal(result.status, 'DECRYPTION_FAILED');
+    assert.equal(Object.prototype.hasOwnProperty.call(result, 'plaintext'), false);
+  });
+
   check('Provider contract reports independent capability states and no implicit fallback', () => {
     const unavailable = createUnavailableProvider('fixture-provider');
     assert.equal(inspectProviderAdapter(unavailable).valid, true);
