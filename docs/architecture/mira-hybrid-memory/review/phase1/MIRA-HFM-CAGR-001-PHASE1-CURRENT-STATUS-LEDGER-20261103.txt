@@ -57,6 +57,12 @@ Commit: ad790592896d0c5d0befda7a69645d0b402dd92d
 Verification: file re-read after commit. All 26 route and 26 tool modules were retrieved/reviewed for direct delegation and I/O.
 Key additions: learning-save direct Knowledge persistence with policy ambiguity explicitly qualified; Knowledge backup/cleanup/restore side effects; provider-evolution route direct config I/O; fixture test candidates and execution limitation.
 
+G. Repository Source Scan & Fixture-Test Safety Review
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-REPOSITORY-SOURCE-SCAN-AND-FIXTURE-TEST-SAFETY-REVIEW-20261103.txt
+Commit: acc929ec2703a302975e752dad83bef6507405d5
+Verification: recursive branch tree at reviewed HEAD was complete; 540 JavaScript-family files (50 root, 143 services, 26 routes, 26 tools, 16 providers, 1 script, 278 tests) were retrieved and lexically scanned.
+Key additions: C01 scoped executable-source scan PASS; safe fixture candidates; MIRA_STORAGE_DIR isolation wrapper needed for one Memory test; several non-isolated tests explicitly excluded; C06 remains INCONCLUSIVE due unavailable branch runtime.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -70,7 +76,7 @@ These are additive reports. Prior reports remain intact; the status ledger is re
 - MIRA_STORAGE_DIR does not contain every path: several overrides, provider credentials, snapshots, and legacy Knowledge tools use separate roots.
 - AI and web-search provider calls can transmit prompts/source material outside the local process. No provider call was made.
 - Google OAuth effective scopes cannot be inferred from reviewed source and remain unknown.
-- No Facebook/Meta/Graph API connector-named path exists in the current branch tree. This is path-level evidence only; source-text scan remains incomplete.
+- No Facebook/Meta/Graph API connector-named path exists in the current branch tree. This is path-level evidence only; the JavaScript-family lexical source scan is complete, but no Facebook connector path was found.
 - No production Memory data, credential values, or token files were accessed.
 - Knowledge Improvement Apply has handled early-return failure branches without corresponding route-level audit records; lower-level audit coverage remains to be traced.
 - Knowledge Improvement's audit helper swallows audit-store errors, while Autonomous Learning's helper does not; consistent audit failure policy is not established.
@@ -83,7 +89,7 @@ C01 — EXECUTABLE SOURCE-TEXT SCAN: PASS (SCOPED).
 All 540 JavaScript-family source/test files across root, services, routes, tools, providers, scripts, and tests were retrieved and lexically scanned at the exact feature-branch HEAD. Documentation/assets and package metadata are excluded from executable-source scope.
 
 C02 — ALL PERSISTENCE ROOTS AND CALLERS: PARTIAL.
-All 26 route and 26 tool modules have been retrieved/reviewed for direct delegation and I/O. Known stores, environment overrides, project-root bypasses, selected services, scripts, and workers are mapped. Full reconciliation across all 143 services, dynamic imports, and all indirect call chains is not yet proven.
+All 540 JavaScript-family files were retrieved and lexically scanned; all 26 routes, 26 tools, and 143 services were retrieved. Known stores, overrides, project-root bypasses, scripts, and workers are mapped. A final per-domain indirect/dynamic caller proof and complete override-to-store map remain outstanding.
 
 C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
 Current code behavior is known, but canonical source, stale/empty semantics, conflict quarantine, and transition policy need explicit architecture decision.
@@ -91,8 +97,8 @@ Current code behavior is known, but canonical source, stale/empty semantics, con
 C04 — CALLER-BY-CALLER COMPATIBILITY: PARTIAL.
 K01-K13 matrix, route audit report, and all-route/all-tool direct caller inventory added. Learning, Knowledge Improvement, Autonomous Learning, backup/restore/cleanup, Conversation, Consent, and History paths now have targeted notes; lower-level return/error/audit/rollback and indirect consumer traces remain outstanding.
 
-C05 — EXHAUSTIVE DRIVE CALLSITE INVENTORY: OPEN.
-D01-D27 register and all 26 tool/route modules reviewed. learning-save -> learnFromContent -> addLearning and direct Knowledge backup/cleanup/restore OAuth paths were added. Complete Drive callsite proof across all service/script modules is not yet established.
+C05 — DRIVE CALLSITE INVENTORY: PARTIAL / REVIEW REQUIRED.
+All 540 JavaScript-family source/test files were lexically scanned and direct Google OAuth/shared-adapter candidates registered. A final line-numbered allowlist with exact caller, read/write mode, data class, authorization/consent, failure behavior, and replacement dependency remains outstanding.
 
 C06 — ISOLATED FIXTURE TESTS: PLAN READY / EXECUTION INCONCLUSIVE.
 Memory safety, Local Store contract, Memory Evolution integration, Research Governance, and consent fixture candidates were source-reviewed. Exact branch checkout/runtime was unavailable; clone failed due DNS/network unavailability. No test was run; no test PASS is claimed.
@@ -102,12 +108,12 @@ Model providers, Tavily, custom endpoints, credential store, admin credential ro
 
 5. NEXT READ-ONLY WORK
 
-1. Continue branch-specific source retrieval in small batches for remaining routes/services that may touch Memory, Knowledge, Learning, provider calls, or persistence.
-2. Trace upstream callers of learnFromContent and all direct addLearning/addKnowledge callsites.
-3. Reconcile audit event coverage and failure policy across controlled apply, proposal routes, and lower-level services.
-4. Expand exact Drive and Google OAuth caller evidence without reading credential files or invoking APIs.
-5. Record unresolved C01-C07 evidence gaps rather than inferring closure.
-6. Once evidence is complete, prepare a Phase 1 closure recommendation for human review.
+1. Convert the all-source lexical hits into a line-numbered per-domain persistence and Drive caller allowlist.
+2. Complete indirect/dynamic caller and environment-override mapping for each persistence root.
+3. Finalize Local-versus-Drive authority, empty-remote, conflict, and recovery policy as an architecture decision.
+4. Complete caller-by-caller result/error/audit/rollback compatibility table.
+5. Obtain a usable exact-branch execution environment and run only the approved isolated fixture tests with all storage roots redirected to temp paths and network disabled.
+6. Finish provider OAuth scope, retention, consent, and data-minimization evidence; then prepare the Phase 1 closure recommendation.
 
 No Phase 2 implementation should start under the current authorization. No routine Drive behavior should be removed. No production data should be read, copied, migrated, restored, or modified.
 
