@@ -81,6 +81,12 @@ Commit: 78371260a663e1b78d89e9a4865fa27afae549bd
 Verification: 42 persistence-domain entries and 15 environment settings registered; direct storage-root divergences and missing schedule-store reference recorded.
 Key additions: C02 substantially mapped but dynamic/indirect caller proof remains REVIEW_REQUIRED.
 
+K. Compatibility & Caller Semantics Consolidation
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-COMPATIBILITY-AND-CALLER-SEMANTICS-CONSOLIDATION-20261103.txt
+Commit: 45785fc72dd34cb8b7f3bfc910fd0664942335bf
+Verification: 17 direct workflow/caller classes consolidated with status, result, error, audit, snapshot, rollback, and migration requirements.
+Key additions: C04 source-level compatibility matrix PASS (scoped); audit failure policy remains REVIEW_REQUIRED; runtime behavior remains unexecuted.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -112,8 +118,8 @@ The new 42-entry persistence matrix and 15-setting environment register map the 
 C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
 Current code behavior is known, but canonical source, stale/empty semantics, conflict quarantine, and transition policy need explicit architecture decision.
 
-C04 — CALLER-BY-CALLER COMPATIBILITY: PARTIAL.
-K01-K13 matrix, route audit report, and all-route/all-tool direct caller inventory added. Learning, Knowledge Improvement, Autonomous Learning, backup/restore/cleanup, Conversation, Consent, and History paths now have targeted notes; lower-level return/error/audit/rollback and indirect consumer traces remain outstanding.
+C04 — CALLER COMPATIBILITY: PASS (SCOPED SOURCE MATRIX).
+17 direct Memory/Knowledge/Learning workflow classes now have source-level result, error, audit, snapshot, rollback, and migration requirements. All route/tool modules were reviewed. Runtime reachability, lower-level audit failure policy, and provider replacement behavior are not certified.
 
 C05 — STATIC DRIVE CALLSITE INVENTORY: PASS (SCOPED).
 All 540 JavaScript-family files were scanned; direct googleapis modules, shared adapter callers, indirect Learning callers, and governed routes are line-numbered in the Drive Callsite Allowlist. This does not authorize Drive sync removal, OAuth changes, or live API use.
