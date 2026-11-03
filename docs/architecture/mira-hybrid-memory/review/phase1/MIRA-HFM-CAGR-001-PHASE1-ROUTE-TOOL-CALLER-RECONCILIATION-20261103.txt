@@ -116,8 +116,8 @@ Provider/network:
 
 4. NEW CALLER-LEVEL FINDINGS
 
-T01 — LEARNING TOOL BYPASSES PROPOSAL-ONLY PATH: CONFIRMED.
-tools/learning-save.js calls learnFromContent. services/learning.js has instructions stating the Learning Engine must not directly save and should produce data only, but the actual learnFromContent implementation calls addLearning after extraction and duplicate detection. This means the source behavior can persist Learning/Knowledge and trigger Drive sync directly. This is a code/documentation contract mismatch and an important upstream caller/consent boundary to resolve.
+T01 — LEARNING TOOL DIRECT KNOWLEDGE PERSISTENCE / GOVERNANCE BOUNDARY: CONFIRMED BEHAVIOR; POLICY AMBIGUITY.
+tools/learning-save.js calls learnFromContent. services/learning.js sends source content to generate, validates the result, checks duplicates, then calls addLearning directly; addLearning persists Knowledge locally and attempts Drive sync. The same module's instruction text says the learning workflow must remain proposal/approval controlled and the engine must not change system configuration, permissions, code, or security controls. That text does not unambiguously prohibit educational Knowledge ingestion, so a policy violation is NOT asserted. The architecture must explicitly distinguish ordinary educational Knowledge ingestion from changes to system behavior/configuration and from improvement proposals, and define caller authorization, source consent, audit, and Drive semantics.
 
 T02 — KNOWLEDGE BACKUP SIDE EFFECT: CONFIRMED.
 tools/knowledge-backup.js writes the local primary knowledge.json as well as the backup file before its direct Drive upload/update. The operation is not read-only and can rewrite the current Knowledge file even though its tool description describes backup/synchronization.
