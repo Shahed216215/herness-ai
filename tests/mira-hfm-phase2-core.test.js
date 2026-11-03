@@ -85,6 +85,20 @@ function operation(record) {
     requestId: 'request-fixture-1'
   };
 }
+function commitReceipt(record, providerId) {
+  const identity = operation(record);
+  return {
+    status: 'COMMITTED',
+    operationId: identity.operationId,
+    idempotencyKey: identity.idempotencyKey,
+    projectId: identity.projectId,
+    payloadHash: identity.payloadHash,
+    requestId: identity.requestId,
+    providerId: providerId || 'fixture-provider',
+    revision: record.version.revision,
+    evidenceReference: 'fixture:provider-commit-receipt'
+  };
+}
 function capabilityObservations(overrides, projectId) {
   const states = Object.assign({ READ: 'AVAILABLE', WRITE: 'AVAILABLE', SEARCH: 'AVAILABLE', VERIFY: 'AVAILABLE', BACKUP: 'UNAVAILABLE', RESTORE: 'UNAVAILABLE' }, overrides || {});
   return Object.keys(states).map(capability => ({
@@ -499,7 +513,7 @@ async function main() {
       providerId: 'fixture-provider',
       guarantees: { conditionalWrite: false, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilityObservations: async () => capabilityObservations(),
-      write: async () => { writes += 1; return { status: 'COMMITTED', revision: 1 }; },
+      write: async () => { writes += 1; return commitReceipt(record); },
       read: async () => record, reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
     const result = await executeGovernedWrite({
@@ -536,6 +550,30 @@ async function main() {
     });
     assert.equal(result.status, 'NOT_CONFIGURED');
     assert.equal(writes, 0);
+  });
+
+
+  await checkAsync('Write coordinator rejects a provider commit receipt bound to another payload', async () => {
+    const record = fixtureRecord();
+    let written = false;
+    const provider = {
+      providerId: 'fixture-provider',
+      guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
+      getCapabilityObservations: async () => capabilityObservations(),
+      read: async () => written ? record : null,
+      write: async () => {
+        written = true;
+        return Object.assign(commitReceipt(record), { payloadHash: 'f'.repeat(64) });
+      },
+      verify: async () => { throw new Error('must not verify mismatched receipt'); },
+      reconcileOperation: async () => ({ status: 'UNKNOWN' })
+    };
+    const result = await executeGovernedWrite({
+      record, context: context(), operation: operation(record), provider,
+      audit: fakeAudit([]), registry: fakeRegistry(), expectedRevision: 0
+    });
+    assert.equal(result.status, 'PROVIDER_ERROR');
+    assert.equal(result.reason, 'PROVIDER_COMMIT_NOT_VERIFIED');
   });
 
   await checkAsync('Write coordinator records intent before provider write and verifies readback', async () => {
@@ -599,7 +637,7 @@ async function main() {
       guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
       getCapabilityObservations: async () => capabilityObservations(),
-      write: async () => ({ status: 'COMMITTED', revision: 1 }),
+      write: async () => commitReceipt(record),
       read: async () => appendCount === 0 ? null : record,
       verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 1, contentHash: record.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
@@ -820,7 +858,7 @@ async function main() {
       guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilityObservations: async () => capabilityObservations(),
       read: async () => written ? next : previous,
-      write: async () => { written = true; return { status: 'COMMITTED', revision: 2 }; },
+      write: async () => { written = true; return commitReceipt(next); },
       verify: async () => ({ status: 'VERIFIED', memoryId: next.memoryId,
         projectId: next.projectId, revision: 2, contentHash: next.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
