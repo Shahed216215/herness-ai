@@ -63,6 +63,12 @@ Commit: acc929ec2703a302975e752dad83bef6507405d5
 Verification: recursive branch tree at reviewed HEAD was complete; 540 JavaScript-family files (50 root, 143 services, 26 routes, 26 tools, 16 providers, 1 script, 278 tests) were retrieved and lexically scanned.
 Key additions: C01 scoped executable-source scan PASS; safe fixture candidates; MIRA_STORAGE_DIR isolation wrapper needed for one Memory test; several non-isolated tests explicitly excluded; C06 remains INCONCLUSIVE due unavailable branch runtime.
 
+H. Drive Callsite Allowlist & Data-Flow Register
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-DRIVE-CALLSITE-ALLOWLIST-20261103.txt
+Commit: b2092712f3017c441cc78801faf61d530b5e746b
+Verification: all 540 JS-family files scanned; direct googleapis modules, shared adapter callers, indirect Learning callers, and governed routes are line-numbered in the report.
+Key additions: C05 static Drive callsite inventory PASS (scoped); 3 direct googleapis modules; Local-first dual-write failure behavior; no Drive removal or API call authorized.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
