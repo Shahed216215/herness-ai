@@ -40,6 +40,7 @@ on:
       - 'services/mira-memory-conflict-assessment.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
+      - 'tests/mira-knowledge-state-safety-test.js'
       - 'tests/mira-local-memory-safety-test.js'
       - 'tests/mira-memory-local-store-contract-test.js'
       - 'tests/mira-memory-evolution-integration-test.js'
