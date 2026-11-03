@@ -15,7 +15,6 @@ on:
       - 'services/mira-json-state-store.js'
       - 'services/mira-local-memory-store.js'
       - 'knowledge-memory-evolution.js'
-      - 'knowledge-memory-evolution.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
       - 'tests/mira-knowledge-state-safety-test.js'
       - 'tests/mira-local-memory-safety-test.js'
