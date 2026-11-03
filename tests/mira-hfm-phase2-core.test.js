@@ -8,6 +8,7 @@ const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator
 const { auditProviderReadiness, validateAuditEvent, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
 const { readMemory, searchMemory, writeMemory } = require('../services/mira-hfm/memory-service');
 const { inspectProviderAdapter, requireCapability, createUnavailableProvider } = require('../services/mira-hfm/provider-contract');
+const { createProviderCatalog } = require('../services/mira-hfm/provider-catalog');
 const { validateCapabilityObservation, evaluateCapabilitySet } = require('../services/mira-hfm/capability-observations');
 const { operationRegistryReadiness, claimOperation } = require('../services/mira-hfm/operation-registry');
 const { encryptPayload, decryptPayload, cryptoProviderReadiness } = require('../services/mira-hfm/encryption-contract');
@@ -396,6 +397,17 @@ async function main() {
     assert.equal(inspectProviderAdapter(unavailable).capabilities.READ, 'NOT_CONFIGURED');
     assert.equal(requireCapability(unavailable, 'WRITE').allowed, false);
     assert.equal(inspectProviderAdapter(unavailable).noFallback, true);
+    const catalog = createProviderCatalog();
+    assert.equal(catalog.noFallback, true);
+    assert.equal(catalog.networkAccessPerformed, false);
+    assert.equal(catalog.list().length, 4);
+    assert.equal(catalog.resolve('facebook_page_primary').status, 'NOT_CONFIGURED');
+    assert.equal(catalog.resolve('facebook_page_primary').provider.providerId, 'facebook_page_primary');
+    assert.equal(catalog.resolve('unknown-provider').status, 'NOT_SUPPORTED');
+    assert.equal(createProviderCatalog({ facebook_page_primary: { providerId: 'wrong-id' } })
+      .resolve('facebook_page_primary').status, 'REJECTED_CONFIGURATION');
+    passed += 1;
+    process.stdout.write('PASS Provider catalog resolves exact roles without silent fallback\\n');
   });
   check('Adapter error taxonomy maps unknown errors to UNKNOWN', () => {
     assert.equal(core.normalizeAdapterError({ code: 'TIMEOUT' }), 'TIMEOUT');
