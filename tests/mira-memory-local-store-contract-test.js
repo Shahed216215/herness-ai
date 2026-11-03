@@ -39,6 +39,10 @@ try {
     path.join(PROJECT, 'services/mira-local-memory-store.js'),
     path.join(tempServices, 'mira-local-memory-store.js')
   );
+  fs.copyFileSync(
+    path.join(PROJECT, 'services/mira-json-state-store.js'),
+    path.join(tempServices, 'mira-json-state-store.js')
+  );
 
   const fixtureMemory = path.join(TEMP, 'memory.json');
   process.env.MIRA_STORAGE_DIR = TEMP;
