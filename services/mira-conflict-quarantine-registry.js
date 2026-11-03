@@ -103,10 +103,17 @@ function requireAudit(auditWriter, event) {
   if (typeof auditWriter !== 'function') throw new Error('An explicit auditWriter is required.');
   return auditWriter(event);
 }
+function validateConflictId(conflictId) {
+  if (typeof conflictId !== 'string' || !/^mira-conflict-[a-f0-9]{64}$/.test(conflictId)) {
+    throw new Error('Invalid conflictId.');
+  }
+}
 function conflictPath(directory, conflictId) {
+  validateConflictId(conflictId);
   return path.join(directory, conflictId + '.conflict.json');
 }
 function resolutionPath(directory, conflictId) {
+  validateConflictId(conflictId);
   return path.join(directory, conflictId + '.resolution.json');
 }
 function createConflictQuarantine({
@@ -201,12 +208,14 @@ function verifyConflict({ directory, conflictId, projectId }) {
   const envelope = readConflict({ directory, conflictId, projectId });
   const { envelopeDigest, ...rest } = envelope;
   const expected = digest(rest);
-  const originalsValid = rest.originals.length >= 2 && rest.originals.every(item =>
-    digest(item.record) === item.recordDigest &&
-    item.record.memoryId === item.memoryId &&
-    (Number.isInteger(item.record.version?.revision) ? item.record.version.revision : null) === item.revision &&
-    item.record.projectId === rest.projectId
-  );
+  const originalsValid = Array.isArray(rest.originals) && rest.originals.length >= 2 &&
+    rest.originals.every(item =>
+      item && item.record && typeof item.record === 'object' && !Array.isArray(item.record) &&
+      digest(item.record) === item.recordDigest &&
+      item.record.memoryId === item.memoryId &&
+      (Number.isInteger(item.record.version?.revision) ? item.record.version.revision : null) === item.revision &&
+      item.record.projectId === rest.projectId
+    );
   return {
     status: envelopeDigest === expected && originalsValid ? 'VERIFIED' : 'INTEGRITY_FAILED',
     conflictId, envelopeDigest, originalsValid,
@@ -215,6 +224,9 @@ function verifyConflict({ directory, conflictId, projectId }) {
 }
 function verifyResolution({ directory, conflictId, projectId }) {
   const envelope = readConflict({ directory, conflictId, projectId });
+  if (verifyConflict({ directory, conflictId, projectId }).status !== 'VERIFIED') {
+    return { status: 'INTEGRITY_FAILED', conflictId, reason: 'CONFLICT_ENVELOPE_NOT_VERIFIED' };
+  }
   let resolution;
   try {
     resolution = readRegularJson(resolutionPath(directory, conflictId));
@@ -222,9 +234,13 @@ function verifyResolution({ directory, conflictId, projectId }) {
     if (error.code === 'ENOENT') return { status: 'NOT_RESOLVED', conflictId };
     throw error;
   }
+  if (!resolution || typeof resolution !== 'object' || Array.isArray(resolution)) {
+    return { status: 'INTEGRITY_FAILED', conflictId, reason: 'INVALID_RESOLUTION_ENVELOPE' };
+  }
   const { resolutionDigest, ...body } = resolution;
   const expectedOriginals = envelope.originals.map(item => item.recordDigest);
-  const originalsMatch = digest(resolution.originalDigests) === digest(expectedOriginals);
+  const originalsMatch = Array.isArray(resolution.originalDigests) &&
+    digest(resolution.originalDigests) === digest(expectedOriginals);
   const acceptedIndex = resolution.decision === 'ACCEPT_EXISTING_VERSION' ||
     resolution.decision === 'REJECT_CONFLICTING_CHANGE'
       ? 0
@@ -290,6 +306,9 @@ function resolveConflict({
   if (typeof actor !== 'string' || !actor.trim()) throw new Error('Resolution actor is required.');
   if (typeof policyDecision !== 'string' || !policyDecision.trim()) throw new Error('Policy decision reference is required.');
   const envelope = readConflict({ directory, conflictId, projectId });
+  if (verifyConflict({ directory, conflictId, projectId }).status !== 'VERIFIED') {
+    throw new Error('Conflict envelope integrity verification failed; resolution is blocked.');
+  }
   if (typeof authorizeResolution !== 'function') throw new Error('An explicit authorizeResolution callback is required.');
   const authorized = authorizeResolution({
     conflictId, projectId: envelope.projectId, decision, actor, policyDecision,
