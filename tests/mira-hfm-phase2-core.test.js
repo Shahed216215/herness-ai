@@ -82,10 +82,10 @@ function operation(record) {
     requestId: 'request-fixture-1'
   };
 }
-function capabilityObservations(overrides) {
+function capabilityObservations(overrides, projectId) {
   const states = Object.assign({ READ: 'AVAILABLE', WRITE: 'AVAILABLE', SEARCH: 'AVAILABLE', VERIFY: 'AVAILABLE', BACKUP: 'UNAVAILABLE', RESTORE: 'UNAVAILABLE' }, overrides || {});
   return Object.keys(states).map(capability => ({
-    providerId: 'fixture-provider', projectId: 'project-fixture', capability,
+    providerId: 'fixture-provider', projectId: projectId || 'project-fixture', capability,
     state: states[capability], checkedAt: '2026-11-03T00:00:00.000Z',
     expiresAt: '2026-11-03T23:59:00.000Z', permissionScope: [capability],
     policyVersion: 'fixture-policy', evidenceReference: 'fixture-capability:' + capability
@@ -392,7 +392,7 @@ async function main() {
     const provider = {
       providerId: 'fixture-provider',
       getCapabilities: async () => capabilities,
-      getCapabilityObservations: async () => capabilityObservations(),
+      getCapabilityObservations: async () => capabilityObservations({}, 'other'),
       read: async () => record
     };
     const denied = await readMemory(provider, record.memoryId, Object.assign(context(), {
