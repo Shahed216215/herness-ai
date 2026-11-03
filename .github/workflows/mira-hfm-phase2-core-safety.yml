@@ -15,6 +15,8 @@ on:
       - 'services/mira-json-state-store.js'
       - 'services/mira-local-memory-store.js'
       - 'knowledge-memory-evolution.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'tests/mira-memory-conflict-assessment.test.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
       - 'tests/mira-knowledge-state-safety-test.js'
       - 'tests/mira-local-memory-safety-test.js'
@@ -35,6 +37,8 @@ on:
       - 'services/mira-json-state-store.js'
       - 'services/mira-local-memory-store.js'
       - 'knowledge-memory-evolution.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'tests/mira-memory-conflict-assessment.test.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
       - 'tests/mira-local-memory-safety-test.js'
       - 'tests/mira-memory-local-store-contract-test.js'
@@ -72,6 +76,7 @@ jobs:
           node tests/mira-local-memory-safety-test.js
           node tests/mira-memory-local-store-contract-test.js
           node tests/mira-memory-evolution-integration-test.js
+          node tests/mira-memory-conflict-assessment.test.js
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
           echo "REAL_GOOGLE_DRIVE_TOUCHED=NO"
           echo "NETWORK_REQUESTS=0"
