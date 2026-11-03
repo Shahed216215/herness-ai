@@ -3,7 +3,7 @@ Document: MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER
 Date: 2026-11-03
 Repository: Shahed216215/herness-ai
 Branch: work/mira-hfm-v025-six-documents
-Reviewed HEAD: 8fa178ae017b8cdf12e33bac9efe8093d70e06d5
+Reviewed HEAD: 8aa2fabb76422b4b25c7f1c05961fe3371fe7afc
 Blueprint: MIRA-HFM-CAGR-001 v1.0.0
 Project version boundary: v0.2
 Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
@@ -11,8 +11,8 @@ Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
 1. CURRENT BRANCH INVENTORY
 
 Feature branch HEAD was re-read from GitHub. Recursive tree at this exact HEAD:
-- Entries: 624
-- Blob files: 606
+- Entries: 626
+- Blob files: 608
 - Tree truncated: false
 - Route files: 26
 - Service files: 143
@@ -45,7 +45,13 @@ Commit: 8fa178ae017b8cdf12e33bac9efe8093d70e06d5
 Verification: branch head matched commit; 9/9 content checks passed.
 Key additions: model-provider egress paths; custom provider endpoints; secure transport controls; privileged credential routes; OAuth scope limitation; no Facebook connector path evidence.
 
-These are additive reports. Prior reports remain intact and were not rewritten.
+E. Route, Audit & Learning-Caller Reconciliation
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-ROUTE-AUDIT-LEARNING-CALLER-RECONCILIATION-20261103.txt
+Commit: 8aa2fabb76422b4b25c7f1c05961fe3371fe7afc
+Verification: branch head matched commit; 7/7 content checks passed.
+Key additions: Knowledge Improvement route audit gaps; inconsistent audit failure semantics; learnFromContent direct Knowledge persistence and Drive sync; Experience Memory derived-view evidence.
+
+These are additive reports. Prior reports remain intact; the status ledger alone was updated to reflect the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
 
@@ -60,6 +66,10 @@ These are additive reports. Prior reports remain intact and were not rewritten.
 - Google OAuth effective scopes cannot be inferred from reviewed source and remain unknown.
 - No Facebook/Meta/Graph API connector-named path exists in the current branch tree. This is path-level evidence only; source-text scan remains incomplete.
 - No production Memory data, credential values, or token files were accessed.
+- Knowledge Improvement Apply has handled early-return failure branches without corresponding route-level audit records; lower-level audit coverage remains to be traced.
+- Knowledge Improvement's audit helper swallows audit-store errors, while Autonomous Learning's helper does not; consistent audit failure policy is not established.
+- services/learning.js learnFromContent calls generate with source content, then may call addLearning directly; this can persist Knowledge and trigger Drive sync outside the separate proposal/apply route. Full upstream caller/consent mapping remains open.
+- The reviewed Experience Memory module derives projections from Work Learning Records and contains no independent persistence path.
 
 4. PHASE 1 CLOSURE BLOCKERS
 
@@ -73,24 +83,25 @@ C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
 Current code behavior is known, but canonical source, stale/empty semantics, conflict quarantine, and transition policy need explicit architecture decision.
 
 C04 — CALLER-BY-CALLER COMPATIBILITY: PARTIAL.
-K01-K13 matrix added. Need final complete return/error/audit ordering/rollback table and route-level consumption verification for every relevant caller.
+K01-K13 matrix and route audit report added. Knowledge Improvement and Autonomous Learning apply flows now have targeted audit/error/rollback notes; complete lower-level and route-consumption trace remains outstanding.
 
 C05 — EXHAUSTIVE DRIVE CALLSITE INVENTORY: OPEN.
-D01-D27 targeted register exists. It is not proven exhaustive. Direct OAuth and shared-adapter callsites need branch-wide proof.
+D01-D27 targeted register exists. learnFromContent -> addLearning adds an upstream Drive-sync caller path, but the register is not proven exhaustive. Direct OAuth and shared-adapter callsites need branch-wide proof.
 
 C06 — ISOLATED FIXTURE TEST PLAN AND EXECUTION: DRAFTED / NOT EXECUTED.
 Read-safety/storage report contains isolated fixture test design. No fixture was created and no tests were run. Execution is not authorized by the current documentation/source-review scope.
 
 C07 — PROVIDER PERMISSION AND DATA-EGRESS REVIEW: PARTIAL.
-Model providers, Tavily, custom endpoints, credential store, and admin credential routes were inspected. Effective OAuth scopes, all egress callsites, provider retention terms, and data minimization/consent remain unverified.
+Model providers, Tavily, custom endpoints, credential store, admin credential routes, and learning-service source-content egress were inspected. Effective OAuth scopes, all egress callsites, provider retention terms, and data minimization/consent remain unverified.
 
 5. NEXT READ-ONLY WORK
 
 1. Continue branch-specific source retrieval in small batches for remaining routes/services that may touch Memory, Knowledge, Learning, provider calls, or persistence.
-2. Reconcile route-to-service-to-store call paths and audit ordering.
-3. Expand exact Drive and Google OAuth caller evidence without reading credential files or invoking APIs.
-4. Record unresolved C01-C07 evidence gaps rather than inferring closure.
-5. Once evidence is complete, prepare a Phase 1 closure recommendation for human review.
+2. Trace upstream callers of learnFromContent and all direct addLearning/addKnowledge callsites.
+3. Reconcile audit event coverage and failure policy across controlled apply, proposal routes, and lower-level services.
+4. Expand exact Drive and Google OAuth caller evidence without reading credential files or invoking APIs.
+5. Record unresolved C01-C07 evidence gaps rather than inferring closure.
+6. Once evidence is complete, prepare a Phase 1 closure recommendation for human review.
 
 No Phase 2 implementation should start under the current authorization. No routine Drive behavior should be removed. No production data should be read, copied, migrated, restored, or modified.
 
