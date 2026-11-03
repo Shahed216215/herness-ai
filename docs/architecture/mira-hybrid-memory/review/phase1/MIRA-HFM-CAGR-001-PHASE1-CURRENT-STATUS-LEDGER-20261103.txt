@@ -3,7 +3,7 @@ Document: MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER
 Date: 2026-11-03
 Repository: Shahed216215/herness-ai
 Branch: work/mira-hfm-v025-six-documents
-Reviewed HEAD: 0e694f08b43e8412366413fefe6c82028bc831d4
+Reviewed HEAD: 1a2ee38958dfaef13be0746cfa066118a670ea05
 Blueprint: MIRA-HFM-CAGR-001 v1.0.0
 Project version boundary: v0.2
 Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
@@ -95,8 +95,8 @@ Key additions: C03 Phase 1 authority/conflict policy defined; Local-first privat
 
 M. Isolated Fixture Test Runbook
 Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-ISOLATED-FIXTURE-TEST-RUNBOOK-20261103.txt
-Commit: 0e694f08b43e8412366413fefe6c82028bc831d4
-Verification: runbook re-read; known Termux checkout path; clean-tree/origin guard; one explicit GitHub fetch plus fast-forward-only update; six fixture-only tests; temp-root overrides; provider credentials unset; no package install or provider/Drive/Facebook API call.
+Commit: 1a2ee38958dfaef13be0746cfa066118a670ea05
+Verification: runbook re-read; Termux default checkout path $HOME/herness-ai with MIRA_HFM_REPO_DIR override; clean-tree/origin guard; one explicit GitHub fetch plus fast-forward-only update; six fixture-only tests; temp-root overrides; provider credentials unset; no package install or provider/Drive/Facebook API call.
 Key additions: C06 test plan is ready for exact local checkout execution; test execution remains INCONCLUSIVE until terminal evidence is returned.
 
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
