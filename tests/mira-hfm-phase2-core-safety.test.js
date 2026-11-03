@@ -10,6 +10,8 @@ const store = require('../services/mira-json-state-store');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-phase2-'));
 const stateFile = path.join(root, 'knowledge.json');
+const originalStorage = process.env.MIRA_STORAGE_DIR;
+process.env.MIRA_STORAGE_DIR = root;
 
 try {
   assert.deepEqual(
@@ -50,6 +52,13 @@ try {
   assert.equal(envelope.reason, 'SOURCE_CONFLICT_REQUIRES_REVIEW');
   assert.equal(envelope.metadata.class, 'fixture-conflict');
 
+  const auditLog = require('../audit-log');
+  const auditEntries = auditLog.loadAuditLog();
+  assert.ok(auditEntries.some(entry => entry.action === 'memory_state_write_intent'));
+  assert.ok(auditEntries.some(entry => entry.action === 'memory_state_write_committed'));
+  assert.ok(auditEntries.some(entry => entry.action === 'memory_conflict_quarantined'));
+  assert.equal(auditLog.verifyAuditIntegrity().ok, true);
+
   const symlinkTarget = path.join(root, 'symlink.json');
   const outside = path.join(root, 'outside.json');
   fs.writeFileSync(outside, '[]');
@@ -61,7 +70,7 @@ try {
   assert.match(knowledgeSource, /jsonStateStore\.writeArrayState/);
   assert.doesNotMatch(knowledgeSource, /return Array\.isArray\(data\) \? data : \[\]/);
 
-  console.log('TESTS_PASSED=16');
+  console.log('TESTS_PASSED=20');
   console.log('TESTS_FAILED=0');
   console.log('PRODUCTION_MEMORY_TOUCHED=NO');
   console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
@@ -69,4 +78,6 @@ try {
   console.log('RESULT=PHASE2_CORE_SAFETY_PASS');
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
+  if (originalStorage === undefined) delete process.env.MIRA_STORAGE_DIR;
+  else process.env.MIRA_STORAGE_DIR = originalStorage;
 }
