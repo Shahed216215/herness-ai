@@ -53,8 +53,13 @@ function listVersions(target) {
   const filePath = resolveTarget(target);
   const directory = versionDirectory(filePath);
   let names;
-  try { names = fs.readdirSync(directory); }
-  catch (error) {
+  try {
+    const stat = fs.lstatSync(directory);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) {
+      throw new Error('Version snapshot directory is not a safe directory.');
+    }
+    names = fs.readdirSync(directory);
+  } catch (error) {
     if (error.code === 'ENOENT') return { target, versions: [], retentionPolicy: 'PRESERVE_ALL_NO_AUTOMATIC_DELETION' };
     throw error;
   }
