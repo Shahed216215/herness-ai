@@ -192,7 +192,7 @@ async function executeGovernedWrite(input) {
     purpose: identity.purpose,
     policyDecisionId: identity.policyDecisionId,
     timestamp: context.now || new Date().toISOString()
-  };
+  }, context);
   const intentResult = await appendDurableAudit(audit, intent, context);
   if (!intentResult.confirmed) {
     const registryState = await markOperationUncertain(input.registry, identity, claimId, 'AUDIT_INTENT_UNCERTAIN', context);
@@ -303,7 +303,7 @@ async function executeGovernedWrite(input) {
     actor: identity.actor,
     policyDecisionId: identity.policyDecisionId,
     timestamp: context.now || new Date().toISOString()
-  };
+  }, context);
   const completionResult = await appendDurableAudit(audit, completion, context);
   if (!completionResult.confirmed) {
     const registryState = await markOperationUncertain(input.registry, identity, claimId, 'COMMITTED_AUDIT_PENDING', context);
