@@ -179,7 +179,7 @@ E. U06 timestamp compatibility
 Read-only review found that audit-log.js emits new timestamps with Date.toISOString() (UTC millisecond form) and includes the timestamp string in the integrity hash payload. The Memory structural validator accepts broader RFC3339 forms. No runtime validator was tightened and no historical audit entry was rewritten. The proposed strict chain timestamp profile remains NOT_APPROVED pending owner decision and compatibility plan.
 
 F. Source hash reconciliation
-Five source documents (Contract v0.2.4, Blueprint, Prototype C, Prototype D and Prototype E) were compared across Phase 1 baseline commit 90b48f2816e28686cd499650ff6a5fc6217f0e8a, Phase 1 final reviewed commit 720309923223c4f287ec3ede0fb0c16aff80f213 and the current Phase 2 branch. All five returned identical Git blob SHA and character length across the three refs; SHA-256 was recomputed over UTF-8 content. Prototype B's authoritative source path/content remains unresolved, so source-integrity gate G1 is PARTIAL, not closed.
+All six source documents (Contract v0.2.4, Blueprint, Prototype B, Prototype C, Prototype D and Prototype E) were compared across Phase 1 baseline commit 90b48f2816e28686cd499650ff6a5fc6217f0e8a, Phase 1 final reviewed commit 720309923223c4f287ec3ede0fb0c16aff80f213 and the current Phase 2 branch. All six returned identical Git blob SHA and character length across the three refs; SHA-256 was recomputed over UTF-8 content. Prototype B is located at docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-GAP-CLOSURE-PROTOTYPE-B.md and its hash matches the authoritative Phase 1 record. DR-08 source-integrity gate G1 is now PASS_SCOPED_IDENTICAL_6_OF_6. Prototype B's per-ID HFM-LOG definitions remain insufficiently enumerated for U05 semantic alias mapping; this is a separate U05 gap, not a source-integrity gap.
 
 10. CURRENT VERIFICATION AND GOVERNANCE STATUS
 
@@ -202,7 +202,7 @@ Current scoped statuses:
 - DR08-U05 registry: SPECIFICATION AND INVENTORY PREPARED; live registry/legacy mapping NOT_APPROVED.
 - DR08-U06 timestamp profile: COMPATIBILITY ASSESSED; canonical profile NOT_APPROVED.
 - E-15 independent verifier: DESIGN_REFINED; qualification NOT_TESTED.
-- DR08 G1 source integrity: PARTIAL (five of six source documents reconciled).
+- DR08 G1 source integrity: PASS_SCOPED_IDENTICAL_6_OF_6 (Contract, Blueprint and Prototypes B/C/D/E reconciled).
 - HFM-004 Drive cutover: DEFERRED / NOT_AUTHORIZED.
 - HFM-005 encrypted emergency backup and key custody: DEFERRED / NOT_AUTHORIZED.
 
