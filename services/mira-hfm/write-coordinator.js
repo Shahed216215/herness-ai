@@ -1,6 +1,7 @@
 'use strict';
 
 const { auditProviderReadiness, verifyDurableAuditEvent } = require('./audit-contract');
+const { operationRegistryReadiness, claimOperation, markOperationUncertain, completeOperation } = require('./operation-registry');
 
 const {
   validateCanonicalRecord,
@@ -62,7 +63,7 @@ async function appendDurableAudit(audit, event, context) {
 async function executeGovernedWrite(input) {
   const fail = (status, reason, extra) =>
     Object.assign({ ok: false, status, reason }, extra || {});
-  if (!input || !input.provider || !input.audit || !input.context) {
+  if (!input || !input.provider || !input.audit || !input.registry || !input.context) {
     return fail('VALIDATION_FAILED', 'DEPENDENCIES_REQUIRED');
   }
   const provider = input.provider;
@@ -125,6 +126,15 @@ async function executeGovernedWrite(input) {
     });
   }
 
+  const claim = await claimOperation(input.registry, identity, context);
+  if (claim.status === 'REPLAY_COMMITTED') {
+    return { ok: true, status: 'REPLAY_COMMITTED', operationId: identity.operationId, priorResult: claim.priorResult || null };
+  }
+  if (claim.status !== 'CLAIMED') {
+    return fail(claim.status, 'IDEMPOTENCY_CLAIM_NOT_GRANTED', { registryReason: claim.reason || null });
+  }
+  const claimId = claim.claimId;
+
   const intent = {
     eventId: auditEventId(identity, 'intent'),
     eventType: 'MEMORY_WRITE_INTENT',
@@ -139,7 +149,8 @@ async function executeGovernedWrite(input) {
   };
   const intentResult = await appendDurableAudit(audit, intent, context);
   if (!intentResult.confirmed) {
-    return fail('RECOVERY_REQUIRED', 'AUDIT_INTENT_NOT_CONFIRMED', { audit: intentResult });
+    const registryState = await markOperationUncertain(input.registry, identity, claimId, 'AUDIT_INTENT_UNCERTAIN', context);
+    return fail('RECOVERY_REQUIRED', 'AUDIT_INTENT_NOT_CONFIRMED', { audit: intentResult, registry: registryState });
   }
 
   let writeResult;
@@ -167,13 +178,15 @@ async function executeGovernedWrite(input) {
         })
       );
     } catch (error) {
+      const registryState = await markOperationUncertain(input.registry, identity, claimId, 'WRITE_OUTCOME_UNKNOWN', context);
       return fail('RECOVERY_REQUIRED', 'WRITE_OUTCOME_UNKNOWN', {
-        errorCode: normalizeAdapterError(error)
+        errorCode: normalizeAdapterError(error), registry: registryState
       });
     }
     if (!reconciled || reconciled.status !== 'COMMITTED') {
+      const registryState = await markOperationUncertain(input.registry, identity, claimId, 'WRITE_OUTCOME_NOT_CONFIRMED', context);
       return fail('RECOVERY_REQUIRED', 'WRITE_OUTCOME_NOT_CONFIRMED', {
-        reconciliationStatus: reconciled && reconciled.status || 'UNKNOWN'
+        reconciliationStatus: reconciled && reconciled.status || 'UNKNOWN', registry: registryState
       });
     }
     writeResult = reconciled;
@@ -183,8 +196,9 @@ async function executeGovernedWrite(input) {
       !Number.isSafeInteger(writeResult.revision) ||
       writeResult.revision < 1 ||
       writeResult.revision !== record.version.revision) {
+    const registryState = await markOperationUncertain(input.registry, identity, claimId, 'PROVIDER_COMMIT_NOT_VERIFIED', context);
     return fail('PROVIDER_ERROR', 'PROVIDER_COMMIT_NOT_VERIFIED', {
-      providerStatus: writeResult.status || 'UNKNOWN'
+      providerStatus: writeResult.status || 'UNKNOWN', registry: registryState
     });
   }
 
@@ -192,9 +206,9 @@ async function executeGovernedWrite(input) {
   try {
     readback = await provider.read(record.memoryId, context);
   } catch (error) {
+    const registryState = await markOperationUncertain(input.registry, identity, claimId, 'READBACK_FAILED', context);
     return fail('RECOVERY_REQUIRED', 'READBACK_FAILED', {
-      errorCode: normalizeAdapterError(error),
-      revision: writeResult.revision
+      errorCode: normalizeAdapterError(error), revision: writeResult.revision, registry: registryState
     });
   }
   const readbackCheck = validateCanonicalRecord(readback);
@@ -205,9 +219,9 @@ async function executeGovernedWrite(input) {
       readback.version.contentHash !== record.version.contentHash ||
       sha256Canonical(readback) !== sha256Canonical(record) ||
       !verifyContentHash(readback).valid) {
+    const registryState = await markOperationUncertain(input.registry, identity, claimId, 'READBACK_VERIFICATION_FAILED', context);
     return fail('INTEGRITY_FAILED', 'READBACK_VERIFICATION_FAILED', {
-      revision: writeResult.revision,
-      errors: readbackCheck.errors || []
+      revision: writeResult.revision, errors: readbackCheck.errors || [], registry: registryState
     });
   }
 
@@ -226,9 +240,20 @@ async function executeGovernedWrite(input) {
   };
   const completionResult = await appendDurableAudit(audit, completion, context);
   if (!completionResult.confirmed) {
+    const registryState = await markOperationUncertain(input.registry, identity, claimId, 'COMMITTED_AUDIT_PENDING', context);
     return fail('COMMITTED_AUDIT_PENDING', 'COMPLETION_AUDIT_NOT_CONFIRMED', {
-      revision: writeResult.revision,
-      audit: completionResult
+      revision: writeResult.revision, audit: completionResult, registry: registryState
+    });
+  }
+
+  const registryResult = await completeOperation(input.registry, identity, claimId, {
+    status: 'COMPLETED', revision: writeResult.revision, memoryId: record.memoryId,
+    auditEventId: completion.eventId, payloadHash: identity.payloadHash
+  }, context);
+  if (!registryResult.confirmed) {
+    return fail('RECOVERY_REQUIRED', 'REGISTRY_COMPLETION_NOT_CONFIRMED', {
+      revision: writeResult.revision, auditCompletion: completionResult.status,
+      registry: registryResult
     });
   }
 
@@ -240,6 +265,7 @@ async function executeGovernedWrite(input) {
     revision: writeResult.revision,
     auditIntent: intentResult.status,
     auditCompletion: completionResult.status,
+    registryCompletion: registryResult.status,
     readbackVerified: true
   };
 }

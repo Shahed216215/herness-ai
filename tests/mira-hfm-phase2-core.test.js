@@ -8,6 +8,7 @@ const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator
 const { auditProviderReadiness, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
 const { readMemory, searchMemory } = require('../services/mira-hfm/memory-service');
 const { inspectProviderAdapter, requireCapability, createUnavailableProvider } = require('../services/mira-hfm/provider-contract');
+const { operationRegistryReadiness, claimOperation } = require('../services/mira-hfm/operation-registry');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
 const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
 const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
@@ -82,6 +83,41 @@ const auditCapabilities = {
   DURABLE_APPEND: true, APPEND_ONLY: true, LOOKUP: true,
   RECONCILE: true, VERIFY: true, PROJECT_ISOLATED: true
 };
+function fakeRegistry() {
+  const entries = new Map();
+  const keyOf = identity => identity.projectId + '|' + identity.operationId + '|' + identity.idempotencyKey;
+  return {
+    durable: true, atomicClaim: true, projectScoped: true,
+    claim: async identity => {
+      const key = keyOf(identity);
+      const existing = entries.get(key);
+      const identityHash = core.sha256Canonical(identity);
+      if (existing) {
+        if (existing.identity.payloadHash !== identity.payloadHash) return { status: 'PAYLOAD_CONFLICT' };
+        if (existing.status === 'COMPLETED') return { status: 'REPLAY_COMMITTED', priorResult: existing.result };
+        return { status: 'IN_PROGRESS' };
+      }
+      const claimId = 'claim-' + entries.size;
+      entries.set(key, { identity, identityHash, claimId, status: 'IN_PROGRESS' });
+      return { status: 'CLAIMED', claimId, identityHash };
+    },
+    lookup: async identity => entries.get(keyOf(identity)) || null,
+    reconcile: async identity => entries.get(keyOf(identity)) || null,
+    markUncertain: async payload => {
+      const entry = entries.get(keyOf(payload.identity));
+      if (!entry || entry.claimId !== payload.claimId) return { status: 'UNKNOWN' };
+      entry.status = payload.state;
+      return { status: 'RECORDED' };
+    },
+    complete: async payload => {
+      const entry = entries.get(keyOf(payload.identity));
+      if (!entry || entry.claimId !== payload.claimId) return { status: 'UNKNOWN' };
+      entry.status = 'COMPLETED';
+      entry.result = payload.result;
+      return { status: 'COMPLETED', identityHash: payload.identityHash };
+    }
+  };
+}
 function fakeAudit(events) {
   return {
     durable: true, capabilities: auditCapabilities,
@@ -220,6 +256,10 @@ async function main() {
     assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, null, 2));
     assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, 'b'.repeat(64), 1));
   });
+  check('Operation registry requires durable atomic project-scoped claim and completion', () => {
+    assert.equal(operationRegistryReadiness(fakeRegistry()).ready, true);
+    assert.equal(operationRegistryReadiness({ durable: true }).ready, false);
+  });
   check('Provider contract reports independent capability states and no implicit fallback', () => {
     const unavailable = createUnavailableProvider('fixture-provider');
     assert.equal(inspectProviderAdapter(unavailable).valid, true);
@@ -303,13 +343,14 @@ async function main() {
     const record = fixtureRecord();
     let writes = 0;
     const provider = {
+      guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
-      write: async () => { writes += 1; return { status: 'COMMITTED', revision: 2 }; },
+      write: async () => { writes += 1; return { status: 'COMMITTED', revision: 1 }; },
       read: async () => record,
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
     const result = await executeGovernedWrite({
-      record, context: context(), operation: operation(record), provider,
+      record, context: context(), operation: operation(record), provider, registry: fakeRegistry(),
       audit: { durable: false, append: async () => ({ status: 'APPENDED' }) }, expectedRevision: 0
     });
     assert.equal(result.status, 'NOT_CONFIGURED');
@@ -321,6 +362,7 @@ async function main() {
     const events = [];
     let written = false;
     const provider = {
+      guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
       write: async () => {
         assert.equal(events.length, 1);
@@ -336,7 +378,7 @@ async function main() {
     };
     const audit = fakeAudit(events);
     const result = await executeGovernedWrite({
-      record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
+      record, context: context(), operation: operation(record), provider, audit, registry: fakeRegistry(), expectedRevision: 0
     });
     assert.equal(result.status, 'COMPLETED');
     assert.equal(events.length, 2);
@@ -347,6 +389,7 @@ async function main() {
     const record = fixtureRecord();
     let writeCalls = 0;
     const provider = {
+      guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
       write: async () => { writeCalls += 1; return { status: 'UNKNOWN' }; },
       read: async () => record,
@@ -355,7 +398,7 @@ async function main() {
     const auditEvents = [];
     const audit = fakeAudit(auditEvents);
     const result = await executeGovernedWrite({
-      record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
+      record, context: context(), operation: operation(record), provider, audit, registry: fakeRegistry(), expectedRevision: 0
     });
     assert.equal(result.status, 'RECOVERY_REQUIRED');
     assert.equal(writeCalls, 1);
@@ -365,6 +408,7 @@ async function main() {
     const record = fixtureRecord();
     let appendCount = 0;
     const provider = {
+      guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
       write: async () => ({ status: 'COMMITTED', revision: 1 }),
       read: async () => record,
@@ -381,7 +425,7 @@ async function main() {
       return { status: 'UNKNOWN' };
     };
     const result = await executeGovernedWrite({
-      record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
+      record, context: context(), operation: operation(record), provider, audit, registry: fakeRegistry(), expectedRevision: 0
     });
     assert.equal(result.status, 'COMMITTED_AUDIT_PENDING');
   });
