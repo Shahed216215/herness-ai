@@ -246,6 +246,11 @@ function verifyResolution({ directory, conflictId, projectId }) {
       ? 0
       : resolution.decision === 'ACCEPT_ALTERNATE_VERSION'
         ? resolution.acceptedOriginalIndex : null;
+  const acceptedIndexValid = resolution.decision === 'ACCEPT_ALTERNATE_VERSION'
+    ? Number.isInteger(acceptedIndex) && acceptedIndex >= 1 && acceptedIndex < expectedOriginals.length
+    : (resolution.decision === 'ACCEPT_EXISTING_VERSION' || resolution.decision === 'REJECT_CONFLICTING_CHANGE'
+      ? acceptedIndex === 0
+      : acceptedIndex === null);
   const acceptedDigest = Number.isInteger(acceptedIndex) && acceptedIndex >= 0 &&
     acceptedIndex < expectedOriginals.length ? expectedOriginals[acceptedIndex] : null;
   const resultValid = resolution.decision === 'APPROVED_FIELD_MERGE'
@@ -260,7 +265,7 @@ function verifyResolution({ directory, conflictId, projectId }) {
          Math.max(...envelope.originals.map(item => item.revision)) + 1)
     : resolution.decision === 'RETAIN_QUARANTINED'
       ? (!resolution.resultingRecord && resolution.acceptedOriginalDigest === null && resolution.acceptedOriginalIndex === null)
-      : (DECISIONS.has(resolution.decision) && !resolution.resultingRecord &&
+      : (DECISIONS.has(resolution.decision) && acceptedIndexValid && !resolution.resultingRecord &&
          resolution.acceptedOriginalIndex === acceptedIndex &&
          resolution.acceptedOriginalDigest === acceptedDigest);
   return {
