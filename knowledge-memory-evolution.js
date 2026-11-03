@@ -24,9 +24,13 @@ const {
   recordAudit
 } = require("./audit-log");
 
-const MEMORY_FILE = process.env.MIRA_MEMORY_FILE
-  ? path.resolve(process.env.MIRA_MEMORY_FILE)
-  : storagePath("memory.json");
+const MEMORY_FILE = storagePath("memory.json");
+
+if (path.resolve(localMemoryStore.MEMORY_FILE) !== path.resolve(MEMORY_FILE)) {
+  throw new Error(
+    "Memory Evolution and Local Memory Store paths differ; refusing split-brain persistence."
+  );
+}
 const KNOWLEDGE_FILE = storagePath("knowledge.json");
 
 const STAGE_NAME =
@@ -923,6 +927,16 @@ async function applyEvolution(
 
     driveBefore =
       await loadDriveState(target);
+
+    const snapshotSource = path.resolve(
+      __dirname,
+      path.basename(getTargetFile(target))
+    );
+    if (snapshotSource !== path.resolve(getTargetFile(target))) {
+      throw new Error(
+        "Snapshot Manager cannot safely snapshot an external storage path."
+      );
+    }
 
     const snapshot =
       createSnapshot({
