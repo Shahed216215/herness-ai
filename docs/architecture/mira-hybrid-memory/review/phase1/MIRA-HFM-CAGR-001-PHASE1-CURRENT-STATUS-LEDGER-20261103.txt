@@ -144,12 +144,10 @@ All identified provider adapters, five custom slots, Tavily, and Google Drive sc
 
 5. NEXT READ-ONLY WORK
 
-1. Convert the all-source lexical hits into a line-numbered per-domain persistence and Drive caller allowlist.
-2. Complete indirect/dynamic caller and environment-override mapping for each persistence root.
-3. Finalize Local-versus-Drive authority, empty-remote, conflict, and recovery policy as an architecture decision.
-4. Complete caller-by-caller result/error/audit/rollback compatibility table.
-5. Obtain a usable exact-branch execution environment and run only the approved isolated fixture tests with all storage roots redirected to temp paths and network disabled.
-6. Finish provider OAuth scope, retention, consent, and data-minimization evidence; then prepare the Phase 1 closure recommendation.
+1. Execute the six selected tests in the Isolated Fixture Test Runbook from the exact local feature-branch checkout.
+2. Return the concise per-test terminal results and any failure tails; do not run unrelated suites or use production paths.
+3. Reconcile any FAIL/INCONCLUSIVE result with source evidence and update the ledger.
+4. If all selected fixture tests PASS, publish a Phase 1 closure report with exact commands, test evidence, branch HEAD, and residual account-level unknowns. If any test cannot run or fails, keep Phase 1 INCONCLUSIVE/BLOCKED and record the exact reason.
 
 No Phase 2 implementation should start under the current authorization. No routine Drive behavior should be removed. No production data should be read, copied, migrated, restored, or modified.
 
