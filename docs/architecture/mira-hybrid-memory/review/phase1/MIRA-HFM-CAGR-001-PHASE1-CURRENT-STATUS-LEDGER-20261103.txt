@@ -3,7 +3,7 @@ Document: MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER
 Date: 2026-11-03
 Repository: Shahed216215/herness-ai
 Branch: work/mira-hfm-v025-six-documents
-Reviewed HEAD: 8aa2fabb76422b4b25c7f1c05961fe3371fe7afc
+Reviewed HEAD: ad790592896d0c5d0befda7a69645d0b402dd92d
 Blueprint: MIRA-HFM-CAGR-001 v1.0.0
 Project version boundary: v0.2
 Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
@@ -11,8 +11,8 @@ Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
 1. CURRENT BRANCH INVENTORY
 
 Feature branch HEAD was re-read from GitHub. Recursive tree at this exact HEAD:
-- Entries: 626
-- Blob files: 608
+- Entries: 627
+- Blob files: 609
 - Tree truncated: false
 - Route files: 26
 - Service files: 143
@@ -51,7 +51,13 @@ Commit: 8aa2fabb76422b4b25c7f1c05961fe3371fe7afc
 Verification: branch head matched commit; 7/7 content checks passed.
 Key additions: Knowledge Improvement route audit gaps; inconsistent audit failure semantics; learnFromContent direct Knowledge persistence and Drive sync; Experience Memory derived-view evidence.
 
-These are additive reports. Prior reports remain intact; the status ledger alone was updated to reflect the new report and exact current branch inventory.
+F. Route & Tool Caller Reconciliation
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-ROUTE-TOOL-CALLER-RECONCILIATION-20261103.txt
+Commit: ad790592896d0c5d0befda7a69645d0b402dd92d
+Verification: file re-read after commit. All 26 route and 26 tool modules were retrieved/reviewed for direct delegation and I/O.
+Key additions: learning-save direct persistence path; Knowledge backup/cleanup/restore side effects; provider-evolution route direct config I/O; fixture test candidates and execution limitation.
+
+These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
 
@@ -77,22 +83,22 @@ C01 — REPOSITORY-WIDE SOURCE-TEXT SCAN: OPEN.
 Current tree path inventory is complete; source content scan is targeted/partial. Need a reliable branch-specific scan of all relevant source blobs or an equivalent reproducible method.
 
 C02 — ALL PERSISTENCE ROOTS AND CALLERS: PARTIAL.
-Known stores, environment overrides, project-root bypasses, and selected routes/services are mapped. Full reconciliation across all routes, services, tools, scripts, background jobs, and dynamic imports is not yet proven.
+All 26 route and 26 tool modules have been retrieved/reviewed for direct delegation and I/O. Known stores, environment overrides, project-root bypasses, selected services, scripts, and workers are mapped. Full reconciliation across all 143 services, dynamic imports, and all indirect call chains is not yet proven.
 
 C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
 Current code behavior is known, but canonical source, stale/empty semantics, conflict quarantine, and transition policy need explicit architecture decision.
 
 C04 — CALLER-BY-CALLER COMPATIBILITY: PARTIAL.
-K01-K13 matrix and route audit report added. Knowledge Improvement and Autonomous Learning apply flows now have targeted audit/error/rollback notes; complete lower-level and route-consumption trace remains outstanding.
+K01-K13 matrix, route audit report, and all-route/all-tool direct caller inventory added. Learning, Knowledge Improvement, Autonomous Learning, backup/restore/cleanup, Conversation, Consent, and History paths now have targeted notes; lower-level return/error/audit/rollback and indirect consumer traces remain outstanding.
 
 C05 — EXHAUSTIVE DRIVE CALLSITE INVENTORY: OPEN.
-D01-D27 targeted register exists. learnFromContent -> addLearning adds an upstream Drive-sync caller path, but the register is not proven exhaustive. Direct OAuth and shared-adapter callsites need branch-wide proof.
+D01-D27 register and all 26 tool/route modules reviewed. learning-save -> learnFromContent -> addLearning and direct Knowledge backup/cleanup/restore OAuth paths were added. Complete Drive callsite proof across all service/script modules is not yet established.
 
-C06 — ISOLATED FIXTURE TEST PLAN AND EXECUTION: DRAFTED / NOT EXECUTED.
-Read-safety/storage report contains isolated fixture test design. No fixture was created and no tests were run. Execution is not authorized by the current documentation/source-review scope.
+C06 — ISOLATED FIXTURE TEST PLAN AND EXECUTION: CANDIDATES IDENTIFIED / NOT EXECUTED.
+Existing Memory safety, Local Store contract, Memory Evolution integration, and Research Governance fixture tests were source-reviewed as candidates. Exact branch checkout/runtime was unavailable; clone failed due DNS/network unavailability. No test result is claimed.
 
 C07 — PROVIDER PERMISSION AND DATA-EGRESS REVIEW: PARTIAL.
-Model providers, Tavily, custom endpoints, credential store, admin credential routes, and learning-service source-content egress were inspected. Effective OAuth scopes, all egress callsites, provider retention terms, and data minimization/consent remain unverified.
+Model providers, Tavily, custom endpoints, credential store, admin credential routes, learning-save source-content egress, marketing consent lookup, and provider-evolution configuration I/O were inspected. Effective OAuth scopes, all egress callsites, provider retention terms, and data minimization/consent remain unverified.
 
 5. NEXT READ-ONLY WORK
 
