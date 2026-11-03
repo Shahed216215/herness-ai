@@ -170,6 +170,32 @@ function verifyConflict({ directory, conflictId, projectId }) {
     cryptographicVerification: 'SHA-256_LOCAL_ENVELOPE_AND_ORIGINALS'
   };
 }
+function verifyResolution({ directory, conflictId, projectId }) {
+  const envelope = readConflict({ directory, conflictId, projectId });
+  let resolution;
+  try {
+    resolution = readRegularJson(resolutionPath(directory, conflictId));
+  } catch (error) {
+    if (error.code === 'ENOENT') return { status: 'NOT_RESOLVED', conflictId };
+    throw error;
+  }
+  const { resolutionDigest, ...body } = resolution;
+  const expectedOriginals = envelope.originals.map(item => item.recordDigest);
+  const originalsMatch = digest(resolution.originalDigests) === digest(expectedOriginals);
+  const resultValid = resolution.decision !== 'MERGE' ||
+    (resolution.resultingRecord &&
+     validateCanonicalMemoryRecord(resolution.resultingRecord).length === 0 &&
+     resolution.resultingRecord.projectId === envelope.projectId &&
+     resolution.resultingRecord.memoryId === envelope.originals[0].memoryId &&
+     envelope.originals.every(item => item.memoryId === envelope.originals[0].memoryId) &&
+     resolution.resultingRecord.version.revision ===
+       Math.max(...envelope.originals.map(item => item.revision)) + 1);
+  return {
+    status: resolutionDigest === digest(body) && originalsMatch && resultValid
+      ? 'VERIFIED' : 'INTEGRITY_FAILED',
+    conflictId, resolutionDigest, originalsMatch, resultValid
+  };
+}
 function listConflicts({ directory, projectId }) {
   safeDirectory(directory);
   return fs.readdirSync(directory)
@@ -181,13 +207,17 @@ function listConflicts({ directory, projectId }) {
       const integrity = verifyConflict({
         directory, conflictId: envelope.conflictId, projectId: envelope.projectId
       }).status;
-      const hasResolution = fs.existsSync(resolutionPath(directory, envelope.conflictId));
+      const resolution = verifyResolution({
+        directory, conflictId: envelope.conflictId, projectId: envelope.projectId
+      });
+      const status = integrity !== 'VERIFIED' || resolution.status === 'INTEGRITY_FAILED'
+        ? 'INTEGRITY_FAILED'
+        : (resolution.status === 'VERIFIED' ? 'RESOLVED' : 'PENDING_REVIEW');
       return {
         conflictId: envelope.conflictId,
         projectId: envelope.projectId,
         conflictTypes: envelope.conflictTypes,
-        status: integrity !== 'VERIFIED' ? 'INTEGRITY_FAILED' : (hasResolution ? 'RESOLVED' : 'PENDING_REVIEW'),
-        integrity,
+        status, integrity, resolutionIntegrity: resolution.status,
         originalMemoryIds: envelope.originals.map(item => item.memoryId)
       };
     }).filter(Boolean);
@@ -279,5 +309,5 @@ function filterTrustedRecords(records, pendingConflicts) {
 
 module.exports = {
   createConflictQuarantine, readConflict, verifyConflict,
-  listConflicts, resolveConflict, filterTrustedRecords
+  listConflicts, resolveConflict, verifyResolution, filterTrustedRecords
 };
