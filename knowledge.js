@@ -72,6 +72,34 @@ function saveLocalKnowledge(data) {
   );
 }
 
+function applyKnowledgeCapacity(entries, operation) {
+  const capacity = getMaxKnowledgeEntries();
+  if (entries.length <= capacity) return { entries, quarantine: null };
+
+  const evicted = entries.slice(0, entries.length - capacity);
+  const retained = entries.slice(-capacity);
+  const quarantine = jsonStateStore.quarantineConflict(
+    path.dirname(KNOWLEDGE_FILE),
+    'knowledge-capacity-' + operation,
+    evicted,
+    {
+      conflictType: 'CAPACITY_EVICTION',
+      reason: 'KNOWLEDGE_CAPACITY_EVICTION_REQUIRES_REVIEW',
+      sourceFile: path.basename(KNOWLEDGE_FILE),
+      entryCount: evicted.length,
+      payloadHash: jsonStateStore.sha256(JSON.stringify(evicted))
+    }
+  );
+  return {
+    entries: retained,
+    quarantine: {
+      file: path.basename(quarantine.file),
+      sha256: quarantine.sha256,
+      preservedEntries: evicted.length
+    }
+  };
+}
+
 function normalize(value) {
   return String(value || "")
     .trim()
@@ -179,14 +207,10 @@ async function addKnowledge(
 
   knowledge.push(entry);
 
-  const limitedKnowledge =
-    knowledge.slice(
-    -getMaxKnowledgeEntries()
-  );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
-  saveLocalKnowledge(
-    limitedKnowledge
-  );
+  saveLocalKnowledge(limitedKnowledge);
 
   const drive = await syncToDrive(
     limitedKnowledge
@@ -416,14 +440,10 @@ async function addLearning(input) {
 
   knowledge.push(entry);
 
-  const limitedKnowledge =
-    knowledge.slice(
-    -getMaxKnowledgeEntries()
-  );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
-  saveLocalKnowledge(
-    limitedKnowledge
-  );
+  saveLocalKnowledge(limitedKnowledge);
 
   const drive =
     await syncToDrive(
@@ -638,14 +658,10 @@ async function updateKnowledge(id, input = {}) {
   knowledge[targetIndex] =
     updatedEntry;
 
-  const limitedKnowledge =
-    knowledge.slice(
-      -getMaxKnowledgeEntries()
-    );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
-  saveLocalKnowledge(
-    limitedKnowledge
-  );
+  saveLocalKnowledge(limitedKnowledge);
 
   const drive =
     await syncToDrive(
@@ -780,9 +796,8 @@ async function updateLearning(idOrMatch, input) {
 
   knowledge[targetIndex] = updatedEntry;
 
-  const limitedKnowledge = knowledge.slice(
-    -getMaxKnowledgeEntries()
-  );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
   saveLocalKnowledge(limitedKnowledge);
 
