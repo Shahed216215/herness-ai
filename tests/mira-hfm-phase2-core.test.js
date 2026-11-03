@@ -13,6 +13,7 @@ const { operationRegistryReadiness, claimOperation } = require('../services/mira
 const { encryptPayload, decryptPayload, cryptoProviderReadiness } = require('../services/mira-hfm/encryption-contract');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
 const { previewLegacyMigration } = require('../services/mira-hfm/migration-preview');
+const { executeEvolutionMemoryWrite } = require('../services/mira-hfm/evolution-memory-bridge');
 const hfm = require('../services/mira-hfm');
 const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
 const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
