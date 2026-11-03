@@ -1,4 +1,5 @@
 name: Mira Hybrid Memory Phase 2 Core Safety
+# v0.2 follow-up: include isolated conflict-quarantine lifecycle regression coverage.
 
 on:
   push:
