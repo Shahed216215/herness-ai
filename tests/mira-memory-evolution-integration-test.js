@@ -260,9 +260,9 @@ module.exports = {
     "utf8"
   );
 
-  assert.match(source, /localMemoryStore\\.readMemory\\(\\)/);
-  assert.match(source, /localMemoryStore\\.writeMemory\\(value\\)/);
-  assert.match(source, /jsonStateStore\\.writeArrayState/);
+  assert.ok(source.includes("localMemoryStore.readMemory()"));
+  assert.ok(source.includes("localMemoryStore.writeMemory(value)"));
+  assert.ok(source.includes("jsonStateStore.writeArrayState"));
 
   console.log("SHARED_MEMORY_STORE_INTEGRATION=PASS");
 
