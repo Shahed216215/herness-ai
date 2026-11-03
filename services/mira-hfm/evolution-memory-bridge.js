@@ -43,7 +43,7 @@ async function executeEvolutionMemoryWrite(input) {
   const preState = recoveryPoint.record;
   const preStateValidation = validateCanonicalRecord(preState);
   if (recoveryPoint.status !== 'VERIFIED' || recoveryPoint.verified !== true ||
-      !preStateValidation.valid || !verifyContentHash(preState).valid ||
+      !preStateValidation.valid || preState.integrity.status !== 'VERIFIED' || !verifyContentHash(preState).valid ||
       preState.projectId !== record.projectId ||
       preState.memoryId !== record.memoryId ||
       preState.version.revision !== proposal.expectedRevision ||

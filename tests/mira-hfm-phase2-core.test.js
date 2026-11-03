@@ -19,6 +19,7 @@ const hfm = require('../services/mira-hfm');
 const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
 const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
 const { createBackupManifest, verifyBackupManifest, authorizeRestore } = require('../services/mira-hfm/backup-manifest');
+const { createEncryptedBackupPackage, verifyEncryptedBackupPackage } = require('../services/mira-hfm/backup-package');
 
 let passed = 0;
 function check(name, fn) {
@@ -588,6 +589,29 @@ async function main() {
     assert.equal(result.reason, 'PROVIDER_COMMIT_NOT_VERIFIED');
   });
 
+  await checkAsync('Write service completes an authorized canonical write through the coordinator', async () => {
+    const record = fixtureRecord(); const events = []; let written = false;
+    const provider = { providerId: 'fixture-provider', guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
+      getCapabilityObservations: async () => capabilityObservations(), read: async () => written ? record : null,
+      write: async () => { written = true; return commitReceipt(record); },
+      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 1, contentHash: record.version.contentHash }),
+      reconcileOperation: async () => ({ status: 'UNKNOWN' }) };
+    const result = await writeMemory({ record, context: context(), operation: operation(record), provider, registry: fakeRegistry(), audit: fakeAudit(events), expectedRevision: 0 });
+    assert.equal(result.status, 'COMPLETED'); assert.equal(result.readbackVerified, true);
+  });
+
+  await checkAsync('Write coordinator rejects stale pre-state revisions before claiming or writing', async () => {
+    const content = 'Phase 2 isolated fixture record'; const record = fixtureRecord({ version: { revision: 2, contentHash: core.createContentHash(content) } });
+    const stale = fixtureRecord(); let writes = 0;
+    const provider = { providerId: 'fixture-provider', guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
+      getCapabilityObservations: async () => capabilityObservations(), read: async () => stale,
+      write: async () => { writes += 1; return commitReceipt(record); },
+      verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: 2, contentHash: record.version.contentHash }),
+      reconcileOperation: async () => ({ status: 'UNKNOWN' }) };
+    const result = await executeGovernedWrite({ record, context: context(), operation: operation(record), provider, registry: fakeRegistry(), audit: fakeAudit([]), expectedRevision: 1 });
+    assert.equal(result.status, 'CONFLICT'); assert.equal(writes, 0);
+  });
+
   await checkAsync('Write coordinator records intent before provider write and verifies readback', async () => {
     const record = fixtureRecord();
     const events = [];
@@ -819,6 +843,28 @@ async function main() {
     const changed = Object.assign({}, record, { content: 'tampered' });
     assert.equal(verifyBackupManifest(result.manifest, [changed], verifier).status, 'INTEGRITY_FAILED');
   });
+  await checkAsync('Encrypted backup package requires approved encryption and signing profiles', async () => {
+    const record = fixtureRecord();
+    const result = await createEncryptedBackupPackage({ backupId: 'fixture-encrypted-backup', projectId: 'project-fixture', sourceRevision: 'fixture-r1', createdAt: '2026-11-03T00:00:00.000Z', records: [record], context: Object.assign(context(), { action: 'backup', testOnly: true }), backupCapabilityAvailable: true });
+    assert.equal(result.status, 'NOT_APPROVED');
+  });
+  await checkAsync('Encrypted backup package signs manifest and verifies encrypted fixture payload', async () => {
+    const record = fixtureRecord(); let storedPlaintext = null;
+    const cryptoProvider = { approvedProfile: true, testOnly: true, algorithmProfile: 'TEST-AEAD-V1',
+      encrypt: async plaintext => { storedPlaintext = plaintext; return { algorithm: 'TEST-AEAD-V1', keyId: 'fixture-dek', keyVersion: '1', nonce: 'bm9uY2U=', authTag: 'dGFn', ciphertext: Buffer.from(plaintext, 'utf8').toString('base64'), aadProfile: 'fixture-aad-v1' }; },
+      decrypt: async envelope => { if (envelope.ciphertext !== Buffer.from(storedPlaintext, 'utf8').toString('base64')) throw new Error('CIPHERTEXT_TAMPERED'); return storedPlaintext; } };
+    const signingProvider = { approvedProfile: true, testOnly: true, algorithmProfile: 'TEST-SIGNATURE-V1',
+      sign: async manifestHash => ({ algorithm: 'TEST-SIGNATURE-V1', keyId: 'fixture-signing-key', proof: 'proof:' + manifestHash }),
+      verify: async manifest => ({ verified: true, trustAnchorVerified: true, keyNotRevoked: true, manifestHash: manifest.manifestHash, algorithm: manifest.authenticity.algorithm, keyId: manifest.authenticity.keyId }) };
+    const ctx = Object.assign(context(), { action: 'backup', testOnly: true });
+    const pkg = await createEncryptedBackupPackage({ backupId: 'fixture-encrypted-backup', projectId: 'project-fixture', sourceRevision: 'fixture-r1', createdAt: '2026-11-03T00:00:00.000Z', records: [record], context: ctx, backupCapabilityAvailable: true, cryptoProvider, signingProvider });
+    assert.equal(pkg.status, 'ENCRYPTED_BACKUP_PACKAGE_VERIFIED'); assert.equal(pkg.plaintextPayloadReturned, false); assert.equal(pkg.persistencePerformed, false);
+    const verified = await verifyEncryptedBackupPackage({ package: pkg, context: ctx, cryptoProvider, signingProvider });
+    assert.equal(verified.valid, true); assert.equal(verified.recordCount, 1); assert.equal(verified.plaintextRecordsReturned, false);
+    const tampered = Object.assign({}, pkg, { encryptedPayload: Object.assign({}, pkg.encryptedPayload, { ciphertext: 'dGFtcGVyZWQ=' }) });
+    assert.equal((await verifyEncryptedBackupPackage({ package: tampered, context: ctx, cryptoProvider, signingProvider })).valid, false);
+  });
+
   check('Restore cannot proceed without explicit approval and all verification gates', () => {
     assert.equal(authorizeRestore({}).allowed, false);
     assert.equal(authorizeRestore({

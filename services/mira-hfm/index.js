@@ -10,6 +10,7 @@ const registry = require('./operation-registry');
 const capabilities = require('./capability-observations');
 const encryption = require('./encryption-contract');
 const backup = require('./backup-manifest');
+const backupPackage = require('./backup-package');
 const conflict = require('./conflict');
 const legacy = require('./legacy-adapter');
 const migration = require('./migration-preview');
@@ -27,6 +28,7 @@ module.exports = Object.freeze({
   capabilities,
   encryption,
   backup,
+  backupPackage,
   conflict,
   legacy,
   migration,
