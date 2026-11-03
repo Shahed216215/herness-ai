@@ -88,6 +88,18 @@ function atomicWriteJson(filePath, value, label = 'State') {
   }
 }
 
+function recordStateAudit(action, status, filePath, details = {}) {
+  const { recordAudit } = require('../audit-log');
+  return recordAudit({
+    actorRole: 'system',
+    action,
+    resource: 'mira_hybrid_memory_state',
+    resourceId: path.basename(filePath),
+    status,
+    details
+  });
+}
+
 function writeArrayState(filePath, entries, label = 'State') {
   if (!Array.isArray(entries)) throw new Error(`${label} must be an array.`);
 
@@ -98,6 +110,13 @@ function writeArrayState(filePath, entries, label = 'State') {
   } catch (error) {
     if (!/ is missing\.$/.test(error.message)) throw error;
   }
+
+  const expectedStateHash = sha256(JSON.stringify(entries));
+  recordStateAudit('memory_state_write_intent', 'pending', filePath, {
+    stateHash: expectedStateHash,
+    entryCount: entries.length,
+    label
+  });
 
   let version = null;
   let versionFile = null;
@@ -117,6 +136,18 @@ function writeArrayState(filePath, entries, label = 'State') {
   }
 
   const result = atomicWriteJson(filePath, entries, label);
+  try {
+    recordStateAudit('memory_state_write_committed', 'success', filePath, {
+      stateHash: result.sha256,
+      entryCount: entries.length,
+      versionFile: versionFile ? path.basename(versionFile) : null,
+      label
+    });
+  } catch (error) {
+    error.code = 'STATE_COMMITTED_AUDIT_FAILED';
+    error.stateCommitted = true;
+    throw error;
+  }
   return { ...result, versionFile: version ? versionFile : null };
 }
 
@@ -136,6 +167,17 @@ function quarantineConflict(directory, name, payload, metadata = {}) {
     payload
   };
   const result = atomicWriteJson(filePath, envelope, 'Conflict quarantine');
+  try {
+    recordStateAudit('memory_conflict_quarantined', 'conflict', filePath, {
+      conflictFile: path.basename(filePath),
+      stateHash: result.sha256,
+      metadata
+    });
+  } catch (error) {
+    error.code = 'CONFLICT_QUARANTINED_AUDIT_FAILED';
+    error.stateCommitted = true;
+    throw error;
+  }
   return { file: filePath, sha256: result.sha256 };
 }
 
