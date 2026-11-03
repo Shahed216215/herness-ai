@@ -153,6 +153,18 @@ function validDateTime(value) {
   return /T/.test(value) && /(?:Z|[+-][0-9]{2}:[0-9]{2})$/.test(value);
 }
 
+
+function containsCredentialMaterial(content) {
+  if (typeof content !== 'string') return false;
+  const patterns = [
+    /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/i,
+    /\\bBearer\\s+[A-Za-z0-9._~+\\/-]{20,}/i,
+    /\\b(?:sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|xox[baprs]-[A-Za-z0-9-]{20,})\\b/,
+    /\\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|secret)\\s*[:=]\\s*["']?[A-Za-z0-9._~+\\/-]{12,}/i
+  ];
+  return patterns.some(pattern => pattern.test(content));
+}
+
 function validateCanonicalRecord(record) {
   const errors = [];
   const rootAllowed = ROOT_KEYS;
@@ -165,6 +177,7 @@ function validateCanonicalRecord(record) {
   boundedString(record.projectId, 1, 128, 'PROJECT_ID', errors);
   if (!RECORD_TYPES.has(record.recordType)) errors.push('RECORD_TYPE_INVALID');
   boundedString(record.content, 1, 100000, 'CONTENT', errors);
+  if (containsCredentialMaterial(record.content)) errors.push('CONTENT_SECRET_MATERIAL_REJECTED');
   if (!isPlainObject(record.source)) {
     errors.push('SOURCE_MUST_BE_OBJECT');
   } else {
@@ -417,7 +430,7 @@ function normalizeAdapterError(error) {
 }
 
 module.exports = {
-  RECORD_TYPES, SOURCE_TYPES, TRUST_STATES, ACCESS_CLASSES,
+  RECORD_TYPES, SOURCE_TYPES, TRUST_STATES, ACCESS_CLASSES, containsCredentialMaterial,
   CAPABILITIES, CAPABILITY_STATES, canonicalize, sha256Canonical, isSafeSourceUrl,
   createContentHash, validateCanonicalRecord, verifyContentHash,
   evaluateAccess, TRUST_TRANSITIONS, transitionTrust,
