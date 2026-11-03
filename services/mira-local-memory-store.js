@@ -263,6 +263,7 @@ function createBackup() {
 function restoreMemory() {
   const backup = readBackupFile();
   let safetyBackupPath = SAFETY_BACKUP_FILE;
+  let corruptPrimaryPreserved = false;
 
   // Preserve the current primary before restore. Valid state gets a verified
   // structured backup; corrupt bytes are preserved separately and verbatim.
@@ -307,10 +308,14 @@ function restoreMemory() {
       'Corrupt Memory pre-restore quarantine'
     );
     safetyBackupPath = SAFETY_QUARANTINE_FILE;
+    corruptPrimaryPreserved = true;
   }
 
-  // Atomic replacement followed by independent readback verification.
-  const result = writeMemory(backup.entries);
+  // Corrupt bytes have been preserved verbatim, so explicit restore may replace
+  // that known-bad regular file using the verified atomic writer.
+  const result = corruptPrimaryPreserved
+    ? atomicWriteJson(MEMORY_FILE, backup.entries, 'Mira Memory restore')
+    : writeMemory(backup.entries);
 
   return {
     success: true,
