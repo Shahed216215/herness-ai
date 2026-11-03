@@ -13,6 +13,7 @@ const conflict = require('./conflict');
 const legacy = require('./legacy-adapter');
 const migration = require('./migration-preview');
 const retrieval = require('./retrieval-evidence');
+const evolutionMemoryBridge = require('./evolution-memory-bridge');
 
 module.exports = Object.freeze({
   core,
@@ -27,5 +28,6 @@ module.exports = Object.freeze({
   conflict,
   legacy,
   migration,
-  retrieval
+  retrieval,
+  evolutionMemoryBridge
 });
