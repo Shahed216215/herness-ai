@@ -467,7 +467,7 @@ function listConflicts({ directory, projectId }) {
         conflictId: envelope.conflictId,
         projectId: envelope.projectId,
         conflictTypes: envelope.conflictTypes,
-        status, state: status === 'RETAINED_QUARANTINED' ? 'QUARANTINED' : status,
+        status, state: ['INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(status) ? 'QUARANTINED' : status,
         integrity, reviewIntegrity: review.status, resolutionIntegrity: resolution.status,
         originalMemoryIds: envelope.originals.map(item => item.memoryId)
       };
@@ -596,7 +596,7 @@ function filterTrustedRecords(records, pendingConflicts, projectId) {
   if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('projectId is required for trusted retrieval filtering.');
   const blocked = new Set(pendingConflicts
     .filter(item => item.projectId === projectId &&
-      ['PENDING_REVIEW', 'INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(item.status))
+      ['QUARANTINED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(item.status))
     .flatMap(item => item.originalMemoryIds || []));
   return records.filter(record => !(record && record.projectId === projectId && blocked.has(record.memoryId)));
 }
