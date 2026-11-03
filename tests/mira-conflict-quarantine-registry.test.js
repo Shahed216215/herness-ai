@@ -110,6 +110,23 @@ try {
     auditWriter: () => { throw new Error('audit unavailable'); }
   }), error => error.code === 'CONFLICT_QUARANTINED_AUDIT_FAILED' && error.stateCommitted === true);
 
+  const resolutionAuditDir = path.join(directory, 'resolution-audit-fail');
+  const resolutionAuditConflict = createConflictQuarantine({
+    directory: resolutionAuditDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  assert.throws(() => resolveConflict({
+    directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
+    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-3',
+    auditWriter: () => { throw new Error('resolution audit unavailable'); }, authorizeResolution
+  }), error => error.code === 'CONFLICT_RESOLUTION_AUDIT_FAILED' && error.stateCommitted === true);
+  assert.equal(listConflicts({ directory: resolutionAuditDir, projectId: 'project-a' })[0].status, 'RESOLVED');
+  assert.equal(resolveConflict({
+    directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
+    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-3',
+    auditWriter, authorizeResolution
+  }).status, 'ALREADY_RESOLVED');
+
   const tamperDir = path.join(directory, 'tamper');
   const tampered = createConflictQuarantine({
     directory: tamperDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
@@ -159,6 +176,7 @@ try {
   console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
   console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
   console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
+  console.log('RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS');
   console.log('TAMPER_DETECTION=PASS');
   console.log('FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS');
   console.log('SYMLINK_PATH_REJECTION=PASS');
