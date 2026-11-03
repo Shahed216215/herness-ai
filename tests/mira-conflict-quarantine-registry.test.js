@@ -26,6 +26,13 @@ const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-conflict-registry-
 const auditEvents = [];
 const auditWriter = event => { auditEvents.push(event); };
 const authorizeResolution = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-');
+const resolutionProposal = () => ({
+  fieldLevelChanges: [],
+  dataLossRisks: ['Both original versions are preserved; no source record is deleted by this isolated service.'],
+  requiredAuthority: 'authorized-human-reviewer',
+  recoveryPoint: 'synthetic-fixture-originals-retained',
+  verificationPlan: ['verify both original digests', 'verify resolution digest', 'verify accepted result or merge revision']
+});
 try {
   const originalA = record();
   const originalB = record({ content: 'competing fact', version: { revision: 1, contentHash: 'b'.repeat(64) } });
@@ -58,23 +65,27 @@ try {
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_EXISTING_VERSION', actor: 'unapproved-user', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }), /authorization denied/);
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter
   }), /authorizeResolution callback is required/);
 
   const invalidMerge = record({ version: { revision: 1, contentHash: 'c'.repeat(64) } });
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
     decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(),
     mergedRecord: invalidMerge, auditWriter, authorizeResolution
   }), /increment exactly once/);
 
   const resolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   });
   assert.equal(resolution.status, 'RESOLVED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'RESOLVED');
@@ -82,7 +93,8 @@ try {
   assert.equal(verifyResolution({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   const repeatedResolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   });
   assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
 
@@ -94,6 +106,7 @@ try {
   assert.equal(resolveConflict({
     directory: rejectDirectory, conflictId: rejectConflict.conflictId, projectId: 'project-a',
     decision: 'REJECT_CONFLICTING_CHANGE', actor: 'reviewer', policyDecision: 'POLICY-REJECT',
+    resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   const rejectRecord = JSON.parse(fs.readFileSync(path.join(rejectDirectory, rejectConflict.conflictId + '.resolution.json'), 'utf8'));
@@ -113,6 +126,7 @@ try {
   assert.equal(resolveConflict({
     directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
     decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
+    resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].status, 'RETAINED_QUARANTINED');
@@ -132,12 +146,14 @@ try {
   assert.throws(() => resolveConflict({
     directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 99,
-    actor: 'reviewer', policyDecision: 'POLICY-ALT', auditWriter, authorizeResolution
+    actor: 'reviewer', policyDecision: 'POLICY-ALT',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   }), /valid acceptedOriginalIndex/);
   assert.equal(resolveConflict({
     directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 2,
-    actor: 'reviewer', policyDecision: 'POLICY-ALT', auditWriter, authorizeResolution
+    actor: 'reviewer', policyDecision: 'POLICY-ALT',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   const multiResolution = JSON.parse(fs.readFileSync(path.join(multiDirectory, multiConflict.conflictId + '.resolution.json'), 'utf8'));
   assert.equal(multiResolution.acceptedOriginalDigest, readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals[2].recordDigest);
@@ -153,6 +169,7 @@ try {
   assert.equal(resolveConflict({
     directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
     decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
+    resolutionProposal: resolutionProposal(),
     mergedRecord: merged, auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   const mergedResolution = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
@@ -191,12 +208,14 @@ try {
   assert.throws(() => resolveConflict({
     directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-3',
+    resolutionProposal: resolutionProposal(),
     auditWriter: () => { throw new Error('resolution audit unavailable'); }, authorizeResolution
   }), error => error.code === 'CONFLICT_RESOLUTION_AUDIT_FAILED' && error.stateCommitted === true);
   assert.equal(listConflicts({ directory: resolutionAuditDir, projectId: 'project-a' })[0].status, 'RESOLVED');
   assert.equal(resolveConflict({
     directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-3',
+    resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }).status, 'ALREADY_RESOLVED');
 
@@ -225,6 +244,7 @@ try {
   assert.throws(() => resolveConflict({
     directory: tamperDir, conflictId: tampered.conflictId, projectId: 'project-a',
     decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-TAMPER',
+    resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }), /integrity verification failed/);
 
