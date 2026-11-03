@@ -135,7 +135,7 @@ try {
     actor: 'reviewer', policyDecision: 'POLICY-ALT', auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   const multiResolution = JSON.parse(fs.readFileSync(path.join(multiDirectory, multiConflict.conflictId + '.resolution.json'), 'utf8'));
-  assert.equal(multiResolution.acceptedOriginalDigest, multiConflict.envelopeDigest === '' ? null : readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals[2].recordDigest);
+  assert.equal(multiResolution.acceptedOriginalDigest, readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals[2].recordDigest);
   assert.equal(verifyResolution({ directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
 
   const mergeDirectory = path.join(directory, 'merge-fixture');
