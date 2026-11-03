@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const storagePath = require('../mira-storage');
+const jsonStateStore = require('./mira-json-state-store');
 
 const MEMORY_FILE = process.env.MIRA_MEMORY_FILE
   ? path.resolve(process.env.MIRA_MEMORY_FILE)
@@ -138,14 +139,34 @@ function atomicWriteJson(filePath, value, label = 'Memory') {
 }
 
 function readMemory() {
-  return readArray(MEMORY_FILE, 'Mira Memory', true);
+  try {
+    return readArray(MEMORY_FILE, 'Mira Memory', false);
+  } catch (error) {
+    if (!/Mira Memory is missing\\.$/.test(error.message)) throw error;
+
+    // If the primary file disappeared but a verified backup exists, expose
+    // that data read-only. Never turn this condition into an empty write.
+    try {
+      fs.lstatSync(BACKUP_FILE);
+      return readBackupFile().entries;
+    } catch (backupError) {
+      if (backupError.code === 'ENOENT' || /Memory backup not found/.test(backupError.message)) {
+        return [];
+      }
+      throw new Error(`Mira Memory primary is missing and backup recovery failed: ${backupError.message}`);
+    }
+  }
 }
 
 function writeMemory(entries) {
   if (!Array.isArray(entries)) {
     throw new Error('Memory must be an array.');
   }
-  return atomicWriteJson(MEMORY_FILE, entries, 'Mira Memory');
+  const result = jsonStateStore.writeArrayState(MEMORY_FILE, entries, 'Mira Memory');
+  return {
+    ...result,
+    entries: entries.length
+  };
 }
 
 function makeBackup(entries, source) {
