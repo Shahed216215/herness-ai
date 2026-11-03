@@ -25,6 +25,7 @@ function record(overrides = {}) {
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-conflict-registry-'));
 const auditEvents = [];
 const auditWriter = event => { auditEvents.push(event); };
+const authorizeResolution = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-');
 try {
   const originalA = record();
   const originalB = record({ content: 'competing fact', version: { revision: 1, contentHash: 'b'.repeat(64) } });
@@ -48,6 +49,16 @@ try {
     listConflicts({ directory, projectId: 'project-a' }));
   assert.deepEqual(visibleBefore.map(item => item.memoryId), ['memory-0002']);
 
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'KEEP_BOTH', actor: 'unapproved-user', policyDecision: 'POLICY-1',
+    auditWriter, authorizeResolution
+  }), /authorization denied/);
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter
+  }), /authorizeResolution callback is required/);
+
   const invalidMerge = record({ version: { revision: 1, contentHash: 'c'.repeat(64) } });
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
@@ -57,7 +68,7 @@ try {
 
   const resolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter
+    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
   });
   assert.equal(resolution.status, 'RESOLVED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'RESOLVED');
@@ -65,7 +76,7 @@ try {
   assert.equal(verifyResolution({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   const repeatedResolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter
+    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
   });
   assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
 
@@ -79,7 +90,7 @@ try {
   assert.equal(resolveConflict({
     directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
     decision: 'MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
-    mergedRecord: merged, auditWriter
+    mergedRecord: merged, auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   const mergedResolution = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
   assert.deepEqual(mergedResolution.originalDigests.length, 2);
@@ -120,6 +131,11 @@ try {
     conflictTypes: ['CONTENT_CONFLICT'], records: [originalA, originalB],
     actor: 'test-suite', auditWriter
   }), /safe directory/);
+  assert.throws(() => createConflictQuarantine({
+    directory: path.join(symlinkDir, 'linked', 'nested'), projectId: 'project-a',
+    conflictTypes: ['CONTENT_CONFLICT'], records: [originalA, originalB],
+    actor: 'test-suite', auditWriter
+  }), /unsafe directory component/);
 
   assert.ok(auditEvents.some(event => event.action === 'memory_conflict_quarantined'));
   assert.ok(auditEvents.some(event => event.action === 'memory_conflict_resolved'));
@@ -129,9 +145,11 @@ try {
   console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('GOVERNED_KEEP_BOTH_RESOLUTION=PASS');
+  console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
   console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
   console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
   console.log('TAMPER_DETECTION=PASS');
+  console.log('FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS');
   console.log('SYMLINK_PATH_REJECTION=PASS');
   console.log('SYNTHETIC_FIXTURES_ONLY=PASS');
   console.log('PRODUCTION_DATA_TOUCHED=NO');
