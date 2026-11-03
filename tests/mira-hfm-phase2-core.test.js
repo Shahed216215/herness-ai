@@ -271,9 +271,12 @@ async function main() {
       getCapabilities: async () => capabilities,
       search: async () => ({ records: [visible, hidden, quarantined], nextCursor: 'fixture-cursor' })
     };
-    const result = await searchMemory(provider, 'fixture', { limit: 10 }, Object.assign(context(), { action: 'search' }));
+    const searchContext = Object.assign(context(), { action: 'search' });
+    assert.equal(core.evaluateAccess(hidden, searchContext).allowed, false, 'hidden access check');
+    assert.equal(core.evaluateAccess(quarantined, searchContext).allowed, false, 'quarantine access check');
+    const result = await searchMemory(provider, 'fixture', { limit: 10 }, searchContext);
     assert.equal(result.status, 'SUCCESS');
-    assert.equal(result.records.length, 1);
+    assert.equal(result.records.length, 1, JSON.stringify(result.records.map(item => ({ id: item.memoryId, projectId: item.projectId, trust: item.trust.status }))));
     assert.equal(result.records[0].memoryId, visible.memoryId);
     assert.equal(result.filteredUnauthorizedOrUntrusted, 2);
   });
