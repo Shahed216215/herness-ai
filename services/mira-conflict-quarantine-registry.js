@@ -22,6 +22,7 @@ function digest(value) {
 function safeDirectory(directory) {
   const resolved = path.resolve(directory);
   const root = path.parse(resolved).root;
+  if (resolved === root) throw new Error('Filesystem root cannot be used as a conflict quarantine directory.');
   let current = root;
   const segments = resolved.slice(root.length).split(path.sep).filter(Boolean);
   for (const segment of segments) {
@@ -233,12 +234,18 @@ function listConflicts({ directory, projectId }) {
 }
 function resolveConflict({
   directory, conflictId, projectId, decision, actor, policyDecision,
-  mergedRecord, auditWriter
+  mergedRecord, auditWriter, authorizeResolution
 }) {
   if (!DECISIONS.has(decision)) throw new Error('Unsupported conflict resolution decision.');
   if (typeof actor !== 'string' || !actor.trim()) throw new Error('Resolution actor is required.');
   if (typeof policyDecision !== 'string' || !policyDecision.trim()) throw new Error('Policy decision reference is required.');
   const envelope = readConflict({ directory, conflictId, projectId });
+  if (typeof authorizeResolution !== 'function') throw new Error('An explicit authorizeResolution callback is required.');
+  const authorized = authorizeResolution({
+    conflictId, projectId: envelope.projectId, decision, actor, policyDecision,
+    originalDigests: envelope.originals.map(item => item.recordDigest)
+  });
+  if (authorized !== true) throw new Error('Conflict resolution authorization denied.');
   const originals = envelope.originals.map(item => item.record);
   let resultRecord = null;
   if (decision === 'MERGE') {
