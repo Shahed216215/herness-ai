@@ -36,6 +36,10 @@ try {
     path.join(TEMP, 'mira-storage.js')
   );
   fs.copyFileSync(
+    path.join(PROJECT, 'audit-log.js'),
+    path.join(TEMP, 'audit-log.js')
+  );
+  fs.copyFileSync(
     path.join(PROJECT, 'services/mira-local-memory-store.js'),
     path.join(tempServices, 'mira-local-memory-store.js')
   );
@@ -123,6 +127,9 @@ try {
       ? 'RESULT=ISOLATED_CONTRACT_TEST_PASS'
       : 'RESULT=ISOLATED_CONTRACT_TEST_FAIL'
   );
+  if (failed > 0) {
+    process.exitCode = 1;
+  }
 } finally {
   try {
     fs.rmSync(TEMP, { recursive: true, force: true });
