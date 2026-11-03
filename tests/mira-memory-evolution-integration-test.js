@@ -74,6 +74,10 @@ async function main() {
     path.join(PROJECT, "services/mira-local-memory-store.js"),
     path.join(root, "services/mira-local-memory-store.js")
   );
+  copy(
+    path.join(PROJECT, "services/mira-json-state-store.js"),
+    path.join(root, "services/mira-json-state-store.js")
+  );
 
   writeJson(path.join(root, "audit-log.js"), {});
   fs.writeFileSync(
