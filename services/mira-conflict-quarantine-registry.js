@@ -164,6 +164,10 @@ function resolutionPath(directory, conflictId) {
   validateConflictId(conflictId);
   return path.join(directory, conflictId + '.resolution.json');
 }
+function reviewPath(directory, conflictId) {
+  validateConflictId(conflictId);
+  return path.join(directory, conflictId + '.review.json');
+}
 function createConflictQuarantine({
   directory, projectId, conflictTypes, records, reason, actor, auditWriter
 }) {
@@ -288,6 +292,10 @@ function verifyResolution({ directory, conflictId, projectId }) {
   if (!resolution || typeof resolution !== 'object' || Array.isArray(resolution)) {
     return { status: 'INTEGRITY_FAILED', conflictId, reason: 'INVALID_RESOLUTION_ENVELOPE' };
   }
+  const review = verifyReview({ directory, conflictId, projectId });
+  if (review.status !== 'VERIFIED') {
+    return { status: 'INTEGRITY_FAILED', conflictId, reason: 'REVIEW_STATE_NOT_VERIFIED' };
+  }
   const { resolutionDigest, ...body } = resolution;
   const expectedOriginals = envelope.originals.map(item => item.recordDigest);
   const originalsMatch = Array.isArray(resolution.originalDigests) &&
@@ -332,10 +340,101 @@ function verifyResolution({ directory, conflictId, projectId }) {
          resolution.acceptedOriginalIndex === acceptedIndex &&
          resolution.acceptedOriginalDigest === acceptedDigest);
   return {
-    status: resolutionDigest === digest(body) && originalsMatch && proposalValid && resultValid
+    status: resolutionDigest === digest(body) && resolution.reviewDigest === review.reviewDigest && originalsMatch && proposalValid && resultValid
       ? 'VERIFIED' : 'INTEGRITY_FAILED',
     conflictId, resolutionDigest, originalsMatch, resultValid
   };
+}
+function verifyReview({ directory, conflictId, projectId }) {
+  const envelope = readConflict({ directory, conflictId, projectId });
+  if (verifyConflict({ directory, conflictId, projectId }).status !== 'VERIFIED') {
+    return { status: 'INTEGRITY_FAILED', conflictId };
+  }
+  let review;
+  try {
+    review = readRegularJson(reviewPath(directory, conflictId));
+  } catch (error) {
+    if (error.code === 'ENOENT') return { status: 'NOT_STARTED', conflictId };
+    throw error;
+  }
+  if (!review || typeof review !== 'object' || Array.isArray(review)) {
+    return { status: 'INTEGRITY_FAILED', conflictId };
+  }
+  const { reviewDigest, ...body } = review;
+  const originals = envelope.originals.map(item => item.recordDigest);
+  const valid = review.conflictId === conflictId &&
+    review.projectId === envelope.projectId &&
+    review.state === 'UNDER_REVIEW' &&
+    digest(review.originalDigests) === digest(originals) &&
+    reviewDigest === digest(body);
+  return { status: valid ? 'VERIFIED' : 'INTEGRITY_FAILED', conflictId, reviewDigest };
+}
+function beginConflictReview({
+  directory, conflictId, projectId, actor, policyDecision,
+  authorizeReview, auditWriter
+}) {
+  if (typeof actor !== 'string' || !actor.trim()) throw new Error('Review actor is required.');
+  if (typeof policyDecision !== 'string' || !policyDecision.trim()) throw new Error('Review policy decision is required.');
+  const envelope = readConflict({ directory, conflictId, projectId });
+  if (verifyConflict({ directory, conflictId, projectId }).status !== 'VERIFIED') {
+    throw new Error('Conflict envelope integrity verification failed; review is blocked.');
+  }
+  if (fs.existsSync(resolutionPath(directory, conflictId))) {
+    throw new Error('A resolved conflict cannot enter review again.');
+  }
+  const target = reviewPath(directory, conflictId);
+  if (fs.existsSync(target)) {
+    const existing = verifyReview({ directory, conflictId, projectId });
+    const stored = readRegularJson(target);
+    if (existing.status !== 'VERIFIED') throw new Error('Existing review record failed integrity verification.');
+    if (stored.actor !== actor || stored.policyDecision !== policyDecision) {
+      throw new Error('Conflict is already under review by a different review authority.');
+    }
+    try {
+      requireAudit(auditWriter, {
+        action: 'memory_conflict_review_started', conflictId, projectId,
+        actor, policyDecision, reviewDigest: stored.reviewDigest
+      });
+    } catch (error) {
+      error.code = 'CONFLICT_REVIEW_AUDIT_FAILED';
+      error.stateCommitted = true;
+      throw error;
+    }
+    return { status: 'ALREADY_UNDER_REVIEW', conflictId, reviewDigest: stored.reviewDigest };
+  }
+  if (typeof authorizeReview !== 'function') throw new Error('An explicit authorizeReview callback is required.');
+  const reviewRequest = {
+    conflictId, projectId: envelope.projectId, actor, policyDecision,
+    originalDigests: envelope.originals.map(item => item.recordDigest)
+  };
+  if (authorizeReview(reviewRequest) !== true) throw new Error('Conflict review authorization denied.');
+  const review = {
+    reviewSchemaVersion: '1.0.0',
+    conflictId, projectId: envelope.projectId, state: 'UNDER_REVIEW',
+    actor, policyDecision,
+    originalDigests: envelope.originals.map(item => item.recordDigest),
+    startedAt: new Date().toISOString()
+  };
+  review.reviewDigest = digest(review);
+  try {
+    writeImmutableJson(target, review);
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    const existing = verifyReview({ directory, conflictId, projectId });
+    if (existing.status !== 'VERIFIED') throw new Error('Concurrent review record collision.');
+    return { status: 'ALREADY_UNDER_REVIEW', conflictId, reviewDigest: existing.reviewDigest };
+  }
+  try {
+    requireAudit(auditWriter, {
+      action: 'memory_conflict_review_started', conflictId, projectId,
+      actor, policyDecision, reviewDigest: review.reviewDigest
+    });
+  } catch (error) {
+    error.code = 'CONFLICT_REVIEW_AUDIT_FAILED';
+    error.stateCommitted = true;
+    throw error;
+  }
+  return { status: 'UNDER_REVIEW', conflictId, reviewDigest: review.reviewDigest };
 }
 function listConflicts({ directory, projectId }) {
   safeDirectory(directory);
@@ -348,20 +447,28 @@ function listConflicts({ directory, projectId }) {
       const integrity = verifyConflict({
         directory, conflictId: envelope.conflictId, projectId: envelope.projectId
       }).status;
+      const review = verifyReview({
+        directory, conflictId: envelope.conflictId, projectId: envelope.projectId
+      });
       const resolution = verifyResolution({
         directory, conflictId: envelope.conflictId, projectId: envelope.projectId
       });
       const resolutionRecord = resolution.status === 'VERIFIED'
         ? readRegularJson(resolutionPath(directory, envelope.conflictId)) : null;
-      const status = integrity !== 'VERIFIED' || resolution.status === 'INTEGRITY_FAILED'
-        ? 'INTEGRITY_FAILED'
-        : (resolution.status !== 'VERIFIED' ? 'PENDING_REVIEW'
-          : (resolutionRecord.decision === 'RETAIN_QUARANTINED' ? 'RETAINED_QUARANTINED' : 'RESOLVED'));
+      let status = 'QUARANTINED';
+      if (integrity !== 'VERIFIED' || review.status === 'INTEGRITY_FAILED' ||
+          resolution.status === 'INTEGRITY_FAILED') status = 'INTEGRITY_FAILED';
+      else if (resolution.status === 'VERIFIED') {
+        if (resolutionRecord.decision === 'RETAIN_QUARANTINED') status = 'RETAINED_QUARANTINED';
+        else if (resolutionRecord.decision === 'REJECT_CONFLICTING_CHANGE') status = 'REJECTED';
+        else status = 'RESOLVED';
+      } else if (review.status === 'VERIFIED') status = 'UNDER_REVIEW';
       return {
         conflictId: envelope.conflictId,
         projectId: envelope.projectId,
         conflictTypes: envelope.conflictTypes,
-        status, integrity, resolutionIntegrity: resolution.status,
+        status, state: status === 'RETAINED_QUARANTINED' ? 'QUARANTINED' : status,
+        integrity, reviewIntegrity: review.status, resolutionIntegrity: resolution.status,
         originalMemoryIds: envelope.originals.map(item => item.memoryId)
       };
     }).filter(Boolean);
@@ -377,6 +484,8 @@ function resolveConflict({
   if (verifyConflict({ directory, conflictId, projectId }).status !== 'VERIFIED') {
     throw new Error('Conflict envelope integrity verification failed; resolution is blocked.');
   }
+  const review = verifyReview({ directory, conflictId, projectId });
+  if (review.status !== 'VERIFIED') throw new Error('Conflict must be in verified UNDER_REVIEW state before resolution.');
   const proposal = buildResolutionProposal(envelope, resolutionProposal);
   if (typeof authorizeResolution !== 'function') throw new Error('An explicit authorizeResolution callback is required.');
   const authorized = authorizeResolution({
@@ -422,6 +531,7 @@ function resolveConflict({
     conflictId, projectId: envelope.projectId, decision, actor,
     policyDecision, originalDigests: envelope.originals.map(item => item.recordDigest),
     proposal,
+    reviewDigest: review.reviewDigest,
     acceptedOriginalIndex: acceptedOriginalIndex ?? null,
     acceptedOriginalDigest,
     resultingRecord: resultRecord,
@@ -436,6 +546,7 @@ function resolveConflict({
         existing.decision !== decision || existing.actor !== actor ||
         existing.policyDecision !== policyDecision ||
         existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
+        existing.reviewDigest !== resolution.reviewDigest ||
         digest(existing.proposal) !== digest(resolution.proposal) ||
         digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
         digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
@@ -454,6 +565,7 @@ function resolveConflict({
       if (existing.conflictId !== conflictId || existing.decision !== decision ||
           existing.actor !== actor || existing.policyDecision !== policyDecision ||
           existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
+          existing.reviewDigest !== resolution.reviewDigest ||
           digest(existing.proposal) !== digest(resolution.proposal) ||
           digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
           digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
@@ -491,5 +603,6 @@ function filterTrustedRecords(records, pendingConflicts, projectId) {
 
 module.exports = {
   createConflictQuarantine, readConflict, verifyConflict,
-  listConflicts, resolveConflict, verifyResolution, filterTrustedRecords
+  beginConflictReview, verifyReview, listConflicts,
+  resolveConflict, verifyResolution, filterTrustedRecords
 };
