@@ -26,6 +26,14 @@ function safeReadRaw(filePath, label) {
   return fs.readFileSync(filePath, 'utf8');
 }
 
+function ensureSafeDirectory(directory, label) {
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const stat = fs.lstatSync(directory);
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    throw new Error(label + ' is not a safe directory.');
+  }
+}
+
 function makeBackup(entries, source) {
   if (!Array.isArray(entries)) throw new Error('Knowledge backup source must be an array.');
   return {
@@ -72,7 +80,7 @@ function preservePreviousBackup() {
     previous = JSON.parse(raw);
   } catch {
     const quarantineDir = path.join(path.dirname(BACKUP_FILE), 'memory-conflicts');
-    fs.mkdirSync(quarantineDir, { recursive: true, mode: 0o700 });
+    ensureSafeDirectory(quarantineDir, 'Knowledge backup quarantine directory');
     const quarantineFile = path.join(
       quarantineDir,
       'corrupt-knowledge-backup-' + Date.now() + '-' + crypto.randomBytes(4).toString('hex') + '.json'
@@ -87,10 +95,11 @@ function preservePreviousBackup() {
     const error = new Error('Existing Knowledge backup is corrupt; preserved it and refused overwrite.');
     error.code = 'KNOWLEDGE_BACKUP_CORRUPT_PRESERVED';
     error.quarantineFile = quarantineFile;
+    error.quarantineFile = quarantineFile;
     throw error;
   }
   const versionsDir = BACKUP_FILE + '.versions';
-  fs.mkdirSync(versionsDir, { recursive: true, mode: 0o700 });
+  ensureSafeDirectory(versionsDir, 'Knowledge backup versions directory');
   const name = new Date().toISOString().replace(/[:.]/g, '-') + '-' +
     crypto.randomBytes(4).toString('hex') + '.json';
   const versionFile = path.join(versionsDir, name);
@@ -143,7 +152,7 @@ function restoreKnowledge(options = {}) {
       try { raw = safeReadRaw(KNOWLEDGE_FILE, 'Corrupt Knowledge primary'); }
       catch (readError) { throw new Error('Cannot establish safe pre-restore state: ' + readError.message); }
       const quarantineDir = path.join(path.dirname(KNOWLEDGE_FILE), 'memory-conflicts');
-      fs.mkdirSync(quarantineDir, { recursive: true, mode: 0o700 });
+      ensureSafeDirectory(quarantineDir, 'Knowledge restore quarantine directory');
       const quarantineFile = path.join(
         quarantineDir,
         'corrupt-knowledge-primary-' + Date.now() + '-' + crypto.randomBytes(4).toString('hex') + '.json'
