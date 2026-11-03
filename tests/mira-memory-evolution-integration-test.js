@@ -54,9 +54,8 @@ async function main() {
     { role: "user", content: "fixture-new-entry" }
   ];
 
-  writeJson(path.join(root, "memory.json"), initial);
-  writeJson(path.join(root, "drive-memory.json"), initial);
   writeJson(path.join(storeRoot, "memory.json"), initial);
+  writeJson(path.join(root, "drive-memory.json"), initial);
 
   copy(
     path.join(PROJECT, "knowledge-memory-evolution.js"),
@@ -125,7 +124,7 @@ module.exports = {
   );
   const drive = require(path.join(root, "google-drive.js"));
 
-  const localFile = path.join(root, "memory.json");
+  const localFile = path.join(storeRoot, "memory.json");
   const driveFile = path.join(root, "drive-memory.json");
 
   const proposal = (state, expected = initial) => ({
@@ -236,23 +235,17 @@ module.exports = {
   assert.deepEqual(store.readMemory(), storeEntries);
   pass("Local Store rejects invalid input without replacing data");
 
-  // Characterize current production source: Evolution still owns
-  // its separate writer and does not call the Local Store.
+  // Verify Evolution delegates Memory persistence to the shared Local Store.
   const source = fs.readFileSync(
     path.join(PROJECT, "knowledge-memory-evolution.js"),
     "utf8"
   );
 
-  assert.match(source, /function atomicWriteJson/);
-  assert.match(source, /atomicWriteJson\(\s*getTargetFile\(target\)/);
-  assert.doesNotMatch(
-    source,
-    /require\(["']\.\/services\/mira-local-memory-store["']\)/
-  );
+  assert.match(source, /localMemoryStore\\.readMemory\\(\\)/);
+  assert.match(source, /localMemoryStore\\.writeMemory\\(value\\)/);
+  assert.match(source, /jsonStateStore\\.writeArrayState/);
 
-  console.log(
-    "GAP_CONFIRMED: Evolution Memory writer is not integrated with Local Store."
-  );
+  console.log("SHARED_MEMORY_STORE_INTEGRATION=PASS");
 
   console.log("TESTS_PASSED=" + passed);
   console.log("TESTS_FAILED=0");
