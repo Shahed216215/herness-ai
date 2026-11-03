@@ -260,7 +260,7 @@ async function main() {
   await checkAsync('Search service filters unauthorized and quarantined records before returning results', async () => {
     const visible = fixtureRecord();
     const hidden = fixtureRecord({
-      memoryId: 'memory-fixture-0002',
+      memoryId: 'memory-fixture-0002', projectId: 'another-project',
       access: { classification: 'PROJECT_PRIVATE' }
     });
     const quarantined = fixtureRecord({
