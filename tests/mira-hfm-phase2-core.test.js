@@ -484,8 +484,14 @@ async function main() {
       explicitApproval: true, targetCapabilityAvailable: true,
       accessPolicyAllowed: true, encryptionVerified: true,
       sourceProjectId: 'project-fixture', targetProjectId: 'project-fixture',
-      manifestVerification: { valid: true, status: 'VERIFIED', authenticity: 'VERIFIED' }
+      manifestVerification: { valid: true, status: 'VERIFIED', authenticity: 'VERIFIED', projectId: 'project-fixture' }
     }).allowed, true);
+    assert.equal(authorizeRestore({
+      explicitApproval: true, targetCapabilityAvailable: true,
+      accessPolicyAllowed: true, encryptionVerified: true,
+      sourceProjectId: 'another-project', targetProjectId: 'another-project',
+      manifestVerification: { valid: true, status: 'VERIFIED', authenticity: 'VERIFIED', projectId: 'project-fixture' }
+    }).allowed, false);
   });
 
   process.stdout.write('TESTS_PASSED=' + passed + '\n');

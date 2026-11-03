@@ -34,6 +34,7 @@ function createBackupManifest(input) {
     recordCount: input.records.length,
     payloadHash: sha256Canonical(input.records),
     createdAt: new Date(input.createdAt).toISOString(),
+    sourceRevision: input.sourceRevision,
     encryptionProfile: input.encryptionProfile || 'UNSPECIFIED',
     keyId: input.keyId || null,
     keyVersion: input.keyVersion || null
@@ -107,6 +108,7 @@ function authorizeRestore(input) {
       !input.manifestVerification || input.manifestVerification.valid !== true ||
       input.manifestVerification.status !== 'VERIFIED' ||
       input.manifestVerification.authenticity !== 'VERIFIED' ||
+      input.manifestVerification.projectId !== input.sourceProjectId ||
       typeof input.sourceProjectId !== 'string' || typeof input.targetProjectId !== 'string' ||
       !input.sourceProjectId || !input.targetProjectId ||
       (input.sourceProjectId !== input.targetProjectId && input.crossProjectApproval !== true)) {
