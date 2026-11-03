@@ -76,6 +76,19 @@ function attachGovernanceEvidence(event, context) {
   return event;
 }
 
+function validateCommitReceipt(receipt, identity, provider, record) {
+  return !!receipt && receipt.status === 'COMMITTED' &&
+    receipt.operationId === identity.operationId &&
+    receipt.idempotencyKey === identity.idempotencyKey &&
+    receipt.projectId === identity.projectId &&
+    receipt.payloadHash === identity.payloadHash &&
+    receipt.requestId === identity.requestId &&
+    receipt.providerId === provider.providerId &&
+    receipt.revision === record.version.revision &&
+    typeof receipt.evidenceReference === 'string' &&
+    receipt.evidenceReference.trim().length > 0;
+}
+
 async function executeGovernedWrite(input) {
   const fail = (status, reason, extra) =>
     Object.assign({ ok: false, status, reason }, extra || {});
@@ -238,10 +251,7 @@ async function executeGovernedWrite(input) {
     writeResult = reconciled;
   }
 
-  if (writeResult.status !== 'COMMITTED' ||
-      !Number.isSafeInteger(writeResult.revision) ||
-      writeResult.revision < 1 ||
-      writeResult.revision !== record.version.revision) {
+  if (!validateCommitReceipt(writeResult, identity, provider, record)) {
     const registryState = await markOperationUncertain(input.registry, identity, claimId, 'PROVIDER_COMMIT_NOT_VERIFIED', context);
     return fail('PROVIDER_ERROR', 'PROVIDER_COMMIT_NOT_VERIFIED', {
       providerStatus: writeResult.status || 'UNKNOWN', registry: registryState
@@ -336,4 +346,4 @@ async function executeGovernedWrite(input) {
   };
 }
 
-module.exports = { executeGovernedWrite, appendDurableAudit, auditEventId };
+module.exports = { executeGovernedWrite, appendDurableAudit, auditEventId, validateCommitReceipt };
