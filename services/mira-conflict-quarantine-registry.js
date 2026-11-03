@@ -99,6 +99,54 @@ function validateQuarantinableRecord(record, projectId) {
     throw new Error('Conflict source record must retain a valid memoryId for project-scoped quarantine.');
   }
 }
+function buildResolutionProposal(envelope, input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('A structured resolutionProposal is required.');
+  }
+  const allowed = ['fieldLevelChanges', 'dataLossRisks', 'requiredAuthority', 'recoveryPoint', 'verificationPlan'];
+  if (Object.keys(input).some(key => !allowed.includes(key))) throw new Error('Unsupported resolutionProposal field.');
+  if (!Array.isArray(input.fieldLevelChanges) ||
+      input.fieldLevelChanges.some(change => !change || typeof change !== 'object' ||
+        typeof change.path !== 'string' || !change.path.trim() ||
+        typeof change.change !== 'string' || !change.change.trim() ||
+        ![null, undefined].includes(change.beforeDigest) && !/^[a-f0-9]{64}$/.test(change.beforeDigest) ||
+        ![null, undefined].includes(change.afterDigest) && !/^[a-f0-9]{64}$/.test(change.afterDigest) ||
+        Object.keys(change).some(key => !['path', 'change', 'beforeDigest', 'afterDigest'].includes(key)))) {
+    throw new Error('resolutionProposal.fieldLevelChanges is invalid.');
+  }
+  if (!Array.isArray(input.dataLossRisks) || !input.dataLossRisks.length ||
+      input.dataLossRisks.some(item => typeof item !== 'string' || !item.trim())) {
+    throw new Error('resolutionProposal.dataLossRisks must document identified risks or NONE_IDENTIFIED.');
+  }
+  if (typeof input.requiredAuthority !== 'string' || !input.requiredAuthority.trim()) {
+    throw new Error('resolutionProposal.requiredAuthority is required.');
+  }
+  if (typeof input.recoveryPoint !== 'string' || !input.recoveryPoint.trim()) {
+    throw new Error('resolutionProposal.recoveryPoint is required.');
+  }
+  if (!Array.isArray(input.verificationPlan) || !input.verificationPlan.length ||
+      input.verificationPlan.some(item => typeof item !== 'string' || !item.trim())) {
+    throw new Error('resolutionProposal.verificationPlan must contain verification steps.');
+  }
+  return {
+    affectedVersions: envelope.originals.map(item => ({
+      memoryId: item.memoryId, revision: item.revision
+    })),
+    sourceReferences: envelope.originals.map(item => ({
+      sourceType: item.record.source?.sourceType || null,
+      sourceId: item.record.source?.sourceId || null,
+      sourceUrl: item.record.source?.sourceUrl || null
+    })),
+    originalHashes: envelope.originals.map(item => item.recordDigest),
+    accessClasses: envelope.originals.map(item => item.record.access?.classification || 'MISSING'),
+    trustStates: envelope.originals.map(item => item.record.trust?.status || 'MISSING'),
+    fieldLevelChanges: input.fieldLevelChanges,
+    dataLossRisks: input.dataLossRisks,
+    requiredAuthority: input.requiredAuthority,
+    recoveryPoint: input.recoveryPoint,
+    verificationPlan: input.verificationPlan
+  };
+}
 function requireAudit(auditWriter, event) {
   if (typeof auditWriter !== 'function') throw new Error('An explicit auditWriter is required.');
   return auditWriter(event);
@@ -241,6 +289,18 @@ function verifyResolution({ directory, conflictId, projectId }) {
   const expectedOriginals = envelope.originals.map(item => item.recordDigest);
   const originalsMatch = Array.isArray(resolution.originalDigests) &&
     digest(resolution.originalDigests) === digest(expectedOriginals);
+  let proposalValid = false;
+  try {
+    const proposalInput = resolution.proposal;
+    const rebuiltProposal = buildResolutionProposal(envelope, {
+      fieldLevelChanges: proposalInput.fieldLevelChanges,
+      dataLossRisks: proposalInput.dataLossRisks,
+      requiredAuthority: proposalInput.requiredAuthority,
+      recoveryPoint: proposalInput.recoveryPoint,
+      verificationPlan: proposalInput.verificationPlan
+    });
+    proposalValid = digest(rebuiltProposal) === digest(proposalInput);
+  } catch {}
   const acceptedIndex = resolution.decision === 'ACCEPT_EXISTING_VERSION' ||
     resolution.decision === 'REJECT_CONFLICTING_CHANGE'
       ? 0
@@ -269,7 +329,7 @@ function verifyResolution({ directory, conflictId, projectId }) {
          resolution.acceptedOriginalIndex === acceptedIndex &&
          resolution.acceptedOriginalDigest === acceptedDigest);
   return {
-    status: resolutionDigest === digest(body) && originalsMatch && resultValid
+    status: resolutionDigest === digest(body) && originalsMatch && proposalValid && resultValid
       ? 'VERIFIED' : 'INTEGRITY_FAILED',
     conflictId, resolutionDigest, originalsMatch, resultValid
   };
@@ -305,7 +365,7 @@ function listConflicts({ directory, projectId }) {
 }
 function resolveConflict({
   directory, conflictId, projectId, decision, actor, policyDecision,
-  mergedRecord, acceptedOriginalIndex, auditWriter, authorizeResolution
+  mergedRecord, acceptedOriginalIndex, resolutionProposal, auditWriter, authorizeResolution
 }) {
   if (!DECISIONS.has(decision)) throw new Error('Unsupported conflict resolution decision.');
   if (typeof actor !== 'string' || !actor.trim()) throw new Error('Resolution actor is required.');
@@ -317,9 +377,11 @@ function resolveConflict({
   if (typeof authorizeResolution !== 'function') throw new Error('An explicit authorizeResolution callback is required.');
   const authorized = authorizeResolution({
     conflictId, projectId: envelope.projectId, decision, actor, policyDecision,
-    originalDigests: envelope.originals.map(item => item.recordDigest)
+    originalDigests: envelope.originals.map(item => item.recordDigest),
+    resolutionProposal: proposal
   });
   if (authorized !== true) throw new Error('Conflict resolution authorization denied.');
+  const proposal = buildResolutionProposal(envelope, resolutionProposal);
   const originals = envelope.originals.map(item => item.record);
   let resultRecord = null;
   let acceptedOriginalDigest = null;
@@ -356,6 +418,7 @@ function resolveConflict({
     resolutionSchemaVersion: '1.0.0',
     conflictId, projectId: envelope.projectId, decision, actor,
     policyDecision, originalDigests: envelope.originals.map(item => item.recordDigest),
+    proposal,
     acceptedOriginalIndex: acceptedOriginalIndex ?? null,
     acceptedOriginalDigest,
     resultingRecord: resultRecord,
@@ -370,6 +433,7 @@ function resolveConflict({
         existing.decision !== decision || existing.actor !== actor ||
         existing.policyDecision !== policyDecision ||
         existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
+        digest(existing.proposal) !== digest(resolution.proposal) ||
         digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
         digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
       throw new Error('Conflict already has a different immutable resolution.');
@@ -387,6 +451,7 @@ function resolveConflict({
       if (existing.conflictId !== conflictId || existing.decision !== decision ||
           existing.actor !== actor || existing.policyDecision !== policyDecision ||
           existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
+          digest(existing.proposal) !== digest(resolution.proposal) ||
           digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
           digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
         throw new Error('Concurrent conflicting resolution rejected.');
