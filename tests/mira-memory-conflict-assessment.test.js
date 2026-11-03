@@ -18,6 +18,7 @@ function record(overrides = {}) {
 function expectConflict(existing, incoming, type) {
   const result = assessMemoryConflict(existing, incoming);
   assert.equal(result.status, 'CONFLICT');
+  assert.equal(result.state, 'DETECTED');
   assert.ok(result.conflictTypes.includes(type), type);
   assert.equal(result.cryptographicVerification, 'NOT_PERFORMED');
 }
@@ -58,6 +59,7 @@ assert.equal(unverified.status, 'REVIEW_REQUIRED');
 assert.equal(unverified.cryptographicVerification, 'NOT_PERFORMED');
 const crossProject = assessMemoryConflict(base, record({ projectId: 'project-b' }));
 assert.ok(crossProject.conflictTypes.includes('ACCESS_CONFLICT'));
+console.log('CONFLICT_STATE_DETECTED=PASS');
 console.log('IDENTITY_CONFLICT=PASS');
 console.log('REVISION_CONFLICT=PASS');
 console.log('CONTENT_CONFLICT=PASS');
