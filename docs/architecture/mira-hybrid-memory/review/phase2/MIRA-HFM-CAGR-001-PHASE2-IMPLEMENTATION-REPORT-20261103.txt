@@ -51,6 +51,7 @@ Path: knowledge-memory-evolution.js
 3. REGRESSION COVERAGE ADDED / UPDATED
 
 - tests/mira-hfm-phase2-core-safety.test.js
+- tests/mira-knowledge-state-safety-test.js
 - tests/mira-local-memory-safety-test.js
 - tests/mira-memory-local-store-contract-test.js
 - tests/mira-memory-evolution-integration-test.js
@@ -58,7 +59,7 @@ Path: knowledge-memory-evolution.js
 
 The tests cover strict reads, atomic writes, version snapshots, checksum verification, corruption non-overwrite, missing-primary backup fallback, explicit corruption-preserving restore, symlink rejection, conflict quarantine, and Evolution shared-store integration.
 
-Execution status at report creation: INCONCLUSIVE. The dedicated workflow is committed and configured, but no completed GitHub Actions run/check result has been retrieved in this execution. Source presence is not test evidence. Do not mark these tests PASS until the run logs prove it.
+Execution evidence: GitHub Actions run 41656326427 checked out the PR merge ref and started the isolated suite. It FAILED at the first test with ReferenceError: versionFile is not defined in services/mira-json-state-store.js:119. The scope defect was corrected in commit 9ce519255377eeb501de34d2018e822b00515a0a by declaring the snapshot path in the enclosing function scope. A Knowledge-specific integration regression test was added afterward. No successful post-fix run/check result has been retrieved yet. Therefore SOURCE_RUNTIME_TESTS=INCONCLUSIVE_PENDING_POST_FIX_RUN; the initial run is recorded as FAIL, not PASS.
 
 4. PHASE 2 GAP STATUS
 
@@ -92,7 +93,9 @@ VERSION=v0.2
 6. EXIT DECISION
 
 PHASE2_IMPLEMENTATION=IMPLEMENTED_WITH_OPEN_VERIFICATION_AND_GOVERNANCE_GATES
-SOURCE_RUNTIME_TESTS=INCONCLUSIVE_PENDING_GITHUB_ACTIONS_EVIDENCE
+SOURCE_RUNTIME_TESTS=INCONCLUSIVE_PENDING_POST_FIX_RUN
+INITIAL_CI_RUN=FAIL — VERSION_FILE_SCOPE_REFERENCE_ERROR
+FIX_COMMIT=9ce519255377eeb501de34d2018e822b00515a0a
 AUDIT_POLICY=REVIEW_REQUIRED
 KNOWLEDGE_RESTORE_CONSOLIDATION=REVIEW_REQUIRED
 HFM004=DEFERRED
