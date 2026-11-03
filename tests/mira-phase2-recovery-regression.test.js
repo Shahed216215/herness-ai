@@ -74,6 +74,20 @@ async function main() {
     );
     fs.writeFileSync(backupPath, backupRaw);
 
+    const corruptBackupBytes = '{corrupt-knowledge-backup';
+    fs.writeFileSync(backupPath, corruptBackupBytes);
+    let backupOverwriteError = null;
+    try { knowledgeRecovery.createKnowledgeBackup(); }
+    catch (error) { backupOverwriteError = error; }
+    assert.equal(backupOverwriteError.code, 'KNOWLEDGE_BACKUP_CORRUPT_PRESERVED');
+    assert.equal(fs.readFileSync(backupPath, 'utf8'), corruptBackupBytes);
+    assert.ok(backupOverwriteError.quarantineFile);
+    const preservedBackup = JSON.parse(
+      fs.readFileSync(backupOverwriteError.quarantineFile, 'utf8')
+    );
+    assert.equal(preservedBackup.rawContent, corruptBackupBytes);
+    fs.writeFileSync(backupPath, backupRaw);
+
     const corruptKnowledgeBytes = '{corrupt-knowledge-primary';
     fs.writeFileSync(knowledgeFile, corruptKnowledgeBytes);
     const corruptRestore = knowledgeRecovery.restoreKnowledge({ confirm: true });
@@ -137,6 +151,7 @@ async function main() {
 
     console.log('KNOWLEDGE_BACKUP_RESTORE=PASS');
     console.log('CORRUPT_KNOWLEDGE_PRESERVATION=PASS');
+    console.log('CORRUPT_BACKUP_OVERWRITE_BLOCKED=PASS');
     console.log('VERSION_LIST_VERIFY_RESTORE=PASS');
     console.log('TAMPERED_BACKUP_REJECTED=PASS');
     console.log('AUDIT_CHAIN=PASS');
