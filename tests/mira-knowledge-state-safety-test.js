@@ -26,6 +26,14 @@ async function main() {
     assert.equal(added.added, true);
     assert.equal(knowledge.getKnowledge().length, 1);
 
+    const secondAdded = await knowledge.addKnowledge(
+      'Phase 2 second fixture',
+      'https://example.invalid/fixture-two',
+      'second isolated knowledge state safety fixture'
+    );
+    assert.equal(secondAdded.added, true);
+    assert.equal(knowledge.getKnowledge().length, 2);
+
     const versionsDir = file + '.versions';
     assert.equal(fs.existsSync(versionsDir), true);
     assert.ok(fs.readdirSync(versionsDir).length >= 1);
@@ -43,9 +51,9 @@ async function main() {
     assert.throws(() => knowledge.getKnowledge(), /JSON array/i);
 
     fs.writeFileSync(file, validBeforeCorruption);
-    assert.equal(knowledge.getKnowledge().length, 1);
+    assert.equal(knowledge.getKnowledge().length, 2);
 
-    console.log('TESTS_PASSED=10');
+    console.log('TESTS_PASSED=12');
     console.log('TESTS_FAILED=0');
     console.log('PRODUCTION_KNOWLEDGE_TOUCHED=NO');
     console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
