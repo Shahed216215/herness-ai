@@ -79,6 +79,8 @@ async function main() {
       path.join(root, 'capacity-config.json'),
       JSON.stringify({ knowledge: 1, memory: 20 })
     );
+    const capacityApi = require('../capacity-config');
+    assert.equal(capacityApi.getCapacity('knowledge'), 1);
     const knowledgeApi = require('../knowledge');
     const firstCapacityWrite = await knowledgeApi.addKnowledge(
       'Capacity First',
