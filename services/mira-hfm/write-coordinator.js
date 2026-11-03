@@ -29,10 +29,6 @@ async function appendDurableAudit(audit, event, context) {
   if (!readiness.ready) {
     return { confirmed: false, status: 'NOT_CONFIGURED', reason: readiness.reason };
   }
-  const eventCheck = validateAuditEvent(event);
-  if (!eventCheck.valid) {
-    return { confirmed: false, status: 'VALIDATION_FAILED', reason: eventCheck.reason };
-  }
   let result;
   try {
     result = await audit.append(event, context);
