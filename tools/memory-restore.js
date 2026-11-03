@@ -34,10 +34,13 @@ module.exports = {
     try {
       return JSON.stringify(restoreMemory(), null, 2);
     } catch (error) {
+      const committed = error && error.stateCommitted === true;
       return JSON.stringify({
         success: false,
-        restored: false,
-        dataModified: false,
+        restored: committed,
+        dataModified: committed,
+        status: committed ? 'restored_audit_failed' : 'restore_failed',
+        code: error && error.code ? error.code : 'RESTORE_FAILED',
         message: error.message
       });
     }
