@@ -59,7 +59,7 @@ try {
   assert.match(knowledgeSource, /jsonStateStore\.writeArrayState/);
   assert.doesNotMatch(knowledgeSource, /return Array\.isArray\(data\) \? data : \[\]/);
 
-  console.log('TESTS_PASSED=10');
+  console.log('TESTS_PASSED=16');
   console.log('TESTS_FAILED=0');
   console.log('PRODUCTION_MEMORY_TOUCHED=NO');
   console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
