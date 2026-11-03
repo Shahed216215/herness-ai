@@ -12,6 +12,8 @@ const { validateCapabilityObservation, evaluateCapabilitySet } = require('../ser
 const { operationRegistryReadiness, claimOperation } = require('../services/mira-hfm/operation-registry');
 const { encryptPayload, decryptPayload, cryptoProviderReadiness } = require('../services/mira-hfm/encryption-contract');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
+const { previewLegacyMigration } = require('../services/mira-hfm/migration-preview');
+const hfm = require('../services/mira-hfm');
 const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
 const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
 const { createBackupManifest, verifyBackupManifest, authorizeRestore } = require('../services/mira-hfm/backup-manifest');
@@ -614,6 +616,33 @@ async function main() {
       assert.equal(result.ok, true, domain);
       assert.equal(result.migrationPerformed, false, domain);
     }
+  });
+  check('Migration preview identifies duplicates and conflicts without persistence', () => {
+    const preview = previewLegacyMigration({
+      domain: 'knowledge', projectId: 'project-fixture', observedAt: '2026-11-03T00:00:00.000Z',
+      records: [
+        { id: 'same-id', content: 'first content' },
+        { id: 'same-id', content: 'first content' },
+        { id: 'same-id', content: 'conflicting content' }
+      ]
+    });
+    assert.equal(preview.status, 'REVIEW_REQUIRED');
+    assert.equal(preview.summary.mappedUniqueRecords, 1);
+    assert.equal(preview.summary.duplicates, 1);
+    assert.equal(preview.summary.conflicts, 1);
+    assert.equal(preview.migrationPerformed, false);
+    assert.equal(preview.persistencePerformed, false);
+    assert.equal(preview.sourceStorageRead, false);
+    assert.equal(preview.sourceStorageModified, false);
+  });
+  check('Migration preview rejects oversized or malformed batches', () => {
+    assert.equal(previewLegacyMigration({ domain: 'knowledge', projectId: 'p', observedAt: '2026-11-03T00:00:00Z', records: new Array(10001).fill({ id: 'x', content: 'x' }) }).status, 'VALIDATION_FAILED');
+  });
+  check('Public HFM entrypoint exposes canonical service modules', () => {
+    assert.equal(typeof hfm.memory.readMemory, 'function');
+    assert.equal(typeof hfm.memory.writeMemory, 'function');
+    assert.equal(typeof hfm.migration.previewLegacyMigration, 'function');
+    assert.equal(typeof hfm.writer.executeGovernedWrite, 'function');
   });
   check('Legacy mapper rejects missing provenance and content', () => {
     assert.equal(mapLegacyRecord({ domain: 'memory', projectId: 'p', observedAt: '2026-11-03T00:00:00Z', record: { id: '1' } }).ok, false);
