@@ -103,8 +103,8 @@ Current code behavior is known, but canonical source, stale/empty semantics, con
 C04 — CALLER-BY-CALLER COMPATIBILITY: PARTIAL.
 K01-K13 matrix, route audit report, and all-route/all-tool direct caller inventory added. Learning, Knowledge Improvement, Autonomous Learning, backup/restore/cleanup, Conversation, Consent, and History paths now have targeted notes; lower-level return/error/audit/rollback and indirect consumer traces remain outstanding.
 
-C05 — DRIVE CALLSITE INVENTORY: PARTIAL / REVIEW REQUIRED.
-All 540 JavaScript-family source/test files were lexically scanned and direct Google OAuth/shared-adapter candidates registered. A final line-numbered allowlist with exact caller, read/write mode, data class, authorization/consent, failure behavior, and replacement dependency remains outstanding.
+C05 — STATIC DRIVE CALLSITE INVENTORY: PASS (SCOPED).
+All 540 JavaScript-family files were scanned; direct googleapis modules, shared adapter callers, indirect Learning callers, and governed routes are line-numbered in the Drive Callsite Allowlist. This does not authorize Drive sync removal, OAuth changes, or live API use.
 
 C06 — ISOLATED FIXTURE TESTS: PLAN READY / EXECUTION INCONCLUSIVE.
 Memory safety, Local Store contract, Memory Evolution integration, Research Governance, and consent fixture candidates were source-reviewed. Exact branch checkout/runtime was unavailable; clone failed due DNS/network unavailability. No test was run; no test PASS is claimed.
