@@ -337,12 +337,14 @@ function resolveConflict({
     resolutionDigest: readRegularJson(target).resolutionDigest
   };
 }
-function filterTrustedRecords(records, pendingConflicts) {
+function filterTrustedRecords(records, pendingConflicts, projectId) {
   if (!Array.isArray(records) || !Array.isArray(pendingConflicts)) throw new Error('Arrays are required.');
+  if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('projectId is required for trusted retrieval filtering.');
   const blocked = new Set(pendingConflicts
-    .filter(item => ['PENDING_REVIEW', 'INTEGRITY_FAILED'].includes(item.status))
+    .filter(item => item.projectId === projectId &&
+      ['PENDING_REVIEW', 'INTEGRITY_FAILED'].includes(item.status))
     .flatMap(item => item.originalMemoryIds || []));
-  return records.filter(record => !blocked.has(record.memoryId));
+  return records.filter(record => !(record && record.projectId === projectId && blocked.has(record.memoryId)));
 }
 
 module.exports = {
