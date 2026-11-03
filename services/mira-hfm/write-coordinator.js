@@ -94,7 +94,9 @@ async function executeGovernedWrite(input) {
     return fail('VALIDATION_FAILED', 'CANONICAL_RECORD_INVALID', { errors: recordCheck.errors });
   }
   const contentCheck = verifyContentHash(record);
-  if (!contentCheck.valid) return fail('INTEGRITY_FAILED', 'CONTENT_HASH_MISMATCH');
+  if (record.integrity.status !== 'VERIFIED' || !contentCheck.valid) {
+    return fail('INTEGRITY_FAILED', 'CONTENT_HASH_MISMATCH');
+  }
   const accessCheck = evaluateAccess(record, context);
   if (!accessCheck.allowed) return fail('NOT_APPROVED', 'WRITE_ACCESS_DENIED', { accessReason: accessCheck.reason });
 

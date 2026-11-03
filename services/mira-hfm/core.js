@@ -134,6 +134,20 @@ function boundedString(value, min, max, label, errors) {
   return true;
 }
 
+function isSafeSourceUrl(value) {
+  if (typeof value !== 'string' || !value || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) return false;
+    for (const key of url.searchParams.keys()) {
+      if (/(token|api[_-]?key|secret|password|passwd|authorization|auth|signature|session|jwt|oauth|code)/i.test(key)) return false;
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function validDateTime(value) {
   if (typeof value !== 'string' || !value || Number.isNaN(Date.parse(value))) return false;
   return /T/.test(value) && /(?:Z|[+-][0-9]{2}:[0-9]{2})$/.test(value);
@@ -165,6 +179,7 @@ function validateCanonicalRecord(record) {
     boundedString(record.source.sourceId, 1, 512, 'SOURCE_ID', errors);
     if (record.source.sourceUrl !== undefined && record.source.sourceUrl !== null) {
       boundedString(record.source.sourceUrl, 1, 2048, 'SOURCE_URL', errors);
+      if (!isSafeSourceUrl(record.source.sourceUrl)) errors.push('SOURCE_URL_UNSAFE');
     }
     if (!validDateTime(record.source.observedAt)) errors.push('SOURCE_OBSERVED_AT_INVALID');
   }
@@ -395,7 +410,7 @@ function normalizeAdapterError(error) {
 
 module.exports = {
   RECORD_TYPES, SOURCE_TYPES, TRUST_STATES, ACCESS_CLASSES,
-  CAPABILITIES, CAPABILITY_STATES, canonicalize, sha256Canonical,
+  CAPABILITIES, CAPABILITY_STATES, canonicalize, sha256Canonical, isSafeSourceUrl,
   createContentHash, validateCanonicalRecord, verifyContentHash,
   evaluateAccess, TRUST_TRANSITIONS, transitionTrust,
   invalidateTrustAfterMutation, capabilityState, isCapabilityAvailable,

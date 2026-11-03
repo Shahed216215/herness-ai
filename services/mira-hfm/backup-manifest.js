@@ -13,7 +13,9 @@ function createBackupManifest(input) {
   if (!input || typeof input !== 'object' || !Array.isArray(input.records) ||
       typeof input.projectId !== 'string' || !input.projectId.trim() ||
       typeof input.backupId !== 'string' || !input.backupId.trim() ||
-      typeof input.createdAt !== 'string' || Number.isNaN(Date.parse(input.createdAt))) {
+      typeof input.createdAt !== 'string' || Number.isNaN(Date.parse(input.createdAt)) ||
+      !(typeof input.sourceRevision === 'string' && input.sourceRevision.trim()) &&
+      !Number.isSafeInteger(input.sourceRevision)) {
     return { ok: false, status: 'VALIDATION_FAILED', reason: 'BACKUP_INPUT_INVALID' };
   }
   for (const record of input.records) {
@@ -56,6 +58,8 @@ function createBackupManifest(input) {
 
 function verifyBackupManifest(manifest, records, authenticityVerifier) {
   if (!manifest || typeof manifest !== 'object' || !Array.isArray(records) ||
+      !(typeof manifest.sourceRevision === 'string' && manifest.sourceRevision) &&
+      !Number.isSafeInteger(manifest.sourceRevision) ||
       typeof manifest.backupId !== 'string' || !manifest.backupId ||
       typeof manifest.projectId !== 'string' || !manifest.projectId ||
       manifest.manifestVersion !== '1.0.0' || manifest.formatVersion !== 1 ||
@@ -63,7 +67,11 @@ function verifyBackupManifest(manifest, records, authenticityVerifier) {
       manifest.recordCount !== records.length ||
       manifest.payloadHash !== sha256Canonical(records) ||
       manifest.manifestHash !== sha256Canonical(manifestPayload(manifest)) ||
-      records.some(record => !record || record.projectId !== manifest.projectId)) {
+      records.some(record => {
+        const validation = validateCanonicalRecord(record);
+        return !validation.valid || record.projectId !== manifest.projectId ||
+          record.integrity.status !== 'VERIFIED';
+      })) {
     return { valid: false, status: 'INTEGRITY_FAILED' };
   }
   if (typeof authenticityVerifier !== 'function') {
@@ -85,7 +93,10 @@ function verifyBackupManifest(manifest, records, authenticityVerifier) {
       proof.keyId !== manifest.authenticity.keyId) {
     return { valid: false, status: 'AUTHENTICITY_FAILED' };
   }
-  return { valid: true, status: 'VERIFIED', authenticity: 'VERIFIED' };
+  return {
+    valid: true, status: 'VERIFIED', authenticity: 'VERIFIED',
+    projectId: manifest.projectId, manifestHash: manifest.manifestHash
+  };
 }
 
 function authorizeRestore(input) {

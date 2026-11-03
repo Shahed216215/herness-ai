@@ -37,7 +37,11 @@ function createUnavailableProvider(providerId) {
       SEARCH: 'NOT_CONFIGURED', VERIFY: 'NOT_CONFIGURED',
       BACKUP: 'NOT_CONFIGURED', RESTORE: 'NOT_CONFIGURED'
     }),
-    getCapabilities: unavailable,
+    getCapabilities: async () => Object.assign({}, {
+      READ: 'NOT_CONFIGURED', WRITE: 'NOT_CONFIGURED',
+      SEARCH: 'NOT_CONFIGURED', VERIFY: 'NOT_CONFIGURED',
+      BACKUP: 'NOT_CONFIGURED', RESTORE: 'NOT_CONFIGURED'
+    }),
     read: unavailable,
     search: unavailable,
     write: unavailable,

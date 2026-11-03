@@ -122,6 +122,11 @@ async function main() {
     sparse[1] = 'x';
     assert.throws(() => core.canonicalize(sparse), /SPARSE_OR_EXTENDED_ARRAY|SPARSE_ARRAY/);
   });
+  check('Source URLs reject embedded credentials and secret-bearing query parameters', () => {
+    assert.equal(core.isSafeSourceUrl('https://user:pass@example.org/path'), false);
+    assert.equal(core.isSafeSourceUrl('https://example.org/?token=fixture'), false);
+    assert.equal(core.isSafeSourceUrl('https://example.org/path'), true);
+  });
   check('Content hash is deterministic and tamper-evident', () => {
     const hash = core.createContentHash('same');
     assert.equal(hash, core.createContentHash('same'));
@@ -243,6 +248,9 @@ async function main() {
       read: async () => record
     }, record.memoryId, readContext);
     assert.equal(unavailable.status, 'NOT_APPROVED');
+    const unconfigured = createUnavailableProvider('unconfigured');
+    const unconfiguredRead = await readMemory(unconfigured, record.memoryId, readContext);
+    assert.equal(unconfiguredRead.status, 'NOT_APPROVED');
   });
 
   await checkAsync('Read service hides inaccessible records without existence disclosure', async () => {
@@ -278,7 +286,7 @@ async function main() {
     assert.equal(result.status, 'SUCCESS');
     assert.equal(result.records.length, 1, JSON.stringify(result.records.map(item => ({ id: item.memoryId, projectId: item.projectId, trust: item.trust.status }))));
     assert.equal(result.records[0].memoryId, visible.memoryId);
-    assert.equal(result.filteredUnauthorizedOrUntrusted, 2);
+    assert.equal(Object.prototype.hasOwnProperty.call(result, 'filteredUnauthorizedOrUntrusted'), false);
   });
 
   await checkAsync('Search service rejects unsafe retrieval limits and malformed provider responses', async () => {
@@ -408,7 +416,7 @@ async function main() {
   check('Retrieval evidence rejects missing or unsafe source URL', () => {
     assert.equal(createRetrievalEvidence({
       projectId: 'p', sourceId: 'x', title: 't', snippet: 'c',
-      sourceUrl: 'file:///etc/passwd', retrievedAt: '2026-11-03T00:00:00Z'
+      sourceUrl: 'https://example.org/?access_token=fixture', retrievedAt: '2026-11-03T00:00:00Z'
     }).ok, false);
   });
   check('Conflicting versions are preserved and never auto-resolved', () => {
@@ -443,7 +451,7 @@ async function main() {
     const record = fixtureRecord();
     const result = createBackupManifest({
       backupId: 'fixture-backup-1', projectId: 'project-fixture',
-      createdAt: '2026-11-03T00:00:00.000Z', records: [record]
+      createdAt: '2026-11-03T00:00:00.000Z', sourceRevision: 'fixture-revision-1', records: [record]
     });
     assert.equal(result.ok, true);
     assert.equal(result.status, 'MANIFEST_CREATED_UNAUTHENTICATED');
@@ -454,7 +462,7 @@ async function main() {
     const record = fixtureRecord();
     const result = createBackupManifest({
       backupId: 'fixture-backup-2', projectId: 'project-fixture',
-      createdAt: '2026-11-03T00:00:00.000Z', records: [record]
+      createdAt: '2026-11-03T00:00:00.000Z', sourceRevision: 'fixture-revision-2', records: [record]
     });
     result.manifest.authenticity = {
       status: 'SIGNED', algorithm: 'TEST-ONLY-MOCK', keyId: 'test-key-1', proof: 'fixture-proof'
@@ -464,7 +472,9 @@ async function main() {
       manifestHash: manifest.manifestHash, algorithm: manifest.authenticity.algorithm,
       keyId: manifest.authenticity.keyId
     });
-    assert.equal(verifyBackupManifest(result.manifest, [record], verifier).valid, true);
+    const verified = verifyBackupManifest(result.manifest, [record], verifier);
+    assert.equal(verified.valid, true);
+    assert.equal(verified.projectId, 'project-fixture');
     const changed = Object.assign({}, record, { content: 'tampered' });
     assert.equal(verifyBackupManifest(result.manifest, [changed], verifier).status, 'INTEGRITY_FAILED');
   });

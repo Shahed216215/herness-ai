@@ -15,14 +15,12 @@ function deniedResult() {
 
 function validateVisibleRecord(record, context, action) {
   const validation = validateCanonicalRecord(record);
-  if (!validation.valid) {
-    return { ok: false, status: 'VALIDATION_FAILED', errors: validation.errors };
-  }
+  if (!validation.valid) return deniedResult();
+  const access = evaluateAccess(record, Object.assign({}, context, { action }));
+  if (!access.allowed) return deniedResult();
   if (record.integrity.status !== 'VERIFIED' || !verifyContentHash(record).valid) {
     return { ok: false, status: 'INTEGRITY_FAILED' };
   }
-  const access = evaluateAccess(record, Object.assign({}, context, { action }));
-  if (!access.allowed) return deniedResult();
   if (record.lifecycle !== 'ACTIVE' ||
       record.trust.status === 'QUARANTINED') return deniedResult();
   return { ok: true, record };
@@ -91,18 +89,15 @@ async function searchMemory(provider, query, filters, context) {
   }
 
   const visible = [];
-  const rejected = [];
   for (const record of result.records) {
     const checked = validateVisibleRecord(record, context, 'search');
     if (checked.ok) visible.push(checked.record);
-    else rejected.push(checked.status || 'NOT_FOUND');
   }
   return {
     ok: true,
     status: 'SUCCESS',
     records: visible.slice(0, limit),
-    nextCursor: typeof result.nextCursor === 'string' ? result.nextCursor : null,
-    filteredUnauthorizedOrUntrusted: rejected.length
+    nextCursor: typeof result.nextCursor === 'string' ? result.nextCursor : null
   };
 }
 

@@ -1,6 +1,6 @@
 'use strict';
 
-const { createContentHash, validateCanonicalRecord } = require('./core');
+const { createContentHash, sha256Canonical, isSafeSourceUrl, validateCanonicalRecord } = require('./core');
 
 function createRetrievalEvidence(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -10,7 +10,7 @@ function createRetrievalEvidence(input) {
   const content = typeof input.content === 'string' ? input.content.trim() :
     typeof input.snippet === 'string' ? input.snippet.trim() : '';
   const url = typeof input.sourceUrl === 'string' ? input.sourceUrl.trim() : '';
-  if (!title || !content || !/^https?:\/\//i.test(url) ||
+  if (!title || !content || !isSafeSourceUrl(url) ||
       typeof input.retrievedAt !== 'string' || Number.isNaN(Date.parse(input.retrievedAt)) ||
       typeof input.projectId !== 'string' || !input.projectId.trim() ||
       typeof input.sourceId !== 'string' || !input.sourceId.trim()) {
@@ -20,7 +20,7 @@ function createRetrievalEvidence(input) {
   const recordContent = title + '\n\n' + content;
   const record = {
     schemaVersion: '1.0.0',
-    memoryId: 'web_' + createContentHash(input.projectId + '|' + input.sourceId).slice(0, 32),
+    memoryId: 'web_' + sha256Canonical({ projectId: input.projectId, sourceId: input.sourceId }).slice(0, 32),
     projectId: input.projectId,
     recordType: 'research_reference',
     content: recordContent,
