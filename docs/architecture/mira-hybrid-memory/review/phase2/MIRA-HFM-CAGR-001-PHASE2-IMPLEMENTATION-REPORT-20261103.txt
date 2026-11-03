@@ -174,9 +174,10 @@ Five source documents (Contract v0.2.4, Blueprint, Prototype C, Prototype D and 
 10. CURRENT VERIFICATION AND GOVERNANCE STATUS
 
 Latest full isolated Phase 2 CI:
-- Run 41670332488 (run 155), job 126036679938 — SUCCESS.
-- The eight-suite workflow completed successfully, including the hardened conflict quarantine lifecycle suite.
-- Logs report production Memory/Knowledge untouched, real Google Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+- Run 41672264913 (run 174), job 126043453360 — SUCCESS.
+- The eight-suite workflow completed successfully, including the project-scoped conflict retrieval-exclusion helper.
+- Logs report PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS, TESTS_FAILED=0, production Memory/Knowledge untouched, real Google Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+- Earlier run 155 remains valid for the source/test revision executed at that time; run 174 is the latest verification of the current isolated quarantine helper/test code.
 
 Current scoped statuses:
 - Core state safety, Knowledge state safety, recovery, local store contract and Evolution integration: PASS_SCOPED to the recorded CI commits.
@@ -217,3 +218,16 @@ GitHub Actions run 41671493565 (run 166), job 126040740020, completed SUCCESS on
 Run 166 logs also confirm PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
 
 This PASS is scoped to the isolated local-only service/test. It does not establish universal production retrieval exclusion, provider write-boundary integration, provider atomicity or production readiness.
+
+
+12. PROJECT-SCOPED RETRIEVAL FILTER HARDENING — VERIFIED BY RUN 174
+
+The isolated filterTrustedRecords() helper now requires an explicit projectId and blocks pending/integrity-failed conflict originals only within that project. Regression coverage verifies that a record in another project with the same memoryId is not incorrectly hidden by the first project's quarantine list.
+
+GitHub Actions run 41672264913 (run 174), job 126043453360, completed SUCCESS and explicitly reported:
+PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS
+PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+This remains a helper-level isolated test, not proof of universal application retrieval interception. Local Memory, Knowledge, Evolution and route entry points remain unintegrated as documented in the callsite matrix.
