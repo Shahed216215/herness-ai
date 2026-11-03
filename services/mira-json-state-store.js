@@ -183,6 +183,7 @@ function quarantineConflict(directory, name, payload, metadata = {}) {
 
 module.exports = {
   sha256,
+  recordStateAudit,
   readJsonArray,
   atomicWriteJson,
   writeArrayState,
