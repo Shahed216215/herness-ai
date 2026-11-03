@@ -97,3 +97,21 @@ VERSION=v0.2
 FULL_PHASE2=REVIEW_REQUIRED
 
 END OF MATRIX
+
+
+8. SERVER ROUTE CALLSITES INSPECTED
+
+Source: server.js, current branch blob SHA 55e8d3c61a6fad546f4255e47a1646f6bede8762.
+
+Read paths:
+- GET /api/admin/knowledge/search calls searchKnowledge().
+- GET /api/admin/knowledge/:id calls getKnowledge().
+- POST /api/agent obtains getMemory() and searchKnowledge() before composing the agent context.
+- GET /api/admin/diagnostic/learning calls getKnowledge() for a read-only diagnostic.
+
+Write paths:
+- DELETE /api/admin/knowledge/:id calls deleteKnowledge().
+- POST /api/admin/knowledge/:id/edit calls updateLearning() or updateKnowledge() depending on the existing entry/workflow.
+- These routes are admin/agent permission gated, but the inspected route handlers do not themselves invoke the new conflict registry. Permission gating is not a substitute for conflict detection or retrieval exclusion.
+
+Additional route review is not a complete repository-wide call graph. Background jobs, workers, alternate tools, exports, backup/restore and direct JSON readers still require a full static inventory before universal integration can be claimed.
