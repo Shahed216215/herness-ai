@@ -161,6 +161,16 @@ try {
   assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'INTEGRITY_FAILED');
   assert.equal(listConflicts({ directory: mergeDirectory, projectId: 'project-a' })[0].status, 'INTEGRITY_FAILED');
 
+  const malformedResolutionDir = path.join(directory, 'malformed-resolution');
+  const malformedResolutionConflict = createConflictQuarantine({
+    directory: malformedResolutionDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  fs.writeFileSync(path.join(malformedResolutionDir, malformedResolutionConflict.conflictId + '.resolution.json'), 'null');
+  assert.equal(verifyResolution({
+    directory: malformedResolutionDir, conflictId: malformedResolutionConflict.conflictId, projectId: 'project-a'
+  }).status, 'INTEGRITY_FAILED');
+
   const auditFailDir = path.join(directory, 'audit-fail');
   assert.throws(() => createConflictQuarantine({
     directory: auditFailDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
@@ -185,6 +195,18 @@ try {
     auditWriter, authorizeResolution
   }).status, 'ALREADY_RESOLVED');
 
+  assert.throws(() => readConflict({ directory, conflictId: '../../outside', projectId: 'project-a' }), /Invalid conflictId/);
+
+  const malformedDir = path.join(directory, 'malformed-original');
+  const malformedOriginal = record({ unexpectedField: 'preserve-me', integrity: { status: 'FAILED', algorithm: 'SHA-256' } });
+  const malformedConflict = createConflictQuarantine({
+    directory: malformedDir, projectId: 'project-a', conflictTypes: ['SCHEMA_CONFLICT'],
+    records: [originalA, malformedOriginal], actor: 'test-suite', auditWriter
+  });
+  const malformedEnvelope = readConflict({ directory: malformedDir, conflictId: malformedConflict.conflictId, projectId: 'project-a' });
+  assert.ok(malformedEnvelope.originals[1].schemaValidationErrors.length > 0);
+  assert.equal(verifyConflict({ directory: malformedDir, conflictId: malformedConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+
   const tamperDir = path.join(directory, 'tamper');
   const tampered = createConflictQuarantine({
     directory: tamperDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
@@ -195,6 +217,11 @@ try {
   tamperEnvelope.originals[0].record.content = 'tampered';
   fs.writeFileSync(tamperPath, JSON.stringify(tamperEnvelope));
   assert.equal(verifyConflict({ directory: tamperDir, conflictId: tampered.conflictId }).status, 'INTEGRITY_FAILED');
+  assert.throws(() => resolveConflict({
+    directory: tamperDir, conflictId: tampered.conflictId, projectId: 'project-a',
+    decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-TAMPER',
+    auditWriter, authorizeResolution
+  }), /integrity verification failed/);
 
   const metadataTamperDir = path.join(directory, 'metadata-tamper');
   const metadataConflict = createConflictQuarantine({
@@ -239,6 +266,9 @@ try {
   console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
   console.log('RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS');
   console.log('TAMPER_DETECTION=PASS');
+  console.log('MALFORMED_ORIGINAL_PRESERVATION=PASS');
+  console.log('INVALID_CONFLICT_ID_PATH_TRAVERSAL_REJECTED=PASS');
+  console.log('MALFORMED_RESOLUTION_FAIL_CLOSED=PASS');
   console.log('FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS');
   console.log('SYMLINK_PATH_REJECTION=PASS');
   console.log('SYNTHETIC_FIXTURES_ONLY=PASS');
