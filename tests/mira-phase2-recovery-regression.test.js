@@ -99,7 +99,7 @@ async function main() {
 
     const quarantineDir = path.join(root, 'memory-conflicts');
     const quarantines = fs.readdirSync(quarantineDir)
-      .filter(name => name.startsWith('knowledge-capacity-'));
+      .filter(name => name.includes('knowledge-capacity-'));
     assert.ok(quarantines.length >= 2);
     const preservedTitles = quarantines.flatMap(name => {
       const item = JSON.parse(fs.readFileSync(path.join(quarantineDir, name), 'utf8'));
