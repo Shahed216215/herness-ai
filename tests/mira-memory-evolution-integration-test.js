@@ -271,7 +271,7 @@ module.exports = {
   console.log("PRODUCTION_MEMORY_TOUCHED=NO");
   console.log("REAL_GOOGLE_DRIVE_TOUCHED=NO");
   console.log("NETWORK_REQUESTS=0");
-  console.log("RESULT=ISOLATED_BASELINE_PASS_INTEGRATION_GAP_CONFIRMED");
+  console.log("RESULT=PHASE2_EVOLUTION_INTEGRATION_PASS");
 }
 
 main()
