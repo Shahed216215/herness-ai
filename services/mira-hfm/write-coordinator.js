@@ -1,6 +1,6 @@
 'use strict';
 
-const { auditProviderReadiness, verifyDurableAuditEvent } = require('./audit-contract');
+const { auditProviderReadiness, validateAuditEvent, verifyDurableAuditEvent } = require('./audit-contract');
 const { operationRegistryReadiness, claimOperation, markOperationUncertain, completeOperation } = require('./operation-registry');
 const { evaluateCapabilitySet } = require('./capability-observations');
 
@@ -23,6 +23,8 @@ function auditEventId(context, phase) {
 }
 
 async function appendDurableAudit(audit, event, context) {
+  const eventCheck = validateAuditEvent(event);
+  if (!eventCheck.valid) return { confirmed: false, status: 'VALIDATION_FAILED', reason: eventCheck.reason };
   const readiness = auditProviderReadiness(audit);
   if (!readiness.ready) {
     return { confirmed: false, status: 'NOT_CONFIGURED', reason: readiness.reason };
@@ -175,7 +177,8 @@ async function executeGovernedWrite(input) {
     requestId: identity.requestId,
     actor: identity.actor,
     purpose: identity.purpose,
-    policyDecisionId: identity.policyDecisionId
+    policyDecisionId: identity.policyDecisionId,
+    timestamp: context.now || new Date().toISOString()
   };
   const intentResult = await appendDurableAudit(audit, intent, context);
   if (!intentResult.confirmed) {
@@ -285,7 +288,8 @@ async function executeGovernedWrite(input) {
     memoryId: record.memoryId,
     requestId: identity.requestId,
     actor: identity.actor,
-    policyDecisionId: identity.policyDecisionId
+    policyDecisionId: identity.policyDecisionId,
+    timestamp: context.now || new Date().toISOString()
   };
   const completionResult = await appendDurableAudit(audit, completion, context);
   if (!completionResult.confirmed) {

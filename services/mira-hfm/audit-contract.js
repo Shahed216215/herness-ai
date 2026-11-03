@@ -33,6 +33,31 @@ function createAuditEventHash(event, previousEventHash, sequence) {
   });
 }
 
+function validateAuditEvent(event) {
+  const required = ['eventId', 'eventType', 'projectId', 'operationId', 'payloadHash', 'requestId', 'actor', 'policyDecisionId', 'timestamp'];
+  const allowed = new Set(required.concat(['idempotencyKey', 'purpose', 'revision', 'memoryId']));
+  if (!event || typeof event !== 'object' || Array.isArray(event) ||
+      Object.keys(event).some(key => !allowed.has(key)) ||
+      required.some(key => typeof event[key] !== 'string' || !event[key].trim()) ||
+      !['MEMORY_WRITE_INTENT', 'MEMORY_WRITE_COMPLETED'].includes(event.eventType) ||
+      !/^[a-f0-9]{64}$/.test(event.payloadHash) ||
+      !/T/.test(event.timestamp) || !/(?:Z|[+-][0-9]{2}:[0-9]{2})$/.test(event.timestamp) ||
+      Number.isNaN(Date.parse(event.timestamp))) {
+    return { valid: false, reason: 'AUDIT_EVENT_SCHEMA_INVALID' };
+  }
+  if (event.eventType === 'MEMORY_WRITE_INTENT' &&
+      (typeof event.idempotencyKey !== 'string' || !event.idempotencyKey.trim() ||
+       typeof event.purpose !== 'string' || !event.purpose.trim())) {
+    return { valid: false, reason: 'AUDIT_INTENT_FIELDS_REQUIRED' };
+  }
+  if (event.eventType === 'MEMORY_WRITE_COMPLETED' &&
+      (!Number.isSafeInteger(event.revision) || event.revision < 1 ||
+       typeof event.memoryId !== 'string' || !event.memoryId.trim())) {
+    return { valid: false, reason: 'AUDIT_COMPLETION_FIELDS_REQUIRED' };
+  }
+  return { valid: true };
+}
+
 async function verifyDurableAuditEvent(audit, event, context) {
   const ready = auditProviderReadiness(audit);
   if (!ready.ready) return { valid: false, status: 'NOT_CONFIGURED', reason: ready.reason };
@@ -46,7 +71,9 @@ async function verifyDurableAuditEvent(audit, event, context) {
       proof.authenticityVerified !== true ||
       proof.eventId !== event.eventId || proof.projectId !== event.projectId ||
       !Number.isSafeInteger(proof.sequence) || proof.sequence < 1 ||
-      typeof proof.eventHash !== 'string' || !/^[a-f0-9]{64}$/.test(proof.eventHash)) {
+      typeof proof.eventHash !== 'string' || !/^[a-f0-9]{64}$/.test(proof.eventHash) ||
+      (proof.previousEventHash !== null && typeof proof.previousEventHash !== 'string') ||
+      proof.eventHash !== createAuditEventHash(event, proof.previousEventHash, proof.sequence)) {
     return { valid: false, status: 'INTEGRITY_FAILED', reason: 'AUDIT_EVENT_PROOF_INVALID' };
   }
   return { valid: true, status: 'VERIFIED', sequence: proof.sequence, eventHash: proof.eventHash };
@@ -55,6 +82,7 @@ async function verifyDurableAuditEvent(audit, event, context) {
 module.exports = {
   REQUIRED_CAPABILITIES,
   auditProviderReadiness,
+  validateAuditEvent,
   createAuditEventHash,
   verifyDurableAuditEvent
 };

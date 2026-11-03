@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const core = require('../services/mira-hfm/core');
 const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator');
-const { auditProviderReadiness, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
+const { auditProviderReadiness, validateAuditEvent, createAuditEventHash } = require('../services/mira-hfm/audit-contract');
 const { readMemory, searchMemory, writeMemory } = require('../services/mira-hfm/memory-service');
 const { inspectProviderAdapter, requireCapability, createUnavailableProvider } = require('../services/mira-hfm/provider-contract');
 const { validateCapabilityObservation, evaluateCapabilitySet } = require('../services/mira-hfm/capability-observations');
@@ -144,7 +144,8 @@ function fakeAudit(events) {
       return event ? {
         valid: true, chainVerified: true, authenticityVerified: true,
         eventId, projectId: event.projectId, sequence: events.indexOf(event) + 1,
-        eventHash: 'a'.repeat(64)
+        previousEventHash: events.indexOf(event) === 0 ? null : createAuditEventHash(events[events.indexOf(event) - 1], null, events.indexOf(event)),
+        eventHash: createAuditEventHash(event, events.indexOf(event) === 0 ? null : createAuditEventHash(events[events.indexOf(event) - 1], null, events.indexOf(event)), events.indexOf(event) + 1)
       } : { valid: false };
     }
   };
@@ -267,6 +268,12 @@ async function main() {
       append() {}, lookup() {}, reconcileEvent() {}, verifyEvent() {} }).ready, true);
     assert.equal(auditProviderReadiness({ durable: true, append() {} }).ready, false);
   });
+  check('Audit event schema rejects private content and malformed fields', () => {
+    const base = { eventId: 'event-1', eventType: 'MEMORY_WRITE_INTENT', projectId: 'project-fixture', operationId: 'op-1', idempotencyKey: 'idem-1', payloadHash: 'a'.repeat(64), requestId: 'request-1', actor: 'actor-1', purpose: 'test', policyDecisionId: 'policy-1', timestamp: '2026-11-03T00:00:00.000Z' };
+    assert.equal(validateAuditEvent(base).valid, true);
+    assert.equal(validateAuditEvent(Object.assign({}, base, { content: 'private memory text' })).valid, false);
+    assert.equal(validateAuditEvent(Object.assign({}, base, { payloadHash: 'bad' })).valid, false);
+  });
   check('Audit event hashes bind sequence and previous-event hash', () => {
     const event = { eventId: 'event-1', projectId: 'project-fixture' };
     assert.notEqual(createAuditEventHash(event, null, 1), createAuditEventHash(event, null, 2));
@@ -368,6 +375,8 @@ async function main() {
   });
   check('Adapter error taxonomy maps unknown errors to UNKNOWN', () => {
     assert.equal(core.normalizeAdapterError({ code: 'TIMEOUT' }), 'TIMEOUT');
+    assert.equal(core.normalizeAdapterError({ code: 'REVISION_CONFLICT' }), 'REVISION_CONFLICT');
+    assert.equal(core.normalizeAdapterError({ code: 'CURSOR_EXPIRED' }), 'CURSOR_EXPIRED');
     assert.equal(core.normalizeAdapterError({ code: 'SECRET_LEAK' }), 'UNKNOWN');
   });
 
