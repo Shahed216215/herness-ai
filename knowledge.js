@@ -94,12 +94,19 @@ function isDuplicate(a, b) {
 
 async function syncToDrive(knowledge) {
   try {
-    await saveKnowledgeToDrive(knowledge);
+    const result = await saveKnowledgeToDrive(knowledge);
 
-    console.log(
-      "Knowledge Drive sync: updated"
-    );
+    if (result && result.skipped) {
+      console.log("Knowledge Drive sync: skipped");
+      return false;
+    }
 
+    if (result && result.success === false) {
+      console.error("KNOWLEDGE_DRIVE_ERROR:", "Drive save was not successful.");
+      return false;
+    }
+
+    console.log("Knowledge Drive sync: updated");
     return true;
   } catch (error) {
     console.error(
