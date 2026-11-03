@@ -1,6 +1,6 @@
 'use strict';
 
-const { sha256Canonical, validateCanonicalRecord } = require('./core');
+const { sha256Canonical, validateCanonicalRecord, evaluateAccess } = require('./core');
 
 function manifestPayload(manifest) {
   const copy = Object.assign({}, manifest);
@@ -14,14 +14,17 @@ function createBackupManifest(input) {
       typeof input.projectId !== 'string' || !input.projectId.trim() ||
       typeof input.backupId !== 'string' || !input.backupId.trim() ||
       typeof input.createdAt !== 'string' || Number.isNaN(Date.parse(input.createdAt)) ||
+      input.backupCapabilityAvailable !== true || !input.context ||
+      input.context.projectId !== input.projectId ||
       !(typeof input.sourceRevision === 'string' && input.sourceRevision.trim()) &&
       !Number.isSafeInteger(input.sourceRevision)) {
     return { ok: false, status: 'VALIDATION_FAILED', reason: 'BACKUP_INPUT_INVALID' };
   }
   for (const record of input.records) {
     const validation = validateCanonicalRecord(record);
+    const access = evaluateAccess(record, Object.assign({}, input.context, { action: 'backup' }));
     if (!validation.valid || record.projectId !== input.projectId ||
-        record.integrity.status !== 'VERIFIED') {
+        record.integrity.status !== 'VERIFIED' || !access.allowed) {
       return { ok: false, status: 'VALIDATION_FAILED', reason: 'BACKUP_RECORD_OR_PROJECT_INVALID', errors: validation.errors || [] };
     }
   }
@@ -50,10 +53,10 @@ function createBackupManifest(input) {
   });
   return {
     ok: true,
-    status: 'MANIFEST_CREATED_UNAUTHENTICATED',
+    status: 'MANIFEST_ONLY_NOT_ENCRYPTED_NOT_AUTHENTICATED',
     manifest,
-    payload: input.records,
-    restoreAuthorized: false
+    restoreAuthorized: false,
+    backupPayloadCreated: false
   };
 }
 

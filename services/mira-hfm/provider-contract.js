@@ -17,7 +17,9 @@ function inspectProviderAdapter(adapter) {
     guarantees: {
       conditionalWrite: !!(adapter && adapter.guarantees && adapter.guarantees.conditionalWrite === true),
       stableIdempotency: !!(adapter && adapter.guarantees && adapter.guarantees.stableIdempotency === true),
-      authoritativeReconciliation: !!(adapter && adapter.guarantees && adapter.guarantees.authoritativeReconciliation === true)
+      authoritativeReconciliation: !!(adapter && adapter.guarantees && adapter.guarantees.authoritativeReconciliation === true),
+      boundedSearch: !!(adapter && adapter.guarantees && adapter.guarantees.boundedSearch === true),
+      opaqueCursor: !!(adapter && adapter.guarantees && adapter.guarantees.opaqueCursor === true)
     },
     noFallback: true
   };
@@ -38,7 +40,7 @@ function createUnavailableProvider(providerId) {
   const unavailable = async () => ({ status: 'NOT_CONFIGURED', providerId: id });
   return Object.freeze({
     providerId: id,
-    guarantees: Object.freeze({ conditionalWrite: false, stableIdempotency: false, authoritativeReconciliation: false }),
+    guarantees: Object.freeze({ conditionalWrite: false, stableIdempotency: false, authoritativeReconciliation: false, boundedSearch: false, opaqueCursor: false }),
     capabilities: Object.freeze({
       READ: 'NOT_CONFIGURED', WRITE: 'NOT_CONFIGURED',
       SEARCH: 'NOT_CONFIGURED', VERIFY: 'NOT_CONFIGURED',

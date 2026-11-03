@@ -5,7 +5,8 @@ const {
   verifyContentHash,
   evaluateAccess,
   isCapabilityAvailable,
-  normalizeAdapterError
+  normalizeAdapterError,
+  canonicalize
 } = require('./core');
 const { evaluateCapabilitySet } = require('./capability-observations');
 
@@ -80,14 +81,44 @@ async function searchMemory(provider, query, filters, context) {
   if (typeof provider.search !== 'function') {
     return { ok: false, status: 'NOT_SUPPORTED' };
   }
+  if (!provider.guarantees || provider.guarantees.boundedSearch !== true) {
+    return { ok: false, status: 'NOT_APPROVED', reason: 'BOUNDED_SEARCH_GUARANTEE_REQUIRED' };
+  }
+  const timeoutMs = context.searchTimeoutMs === undefined ? 5000 : context.searchTimeoutMs;
+  const maxResponseBytes = filters && filters.maxResponseBytes !== undefined ? filters.maxResponseBytes : 1000000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 30000 ||
+      !Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1024 || maxResponseBytes > 2000000) {
+    return { ok: false, status: 'VALIDATION_FAILED', reason: 'SEARCH_BOUND_INVALID' };
+  }
+  if (context.signal && context.signal.aborted) {
+    return { ok: false, status: 'CANCELLED' };
+  }
   let result;
   try {
-    result = await provider.search(query, Object.assign({}, filters, { limit }), context);
+    result = await provider.search(query, Object.assign({}, filters, {
+      limit, timeoutMs, maxResponseBytes, signal: context.signal || null
+    }), context);
   } catch (error) {
     return { ok: false, status: normalizeAdapterError(error) };
   }
-  if (!result || !Array.isArray(result.records)) {
-    return { ok: false, status: 'PROVIDER_ERROR', reason: 'SEARCH_RESPONSE_INVALID' };
+  if (context.signal && context.signal.aborted) return { ok: false, status: 'CANCELLED' };
+  if (!result || !Array.isArray(result.records) || result.records.length > limit) {
+    return { ok: false, status: 'PROVIDER_ERROR', reason: 'SEARCH_RESPONSE_INVALID_OR_OVER_LIMIT' };
+  }
+  let responseBytes;
+  try {
+    responseBytes = Buffer.byteLength(canonicalize(result.records), 'utf8');
+  } catch (_) {
+    return { ok: false, status: 'PROVIDER_ERROR', reason: 'SEARCH_RESPONSE_NOT_CANONICAL_JSON' };
+  }
+  if (responseBytes > maxResponseBytes) {
+    return { ok: false, status: 'PROVIDER_ERROR', reason: 'SEARCH_RESPONSE_BYTE_LIMIT_EXCEEDED' };
+  }
+  if (result.nextCursor !== undefined && result.nextCursor !== null &&
+      (typeof result.nextCursor !== 'string' || result.nextCursor.length > 2048 ||
+       !/^[A-Za-z0-9._~=-]+$/.test(result.nextCursor) ||
+       !provider.guarantees.opaqueCursor)) {
+    return { ok: false, status: 'PROVIDER_ERROR', reason: 'SEARCH_CURSOR_INVALID_OR_NOT_OPAQUE' };
   }
 
   const visible = [];
@@ -99,7 +130,8 @@ async function searchMemory(provider, query, filters, context) {
     ok: true,
     status: 'SUCCESS',
     records: visible.slice(0, limit),
-    nextCursor: typeof result.nextCursor === 'string' ? result.nextCursor : null
+    nextCursor: typeof result.nextCursor === 'string' ? result.nextCursor : null,
+    truncated: typeof result.nextCursor === 'string'
   };
 }
 

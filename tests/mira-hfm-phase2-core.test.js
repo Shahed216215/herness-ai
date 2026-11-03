@@ -415,7 +415,12 @@ async function main() {
       providerId: 'fixture-provider',
       getCapabilities: async () => capabilities,
       getCapabilityObservations: async () => capabilityObservations(),
-      search: async () => ({ records: [visible, hidden, quarantined], nextCursor: 'fixture-cursor' })
+      guarantees: { boundedSearch: true, opaqueCursor: true },
+      search: async (query, options) => {
+        assert.equal(options.timeoutMs, 5000);
+        assert.equal(options.maxResponseBytes, 1000000);
+        return { records: [visible, hidden, quarantined], nextCursor: 'fixture-cursor' };
+      }
     };
     const searchContext = Object.assign(context(), { action: 'search' });
     assert.equal(core.evaluateAccess(hidden, searchContext).allowed, false, 'hidden access check');
@@ -424,6 +429,7 @@ async function main() {
     assert.equal(result.status, 'SUCCESS');
     assert.equal(result.records.length, 1, JSON.stringify(result.records.map(item => ({ id: item.memoryId, projectId: item.projectId, trust: item.trust.status }))));
     assert.equal(result.records[0].memoryId, visible.memoryId);
+    assert.equal(result.truncated, true);
     assert.equal(Object.prototype.hasOwnProperty.call(result, 'filteredUnauthorizedOrUntrusted'), false);
   });
 
@@ -432,11 +438,14 @@ async function main() {
       providerId: 'fixture-provider',
       getCapabilities: async () => capabilities,
       getCapabilityObservations: async () => capabilityObservations(),
+      guarantees: { boundedSearch: true, opaqueCursor: true },
       search: async () => ({ records: 'not-an-array' })
     };
     const ctx = Object.assign(context(), { action: 'search' });
     assert.equal((await searchMemory(provider, 'q', { limit: 101 }, ctx)).status, 'VALIDATION_FAILED');
     assert.equal((await searchMemory(provider, 'q', {}, ctx)).status, 'PROVIDER_ERROR');
+    const noGuarantee = { providerId: 'fixture-provider', getCapabilityObservations: async () => capabilityObservations(), search: async () => ({ records: [] }) };
+    assert.equal((await searchMemory(noGuarantee, 'q', {}, ctx)).status, 'NOT_APPROVED');
   });
 
   await checkAsync('Write coordinator blocks when durable audit is unavailable', async () => {
@@ -605,18 +614,23 @@ async function main() {
     const record = fixtureRecord();
     const result = createBackupManifest({
       backupId: 'fixture-backup-1', projectId: 'project-fixture',
-      createdAt: '2026-11-03T00:00:00.000Z', sourceRevision: 'fixture-revision-1', records: [record]
+      createdAt: '2026-11-03T00:00:00.000Z', sourceRevision: 'fixture-revision-1', records: [record],
+      context: Object.assign(context(), { action: 'backup' }), backupCapabilityAvailable: true
     });
     assert.equal(result.ok, true);
-    assert.equal(result.status, 'MANIFEST_CREATED_UNAUTHENTICATED');
+    assert.equal(result.status, 'MANIFEST_ONLY_NOT_ENCRYPTED_NOT_AUTHENTICATED');
+    assert.equal(result.backupPayloadCreated, false);
     assert.equal(result.manifest.authenticity.status, 'UNVERIFIED');
     assert.equal(verifyBackupManifest(result.manifest, [record]).status, 'AUTHENTICITY_UNVERIFIED');
+    assert.equal(createBackupManifest({ backupId: 'missing-gates', projectId: 'project-fixture',
+      createdAt: '2026-11-03T00:00:00.000Z', sourceRevision: 'fixture-revision-1', records: [record] }).status, 'VALIDATION_FAILED');
   });
   check('Backup verification requires a verified trust anchor and rejects tampering', () => {
     const record = fixtureRecord();
     const result = createBackupManifest({
       backupId: 'fixture-backup-2', projectId: 'project-fixture',
-      createdAt: '2026-11-03T00:00:00.000Z', sourceRevision: 'fixture-revision-2', records: [record]
+      createdAt: '2026-11-03T00:00:00.000Z', sourceRevision: 'fixture-revision-2', records: [record],
+      context: Object.assign(context(), { action: 'backup' }), backupCapabilityAvailable: true
     });
     result.manifest.authenticity = {
       status: 'SIGNED', algorithm: 'TEST-ONLY-MOCK', keyId: 'test-key-1', proof: 'fixture-proof'
