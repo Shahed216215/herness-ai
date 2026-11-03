@@ -3,7 +3,7 @@ Document: MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER
 Date: 2026-11-03
 Repository: Shahed216215/herness-ai
 Branch: work/mira-hfm-v025-six-documents
-Reviewed HEAD: ad790592896d0c5d0befda7a69645d0b402dd92d
+Reviewed HEAD: e7fc09a45e8d64ec62d7ad95cdb606e93faf9083
 Blueprint: MIRA-HFM-CAGR-001 v1.0.0
 Project version boundary: v0.2
 Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
@@ -55,7 +55,7 @@ F. Route & Tool Caller Reconciliation
 Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-ROUTE-TOOL-CALLER-RECONCILIATION-20261103.txt
 Commit: ad790592896d0c5d0befda7a69645d0b402dd92d
 Verification: file re-read after commit. All 26 route and 26 tool modules were retrieved/reviewed for direct delegation and I/O.
-Key additions: learning-save direct persistence path; Knowledge backup/cleanup/restore side effects; provider-evolution route direct config I/O; fixture test candidates and execution limitation.
+Key additions: learning-save direct Knowledge persistence with policy ambiguity explicitly qualified; Knowledge backup/cleanup/restore side effects; provider-evolution route direct config I/O; fixture test candidates and execution limitation.
 
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
