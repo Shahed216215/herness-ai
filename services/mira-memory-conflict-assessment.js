@@ -31,7 +31,24 @@ function exactKeys(value, allowed) {
   return object(value) && Object.keys(value).every(key => allowed.includes(key));
 }
 function validDate(value) {
-  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+  if (typeof value !== 'string') return false;
+  // Match the contract's RFC 3339 date-time shape. Date.parse alone is
+  // permissive (for example, it accepts date-only strings).
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})[Tt](\\d{2}):(\\d{2}):(\\d{2})(?:\\.(\\d+))?([Zz]|[+-]\\d{2}:\\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone] = match;
+  const year = Number(yearText), month = Number(monthText), day = Number(dayText);
+  const hour = Number(hourText), minute = Number(minuteText), second = Number(secondText);
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 60) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > monthDays[month - 1]) return false;
+  if (zone !== 'Z' && zone !== 'z') {
+    const offsetHour = Number(zone.slice(1, 3));
+    const offsetMinute = Number(zone.slice(4, 6));
+    if (offsetHour > 23 || offsetMinute > 59) return false;
+  }
+  return true;
 }
 function validateCanonicalMemoryRecord(record, label = 'record') {
   const errors = [];
