@@ -151,6 +151,8 @@ try {
   const rejectRecord = JSON.parse(fs.readFileSync(path.join(rejectDirectory, rejectConflict.conflictId + '.resolution.json'), 'utf8'));
   assert.equal(rejectRecord.decision, 'REJECT_CONFLICTING_CHANGE');
   assert.equal(rejectRecord.originalDigests.length, 2);
+  assert.equal(listConflicts({ directory: rejectDirectory, projectId: 'project-a' })[0].status, 'REJECTED');
+  assert.equal(listConflicts({ directory: rejectDirectory, projectId: 'project-a' })[0].state, 'REJECTED');
 
   const retainDirectory = path.join(directory, 'retain-fixture');
   const failedIntegrityOriginal = record({ integrity: { status: 'FAILED', algorithm: 'SHA-256' } });
@@ -170,6 +172,7 @@ try {
     auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].status, 'RETAINED_QUARANTINED');
+  assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].state, 'QUARANTINED');
   assert.deepEqual(filterTrustedRecords([originalA, originalB],
     listConflicts({ directory: retainDirectory, projectId: 'project-a' }), 'project-a'), []);
 
@@ -356,6 +359,7 @@ try {
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS');
   console.log('CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS');
+  console.log('CONTRACT_REJECTED_AND_RETAINED_STATES=PASS');
   console.log('REVIEW_AUTHORIZATION_AND_IDEMPOTENCY=PASS');
   console.log('REVIEW_AUDIT_FAILURE_RECOVERY=PASS');
   console.log('GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS');
