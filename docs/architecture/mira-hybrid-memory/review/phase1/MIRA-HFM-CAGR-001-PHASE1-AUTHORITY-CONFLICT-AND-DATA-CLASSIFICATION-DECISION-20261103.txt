@@ -1,0 +1,141 @@
+MIRA HYBRID MEMORY — PHASE 1 AUTHORITY, CONFLICT & DATA-CLASSIFICATION DECISION
+Document: MIRA-HFM-CAGR-001-PHASE1-AUTHORITY-CONFLICT-AND-DATA-CLASSIFICATION-DECISION
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this report: ddb897b9cc5e5397949b994325efea922b245daa
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Version boundary: v0.2
+Status: PHASE 1 ARCHITECTURE POLICY DECISION RECORDED — IMPLEMENTATION NOT STARTED
+
+1. DECISION CONTEXT
+
+The blueprint names:
+- Primary platform: Facebook Page
+- Secondary platform: Facebook Group
+- Alternative retrieval: Web Search
+- Emergency backup: Google Drive
+
+The current source tree does not contain a Facebook Page/Group Graph API connector. Current operational persistence is Local Memory/Knowledge plus routine Google Drive synchronization. These are not equivalent to the blueprint's future platform roles.
+
+A single global "primary source" is unsafe because private personal Memory, public/shared Knowledge, client records, governance state, and research evidence have different privacy and authority requirements. This decision therefore defines authority by data class rather than forcing all data into one platform.
+
+2. DECISION D01 — DATA CLASSES AND AUTHORITATIVE SOURCE
+
+D01-A PRIVATE PERSONAL MEMORY
+- Canonical authority: Local-first private Memory store under the approved local storage root.
+- Facebook Page/Group: PROHIBITED for private Memory, raw conversation history, credentials, personal identifiers, client secrets, or internal governance records.
+- Google Drive: emergency encrypted backup only after an encryption/key-custody design and restore test exist. Routine unencrypted synchronization is not acceptable as the target design.
+- Web Search: retrieval evidence only; never authoritative Memory.
+- Current source reality: Local Memory plus routine Drive sync exists. This target decision does not change current code or turn off Drive.
+
+D01-B PUBLIC / SHARED KNOWLEDGE
+- Canonical published source: Facebook Page, only for content explicitly classified public and approved for publication.
+- Secondary distribution/discussion: Facebook Group. Group content does not automatically override the Page.
+- Local Knowledge: working store/cache and staging area until a verified Page connector and sync contract exist.
+- Google Drive: encrypted emergency backup only after security and recovery controls are designed.
+- Web Search: candidate evidence, not a canonical source.
+- Publication requires source provenance, content rights check, human approval, stable record ID, revision, and audit event.
+
+D01-C RESEARCH EVIDENCE
+- Canonical record: a local evidence record containing source URL, retrieval timestamp, title, content hash, source/publisher, extraction method, and trust assessment.
+- Web Search is an untrusted retrieval mechanism. It may provide evidence but cannot silently overwrite existing Knowledge or Memory.
+- Search result content remains subject to publisher copyright/licensing and the search provider's terms.
+- A research record becomes reusable Knowledge only after validation and an explicit promotion policy.
+
+D01-D CONVERSATION / CLIENT DATA
+- Canonical authority: separate access-controlled Conversation Store / client-specific stores.
+- Not publishable to Facebook Page or Group by default.
+- Provider egress must be minimized and purpose/consent checked.
+- Retention and deletion policies remain distinct from general public Knowledge.
+
+D01-E GOVERNANCE / AUDIT / APPROVAL / CREDENTIALS
+- Canonical authority: dedicated local governance/audit/credential stores with integrity and access controls.
+- Never published to Page/Group and never placed in ordinary Memory/Knowledge exports.
+- Credentials remain in credential store/secret manager; never in Facebook or Drive plain JSON.
+
+D01-F DERIVED LEARNING / EXPERIENCE
+- Work Learning Records remain a distinct source domain.
+- Experience Memory, Experience Retrieval, Future Strategy, Cross-Task Learning, and Learning History are derived views unless a separately approved persistence requirement is established.
+- Work Knowledge Consolidation remains a distinct derived/proposal store; it is not automatically public Knowledge.
+
+3. DECISION D02 — CONFLICT AND EMPTY-REMOTE SEMANTICS
+
+- A missing remote response, transport error, authorization error, malformed payload, or uninitialized remote store is NOT an empty authoritative store.
+- An empty array is authoritative only when accompanied by explicit initialized state, revision/version, source identity, and a valid integrity marker. An unqualified [] must not replace a non-empty local store.
+- Private Memory: Local canonical state wins over an unverified Drive copy. Drive is backup, not a concurrent writer. Restore from Drive is a controlled recovery action requiring integrity validation, safety snapshot, explicit approval, and post-restore verification.
+- Public Knowledge: Facebook Page is canonical only after the Page connector is implemented, authorized, and a record is marked published. Before that point, the local staged record remains canonical for the unpublished item.
+- Facebook Group: secondary copy/discussion. A Group-only change does not overwrite Page content. Divergence is quarantined for review.
+- Web Search: never overwrites any canonical Memory/Knowledge record. It creates a candidate evidence record with provenance.
+- Conflicting records are preserved, not auto-merged or silently overwritten. Create a conflict record with both versions, source IDs, timestamps, hashes, and reason; require a governed resolution.
+- Deletion is represented by a tombstone/revision in the canonical domain, not inferred from a missing or empty remote response.
+
+4. DECISION D03 — RECORD REVISION / REPLICATION CONTRACT
+
+Every canonical record should carry:
+- stable recordId
+- dataClass and visibility
+- schemaVersion
+- revision (monotonically increasing within the record)
+- sourceSystem and sourceRecordId
+- createdAt / updatedAt
+- contentHash and integrity metadata
+- provenance (source URL/document/provider, actor, method)
+- approvalStatus / approvedBy / approvedAt where applicable
+- retentionClass
+- replicationState and lastVerifiedAt
+
+Replication must be idempotent and version-aware. A provider write is not considered successful until readback matches recordId, revision, and contentHash. A failed remote write must return partial-success state truthfully; it must not pretend that Local and remote are in sync.
+
+5. DECISION D04 — PROVIDER ROLE AND TRANSITION
+
+- Local-first remains the current operational model for private Memory until a separately approved distributed private-memory design exists.
+- Facebook Page/Group are future public/shared Knowledge publication channels, not private Memory databases.
+- Web Search is a retrieval/evidence provider.
+- Google Drive is an emergency encrypted backup target in the target design, not a routine source-of-truth writer.
+- Existing Google Drive sync must remain untouched until each caller has a tested replacement and a separately approved cutover plan.
+- No Facebook connector, OAuth permission, publishing, or data export is authorized by this decision.
+- No Google Drive OAuth scope change, encryption migration, backup/restore, or sync removal is authorized.
+
+6. ACCEPTANCE / OPEN DEPENDENCIES
+
+Before implementation:
+1. Data classification must be attached to every current store and outbound callsite.
+2. Page/Group connector permission model and Meta platform requirements must be reviewed; no connector is present in current source.
+3. Facebook publication must be explicit, approved, auditable, and reversible where the platform permits.
+4. Drive backup encryption, key custody, scope minimization, and restore tests must be designed.
+5. Local/Drive conflict handling and migration must be tested in isolated fixtures.
+6. Provider egress policy must block unknown-retention custom providers for private/client data.
+7. Public Knowledge must have rights/provenance and source-attribution handling.
+8. All changes require versioned schemas, compatibility tests, audit events, and recovery plan.
+
+7. C03 STATUS
+
+C03_AUTHORITY_AND_CONFLICT_POLICY=DEFINED_BY_DATA_CLASS
+C03_DESIGN_DECISION=RECORDED_FOR_PHASE1
+IMPLEMENTATION=NOT_STARTED
+FACEBOOK_CONNECTOR=NOT_PRESENT
+DRIVE_SYNC_REMOVAL=NOT_AUTHORIZED
+DRIVE_SCOPE_CHANGE=NOT_AUTHORIZED
+PRODUCTION_MIGRATION=NOT_AUTHORIZED
+
+This is the Phase 1 architecture policy baseline based on the user's blueprint and privacy-by-design requirements. It does not claim the target connectors or data flows exist, and it does not authorize implementation or external data movement.
+
+8. SAFETY / STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+TESTS=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF DECISION
