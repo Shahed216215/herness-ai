@@ -365,6 +365,10 @@ function verifyReview({ directory, conflictId, projectId }) {
   const valid = review.conflictId === conflictId &&
     review.projectId === envelope.projectId &&
     review.state === 'UNDER_REVIEW' &&
+    typeof review.actor === 'string' && review.actor.trim() &&
+    typeof review.policyDecision === 'string' && review.policyDecision.trim() &&
+    typeof review.startedAt === 'string' && Number.isFinite(Date.parse(review.startedAt)) &&
+    Array.isArray(review.originalDigests) &&
     digest(review.originalDigests) === digest(originals) &&
     reviewDigest === digest(body);
   return { status: valid ? 'VERIFIED' : 'INTEGRITY_FAILED', conflictId, reviewDigest };
@@ -422,6 +426,20 @@ function beginConflictReview({
     if (error.code !== 'EEXIST') throw error;
     const existing = verifyReview({ directory, conflictId, projectId });
     if (existing.status !== 'VERIFIED') throw new Error('Concurrent review record collision.');
+    const stored = readRegularJson(target);
+    if (stored.actor !== actor || stored.policyDecision !== policyDecision) {
+      throw new Error('Concurrent review was claimed by a different review authority.');
+    }
+    try {
+      requireAudit(auditWriter, {
+        action: 'memory_conflict_review_started', conflictId, projectId,
+        actor, policyDecision, reviewDigest: stored.reviewDigest
+      });
+    } catch (auditError) {
+      auditError.code = 'CONFLICT_REVIEW_AUDIT_FAILED';
+      auditError.stateCommitted = true;
+      throw auditError;
+    }
     return { status: 'ALREADY_UNDER_REVIEW', conflictId, reviewDigest: existing.reviewDigest };
   }
   try {
