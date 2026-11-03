@@ -3,7 +3,7 @@ Document: MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER
 Date: 2026-11-03
 Repository: Shahed216215/herness-ai
 Branch: work/mira-hfm-v025-six-documents
-Reviewed HEAD: e7fc09a45e8d64ec62d7ad95cdb606e93faf9083
+Reviewed HEAD: acc929ec2703a302975e752dad83bef6507405d5
 Blueprint: MIRA-HFM-CAGR-001 v1.0.0
 Project version boundary: v0.2
 Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
@@ -79,8 +79,8 @@ These are additive reports. Prior reports remain intact; the status ledger is re
 
 4. PHASE 1 CLOSURE BLOCKERS
 
-C01 — REPOSITORY-WIDE SOURCE-TEXT SCAN: OPEN.
-Current tree path inventory is complete; source content scan is targeted/partial. Need a reliable branch-specific scan of all relevant source blobs or an equivalent reproducible method.
+C01 — EXECUTABLE SOURCE-TEXT SCAN: PASS (SCOPED).
+All 540 JavaScript-family source/test files across root, services, routes, tools, providers, scripts, and tests were retrieved and lexically scanned at the exact feature-branch HEAD. Documentation/assets and package metadata are excluded from executable-source scope.
 
 C02 — ALL PERSISTENCE ROOTS AND CALLERS: PARTIAL.
 All 26 route and 26 tool modules have been retrieved/reviewed for direct delegation and I/O. Known stores, environment overrides, project-root bypasses, selected services, scripts, and workers are mapped. Full reconciliation across all 143 services, dynamic imports, and all indirect call chains is not yet proven.
@@ -94,8 +94,8 @@ K01-K13 matrix, route audit report, and all-route/all-tool direct caller invento
 C05 — EXHAUSTIVE DRIVE CALLSITE INVENTORY: OPEN.
 D01-D27 register and all 26 tool/route modules reviewed. learning-save -> learnFromContent -> addLearning and direct Knowledge backup/cleanup/restore OAuth paths were added. Complete Drive callsite proof across all service/script modules is not yet established.
 
-C06 — ISOLATED FIXTURE TEST PLAN AND EXECUTION: CANDIDATES IDENTIFIED / NOT EXECUTED.
-Existing Memory safety, Local Store contract, Memory Evolution integration, and Research Governance fixture tests were source-reviewed as candidates. Exact branch checkout/runtime was unavailable; clone failed due DNS/network unavailability. No test result is claimed.
+C06 — ISOLATED FIXTURE TESTS: PLAN READY / EXECUTION INCONCLUSIVE.
+Memory safety, Local Store contract, Memory Evolution integration, Research Governance, and consent fixture candidates were source-reviewed. Exact branch checkout/runtime was unavailable; clone failed due DNS/network unavailability. No test was run; no test PASS is claimed.
 
 C07 — PROVIDER PERMISSION AND DATA-EGRESS REVIEW: PARTIAL.
 Model providers, Tavily, custom endpoints, credential store, admin credential routes, learning-save source-content egress, marketing consent lookup, and provider-evolution configuration I/O were inspected. Effective OAuth scopes, all egress callsites, provider retention terms, and data minimization/consent remain unverified.
@@ -115,8 +115,9 @@ No Phase 2 implementation should start under the current authorization. No routi
 
 PHASE1=INCOMPLETE_REVIEW_REQUIRED
 PHASE1_CLOSURE=BLOCKED
-SOURCE_TEXT_SCAN=TARGETED_PARTIAL
+SOURCE_TEXT_SCAN=540_JS_FAMILY_FILES_SCANNED
 TESTS=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
 PRODUCTION_MEMORY_ACCESS=NONE
 CREDENTIAL_OR_TOKEN_ACCESS=NONE
 EXTERNAL_PROVIDER_CALLS=NONE
