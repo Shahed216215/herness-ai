@@ -101,10 +101,15 @@ try {
   assert.equal(rejectRecord.originalDigests.length, 2);
 
   const retainDirectory = path.join(directory, 'retain-fixture');
+  const failedIntegrityOriginal = record({ integrity: { status: 'FAILED', algorithm: 'SHA-256' } });
   const retainConflict = createConflictQuarantine({
     directory: retainDirectory, projectId: 'project-a', conflictTypes: ['INTEGRITY_CONFLICT'],
-    records: [originalA, originalB], actor: 'test-suite', auditWriter
+    records: [originalA, failedIntegrityOriginal], actor: 'test-suite', auditWriter
   });
+  assert.equal(verifyConflict({ directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const retainedEnvelope = readConflict({ directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a' });
+  assert.ok(retainedEnvelope.originals[1].schemaValidationErrors.length === 0);
+  assert.equal(retainedEnvelope.originals[1].declaredIntegrityStatus, 'FAILED');
   assert.equal(resolveConflict({
     directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
     decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
@@ -113,6 +118,25 @@ try {
   assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].status, 'RETAINED_QUARANTINED');
   assert.deepEqual(filterTrustedRecords([originalA, originalB],
     listConflicts({ directory: retainDirectory, projectId: 'project-a' }), 'project-a'), []);
+
+  const multiDirectory = path.join(directory, 'multi-original-fixture');
+  const thirdOriginal = record({
+    content: 'third version',
+    version: { revision: 3, contentHash: 'f'.repeat(64) }
+  });
+  const multiConflict = createConflictQuarantine({
+    directory: multiDirectory, projectId: 'project-a', conflictTypes: ['REVISION_CONFLICT'],
+    records: [originalA, originalB, thirdOriginal], actor: 'test-suite', auditWriter
+  });
+  assert.equal(readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals.length, 3);
+  assert.equal(resolveConflict({
+    directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 2,
+    actor: 'reviewer', policyDecision: 'POLICY-ALT', auditWriter, authorizeResolution
+  }).status, 'RESOLVED');
+  const multiResolution = JSON.parse(fs.readFileSync(path.join(multiDirectory, multiConflict.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(multiResolution.acceptedOriginalDigest, multiConflict.envelopeDigest === '' ? null : readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals[2].recordDigest);
+  assert.equal(verifyResolution({ directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
 
   const mergeDirectory = path.join(directory, 'merge-fixture');
   const mergeConflict = createConflictQuarantine({
