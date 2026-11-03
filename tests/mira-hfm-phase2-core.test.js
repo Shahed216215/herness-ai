@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const core = require('../services/mira-hfm/core');
 const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator');
 const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
@@ -100,6 +102,14 @@ async function main() {
     const hash = core.createContentHash('same');
     assert.equal(hash, core.createContentHash('same'));
     assert.notEqual(hash, core.createContentHash('changed'));
+  });
+  check('Published JSON Schema is strict and matches the core record contract', () => {
+    const schema = JSON.parse(fs.readFileSync(path.join(__dirname, '../schemas/mira-hfm-memory-record-v1.schema.json'), 'utf8'));
+    assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
+    assert.equal(schema.additionalProperties, false);
+    assert.ok(schema.required.includes('memoryId'));
+    assert.equal(schema.properties.source.additionalProperties, false);
+    assert.equal(schema.properties.timestamps.additionalProperties, false);
   });
   check('Canonical record validates against strict v1.0.0 contract', () => {
     assert.deepEqual(core.validateCanonicalRecord(fixtureRecord()).errors, []);
@@ -245,8 +255,8 @@ async function main() {
     let appendCount = 0;
     const provider = {
       getCapabilities: async () => capabilities,
-      write: async () => ({ status: 'COMMITTED', revision: 2 }),
-      read: async () => Object.assign({}, record, { version: Object.assign({}, record.version, { revision: 2 }) }),
+      write: async () => ({ status: 'COMMITTED', revision: 1 }),
+      read: async () => record,
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
     };
     const audit = {
@@ -319,7 +329,7 @@ async function main() {
     const conflict = detectConflict(existing, incoming);
     assert.equal(prepareConflictResolution(conflict, { action: 'ACCEPT_ALTERNATE_VERSION' }).status, 'NOT_APPROVED');
     assert.equal(prepareConflictResolution(conflict, {
-      action: 'ACCEPT_ALTERNATE_VERSION', authorized: true, auditRecorded: true,
+      action: 'ACCEPT_ALTERNATE_VERSION', conflictId: conflict.conflictId, authorized: true, auditRecorded: true,
       actor: 'reviewer', policyDecisionId: 'policy-1'
     }).status, 'PROPOSAL_PREPARED');
   });

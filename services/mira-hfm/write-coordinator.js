@@ -105,7 +105,8 @@ async function executeGovernedWrite(input) {
   } catch (error) {
     return fail('UNKNOWN', 'CAPABILITY_LOOKUP_FAILED', { errorCode: normalizeAdapterError(error) });
   }
-  if (!isCapabilityAvailable(capabilities, 'WRITE') ||
+  if (!isCapabilityAvailable(capabilities, 'READ') ||
+      !isCapabilityAvailable(capabilities, 'WRITE') ||
       !isCapabilityAvailable(capabilities, 'VERIFY')) {
     return fail('NOT_APPROVED', 'WRITE_AND_VERIFY_CAPABILITIES_REQUIRED', {
       writeCapability: capabilities && capabilities.WRITE || 'UNKNOWN',
@@ -169,7 +170,8 @@ async function executeGovernedWrite(input) {
 
   if (writeResult.status !== 'COMMITTED' ||
       !Number.isSafeInteger(writeResult.revision) ||
-      writeResult.revision < 1) {
+      writeResult.revision < 1 ||
+      writeResult.revision !== record.version.revision) {
     return fail('PROVIDER_ERROR', 'PROVIDER_COMMIT_NOT_VERIFIED', {
       providerStatus: writeResult.status || 'UNKNOWN'
     });

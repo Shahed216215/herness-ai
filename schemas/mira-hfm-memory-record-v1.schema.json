@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mira:hfm:memory-record:1",
+  "title": "Mira Hybrid Memory Record v1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "memoryId", "projectId", "recordType", "content", "source", "timestamps", "version", "integrity", "trust", "access", "lifecycle"],
+  "properties": {
+    "schemaVersion": {"type": "string", "const": "1.0.0"},
+    "memoryId": {"type": "string", "minLength": 8, "maxLength": 128},
+    "projectId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "recordType": {"enum": ["fact", "decision", "preference", "procedure", "lesson", "experience", "strategy", "project", "conversation_reference", "knowledge", "research_reference"]},
+    "content": {"type": "string", "minLength": 1, "maxLength": 100000},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceType", "sourceId", "observedAt"],
+      "properties": {
+        "sourceType": {"enum": ["facebook_page", "facebook_group", "web", "manual", "legacy_import", "internal_system", "google_drive_backup"]},
+        "sourceId": {"type": "string", "minLength": 1},
+        "sourceUrl": {"type": ["string", "null"]},
+        "observedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "timestamps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createdAt", "updatedAt"],
+      "properties": {
+        "createdAt": {"type": "string", "format": "date-time"},
+        "updatedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "contentHash"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "contentHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "algorithm"],
+      "properties": {
+        "status": {"enum": ["UNVERIFIED", "VERIFIED", "FAILED", "QUARANTINED"]},
+        "algorithm": {"const": "SHA-256"}
+      }
+    },
+    "trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["UNVERIFIED", "SOURCE_RECORDED", "SOURCE_REACHABLE", "CONTENT_VERIFIED", "HUMAN_VERIFIED", "QUARANTINED"]}
+      }
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification"],
+      "properties": {
+        "classification": {"enum": ["PUBLIC", "PROJECT_PRIVATE", "RESTRICTED"]},
+        "allowedProjectIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "lifecycle": {"enum": ["ACTIVE", "SUPERSEDED", "ARCHIVED", "QUARANTINED", "PENDING_REVIEW"]}
+  }
+}

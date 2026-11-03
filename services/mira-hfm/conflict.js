@@ -48,7 +48,8 @@ function prepareConflictResolution(conflict, decision) {
       !conflict.preserved || !decision || !RESOLUTION_ACTIONS.has(decision.action)) {
     return { status: 'VALIDATION_FAILED', prepared: false };
   }
-  if (decision.authorized !== true || decision.auditRecorded !== true ||
+  if (decision.conflictId !== conflict.conflictId ||
+      decision.authorized !== true || decision.auditRecorded !== true ||
       typeof decision.actor !== 'string' || !decision.actor.trim() ||
       typeof decision.policyDecisionId !== 'string' || !decision.policyDecisionId.trim()) {
     return { status: 'NOT_APPROVED', prepared: false, reason: 'AUTHORIZATION_AND_AUDIT_REQUIRED' };
