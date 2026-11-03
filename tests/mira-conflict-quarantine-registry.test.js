@@ -34,6 +34,7 @@ try {
     records: [originalA, originalB], reason: 'fixture conflict', actor: 'test-suite', auditWriter
   });
   assert.equal(created.status, 'QUARANTINED');
+  assert.equal(fs.readdirSync(directory).some(name => name.startsWith('.mira-quarantine-tmp-')), false);
   const repeatedCreate = createConflictQuarantine({
     directory, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
     records: [originalA, originalB], reason: 'fixture conflict', actor: 'test-suite-retry', auditWriter
@@ -182,6 +183,7 @@ try {
   assert.ok(auditEvents.some(event => event.action === 'memory_conflict_quarantined'));
   assert.ok(auditEvents.some(event => event.action === 'memory_conflict_resolved'));
   console.log('IMMUTABLE_CONFLICT_ENVELOPE_AND_ORIGINAL_PRESERVATION=PASS');
+  console.log('ATOMIC_IMMUTABLE_PUBLICATION_AND_TEMP_CLEANUP=PASS');
   console.log('PROJECT_SCOPED_READ_AND_LIST=PASS');
   console.log('LOCAL_SHA256_INTEGRITY_VERIFICATION=PASS');
   console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
