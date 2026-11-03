@@ -8,6 +8,7 @@ name: Mira Hybrid Memory Phase 2 Core Safety
 # Conflict lifecycle explicitly records QUARANTINED -> UNDER_REVIEW -> RESOLVED/REJECTED transitions.
 # Resolution is blocked unless an authorized, integrity-verified UNDER_REVIEW record exists.
 # Structural conflict assessment exposes the initial DETECTED state before quarantine.
+# Trusted retrieval excludes originals during both QUARANTINED and UNDER_REVIEW states.
 
 on:
   push:
