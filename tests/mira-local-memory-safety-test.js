@@ -6,6 +6,8 @@ const os = require('node:os');
 const path = require('node:path');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-memory-test-'));
+const originalStorage = process.env.MIRA_STORAGE_DIR;
+process.env.MIRA_STORAGE_DIR = root;
 process.env.MIRA_MEMORY_FILE = path.join(root, 'memory.json');
 
 const store = require('../services/mira-local-memory-store');
@@ -73,6 +75,8 @@ async function main() {
     );
     assert.equal(corruptPreservation.rawContent, '{broken');
     assert.equal(memory.getMemory().length, 2);
+    const auditLog = require('../audit-log');
+    assert.ok(auditLog.loadAuditLog().some(entry => entry.action === 'memory_restore_committed'));
 
     // Empty files are corruption, not an empty Memory.
     fs.writeFileSync(store.MEMORY_FILE, '');
@@ -109,6 +113,8 @@ async function main() {
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+    if (originalStorage === undefined) delete process.env.MIRA_STORAGE_DIR;
+    else process.env.MIRA_STORAGE_DIR = originalStorage;
   }
 }
 
