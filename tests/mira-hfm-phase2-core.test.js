@@ -63,6 +63,7 @@ function context() {
     actionAuthorized: true,
     policyAllowed: true,
     projectId: 'project-fixture',
+    now: '2026-11-03T12:00:00.000Z',
     requestId: 'request-fixture-1',
     purpose: 'isolated-test',
     policyDecisionId: 'policy-fixture-1',
@@ -443,8 +444,10 @@ async function main() {
     let writes = 0;
     const provider = {
       providerId: 'fixture-provider',
+      providerId: 'fixture-provider',
       guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       getCapabilityObservations: async () => capabilityObservations(),
       write: async () => { writes += 1; return { status: 'COMMITTED', revision: 1 }; },
       read: async () => record,
@@ -463,8 +466,10 @@ async function main() {
     const events = [];
     let written = false;
     const provider = {
+      providerId: 'fixture-provider',
       guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       write: async () => {
         assert.equal(events.length, 1);
         assert.equal(events[0].eventType, 'MEMORY_WRITE_INTENT');
@@ -490,8 +495,10 @@ async function main() {
     const record = fixtureRecord();
     let writeCalls = 0;
     const provider = {
+      providerId: 'fixture-provider',
       guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       write: async () => { writeCalls += 1; return { status: 'UNKNOWN' }; },
       read: async () => record,
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
@@ -509,8 +516,10 @@ async function main() {
     const record = fixtureRecord();
     let appendCount = 0;
     const provider = {
+      providerId: 'fixture-provider',
       guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
       getCapabilities: async () => capabilities,
+      getCapabilityObservations: async () => capabilityObservations(),
       write: async () => ({ status: 'COMMITTED', revision: 1 }),
       read: async () => record,
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
