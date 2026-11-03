@@ -9,7 +9,7 @@ Status: READY FOR LOCAL EXECUTION — ONE EXPLICIT GITHUB FETCH, THEN FIXTURE TE
 
 1. PURPOSE
 
-This runbook executes only source-reviewed, fixture-oriented Memory/Knowledge/Governance tests. It does not run npm test, install packages, fetch remote content, invoke a live model, contact Google Drive, contact Facebook, start the autonomous worker, or run destructive production workflows.
+This runbook executes only source-reviewed, fixture-oriented Memory/Knowledge/Governance tests. It does not run npm test, install packages, fetch web/provider content, invoke a live model, contact Google Drive, contact Facebook, start the autonomous worker, or run destructive production workflows. One explicit GitHub branch fetch is used only to synchronize the reviewed source.
 
 The execution uses the known Termux checkout path. It first checks for a clean working tree and the expected origin, then performs one explicit git fetch for this feature branch and a fast-forward-only update. It never resets, force-checks out, or overwrites local work. After syncing, the six fixture tests run with all relevant storage overrides redirected to a fresh temporary root. The GitHub fetch is the only network step; no provider, Drive, Facebook, or search API is called, and no package is installed.
 
@@ -36,14 +36,13 @@ The execution uses the known Termux checkout path. It first checks for a clean w
 - Broad npm test: unrelated provider and project tests; not the Hybrid Memory fixture subset.
 - All live provider, Google Drive, Facebook, network, DNS, TLS, socket, SSRF and production restore tests.
 
-4. SINGLE OFFLINE COMMAND
+4. SINGLE GUARDED COMMAND — ONE GITHUB FETCH, THEN OFFLINE TESTS
 
 Run once from the local Termux checkout. It performs one visible GitHub fetch to synchronize the feature branch, then runs the six selected Node tests offline. It refuses to proceed if the working tree is dirty, origin is wrong, fast-forward is impossible, source code changed after the reviewed baseline, or Node is unavailable. It never uses git reset or force checkout. It redirects known persistence overrides to a fresh temporary directory, unsets provider credentials, prints concise per-test status, and deletes the temporary fixture directory.
 
 ```bash
 cd "/root/mira-github-upload-staging/herness-ai" 2>/dev/null || { echo "INCONCLUSIVE: repository checkout not found"; exit 2; }
 EXPECTED_BRANCH="work/mira-hfm-v025-six-documents"
-EXPECTED_ORIGIN="https://github.com/Shahed216215/herness-ai.git"
 BASELINE_HEAD="90b48f2816e28686cd499650ff6a5fc6217f0e8a"
 [ -z "$(git status --porcelain 2>/dev/null)" ] || { echo "INCONCLUSIVE: working tree is not clean; no changes made"; exit 2; }
 ORIGIN_URL="$(git remote get-url origin 2>/dev/null)"
@@ -141,7 +140,7 @@ EXTERNAL_PROVIDER_CALLS=NONE
 GOOGLE_DRIVE_API_CALLS=NONE
 FACEBOOK_API_CALLS=NONE
 PACKAGE_INSTALL=NONE
-NETWORK_COMMANDS=ONE_EXPLICIT_GIT_FETCH_ONLY
+NETWORK_COMMANDS=ONE_EXPLICIT_GITHUB_BRANCH_FETCH; TESTS=LOCAL_FIXTURE_ONLY
 SOURCE_CODE_CHANGES=NONE
 PRODUCTION_DATA_CHANGES=NONE
 VERSION=v0.2
