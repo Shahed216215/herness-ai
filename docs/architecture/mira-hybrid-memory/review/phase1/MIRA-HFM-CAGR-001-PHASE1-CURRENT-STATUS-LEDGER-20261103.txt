@@ -75,6 +75,12 @@ Commit: d3a8348959e87021826b2946389df01a37ab785b
 Verification: official vendor policy pages reviewed for OpenAI, Anthropic, Gemini, Groq, DeepSeek, OpenRouter, Hugging Face, xAI, Tavily, and Google Drive OAuth scopes.
 Key additions: C07 source/policy inventory PASS (scoped); account tiers, effective OAuth scopes, ZDR settings, custom provider terms, and model-specific retention remain UNKNOWN.
 
+J. Persistence Root & Environment Override Matrix
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-PERSISTENCE-ROOT-AND-OVERRIDE-MATRIX-20261103.txt
+Commit: 78371260a663e1b78d89e9a4865fa27afae549bd
+Verification: 42 persistence-domain entries and 15 environment settings registered; direct storage-root divergences and missing schedule-store reference recorded.
+Key additions: C02 substantially mapped but dynamic/indirect caller proof remains REVIEW_REQUIRED.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -100,8 +106,8 @@ These are additive reports. Prior reports remain intact; the status ledger is re
 C01 — EXECUTABLE SOURCE-TEXT SCAN: PASS (SCOPED).
 All 540 JavaScript-family source/test files across root, services, routes, tools, providers, scripts, and tests were retrieved and lexically scanned at the exact feature-branch HEAD. Documentation/assets and package metadata are excluded from executable-source scope.
 
-C02 — ALL PERSISTENCE ROOTS AND CALLERS: PARTIAL.
-All 540 JavaScript-family files were retrieved and lexically scanned; all 26 routes, 26 tools, and 143 services were retrieved. Known stores, overrides, project-root bypasses, scripts, and workers are mapped. A final per-domain indirect/dynamic caller proof and complete override-to-store map remain outstanding.
+C02 — PERSISTENCE ROOTS: SUBSTANTIALLY MAPPED / REVIEW REQUIRED.
+The new 42-entry persistence matrix and 15-setting environment register map the known domains, roots, and major bypasses. All 540 JS-family files were scanned. Remaining work is proving dynamic/indirect caller reachability and resolving the missing schedule-store reference; do not infer runtime completeness.
 
 C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
 Current code behavior is known, but canonical source, stale/empty semantics, conflict quarantine, and transition policy need explicit architecture decision.
