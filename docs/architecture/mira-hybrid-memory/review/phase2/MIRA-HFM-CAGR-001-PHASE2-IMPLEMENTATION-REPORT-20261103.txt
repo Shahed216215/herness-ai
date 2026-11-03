@@ -138,15 +138,25 @@ This additive local-only service covers:
 - fail-closed audit error semantics and retry recovery;
 - symlink path-component rejection.
 
-GitHub Actions run 41669279406 (run 152), job 126032970291, and run 41670332488 (run 155), job 126036679938, completed SUCCESS with the hardened lifecycle suite. The logs explicitly report:
+GitHub Actions run 41673854536 (run 215), job 126049053444, completed SUCCESS on the current contract-aligned service/test revision. The logs explicitly report:
 IMMUTABLE_CONFLICT_ENVELOPE_AND_ORIGINAL_PRESERVATION=PASS
+ATOMIC_IMMUTABLE_PUBLICATION_AND_TEMP_CLEANUP=PASS
 PROJECT_SCOPED_READ_AND_LIST=PASS
 LOCAL_SHA256_INTEGRITY_VERIFICATION=PASS
 IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS
 PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS
-GOVERNED_KEEP_BOTH_RESOLUTION=PASS
+PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS
+GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+GOVERNED_RETAIN_QUARANTINED=PASS
+ALTERNATE_VERSION_INDEX_BOUNDS=PASS
+MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS
+FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS
 EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
-MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS
+CONTRACT_RESOLUTION_PROPOSAL_REQUIRED=PASS
+RESOLUTION_PROPOSAL_TRACEABILITY_AND_TAMPER_DETECTION=PASS
 AUDIT_FAILURE_FAIL_CLOSED=PASS
 RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS
 TAMPER_DETECTION=PASS
@@ -175,15 +185,15 @@ Five source documents (Contract v0.2.4, Blueprint, Prototype C, Prototype D and 
 
 Latest full isolated Phase 2 CI:
 - Run 41673854536 (run 215), job 126049053444 — SUCCESS.
-- Run 174 (41672264913) remains the prior project-scoped retrieval-filter verification.
+- Run 174 (41672264913) is the prior project-scoped retrieval-filter verification; run 215 supersedes it with the contract-aligned full lifecycle suite.
 - The eight-suite workflow completed successfully, including the project-scoped conflict retrieval-exclusion helper.
 - Logs report PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS, TESTS_FAILED=0, production Memory/Knowledge untouched, real Google Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
-- Earlier run 155 remains valid for the source/test revision executed at that time; run 174 is the latest verification of the current isolated quarantine helper/test code.
+- Earlier runs 152/155/166/174 remain historical evidence for their exact commits; run 215 is the latest verification of the current contract-aligned isolated quarantine helper/test code.
 
 Current scoped statuses:
 - Core state safety, Knowledge state safety, recovery, local store contract and Evolution integration: PASS_SCOPED to the recorded CI commits.
 - Structural conflict assessment: PASS_SCOPED to the recorded CI commits.
-- Isolated conflict quarantine lifecycle: PASS_SCOPED to run 155.
+- Isolated conflict quarantine lifecycle: PASS_SCOPED to run 215.
 - Universal production retrieval exclusion: REVIEW_REQUIRED.
 - Every-provider write-boundary integration: REVIEW_REQUIRED.
 - Canonical content-hash recomputation under an approved JCS profile: NOT_IMPLEMENTED.
@@ -204,11 +214,11 @@ PRODUCTION_READINESS=NOT_CERTIFIED
 
 11. POST-RUN-155 QUARANTINE HARDENING — VERIFIED BY RUN 166
 
-After run 155, the isolated quarantine writer was changed to publish immutable records by writing and fsyncing a private temporary file, then atomically hard-linking it to the final immutable name without overwrite. Temporary files are cleaned up on handled failures. Regression coverage now includes temporary-file cleanup and the REJECT_INCOMING resolution decision.
+After run 155, the isolated quarantine writer was changed to publish immutable records by writing and fsyncing a private temporary file, then atomically hard-linking it to the final immutable name without overwrite. Temporary files are cleaned up on handled failures. Regression coverage includes temporary-file cleanup; the earlier REJECT_INCOMING label was superseded by the exact v0.2.4 Contract §30 outcome REJECT_CONFLICTING_CHANGE and is not treated as a current allowed decision.
 
 GitHub Actions run 41671493565 (run 166), job 126040740020, completed SUCCESS on branch head commit 472c83f8c9e47c95060ccb98030a1dbb1d750c15. The job log explicitly reports:
 - ATOMIC_IMMUTABLE_PUBLICATION_AND_TEMP_CLEANUP=PASS
-- GOVERNED_REJECT_INCOMING_RESOLUTION=PASS
+- Historical pre-alignment label: REJECT_INCOMING; superseded by run 215's GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
 - EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
 - RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS
 - FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS
