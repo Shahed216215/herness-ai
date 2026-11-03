@@ -5,7 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const {
   createConflictQuarantine, readConflict, verifyConflict,
-  listConflicts, resolveConflict, verifyResolution, filterTrustedRecords
+  beginConflictReview, verifyReview, listConflicts,
+  resolveConflict, verifyResolution, filterTrustedRecords
 } = require('../services/mira-conflict-quarantine-registry');
 
 function record(overrides = {}) {
@@ -33,6 +34,13 @@ const resolutionProposal = () => ({
   recoveryPoint: 'synthetic-fixture-originals-retained',
   verificationPlan: ['verify both original digests', 'verify resolution digest', 'verify accepted result or merge revision']
 });
+const authorizeReview = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-REVIEW');
+function startReview(directory, conflictId) {
+  return beginConflictReview({
+    directory, conflictId, projectId: 'project-a', actor: 'reviewer',
+    policyDecision: 'POLICY-REVIEW-1', authorizeReview, auditWriter
+  });
+}
 try {
   const originalA = record();
   const originalB = record({ content: 'competing fact', version: { revision: 1, contentHash: 'b'.repeat(64) } });
@@ -51,7 +59,7 @@ try {
   assert.deepEqual(read.originals.map(item => item.record), [originalA, originalB]);
   assert.throws(() => readConflict({ directory, conflictId: created.conflictId, projectId: 'project-b' }), /Cross-project/);
   assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
-  assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'PENDING_REVIEW');
+  assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'QUARANTINED');
 
   const visibleBefore = filterTrustedRecords([
     originalA, originalB, record({ memoryId: 'memory-0002' }),
@@ -60,6 +68,10 @@ try {
   ], listConflicts({ directory, projectId: 'project-a' }), 'project-a');
   assert.deepEqual(visibleBefore.map(item => item.projectId + ':' + item.memoryId),
     ['project-a:memory-0002', 'project-b:memory-0001']);
+  const mainReview = startReview(directory, created.conflictId);
+  assert.equal(mainReview.status, 'UNDER_REVIEW');
+  assert.equal(verifyReview({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'UNDER_REVIEW');
   assert.throws(() => filterTrustedRecords([], [], ''), /projectId is required/);
 
   assert.throws(() => resolveConflict({
@@ -118,6 +130,7 @@ try {
     directory: rejectDirectory, projectId: 'project-a', conflictTypes: ['SOURCE_CONFLICT'],
     records: [originalA, originalB], actor: 'test-suite', auditWriter
   });
+  startReview(rejectDirectory, rejectConflict.conflictId);
   assert.equal(resolveConflict({
     directory: rejectDirectory, conflictId: rejectConflict.conflictId, projectId: 'project-a',
     decision: 'REJECT_CONFLICTING_CHANGE', actor: 'reviewer', policyDecision: 'POLICY-REJECT',
@@ -138,6 +151,7 @@ try {
   const retainedEnvelope = readConflict({ directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a' });
   assert.ok(retainedEnvelope.originals[1].schemaValidationErrors.length === 0);
   assert.equal(retainedEnvelope.originals[1].declaredIntegrityStatus, 'FAILED');
+  startReview(retainDirectory, retainConflict.conflictId);
   assert.equal(resolveConflict({
     directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
     decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
@@ -158,6 +172,7 @@ try {
     records: [originalA, originalB, thirdOriginal], actor: 'test-suite', auditWriter
   });
   assert.equal(readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals.length, 3);
+  startReview(multiDirectory, multiConflict.conflictId);
   assert.throws(() => resolveConflict({
     directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 99,
@@ -181,6 +196,7 @@ try {
     actor: 'test-suite', auditWriter
   });
   const merged = record({ content: 'reviewed merged content', version: { revision: 3, contentHash: 'e'.repeat(64) } });
+  startReview(mergeDirectory, mergeConflict.conflictId);
   assert.equal(resolveConflict({
     directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
     decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
@@ -220,6 +236,7 @@ try {
     directory: resolutionAuditDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
     records: [originalA, originalB], actor: 'test-suite', auditWriter
   });
+  startReview(resolutionAuditDir, resolutionAuditConflict.conflictId);
   assert.throws(() => resolveConflict({
     directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-3',
@@ -299,6 +316,7 @@ try {
   console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS');
+  console.log('CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS');
   console.log('GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS');
   console.log('GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS');
   console.log('GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS');
