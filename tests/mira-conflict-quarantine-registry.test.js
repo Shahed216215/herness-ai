@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const {
   createConflictQuarantine, readConflict, verifyConflict,
-  listConflicts, resolveConflict, filterTrustedRecords
+  listConflicts, resolveConflict, verifyResolution, filterTrustedRecords
 } = require('../services/mira-conflict-quarantine-registry');
 
 function record(overrides = {}) {
@@ -33,6 +33,11 @@ try {
     records: [originalA, originalB], reason: 'fixture conflict', actor: 'test-suite', auditWriter
   });
   assert.equal(created.status, 'QUARANTINED');
+  const repeatedCreate = createConflictQuarantine({
+    directory, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], reason: 'fixture conflict', actor: 'test-suite-retry', auditWriter
+  });
+  assert.equal(repeatedCreate.status, 'ALREADY_EXISTS');
   const read = readConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' });
   assert.deepEqual(read.originals.map(item => item.record), [originalA, originalB]);
   assert.throws(() => readConflict({ directory, conflictId: created.conflictId, projectId: 'project-b' }), /Cross-project/);
@@ -57,6 +62,12 @@ try {
   assert.equal(resolution.status, 'RESOLVED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'RESOLVED');
   assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  assert.equal(verifyResolution({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const repeatedResolution = resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter
+  });
+  assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
 
   const mergeDirectory = path.join(directory, 'merge-fixture');
   const mergeConflict = createConflictQuarantine({
@@ -73,6 +84,13 @@ try {
   const mergedResolution = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
   assert.deepEqual(mergedResolution.originalDigests.length, 2);
   assert.equal(mergedResolution.resultingRecord.version.revision, 3);
+  assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+
+  const resolutionTamper = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
+  resolutionTamper.policyDecision = 'TAMPERED';
+  fs.writeFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), JSON.stringify(resolutionTamper));
+  assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'INTEGRITY_FAILED');
+  assert.equal(listConflicts({ directory: mergeDirectory, projectId: 'project-a' })[0].status, 'INTEGRITY_FAILED');
 
   const auditFailDir = path.join(directory, 'audit-fail');
   assert.throws(() => createConflictQuarantine({
@@ -108,6 +126,7 @@ try {
   console.log('IMMUTABLE_CONFLICT_ENVELOPE_AND_ORIGINAL_PRESERVATION=PASS');
   console.log('PROJECT_SCOPED_READ_AND_LIST=PASS');
   console.log('LOCAL_SHA256_INTEGRITY_VERIFICATION=PASS');
+  console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('GOVERNED_KEEP_BOTH_RESOLUTION=PASS');
   console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
