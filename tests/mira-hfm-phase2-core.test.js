@@ -404,6 +404,7 @@ async function main() {
     assert.equal(catalog.noFallback, true);
     assert.equal(catalog.networkAccessPerformed, false);
     assert.equal(catalog.list().length, 4);
+    assert.equal(catalog.resolve('facebook_page_primary').role, 'PUBLIC_SHARED_KNOWLEDGE_CANONICAL_AFTER_APPROVED_PUBLICATION');
     assert.equal(catalog.resolve('facebook_page_primary').status, 'NOT_CONFIGURED');
     assert.equal(catalog.resolve('facebook_page_primary').provider.providerId, 'facebook_page_primary');
     assert.equal(catalog.resolve('unknown-provider').status, 'NOT_SUPPORTED');
@@ -845,7 +846,7 @@ async function main() {
   });
   await checkAsync('Encrypted backup package requires approved encryption and signing profiles', async () => {
     const record = fixtureRecord();
-    const result = await createEncryptedBackupPackage({ backupId: 'fixture-encrypted-backup', projectId: 'project-fixture', sourceRevision: 'fixture-r1', createdAt: '2026-11-03T00:00:00.000Z', records: [record], context: Object.assign(context(), { action: 'backup', testOnly: true }), backupCapabilityAvailable: true });
+    const result = await createEncryptedBackupPackage({ backupId: 'fixture-encrypted-backup', projectId: 'project-fixture', sourceRevision: 'fixture-r1', createdAt: '2026-11-03T00:00:00.000Z', records: [record], context: Object.assign(context(), { action: 'backup', testOnly: true }), backupCapabilityAvailable: true, providerId: 'fixture-provider', capabilityObservations: capabilityObservations({ BACKUP: 'AVAILABLE' }) });
     assert.equal(result.status, 'NOT_APPROVED');
   });
   await checkAsync('Encrypted backup package signs manifest and verifies encrypted fixture payload', async () => {

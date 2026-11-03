@@ -3,7 +3,7 @@
 const { inspectProviderAdapter, createUnavailableProvider } = require('./provider-contract');
 
 const PROVIDER_ROLES = Object.freeze({
-  facebook_page_primary: 'PRIMARY_PRIVATE_MEMORY_PROVIDER',
+  facebook_page_primary: 'PUBLIC_SHARED_KNOWLEDGE_CANONICAL_AFTER_APPROVED_PUBLICATION',
   facebook_group_import: 'SECONDARY_AUTHORIZED_IMPORT_SOURCE',
   public_web_retrieval: 'PUBLIC_EVIDENCE_RETRIEVAL_ONLY',
   google_drive_emergency_backup: 'ENCRYPTED_EMERGENCY_BACKUP_ONLY'
