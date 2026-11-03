@@ -25,6 +25,11 @@ async function main() {
     assert.equal(entries[0].content, 'fixture-one');
     assert.equal(entries[1].content, 'fixture-two');
 
+    // A previous valid state is retained as an immutable version before replacement.
+    const versionsDir = store.MEMORY_FILE + '.versions';
+    assert.equal(fs.existsSync(versionsDir), true);
+    assert.ok(fs.readdirSync(versionsDir).length >= 1);
+
     const backupResult = store.createBackup();
     assert.equal(backupResult.success, true);
     assert.equal(backupResult.backupVersion, 2);
@@ -41,6 +46,13 @@ async function main() {
     assert.equal(restored.integrity, 'SHA256_VERIFIED');
     assert.equal(memory.getMemory().length, 2);
     assert.equal(fs.existsSync(store.SAFETY_BACKUP_FILE), true);
+
+    // Missing primary with a verified backup must not silently become empty.
+    fs.unlinkSync(store.MEMORY_FILE);
+    const recoveredRead = memory.getMemory();
+    assert.equal(recoveredRead.length, 2);
+    memory.addMemory('user', 'fixture-after-primary-loss');
+    assert.equal(memory.getMemory().length, 3);
 
     // Corrupt JSON must throw and must not be silently converted to [].
     fs.writeFileSync(store.MEMORY_FILE, '{broken', { mode: 0o600 });
