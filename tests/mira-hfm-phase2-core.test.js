@@ -397,6 +397,8 @@ async function main() {
     assert.equal(inspectProviderAdapter(unavailable).capabilities.READ, 'NOT_CONFIGURED');
     assert.equal(requireCapability(unavailable, 'WRITE').allowed, false);
     assert.equal(inspectProviderAdapter(unavailable).noFallback, true);
+  });
+  check('Provider catalog resolves exact roles without silent fallback', () => {
     const catalog = createProviderCatalog();
     assert.equal(catalog.noFallback, true);
     assert.equal(catalog.networkAccessPerformed, false);
@@ -406,8 +408,6 @@ async function main() {
     assert.equal(catalog.resolve('unknown-provider').status, 'NOT_SUPPORTED');
     assert.equal(createProviderCatalog({ facebook_page_primary: { providerId: 'wrong-id' } })
       .resolve('facebook_page_primary').status, 'REJECTED_CONFIGURATION');
-    passed += 1;
-    process.stdout.write('PASS Provider catalog resolves exact roles without silent fallback\\n');
   });
   check('Adapter error taxonomy maps unknown errors to UNKNOWN', () => {
     assert.equal(core.normalizeAdapterError({ code: 'TIMEOUT' }), 'TIMEOUT');
@@ -708,6 +708,23 @@ async function main() {
     assert.equal(preview.sourceStorageRead, false);
     assert.equal(preview.sourceStorageModified, false);
   });
+  check('Migration preview preserves full conflicting source versions', () => {
+    const preview = previewLegacyMigration({
+      domain: 'knowledge', projectId: 'project-fixture',
+      observedAt: '2026-11-03T00:00:00.000Z',
+      records: [
+        { id: 'same-id', content: 'Original legacy value' },
+        { id: 'same-id', content: 'Conflicting legacy value' }
+      ]
+    });
+    assert.equal(preview.status, 'REVIEW_REQUIRED');
+    assert.equal(preview.conflicts.length, 1);
+    assert.equal(preview.conflicts[0].automaticResolution, false);
+    assert.equal(preview.conflicts[0].preserved.existing.content, 'Original legacy value');
+    assert.equal(preview.conflicts[0].preserved.incoming.content, 'Conflicting legacy value');
+    assert.equal(preview.migrationPerformed, false);
+  });
+
   check('Migration preview rejects oversized or malformed batches', () => {
     assert.equal(previewLegacyMigration({ domain: 'knowledge', projectId: 'p', observedAt: '2026-11-03T00:00:00Z', records: new Array(10001).fill({ id: 'x', content: 'x' }) }).status, 'VALIDATION_FAILED');
   });
