@@ -1,0 +1,103 @@
+MIRA HYBRID MEMORY — PHASE 2 CORE MEMORY SAFETY IMPLEMENTATION REPORT
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-IMPLEMENTATION-REPORT-20261103
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Project version boundary: v0.2
+Repository: Shahed216215/herness-ai
+Implementation branch: work/mira-hfm-v02-phase2-core-safety
+Date: 2026-11-03
+Status: IMPLEMENTED_WITH_OPEN_VERIFICATION_AND_GOVERNANCE_GATES
+
+1. SCOPE
+
+This report records additive Phase 2 implementation for local Memory and Knowledge state safety. No production migration, provider cutover, Drive removal, Facebook connector, or deployment is included.
+
+2. IMPLEMENTED SOURCE CHANGES
+
+A. Shared JSON state-store primitives
+Path: services/mira-json-state-store.js
+- Strict JSON-array read with explicit first-run missing-file behavior.
+- Rejects empty, malformed, non-array, symlink, and non-regular-file state.
+- Atomic temporary-file write with exclusive creation, restrictive file mode, fsync, rename, and independent SHA-256 readback.
+- Writes an immutable pre-write version snapshot before replacing an existing valid array.
+- Provides a local conflict-quarantine envelope with SHA-256 evidence and source metadata.
+
+B. General Memory
+Path: services/mira-local-memory-store.js
+- Missing primary Memory file falls back to a validated local backup when one exists; the backup is not silently written over the primary during read.
+- Missing primary with no backup remains a first-run empty state.
+- Corrupt, empty, unreadable, non-array, or unsafe primary state fails closed.
+- Normal writes use the shared atomic/versioned state writer.
+- Explicit restore validates the backup first and requires the existing tool confirmation.
+- Before restoring over corrupt primary data, exact original bytes are preserved in a separate quarantine file with SHA-256 evidence.
+- Restore then performs atomic replacement and readback verification.
+
+C. Knowledge
+Path: knowledge.js
+- A missing Knowledge file remains a first-run empty state.
+- Existing malformed, empty, unreadable, non-array, or unsafe Knowledge state now throws instead of silently becoming [].
+- Knowledge CRUD writes use the shared atomic/versioned state writer.
+- Existing Drive sync behavior is retained; no Drive API is called by these changes.
+
+D. Evolution integration
+Path: knowledge-memory-evolution.js
+- Memory Evolution reads through the shared Local Memory Store.
+- Memory Evolution writes through the shared Local Memory Store; Knowledge Evolution writes through the shared JSON state store.
+- Split Memory storage roots fail closed.
+- Evolution refuses to snapshot/apply when its target path is outside the Snapshot Manager's safe project-relative boundary.
+- Local/Drive divergence is preserved in a local conflict quarantine record and apply is blocked; reconciliation proposal mismatch is also quarantined.
+- Existing snapshot, approval, preservation, Drive verification, and rollback flows remain in place.
+
+3. REGRESSION COVERAGE ADDED / UPDATED
+
+- tests/mira-hfm-phase2-core-safety.test.js
+- tests/mira-local-memory-safety-test.js
+- tests/mira-memory-local-store-contract-test.js
+- tests/mira-memory-evolution-integration-test.js
+- .github/workflows/mira-hfm-phase2-core-safety.yml
+
+The tests cover strict reads, atomic writes, version snapshots, checksum verification, corruption non-overwrite, missing-primary backup fallback, explicit corruption-preserving restore, symlink rejection, conflict quarantine, and Evolution shared-store integration.
+
+Execution status at report creation: INCONCLUSIVE. The dedicated workflow is committed and configured, but no completed GitHub Actions run/check result has been retrieved in this execution. Source presence is not test evidence. Do not mark these tests PASS until the run logs prove it.
+
+4. PHASE 2 GAP STATUS
+
+HFM-001 — Core Memory Read Failure Safety: PASS_SCOPED_SOURCE_IMPLEMENTATION
+HFM-002 — Atomic Memory Write: PASS_SCOPED_SOURCE_IMPLEMENTATION
+HFM-003 — Data Integrity Verification: PASS_SCOPED_SOURCE_IMPLEMENTATION
+HFM-006 — Safe Restore and Recovery: PASS_SCOPED_MEMORY_IMPLEMENTATION; Knowledge restore-path consolidation remains REVIEW_REQUIRED
+HFM-007 — Memory Version Management: PASS_SCOPED_SOURCE_IMPLEMENTATION; retention/restore tooling remains REVIEW_REQUIRED
+HFM-008 — Conflict Detection and Quarantine: PASS_SCOPED_EVOLUTION_IMPLEMENTATION; other source-conflict classes remain REVIEW_REQUIRED
+
+Audit integration and consistent audit-failure policy: REVIEW_REQUIRED. The repository's existing audit stream has legacy/HMAC versioning and key-dependent fail-closed behavior. A canonical event envelope and complete state-store audit integration must be implemented against the approved versioned event profile; this report does not invent or certify that profile.
+
+HFM-004 — Routine Google Drive Sync Removal: DEFERRED_TO_PROVIDER_CUTOVER_GATE. Evolution, controlled apply, Knowledge, and learning callers still depend on Drive. Removal without replacement would risk loss of recovery capability.
+HFM-005 — Encrypted Emergency Backup: DEFERRED_TO_BACKUP_SECURITY_GATE. Encryption-key lifecycle, recovery, and compatibility require a separate verified design. Existing plaintext local backup behavior is not represented as encrypted.
+
+5. SAFETY / NON-ACTIONS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_KNOWLEDGE_READ=NONE
+PRODUCTION_KNOWLEDGE_WRITE=NONE
+REAL_GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+PRODUCTION_MIGRATION=NONE
+DRIVE_SYNC_REMOVAL=NONE
+DEPLOYMENT=NONE
+MAIN_BRANCH_MODIFIED=NO
+VERSION=v0.2
+
+6. EXIT DECISION
+
+PHASE2_IMPLEMENTATION=IMPLEMENTED_WITH_OPEN_VERIFICATION_AND_GOVERNANCE_GATES
+SOURCE_RUNTIME_TESTS=INCONCLUSIVE_PENDING_GITHUB_ACTIONS_EVIDENCE
+AUDIT_POLICY=REVIEW_REQUIRED
+KNOWLEDGE_RESTORE_CONSOLIDATION=REVIEW_REQUIRED
+HFM004=DEFERRED
+HFM005=DEFERRED
+
+Phase 2 must not be declared fully closed until the isolated workflow has a verified successful run, audit integration/failure policy is reconciled, and the remaining restore/version/conflict limitations are independently reviewed. No production migration or provider cutover is authorized by this report.
+
+END OF REPORT
