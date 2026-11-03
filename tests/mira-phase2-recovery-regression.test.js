@@ -74,6 +74,40 @@ async function main() {
     );
     fs.writeFileSync(backupPath, backupRaw);
 
+    // Capacity reduction must preserve every displaced entry in quarantine.
+    fs.writeFileSync(
+      path.join(root, 'capacity-config.json'),
+      JSON.stringify({ knowledge: 1, memory: 20 })
+    );
+    const knowledgeApi = require('../knowledge');
+    const firstCapacityWrite = await knowledgeApi.addKnowledge(
+      'Capacity First',
+      'https://example.invalid/capacity-one',
+      'first capacity fixture'
+    );
+    const secondCapacityWrite = await knowledgeApi.addKnowledge(
+      'Capacity Second',
+      'https://example.invalid/capacity-two',
+      'second capacity fixture'
+    );
+    assert.equal(firstCapacityWrite.added, true);
+    assert.equal(secondCapacityWrite.added, true);
+    assert.equal(knowledgeApi.getKnowledge().length, 1);
+    assert.equal(knowledgeApi.getKnowledge()[0].title, 'Capacity Second');
+
+    const quarantineDir = path.join(root, 'memory-conflicts');
+    const quarantines = fs.readdirSync(quarantineDir)
+      .filter(name => name.startsWith('knowledge-capacity-'));
+    assert.ok(quarantines.length >= 2);
+    const preservedTitles = quarantines.flatMap(name => {
+      const item = JSON.parse(fs.readFileSync(path.join(quarantineDir, name), 'utf8'));
+      assert.equal(item.reason, 'KNOWLEDGE_CAPACITY_EVICTION_REQUIRES_REVIEW');
+      return item.payload.map(entry => entry.title);
+    });
+    assert.ok(preservedTitles.includes('Original'));
+    assert.ok(preservedTitles.includes('Second'));
+    assert.ok(preservedTitles.includes('Capacity First'));
+
     const audit = require('../audit-log');
     assert.equal(audit.verifyAuditIntegrity().ok, true);
     assert.ok(audit.loadAuditLog().some(e => e.action === 'knowledge_backup_created'));
@@ -84,6 +118,7 @@ async function main() {
     console.log('VERSION_LIST_VERIFY_RESTORE=PASS');
     console.log('TAMPERED_BACKUP_REJECTED=PASS');
     console.log('AUDIT_CHAIN=PASS');
+    console.log('KNOWLEDGE_CAPACITY_EVICTION_QUARANTINE=PASS');
     console.log('PRODUCTION_KNOWLEDGE_TOUCHED=NO');
     console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
     console.log('NETWORK_REQUESTS=0');
