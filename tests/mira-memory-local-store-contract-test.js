@@ -102,10 +102,10 @@ try {
   });
 
   check('Evolution delegates Memory persistence to shared Local Store', () => {
-    assert.match(evolution, /require\\s*\\(\\s*["']\\.\\/services\\/mira-local-memory-store["']\\s*\\)/);
-    assert.match(evolution, /localMemoryStore\\.readMemory\\(\\)/);
-    assert.match(evolution, /localMemoryStore\\.writeMemory\\(value\\)/);
-    assert.match(evolution, /jsonStateStore\\.writeArrayState/);
+    assert.ok(evolution.includes('require("./services/mira-local-memory-store")'));
+    assert.ok(evolution.includes('localMemoryStore.readMemory()'));
+    assert.ok(evolution.includes('localMemoryStore.writeMemory(value)'));
+    assert.ok(evolution.includes('jsonStateStore.writeArrayState'));
   });
 
   check('Local Store supports explicit MIRA_MEMORY_FILE path', () => {
