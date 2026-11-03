@@ -1,0 +1,73 @@
+MIRA HYBRID MEMORY — PHASE 2 SOURCE-HASH RECONCILIATION ADDENDUM
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-SOURCE-HASH-RECONCILIATION-20261103
+Parent: DR-08 Decision Closure Matrix v0.2, Gate G1
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Comparison refs:
+- Phase 1 baseline: 90b48f2816e28686cd499650ff6a5fc6217f0e8a
+- Phase 1 final reviewed source: 720309923223c4f287ec3ede0fb0c16aff80f213
+- Current Phase 2 branch: work/mira-hfm-v02-phase2-core-safety
+Date: 2026-11-03
+Status: FIVE SOURCE DOCUMENTS RECONCILED; SIXTH SOURCE UNRESOLVED
+
+1. METHOD
+
+For each source path, GitHub Contents API returned the same Git blob SHA at the Phase 1 baseline, Phase 1 final reviewed source commit and current Phase 2 branch. Character length was also identical across all three refs. SHA-256 was independently recomputed over the UTF-8 file content using a local pure-JavaScript SHA-256 implementation; the implementation was checked against the standard SHA-256 'abc' test vector before use.
+
+2. RECONCILED SOURCES
+
+A. Contract v0.2.4
+Path: docs/architecture/mira-hybrid-memory/MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.4.md
+Git blob SHA: 89ea47870bad7e39c0fc4cd301e4cd0897b55e73
+Character length: 37,698
+SHA-256: 88c7df7bed05d8dc3ee230c77cb461ded3596e0aa3ca591f4879eeea493ae887
+Baseline/final/current blob: IDENTICAL
+
+B. v0.2.5 Design Revision Blueprint
+Path: docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-DESIGN-REVISION-BLUEPRINT.md
+Git blob SHA: a4ef533db691b403bbc0662d2bd308c8eee9daec
+Character length: 19,936
+SHA-256: 246b0d43b82af95653a243115a58e48bc48088cab9bb41b6efa7303a87a1b31f
+Baseline/final/current blob: IDENTICAL
+This independently confirms the prior Blueprint transcription-error reconciliation.
+
+C. Prototype C
+Path: docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-DETAILED-GAP-CLOSURE-SPECIFICATION-PROTOTYPE-C.md
+Git blob SHA: 3a947c83db1cda14e8c6b4c8e0246c6d1c291e06
+Character length: 30,086
+SHA-256: c2a14f5a1d7baa963d23e31802bff1e9058ba0a13256bafb0a641b193b982eb9
+Baseline/final/current blob: IDENTICAL
+
+D. Prototype D
+Path: docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-TECHNICAL-GAP-CLOSURE-REVISION-PROTOTYPE-D.md
+Git blob SHA: 4b77ccb109a89a0f48f06ac41066e4c7af999e5a
+Character length: 44,098
+SHA-256: bd5063e28e4a041d844488ae4ce3e053e2b50da350b7a9b8a98ec17524c16ec1
+Baseline/final/current blob: IDENTICAL
+
+E. Prototype E
+Path: docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-FINAL-TECHNICAL-CONSISTENCY-TRACEABILITY-CLOSURE-PROTOTYPE-E.md
+Git blob SHA: 976e5413f0401b83bbe54798684cc0a556947046
+Character length: 30,477
+SHA-256: 5ab15274991360106dd5cea1f43bfbc623176485beb4bb77df18a39d080e9601
+Baseline/final/current blob: IDENTICAL
+
+3. SIXTH SOURCE — PROTOTYPE B
+
+The DR-08 matrix and project continuity issue refer to Prototype B and its HFM-LOG-001 through HFM-LOG-010 test family. The authoritative Prototype B path/content was not located in the inspected source paths during this reconciliation. Candidate filenames tried did not resolve; no replacement or reconstruction was made.
+
+Status: REVIEW_REQUIRED / SOURCE_PATH_NOT_RESOLVED.
+Do not infer its SHA-256 or test definitions. Locate the authoritative original before G1 can be marked complete.
+
+4. RESULT
+
+VERIFIED_IDENTICAL_SOURCE_DOCUMENTS=5
+SIXTH_SOURCE_PROTOTYPE_B=REVIEW_REQUIRED
+DR08_G1_SOURCE_INTEGRITY=PARTIAL_NOT_CLOSED
+PRODUCTION_DATA_ACCESSED=NO
+NETWORK_REQUESTS=0
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF ADDENDUM
