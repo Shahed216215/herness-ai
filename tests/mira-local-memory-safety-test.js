@@ -63,6 +63,17 @@ async function main() {
     );
     assert.equal(fs.readFileSync(store.MEMORY_FILE, 'utf8'), '{broken');
 
+    // Explicit restore must preserve corrupt primary bytes before replacing them.
+    const recovered = JSON.parse(await restoreTool.execute({ confirm: true }));
+    assert.equal(recovered.restored, true);
+    assert.equal(recovered.safetyBackup, path.basename(store.SAFETY_QUARANTINE_FILE));
+    assert.equal(fs.existsSync(store.SAFETY_QUARANTINE_FILE), true);
+    const corruptPreservation = JSON.parse(
+      fs.readFileSync(store.SAFETY_QUARANTINE_FILE, 'utf8')
+    );
+    assert.equal(corruptPreservation.rawContent, '{broken');
+    assert.equal(memory.getMemory().length, 2);
+
     // Empty files are corruption, not an empty Memory.
     fs.writeFileSync(store.MEMORY_FILE, '');
     assert.throws(() => memory.getMemory(), /empty/i);
