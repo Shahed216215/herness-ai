@@ -1,0 +1,99 @@
+MIRA HYBRID MEMORY — CONFLICT QUARANTINE RETRIEVAL AND WRITE-BOUNDARY CALLSITE MATRIX
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-BOUNDARY-CALLSITE-MATRIX-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-LIFECYCLE-GAP-ASSESSMENT-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: READ-ONLY SOURCE INSPECTION
+
+1. PURPOSE
+
+Identify the currently inspected local Memory and Knowledge retrieval/write entry points and determine whether the new isolated conflict quarantine registry is wired into them. No production data was read. No runtime source was modified by this assessment.
+
+2. SOURCES AND BLOB SHAS
+
+- memory.js — 6765fed022e1a1beadcc035262ac5ad03443e5a6
+- services/mira-local-memory-store.js — 8f153b543d4ba75a2f498c02856ff57a87ed9747
+- knowledge.js — 42cbd990ae671669a898e2abaeb6a55dd5b31465
+- services/mira-conflict-quarantine-registry.js — 1310934daf790ec73fca6ebb84c6a7e78a0c854b
+- services/mira-memory-conflict-assessment.js — 5e685efe8f9660b0afce8c2b571bafa85130cb8d
+
+3. LOCAL MEMORY CALL PATH
+
+A. Retrieval
+- memory.js loadMemory() delegates to localStore.readMemory().
+- memory.js getMemory() returns loadMemory().
+- services/mira-local-memory-store.js readMemory() reads the primary Memory JSON array; if missing, it may return entries from a verified backup; if neither exists it returns [].
+- The inspected readMemory path does not consult the conflict registry or structural conflict assessor.
+
+B. Writes
+- memory.js saveMemory() validates array shape, applies capacity slicing, then calls localStore.writeMemory().
+- memory.js addMemory() loads the current array, checks duplicate role/content, appends a message with Date.toISOString(), and saves.
+- services/mira-local-memory-store.js writeMemory() delegates to jsonStateStore.writeArrayState().
+- The inspected write path does not call assessMemoryConflict(), createConflictQuarantine(), or a registry authorization/resolution gate.
+
+C. Data-model boundary
+The current conversation Memory array stores message-like objects (role/content/time). It is not the canonical Memory record schema validated by mira-memory-conflict-assessment.js. Applying that canonical validator directly to this legacy message array would reject valid current records and is not safe without a separately approved schema/adapter design.
+
+4. LOCAL KNOWLEDGE CALL PATH
+
+A. Retrieval
+- knowledge.js loadKnowledge() reads the active Knowledge JSON array using jsonStateStore.readJsonArray().
+- searchKnowledge(), getKnowledge() and getKnowledgeStats() all call loadKnowledge().
+- The inspected active Knowledge retrieval path does not consult the new conflict registry or structural conflict assessor.
+
+B. Writes
+- addKnowledge() loads active Knowledge, checks duplicate title/content/URL semantics, and later persists/synchronizes the updated array.
+- addLearning() validates learning input, loads active Knowledge and checks duplicate title/topic/content.
+- updateKnowledge(), updateLearning() and deleteKnowledge() load active Knowledge, locate an entry and write the updated array.
+- saveLocalKnowledge() delegates to jsonStateStore.writeArrayState().
+- The inspected add/update/delete paths do not invoke assessMemoryConflict() or the new registry's governed resolution API at a universal pre-write boundary.
+
+C. Existing capacity quarantine is distinct
+applyKnowledgeCapacity() calls jsonStateStore.quarantineConflict() to preserve capacity-evicted entries before committing the bounded active set. That legacy envelope is not the new canonical conflict registry envelope; it has no guaranteed canonical conflictId, source-version pair, governed resolution record or registry status. It must not be silently treated as equivalent.
+
+5. REGISTRY INTEGRATION STATUS
+
+The isolated registry exposes:
+- createConflictQuarantine()
+- readConflict()
+- verifyConflict()
+- listConflicts()
+- resolveConflict()
+- verifyResolution()
+- filterTrustedRecords()
+
+The filter is a pure helper that requires the caller to supply the relevant conflict list. It is not a global interception layer. The registry does not currently wrap memory.js, localStore.readMemory(), knowledge.js loadKnowledge(), searchKnowledge(), getKnowledge(), or the add/update/delete write paths.
+
+6. REQUIRED INTEGRATION PLAN — NOT IMPLEMENTED
+
+Before runtime integration, define separate adapters for the existing conversation-message Memory model and canonical Knowledge record model. Do not force both through one schema.
+
+Proposed order:
+1. Inventory every public API, route, worker, tool, background task and direct file reader that can retrieve or mutate Memory/Knowledge.
+2. Define per-domain record identity and conflict mapping without changing existing records.
+3. Define how legacy capacity/divergence quarantine envelopes are imported or remain separate.
+4. Build one policy-aware retrieval guard and prove all public retrieval entry points use it.
+5. Add pre-write validation and conflict arbitration to each authorized write boundary.
+6. Prove quarantined items are excluded from search, list, count, snippets, export, backup and restore according to policy.
+7. Test cross-project isolation, cache/index invalidation, concurrent writes, audit failure and recovery using synthetic fixtures.
+8. Only after independent review and explicit scope approval, propose any production data migration or provider integration.
+
+7. STATUS
+
+LOCAL_MEMORY_RETRIEVAL_GUARD=NOT_INTEGRATED
+LOCAL_MEMORY_PREWRITE_CONFLICT_CHECK=NOT_INTEGRATED
+KNOWLEDGE_RETRIEVAL_GUARD=NOT_INTEGRATED
+KNOWLEDGE_PREWRITE_CONFLICT_CHECK=NOT_INTEGRATED
+LEGACY_CAPACITY_QUARANTINE_EQUIVALENCE=NOT_ESTABLISHED
+ISOLATED_REGISTRY=PASS_SCOPED_CI_RUN_166
+UNIVERSAL_RETRIEVAL_EXCLUSION=REVIEW_REQUIRED
+ALL_WRITE_BOUNDARY_INTEGRATION=REVIEW_REQUIRED
+PRODUCTION_DATA_ACCESSED=NO
+RUNTIME_CHANGED_BY_THIS_ASSESSMENT=NO
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF MATRIX
