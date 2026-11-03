@@ -63,7 +63,7 @@ D. Knowledge backup and restore recovery\nPaths: services/mira-knowledge-state-r
 
 The tests cover strict reads, atomic writes, version snapshots, checksum verification, corruption non-overwrite, missing-primary backup fallback, explicit corruption-preserving restore, symlink rejection, conflict quarantine, and Evolution shared-store integration.
 
-Final verification: GitHub Actions run 41659887735 (run number 82), job 125999985492, Ubuntu 24.04.5 / Node v22.23.4, completed SUCCESS on the latest Phase 2 source tree. The isolated suite reported: core state-store 20 assertions PASS; Knowledge state safety 14 assertions PASS; Knowledge backup/restore and corrupt-primary preservation PASS; version list/verify/restore PASS; tampered backup rejection PASS; Knowledge capacity-eviction quarantine PASS; audit-chain verification PASS; Local Memory safety PASS; Local Store contract 8 tests PASS; Evolution integration 9 tests PASS. All reported TESTS_FAILED=0. Logs confirmed PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, and EXTERNAL_ACTIONS=0. Earlier CI failures exposed and corrected implementation/test-harness issues; this latest run is the authoritative post-fix evidence.
+Final verification: GitHub Actions run 41660580255 (run number 102), job 126002377286, Ubuntu 24.04.5 / Node v22.23.4, completed SUCCESS on the latest Phase 2 source tree. The isolated suite reported: core state-store 24 assertions PASS; Knowledge state safety 14 assertions PASS; Knowledge backup/restore and corrupt-primary preservation PASS; corrupt-backup overwrite blocked and raw bytes quarantined PASS; version list/verify/restore PASS; tampered backup rejection PASS; Knowledge capacity-eviction quarantine PASS; audit-chain verification PASS; Local Memory safety PASS; Local Store contract 8 tests PASS; Evolution integration 9 tests PASS. All reported TESTS_FAILED=0. Logs confirmed PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, and EXTERNAL_ACTIONS=0. Earlier CI failures exposed and corrected implementation/test-harness issues; this latest run is the authoritative post-fix evidence.
 
 4. PHASE 2 GAP STATUS
 
@@ -97,7 +97,7 @@ VERSION=v0.2
 6. EXIT DECISION
 
 PHASE2_IMPLEMENTATION=APPROVED_LOCAL_CORE_SCOPE_IMPLEMENTED_AND_ISOLATED_TESTED
-SOURCE_RUNTIME_TESTS=PASS_SCOPED — GITHUB_ACTIONS_RUN_41659887735
+SOURCE_RUNTIME_TESTS=PASS_SCOPED — GITHUB_ACTIONS_RUN_41660580255
 KNOWLEDGE_LOCAL_BACKUP_RESTORE=PASS_SCOPED
 VERSION_LIST_VERIFY_RESTORE=PASS_SCOPED
 CAPACITY_EVICTION_QUARANTINE=PASS_SCOPED
