@@ -16,6 +16,10 @@ const SAFETY_BACKUP_FILE = path.join(
   MEMORY_DIR,
   'memory-before-restore.json'
 );
+const SAFETY_QUARANTINE_FILE = path.join(
+  MEMORY_DIR,
+  'memory-corrupt-before-restore.json'
+);
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -258,21 +262,52 @@ function createBackup() {
 
 function restoreMemory() {
   const backup = readBackupFile();
+  let safetyBackupPath = SAFETY_BACKUP_FILE;
 
-  // Read and validate current data before writing anything.
-  const currentEntries = readMemory();
+  // Preserve the current primary before restore. Valid state gets a verified
+  // structured backup; corrupt bytes are preserved separately and verbatim.
+  try {
+    const currentEntries = readMemory();
+    const safetyBackup = makeBackup(
+      currentEntries,
+      'Automatic safety backup before Memory restore'
+    );
+    atomicWriteJson(
+      SAFETY_BACKUP_FILE,
+      safetyBackup,
+      'Memory safety backup'
+    );
+  } catch (error) {
+    let stat;
+    try {
+      stat = fs.lstatSync(MEMORY_FILE);
+    } catch (statError) {
+      throw new Error(
+        `Cannot establish a safe pre-restore state: ${statError.message}`
+      );
+    }
 
-  // A verified safety copy must exist before the restore begins.
-  const safetyBackup = makeBackup(
-    currentEntries,
-    'Automatic safety backup before Memory restore'
-  );
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error('Cannot restore over an unsafe Memory primary file.');
+    }
 
-  atomicWriteJson(
-    SAFETY_BACKUP_FILE,
-    safetyBackup,
-    'Memory safety backup'
-  );
+    const raw = fs.readFileSync(MEMORY_FILE, 'utf8');
+    const quarantine = {
+      quarantineVersion: 1,
+      createdAt: new Date().toISOString(),
+      source: path.basename(MEMORY_FILE),
+      reason: 'CORRUPT_PRIMARY_PRESERVED_BEFORE_EXPLICIT_RESTORE',
+      sha256: sha256(raw),
+      rawContent: raw,
+      readError: error.message
+    };
+    atomicWriteJson(
+      SAFETY_QUARANTINE_FILE,
+      quarantine,
+      'Corrupt Memory pre-restore quarantine'
+    );
+    safetyBackupPath = SAFETY_QUARANTINE_FILE;
+  }
 
   // Atomic replacement followed by independent readback verification.
   const result = writeMemory(backup.entries);
@@ -284,7 +319,7 @@ function restoreMemory() {
     integrity: backup.integrity,
     sha256: result.sha256,
     source: path.basename(BACKUP_FILE),
-    safetyBackup: path.basename(SAFETY_BACKUP_FILE)
+    safetyBackup: path.basename(safetyBackupPath)
   };
 }
 
@@ -292,6 +327,7 @@ module.exports = {
   MEMORY_FILE,
   BACKUP_FILE,
   SAFETY_BACKUP_FILE,
+  SAFETY_QUARANTINE_FILE,
   sha256,
   entriesHash,
   readMemory,
