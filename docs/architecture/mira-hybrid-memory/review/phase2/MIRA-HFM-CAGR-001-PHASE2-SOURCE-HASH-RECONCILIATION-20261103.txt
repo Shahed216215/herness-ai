@@ -9,7 +9,7 @@ Comparison refs:
 - Phase 1 final reviewed source: 720309923223c4f287ec3ede0fb0c16aff80f213
 - Current Phase 2 branch: work/mira-hfm-v02-phase2-core-safety
 Date: 2026-11-03
-Status: FIVE SOURCE DOCUMENTS RECONCILED; SIXTH SOURCE UNRESOLVED
+Status: ALL SIX SOURCE DOCUMENTS RECONCILED
 
 1. METHOD
 
@@ -53,18 +53,20 @@ Character length: 30,477
 SHA-256: 5ab15274991360106dd5cea1f43bfbc623176485beb4bb77df18a39d080e9601
 Baseline/final/current blob: IDENTICAL
 
-3. SIXTH SOURCE — PROTOTYPE B
+F. Prototype B
+Path: docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-GAP-CLOSURE-PROTOTYPE-B.md
+Git blob SHA: 3ec3c1fe18c1554539e3e423bb95d76a921aaaf4
+Character length: 10,330
+SHA-256: 61562609ad9e8f590010986b69e60a81f161ef5640baa3713141d504016b0b11
+Baseline/final/main/current Phase 2 branch blob: IDENTICAL
 
-The DR-08 matrix and project continuity issue refer to Prototype B and its HFM-LOG-001 through HFM-LOG-010 test family. The authoritative Prototype B path/content was not located in the inspected source paths during this reconciliation. Candidate filenames tried did not resolve; no replacement or reconstruction was made.
-
-Status: REVIEW_REQUIRED / SOURCE_PATH_NOT_RESOLVED.
-Do not infer its SHA-256 or test definitions. Locate the authoritative original before G1 can be marked complete.
+Prototype B §10 references HFM-LOG-001 through HFM-LOG-010 but does not enumerate individual definitions in that section. The source is now located and hash-reconciled; per-ID semantic mapping remains a separate U05 task.
 
 4. RESULT
 
-VERIFIED_IDENTICAL_SOURCE_DOCUMENTS=5
-SIXTH_SOURCE_PROTOTYPE_B=REVIEW_REQUIRED
-DR08_G1_SOURCE_INTEGRITY=PARTIAL_NOT_CLOSED
+VERIFIED_IDENTICAL_SOURCE_DOCUMENTS=6
+PROTOTYPE_B_SOURCE=LOCATED_AND_HASH_RECONCILED
+DR08_G1_SOURCE_INTEGRITY=PASS_SCOPED_IDENTICAL_6_OF_6
 PRODUCTION_DATA_ACCESSED=NO
 NETWORK_REQUESTS=0
 VERSION=v0.2
