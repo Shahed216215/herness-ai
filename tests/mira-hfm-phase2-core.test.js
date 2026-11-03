@@ -755,6 +755,83 @@ async function main() {
     }).allowed, false);
   });
 
+
+  await checkAsync('Evolution bridge rejects unapproved proposals before provider access', async () => {
+    const previous = fixtureRecord();
+    const content = 'Evolution candidate fixture';
+    const next = fixtureRecord({ content, version: { revision: 2, contentHash: core.createContentHash(content) } });
+    let writes = 0;
+    const result = await executeEvolutionMemoryWrite({
+      proposal: { status: 'PENDING', proposalId: 'proposal-1', projectId: next.projectId,
+        memoryId: next.memoryId, expectedRevision: 1, policyDecisionId: 'policy-fixture-1' },
+      approval: { status: 'APPROVED', approved: true, approver: 'fixture-actor',
+        evidenceReference: 'fixture:approval', policyDecisionId: 'policy-fixture-1' },
+      recoveryPoint: { status: 'VERIFIED', verified: true, projectId: previous.projectId,
+        memoryId: previous.memoryId, revision: 1, contentHash: previous.version.contentHash,
+        evidenceReference: 'fixture:recovery', record: previous },
+      record: next, context: context(), operation: operation(next),
+      provider: { write: async () => { writes += 1; } },
+      audit: fakeAudit([]), registry: fakeRegistry()
+    });
+    assert.equal(result.status, 'NOT_APPROVED');
+    assert.equal(writes, 0);
+  });
+
+  await checkAsync('Evolution bridge rejects mismatched pre-state recovery evidence', async () => {
+    const previous = fixtureRecord();
+    const content = 'Evolution candidate fixture';
+    const next = fixtureRecord({ content, version: { revision: 2, contentHash: core.createContentHash(content) } });
+    const result = await executeEvolutionMemoryWrite({
+      proposal: { status: 'APPROVED', proposalId: 'proposal-1', projectId: next.projectId,
+        memoryId: next.memoryId, expectedRevision: 1, policyDecisionId: 'policy-fixture-1' },
+      approval: { status: 'APPROVED', approved: true, approver: 'fixture-actor',
+        evidenceReference: 'fixture:approval', policyDecisionId: 'policy-fixture-1' },
+      recoveryPoint: { status: 'VERIFIED', verified: true, projectId: previous.projectId,
+        memoryId: previous.memoryId, revision: 1, contentHash: 'f'.repeat(64),
+        evidenceReference: 'fixture:recovery', record: previous },
+      record: next, context: context(), operation: operation(next),
+      provider: { write: async () => { throw new Error('must not write'); } },
+      audit: fakeAudit([]), registry: fakeRegistry()
+    });
+    assert.equal(result.status, 'RECOVERY_REQUIRED');
+  });
+
+  await checkAsync('Approved Evolution delegates to canonical writer and audits approval evidence', async () => {
+    const previous = fixtureRecord();
+    const content = 'Evolution candidate fixture';
+    const next = fixtureRecord({ content, version: { revision: 2, contentHash: core.createContentHash(content) } });
+    const events = [];
+    let written = false;
+    const provider = {
+      providerId: 'fixture-provider',
+      guarantees: { conditionalWrite: true, stableIdempotency: true, authoritativeReconciliation: true },
+      getCapabilityObservations: async () => capabilityObservations(),
+      read: async () => written ? next : previous,
+      write: async () => { written = true; return { status: 'COMMITTED', revision: 2 }; },
+      verify: async () => ({ status: 'VERIFIED', memoryId: next.memoryId,
+        projectId: next.projectId, revision: 2, contentHash: next.version.contentHash }),
+      reconcileOperation: async () => ({ status: 'UNKNOWN' })
+    };
+    const result = await executeEvolutionMemoryWrite({
+      proposal: { status: 'APPROVED', proposalId: 'proposal-1', projectId: next.projectId,
+        memoryId: next.memoryId, expectedRevision: 1, policyDecisionId: 'policy-fixture-1' },
+      approval: { status: 'APPROVED', approved: true, approver: 'fixture-actor',
+        evidenceReference: 'fixture:approval', policyDecisionId: 'policy-fixture-1' },
+      recoveryPoint: { status: 'VERIFIED', verified: true, projectId: previous.projectId,
+        memoryId: previous.memoryId, revision: 1, contentHash: previous.version.contentHash,
+        evidenceReference: 'fixture:recovery', record: previous },
+      record: next, context: context(), operation: operation(next),
+      provider, audit: fakeAudit(events), registry: fakeRegistry()
+    });
+    assert.equal(result.status, 'COMPLETED');
+    assert.equal(result.canonicalWriter, 'MIRA_HFM_GOVERNED_WRITE_COORDINATOR');
+    assert.equal(result.readbackVerified, true);
+    assert.equal(events.length, 2);
+    assert.equal(events[0].evolutionProposalId, 'proposal-1');
+    assert.equal(events[0].approvalEvidenceReference, 'fixture:approval');
+    assert.equal(events[0].recoveryPointEvidenceReference, 'fixture:recovery');
+  });
+
   process.stdout.write('TESTS_PASSED=' + passed + '\n');
   process.stdout.write('TESTS_FAILED=0\n');
   process.stdout.write('PRODUCTION_MEMORY_TOUCHED=NO\n');
