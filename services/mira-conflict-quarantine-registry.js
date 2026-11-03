@@ -374,6 +374,7 @@ function resolveConflict({
   if (verifyConflict({ directory, conflictId, projectId }).status !== 'VERIFIED') {
     throw new Error('Conflict envelope integrity verification failed; resolution is blocked.');
   }
+  const proposal = buildResolutionProposal(envelope, resolutionProposal);
   if (typeof authorizeResolution !== 'function') throw new Error('An explicit authorizeResolution callback is required.');
   const authorized = authorizeResolution({
     conflictId, projectId: envelope.projectId, decision, actor, policyDecision,
@@ -381,7 +382,6 @@ function resolveConflict({
     resolutionProposal: proposal
   });
   if (authorized !== true) throw new Error('Conflict resolution authorization denied.');
-  const proposal = buildResolutionProposal(envelope, resolutionProposal);
   const originals = envelope.originals.map(item => item.record);
   let resultRecord = null;
   let acceptedOriginalDigest = null;
