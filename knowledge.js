@@ -2,6 +2,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
 const storagePath = require('./mira-storage');
+const jsonStateStore = require('./services/mira-json-state-store');
 const { saveKnowledgeToDrive } = require("./google-drive");
 
 const {
@@ -54,31 +55,20 @@ const ALLOWED_DIFFICULTIES = [
 ];
 
 function loadKnowledge() {
-  if (!fs.existsSync(KNOWLEDGE_FILE)) {
-    return [];
-  }
-
-  try {
-    const data = JSON.parse(
-      fs.readFileSync(KNOWLEDGE_FILE, "utf8")
-    );
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error(
-      "KNOWLEDGE_LOAD_ERROR:",
-      error.message
-    );
-
-    return [];
-  }
+  // A missing file is an empty first-run state. Existing unreadable,
+  // malformed, or non-array state is an error and must never become [].
+  return jsonStateStore.readJsonArray(
+    KNOWLEDGE_FILE,
+    "Mira Knowledge",
+    { missing: "empty" }
+  );
 }
 
 function saveLocalKnowledge(data) {
-  fs.writeFileSync(
+  return jsonStateStore.writeArrayState(
     KNOWLEDGE_FILE,
-    JSON.stringify(data, null, 2),
-    "utf8"
+    data,
+    "Mira Knowledge"
   );
 }
 
