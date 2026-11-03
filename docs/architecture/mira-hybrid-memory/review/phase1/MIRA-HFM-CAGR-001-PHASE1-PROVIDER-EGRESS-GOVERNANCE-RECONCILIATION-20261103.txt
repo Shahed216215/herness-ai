@@ -1,0 +1,132 @@
+MIRA HYBRID MEMORY — PHASE 1 ADDITIVE REVIEW
+Document: MIRA-HFM-CAGR-001-PHASE1-PROVIDER-EGRESS-GOVERNANCE-RECONCILIATION
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD: bdb0d69d02155f799065f962601a7015d3662ab6
+Version boundary: v0.2
+
+1. SCOPE
+
+Read-only source inspection of model-provider egress, custom provider endpoints, credential governance, and routes that consume Memory/Learning. No live provider/API call was made. No credential/token file or secret value was read. No source code was modified and no tests were executed.
+
+2. SOURCE EVIDENCE (blob SHA)
+
+services/ai.js — 7261e4e0e0d0cef678a768c86d2aabb444afc1d2
+providers/index.js — d9ffef6dfa193ec3c5326ac35a992e21e48815f5
+providers/openai.js — 015b6c5671029308640200b4d76fbf658763bfd9
+providers/anthropic.js — 36963444d70d41aededcc33461956b10a9d6c831
+providers/gemini.js — f269ad208eb04a7b014bf19db392b060e68c9fb1
+providers/groq.js — 1422dc74800742f10623fdb62bd75afa57d667e4
+providers/deepseek.js — cc124f50d970c87e2985ce4ca64d95b9f2ef8c6a
+providers/openrouter.js — 83c7ae40e8f382e39c0ee65e9db0e063a978fb7e
+providers/huggingface.js — f6f40ca85e6730f592e3074f11b0fa46c2e49944
+providers/xai.js — b596f22ef0dbab818702eb9aaf6970d0eb3222f9
+providers/custom/provider1.js — 9a9766108944898784ec8f2fd3487aad4a604916
+providers/custom/provider2.js — 4b5008fad8ce9c9d343196a469d81f7bc7dbdd29
+providers/custom/provider3.js — f489651708a829a82d72b9888a5087c8bb7cb047
+providers/custom/provider4.js — b578c2cf489f8885c04a09699f267b9e4d086168
+providers/custom/provider5.js — ca148b413a9017834e6082ee902ab5e3f813d2ab
+services/security/secure-sdk-fetch.js — 2e3199a554ae5a56585e709545a3b2ed581c344d
+services/security/secure-provider-request.js — 94aa8128f9e8d8495b39b327663947229bccd5de
+services/security/provider-url-policy.js — f409c266ad3a7cccdd1f261b5fde062a1c9b5cd2
+services/custom-provider-config.js — 5b52d8e8a53ceebcb671c41373e680181192c5dd
+services/provider-credential-store.js — e954462843e674da7407c46527f9b0ace6463565
+services/provider-credential-resolver.js — fe8be615226628b9090335c1aa67d1e681eb8215
+services/mira-provider-evolution.js — source inspected at branch ref
+routes/mira-provider-evolution.js — 216eb277f306e8411c0bda60a843938c3f2dc959
+routes/mira-research-governance.js — ee8ec2af151de201e3f17a518456733f10bfeb2b
+services/learning.js — be66edd9aa46b2ee84317a5f2dbf4e1ac11a2461
+tools/web-search.js — 472f6b7bd5233f6a08c01173acb58436e2f30014
+server.js — inspected at branch ref
+
+3. MODEL-PROVIDER DATA EGRESS
+
+services/ai.js delegates generation to providers/index.js. providers/index.js chooses configured provider and may make one configured fallback attempt after a transient error. Provider execution attempts are audit-recorded. The prompt supplied to generate() is passed to the selected provider; therefore application prompt/source content may leave the local process when a live provider call is made.
+
+Provider transport patterns observed:
+- OpenAI, Gemini, Groq use secureSdkFetch with host allowlist: api.openai.com, generativelanguage.googleapis.com, api.groq.com.
+- Anthropic, DeepSeek, OpenRouter, Hugging Face, xAI use secureProviderRequest with fixed provider endpoints.
+- Custom provider slots 1–5 use secureProviderRequest with configured/environment URLs and optional bearer credentials.
+- Custom providers 1–5 can transmit the full prompt and system instruction fields to the configured endpoint.
+- services/learning.js sends source content to the configured AI provider for structured knowledge extraction; this is provider egress, not local-only processing.
+- tools/web-search.js sends search query and Tavily API key to https://api.tavily.com/search through secureProviderRequest. Tavily results are external retrieval, not a durable Memory store.
+
+No outbound request was made during this review.
+
+4. TRANSPORT SECURITY OBSERVATIONS
+
+secureSdkFetch restricts HTTPS, a fixed hostname allowlist, GET/POST methods, and disabled redirects, then delegates to secureProviderRequest.
+
+secureProviderRequest and provider-url-policy enforce HTTPS for public endpoints, reject URL credentials/fragments, block local names by default, resolve hostnames, reject private/special-use IPs unless an explicitly configured private-provider policy applies, and use pinned lookup behavior.
+
+Custom provider modules pass allowPrivate=true only when MIRA_ALLOW_PRIVATE_CUSTOM_PROVIDER_URLS=true. The URL policy then permits selected private endpoints; this is an explicit deployment configuration and must be reviewed as an egress/security exception. No such environment value was inspected.
+
+services/custom-provider-config.js stores endpoint/name/model slots under MIRA_CUSTOM_PROVIDER_CONFIG_PATH or process.cwd()/data/custom-provider-slots.json. It requires HTTPS and rejects URL credentials, query, fragments, and many private/local host forms. Its file path is not mira-storage by default.
+
+Transport controls reduce SSRF/redirect risk but do not establish data minimization, provider retention policy, contractual privacy, prompt classification, or per-domain user consent.
+
+5. CREDENTIAL GOVERNANCE
+
+services/provider-credential-store.js uses AES-256-GCM and scrypt-derived key material and requires MIRA_CREDENTIALS_ENCRYPTION_KEY with at least 32 UTF-8 bytes. Its default path is project-root data/provider-credentials.enc.json, not mira-storage.
+
+routes/mira-provider-evolution.js exposes provider credential metadata, write, reveal, and delete routes. server.js mounts this router behind requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN). The metadata route avoids returning plaintext key values and sets no-store headers. PUT requires encryption readiness and returns activated=false. Reveal writes an audit attempt before reading the managed credential and writes a success audit after; it returns plaintext key in the response. DELETE is also present. These are privileged credential-management actions, not Memory-provider permissions.
+
+No secret value, token, or credential file was read. The fact that the route is admin-gated does not prove operational policy, session security, or external provider consent is fully adequate.
+
+6. GOOGLE DRIVE OAUTH SCOPE LIMITATION
+
+The inspected google-drive.js and inline Knowledge backup/restore OAuth constructors set OAuth credentials but do not pass an explicit scopes array in the reviewed source. The actual scope grant encoded in an existing token cannot be determined from this source. Token files were not accessed and no Drive API introspection was performed. Effective Drive scopes remain REVIEW_REQUIRED.
+
+7. FACEBOOK CONNECTOR AND PERMISSION GOVERNANCE
+
+The exact branch path inventory has no file path matching Facebook, Meta connector, Graph API, social connector, or page/group connector naming. This is path-level evidence only. Full source-text scan remains unexecuted, so no claim of complete source absence is made.
+
+No Facebook Page/Group connector, Graph API permission validation, read/write capability split, private Group authorization, manual post workflow, post readback verification, or Facebook permission governance was evidenced in the targeted source scope. No Facebook API call or private Group access occurred.
+
+8. MEMORY/LEARNING ROUTE INTEGRATION OBSERVATIONS
+
+- routes/conversations.js delegates to conversation-store and mira-conversation-memory-engine; conversation persistence is separate from general memory.json.
+- routes/learning-history.js delegates to mira-learning-history and mira-experience-memory; this is derived learning-history/experience retrieval, not the General Memory store.
+- routes/mira-evolution.js imports change management, apply, staging, verification, and audit services. Its memory/knowledge prompts explicitly preserve existing Memory limits and Drive sync/Knowledge backup behavior; no direct provider migration is established by this route.
+- routes/mira-research-governance.js delegates to Research Governance and task-store, with audit callback.
+- routes/mira-provider-evolution.js uses the credential store and privileged admin routes.
+- server.js mounts the provider evolution router behind SYSTEM_ADMIN permission middleware.
+- mira-request-context.js selects at most 8 recent messages and 4,500 total chars by default; it is a bounded context selector, not durable long-term retrieval.
+- mira-conversation-memory-engine.js extracts structured conversation context and persists via conversation-store.
+- mira-experience-retrieval-engine.js uses lexical token overlap and emits governance flags executable=false, modifiesCode=false, bypassesPolicy=false; it is not a token-budget-aware multi-source provider.
+
+9. UPDATED C07 ASSESSMENT
+
+C07 is PARTIAL, not closed:
+- Model-provider destinations and custom endpoint paths were inspected.
+- Transport controls and credential encryption mechanisms were inspected.
+- Prompt/source data egress is confirmed when AI or web-search calls execute.
+- Custom private endpoint opt-in is a policy exception requiring review.
+- Effective Google OAuth scopes are unknown.
+- Provider retention/processing terms and data classification/consent rules were not verified.
+- Complete repository-wide egress callsite inventory remains blocked by incomplete source-text scan.
+
+HFM-010 through HFM-017 remain NO_EVIDENCE in targeted source scope, with no Facebook connector implementation established.
+HFM-028 remains NOT_IMPLEMENTED/REVIEW_REQUIRED for Facebook permission governance.
+HFM-027 remains REVIEW_REQUIRED for imported Memory prompt-injection protections and trust boundaries.
+
+10. STATUS
+
+PRODUCTION_MEMORY_ACCESS=NONE
+CREDENTIAL_OR_TOKEN_ACCESS=NONE
+EXTERNAL_PROVIDER_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+SOURCE_CODE_CHANGES=NONE
+TESTS=NOT_EXECUTED
+SOURCE_TEXT_SCAN=TARGETED_PARTIAL
+GOOGLE_OAUTH_EFFECTIVE_SCOPES=UNKNOWN
+FACEBOOK_CONNECTOR=NO_EVIDENCE_IN_TARGETED_SCOPE
+C07=PARTIAL_REVIEW_REQUIRED
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+VERSION=v0.2
+
+END OF REPORT
