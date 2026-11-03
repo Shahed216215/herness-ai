@@ -80,6 +80,20 @@ try {
   });
   assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
 
+  const rejectDirectory = path.join(directory, 'reject-fixture');
+  const rejectConflict = createConflictQuarantine({
+    directory: rejectDirectory, projectId: 'project-a', conflictTypes: ['SOURCE_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  assert.equal(resolveConflict({
+    directory: rejectDirectory, conflictId: rejectConflict.conflictId, projectId: 'project-a',
+    decision: 'REJECT_INCOMING', actor: 'reviewer', policyDecision: 'POLICY-REJECT',
+    auditWriter, authorizeResolution
+  }).status, 'RESOLVED');
+  const rejectRecord = JSON.parse(fs.readFileSync(path.join(rejectDirectory, rejectConflict.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(rejectRecord.decision, 'REJECT_INCOMING');
+  assert.equal(rejectRecord.originalDigests.length, 2);
+
   const mergeDirectory = path.join(directory, 'merge-fixture');
   const mergeConflict = createConflictQuarantine({
     directory: mergeDirectory, projectId: 'project-a', conflictTypes: ['REVISION_CONFLICT'],
@@ -173,6 +187,7 @@ try {
   console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('GOVERNED_KEEP_BOTH_RESOLUTION=PASS');
+  console.log('GOVERNED_REJECT_INCOMING_RESOLUTION=PASS');
   console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
   console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
   console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
