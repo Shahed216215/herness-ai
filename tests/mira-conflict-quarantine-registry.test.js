@@ -25,7 +25,7 @@ function record(overrides = {}) {
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-conflict-registry-'));
 const auditEvents = [];
 const auditWriter = event => { auditEvents.push(event); };
-const authorizeResolution = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-');
+const authorizeResolution = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-') && request.resolutionProposal?.requiredAuthority === 'authorized-human-reviewer';
 const resolutionProposal = () => ({
   fieldLevelChanges: [],
   dataLossRisks: ['Both original versions are preserved; no source record is deleted by this isolated service.'],
@@ -68,6 +68,16 @@ try {
     resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }), /authorization denied/);
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    auditWriter, authorizeResolution
+  }), /structured resolutionProposal is required/);
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: {}, auditWriter, authorizeResolution
+  }), /fieldLevelChanges is invalid/);
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
@@ -293,6 +303,7 @@ try {
   console.log('FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS');
   console.log('GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS');
   console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
+  console.log('CONTRACT_RESOLUTION_PROPOSAL_REQUIRED=PASS');
   console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
   console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
   console.log('RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS');
