@@ -3,6 +3,7 @@
 const core = require('./core');
 const memory = require('./memory-service');
 const provider = require('./provider-contract');
+const providerCatalog = require('./provider-catalog');
 const writer = require('./write-coordinator');
 const audit = require('./audit-contract');
 const registry = require('./operation-registry');
@@ -19,6 +20,7 @@ module.exports = Object.freeze({
   core,
   memory,
   provider,
+  providerCatalog,
   writer,
   audit,
   registry,
