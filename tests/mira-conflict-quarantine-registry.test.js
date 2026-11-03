@@ -57,24 +57,24 @@ try {
 
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'unapproved-user', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'unapproved-user', policyDecision: 'POLICY-1',
     auditWriter, authorizeResolution
   }), /authorization denied/);
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter
   }), /authorizeResolution callback is required/);
 
   const invalidMerge = record({ version: { revision: 1, contentHash: 'c'.repeat(64) } });
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'MERGE', actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-1',
     mergedRecord: invalidMerge, auditWriter, authorizeResolution
   }), /increment exactly once/);
 
   const resolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
   });
   assert.equal(resolution.status, 'RESOLVED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'RESOLVED');
@@ -82,7 +82,7 @@ try {
   assert.equal(verifyResolution({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   const repeatedResolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1', auditWriter, authorizeResolution
   });
   assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
 
@@ -93,12 +93,26 @@ try {
   });
   assert.equal(resolveConflict({
     directory: rejectDirectory, conflictId: rejectConflict.conflictId, projectId: 'project-a',
-    decision: 'REJECT_INCOMING', actor: 'reviewer', policyDecision: 'POLICY-REJECT',
+    decision: 'REJECT_CONFLICTING_CHANGE', actor: 'reviewer', policyDecision: 'POLICY-REJECT',
     auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   const rejectRecord = JSON.parse(fs.readFileSync(path.join(rejectDirectory, rejectConflict.conflictId + '.resolution.json'), 'utf8'));
-  assert.equal(rejectRecord.decision, 'REJECT_INCOMING');
+  assert.equal(rejectRecord.decision, 'REJECT_CONFLICTING_CHANGE');
   assert.equal(rejectRecord.originalDigests.length, 2);
+
+  const retainDirectory = path.join(directory, 'retain-fixture');
+  const retainConflict = createConflictQuarantine({
+    directory: retainDirectory, projectId: 'project-a', conflictTypes: ['INTEGRITY_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  assert.equal(resolveConflict({
+    directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
+    decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
+    auditWriter, authorizeResolution
+  }).status, 'RESOLVED');
+  assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].status, 'RETAINED_QUARANTINED');
+  assert.deepEqual(filterTrustedRecords([originalA, originalB],
+    listConflicts({ directory: retainDirectory, projectId: 'project-a' }), 'project-a'), []);
 
   const mergeDirectory = path.join(directory, 'merge-fixture');
   const mergeConflict = createConflictQuarantine({
@@ -109,7 +123,7 @@ try {
   const merged = record({ content: 'reviewed merged content', version: { revision: 3, contentHash: 'e'.repeat(64) } });
   assert.equal(resolveConflict({
     directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
-    decision: 'MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
+    decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
     mergedRecord: merged, auditWriter, authorizeResolution
   }).status, 'RESOLVED');
   const mergedResolution = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
@@ -137,13 +151,13 @@ try {
   });
   assert.throws(() => resolveConflict({
     directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-3',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-3',
     auditWriter: () => { throw new Error('resolution audit unavailable'); }, authorizeResolution
   }), error => error.code === 'CONFLICT_RESOLUTION_AUDIT_FAILED' && error.stateCommitted === true);
   assert.equal(listConflicts({ directory: resolutionAuditDir, projectId: 'project-a' })[0].status, 'RESOLVED');
   assert.equal(resolveConflict({
     directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
-    decision: 'KEEP_BOTH', actor: 'reviewer', policyDecision: 'POLICY-3',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-3',
     auditWriter, authorizeResolution
   }).status, 'ALREADY_RESOLVED');
 
@@ -194,8 +208,8 @@ try {
   console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
   console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
   console.log('PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS');
-  console.log('GOVERNED_KEEP_BOTH_RESOLUTION=PASS');
-  console.log('GOVERNED_REJECT_INCOMING_RESOLUTION=PASS');
+  console.log('GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS');
+  console.log('GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS');
   console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
   console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
   console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
