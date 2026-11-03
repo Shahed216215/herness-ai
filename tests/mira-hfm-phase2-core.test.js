@@ -221,8 +221,10 @@ async function main() {
   check('Restricted external project requires explicit allowlist and delegation', () => {
     const record = fixtureRecord({ access: { classification: 'RESTRICTED', allowedProjectIds: ['delegated'] } });
     const request = Object.assign(context(), { projectId: 'delegated', delegationAuthorized: true });
-    assert.equal(core.evaluateAccess(record, request).allowed, true);
-    assert.equal(core.evaluateAccess(record, Object.assign({}, request, { delegationAuthorized: false })).allowed, false);
+    assert.equal(core.evaluateAccess(record, request).allowed, false, 'delegation decision identifier is required');
+    const approved = Object.assign({}, request, { delegationDecisionId: 'delegation-policy-1' });
+    assert.equal(core.evaluateAccess(record, approved).allowed, true);
+    assert.equal(core.evaluateAccess(record, Object.assign({}, approved, { delegationAuthorized: false })).allowed, false);
     assert.equal(core.evaluateAccess(record, Object.assign({}, request, { projectId: 'other' })).allowed, false);
   });
   check('Trust transitions enforce ordered evidence and quarantine release approval', () => {
@@ -382,6 +384,11 @@ async function main() {
       read: async () => record
     }, record.memoryId, readContext);
     assert.equal(unavailable.status, 'NOT_APPROVED');
+    const verifyUnavailable = await readMemory({
+      providerId: 'fixture-provider', getCapabilityObservations: async () => capabilityObservations({ VERIFY: 'PERMISSION_DENIED' }),
+      read: async () => record
+    }, record.memoryId, readContext);
+    assert.equal(verifyUnavailable.status, 'NOT_APPROVED');
     const unconfigured = createUnavailableProvider('unconfigured');
     const unconfiguredRead = await readMemory(unconfigured, record.memoryId, readContext);
     assert.equal(unconfiguredRead.status, 'NOT_APPROVED');
@@ -417,6 +424,7 @@ async function main() {
       getCapabilityObservations: async () => capabilityObservations(),
       guarantees: { boundedSearch: true, opaqueCursor: true },
       search: async (query, options) => {
+        assert.equal(options.projectId, 'project-fixture');
         assert.equal(options.timeoutMs, 5000);
         assert.equal(options.maxResponseBytes, 1000000);
         return { records: [visible, hidden, quarantined], nextCursor: 'fixture-cursor' };
@@ -431,6 +439,12 @@ async function main() {
     assert.equal(result.records[0].memoryId, visible.memoryId);
     assert.equal(result.truncated, true);
     assert.equal(Object.prototype.hasOwnProperty.call(result, 'filteredUnauthorizedOrUntrusted'), false);
+    assert.equal((await searchMemory(provider, 'fixture', { projectId: 'another-project' }, searchContext)).status, 'NOT_APPROVED');
+    const verifyDenied = await searchMemory({
+      providerId: 'fixture-provider', getCapabilityObservations: async () => capabilityObservations({ VERIFY: 'PERMISSION_DENIED' }),
+      guarantees: { boundedSearch: true, opaqueCursor: true }, search: async () => ({ records: [] })
+    }, 'fixture', {}, searchContext);
+    assert.equal(verifyDenied.status, 'NOT_APPROVED');
   });
 
   await checkAsync('Search service rejects unsafe retrieval limits and malformed provider responses', async () => {
@@ -446,6 +460,24 @@ async function main() {
     assert.equal((await searchMemory(provider, 'q', {}, ctx)).status, 'PROVIDER_ERROR');
     const noGuarantee = { providerId: 'fixture-provider', getCapabilityObservations: async () => capabilityObservations(), search: async () => ({ records: [] }) };
     assert.equal((await searchMemory(noGuarantee, 'q', {}, ctx)).status, 'NOT_APPROVED');
+  });
+
+  await checkAsync('Write coordinator rejects providers without atomic conditional-write guarantees', async () => {
+    const record = fixtureRecord();
+    let writes = 0;
+    const provider = {
+      providerId: 'fixture-provider',
+      guarantees: { conditionalWrite: false, stableIdempotency: true, authoritativeReconciliation: true },
+      getCapabilityObservations: async () => capabilityObservations(),
+      write: async () => { writes += 1; return { status: 'COMMITTED', revision: 1 }; },
+      read: async () => record, reconcileOperation: async () => ({ status: 'UNKNOWN' })
+    };
+    const result = await executeGovernedWrite({
+      record, context: context(), operation: operation(record), provider, registry: fakeRegistry(),
+      audit: fakeAudit([]), expectedRevision: 0
+    });
+    assert.equal(result.status, 'NOT_SUPPORTED');
+    assert.equal(writes, 0);
   });
 
   await checkAsync('Write coordinator blocks when durable audit is unavailable', async () => {

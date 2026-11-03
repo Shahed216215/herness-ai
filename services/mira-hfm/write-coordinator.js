@@ -108,6 +108,11 @@ async function executeGovernedWrite(input) {
       typeof provider.reconcileOperation !== 'function') {
     return fail('NOT_SUPPORTED', 'PROVIDER_CONTRACT_INCOMPLETE');
   }
+  if (!provider.guarantees || provider.guarantees.conditionalWrite !== true ||
+      provider.guarantees.stableIdempotency !== true ||
+      provider.guarantees.authoritativeReconciliation !== true) {
+    return fail('NOT_SUPPORTED', 'ATOMIC_CONDITIONAL_WRITE_AND_RECONCILIATION_GUARANTEES_REQUIRED');
+  }
   if (!audit || audit.durable !== true) {
     return fail('NOT_CONFIGURED', 'DURABLE_AUDIT_REQUIRED');
   }

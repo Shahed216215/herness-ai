@@ -293,12 +293,13 @@ function evaluateAccess(record, request) {
   if (record.access.classification === 'PROJECT_PRIVATE' && !owner) {
     return deny('PROJECT_SCOPE_DENIED');
   }
-  if (record.access.classification === 'RESTRICTED' && !owner) {
+  if (record.access.classification === 'RESTRICTED') {
     const allowlist = record.access.allowedProjectIds;
-    if (!Array.isArray(allowlist) || !allowlist.includes(request.projectId)) {
+    if (Array.isArray(allowlist) && !allowlist.includes(request.projectId)) {
       return deny('EXTERNAL_PROJECT_NOT_DELEGATED');
     }
-    if (request.delegationAuthorized !== true) {
+    if (request.delegationAuthorized !== true ||
+        typeof request.delegationDecisionId !== 'string' || !request.delegationDecisionId.trim()) {
       return deny('DELEGATION_NOT_AUTHORIZED');
     }
   }
