@@ -193,7 +193,7 @@ Latest full isolated Phase 2 CI:
 Current scoped statuses:
 - Core state safety, Knowledge state safety, recovery, local store contract and Evolution integration: PASS_SCOPED to the recorded CI commits.
 - Structural conflict assessment: PASS_SCOPED to the recorded CI commits.
-- Isolated conflict quarantine lifecycle: PASS_SCOPED to run 215.
+- Isolated conflict quarantine lifecycle: PASS_SCOPED to run 249.
 - Universal production retrieval exclusion: REVIEW_REQUIRED.
 - Every-provider write-boundary integration: REVIEW_REQUIRED.
 - Canonical content-hash recomputation under an approved JCS profile: NOT_IMPLEMENTED.
@@ -273,3 +273,28 @@ RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
 
 This remains an isolated local-only implementation. It does not establish integration into every Memory/Knowledge retrieval/write path or provider boundary.
 
+
+
+14. CONTRACT CONFLICT STATE MACHINE — VERIFIED BY RUN 249
+
+The read-only structural assessor now returns state=DETECTED when a valid pair of records has one or more classified conflict types. The isolated quarantine registry then records QUARANTINED, requires an explicit authorized beginConflictReview() transition to UNDER_REVIEW, and only permits resolution from an integrity-verified UNDER_REVIEW state.
+
+Terminal behavior:
+- ACCEPT_EXISTING_VERSION, ACCEPT_ALTERNATE_VERSION and APPROVED_FIELD_MERGE -> RESOLVED.
+- REJECT_CONFLICTING_CHANGE -> REJECTED.
+- RETAIN_QUARANTINED -> remains QUARANTINED.
+- Originals remain excluded from trusted retrieval while QUARANTINED or UNDER_REVIEW, and also when integrity verification fails.
+
+Review state is immutable and project-scoped. Beginning review requires a separate authorization callback and audit writer; repeated review requests are idempotent only for the same review actor/policy. Resolution cannot bypass the review state.
+
+GitHub Actions run 41676126277 (run 249), job 126057092567, completed SUCCESS and explicitly reported:
+CONFLICT_STATE_DETECTED=PASS
+CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS
+UNDER_REVIEW_RETRIEVAL_EXCLUSION=PASS
+CONTRACT_REJECTED_AND_RETAINED_STATES=PASS
+REVIEW_AUTHORIZATION_AND_IDEMPOTENCY=PASS
+REVIEW_AUDIT_FAILURE_RECOVERY=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+The registry remains an isolated additive service. The current Memory/Knowledge/route callsites are not yet wired to this lifecycle.
