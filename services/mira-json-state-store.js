@@ -162,7 +162,7 @@ function quarantineConflict(directory, name, payload, metadata = {}) {
   const envelope = {
     quarantineVersion: 1,
     quarantinedAt: new Date().toISOString(),
-    reason: 'SOURCE_CONFLICT_REQUIRES_REVIEW',
+    reason: metadata.reason || 'SOURCE_CONFLICT_REQUIRES_REVIEW',
     metadata,
     payload
   };
