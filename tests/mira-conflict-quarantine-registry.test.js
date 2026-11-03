@@ -129,6 +129,11 @@ try {
     records: [originalA, originalB, thirdOriginal], actor: 'test-suite', auditWriter
   });
   assert.equal(readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals.length, 3);
+  assert.throws(() => resolveConflict({
+    directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 99,
+    actor: 'reviewer', policyDecision: 'POLICY-ALT', auditWriter, authorizeResolution
+  }), /valid acceptedOriginalIndex/);
   assert.equal(resolveConflict({
     directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
     decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 2,
