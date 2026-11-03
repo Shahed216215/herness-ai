@@ -90,6 +90,15 @@ function validateRecord(record, projectId) {
   if (record.projectId !== projectId) throw new Error('Cross-project conflict record rejected.');
   if (record.integrity.status !== 'VERIFIED') throw new Error('Conflict source record must declare VERIFIED integrity.');
 }
+function validateQuarantinableRecord(record, projectId) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    throw new Error('Conflict source record must be an object.');
+  }
+  if (record.projectId !== projectId) throw new Error('Cross-project conflict record rejected.');
+  if (typeof record.memoryId !== 'string' || record.memoryId.length < 8 || record.memoryId.length > 128) {
+    throw new Error('Conflict source record must retain a valid memoryId for project-scoped quarantine.');
+  }
+}
 function requireAudit(auditWriter, event) {
   if (typeof auditWriter !== 'function') throw new Error('An explicit auditWriter is required.');
   return auditWriter(event);
@@ -104,16 +113,19 @@ function createConflictQuarantine({
   directory, projectId, conflictTypes, records, reason, actor, auditWriter
 }) {
   if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('projectId is required.');
-  if (!Array.isArray(records) || records.length !== 2) throw new Error('Exactly two original records are required.');
+  if (!Array.isArray(records) || records.length < 2) throw new Error('At least two competing original records are required.');
   if (!Array.isArray(conflictTypes) || !conflictTypes.length ||
       conflictTypes.some(type => !CONFLICT_TYPES.has(type))) throw new Error('Unsupported conflict type.');
   if (typeof actor !== 'string' || !actor.trim()) throw new Error('Actor identity is required.');
-  for (const record of records) validateRecord(record, projectId);
+  for (const record of records) validateQuarantinableRecord(record, projectId);
 
   const originals = records.map(record => ({
     memoryId: record.memoryId,
-    revision: record.version.revision,
+    revision: Number.isInteger(record.version?.revision) ? record.version.revision : null,
     recordDigest: digest(record),
+    schemaValidationErrors: validateCanonicalMemoryRecord(record),
+    declaredIntegrityStatus: record.integrity?.status || 'MISSING',
+    declaredTrustStatus: record.trust?.status || 'MISSING',
     record
   }));
   const identity = {
@@ -189,11 +201,10 @@ function verifyConflict({ directory, conflictId, projectId }) {
   const envelope = readConflict({ directory, conflictId, projectId });
   const { envelopeDigest, ...rest } = envelope;
   const expected = digest(rest);
-  const originalsValid = rest.originals.length === 2 && rest.originals.every(item =>
+  const originalsValid = rest.originals.length >= 2 && rest.originals.every(item =>
     digest(item.record) === item.recordDigest &&
     item.record.memoryId === item.memoryId &&
-    item.record.version.revision === item.revision &&
-    validateCanonicalMemoryRecord(item.record).length === 0 &&
+    (Number.isInteger(item.record.version?.revision) ? item.record.version.revision : null) === item.revision &&
     item.record.projectId === rest.projectId
   );
   return {
@@ -214,14 +225,17 @@ function verifyResolution({ directory, conflictId, projectId }) {
   const { resolutionDigest, ...body } = resolution;
   const expectedOriginals = envelope.originals.map(item => item.recordDigest);
   const originalsMatch = digest(resolution.originalDigests) === digest(expectedOriginals);
-  const acceptedDigest = resolution.decision === 'ACCEPT_EXISTING_VERSION' ||
+  const acceptedIndex = resolution.decision === 'ACCEPT_EXISTING_VERSION' ||
     resolution.decision === 'REJECT_CONFLICTING_CHANGE'
-      ? expectedOriginals[0]
+      ? 0
       : resolution.decision === 'ACCEPT_ALTERNATE_VERSION'
-        ? expectedOriginals[1] : null;
+        ? resolution.acceptedOriginalIndex : null;
+  const acceptedDigest = Number.isInteger(acceptedIndex) && acceptedIndex >= 0 &&
+    acceptedIndex < expectedOriginals.length ? expectedOriginals[acceptedIndex] : null;
   const resultValid = resolution.decision === 'APPROVED_FIELD_MERGE'
     ? (resolution.resultingRecord &&
        resolution.acceptedOriginalDigest === null &&
+       resolution.acceptedOriginalIndex === null &&
        validateCanonicalMemoryRecord(resolution.resultingRecord).length === 0 &&
        resolution.resultingRecord.projectId === envelope.projectId &&
        resolution.resultingRecord.memoryId === envelope.originals[0].memoryId &&
@@ -229,8 +243,9 @@ function verifyResolution({ directory, conflictId, projectId }) {
        resolution.resultingRecord.version.revision ===
          Math.max(...envelope.originals.map(item => item.revision)) + 1)
     : resolution.decision === 'RETAIN_QUARANTINED'
-      ? (!resolution.resultingRecord && resolution.acceptedOriginalDigest === null)
+      ? (!resolution.resultingRecord && resolution.acceptedOriginalDigest === null && resolution.acceptedOriginalIndex === null)
       : (DECISIONS.has(resolution.decision) && !resolution.resultingRecord &&
+         resolution.acceptedOriginalIndex === acceptedIndex &&
          resolution.acceptedOriginalDigest === acceptedDigest);
   return {
     status: resolutionDigest === digest(body) && originalsMatch && resultValid
@@ -269,7 +284,7 @@ function listConflicts({ directory, projectId }) {
 }
 function resolveConflict({
   directory, conflictId, projectId, decision, actor, policyDecision,
-  mergedRecord, auditWriter, authorizeResolution
+  mergedRecord, acceptedOriginalIndex, auditWriter, authorizeResolution
 }) {
   if (!DECISIONS.has(decision)) throw new Error('Unsupported conflict resolution decision.');
   if (typeof actor !== 'string' || !actor.trim()) throw new Error('Resolution actor is required.');
@@ -287,8 +302,13 @@ function resolveConflict({
   if (decision === 'APPROVED_FIELD_MERGE') {
     if (!mergedRecord) throw new Error('APPROVED_FIELD_MERGE requires an explicit mergedRecord.');
     validateRecord(mergedRecord, envelope.projectId);
-    if (mergedRecord.memoryId !== originals[0].memoryId ||
-        originals[0].memoryId !== originals[1].memoryId) throw new Error('Merged record must preserve the shared original memoryId.');
+    if (originals.some(record => record.memoryId !== originals[0].memoryId)) {
+      throw new Error('APPROVED_FIELD_MERGE requires all originals to share one memoryId.');
+    }
+    if (originals.some(record => !Number.isInteger(record.version?.revision))) {
+      throw new Error('APPROVED_FIELD_MERGE requires valid revision numbers on every original.');
+    }
+    if (mergedRecord.memoryId !== originals[0].memoryId) throw new Error('Merged record must preserve the shared original memoryId.');
     if (mergedRecord.version.revision !== Math.max(...originals.map(r => r.version.revision)) + 1) {
       throw new Error('Merged record revision must increment exactly once above the highest original revision.');
     }
@@ -296,15 +316,23 @@ function resolveConflict({
   } else {
     if (mergedRecord) throw new Error('Only APPROVED_FIELD_MERGE may include a mergedRecord.');
     if (decision === 'ACCEPT_EXISTING_VERSION' || decision === 'REJECT_CONFLICTING_CHANGE') {
+      acceptedOriginalIndex = 0;
       acceptedOriginalDigest = envelope.originals[0].recordDigest;
     } else if (decision === 'ACCEPT_ALTERNATE_VERSION') {
-      acceptedOriginalDigest = envelope.originals[1].recordDigest;
+      if (acceptedOriginalIndex === undefined && envelope.originals.length === 2) acceptedOriginalIndex = 1;
+      if (!Number.isInteger(acceptedOriginalIndex) || acceptedOriginalIndex < 1 || acceptedOriginalIndex >= envelope.originals.length) {
+        throw new Error('ACCEPT_ALTERNATE_VERSION requires a valid acceptedOriginalIndex from 1 through the final original index.');
+      }
+      acceptedOriginalDigest = envelope.originals[acceptedOriginalIndex].recordDigest;
+    } else {
+      acceptedOriginalIndex = null;
     }
   }
   const resolution = {
     resolutionSchemaVersion: '1.0.0',
     conflictId, projectId: envelope.projectId, decision, actor,
     policyDecision, originalDigests: envelope.originals.map(item => item.recordDigest),
+    acceptedOriginalIndex: acceptedOriginalIndex ?? null,
     acceptedOriginalDigest,
     resultingRecord: resultRecord,
     resolvedAt: new Date().toISOString()
@@ -317,6 +345,7 @@ function resolveConflict({
     if (existing.conflictId !== conflictId || existing.projectId !== projectId ||
         existing.decision !== decision || existing.actor !== actor ||
         existing.policyDecision !== policyDecision ||
+        existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
         digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
         digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
       throw new Error('Conflict already has a different immutable resolution.');
@@ -333,6 +362,7 @@ function resolveConflict({
       const existing = readRegularJson(target);
       if (existing.conflictId !== conflictId || existing.decision !== decision ||
           existing.actor !== actor || existing.policyDecision !== policyDecision ||
+          existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
           digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
           digest(existing.resultingRecord) !== digest(resolution.resultingRecord)) {
         throw new Error('Concurrent conflicting resolution rejected.');
