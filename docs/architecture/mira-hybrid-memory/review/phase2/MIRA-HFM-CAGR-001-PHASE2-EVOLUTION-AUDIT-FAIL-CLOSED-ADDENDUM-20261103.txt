@@ -1,0 +1,74 @@
+MIRA HYBRID MEMORY — PHASE 2 EVOLUTION AUDIT FAIL-CLOSED ADDENDUM
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-EVOLUTION-AUDIT-FAIL-CLOSED-ADDENDUM-20261103
+Parent report: MIRA-HFM-CAGR-001-PHASE2-IMPLEMENTATION-REPORT-20261103
+Project version boundary: v0.2
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Date: 2026-11-03
+Status: SCOPED_FIX_IMPLEMENTED_AND_CI_VERIFIED; FULL_PHASE2_REMAINS_REVIEW_REQUIRED
+
+1. FINDING
+
+Read-only source review found that knowledge-memory-evolution.js used an audit() helper that caught recordAudit failures and returned { logged: false }. Success paths did not inspect that result. Consequently, selected Evolution operations could return success even when their required success audit event had not been recorded.
+
+2. SCOPED CORRECTION
+
+Added requireAudit() and applied it to successful Evolution events:
+- stage412_prepare
+- stage412_snapshot_created
+- stage412_apply
+- stage412_rollback
+
+When the existing audit writer fails, the corresponding success path now throws and cannot return a success result. Existing failure-path handling remains in place; this change does not redesign the audit format or create a new audit backend.
+
+3. REGRESSION TEST
+
+Updated tests/mira-memory-evolution-integration-test.js with an injected audit-writer failure during successful prepare. The test asserts:
+- prepare does not return success;
+- result status is prepare_failed;
+- local fixture Memory remains unchanged;
+- Drive fixture remains unchanged.
+
+The existing integration suite now contains 10 pass assertions, including the new fail-closed audit regression.
+
+4. CI EVIDENCE
+
+Workflow: Mira Hybrid Memory Phase 2 Core Safety
+Run: 41662788020 (run 109)
+Job: 126010094347
+Head commit: bdfc5e33b09ee93b13bf05be98ea94ae24bb5e38
+Result: SUCCESS
+Workflow URL: https://github.com/Shahed216215/herness-ai/actions/runs/41662788020
+
+The workflow's isolated test step completed successfully. The workflow also reports production Memory untouched, real Google Drive untouched, zero network requests and zero external actions. The workflow path filters now include knowledge-memory-evolution.js for both branch pushes and pull requests.
+
+5. LIMITATIONS AND REMAINING GATES
+
+This correction closes only the identified Evolution success-audit fail-open path. It does not implement the canonical sequence-numbered audit envelope. Existing audit hash-chain evidence is not equivalent to DR-08 canonical chain qualification.
+
+Still REVIEW_REQUIRED / NOT_ESTABLISHED:
+- DR08-U03 genesis protocol.
+- DR08-U04 authoritative backend atomicity and append arbitration.
+- DR08-U05 canonical test registry and legacy ID mapping.
+- DR08-U06 canonical timestamp profile.
+- E-15 independent verifier qualification and evidence custody.
+- Non-Evolution identity, revision, content, source, access, schema and integrity conflict handling.
+- DR-08 source-integrity baseline reconciliation.
+
+Still deferred:
+- HFM-004 Google Drive provider cutover.
+- HFM-005 encrypted emergency backup.
+
+No production Memory or Knowledge was read or modified. No provider cutover, migration, deployment, merge or version change was performed. Version remains v0.2.
+
+6. EXIT STATUS
+
+EVOLUTION_SUCCESS_AUDIT_FAIL_CLOSED=PASS_SCOPED
+EVOLUTION_INJECTED_AUDIT_FAILURE_REGRESSION=PASS_SCOPED
+CI_RUN_41662788020=SUCCESS
+CANONICAL_AUDIT_ENVELOPE=NOT_APPROVED_FOR_IMPLEMENTATION
+FULL_PHASE2_GOVERNANCE_CLOSURE=REVIEW_REQUIRED
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+END OF ADDENDUM
