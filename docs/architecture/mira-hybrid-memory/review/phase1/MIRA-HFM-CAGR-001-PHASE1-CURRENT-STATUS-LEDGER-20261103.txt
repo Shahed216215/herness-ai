@@ -3,7 +3,7 @@ Document: MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER
 Date: 2026-11-03
 Repository: Shahed216215/herness-ai
 Branch: work/mira-hfm-v025-six-documents
-Reviewed HEAD: acc929ec2703a302975e752dad83bef6507405d5
+Reviewed HEAD: 59c6139bbe6772bacccd299eee44d31f28298305
 Blueprint: MIRA-HFM-CAGR-001 v1.0.0
 Project version boundary: v0.2
 Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
@@ -11,13 +11,13 @@ Status: PHASE 1 INCOMPLETE — REVIEW REQUIRED
 1. CURRENT BRANCH INVENTORY
 
 Feature branch HEAD was re-read from GitHub. Recursive tree at this exact HEAD:
-- Entries: 627
-- Blob files: 609
+- Entries: 634
+- Blob files: 616
 - Tree truncated: false
 - Route files: 26
 - Service files: 143
 
-This is a complete path inventory for the current branch tree. It is not a repository-wide source-text scan. Main/default branch was not modified. No application source files were modified.
+This is a complete path inventory for the reviewed feature-branch tree. The 540 JavaScript-family source/test files were also retrieved and lexically scanned. Main/default branch was not modified. No application source files were modified.
 
 2. NEW ADDITIVE REPORTS COMMITTED AND VERIFIED
 
@@ -105,7 +105,7 @@ These are additive reports. Prior reports remain intact; the status ledger is re
 
 - General Memory Store has strong atomic write/readback behavior, but missing primary memory.json is interpreted as [].
 - Knowledge load converts missing, malformed, and non-array state to [] and Knowledge CRUD writes directly without equivalent atomic/readback safeguards. HFM-001 and HFM-002 remain critical.
-- Knowledge search allows any Drive array, including empty, to replace Local search data. Authority/conflict policy remains undecided.
+- Knowledge search currently allows any Drive array, including empty, to replace Local search data. The Phase 1 data-class authority/conflict policy is now recorded; the current code has not yet been changed to enforce that policy.
 - Ordinary Knowledge/Learning CRUD performs local write then Drive sync; partial success and split-brain are possible.
 - Knowledge backup/restore independently construct Google OAuth clients and use project-root paths; restore can overwrite data. Neither tool was invoked.
 - Controlled apply and Evolution depend on Drive preflight, snapshots, verification, rollback, and recovery. Drive sync removal is blocked.
@@ -116,7 +116,7 @@ These are additive reports. Prior reports remain intact; the status ledger is re
 - No production Memory data, credential values, or token files were accessed.
 - Knowledge Improvement Apply has handled early-return failure branches without corresponding route-level audit records; lower-level audit coverage remains to be traced.
 - Knowledge Improvement's audit helper swallows audit-store errors, while Autonomous Learning's helper does not; consistent audit failure policy is not established.
-- services/learning.js learnFromContent calls generate with source content, then may call addLearning directly; this can persist Knowledge and trigger Drive sync outside the separate proposal/apply route. Full upstream caller/consent mapping remains open.
+- services/learning.js learnFromContent calls generate with source content, then may call addLearning directly; this can persist Knowledge and trigger Drive sync. The direct tools/learning-save caller is mapped; the policy distinction between ordinary educational ingestion and system-change proposals, plus consent enforcement, remains a future implementation requirement.
 - The reviewed Experience Memory module derives projections from Work Learning Records and contains no independent persistence path.
 
 4. PHASE 1 CLOSURE BLOCKERS
@@ -156,7 +156,7 @@ No Phase 2 implementation should start under the current authorization. No routi
 6. STATUS
 
 PHASE1=INCOMPLETE_REVIEW_REQUIRED
-PHASE1_CLOSURE=BLOCKED
+PHASE1_CLOSURE=BLOCKED_ONLY_C06_TEST_EXECUTION
 SOURCE_TEXT_SCAN=540_JS_FAMILY_FILES_SCANNED
 TESTS=NOT_EXECUTED
 TEST_RESULT=INCONCLUSIVE
