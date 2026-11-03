@@ -1,0 +1,146 @@
+MIRA HYBRID MEMORY — PHASE 1 PROVIDER POLICY & OAUTH SCOPE REVIEW
+Document: MIRA-HFM-CAGR-001-PHASE1-PROVIDER-POLICY-AND-OAUTH-SCOPE-REVIEW
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this report: 8b7ba72f46688ffee1f846188fa68139395947d3
+Version boundary: v0.2
+Status: OFFICIAL POLICY RESEARCH COMPLETED FOR IDENTIFIED PROVIDERS; ACCOUNT-SPECIFIC SETTINGS UNKNOWN
+
+1. SCOPE
+
+The exact branch source scan identifies:
+- OpenAI, Anthropic, Gemini, Groq, DeepSeek, OpenRouter, Hugging Face, xAI provider adapters.
+- Custom provider slots 1–5 with configurable endpoints and bearer credentials.
+- Tavily web-search egress.
+- Google Drive OAuth storage.
+- Shared secureProviderRequest and secureSdkFetch transport controls.
+
+This review used public official provider policy/documentation pages as of 2026-11-03. It did not sign in to provider consoles, read API keys/tokens, inspect account-level retention toggles, send requests, or infer a user's service tier.
+
+2. PROVIDER DATA-HANDLING MATRIX
+
+P01 — OpenAI API
+- Official documentation: https://developers.openai.com/api/docs/guides/your-data
+- API inputs/outputs are not used to train/improve models by default unless the customer opts in.
+- Abuse-monitoring logs may contain prompts/responses and are retained up to 30 days by default, with legal/safety exceptions.
+- Zero Data Retention and Modified Abuse Monitoring require eligibility/approval and organization/project configuration; endpoint/application-state exceptions remain.
+- Mira's OpenAI adapter is an external egress path through the configured provider runtime.
+- Actual organization ZDR/MAM status: UNKNOWN.
+
+P02 — Anthropic Claude API
+- Official documentation: https://platform.claude.com/docs/en/manage-claude/api-and-data-retention
+- Retention depends on API feature and contractual arrangement. Anthropic offers organization-level ZDR and HIPAA-ready arrangements; ZDR must be requested/enabled for the relevant organization.
+- ZDR means prompts/responses are not stored at rest after the API response is returned, subject to feature eligibility.
+- Actual organization ZDR/HIPAA status and feature use: UNKNOWN.
+
+P03 — Google Gemini Developer API
+- Official documentation: https://ai.google.dev/gemini-api/docs/zdr
+- Paid Services: prompts/system instructions/files and responses are not used to improve Google's products; free-tier use may be used to improve products.
+- Abuse-monitoring prompt/context/output logging is described as 55 days.
+- Interactions API has separate server-side object retention (1 day free tier, 55 days paid tier when store=true); the reviewed Mira Gemini adapter must be checked against the exact API feature used before applying that Interactions-specific rule.
+- Actual project billing tier, logging/ZDR settings, and API feature configuration: UNKNOWN.
+
+P04 — GroqCloud
+- Official documentation: https://console.groq.com/docs/your-data
+- Inference customer data is not retained by default; usage metadata is retained.
+- Inputs/outputs may be temporarily retained for reliability/abuse investigation, up to 30 days; eligible accounts can enable ZDR.
+- Batch/fine-tuning features have separate storage periods and are not the ordinary synchronous inference path reviewed here.
+- Actual account ZDR/data-control settings: UNKNOWN.
+
+P05 — DeepSeek
+- Official privacy policy: https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html?locale=en_GB
+- Policy last updated 2026-02-10; it states the consumer Services collect prompts/inputs and process/store personal data in the People's Republic of China.
+- Important limitation: the policy states that personal-data processing for downstream applications built using Open Platform services is not covered by that consumer policy. Open Platform terms place developer disclosure, consent/legal-basis, and data-security responsibilities on the developer: https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html
+- API-specific retention and contract terms for the configured Mira account: UNKNOWN. Do not assume the consumer policy alone establishes API retention.
+
+P06 — OpenRouter
+- Official privacy policy: https://openrouter.ai/privacy
+- Last updated 2026-08-31 in the reviewed page.
+- OpenRouter says it does not use Inputs/Outputs for its own model training; inputs are transmitted to the selected/automatically routed Model Provider, whose retention/training practices vary.
+- The support documentation states prompts/completions are not logged by default; account logging/privacy options can change this: https://openrouter.ai/support/
+- Provider-side retention remains model/provider-specific; account logging options: UNKNOWN.
+
+P07 — Hugging Face Inference Providers
+- Official security documentation: https://huggingface.co/docs/inference-providers/security
+- Hugging Face says it does not store request bodies/responses for routing and keeps debugging logs up to 30 days without user data or tokens.
+- Requests are routed to external providers; their own security/data policies apply. TLS/SSL is used in transit.
+- The exact underlying provider selected for a given request and its terms: UNKNOWN unless explicitly pinned.
+
+P08 — xAI API
+- Official API security FAQ: https://docs.x.ai/developers/faq/security
+- Default content retention is 30 days; team-level ZDR can prevent prompt/output persistence.
+- ZDR is team-wide, not per API key, and disables features requiring server-side storage.
+- Actual team ZDR setting and API feature use: UNKNOWN.
+
+P09 — Custom provider slots 1–5
+- Source: providers/custom/provider1.js through provider5.js; services/custom-provider-config.js; services/mira-provider-evolution.js.
+- Endpoint URLs and bearer credentials are user/configuration-defined; prompt and system-instruction payloads are transmitted to the configured endpoint.
+- Secure transport/URL policy validates destination/transport but cannot establish the recipient's data retention, training, jurisdiction, subprocessors, or deletion behavior.
+- Provider identity, contract, retention, and privacy policy for each slot: UNKNOWN until the configured vendor is identified and its terms are reviewed.
+
+P10 — Tavily Search
+- Official storage/retention guidance: https://help.tavily.com/articles/1612400809-storing-caching-retaining-output
+- Tavily says returned metadata, snippets, full page content, and API outputs may be stored long-term without a maximum retention period or deletion requirement under its terms; underlying web content remains subject to publisher rights.
+- Mira's web-search tool sends the search query to Tavily when invoked. This is a separate egress path from model inference.
+- Account/plan and query-specific handling: UNKNOWN.
+
+3. GOOGLE DRIVE OAUTH SCOPE REVIEW
+
+Official Google references:
+- OAuth scopes catalog: https://developers.google.com/identity/protocols/oauth2/scopes
+- Drive-specific scope guide: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+
+Key scope distinction:
+- drive.file is per-file: access to files created by the app or explicitly opened/shared with the app.
+- drive is broad: see, edit, create, and delete all of the user's Drive files; Google classifies it as restricted.
+- Google recommends requesting the narrowest scopes needed and explains that scopes must be declared in Cloud Console and explicitly requested by the application.
+
+Mira source finding:
+- google-drive.js and the direct Knowledge backup/restore OAuth implementations construct OAuth2 clients without an explicit scopes array in the reviewed code path.
+- The current source cannot prove the scopes embedded in already-issued tokens or the Cloud Console consent configuration.
+- Effective OAuth scopes=UNKNOWN; token and credential contents were not read.
+- The current search-by-name workflow may not work with drive.file for pre-existing files unless the user selects/opens them through an appropriate Picker/file-selection flow or the app owns the files. This is a design compatibility question, not authorization to broaden scopes.
+- Least-privilege target recommendation: use drive.file with app-created or explicitly user-selected folder/files, and avoid broad drive scope unless a documented feature requirement and separate approval justify it.
+
+4. CROSS-PROVIDER DATA GOVERNANCE CONSEQUENCES
+
+- "Secure HTTPS transport" does not equal "no provider retention" or "no training"; policy and account configuration must be checked separately.
+- The same prompt can be routed to different vendors through fallback, OpenRouter, Hugging Face, or custom providers. Provider identity must be recorded per attempt before sensitive content is sent.
+- Learning source content is included in the prompt passed to generate(); web-search query text is separately sent to Tavily.
+- No universal retention guarantee exists across the configured provider set.
+- Before any sensitive Memory/Knowledge content is sent externally, the architecture should apply data classification, minimization/redaction, explicit provider allowlisting, consent/purpose checks, and a policy that blocks providers with unknown retention/jurisdiction.
+- Custom providers and auto-routed third-party providers must be treated as UNKNOWN until a named vendor and contract/policy are verified.
+- Provider selection/fallback must not silently widen data exposure to a less trusted provider.
+
+5. C07 STATUS
+
+C07 SOURCE/POLICY INVENTORY=PASS_SCOPED
+IDENTIFIED_PROVIDER_ADAPTERS=8
+CUSTOM_PROVIDER_SLOTS=5
+ADDITIONAL_EGRESS_SERVICES=1_TAVILY
+GOOGLE_DRIVE_SCOPE_GUIDANCE=REVIEWED
+EFFECTIVE_GOOGLE_OAUTH_SCOPES=UNKNOWN
+ACCOUNT_LEVEL_ZDR_SETTINGS=UNKNOWN
+PROVIDER_ACCOUNT_TIERS=UNKNOWN
+CUSTOM_PROVIDER_VENDOR_TERMS=UNKNOWN
+OPENROUTER_SELECTED_MODEL_PROVIDER_TERMS=MODEL_SPECIFIC
+LIVE_PROVIDER_CALLS=NONE
+
+C07 may be marked PASS for source-level provider dependency and public-policy inventory only. It is NOT a claim that any account has ZDR enabled or that the configured provider accounts meet a specific retention standard. Account-specific evidence remains an explicit pre-implementation requirement.
+
+6. SAFETY / STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF REPORT
