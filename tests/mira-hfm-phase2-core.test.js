@@ -539,7 +539,7 @@ async function main() {
       getCapabilities: async () => capabilities,
       getCapabilityObservations: async () => capabilityObservations(),
       getCapabilityObservations: async () => capabilityObservations(),
-      write: async () => { writes += 1; return { status: 'COMMITTED', revision: 1 }; },
+      write: async () => { writes += 1; return commitReceipt(record); },
       read: async () => record,
       verify: async () => ({ status: 'VERIFIED', memoryId: record.memoryId, projectId: record.projectId, revision: record.version.revision, contentHash: record.version.contentHash }),
       reconcileOperation: async () => ({ status: 'UNKNOWN' })
@@ -589,7 +589,7 @@ async function main() {
         assert.equal(events.length, 1);
         assert.equal(events[0].eventType, 'MEMORY_WRITE_INTENT');
         written = true;
-        return { status: 'COMMITTED', revision: 1 };
+        return commitReceipt(record);
       },
       read: async () => {
         if (!written) return null;
