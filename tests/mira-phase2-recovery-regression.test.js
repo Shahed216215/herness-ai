@@ -110,7 +110,9 @@ async function main() {
       'second capacity fixture'
     );
     assert.equal(firstCapacityWrite.added, true);
+    assert.equal(firstCapacityWrite.capacityQuarantine.preservedEntries, 2);
     assert.equal(secondCapacityWrite.added, true);
+    assert.equal(secondCapacityWrite.capacityQuarantine.preservedEntries, 1);
     assert.equal(knowledgeApi.getKnowledge().length, 1);
     assert.equal(knowledgeApi.getKnowledge()[0].title, 'Capacity Second');
 
