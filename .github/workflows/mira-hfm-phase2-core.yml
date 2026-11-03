@@ -48,3 +48,67 @@ jobs:
           env -u OPENAI_API_KEY -u ANTHROPIC_API_KEY -u GOOGLE_APPLICATION_CREDENTIALS \
             -u MIRA_CREDENTIALS_ENCRYPTION_KEY -u MIRA_AUDIT_HMAC_KEY \
             node tests/mira-hfm-phase2-core.test.js
+
+      - name: Run Phase 1 isolated regression fixtures
+        shell: bash
+        run: |
+          set -uo pipefail
+          TMP_ROOT="$(mktemp -d "$RUNNER_TEMP/mira-hfm-phase2-regression.XXXXXX")"
+          trap 'rm -rf "$TMP_ROOT"' EXIT INT TERM
+
+          export MIRA_STORAGE_DIR="$TMP_ROOT/storage"
+          export MIRA_MEMORY_FILE="$TMP_ROOT/memory/memory.json"
+          export MIRA_AUDIT_FILE="$TMP_ROOT/audit/audit-log.json"
+          export MIRA_LEARNING_FILE="$TMP_ROOT/learning/work-learning-records.json"
+          export MIRA_STAGE13_STORE="$TMP_ROOT/stage13/stage13-learning-governance.json"
+          export MIRA_STAGE13_CAPABILITY_INTEGRATION_STORE="$TMP_ROOT/stage13-capability/stage13-capability-integration.json"
+          export MIRA_STAGE16_17_WORKFLOWS_FILE="$TMP_ROOT/workflows/stage16-17-workflows.json"
+          export MIRA_WORKER_RESULTS_FILE="$TMP_ROOT/worker/results.jsonl"
+          export MIRA_TASK_FILE="$TMP_ROOT/tasks/tasks.json"
+          export MIRA_OPPORTUNITY_FILE="$TMP_ROOT/opportunities/opportunities.json"
+          export MIRA_RESEARCH_GOVERNANCE_FILE="$TMP_ROOT/research/research-governance.json"
+          export MIRA_CHANGE_FILE="$TMP_ROOT/changes/change-proposals.json"
+          export MIRA_CAPABILITY_PROFILE_FILE="$TMP_ROOT/capability/capability-profile.json"
+          export MIRA_CUSTOM_PROVIDER_CONFIG_PATH="$TMP_ROOT/providers/custom-provider-slots.json"
+          export MIRA_AUTONOMOUS_WORKER_ENABLED="false"
+          export MIRA_AUTONOMOUS_RESEARCH_ENABLED="false"
+
+          unset OPENAI_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY GOOGLE_API_KEY
+          unset GROQ_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY HF_TOKEN
+          unset HUGGINGFACEHUB_API_TOKEN XAI_API_KEY TAVILY_API_KEY
+          unset MIRA_CREDENTIALS_ENCRYPTION_KEY MIRA_AUDIT_HMAC_KEY
+          unset GOOGLE_APPLICATION_CREDENTIALS GOOGLE_ACCESS_TOKEN GOOGLE_REFRESH_TOKEN
+
+          FAILED=0
+          run_test() {
+            TEST_PATH="$1"
+            TEST_LOG="$TMP_ROOT/$(basename "$TEST_PATH").log"
+            if [ ! -f "$TEST_PATH" ]; then
+              printf 'INCONCLUSIVE  %s  (file missing)\n' "$TEST_PATH"
+              FAILED=1
+              return
+            fi
+            if node "$TEST_PATH" >"$TEST_LOG" 2>&1; then
+              printf 'PASS          %s\n' "$TEST_PATH"
+              grep -E '^(TESTS_PASSED=|TESTS_FAILED=|RESULT=|MIRA_CLIENT_CONSENT_TEST_STATUS=|PRODUCTION_MEMORY_TOUCHED=|REAL_GOOGLE_DRIVE_TOUCHED=|NETWORK_REQUESTS=|NETWORK_CALLS=|EXTERNAL_ACTIONS=)' "$TEST_LOG" || true
+            else
+              CODE=$?
+              printf 'FAIL          %s  (exit=%s)\n' "$TEST_PATH" "$CODE"
+              tail -n 12 "$TEST_LOG"
+              FAILED=1
+            fi
+          }
+
+          run_test tests/mira-local-memory-safety-test.js
+          run_test tests/mira-memory-local-store-contract-test.js
+          run_test tests/mira-memory-evolution-integration-test.js
+          run_test tests/mira-research-audit-fail-closed.test.js
+          run_test tests/mira-research-governance.test.js
+          run_test tests/mira-client-consent.test.js
+
+          if [ "$FAILED" -eq 0 ]; then
+            echo "PHASE1_REGRESSION_RESULT=PASS"
+          else
+            echo "PHASE1_REGRESSION_RESULT=FAIL_OR_INCONCLUSIVE"
+            exit 1
+          fi
