@@ -2,6 +2,7 @@
 
 const { mapLegacyRecord } = require('./legacy-adapter');
 const { sha256Canonical } = require('./core');
+const { detectConflict } = require('./conflict');
 
 function previewLegacyMigration(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
@@ -41,12 +42,19 @@ function previewLegacyMigration(input) {
     if (existing.hash === record.version.contentHash) {
       duplicates.push({ firstIndex: existing.index, duplicateIndex: index, memoryId: record.memoryId });
     } else {
+      const comparison = detectConflict(existing.record, record);
       conflicts.push({
         memoryId: record.memoryId,
         firstIndex: existing.index,
         conflictingIndex: index,
+        conflictId: comparison.conflictId || null,
         firstHash: existing.hash,
         conflictingHash: record.version.contentHash,
+        preserved: comparison.preserved || {
+          existing: existing.record,
+          incoming: record
+        },
+        automaticResolution: false,
         bothVersionsPreserved: true
       });
     }
