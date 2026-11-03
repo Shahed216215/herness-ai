@@ -3,13 +3,19 @@
 const {
   validateCanonicalRecord,
   verifyContentHash,
+  sha256Canonical,
+  evaluateAccess,
   validateOperationIdentity,
   isCapabilityAvailable,
   normalizeAdapterError
 } = require('./core');
 
 function auditEventId(context, phase) {
-  return 'mira-hfm:' + context.projectId + ':' + context.operationId + ':' + phase;
+  return 'mira-hfm:' + sha256Canonical({
+    projectId: context.projectId,
+    operationId: context.operationId,
+    phase
+  });
 }
 
 async function appendDurableAudit(audit, event, context) {
@@ -61,6 +67,12 @@ async function executeGovernedWrite(input) {
     return fail('VALIDATION_FAILED', 'OPERATION_IDENTITY_INVALID', { errors: identityCheck.errors });
   }
   if (!record || record.projectId !== identity.projectId ||
+      identity.payloadHash !== sha256Canonical(record) ||
+      context.authenticated !== true || context.actorAuthorized !== true ||
+      context.actionAuthorized !== true || context.policyAllowed !== true ||
+      context.action !== 'write' ||
+      !Number.isSafeInteger(input.expectedRevision) || input.expectedRevision < 0 ||
+      record.version.revision !== input.expectedRevision + 1 ||
       context.projectId !== identity.projectId ||
       context.actor !== identity.actor ||
       context.requestId !== identity.requestId ||
@@ -74,6 +86,8 @@ async function executeGovernedWrite(input) {
   }
   const contentCheck = verifyContentHash(record);
   if (!contentCheck.valid) return fail('INTEGRITY_FAILED', 'CONTENT_HASH_MISMATCH');
+  const accessCheck = evaluateAccess(record, context);
+  if (!accessCheck.allowed) return fail('NOT_APPROVED', 'WRITE_ACCESS_DENIED', { accessReason: accessCheck.reason });
 
   if (typeof provider.getCapabilities !== 'function' ||
       typeof provider.write !== 'function' ||
@@ -175,6 +189,7 @@ async function executeGovernedWrite(input) {
       readback.memoryId !== record.memoryId ||
       readback.projectId !== record.projectId ||
       readback.version.revision !== writeResult.revision ||
+      readback.version.contentHash !== record.version.contentHash ||
       !verifyContentHash(readback).valid) {
     return fail('INTEGRITY_FAILED', 'READBACK_VERIFICATION_FAILED', {
       revision: writeResult.revision,

@@ -263,6 +263,16 @@ function evaluateAccess(record, request) {
   if (!ACCESS_CLASSES.has(record.access && record.access.classification)) {
     return deny('ACCESS_CLASS_INVALID');
   }
+  const quarantined = record.trust && record.trust.status === 'QUARANTINED' ||
+    record.integrity && ['FAILED', 'QUARANTINED'].includes(record.integrity.status) ||
+    record.lifecycle === 'QUARANTINED';
+  if (quarantined && (request.action !== 'review_quarantined' ||
+      request.quarantineReviewAuthorized !== true || request.auditRecorded !== true)) {
+    return deny('RECORD_QUARANTINED');
+  }
+  if (!quarantined && record.lifecycle !== 'ACTIVE' && request.action !== 'review_quarantined') {
+    return deny('RECORD_NOT_ACTIVE');
+  }
 
   const owner = request.projectId === record.projectId;
   if (record.access.classification === 'PROJECT_PRIVATE' && !owner) {
@@ -281,7 +291,8 @@ function evaluateAccess(record, request) {
       request.action !== 'list' && request.action !== 'export' &&
       request.action !== 'backup' && request.action !== 'restore' &&
       request.action !== 'write' && request.action !== 'update' &&
-      request.action !== 'delete' && request.action !== 'resolve_conflict') {
+      request.action !== 'delete' && request.action !== 'resolve_conflict' &&
+      request.action !== 'review_quarantined') {
     return deny('ACTION_UNSUPPORTED');
   }
   return { allowed: true, reason: 'AUTHORIZED_BY_CALLER_POLICY' };
@@ -305,8 +316,10 @@ function transitionTrust(current, next, evidence, controls) {
     return { ok: false, status: 'REJECTED', reason: 'TRUST_TRANSITION_NOT_ALLOWED' };
   }
   if (!isPlainObject(evidence) ||
-      !['actor', 'timestamp', 'evidenceReference', 'policyVersion', 'reason']
-        .every(key => typeof evidence[key] === 'string' && evidence[key].trim())) {
+      !['actor', 'timestamp', 'evidenceReference', 'policyVersion', 'policyDecisionId', 'reason']
+        .every(key => typeof evidence[key] === 'string' && evidence[key].trim()) ||
+      !Number.isSafeInteger(evidence.recordRevision) || evidence.recordRevision < 1 ||
+      (Number.isSafeInteger(current.revision) && evidence.recordRevision !== current.revision)) {
     return { ok: false, status: 'REJECTED', reason: 'TRUST_EVIDENCE_INCOMPLETE' };
   }
   if (!validDateTime(evidence.timestamp)) {

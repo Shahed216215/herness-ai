@@ -3,6 +3,10 @@
 const assert = require('node:assert/strict');
 const core = require('../services/mira-hfm/core');
 const { executeGovernedWrite } = require('../services/mira-hfm/write-coordinator');
+const { mapLegacyRecord } = require('../services/mira-hfm/legacy-adapter');
+const { createRetrievalEvidence } = require('../services/mira-hfm/retrieval-evidence');
+const { detectConflict, prepareConflictResolution } = require('../services/mira-hfm/conflict');
+const { createBackupManifest, verifyBackupManifest, authorizeRestore } = require('../services/mira-hfm/backup-manifest');
 
 let passed = 0;
 function check(name, fn) {
@@ -117,6 +121,11 @@ async function main() {
     assert.equal(core.evaluateAccess(record, context()).allowed, true);
     assert.equal(core.evaluateAccess(record, Object.assign(context(), { projectId: 'other' })).allowed, false);
     assert.equal(core.evaluateAccess(record, Object.assign(context(), { actorAuthorized: false })).allowed, false);
+    const quarantined = fixtureRecord({ trust: { status: 'QUARANTINED' } });
+    assert.equal(core.evaluateAccess(quarantined, context()).allowed, false);
+    assert.equal(core.evaluateAccess(quarantined, Object.assign(context(), {
+      action: 'review_quarantined', quarantineReviewAuthorized: true, auditRecorded: true
+    })).allowed, true);
   });
   check('Public visibility does not grant write authorization', () => {
     const record = fixtureRecord({ access: { classification: 'PUBLIC' } });
@@ -132,12 +141,13 @@ async function main() {
   check('Trust transitions enforce ordered evidence and quarantine release approval', () => {
     const evidence = {
       actor: 'reviewer', timestamp: '2026-11-03T00:00:00.000Z',
-      evidenceReference: 'fixture:evidence:1', policyVersion: 'fixture-policy-1', reason: 'fixture'
+      evidenceReference: 'fixture:evidence:1', policyVersion: 'fixture-policy-1',
+      policyDecisionId: 'fixture-policy-decision', recordRevision: 1, reason: 'fixture'
     };
-    assert.equal(core.transitionTrust({ status: 'UNVERIFIED' }, 'CONTENT_VERIFIED', evidence).ok, false);
-    assert.equal(core.transitionTrust({ status: 'UNVERIFIED' }, 'SOURCE_RECORDED', evidence).ok, true);
-    assert.equal(core.transitionTrust({ status: 'QUARANTINED' }, 'UNVERIFIED', evidence).ok, false);
-    assert.equal(core.transitionTrust({ status: 'QUARANTINED' }, 'UNVERIFIED', evidence, {
+    assert.equal(core.transitionTrust({ status: 'UNVERIFIED', revision: 1 }, 'CONTENT_VERIFIED', evidence).ok, false);
+    assert.equal(core.transitionTrust({ status: 'UNVERIFIED', revision: 1 }, 'SOURCE_RECORDED', evidence).ok, true);
+    assert.equal(core.transitionTrust({ status: 'QUARANTINED', revision: 1 }, 'UNVERIFIED', evidence).ok, false);
+    assert.equal(core.transitionTrust({ status: 'QUARANTINED', revision: 1 }, 'UNVERIFIED', evidence, {
       quarantineReleaseAuthorized: true, auditRecorded: true
     }).ok, true);
   });
@@ -206,7 +216,7 @@ async function main() {
       append: async event => { events.push(event); return { status: 'APPENDED' }; }
     };
     const result = await executeGovernedWrite({
-      record, context: context(), operation: operation(record), provider, audit
+      record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
     });
     assert.equal(result.status, 'COMPLETED');
     assert.equal(events.length, 2);
@@ -224,7 +234,7 @@ async function main() {
     };
     const audit = { durable: true, append: async () => ({ status: 'APPENDED' }) };
     const result = await executeGovernedWrite({
-      record, context: context(), operation: operation(record), provider, audit
+      record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
     });
     assert.equal(result.status, 'RECOVERY_REQUIRED');
     assert.equal(writeCalls, 1);
@@ -247,9 +257,101 @@ async function main() {
       }
     };
     const result = await executeGovernedWrite({
-      record, context: context(), operation: operation(record), provider, audit
+      record, context: context(), operation: operation(record), provider, audit, expectedRevision: 0
     });
     assert.equal(result.status, 'COMMITTED_AUDIT_PENDING');
+  });
+
+  check('Legacy records map to isolated canonical records without migration', () => {
+    const mapped = mapLegacyRecord({
+      domain: 'knowledge', projectId: 'project-fixture',
+      observedAt: '2026-11-03T00:00:00.000Z',
+      record: { id: 'legacy-1', title: 'Old title', content: 'Old content', savedAt: '2026-11-02T00:00:00.000Z' }
+    });
+    assert.equal(mapped.ok, true);
+    assert.equal(mapped.status, 'MAPPED_NOT_MIGRATED');
+    assert.equal(mapped.migrationPerformed, false);
+    assert.equal(mapped.record.trust.status, 'UNVERIFIED');
+    assert.equal(mapped.record.lifecycle, 'PENDING_REVIEW');
+  });
+  check('Legacy mapper rejects missing provenance and content', () => {
+    assert.equal(mapLegacyRecord({ domain: 'memory', projectId: 'p', observedAt: '2026-11-03T00:00:00Z', record: { id: '1' } }).ok, false);
+  });
+  check('Web retrieval evidence preserves source URL and stays evidence-only', () => {
+    const result = createRetrievalEvidence({
+      projectId: 'project-fixture', sourceId: 'web-result-1',
+      title: 'Source title', snippet: 'Untrusted source excerpt',
+      sourceUrl: 'https://example.org/source',
+      retrievedAt: '2026-11-03T00:00:00.000Z'
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.status, 'EVIDENCE_ONLY');
+    assert.equal(result.canonicalMemoryWrite, false);
+    assert.equal(result.record.trust.status, 'SOURCE_RECORDED');
+  });
+  check('Retrieval evidence rejects missing or unsafe source URL', () => {
+    assert.equal(createRetrievalEvidence({
+      projectId: 'p', sourceId: 'x', title: 't', snippet: 'c',
+      sourceUrl: 'file:///etc/passwd', retrievedAt: '2026-11-03T00:00:00Z'
+    }).ok, false);
+  });
+  check('Conflicting versions are preserved and never auto-resolved', () => {
+    const existing = fixtureRecord();
+    const incoming = Object.assign({}, existing, {
+      content: 'Different proposed content',
+      version: Object.assign({}, existing.version, {
+        revision: 2,
+        contentHash: core.createContentHash('Different proposed content')
+      })
+    });
+    const result = detectConflict(existing, incoming);
+    assert.equal(result.status, 'CONFLICT_REVIEW');
+    assert.equal(result.automaticResolution, false);
+    assert.equal(result.preserved.existing.content, existing.content);
+    assert.equal(result.preserved.incoming.content, incoming.content);
+  });
+  check('Conflict resolution requires authorization and durable audit evidence', () => {
+    const existing = fixtureRecord();
+    const incoming = Object.assign({}, existing, {
+      content: 'Different content',
+      version: Object.assign({}, existing.version, { revision: 2, contentHash: core.createContentHash('Different content') })
+    });
+    const conflict = detectConflict(existing, incoming);
+    assert.equal(prepareConflictResolution(conflict, { action: 'ACCEPT_ALTERNATE_VERSION' }).status, 'NOT_APPROVED');
+    assert.equal(prepareConflictResolution(conflict, {
+      action: 'ACCEPT_ALTERNATE_VERSION', authorized: true, auditRecorded: true,
+      actor: 'reviewer', policyDecisionId: 'policy-1'
+    }).status, 'PROPOSAL_PREPARED');
+  });
+  check('Backup manifest is integrity-bound but explicitly unauthenticated by default', () => {
+    const record = fixtureRecord();
+    const result = createBackupManifest({
+      backupId: 'fixture-backup-1', projectId: 'project-fixture',
+      createdAt: '2026-11-03T00:00:00.000Z', records: [record]
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.status, 'MANIFEST_CREATED_UNAUTHENTICATED');
+    assert.equal(result.manifest.authenticity.status, 'UNVERIFIED');
+    assert.equal(verifyBackupManifest(result.manifest, [record]).status, 'AUTHENTICITY_UNVERIFIED');
+  });
+  check('Backup verification requires a verified trust anchor and rejects tampering', () => {
+    const record = fixtureRecord();
+    const result = createBackupManifest({
+      backupId: 'fixture-backup-2', projectId: 'project-fixture',
+      createdAt: '2026-11-03T00:00:00.000Z', records: [record]
+    });
+    const verifier = () => ({ verified: true, trustAnchorVerified: true });
+    assert.equal(verifyBackupManifest(result.manifest, [record], verifier).valid, true);
+    const changed = Object.assign({}, record, { content: 'tampered' });
+    assert.equal(verifyBackupManifest(result.manifest, [changed], verifier).status, 'INTEGRITY_FAILED');
+  });
+  check('Restore cannot proceed without explicit approval and all verification gates', () => {
+    assert.equal(authorizeRestore({}).allowed, false);
+    assert.equal(authorizeRestore({
+      explicitApproval: true, targetCapabilityAvailable: true,
+      accessPolicyAllowed: true, encryptionVerified: true,
+      manifestVerification: { valid: true }
+    }).allowed, true);
   });
 
   process.stdout.write('TESTS_PASSED=' + passed + '\n');
