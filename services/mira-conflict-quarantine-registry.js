@@ -14,7 +14,7 @@ const CONFLICT_TYPES = new Set([
   'SOURCE_CONFLICT', 'ACCESS_CONFLICT', 'SCHEMA_CONFLICT',
   'INTEGRITY_CONFLICT'
 ]);
-const DECISIONS = new Set(['MERGE', 'KEEP_BOTH', 'REJECT_INCOMING']);
+const DECISIONS = new Set(['ACCEPT_EXISTING_VERSION', 'ACCEPT_ALTERNATE_VERSION', 'APPROVED_FIELD_MERGE', 'REJECT_CONFLICTING_CHANGE', 'RETAIN_QUARANTINED']);
 
 function digest(value) {
   return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -214,14 +214,24 @@ function verifyResolution({ directory, conflictId, projectId }) {
   const { resolutionDigest, ...body } = resolution;
   const expectedOriginals = envelope.originals.map(item => item.recordDigest);
   const originalsMatch = digest(resolution.originalDigests) === digest(expectedOriginals);
-  const resultValid = resolution.decision !== 'MERGE' ||
-    (resolution.resultingRecord &&
-     validateCanonicalMemoryRecord(resolution.resultingRecord).length === 0 &&
-     resolution.resultingRecord.projectId === envelope.projectId &&
-     resolution.resultingRecord.memoryId === envelope.originals[0].memoryId &&
-     envelope.originals.every(item => item.memoryId === envelope.originals[0].memoryId) &&
-     resolution.resultingRecord.version.revision ===
-       Math.max(...envelope.originals.map(item => item.revision)) + 1);
+  const acceptedDigest = resolution.decision === 'ACCEPT_EXISTING_VERSION' ||
+    resolution.decision === 'REJECT_CONFLICTING_CHANGE'
+      ? expectedOriginals[0]
+      : resolution.decision === 'ACCEPT_ALTERNATE_VERSION'
+        ? expectedOriginals[1] : null;
+  const resultValid = resolution.decision === 'APPROVED_FIELD_MERGE'
+    ? (resolution.resultingRecord &&
+       resolution.acceptedOriginalDigest === null &&
+       validateCanonicalMemoryRecord(resolution.resultingRecord).length === 0 &&
+       resolution.resultingRecord.projectId === envelope.projectId &&
+       resolution.resultingRecord.memoryId === envelope.originals[0].memoryId &&
+       envelope.originals.every(item => item.memoryId === envelope.originals[0].memoryId) &&
+       resolution.resultingRecord.version.revision ===
+         Math.max(...envelope.originals.map(item => item.revision)) + 1)
+    : resolution.decision === 'RETAIN_QUARANTINED'
+      ? (!resolution.resultingRecord && resolution.acceptedOriginalDigest === null)
+      : (DECISIONS.has(resolution.decision) && !resolution.resultingRecord &&
+         resolution.acceptedOriginalDigest === acceptedDigest);
   return {
     status: resolutionDigest === digest(body) && originalsMatch && resultValid
       ? 'VERIFIED' : 'INTEGRITY_FAILED',
@@ -242,9 +252,12 @@ function listConflicts({ directory, projectId }) {
       const resolution = verifyResolution({
         directory, conflictId: envelope.conflictId, projectId: envelope.projectId
       });
+      const resolutionRecord = resolution.status === 'VERIFIED'
+        ? readRegularJson(resolutionPath(directory, envelope.conflictId)) : null;
       const status = integrity !== 'VERIFIED' || resolution.status === 'INTEGRITY_FAILED'
         ? 'INTEGRITY_FAILED'
-        : (resolution.status === 'VERIFIED' ? 'RESOLVED' : 'PENDING_REVIEW');
+        : (resolution.status !== 'VERIFIED' ? 'PENDING_REVIEW'
+          : (resolutionRecord.decision === 'RETAIN_QUARANTINED' ? 'RETAINED_QUARANTINED' : 'RESOLVED'));
       return {
         conflictId: envelope.conflictId,
         projectId: envelope.projectId,
@@ -270,8 +283,9 @@ function resolveConflict({
   if (authorized !== true) throw new Error('Conflict resolution authorization denied.');
   const originals = envelope.originals.map(item => item.record);
   let resultRecord = null;
-  if (decision === 'MERGE') {
-    if (!mergedRecord) throw new Error('MERGE requires an explicit mergedRecord.');
+  let acceptedOriginalDigest = null;
+  if (decision === 'APPROVED_FIELD_MERGE') {
+    if (!mergedRecord) throw new Error('APPROVED_FIELD_MERGE requires an explicit mergedRecord.');
     validateRecord(mergedRecord, envelope.projectId);
     if (mergedRecord.memoryId !== originals[0].memoryId ||
         originals[0].memoryId !== originals[1].memoryId) throw new Error('Merged record must preserve the shared original memoryId.');
@@ -279,13 +293,19 @@ function resolveConflict({
       throw new Error('Merged record revision must increment exactly once above the highest original revision.');
     }
     resultRecord = mergedRecord;
-  } else if (mergedRecord) {
-    throw new Error('Only MERGE may include a mergedRecord.');
+  } else {
+    if (mergedRecord) throw new Error('Only APPROVED_FIELD_MERGE may include a mergedRecord.');
+    if (decision === 'ACCEPT_EXISTING_VERSION' || decision === 'REJECT_CONFLICTING_CHANGE') {
+      acceptedOriginalDigest = envelope.originals[0].recordDigest;
+    } else if (decision === 'ACCEPT_ALTERNATE_VERSION') {
+      acceptedOriginalDigest = envelope.originals[1].recordDigest;
+    }
   }
   const resolution = {
     resolutionSchemaVersion: '1.0.0',
     conflictId, projectId: envelope.projectId, decision, actor,
     policyDecision, originalDigests: envelope.originals.map(item => item.recordDigest),
+    acceptedOriginalDigest,
     resultingRecord: resultRecord,
     resolvedAt: new Date().toISOString()
   };
@@ -342,7 +362,7 @@ function filterTrustedRecords(records, pendingConflicts, projectId) {
   if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('projectId is required for trusted retrieval filtering.');
   const blocked = new Set(pendingConflicts
     .filter(item => item.projectId === projectId &&
-      ['PENDING_REVIEW', 'INTEGRITY_FAILED'].includes(item.status))
+      ['PENDING_REVIEW', 'INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(item.status))
     .flatMap(item => item.originalMemoryIds || []));
   return records.filter(record => !(record && record.projectId === projectId && blocked.has(record.memoryId)));
 }
