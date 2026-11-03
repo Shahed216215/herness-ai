@@ -101,11 +101,11 @@ try {
     assert.match(snapshot, /renameSync\s*\(/);
   });
 
-  check('Evolution source does not import Local Memory Store', () => {
-    assert.doesNotMatch(
-      evolution,
-      /require\s*\(\s*['"][^'"]*mira-local-memory-store['"]\s*\)/
-    );
+  check('Evolution delegates Memory persistence to shared Local Store', () => {
+    assert.match(evolution, /require\\s*\\(\\s*["']\\.\\/services\\/mira-local-memory-store["']\\s*\\)/);
+    assert.match(evolution, /localMemoryStore\\.readMemory\\(\\)/);
+    assert.match(evolution, /localMemoryStore\\.writeMemory\\(value\\)/);
+    assert.match(evolution, /jsonStateStore\\.writeArrayState/);
   });
 
   check('Local Store supports explicit MIRA_MEMORY_FILE path', () => {
