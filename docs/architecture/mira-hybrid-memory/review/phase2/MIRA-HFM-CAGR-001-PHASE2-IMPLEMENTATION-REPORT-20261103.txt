@@ -127,13 +127,13 @@ Added:
 - tests/mira-conflict-quarantine-registry.test.js
 
 This additive local-only service covers:
-- immutable two-original conflict envelopes with stable conflict identity;
+- immutable multi-original conflict envelopes with stable conflict identity; malformed/schema-invalid or integrity-failed originals with a projectId and memoryId can be preserved for investigation;
 - project-scoped read/list and SHA-256 verification of complete envelope and original records;
 - retrieval-exclusion helper for pending or integrity-failed conflict originals;
-- explicit caller-supplied authorization callback before resolution;
-- KEEP_BOTH, REJECT_INCOMING and MERGE resolution decisions;
-- MERGE requires same original memory identity and revision exactly max(original revisions)+1;
-- immutable resolution record and separate resolution integrity verification;
+- explicit caller-supplied authorization callback before resolution, after the contract-complete resolution proposal is built;
+- All five v0.2.4 Contract §30 outcomes: ACCEPT_EXISTING_VERSION, ACCEPT_ALTERNATE_VERSION, APPROVED_FIELD_MERGE, REJECT_CONFLICTING_CHANGE and RETAIN_QUARANTINED;
+- APPROVED_FIELD_MERGE requires all originals to share one memory identity and revision exactly max(original revisions)+1;
+- immutable resolution record and separate resolution integrity verification, including a required proposal binding affected versions, source references, original hashes, access classes, trust states, field-level changes, data-loss risks, required authority, recovery point and verification plan;
 - idempotent create/resolve retry behavior;
 - fail-closed audit error semantics and retry recovery;
 - symlink path-component rejection.
@@ -174,7 +174,8 @@ Five source documents (Contract v0.2.4, Blueprint, Prototype C, Prototype D and 
 10. CURRENT VERIFICATION AND GOVERNANCE STATUS
 
 Latest full isolated Phase 2 CI:
-- Run 41672264913 (run 174), job 126043453360 — SUCCESS.
+- Run 41673854536 (run 215), job 126049053444 — SUCCESS.
+- Run 174 (41672264913) remains the prior project-scoped retrieval-filter verification.
 - The eight-suite workflow completed successfully, including the project-scoped conflict retrieval-exclusion helper.
 - Logs report PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS, TESTS_FAILED=0, production Memory/Knowledge untouched, real Google Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
 - Earlier run 155 remains valid for the source/test revision executed at that time; run 174 is the latest verification of the current isolated quarantine helper/test code.
@@ -231,3 +232,34 @@ TESTS_FAILED=0
 RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
 
 This remains a helper-level isolated test, not proof of universal application retrieval interception. Local Memory, Knowledge, Evolution and route entry points remain unintegrated as documented in the callsite matrix.
+
+13. CONTRACT §30 OUTCOME AND PROPOSAL ALIGNMENT — VERIFIED BY RUN 215
+
+The conflict lifecycle implementation was reconciled to the exact five allowed outcomes in Contract v0.2.4 §30:
+ACCEPT_EXISTING_VERSION
+ACCEPT_ALTERNATE_VERSION
+APPROVED_FIELD_MERGE
+REJECT_CONFLICTING_CHANGE
+RETAIN_QUARANTINED
+
+It now supports preservation of two or more competing originals; an alternate version must be selected by an explicit in-range index. Schema-invalid or integrity-failed original records may be quarantined when projectId and memoryId are available; quarantine verification checks the immutable preserved bytes/digests without falsely declaring the source record itself valid.
+
+Each resolution requires a structured proposal binding affected versions, source references, original hashes, access classes, trust states, field-level changes, data-loss risks, required authority, recovery point and verification plan. The explicit authorization callback receives this proposal before resolution is committed.
+
+GitHub Actions run 41673854536 (run 215), job 126049053444, completed SUCCESS and reported:
+GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+GOVERNED_RETAIN_QUARANTINED=PASS
+ALTERNATE_VERSION_INDEX_BOUNDS=PASS
+MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS
+FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS
+CONTRACT_RESOLUTION_PROPOSAL_REQUIRED=PASS
+RESOLUTION_PROPOSAL_TRACEABILITY_AND_TAMPER_DETECTION=PASS
+MALFORMED_ORIGINAL_PRESERVATION=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+This remains an isolated local-only implementation. It does not establish integration into every Memory/Knowledge retrieval/write path or provider boundary.
+
