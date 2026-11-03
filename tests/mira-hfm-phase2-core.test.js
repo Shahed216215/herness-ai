@@ -179,6 +179,15 @@ async function main() {
     assert.equal(core.isSafeSourceUrl('https://example.org/?token=fixture'), false);
     assert.equal(core.isSafeSourceUrl('https://example.org/path'), true);
   });
+  check('Canonical Memory rejects embedded credential material', () => {
+    assert.equal(core.containsCredentialMaterial('Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456'), true);
+    assert.equal(core.containsCredentialMaterial('api_key=sk_live_abcdefghijklmnop123456'), true);
+    assert.equal(core.containsCredentialMaterial('-----BEGIN OPENSSH PRIVATE KEY-----'), true);
+    const unsafe = fixtureRecord({ content: 'password=supersecretvalue12345' });
+    unsafe.version.contentHash = core.createContentHash(unsafe.content);
+    assert.ok(core.validateCanonicalRecord(unsafe).errors.includes('CONTENT_SECRET_MATERIAL_REJECTED'));
+    assert.equal(core.containsCredentialMaterial('This record contains no credentials.'), false);
+  });
   check('Content hash is deterministic and tamper-evident', () => {
     const hash = core.createContentHash('same');
     assert.equal(hash, core.createContentHash('same'));
