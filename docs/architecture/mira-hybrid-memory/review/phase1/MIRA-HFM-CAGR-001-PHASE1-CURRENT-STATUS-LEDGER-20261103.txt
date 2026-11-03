@@ -69,6 +69,12 @@ Commit: b2092712f3017c441cc78801faf61d530b5e746b
 Verification: all 540 JS-family files scanned; direct googleapis modules, shared adapter callers, indirect Learning callers, and governed routes are line-numbered in the report.
 Key additions: C05 static Drive callsite inventory PASS (scoped); 3 direct googleapis modules; Local-first dual-write failure behavior; no Drive removal or API call authorized.
 
+I. Provider Policy & OAuth Scope Review
+Path: docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-PROVIDER-POLICY-AND-OAUTH-SCOPE-REVIEW-20261103.txt
+Commit: d3a8348959e87021826b2946389df01a37ab785b
+Verification: official vendor policy pages reviewed for OpenAI, Anthropic, Gemini, Groq, DeepSeek, OpenRouter, Hugging Face, xAI, Tavily, and Google Drive OAuth scopes.
+Key additions: C07 source/policy inventory PASS (scoped); account tiers, effective OAuth scopes, ZDR settings, custom provider terms, and model-specific retention remain UNKNOWN.
+
 These are additive reports. Prior reports remain intact; the status ledger is refreshed for the new report and exact current branch inventory.
 
 3. CURRENT EVIDENCE-BASED FINDINGS
@@ -109,8 +115,8 @@ All 540 JavaScript-family files were scanned; direct googleapis modules, shared 
 C06 — ISOLATED FIXTURE TESTS: PLAN READY / EXECUTION INCONCLUSIVE.
 Memory safety, Local Store contract, Memory Evolution integration, Research Governance, and consent fixture candidates were source-reviewed. Exact branch checkout/runtime was unavailable; clone failed due DNS/network unavailability. No test was run; no test PASS is claimed.
 
-C07 — PROVIDER PERMISSION AND DATA-EGRESS REVIEW: PARTIAL.
-Model providers, Tavily, custom endpoints, credential store, admin credential routes, learning-save source-content egress, marketing consent lookup, and provider-evolution configuration I/O were inspected. Effective OAuth scopes, all egress callsites, provider retention terms, and data minimization/consent remain unverified.
+C07 — PROVIDER SOURCE/POLICY INVENTORY: PASS (SCOPED); ACCOUNT CONFIGURATION UNKNOWN.
+All identified provider adapters, five custom slots, Tavily, and Google Drive scope guidance have been reviewed against public official documentation. Effective OAuth scopes, account ZDR/tier settings, selected OpenRouter/Hugging Face downstream provider terms, custom provider vendor terms, and consent/data-minimization enforcement remain UNKNOWN and must be checked before any live provider use.
 
 5. NEXT READ-ONLY WORK
 
