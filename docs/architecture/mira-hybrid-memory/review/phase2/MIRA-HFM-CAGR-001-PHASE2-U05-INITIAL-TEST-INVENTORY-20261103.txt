@@ -28,18 +28,20 @@ The IDs below are proposals only. They are not yet frozen or registered. A futur
 
 3. CI EVIDENCE BOUNDARY
 
-GitHub Actions run 41668563543 (run 139) completed SUCCESS and ran the isolated Phase 2 workflow, including the first version of the conflict quarantine lifecycle suite. Its logs explicitly showed the lifecycle suite's initial PASS markers and TESTS_FAILED=0.
+GitHub Actions run 41669279406 (run 152), job 126032970291, completed SUCCESS on branch head commit 18775a40b73d45a991fdc9dc27ff2785b2832f22. The job log confirms the current eight-suite workflow completed successfully, including the post-hardening conflict quarantine lifecycle suite.
 
-The lifecycle service and test were subsequently hardened with:
-- full-envelope metadata tamper detection;
-- symlink-ancestor rejection;
-- mandatory explicit authorization callback before conflict resolution;
-- resolution audit-failure recovery tests.
+The run explicitly reported:
+- Core safety: TESTS_PASSED=24, TESTS_FAILED=0.
+- Knowledge safety: TESTS_PASSED=14, TESTS_FAILED=0.
+- Recovery regression: RESULT=PHASE2_RECOVERY_PASS, TESTS_FAILED=0.
+- Local store contract: TESTS_PASSED=8, TESTS_FAILED=0.
+- Evolution integration: TESTS_PASSED=10, TESTS_FAILED=0.
+- Structural conflict assessment: RESULT=PHASE2_STRUCTURAL_CONFLICT_ASSESSMENT_PASS, TESTS_FAILED=0.
+- Conflict quarantine lifecycle: all named PASS markers, TESTS_FAILED=0, RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS.
 
-No fresh CI run/log has yet been obtained for those post-run-139 edits. Therefore:
-- Existing seven suites retain the scoped run-139 evidence for the exact commit that was tested.
-- The current conflict lifecycle source/test after hardening is INCONCLUSIVE pending fresh CI evidence.
-- The current workflow definition includes the conflict lifecycle test path and command, but a successful latest-head execution is not claimed.
+The current lifecycle run includes full-envelope metadata tamper detection, symlink-ancestor rejection, mandatory explicit authorization callback before resolution, idempotent resolution, merge revision gate and resolution audit-failure recovery.
+
+Run 152 logs confirm PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, PRODUCTION_DATA_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
 
 4. ALIAS POLICY
 
@@ -60,7 +62,7 @@ PROPOSED_CANONICAL_IDS=8
 LIVE_REGISTRY_CREATED=NO
 HISTORICAL_ALIASES_CREATED=0
 REQUIREMENT_COVERAGE_COMPLETE=NO
-LATEST_CONFLICT_LIFECYCLE_CI=INCONCLUSIVE
+LATEST_CONFLICT_LIFECYCLE_CI=PASS_SCOPED_RUN_152
 PRODUCTION_DATA_ACCESSED=NO
 NETWORK_REQUESTS=0
 EXTERNAL_ACTIONS=0
