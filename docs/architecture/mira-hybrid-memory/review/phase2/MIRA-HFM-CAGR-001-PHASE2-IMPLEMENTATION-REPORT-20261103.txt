@@ -111,3 +111,90 @@ HFM005=DEFERRED
 The approved local Phase 2 core-safety implementation and isolated acceptance suite are complete at the scoped level described above, including Knowledge restore, version recovery, and capacity-eviction preservation. Full Phase 2 governance closure is not claimed: canonical audit-envelope implementation is not approved by DR-08; genesis, backend arbitration, test registry, timestamp profile, independent verifier qualification, and non-Evolution provider conflict classes remain review gates. HFM-004 and HFM-005 remain separate provider-cutover / encrypted-backup gates. No production migration or provider cutover is authorized by this report.
 
 END OF REPORT
+
+
+9. FOLLOW-UP WORK AFTER THE ORIGINAL PHASE 2 REPORT
+
+A. Evolution audit fail-closed
+Successful Evolution prepare/snapshot/apply/rollback paths now require the expected audit record to be logged. Injected audit-writer failure regression coverage was added. Scoped CI run 109 completed SUCCESS with 10 Evolution integration assertions and TESTS_FAILED=0. This does not qualify the separate DR-08 append-only canonical audit chain.
+
+B. Structural conflict assessment
+A read-only canonical Memory record validator and structural conflict assessor was added for seven categories: IDENTITY_CONFLICT, REVISION_CONFLICT, CONTENT_CONFLICT, SOURCE_CONFLICT, ACCESS_CONFLICT, SCHEMA_CONFLICT and INTEGRITY_CONFLICT. Malformed/unverified records return REVIEW_REQUIRED. It does not write, merge, resolve, quarantine or claim cryptographic content-hash verification. RFC3339 date-time shape regression tests are included.
+
+C. Isolated conflict quarantine lifecycle
+Added:
+- services/mira-conflict-quarantine-registry.js
+- tests/mira-conflict-quarantine-registry.test.js
+
+This additive local-only service covers:
+- immutable two-original conflict envelopes with stable conflict identity;
+- project-scoped read/list and SHA-256 verification of complete envelope and original records;
+- retrieval-exclusion helper for pending or integrity-failed conflict originals;
+- explicit caller-supplied authorization callback before resolution;
+- KEEP_BOTH, REJECT_INCOMING and MERGE resolution decisions;
+- MERGE requires same original memory identity and revision exactly max(original revisions)+1;
+- immutable resolution record and separate resolution integrity verification;
+- idempotent create/resolve retry behavior;
+- fail-closed audit error semantics and retry recovery;
+- symlink path-component rejection.
+
+GitHub Actions run 41669279406 (run 152), job 126032970291, and run 41670332488 (run 155), job 126036679938, completed SUCCESS with the hardened lifecycle suite. The logs explicitly report:
+IMMUTABLE_CONFLICT_ENVELOPE_AND_ORIGINAL_PRESERVATION=PASS
+PROJECT_SCOPED_READ_AND_LIST=PASS
+LOCAL_SHA256_INTEGRITY_VERIFICATION=PASS
+IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS
+PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS
+GOVERNED_KEEP_BOTH_RESOLUTION=PASS
+EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
+MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS
+AUDIT_FAILURE_FAIL_CLOSED=PASS
+RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS
+TAMPER_DETECTION=PASS
+FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS
+SYMLINK_PATH_REJECTION=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+The lifecycle service is NOT integrated into every production Memory/Knowledge retrieval path or every provider write boundary. It is an isolated additive module and test suite. Universal retrieval exclusion and all-provider pre-write validation remain REVIEW_REQUIRED.
+
+D. U05 test registry work
+Prepared:
+- canonical registry specification;
+- inventory of eight current isolated Phase 2 CI suites with proposed stable suite IDs;
+- legacy ID ambiguity register.
+
+No live registry was created and no historical aliases were assigned. Blueprint HFM-LOG-001..007 meanings are recorded; Prototype C's reuse of the same range is marked extended/ambiguous; Prototype D HFM-CHAIN-001..012 remains a separate family. Prototype B HFM-LOG-008..010 remains UNMAPPED until its authoritative source is located.
+
+E. U06 timestamp compatibility
+Read-only review found that audit-log.js emits new timestamps with Date.toISOString() (UTC millisecond form) and includes the timestamp string in the integrity hash payload. The Memory structural validator accepts broader RFC3339 forms. No runtime validator was tightened and no historical audit entry was rewritten. The proposed strict chain timestamp profile remains NOT_APPROVED pending owner decision and compatibility plan.
+
+F. Source hash reconciliation
+Five source documents (Contract v0.2.4, Blueprint, Prototype C, Prototype D and Prototype E) were compared across Phase 1 baseline commit 90b48f2816e28686cd499650ff6a5fc6217f0e8a, Phase 1 final reviewed commit 720309923223c4f287ec3ede0fb0c16aff80f213 and the current Phase 2 branch. All five returned identical Git blob SHA and character length across the three refs; SHA-256 was recomputed over UTF-8 content. Prototype B's authoritative source path/content remains unresolved, so source-integrity gate G1 is PARTIAL, not closed.
+
+10. CURRENT VERIFICATION AND GOVERNANCE STATUS
+
+Latest full isolated Phase 2 CI:
+- Run 41670332488 (run 155), job 126036679938 — SUCCESS.
+- The eight-suite workflow completed successfully, including the hardened conflict quarantine lifecycle suite.
+- Logs report production Memory/Knowledge untouched, real Google Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+Current scoped statuses:
+- Core state safety, Knowledge state safety, recovery, local store contract and Evolution integration: PASS_SCOPED to the recorded CI commits.
+- Structural conflict assessment: PASS_SCOPED to the recorded CI commits.
+- Isolated conflict quarantine lifecycle: PASS_SCOPED to run 155.
+- Universal production retrieval exclusion: REVIEW_REQUIRED.
+- Every-provider write-boundary integration: REVIEW_REQUIRED.
+- Canonical content-hash recomputation under an approved JCS profile: NOT_IMPLEMENTED.
+- DR08-U03 genesis protocol: DESIGN_REFINED; normative schema/authenticity/creation protocol NOT_APPROVED.
+- DR08-U04 backend atomicity: DESIGN_REFINED; provider capability NOT_ESTABLISHED.
+- DR08-U05 registry: SPECIFICATION AND INVENTORY PREPARED; live registry/legacy mapping NOT_APPROVED.
+- DR08-U06 timestamp profile: COMPATIBILITY ASSESSED; canonical profile NOT_APPROVED.
+- E-15 independent verifier: DESIGN_REFINED; qualification NOT_TESTED.
+- DR08 G1 source integrity: PARTIAL (five of six source documents reconciled).
+- HFM-004 Drive cutover: DEFERRED / NOT_AUTHORIZED.
+- HFM-005 encrypted emergency backup and key custody: DEFERRED / NOT_AUTHORIZED.
+
+No production Memory/Knowledge access, provider cutover, Drive API call, Facebook/API/model-provider request, migration, deployment or PR merge occurred. Version remains v0.2. PR #4 remains Draft and Unmerged.
+
+FULL_PHASE2=REVIEW_REQUIRED
+PRODUCTION_READINESS=NOT_CERTIFIED
