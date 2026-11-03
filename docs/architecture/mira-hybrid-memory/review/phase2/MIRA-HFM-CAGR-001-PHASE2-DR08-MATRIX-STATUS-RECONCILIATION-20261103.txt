@@ -78,3 +78,30 @@ PRODUCTION_READINESS=NOT_CERTIFIED
 FULL_PHASE2=REVIEW_REQUIRED
 
 END OF RECONCILIATION
+
+
+9. U03 / U06 / E-15 ISOLATED VERIFIER PROTOTYPE UPDATE — RUN 267
+
+A separate read-only verifier prototype now exists at services/mira-audit-chain-independent-verifier.js. It checks synthetic exports using a bounded RFC 8785/JCS-compatible canonicalization profile, SHA-256, externally pinned genesis/checkpoint hashes, monotonic sequence, previous-hash linkage, event/project identity, strict UTC-millisecond timestamps and checkpoint head binding.
+
+GitHub Actions run 41678192509 (run 267), job 126064407377, SUCCESS:
+- U03_PINNED_GENESIS_ANCHOR=PASS.
+- U06_CANONICAL_UTC_MILLISECOND_TIMESTAMP=PASS within this verifier only.
+- E15_VALID_CHAIN_AND_CHECKPOINT=PASS.
+- E15_TRUST_ANCHORS_REQUIRED=PASS.
+- E15_EVENT_TAMPER_DETECTION=PASS.
+- E15_SEQUENCE_GAP_DETECTION=PASS.
+- E15_FORK_DETECTION=PASS.
+- E15_DUPLICATE_EVENT_ID_DETECTION=PASS.
+- E15_PROJECT_ISOLATION=PASS.
+- E15_CHECKPOINT_HEAD_BINDING=PASS.
+- VERIFIER_READ_ONLY=PASS.
+- TESTS_FAILED=0.
+
+Updated item interpretation:
+- U03: verifier-side pinned genesis hash verification is PASS_SCOPED; genesis creation/persistence, signer authority and trust-anchor custody remain NOT_IMPLEMENTED.
+- U06: strict UTC-millisecond profile is exercised in the isolated verifier; global audit/Memory timestamp profile remains NOT_APPROVED.
+- E-15: separate read-only verifier prototype is PASS_SCOPED; digital signature/writer authenticity, trust-anchor custody/rotation, third-party independent review and production integration remain open.
+- U04 remains NOT_ESTABLISHED because no provider append arbiter/durable acknowledgement has been qualified.
+
+No production audit log or data was read or changed. Overall DR-08 remains INCONCLUSIVE and full Phase 2 remains REVIEW_REQUIRED.
