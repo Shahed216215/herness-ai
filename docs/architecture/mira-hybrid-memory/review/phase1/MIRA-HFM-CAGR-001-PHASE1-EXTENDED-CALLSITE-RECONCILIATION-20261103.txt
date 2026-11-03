@@ -1,0 +1,299 @@
+MIRA HYBRID MEMORY — CAGR-001 PHASE 1 EXTENDED CALLSITE RECONCILIATION
+Document ID: MIRA-HFM-CAGR-001-PHASE1-EXTENDED-CALLSITE-RECONCILIATION
+Version: 1.0.0
+Audit date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Inspected commit: 48d11d23c411ce693dd084d21400c6872617f237
+Tree SHA: 8ac4f9a7c026fec6aac923ceec35b994428befdd
+Mode: READ-ONLY GITHUB SOURCE REVIEW
+Scope: full branch tree inventory + targeted source-level Memory/Learning/Knowledge/Conversation/Drive callsite reconciliation
+
+1. EXECUTIVE RESULT
+
+BRANCH_TREE_INVENTORY=COMPLETE
+TREE_ENTRY_COUNT=613
+TREE_TRUNCATED=NO
+MEMORY_RELATED_PATHS=IDENTIFIED
+TARGETED_SOURCE_REVIEW=EXTENDED
+NEW_DRIVE_CALLSITES=FOUND
+PREVIOUS_DRIVE_DEPENDENCY_MATRIX=UNDERCOUNTED
+REPOSITORY_WIDE_SOURCE_TEXT_SCAN=NOT_EXECUTED
+TESTS=NOT_EXECUTED
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+
+Correction: the earlier dependency matrix listed four primary Drive-dependent workflows but did not include Knowledge tool-level backup, restore, search and cleanup paths. This report adds those paths and identifies additional learning/governance stores. The 2026-11-01 report's "callsite audit complete" means complete within that earlier audit scope, not proof that every current branch callsite has been exhaustively source-scanned.
+
+2. BRANCH TREE INVENTORY
+
+The Git tree for the inspected commit returned 613 entries with truncated=false. Memory-related paths included:
+- memory.js; services/mira-local-memory-store.js
+- google-drive.js; knowledge.js; knowledge-memory-evolution.js
+- knowledge-controlled-apply.js; autonomous-learning-controlled-apply.js
+- conversation-store.js; conversation-schema.js
+- services/mira-conversation-memory-engine.js
+- services/mira-work-learning-engine.js
+- services/mira-experience-memory.js; services/mira-experience-retrieval-engine.js
+- services/mira-future-strategy-engine.js; services/mira-cross-task-learning-engine.js
+- services/mira-learning-history.js; services/mira-work-knowledge-consolidation.js
+- services/mira-stage13-learning-governance.js
+- audit-log.js; snapshot-manager.js
+- autonomous-learning-proposals.js; knowledge-improvement.js
+- scripts/mira-memory-backup.js
+- tools/memory-save.js; memory-count.js; memory-restore.js
+- tools/knowledge-save.js; knowledge-search.js; knowledge-count.js
+- tools/knowledge-backup.js; knowledge-restore.js; knowledge-cleanup.js; knowledge-improve.js
+- routes/conversations.js; routes/learning-history.js; routes/knowledge-improvements.js; routes/autonomous-learning.js
+
+Tree inventory is complete for the inspected commit. It is a path inventory, not a full source-text scan of all 613 entries.
+
+3. CORRECTED PERSISTENCE OWNERSHIP MATRIX
+
+P01 General Memory
+Owner: memory.js -> services/mira-local-memory-store.js
+Backing file: memory.json (resolved by mira-storage / Local Store configuration)
+Read/write: general Memory API delegates to Local Store; memory save/count tools call that API.
+Data: array of {role, content, time}.
+Blockers: missing primary file treated as empty; Evolution uses a separate writer; no unified CAS/revision provider contract.
+
+P02 Knowledge Base and catalog Learning
+Owner: knowledge.js
+Backing file: knowledge.json via mira-storage.
+Read/write: loadKnowledge reads local JSON; saveLocalKnowledge writes directly; addKnowledge, addLearning, deleteKnowledge, updateKnowledge and updateLearning write local state and then call syncToDrive.
+Data: mixed Knowledge and Learning entries with stable ID, type/category/topic/source/content and timestamps.
+Blockers: read/parse failures return []; direct non-atomic local write; Drive sync is embedded in normal CRUD; local-vs-Drive source-of-truth behavior differs by consumer.
+
+P03 Google Drive Adapter
+Owner: google-drive.js
+Backing objects: Mira AI Memory/memory.json and Mira AI Knowledge/knowledge.json.
+Read/write: OAuth token/credentials; Drive list/get/create/update; JSON serialization.
+Blockers: no encryption layer evidenced; routine synchronization is mixed with backup; remote capability and credential governance not unified.
+
+P04 Work Learning Records
+Owner: services/mira-work-learning-engine.js
+Backing file: data/work-learning-records.json or MIRA_LEARNING_FILE.
+Read/write: loadStore/persistLearningRecord; normalized versioned records; temporary-file rename path.
+Data: task, execution, approach, QA, feedback, errors/corrections, lessons and source references.
+Blockers: independent store and contract; missing-store initialization semantics; no canonical Hybrid provider adapter.
+
+P05 Experience Memory
+Owner: services/mira-experience-memory.js
+Backing: no separate persistent file evidenced; projection over Work Learning records.
+Read/write: get/list/normalize experiences from Learning Engine; computes integrity value.
+Blockers: derived projection; preserve source record identity and stable schema during migration.
+
+P06 Experience Retrieval
+Owner: services/mira-experience-retrieval-engine.js
+Backing: Experience Memory projection.
+Read/write: lexical token/relevance retrieval; no independent write.
+Blockers: token-budget-aware retrieval not established; not multi-provider retrieval.
+
+P07 Future Strategy
+Owner: services/mira-future-strategy-engine.js
+Backing: derived from Experience Memory lessons; no direct persistence operations evidenced in inspected source.
+Blockers: source dependency on Experience schema and lesson semantics.
+
+P08 Cross-Task Learning
+Owner: services/mira-cross-task-learning-engine.js
+Backing: Experience Retrieval and Future Strategy; no independent persistent store evidenced.
+Blockers: depends on source task IDs, experience provenance and strategy projection consistency.
+
+P09 Learning History
+Owner: services/mira-learning-history.js; route routes/learning-history.js
+Backing: Experience Memory and Future Strategy; no independent persistent store evidenced.
+Blockers: timeline/history semantics must be preserved; history is derived rather than a separate source of truth.
+
+P10 Work Knowledge Consolidation
+Owner: services/mira-work-knowledge-consolidation.js
+Backing file: data/work-knowledge-consolidation.json.
+Read/write: loadStore/saveStore; normalized items and integrityHash; temp file then rename.
+Data: reusable knowledge candidates, fingerprint, evidence, source records, QA status, confidence and proposal references.
+Blockers: independent schema/store; load error fallback may yield empty store; no canonical provider integration.
+
+P11 Conversation Store
+Owner: conversation-store.js; schema conversation-schema.js.
+Backing file: data/conversations.json.
+Read/write: creates v1 empty store if absent; validates arrays; writes temporary file then rename.
+Data: conversations[], messages[], contexts[]; IDs link client/opportunity/proposal.
+Consumers: services/mira-conversation-memory-engine.js, response planner/service, routes/conversations.js.
+Blockers: separate retention and privacy domain; no shared canonical Memory adapter; no fsync/readback evidence in saveStore.
+
+P12 Stage 13 Learning Governance
+Owner: services/mira-stage13-learning-governance.js.
+Backing file: data/stage13-learning-governance.json or MIRA_STAGE13_STORE.
+Read/write: initial store; schema/version checks; temp file + rename; event hash chain; stores events, feedback, failures and benchmarks.
+Blockers: separate learning-governance store; do not collapse into general Memory; test-run side effects and governance semantics need independent treatment.
+
+P13 Audit Log
+Owner: audit-log.js.
+Backing file: audit-log.json.
+Read/write: append-only hash-linked events, temp-file rename and retention limit.
+Blockers: not all Memory/Knowledge operations are comprehensively audited; truncation affects historical chain boundary.
+
+P14 Snapshots
+Owner: snapshot-manager.js; used by Knowledge/Evolution controlled apply.
+Backing: backups/changes snapshot files and manifest; Evolution additionally persists Drive snapshot.
+Blockers: project-file snapshots are not a complete provider-neutral Memory backup contract.
+
+P15 Local Memory Backup / Restore
+Owner: services/mira-local-memory-store.js; scripts/mira-memory-backup.js; tools/memory-restore.js.
+Backing: memory-backup.json, v2 envelope in Local Store.
+Read/write: backup validation and explicit-confirm restore; safety backup before restore.
+Blockers: no production recovery run in this review; restore remains destructive and is not authorized.
+
+P16 Knowledge Backup / Restore
+Owner: tools/knowledge-backup.js and tools/knowledge-restore.js.
+Backing: knowledge-backup.json, knowledge-before-restore.json, Drive knowledge-backup.json and knowledge.json.
+Read/write: backup writes local knowledge.json and backup JSON, then Drive backup; restore reads local backup or Drive backup, creates safety backup, replaces knowledge.json, then synchronizes Drive.
+Blockers: backup tool performs Drive API calls; restore directly overwrites local data; validation checks backupVersion 1 and entries array but no independent integrity hash was evidenced; no restore test run. Do not invoke.
+
+P17 Knowledge / Autonomous Learning Proposals (governance-adjacent)
+Owners: knowledge-improvement.js; autonomous-learning-proposals.js.
+Backing files: knowledge-improvement-proposals.json; autonomous-learning-proposals.json.
+Read/write: persistent proposal records, approval status and proposed learning/knowledge state; temp-file rename in inspected implementations.
+Classification: not canonical Memory content, but persistent governance state referenced by controlled apply and consolidation.
+Blockers: preserve proposal IDs/status/approval provenance; do not migrate as ordinary Memory records or bypass approval boundaries.
+
+P18 Shared Storage Path Resolver
+Owner: mira-storage.js.
+Behavior: resolves configured storage root and creates/uses directories; several components use it, while some legacy tools use BASE_DIR-relative paths.
+Blockers: path ownership is inconsistent; not every tool necessarily honors MIRA_STORAGE_DIR. This creates potential split-brain between configured storage root and project-root legacy paths.
+
+4. EXTENDED GOOGLE DRIVE CALLSITE MATRIX
+
+D01 knowledge.js — addKnowledge
+Local write occurs, then syncToDrive/saveKnowledgeToDrive. Duplicate path also syncs current local data.
+
+D02 knowledge.js — addLearning
+Learning catalog entries are inserted into knowledge.json and synced to Drive.
+
+D03 knowledge.js — deleteKnowledge
+Local deletion then Drive sync.
+
+D04 knowledge.js — updateKnowledge
+Local update then Drive sync.
+
+D05 knowledge.js — updateLearning
+Local Learning catalog update then Drive sync.
+
+D06 tools/knowledge-save.js
+Calls addKnowledge; indirect Drive-dependent write path.
+
+D07 tools/learning-save.js -> services/learning.js -> knowledge.addLearning
+AI learning extraction is an indirect Drive-dependent write path. This audit did not execute its model call.
+
+D08 tools/knowledge-search.js
+Reads local Knowledge first, then attempts loadKnowledgeFromDrive; when Drive returns an array, it replaces the local search source. This is a source-of-truth ambiguity, not merely backup.
+
+D09 tools/knowledge-cleanup.js
+Inspect path reads local; remove path directly writes knowledge.json and then saveKnowledgeToDrive. Remove action is destructive and was not invoked.
+
+D10 tools/knowledge-backup.js
+Reads local Knowledge, writes local knowledge.json and knowledge-backup.json, then uploads/updates Drive knowledge-backup.json. It is not a read-only backup operation because it writes local files and contacts Drive.
+
+D11 tools/knowledge-restore.js
+Reads local backup or Drive backup, writes safety backup and overwrites knowledge.json, then uploads restored Knowledge to Drive. This is a destructive recovery workflow and was not invoked.
+
+D12 knowledge-controlled-apply.js
+Reads local and Drive state, checks equality, snapshots local file, applies update, synchronizes and verifies Drive; rollback restores local snapshot and Drive.
+
+D13 autonomous-learning-controlled-apply.js
+Reads local and Drive state, compares them, snapshots local state, adds Learning, syncs Drive and verifies; rollback restores local and Drive.
+
+D14 knowledge-memory-evolution.js
+Reads/writes local and Drive Memory/Knowledge; persists Drive snapshot; verifies both; rollback restores both. Strongest Drive removal blocker.
+
+D15 routes/autonomous-learning.js / autonomous-learning-engine.js
+Route/engine invokes Learning pipeline and reports driveSynced; downstream addLearning/Knowledge writes keep Drive dependency indirect.
+
+D16 tools/knowledge-improve.js -> services/learning.js / Knowledge improvement
+Creates proposals; actual apply routes through controlled-apply and updateLearning, which sync Drive. Proposal persistence itself is local governance storage.
+
+No Google Drive request was made during this audit. These are source-level callsite findings only.
+
+5. IMPORTANT DATA-FLOW CORRECTIONS
+
+- Knowledge and Learning catalog entries share knowledge.json. Work Learning records in data/work-learning-records.json are a separate record domain. Do not conflate them.
+- Experience Memory, Experience Retrieval, Future Strategy, Cross-Task Learning and Learning History are derived/read-oriented layers over Work Learning records; they are not five additional persistent stores.
+- Work Knowledge Consolidation is a separate persistent derived-knowledge store.
+- Conversation Memory Engine persists through Conversation Store, not the general memory.json Local Store.
+- Stage 13 Learning Governance is an additional persistent learning/governance record store.
+- Knowledge improvement proposals and autonomous learning proposals are persistent governance stores, not approved Memory records.
+- knowledge-search may use Drive state in preference to local state when Drive returns an array. This is a material source-of-truth issue that needs explicit design resolution.
+- knowledge-backup and knowledge-restore are active Drive workflows not represented in the previous four-workflow matrix.
+- Legacy tool path handling differs: some tools use project-root paths directly while main Knowledge uses mira-storage. Verify whether these paths resolve to the same physical files under non-default storage configuration before migration.
+
+6. SAFE MIGRATION / REPLACEMENT ORDER — PROPOSAL ONLY
+
+M0 — Freeze source and inventory
+- Preserve all existing Local and Drive behavior.
+- Complete full content scan of remaining source files and enumerate every direct/indirect read/write callsite.
+- Resolve storage root and legacy path divergence using configuration-only fixture tests.
+
+M1 — Separate logical data domains
+- General Memory; Knowledge/Learning catalog; Work Learning records; derived Experience/Strategy/History; Consolidated Knowledge; Conversation records; Stage13 governance; Audit; proposals.
+- Define IDs, schemaVersion, revision, provenance, retention, sensitivity and integrity separately for each domain.
+- Do not flatten proposal/approval records into Memory.
+
+M2 — Define provider-neutral interfaces and failure contracts
+- Explicit missing vs empty semantics, corruption handling, conflict quarantine, duplicate policy, CAS/serialized writer, idempotency, readback, audit and recovery.
+- Define source-of-truth semantics for knowledge-search and all Local/Drive consumers.
+
+M3 — Fixture-only adapters
+- Build in-memory and temporary-directory adapters only.
+- Test isolated fixtures; no production file paths, live provider credentials or Drive calls.
+- Validate old APIs and approval/rollback behavior without touching production state.
+
+M4 — Migrate all Drive-dependent workflows one by one
+- Knowledge CRUD (add/addLearning/update/delete).
+- Search source-of-truth behavior.
+- Knowledge backup and restore.
+- Cleanup tool.
+- Knowledge controlled apply.
+- Autonomous-learning controlled apply.
+- Evolution Memory/Knowledge apply, verification and rollback.
+- Tool and route wrappers, including learning-save and autonomous-learning.
+For each workflow require independent regression, failure injection, rollback, readback and audit evidence before disabling its Drive dependency.
+
+M5 — Cutover / decommission review
+- Separate approval required for production dual-read/write, backfill, provider cutover, Drive retention changes or decommission.
+- Verify encryption/key custody, access scopes, backup independence and restore drills first.
+
+M6 — Acceptance
+- Repository-wide source scan and callsite matrix independently reviewed.
+- Offline unit/integration/concurrency/crash/recovery/security tests executed only against isolated fixtures.
+- Evidence must identify command, fixture path, outputs and hashes.
+- Unexecuted tests remain NOT_EXECUTED / INCONCLUSIVE.
+
+7. PHASE 1 CLOSURE BLOCKERS
+
+C01 Full text scan across all branch source files has not been executed; current work is full tree inventory plus targeted source review.
+C02 Previous dependency matrix omitted tool-level Drive workflows D08-D11.
+C03 knowledge-search Local-vs-Drive precedence is unresolved.
+C04 Main Knowledge and several tools may resolve to different physical paths under MIRA_STORAGE_DIR.
+C05 Stage13 Learning Governance and governance proposal stores were not in the earlier 15-store matrix.
+C06 Existing Knowledge/Drive write semantics need a complete caller compatibility map.
+C07 Tests remain unexecuted; source files alone are not execution evidence.
+
+PHASE1_CLOSURE=BLOCKED_PENDING_C01_TO_C07
+DRIVE_SYNC_REMOVAL=BLOCKED
+PRODUCTION_MIGRATION=NOT_APPROVED
+PHASE2_IMPLEMENTATION=NOT_AUTHORIZED_BY_THIS_REPORT
+
+8. TEST AND SAFETY STATUS
+
+TEST_EXECUTION=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+LIVE_MODEL_REQUESTS=0
+GOOGLE_DRIVE_API_CALLS=0
+FACEBOOK_API_CALLS=0
+PRODUCTION_MEMORY_CONTENT_READ=NO
+PRODUCTION_MEMORY_TOUCHED=NO
+LOCAL_PRODUCTION_DATA_MODIFIED=NO
+SOURCE_CODE_MODIFIED=NO
+RESTORE_OR_MIGRATION=NO
+IMPLEMENTATION=NOT_STARTED
+
+This report is an additive architecture review artifact. It does not authorize implementation, provider calls, production reads, migration, restore, deletion, sync removal, credentials handling or deployment.
