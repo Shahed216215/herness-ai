@@ -364,3 +364,10 @@ MERGE=NOT_APPROVED
 - Initial test revision omitted zero-count categories from the actual map and failed; explicit zero initialization corrected it. The failed run remains visible in Actions history.
 - Verified Phase 3 run 41825657375 SUCCESS: REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS; candidate count 245; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - This is a drift guard for the current scanner's patterns, not proof of exhaustive semantic/runtime coverage.
+
+46. NAMESPACE IMPORT READ SCANNER AND SEMANTIC CLASSIFICATION
+- Added CommonJS `const store=require(...)`, ESM `import * as store from ...`, and static `await import(...)` namespace tracking for known domain read exports.
+- Synthetic tests cover all three forms. Repository inventory discovered 27 namespace-based read callsites across 14 files, increasing the overlapping lexical candidate total from 245 to 272.
+- Semantic dispositions recorded in the caller review: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13; privileged recovery 5; adjacent Stage 13 governance 1.
+- Verified Phase 3 run 41826616667 SUCCESS: NAMESPACE_DOMAIN_READ_COUNT=27; REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS; candidate count=272; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- The scanner is not a full call graph; re-export chains, computed property names, reflection and runtime injection remain REVIEW_REQUIRED.
