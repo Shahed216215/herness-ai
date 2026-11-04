@@ -113,8 +113,8 @@ delete require.cache[toolPath];
     if (previousDrive) require.cache[drivePath] = previousDrive;
     else delete require.cache[drivePath];
     if (previousTool) require.cache[toolPath] = previousTool;
+    else delete require.cache[toolPath];
     if (previousPolicy) require.cache[policyPath] = previousPolicy;
     else delete require.cache[policyPath];
-    else delete require.cache[toolPath];
   }
 })();
