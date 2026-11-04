@@ -36,7 +36,7 @@ function execution(id, status = 'TESTED_PASS') {
     productionDataTouched: false, networkRequests: 0, externalActions: 0,
     limitations: [], recordedAt: now
   };
-  if (status === 'INCONCLUSIVE' || status === 'REVIEW_REQUIRED' || status === 'NOT_APPROVED') {
+  if (status === 'INCONCLUSIVE' || status === 'REVIEW_REQUIRED' || status === 'NOT_APPROVED' || status === 'NOT_EXECUTED') {
     item.statusReason = 'Synthetic fixture did not establish a pass.';
   }
   if (status === 'NOT_APPLICABLE') {
