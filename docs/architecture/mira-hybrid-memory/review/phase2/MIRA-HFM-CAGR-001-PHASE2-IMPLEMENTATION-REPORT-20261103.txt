@@ -343,3 +343,27 @@ GitHub Actions run 41678434475 (run 270), job 126065246796, completed SUCCESS on
 - PRODUCTION_MEMORY_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0.
 
 This closes the isolated registry outcome-contract test gap. It does not close application integration: the callsite matrix still shows Local Memory, Knowledge, Evolution and public retrieval/write paths are not universally wired to this registry. Provider-level atomicity, production retrieval exclusion, and the DR08 U03/U04/U05/U06/E-15 implementation approvals remain separate gates.
+
+
+14. EXPLICIT VERSION SELECTION AND ACCESS-CHANGE AUTHORIZATION — VERIFIED BY RUN 303
+
+Further review found two Section 30 governance ambiguities in the isolated resolver:
+- Original array order was being treated as the implicit meaning of "existing" or "rejected change". The resolver now requires an explicit acceptedOriginalIndex for ACCEPT_EXISTING_VERSION and REJECT_CONFLICTING_CHANGE, and verifies the exact selected original digest. ACCEPT_ALTERNATE_VERSION also requires an explicit valid index.
+- Any change to the merged record's access policy is treated conservatively as a policy change. It requires a separate authorizeBroaderAccess callback to return true and a non-empty broaderAccessAuthorization evidence reference. The authorization callback receives the complete original/resulting access policies and their digests. The evidence reference is bound into resolution verification and idempotent/concurrent resolution comparisons. Merge and retain outcomes reject incompatible accepted-version selectors.
+
+GitHub Actions run 41751975605 (run 303), job 126318? (see run jobs), completed SUCCESS on commit 72ac52abf4cb5152e4a70c6eb06d40e23cdc841e. The log explicitly confirms:
+- GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+- GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+- GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+- BROADER_ACCESS_MERGE_REQUIRES_SEPARATE_AUTHORIZATION=PASS
+- GOVERNED_RETAIN_QUARANTINED=PASS
+- INCOMPATIBLE_RESOLUTION_FIELDS_REJECTED=PASS
+- GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+- EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
+- TESTS_FAILED=0
+- RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+- PRODUCTION_MEMORY_TOUCHED=NO; PRODUCTION_KNOWLEDGE_TOUCHED=NO; REAL_GOOGLE_DRIVE_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+During this refinement, intermediate CI runs exposed a misplaced fixture declaration, a merge-fixture revision mismatch and a missing return field. These were corrected; runs 300/301 and 302/303 then passed. Historical failed runs remain in GitHub Actions and are not reclassified as passes.
+
+The isolated resolution engine now has stronger deterministic selection and separate access-change authorization. It is still not wired into production Memory/Knowledge retrieval or provider write boundaries; those integration and authorization gates remain open.
