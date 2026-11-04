@@ -376,3 +376,39 @@ Residual:
 - The marker is local metadata, not an independent remote trust anchor.
 - Knowledge's separate missing-primary/first-run boundary and the production-wide retrieval integration remain separately REVIEW_REQUIRED.
 - Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+19. KNOWLEDGE INITIALIZATION / MISSING-PRIMARY FAIL-CLOSED GUARD — 2026-11-04
+
+Finding:
+- Knowledge previously treated a missing knowledge.json as an empty first-run state without checking whether a marker, prior version snapshots or a local backup proved that the store had already existed.
+- createKnowledgeBackup() also used missing:'empty', which could create a new empty backup when the primary was missing after prior initialization.
+- Explicit Knowledge restore did not correctly handle a missing primary; it attempted to preserve a corrupt primary even when no primary file existed.
+
+Correction:
+- Added reusable services/mira-store-initialization-guard.js with an integrity-checked local marker, safe primary/marker checks, version-snapshot/recovery-evidence detection and fail-closed write authorization.
+- knowledge.js now returns [] only for a true first-run state with no initialization marker, version snapshots or backup evidence.
+- A missing initialized Knowledge primary blocks read/CRUD and blocks creation of a new backup that could replace recovery evidence.
+- services/mira-knowledge-state-recovery.js now preserves a verified safety copy before restoring a missing primary and uses atomic replacement plus readback verification.
+- Existing corrupt/empty/invalid/symlink state continues to fail closed.
+
+Regression evidence:
+- KNOWLEDGE_FIRST_RUN_EMPTY_WITHOUT_MARKER=PASS
+- KNOWLEDGE_INITIALIZATION_MARKER_CREATED_ON_FIRST_WRITE=PASS
+- KNOWLEDGE_MISSING_PRIMARY_BLOCKS_READ_WRITE_AND_BACKUP=PASS
+- KNOWLEDGE_MISSING_PRIMARY_EXPLICIT_RESTORE=PASS
+- KNOWLEDGE_MISSING_PRIMARY_AND_MARKER_TAMPER_FAIL_CLOSED=PASS
+- TESTS_PASSED=20; TESTS_FAILED=0.
+
+CI:
+- Run 41804273088 — FAILURE — initial Knowledge guard regex implementation did not correctly classify the missing-primary error; retained as historical evidence.
+- Run 41804317402 — SUCCESS — corrected classifier, commit 4f4cbd89ceeb9d7e991af0d0495eef7e44981bb1.
+- Run 41804345427 — SUCCESS — initialization-aware backup and restore implementation, commit 5dbf2067cb1450a9ecc61492cfff98094deeba81.
+- Run 41804371633 — SUCCESS — first-run, missing-primary, explicit restore tests, commit 73ab586c78f8d7b3b03ac08d303c7379fdb8fe67.
+- Run 41804430790 — SUCCESS — marker tamper and missing-primary regression coverage, commit 8fe545361647d6758e0b47c32eac257f2890030f.
+- Run 679 explicitly reports TESTS_PASSED=20, TESTS_FAILED=0 and RESULT=KNOWLEDGE_STATE_SAFETY_PASS.
+
+Scope:
+- Tests use temporary isolated storage. Production Knowledge/Memory, real Google Drive and network were not touched.
+- This closes the missing-primary initialization ambiguity for the local Knowledge store; it does not implement encrypted backup, Drive cutover, canonical provider migration or universal conflict-registry retrieval integration.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
