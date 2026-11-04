@@ -122,6 +122,11 @@ assert.equal(duplicatedMappings.status, 'BLOCKED');
 assert.ok(duplicatedMappings.blockers.some(x => x.startsWith('DUPLICATE_MAPPING:')));
 console.log('DUPLICATE_SNAPSHOT_MAPPING_REJECTED=PASS');
 
+const inheritedMapping = Object.assign(Object.create({ inherited: true }), snapshotMapping);
+const inheritedPlan = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, mappings: [inheritedMapping] });
+assert.equal(inheritedPlan.status, 'BLOCKED');
+console.log('NON_PLAIN_MAPPING_OBJECT_REJECTED=PASS');
+
 const generalEntry = { role: 'user', content: 'no id', time: '2026-11-04T00:00:00Z' };
 const generalRaw = JSON.stringify([generalEntry]);
 const generalSourceFileDigest = require('node:crypto').createHash('sha256').update(generalRaw, 'utf8').digest('hex');
