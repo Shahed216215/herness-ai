@@ -110,7 +110,7 @@ try {
   assert.equal(failed.status, 'FAIL');
   console.log('TESTED_FAIL_AGGREGATES_TO_FAIL=PASS');
 
-  assert.throws(() => registry.validateDefinition({ ...def, unexpected: true }).length === 0);
+  assert.ok(registry.validateDefinition({ ...def, unexpected: true }).includes('DEFINITION_FIELDS_INVALID'));
   console.log('STRICT_SCHEMA_ADDITIONAL_FIELD_REJECTED=PASS');
 
   assert.ok(audit.some(x => x.action === 'hfm_test_registry_append_intent'));
