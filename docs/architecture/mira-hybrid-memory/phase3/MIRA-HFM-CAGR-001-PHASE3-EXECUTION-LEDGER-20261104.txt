@@ -345,3 +345,10 @@ MERGE=NOT_APPROVED
 - The scanner initially emitted a malformed newline escape and then over-reported an unrelated read in the same file. Both intermediate CI failures are retained in Actions history; the source was corrected to use real line splitting and argument-linked path-variable matching.
 - Verified Phase 3 run 41824965668 SUCCESS: 245 lexical candidates; `CANONICAL_STORE_FILE_BACKED_READ_COUNT=3`; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - The three hits are in `services/mira-knowledge-state-recovery.js`, all recovery/readback paths. They are classified as privileged recovery, not ordinary retrieval. The scanner remains heuristic and does not resolve arbitrary helper parameters, dynamic paths or cross-module call chains.
+
+43. CLASSIFICATION-BOUND RETRIEVAL AUTHORIZATION
+- The synthetic facade now includes each record's access classification in its authorization resource scope (`memory:<memoryId>:classification:<classification>`) for retrieval, creation and existing-record update authorization.
+- This lets the trusted host policy distinguish PUBLIC, PROJECT_PRIVATE and RESTRICTED resources rather than authorizing every record under a classification-blind `memory:<id>` scope.
+- Added tests proving a host denial for RESTRICTED classification excludes the record, and an allowedProjectIds mismatch excludes a record even when its projectId matches.
+- Phase 3 run 41825305707 SUCCESS: RETRIEVAL_AUTHORIZATION_BINDS_CLASSIFICATION=PASS; RETRIEVAL_ALLOWED_PROJECT_LIST_ENFORCED=PASS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- This is synthetic facade behavior. The production host registry must still implement and independently verify classification-specific policy.
