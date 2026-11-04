@@ -6,6 +6,9 @@ const {
   digest, serializeLegacyPayload, sourceLocator
 } = require('../services/mira-legacy-memory-knowledge-adapter');
 
+const authorizeAccess = () => true;
+const actorContext = { actorId: 'fixture-actor', purpose: 'isolated-adapter-test', requestId: 'adapter-request-001' };
+
 const sourceFileDigest = 'a'.repeat(64);
 function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projectId = 'project-alpha', classification = 'PROJECT_PRIVATE') {
   const content = serializeLegacyPayload(domain, entry);
@@ -117,9 +120,14 @@ assert.throws(() => adaptLegacyEntry({
 }), /full payload and provenance/);
 console.log('CLASSIFICATION_MISMATCH_REJECTED=PASS');
 assert.deepEqual(filterAdaptedLegacyEntries({
-  adaptedEntries: [adaptedKnowledge], pendingConflicts: [], projectId: 'project-alpha'
+  adaptedEntries: [adaptedKnowledge], pendingConflicts: [], projectId: 'project-alpha', authorizeAccess, actorContext
 }), []);
 console.log('MIGRATION_PENDING_REVIEW_NOT_RETRIEVABLE=PASS');
+
+assert.throws(() => filterAdaptedLegacyEntries({
+  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-alpha'
+}), /authenticated access authorizer is required/i);
+console.log('ADAPTER_ACCESS_AUTHORIZER_REQUIRED=PASS');
 
 const activeKnowledge = {
   ...adaptedKnowledge,
@@ -183,7 +191,7 @@ assert.equal(filterAdaptedLegacyEntries({
 console.log('CROSS_PROJECT_CONFLICT_ISOLATION=PASS');
 
 assert.throws(() => filterAdaptedLegacyEntries({
-  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-beta'
+  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-beta', authorizeAccess, actorContext
 }), /Cross-project/);
 console.log('ADAPTER_SCOPE_ENFORCED=PASS');
 
