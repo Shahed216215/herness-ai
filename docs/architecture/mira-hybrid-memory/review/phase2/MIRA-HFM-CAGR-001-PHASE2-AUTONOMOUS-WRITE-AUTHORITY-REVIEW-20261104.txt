@@ -57,3 +57,22 @@ Phase 2 remains IN_PROGRESS.
 Production readiness remains NOT_CERTIFIED.
 Mira Hybrid Memory remains v0.2.
 PR #4 remains open/draft/unmerged; no merge or PR state transition was performed.
+
+
+6. SUPERSEDING IMPLEMENTATION EVIDENCE (2026-11-04)
+
+The original findings and recommendation above remain valid as the historical reason for remediation. The old statement in Section 4 that runtime remediation was NOT_APPLIED is superseded by later branch commits and the following evidence documents:
+
+- MIRA-HFM-CAGR-001-PHASE2-AUTONOMOUS-WRITE-AUTHORITY-ADDENDUM-20261104.txt
+- MIRA-HFM-CAGR-001-PHASE2-PERSISTENT-WRAPPER-DISPATCH-GUARD-ADDENDUM-20261104.txt
+
+Current state:
+- memory_save, knowledge_save and learning_save are human-only in the shared policy.
+- Registry executeTool() checks shared policy before invoking a wrapper.
+- Seven human-only wrappers independently enforce checkToolSafety() before calling underlying dependencies.
+- Direct dispatch callsites in server.js/routes/services have a source-level inventory and route-gate regression tests.
+- Seven wrapper-denial tests, registry parity, direct dispatch tests and existing isolated Phase 2 suites passed in GitHub Actions run 41792648804 (tested HEAD deb6ccec7cad1c9d7e356becadb364353329820c) and prior authoritative runs 41792193805 and 41792424947.
+
+The wrappers remain blocked. No authenticated action-scoped approval workflow has been implemented. The source scanner is static and bounded; the raw tools map remains exported. Production Memory/Knowledge was not touched; real Drive, network and external actions were not used.
+
+This does not close the separate retrieval trust-filter, canonical project mapping, provider arbitration, U03/U04/U05/U06/E-15, HFM-004 or HFM-005 gates. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2; PR #4 open/draft/unmerged.
