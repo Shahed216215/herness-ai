@@ -22,8 +22,8 @@ assert.equal(validateProjectMapping({mapping,expectedDomain:'knowledge',expected
 console.log('APPROVED_MAPPING_VALIDATION_PASS=PASS');
 for(const patch of [
  {status:'PENDING_REVIEW'},{status:'REVOKED'},{projectId:'project-other'},
- {domain:'general_memory'},{sourceFileDigest:'d'.repeat(64)},
- {sourceDigest:'d'.repeat(64)},{memoryId:'short'},{revision:2},
+ {domain:'general_memory'},{sourceFileDigest:'not-a-sha256'},
+ {sourceDigest:'not-a-sha256'},{memoryId:'short'},{revision:2},
  {classification:'UNKNOWN'},{approvalReference:''},{approvedBy:''}
 ]) assert.throws(()=>validateProjectMapping({mapping:make(patch),verifyApproval:verifier,now}));
 console.log('UNAPPROVED_AND_INVALID_MAPPING_REJECTED=PASS');
