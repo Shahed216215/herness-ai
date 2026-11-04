@@ -129,9 +129,11 @@ function createStoreInitializationGuard({ primaryFile, storeId, evidenceFiles = 
     if (stat.isSymbolicLink() || !stat.isDirectory()) {
       throw new Error(storeId + ' version directory is unsafe.');
     }
-    return fs.readdirSync(versionsDirectory).some(name => /^[a-zA-Z0-9._-]+\.json$/.test(name));
+    // This directory is created only when an existing state is snapshotted.
+    // Even if snapshots were later removed, its existence is prior-store evidence.
+    fs.readdirSync(versionsDirectory);
+    return true;
   }
-
   function hasEvidence() {
     if (hasVersionSnapshots()) return true;
     for (const file of evidenceFiles) {
