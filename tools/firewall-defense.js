@@ -7,7 +7,7 @@ module.exports = {
   declaration: {
     name: "firewall_defense",
     description:
-      "Manage defensive firewall inspections and approval-gated firewall change proposals. Never modifies firewall rules automatically.",
+      "Currently blocked at the tool wrapper boundary. Firewall inspection and changes require a separately authenticated human-approval workflow, which is not yet available.",
 
     parameters: {
       type: "object",
