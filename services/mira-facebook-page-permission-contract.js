@@ -118,4 +118,33 @@ function assessDeclaredMetaPermissionEvidence({evidence,expectedContext,now=new 
     mayCallApi:false
   });
 }
-module.exports={assessDeclaredMetaPermissionEvidence,REQUIREMENTS,ROOT_KEYS};
+function buildMetaGraphRequestPlan({operation,pageId,apiVersion,recordClassification}={}) {
+  if(!OPERATIONS.has(operation)) throw new Error('Unsupported Meta Page operation.');
+  const targetPageId=text(pageId,'pageId',32);
+  if(!/^\\d{1,32}$/.test(targetPageId)) throw new Error('pageId must be numeric.');
+  const version=text(apiVersion,'apiVersion',16);
+  if(!/^v\\d{1,3}\\.\\d{1,2}$/.test(version)) throw new Error('apiVersion must be an explicit version such as v26.0.');
+  let method='GET',edge='/posts',bodyFields=[];
+  if(operation==='READ_USER_CONTENT') edge='/feed';
+  if(operation==='WRITE_PAGE_POST') {
+    if(recordClassification!=='PUBLIC') throw new Error('Only PUBLIC records may be planned for Page post publication.');
+    method='POST';edge='/feed';bodyFields=['message'];
+  }
+  return Object.freeze({
+    status:'REQUEST_PLAN_ONLY',
+    graphApiVersion:version,
+    method,
+    endpointPath:'/'+targetPageId+edge,
+    requiredScopes:Object.freeze([...REQUIREMENTS[operation].scopes]),
+    requiredPageTasks:Object.freeze([...REQUIREMENTS[operation].tasks]),
+    requiredFeatureApprovals:Object.freeze([...REQUIREMENTS[operation].features]),
+    bodyFields:Object.freeze(bodyFields),
+    credentialRequired:true,
+    credentialIncluded:false,
+    transportEnabled:false,
+    mayCallApi:false,
+    authorizationState:'NOT_AUTHORIZED_OFFLINE_PLAN_ONLY'
+  });
+}
+
+module.exports={assessDeclaredMetaPermissionEvidence,buildMetaGraphRequestPlan,REQUIREMENTS,ROOT_KEYS};
