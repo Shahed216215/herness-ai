@@ -37,5 +37,15 @@ assert.ok(aliasResult.matches.some(x=>x.excerpt.includes('getMemory as readMemor
 assert.ok(aliasResult.matches.some(x=>x.excerpt.includes('listMessages as fetchMessages')));
 assert.equal(aliasResult.matches.some(x=>x.category==='ALIASED_DOMAIN_READ'&&x.excerpt.includes('getKnowledge as getKnowledge')),false);
 console.log('COMMONJS_AND_ESM_ALIASED_READS_DETECTED=PASS');
+const directFileSample=[
+ "const rawMemory = fs.readFileSync('data/memory.json', 'utf8');",
+ "await fs.promises.readFile('knowledge.json', 'utf8');",
+ "const stream = fs.createReadStream('data/conversations.json');",
+ "const unrelated = fs.readFileSync('users.json', 'utf8');"
+].join('\n');
+const directFileResult=classifySource('fixture/direct-memory-file-io.js',directFileSample);
+assert.equal(directFileResult.matches.filter(x=>x.category==='DIRECT_MEMORY_FILE_IO').length,3);
+assert.equal(directFileResult.matches.some(x=>x.category==='DIRECT_MEMORY_FILE_IO'&&x.excerpt.includes('users.json')),false);
+console.log('DIRECT_CANONICAL_MEMORY_FILE_READS_DETECTED=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_ACCESS_PATH_INVENTORY_TEST_PASS');
