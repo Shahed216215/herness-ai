@@ -58,6 +58,16 @@ function prepareCanonicalWrite({
       !Array.isArray(seenIdempotencyKeys)) {
     throw new Error('Existing records, conflict metadata and idempotency history must be arrays.');
   }
+  if (seenIdempotencyKeys.some(key => typeof key !== 'string' || !key.trim())) {
+    throw new Error('Idempotency history is malformed; write preparation fails closed.');
+  }
+  if (pendingConflicts.some(conflict => !conflict || typeof conflict !== 'object' || Array.isArray(conflict) ||
+      typeof conflict.projectId !== 'string' || !conflict.projectId.trim() ||
+      typeof conflict.status !== 'string' || !conflict.status.trim() ||
+      !Array.isArray(conflict.originalMemoryIds) ||
+      conflict.originalMemoryIds.some(id => typeof id !== 'string' || !id.trim()))) {
+    throw new Error('Conflict metadata is malformed; write preparation fails closed.');
+  }
   const errors = validateCanonicalMemoryRecord(incomingRecord, 'incomingRecord');
   if (errors.length) throw new Error('Incoming canonical record is invalid: ' + errors.join('; '));
   requiredText(idempotencyKey, 'idempotencyKey');
@@ -90,6 +100,9 @@ function prepareCanonicalWrite({
     const currentErrors = validateCanonicalMemoryRecord(current, 'existingRecord');
     if (currentErrors.length) throw new Error('Existing canonical record is invalid: ' + currentErrors.join('; '));
     if (current.projectId !== incomingRecord.projectId) throw new Error('Existing memory project mismatch.');
+    if (current.lifecycle !== 'ACTIVE' || current.integrity.status !== 'VERIFIED') {
+      throw new Error('Existing memory is not eligible for update; review/recovery is required.');
+    }
     if (!Number.isInteger(expectedRevision) || current.version.revision !== expectedRevision) {
       throw new Error('Expected revision does not match current record.');
     }
@@ -98,6 +111,9 @@ function prepareCanonicalWrite({
         incomingRecord.recordType !== current.recordType ||
         incomingRecord.version.revision !== current.version.revision + 1) {
       throw new Error('Update must preserve identity/scope/type and increment revision by exactly one.');
+    }
+    if (incomingRecord.timestamps.createdAt !== current.timestamps.createdAt) {
+      throw new Error('Original creation timestamp is immutable across revisions.');
     }
     if (JSON.stringify(incomingRecord.source) !== JSON.stringify(current.source) ||
         JSON.stringify(incomingRecord.access) !== JSON.stringify(current.access)) {
