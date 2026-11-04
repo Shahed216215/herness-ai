@@ -20,7 +20,7 @@ assert.equal(authorized.projectId,ctx.projectId);
 console.log('HOST_AUTHORIZATION_BINDING_PASS=PASS');
 for(const patch of [
  {actorId:''},{actorType:'ROOT'},{projectId:''},{purpose:''},{requestId:''},{authorityRef:''},
- {issuedAt:'2026-11-04'},{expiresAt:'2026-11-04T11:59:00.000Z'}
+ {issuedAt:'2026-11-04'},{issuedAt:'2026-02-30T11:59:00.000Z'},{expiresAt:'2026-11-04T11:59:00.000Z'}
 ]) assert.throws(()=>validateRequestContext({...ctx,...patch}));
 console.log('MISSING_INVALID_AND_NONPOSITIVE_CONTEXT_REJECTED=PASS');
 assert.throws(()=>validateRequestContext({...ctx,extra:'untrusted'}),/exact supported fields/);
@@ -41,6 +41,8 @@ for(const patch of [
 console.log('ACTOR_PROJECT_OPERATION_RESOURCE_SUBSTITUTION_REJECTED=PASS');
 assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),expiresAt:'2026-11-04T12:06:00.000Z'}),now}),/outlives request context/);
 console.log('AUTHORIZATION_OVERLIFETIME_REJECTED=PASS');
+assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),issuedAt:'2026-11-04T11:58:00.000Z'}),now}),/future-dated|outlives request context/);
+console.log('PRE_CONTEXT_AUTHORIZATION_DECISION_REJECTED=PASS');
 assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),decision:'DENY'}),now}),/denied by host policy/);
 console.log('HOST_POLICY_DENY_ENFORCED=PASS');
 console.log('TESTS_FAILED=0');
