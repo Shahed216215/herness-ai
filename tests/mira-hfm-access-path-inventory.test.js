@@ -37,6 +37,21 @@ assert.ok(aliasResult.matches.some(x=>x.excerpt.includes('getMemory as readMemor
 assert.ok(aliasResult.matches.some(x=>x.excerpt.includes('listMessages as fetchMessages')));
 assert.equal(aliasResult.matches.some(x=>x.category==='ALIASED_DOMAIN_READ'&&x.excerpt.includes('getKnowledge as getKnowledge')),false);
 console.log('COMMONJS_AND_ESM_ALIASED_READS_DETECTED=PASS');
+const namespaceSample=[
+ "const memoryNamespace = require('../memory');",
+ "const memory = memoryNamespace.getMemory();",
+ "import * as conversationNamespace from '../conversation-store.js';",
+ "const messages = conversationNamespace.listMessages();",
+ "const learningNamespace = await import('../learning-store.js');",
+ "const lessons = learningNamespace.listLessons();",
+ "const unrelated = otherNamespace.getMemory();"
+].join('\n');
+const namespaceResult=classifySource('fixture/namespace-memory-boundary.js',namespaceSample);
+assert.equal(namespaceResult.matches.filter(x=>x.category==='NAMESPACE_DOMAIN_READ').length,3);
+assert.ok(namespaceResult.matches.some(x=>x.excerpt.includes('memoryNamespace.getMemory')));
+assert.ok(namespaceResult.matches.some(x=>x.excerpt.includes('conversationNamespace.listMessages')));
+assert.ok(namespaceResult.matches.some(x=>x.excerpt.includes('learningNamespace.listLessons')));
+console.log('COMMONJS_ESM_AND_DYNAMIC_NAMESPACE_READS_DETECTED=PASS');
 const directFileSample=[
  "const rawMemory = fs.readFileSync('data/memory.json', 'utf8');",
  "await fs.promises.readFile('knowledge.json', 'utf8');",
@@ -57,7 +72,7 @@ assert.equal(indirectPathResult.matches.filter(x=>x.category==='CANONICAL_STORE_
 assert.ok(indirectPathResult.matches.some(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ'&&x.line===2));
 console.log('CANONICAL_STORE_PATH_CONSTANT_READ_LINKED=PASS');
 const repositoryInventory=scan(process.cwd());
-const categoryCounts={PUBLIC_OR_INTERNAL_RETRIEVAL:0,DIRECT_STORE_READ:0,DIRECT_MEMORY_FILE_IO:0,GENERIC_STORE_LOADER:0,PROVIDER_OR_SNAPSHOT_READ:0,CRM_CONVERSATION_READ:0,WORK_LEARNING_OR_EXPERIENCE_READ:0,WORK_KNOWLEDGE_READ:0,ALIASED_DOMAIN_READ:0,CANONICAL_STORE_FILE_BACKED_READ:0};
+const categoryCounts={PUBLIC_OR_INTERNAL_RETRIEVAL:0,DIRECT_STORE_READ:0,DIRECT_MEMORY_FILE_IO:0,GENERIC_STORE_LOADER:0,PROVIDER_OR_SNAPSHOT_READ:0,CRM_CONVERSATION_READ:0,WORK_LEARNING_OR_EXPERIENCE_READ:0,WORK_KNOWLEDGE_READ:0,ALIASED_DOMAIN_READ:0,NAMESPACE_DOMAIN_READ:0,CANONICAL_STORE_FILE_BACKED_READ:0};
 for(const item of repositoryInventory) categoryCounts[item.category]=(categoryCounts[item.category]||0)+1;
 assert.deepEqual(categoryCounts,{
  PUBLIC_OR_INTERNAL_RETRIEVAL:27,
@@ -69,6 +84,7 @@ assert.deepEqual(categoryCounts,{
  WORK_LEARNING_OR_EXPERIENCE_READ:28,
  WORK_KNOWLEDGE_READ:6,
  ALIASED_DOMAIN_READ:0,
+ NAMESPACE_DOMAIN_READ:0,
  CANONICAL_STORE_FILE_BACKED_READ:3
 },'repository access-path inventory drifted; review all new/removed candidates before updating baseline');
 assert.equal(repositoryInventory.length,245,'repository lexical candidate total changed; semantic review required');
