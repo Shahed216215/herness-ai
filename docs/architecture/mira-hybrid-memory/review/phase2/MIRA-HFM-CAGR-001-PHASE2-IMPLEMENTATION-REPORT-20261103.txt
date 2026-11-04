@@ -485,3 +485,10 @@ GitHub Actions run 41763816821 (run 350), job 126357390954, completed SUCCESS on
 - Phase 2 core, recovery, Evolution integration, structural conflict assessment, conflict lifecycle and independent audit verifier also passed. Production Memory/Knowledge and real Drive untouched; network requests and external actions zero.
 
 The autonomous-apply flow still has its existing Google Drive sync behavior when a real approved proposal is applied. No Drive cutover or live Drive behavior was changed or exercised. This change only removes the local storage-path bypass.
+
+
+20. ADJACENT PERSISTENCE SCOPE BOUNDARY — DOCUMENTED
+
+Created MIRA-HFM-CAGR-001-PHASE2-ADJACENT-PERSISTENCE-BOUNDARY-AUDIT-20261104.txt to distinguish HFM Memory/Knowledge and directly connected learning stores from separate approval/governance/workflow ledgers. It records bounded source findings for autonomous-learning-proposals.js, mira-stage13-learning-governance.js, mira-research-governance.js and mira-seo-workflow-store.js. The first three are not modified in this Phase 2 change set because their retention, approval and event-chain semantics need separate review; the SEO workflow store already has its own lock, size limits and atomic write safeguards.
+
+This is an explicit scope boundary, not a claim that the repository-wide persistence inventory is complete.
