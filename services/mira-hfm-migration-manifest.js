@@ -196,4 +196,4 @@ function planSnapshot({ domain, sourceText, mappings = [], parentConversations =
     writeAuthorized: false
   });
 }
-\nmodule.exports = { digest, buildMigrationCandidate, validateCandidateSet, planSnapshot };
+module.exports = { digest, buildMigrationCandidate, validateCandidateSet, planSnapshot };
