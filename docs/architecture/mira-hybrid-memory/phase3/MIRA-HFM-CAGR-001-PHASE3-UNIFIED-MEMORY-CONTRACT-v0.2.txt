@@ -296,3 +296,8 @@ This is a verifier interface contract, not a live approval registry. Signature v
 ## 22. Provider Data-Classification and Encryption Gate (2026-11-04)
 
 Every provider operation must now receive an explicit data classification (`PUBLIC`, `PROJECT_PRIVATE`, or `RESTRICTED`); omission or unknown classification fails closed. For every provider operation that can read, verify, restore or commit persisted data, non-public classifications require `encryptedAtRest=true`. `PREPARE_WRITE` is non-persistent and does not require provider encryption, but it still requires explicit classification. A provider lacking at-rest encryption may serve PUBLIC data only. The provider contract remains a capability validator; no provider is connected.
+
+
+## 21. Host Authorization Request-Validity Binding Addendum (2026-11-04)
+
+The trusted host authorization callback input includes both `contextIssuedAt` and `contextExpiresAt`, in addition to actor, project, purpose, request ID, authority reference, operation and resource scope. The host adapter can therefore validate the exact request validity window and bind its decision to that window. The contract helper independently rejects not-yet-valid and expired request contexts, and rejects a host decision issued before the context or expiring after the context. This remains a synchronous, trusted-host callback contract; it does not itself authenticate the actor or persist replay protection. Production host integration and replay-state verification remain NOT_IMPLEMENTED.
