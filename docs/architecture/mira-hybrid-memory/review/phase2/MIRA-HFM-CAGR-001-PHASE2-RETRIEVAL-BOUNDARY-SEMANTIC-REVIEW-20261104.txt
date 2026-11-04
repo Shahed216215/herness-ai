@@ -1,0 +1,158 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 2
+RETRIEVAL BOUNDARY SEMANTIC REVIEW
+Date: 2026-11-04
+Branch: work/mira-hfm-v02-phase2-core-safety
+Evidence baseline: CI run 41792648804, tested HEAD deb6ccec7cad1c9d7e356becadb364353329820c
+Status: RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED
+
+1. PURPOSE AND METHOD
+
+This review interprets the read/retrieval callsites emitted by tests/mira-hfm-retrieval-callsite-inventory.test.js. The scanner found 36 retrieval calls across 14 application source files. All 14 consumer files lack both an in-file filterTrustedRecords marker and a recognized conflict-quarantine filter marker.
+
+This is a static source inventory and semantic classification. A missing marker is a review lead, not proof that a specific production record was returned or exposed. The scanner does not resolve all imports, wrappers, aliases, dynamic dispatch, runtime reachability or filters applied in another module.
+
+No production Memory/Knowledge data was read or modified. No real Drive, provider, network or external action was performed.
+
+2. PRIORITY CLASSIFICATION
+
+A. HIGH — AI prompt-context retrieval
+
+server.js:
+- Around lines 1521–1529, the agent request handler reads Memory through getMemory() and Knowledge through searchKnowledge(cleanCommand, 2).
+- The resulting Memory messages and Knowledge matches are assembled into the model request context.
+- The existing prompt framing treats stored Knowledge as reference material, not instructions; this is a prompt-injection mitigation, not a substitute for project-scope, integrity, trust-state or conflict-quarantine filtering.
+- Neither source call is shown passing an authenticated projectId or canonical trust/quarantine filter.
+
+Risk classification: HIGH / MODEL_CONTEXT_WITHOUT_HFM_TRUST_FILTER.
+
+B. HIGH — Tool-based Knowledge retrieval
+
+tools/knowledge-search.js:
+- Loads local getKnowledge().
+- Calls loadKnowledgeFromDrive().
+- If Drive returns an array, that entire array replaces the local search corpus.
+- Searches and returns matching title, URL, content, savedAt and relevance score.
+- The inspected function does not invoke filterTrustedRecords or a conflict-quarantine filter and does not bind the query to canonical project scope.
+
+Risk classification: HIGH / DRIVE_CORPUS_OVERRIDE_WITHOUT_HFM_TRUST_FILTER.
+
+C. HIGH — Admin Knowledge read surfaces
+
+server.js:
+- Around line 1209, /api/admin/knowledge/search calls searchKnowledge().
+- Around line 1253, /api/admin/knowledge/:id reads getKnowledge() and returns the selected entry.
+- Around line 1120 and line 1312, delete/edit handlers read getKnowledge() before applying an admin mutation.
+- Around line 2108, the admin learning diagnostic reads the Knowledge collection and reports its count.
+- These routes use SYSTEM_ADMIN authorization. Admin authorization is an actor/operation permission, not canonical project-scope, integrity, trust-state or conflict-clearance evidence.
+
+Risk classification:
+- Search/detail: HIGH / PRIVILEGED_RAW_KNOWLEDGE_READ.
+- Edit/delete pre-read: MEDIUM-HIGH / PRIVILEGED_RAW_RECORD_LOOKUP.
+- Diagnostic count: LOW for content disclosure, but count remains a raw local count, not a trusted-record count.
+
+D. MEDIUM — Indirect learning retrieval
+
+services/learning.js:
+- Around lines 358 and 449, findImprovementCandidate() and learnFromContent() call searchKnowledge() to find existing learning/duplicate candidates.
+- This affects which prior records are used when evaluating new learning content and duplicate/improvement decisions.
+- No canonical project/trust/quarantine filter is applied at these callsites in the inspected source.
+
+Risk classification: MEDIUM-HIGH / LEARNING_DECISION_INPUT_WITHOUT_HFM_FILTER.
+
+E. MEDIUM — Controlled apply and cross-provider reconciliation reads
+
+autonomous-learning-controlled-apply.js:
+- Reads local Knowledge and Drive Knowledge before apply, after apply, and during rollback verification.
+- These reads participate in duplicate checks and local/Drive equality/recovery decisions.
+- They are not ordinary user-facing search results; they belong to a separately approved apply/rollback workflow.
+- The canonical local Knowledge adapter was corrected earlier to use getKnowledge()/replaceKnowledge(), but HFM project/trust/quarantine filtering and provider arbitration are not established.
+
+knowledge-controlled-apply.js:
+- Similar local/Drive reconciliation and controlled apply reads; no universal HFM filter is demonstrated.
+
+knowledge-memory-evolution.js:
+- Reads Memory and Knowledge from Drive for synchronization/evolution operations.
+- This is a cross-store synchronization boundary, not just a search endpoint.
+
+Risk classification: MEDIUM-HIGH / CONTROLLED_APPLY_AND_PROVIDER_RECONCILIATION_INPUTS_WITHOUT_CANONICAL_HFM_FILTER.
+
+F. MEDIUM — Core local API fan-out
+
+knowledge.js:
+- searchKnowledge() loads the complete local Knowledge collection and scores content.
+- getKnowledge() returns the raw local collection.
+- These are shared fan-out points used by server, tools, routes and learning services.
+
+memory.js:
+- getMemory() returns the local Memory collection; the agent prompt path uses it.
+
+routes/knowledge-improvements.js:
+- Reads Knowledge to support improvement workflow decisions.
+
+Risk classification: HIGH as shared API boundary. A single correctly designed trusted facade here could reduce fan-out risk, but a raw legacy API cannot infer missing projectId or immutable messageId.
+
+G. LOW — Count and cleanup utilities
+
+tools/knowledge-count.js and tools/memory-count.js:
+- Read raw collections to report counts. They do not return full content in the normal count result, but the numbers are not trusted-record counts.
+
+tools/knowledge-cleanup.js:
+- Reads Knowledge for duplicate inspection/removal. The tool is now human-only and wrapper-guarded; its normal tool path returns BLOCKED until an authenticated approval contract exists.
+- Its cleanup algorithm/storage regression tests use test-only policy stubs to validate post-authorization mechanics.
+
+Risk classification:
+- Count: LOW / RAW_COUNT_ONLY.
+- Cleanup: MEDIUM / HUMAN_ONLY_TOOL_NOW_BLOCKED; business logic separately fixture-tested.
+
+3. KEY ARCHITECTURAL BLOCKER
+
+The legacy Memory and Knowledge shapes do not universally carry the canonical fields needed for a safe runtime filter:
+- Conversation Memory legacy records lack persisted immutable messageId in all historical cases and Conversation schema lacks projectId.
+- Legacy Knowledge records do not universally carry explicit canonical projectId, memoryId, revision, source digest, classification, approval reference and trust state.
+- The read-only legacy adapter intentionally requires explicit source-bound mapping; it does not invent messageId/projectId or derive project scope from opportunityId.
+- A generic filter cannot safely manufacture missing identity or trust metadata.
+
+Therefore, immediately wiring filterTrustedRecords() to every legacy read without an explicit mapping plan would either (a) silently exclude most legacy data, or (b) tempt callers to synthesize missing identity/trust fields. Neither is an approved migration.
+
+4. RECOMMENDED SAFE REMEDIATION SEQUENCE
+
+1. Define one canonical retrieval facade that requires an authenticated explicit projectId and a source-bound mapping for every legacy record.
+2. Require canonical record validation, content-hash consistency, lifecycle ACTIVE, integrity VERIFIED, allowed explicit trust state and conflict-quarantine exclusion before returning any content.
+3. Treat missing projectId, immutable messageId, revision, mapping approval, trust state or quarantine status as excluded / REVIEW_REQUIRED. Never derive projectId from opportunityId alone.
+4. Make local and Drive retrieval use the same canonical facade. A Drive array must never replace a local search corpus before canonical filtering.
+5. Integrate first at the highest-risk model-context boundary in server.js, then tools/knowledge-search.js, services/learning.js, admin search/detail, and the remaining read consumers.
+6. Keep admin role checks in addition to HFM project/trust filters; do not treat admin role as a data-scope waiver.
+7. Keep raw counts explicitly labelled RAW_LOCAL_COUNT until trusted-count semantics are implemented.
+8. Keep controlled apply/recovery/sync reads on a separately reviewed provider-arbitration path; do not mix ordinary retrieval filters with recovery snapshots without a defined recovery policy.
+9. Add integration tests with cross-project, missing-mapping, pending-review, quarantined, malformed, integrity-failed and allowed trusted fixtures. Prove excluded content never enters the model prompt or tool output.
+
+5. CI INVENTORY EVIDENCE
+
+Run 41792648804 — SUCCESS — job 126449383826.
+Observed:
+- MIRA_HFM_RETRIEVAL_CALL_COUNT=36
+- MIRA_HFM_RETRIEVAL_CONSUMER_FILE_COUNT=14
+- MIRA_HFM_RETRIEVAL_FILES_WITHOUT_BOTH_FILTER_MARKERS=14
+- MIRA_HFM_RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED
+- TESTS_FAILED=0
+- NETWORK_REQUESTS=0
+- EXTERNAL_ACTIONS=0
+- REAL_GOOGLE_DRIVE_TOUCHED=NO
+
+The CI test is an inventory generator, not a claim that the missing HFM filters are acceptable. The 14 review-required files remain an open integration backlog.
+
+6. STATUS
+
+RETRIEVAL_CALLSITE_INVENTORY=36_CALLS_ACROSS_14_FILES
+MODEL_CONTEXT_TRUST_FILTER=NOT_ESTABLISHED
+KNOWLEDGE_SEARCH_DRIVE_CORPUS_FILTER=NOT_ESTABLISHED
+ADMIN_KNOWLEDGE_HFM_SCOPE_FILTER=NOT_ESTABLISHED
+LEARNING_DECISION_TRUST_FILTER=NOT_ESTABLISHED
+CANONICAL_PROJECT_MAPPING=INCOMPLETE
+CONFLICT_QUARANTINE_UNIVERSAL_RETRIEVAL_INTEGRATION=NOT_ESTABLISHED
+PRODUCTION_READINESS=NOT_CERTIFIED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PR_4=OPEN_DRAFT_UNMERGED
+
+END OF REVIEW
