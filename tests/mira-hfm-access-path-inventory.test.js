@@ -57,7 +57,7 @@ assert.equal(indirectPathResult.matches.filter(x=>x.category==='CANONICAL_STORE_
 assert.ok(indirectPathResult.matches.some(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ'&&x.line===2));
 console.log('CANONICAL_STORE_PATH_CONSTANT_READ_LINKED=PASS');
 const repositoryInventory=scan(process.cwd());
-const categoryCounts={};
+const categoryCounts={PUBLIC_OR_INTERNAL_RETRIEVAL:0,DIRECT_STORE_READ:0,DIRECT_MEMORY_FILE_IO:0,GENERIC_STORE_LOADER:0,PROVIDER_OR_SNAPSHOT_READ:0,CRM_CONVERSATION_READ:0,WORK_LEARNING_OR_EXPERIENCE_READ:0,WORK_KNOWLEDGE_READ:0,ALIASED_DOMAIN_READ:0,CANONICAL_STORE_FILE_BACKED_READ:0};
 for(const item of repositoryInventory) categoryCounts[item.category]=(categoryCounts[item.category]||0)+1;
 assert.deepEqual(categoryCounts,{
  PUBLIC_OR_INTERNAL_RETRIEVAL:27,
