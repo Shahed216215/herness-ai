@@ -209,3 +209,7 @@ MERGE=NOT_APPROVED
 - Persisted provider operations for non-public data require encryptedAtRest=true. PREPARE_WRITE remains non-persistent and does not require provider encryption, but still requires explicit classification. Unencrypted providers are restricted to PUBLIC persisted data.
 - Tests cover missing/unknown classification, non-public read/commit without encryption, PUBLIC access without encryption and prepare-only semantics.
 - Phase 3 CI run 41817322561 SUCCESS; provider classification/encryption and all prior contract suites PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+
+20. HOST AUTHORIZATION VALIDITY-WINDOW BINDING
+- Code review found the trusted host callback received authorityRef and request identity but not the request context's issuedAt/expiresAt. Added contextIssuedAt/contextExpiresAt to the immutable callback input so the host can verify exact request validity and bind its decision to that window.
+- Added synthetic assertion that the host callback receives the exact request validity timestamps. Production authentication, signature verification and replay protection remain NOT_IMPLEMENTED; no production caller is wired.
