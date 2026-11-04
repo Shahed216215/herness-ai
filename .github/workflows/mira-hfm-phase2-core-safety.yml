@@ -44,6 +44,8 @@ on:
       - 'services/mira-hfm-migration-manifest.js'
       - 'tests/mira-hfm-migration-manifest.test.js'
       - 'services/mira-hfm-test-registry.js'
+      - 'services/mira-hfm-timestamp-profile.js'
+      - 'tests/mira-hfm-timestamp-profile.test.js'
       - 'tests/mira-hfm-test-registry.test.js'
       - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
       - 'services/mira-conflict-quarantine-registry.js'
@@ -140,6 +142,7 @@ jobs:
           node tests/mira-legacy-memory-knowledge-adapter.test.js
           node tests/mira-hfm-migration-manifest.test.js
           node tests/mira-hfm-test-registry.test.js
+          node tests/mira-hfm-timestamp-profile.test.js
           node tests/mira-knowledge-duplicate-assessment.test.js
           node tests/mira-knowledge-cleanup-tool-boundary.test.js
           node tests/mira-hfm-boundary-inventory.test.js
