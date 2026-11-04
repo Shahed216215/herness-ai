@@ -52,7 +52,7 @@ try {
   const storedFile = path.join(root, fs.readdirSync(root).find(name => name.endsWith('.json')));
   const storedEnvelope = JSON.parse(fs.readFileSync(storedFile, 'utf8'));
   storedEnvelope.authorityReference = 'TAMPERED-AUTHORITY-REF';
-  fs.writeFileSync(storedFile, JSON.stringify(storedEnvelope, null, 2) + '\\n');
+  fs.writeFileSync(storedFile, JSON.stringify(storedEnvelope, null, 2) + '\n');
   assert.throws(() => verifyGenesisAnchor({
     root, projectId: 'project-a', chainId: 'chain-a', trustedGenesisHash: genesis.genesisHash
   }), /envelope scope or schema mismatch/);
