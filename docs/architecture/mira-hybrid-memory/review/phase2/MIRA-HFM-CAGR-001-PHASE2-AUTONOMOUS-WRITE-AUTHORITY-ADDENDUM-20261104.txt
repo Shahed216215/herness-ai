@@ -1,0 +1,59 @@
+MIRA HYBRID MEMORY v0.2
+PHASE 2 — AUTONOMOUS WRITE AUTHORITY REVIEW ADDENDUM
+Date: 2026-11-04
+Status: POLICY_PATCH_PRESENT_CI_INCONCLUSIVE
+Supersedes: Section 4 runtime-remediation statement in MIRA-HFM-CAGR-001-PHASE2-AUTONOMOUS-WRITE-AUTHORITY-REVIEW-20261104.txt only.
+Scope: Read-only source verification of the feature branch; no production execution.
+
+1. VERIFIED POLICY PATCH
+
+The feature branch currently contains the following policy for each persistent-write tool:
+- memory_save
+- knowledge_save
+- learning_save
+
+Each policy declares operation=file_modify, autonomous=false, humanApprovalRequired=true, explicitConfirmation=true.
+
+The execution engine's checkToolSafety() denies a tool when humanApprovalRequired is true and also denies when autonomous is false. This establishes a fail-closed autonomous-execution policy in the inspected engine source.
+
+2. REGRESSION TEST AND WORKFLOW
+
+The branch contains tests/mira-hfm-persistent-write-policy.test.js and the Phase 2 workflow invokes it.
+
+Important limitation: the current test reads the engine source as text and asserts policy declarations plus the presence of denial-branch source strings. It does not load the engine, execute checkToolSafety(), invoke executeWork(), or prove the three tools are denied in a runtime harness. Its printed TESTS_FAILED=0 marker is test-authored output and is not independent CI evidence.
+
+The branch workflow definition includes the test, but the available workflow-run lookup returned no run records for the latest commits. Therefore CI status for this remediation is INCONCLUSIVE / NOT VERIFIED. Do not report PASS until an actual Actions run and its job log confirm the test completed successfully on the tested head SHA.
+
+3. DISPATCH REVIEW — LIMITED SOURCE FINDING
+
+The inspected model function-call dispatch in server.js routes ordinary tool calls through executeWork() with permissionGranted=true. This generic flag is not action-scoped user consent; the tool-level policy must still deny the three save tools.
+
+The inspected special branches are:
+- seo_workflow_review_decision: named admin browser-session gate followed by a dedicated review dispatcher.
+- seo_workflow_history: named admin browser-session gate followed by direct execution of a read/history tool.
+- marketing_client_context: named admin browser-session gate, then ordinary engine dispatch.
+
+No direct path to any of the three persistent-write wrappers was identified in these inspected branches. This is not a repository-wide proof: every route, worker, scheduled job, import, dynamic loader and other direct execute() call has not yet been exhaustively reconciled.
+
+4. OPEN CONTROL GAPS
+
+- A genuine authenticated, action-scoped approval workflow is not implemented by this policy patch. The tools are denied to autonomous execution; this does not make them user-approvable through generic chat.
+- Registry-versus-policy parity remains unverified. tools/index.js dynamically loads every tools/*.js module that exports name, declaration and execute; no complete branch-pinned active-tool inventory was established in this review.
+- Policy-only static assertions are weaker than a runtime denial test.
+- Alternate dispatch and direct-wrapper invocation coverage remains incomplete.
+
+Required next work:
+1. Build a dependency-free, branch-pinned inventory of active dynamic tools and compare both directions against TOOL_POLICIES.
+2. Add runtime tests that exercise checkToolSafety() and executeWork() for each persistent-write tool, proving denial before wrapper invocation.
+3. Search and reconcile all direct tool execute()/runTool()/executeTool() callsites and worker entry points; prove no bypass of the policy.
+4. Keep all three save tools human-only until a separately authenticated, action-scoped approval design is implemented and independently tested.
+5. Retrieve actual GitHub Actions run/job logs before assigning CI PASS.
+
+5. SAFETY AND RELEASE STATUS
+
+No production Memory/Knowledge data was read or written for this review. No real Drive call, network request, provider call, restore, migration, deployment, or external action was performed.
+
+Phase 2 remains IN_PROGRESS.
+Production readiness remains NOT_CERTIFIED.
+Mira Hybrid Memory remains v0.2.
+PR #4 remains open/draft/unmerged. No merge or PR state transition is authorized by this addendum.
