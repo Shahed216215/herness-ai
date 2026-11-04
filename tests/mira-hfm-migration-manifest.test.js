@@ -1,0 +1,96 @@
+'use strict';
+const assert = require('node:assert/strict');
+const { digest, buildMigrationCandidate, validateCandidateSet } = require('../services/mira-hfm-migration-manifest');
+
+const sourceFileDigest = 'a'.repeat(64);
+const base = {
+  domain: 'knowledge',
+  entry: { id: 'kb_legacy_01', title: 'Title', content: 'Exact content', savedAt: '2026-11-04T00:00:00.000Z' },
+  sourceFileDigest,
+  sourceOrdinal: 0
+};
+const mapping = {
+  domain: 'knowledge', legacyId: 'kb_legacy_01', canonicalMemoryId: 'memory-canonical-0001',
+  projectId: 'project-approved-01', revision: 1, sourceDigest: digest(base.entry),
+  classification: 'PROJECT_PRIVATE', approvalReference: 'ARCH-DECISION-REF-001'
+};
+const candidate = buildMigrationCandidate({ ...base, mapping });
+assert.equal(candidate.status, 'READY_FOR_REVIEW');
+assert.equal(candidate.writeAuthorized, false);
+console.log('KNOWLEDGE_CANDIDATE_REQUIRES_REVIEW=PASS');
+
+const noMap = buildMigrationCandidate({ ...base });
+assert.equal(noMap.status, 'BLOCKED');
+assert.ok(noMap.blockers.includes('EXPLICIT_MAPPING_MISSING'));
+console.log('MISSING_MAPPING_FAILS_CLOSED=PASS');
+
+const legacyMemory = buildMigrationCandidate({
+  domain: 'general_memory', entry: { role: 'user', content: 'same', time: '2026-11-04T00:00:00Z' },
+  sourceFileDigest, sourceOrdinal: 0
+});
+assert.ok(legacyMemory.blockers.includes('GENERAL_MEMORY_IMMUTABLE_MESSAGE_ID_ABSENT'));
+console.log('LEGACY_MEMORY_WITHOUT_IMMUTABLE_ID_BLOCKED=PASS');
+
+const crmEntry = { messageId: 'crm-msg-001', conversationId: 'conv-001', content: 'hello' };
+const crmMapping = {
+  domain: 'crm_conversation_message', legacyId: crmEntry.messageId,
+  canonicalMemoryId: 'memory-canonical-crm-001', projectId: 'project-approved-01',
+  revision: 1, sourceDigest: digest(crmEntry), classification: 'RESTRICTED',
+  approvalReference: 'ARCH-DECISION-REF-002'
+};
+const crmNoParent = buildMigrationCandidate({
+  domain: 'crm_conversation_message', entry: crmEntry, sourceFileDigest, sourceOrdinal: 1, mapping: crmMapping
+});
+assert.ok(crmNoParent.blockers.includes('CRM_PARENT_CONVERSATION_NOT_VERIFIED'));
+console.log('CRM_PARENT_CONVERSATION_REQUIRED=PASS');
+
+const crm = buildMigrationCandidate({
+  domain: 'crm_conversation_message', entry: crmEntry, sourceFileDigest, sourceOrdinal: 1,
+  mapping: crmMapping, parentConversation: { conversationId: 'conv-001', clientId: 'client-01' }
+});
+assert.equal(crm.status, 'READY_FOR_REVIEW');
+console.log('CRM_EXPLICIT_PARENT_AND_PROJECT_MAPPING=PASS');
+
+const wrongProject = buildMigrationCandidate({
+  ...base, mapping: { ...mapping, projectId: '' }
+});
+assert.ok(wrongProject.blockers.includes('AUTHORITATIVE_PROJECT_ID_REQUIRED'));
+console.log('MISSING_PROJECT_SCOPE_BLOCKED=PASS');
+
+const wrongDigest = buildMigrationCandidate({
+  ...base, mapping: { ...mapping, sourceDigest: '0'.repeat(64) }
+});
+assert.ok(wrongDigest.blockers.includes('SOURCE_DIGEST_MISMATCH'));
+console.log('SOURCE_DIGEST_MISMATCH_BLOCKED=PASS');
+
+const badClass = buildMigrationCandidate({
+  ...base, mapping: { ...mapping, classification: 'UNKNOWN' }
+});
+assert.ok(badClass.blockers.includes('EXPLICIT_CLASSIFICATION_REQUIRED'));
+console.log('UNKNOWN_CLASSIFICATION_BLOCKED=PASS');
+
+const badRevision = buildMigrationCandidate({
+  ...base, mapping: { ...mapping, revision: 2 }
+});
+assert.ok(badRevision.blockers.includes('INITIAL_REVISION_MUST_BE_1'));
+console.log('FABRICATED_HISTORICAL_REVISION_BLOCKED=PASS');
+
+assert.equal(validateCandidateSet([candidate]).ok, true);
+console.log('SINGLE_REVIEW_CANDIDATE_ACCEPTED=PASS');
+
+const duplicate = { ...candidate, canonicalMemoryId: candidate.canonicalMemoryId + '-2' };
+assert.ok(validateCandidateSet([candidate, duplicate]).blockers.some(x => x.startsWith('DUPLICATE_LEGACY_ID:')));
+console.log('DUPLICATE_LEGACY_ID_REJECTED=PASS');
+
+const collision = { ...candidate, legacyId: 'kb_legacy_02' };
+assert.ok(validateCandidateSet([candidate, collision]).blockers.some(x => x.startsWith('DUPLICATE_CANONICAL_MEMORY_ID:')));
+console.log('CANONICAL_ID_COLLISION_REJECTED=PASS');
+
+assert.ok(validateCandidateSet([candidate, { ...candidate, writeAuthorized: true }]).blockers.length > 0);
+console.log('WRITE_AUTHORIZATION_CANNOT_BE_ENABLED=PASS');
+
+assert.throws(() => buildMigrationCandidate({ ...base, sourceOrdinal: -1, mapping }));
+console.log('INVALID_SOURCE_ORDINAL_REJECTED=PASS');
+
+console.log('TESTS_FAILED=0');
+console.log('RESULT=MIRA_HFM_DRY_RUN_MANIFEST_PLANNER_ISOLATED_PASS');
