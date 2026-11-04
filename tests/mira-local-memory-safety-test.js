@@ -138,6 +138,15 @@ async function main() {
       /previously initialized/i
     );
 
+    const versionDirectory = store.MEMORY_FILE + '.versions';
+    for (const name of fs.readdirSync(versionDirectory)) {
+      fs.unlinkSync(path.join(versionDirectory, name));
+    }
+    fs.unlinkSync(store.INITIALIZATION_FILE);
+    assert.throws(() => memory.getMemory(), /previously initialized/i);
+    assert.equal(fs.existsSync(store.INITIALIZATION_FILE), true);
+    console.log('EMPTY_MEMORY_VERSION_DIRECTORY_STILL_PROVES_PRIOR_STORE=PASS');
+
     const marker = JSON.parse(fs.readFileSync(store.INITIALIZATION_FILE, 'utf8'));
     marker.sha256 = '0'.repeat(64);
     fs.writeFileSync(store.INITIALIZATION_FILE, JSON.stringify(marker), { mode: 0o600 });
