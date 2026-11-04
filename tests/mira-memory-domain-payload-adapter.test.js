@@ -38,7 +38,7 @@ const cases=[
 ];
 for(const [domain,sourceEntry] of cases){
  const {mapping,candidate}=fixture(domain,sourceEntry);
- const result=adaptLegacyRecord({domain,sourceEntry,mapping,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now});
+ const result=adaptLegacyRecord({domain,sourceEntry,mapping,expectedProjectId:mapping.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now});
  assert.equal(result.status,'READY_FOR_REVIEW_NOT_COMMITTED');
  assert.equal(result.committed,false);
  assert.equal(result.record.integrity.status,'UNVERIFIED');
@@ -52,20 +52,20 @@ for(const [domain,sourceEntry] of cases){
 }
 const g=cases[0];
 const gm=fixture(g[0],g[1]).mapping;
-assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:{...g[1],content:'tampered'},mapping:gm,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
+assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:{...g[1],content:'tampered'},mapping:gm,expectedProjectId:gm.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
 console.log('SOURCE_TAMPER_REJECTED=PASS');
 const crm=cases[2];
 const crmMap=fixture(crm[0],crm[1]).mapping;
-assert.throws(()=>adaptLegacyRecord({domain:crm[0],sourceEntry:{...crm[1],conversationId:'other-conversation'},mapping:crmMap,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
+assert.throws(()=>adaptLegacyRecord({domain:crm[0],sourceEntry:{...crm[1],conversationId:'other-conversation'},mapping:crmMap,expectedProjectId:crmMap.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
 console.log('CRM_PARENT_CONVERSATION_SUBSTITUTION_REJECTED=PASS');
 const kb=cases[1];
 const kbMap=fixture(kb[0],kb[1]).mapping;
-assert.throws(()=>adaptLegacyRecord({domain:kb[0],sourceEntry:{...kb[1],id:'kb-other'},mapping:kbMap,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
+assert.throws(()=>adaptLegacyRecord({domain:kb[0],sourceEntry:{...kb[1],id:'kb-other'},mapping:kbMap,expectedProjectId:kbMap.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
 console.log('KNOWLEDGE_LEGACY_ID_SUBSTITUTION_REJECTED=PASS');
 const pending=fixture(g[0],g[1]).mapping;
 pending.status='PENDING_REVIEW';
 pending.mappingDigest=digest(bodyOf(pending));
-assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:g[1],mapping:pending,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/not approved/);
+assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:g[1],mapping:pending,expectedProjectId:pending.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/not approved/);
 console.log('UNAPPROVED_MAPPING_REJECTED=PASS');
 assert.throws(()=>createCanonicalCandidate({domain:'work_learning',sourceEntry:{},mapping:{},capturedAt}),/Domain\/source-system mapping mismatch|Domain adapter is not implemented/);
 console.log('UNREVIEWED_DOMAIN_ADAPTER_BLOCKED=PASS');
