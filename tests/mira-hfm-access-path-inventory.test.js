@@ -23,5 +23,19 @@ assert.ok(result.matches.some(x=>x.category==='GENERIC_STORE_LOADER'&&x.excerpt.
 assert.equal(result.matches.some(x=>x.category==='CRM_CONVERSATION_READ'&&x.excerpt.includes('loadStore')),false);
 console.log('DIRECT_STORE_AND_DERIVED_DOMAIN_ACCESS_DETECTED=PASS');
 console.log('COMMENT_AND_UNRELATED_CALLS_EXCLUDED=PASS');
+const aliasSample=[
+ "const { getMemory: readMemory } = require('../memory');",
+ "const data = readMemory();",
+ "import { listMessages as fetchMessages } from '../services/conversation-store.js';",
+ "const messages = fetchMessages();",
+ "const { getKnowledge } = require('../knowledge');",
+ "const normal = getKnowledge();"
+].join('\\n');
+const aliasResult=classifySource('fixture/aliased-memory-boundary.js',aliasSample);
+assert.equal(aliasResult.matches.filter(x=>x.category==='ALIASED_DOMAIN_READ').length,2);
+assert.ok(aliasResult.matches.some(x=>x.excerpt.includes('getMemory as readMemory')));
+assert.ok(aliasResult.matches.some(x=>x.excerpt.includes('listMessages as fetchMessages')));
+assert.equal(aliasResult.matches.some(x=>x.category==='ALIASED_DOMAIN_READ'&&x.excerpt.includes('getKnowledge as getKnowledge')),false);
+console.log('COMMONJS_AND_ESM_ALIASED_READS_DETECTED=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_ACCESS_PATH_INVENTORY_TEST_PASS');
