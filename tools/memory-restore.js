@@ -9,7 +9,7 @@ module.exports = {
   declaration: {
     name: 'memory_restore',
     description:
-      'Restore Mira Memory from a validated local backup. Explicit user confirmation is required.',
+      'Currently blocked at the tool wrapper boundary. Memory restore requires an authenticated, action-scoped human-approval workflow, which is not yet available.',
     parameters: {
       type: 'object',
       properties: {
