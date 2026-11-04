@@ -357,3 +357,10 @@ MERGE=NOT_APPROVED
 - Added negative test that a host policy denial for RESTRICTED classification blocks prepare-write.
 - Existing-record update test now asserts both WRITE and READ authorization use the identical classification-bound resource scope; no downgrade to a classification-blind resource is allowed.
 - Phase 3 run 41825424686 SUCCESS: WRITE_READ_AND_WRITE_SHARE_CLASSIFICATION_BOUND_SCOPE=PASS; WRITE_RESTRICTED_CLASSIFICATION_HOST_DENY_ENFORCED=PASS; all contract/inventory suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+
+45. REPOSITORY ACCESS-PATH INVENTORY BASELINE PINNED
+- The inventory test now runs the scanner against the full checked-out repository and pins all 10 category counts plus the total candidate count. Any added/removed candidate causes CI failure and requires source-level semantic review before baseline update.
+- Baseline: 245 overlapping lexical candidates = public/internal retrieval 27; direct store reads 27; direct literal file reads 0; generic store loaders 91; provider/snapshot reads 36; CRM reads 27; Work Learning/Experience reads 28; Work Knowledge reads 6; named aliases 0; canonical path-backed reads 3.
+- Initial test revision omitted zero-count categories from the actual map and failed; explicit zero initialization corrected it. The failed run remains visible in Actions history.
+- Verified Phase 3 run 41825657375 SUCCESS: REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS; candidate count 245; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- This is a drift guard for the current scanner's patterns, not proof of exhaustive semantic/runtime coverage.
