@@ -241,17 +241,33 @@ function saveStore(store) {
     throw new Error("Work learning store exceeds the supported record limit; refusing truncation.");
   }
 
+  loadStore();
   const normalized = {
     version: 1,
     updatedAt: now(),
     records: store.records
   };
 
-  jsonStateStore.atomicWriteJson(
+  const result = jsonStateStore.atomicWriteJson(
     LEARNING_FILE,
     normalized,
     "Mira work learning"
   );
+  try {
+    jsonStateStore.recordStateAudit(
+      "work_learning_store_write_committed",
+      "success",
+      LEARNING_FILE,
+      {
+        stateHash: result.sha256,
+        recordCount: normalized.records.length
+      }
+    );
+  } catch (error) {
+    error.code = "WORK_LEARNING_STORE_COMMITTED_AUDIT_FAILED";
+    error.stateCommitted = true;
+    throw error;
+  }
 
   return normalized;
 }
