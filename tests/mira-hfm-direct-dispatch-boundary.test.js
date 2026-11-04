@@ -99,7 +99,7 @@ const runtimeFiles = [
   ...collectRuntimeFiles(path.join(root, 'services'))
 ];
 const observedDirectCalls = [];
-const directCallPattern = /\b([A-Za-z_$][\w$]*(?:Tool|tool|health))\.execute\s*\(|\btools\s*\[[^\]]+\]\s*\.execute\s*\(/g;
+const directCallPattern = /\b((?:tool|health|[A-Za-z_$][\w$]*(?:Tool|tool)))\.execute\s*\(|\btools\s*\[[^\]]+\]\s*\.execute\s*\(/g;
 
 for (const file of runtimeFiles) {
   const relative = path.relative(root, file).split(path.sep).join('/');
