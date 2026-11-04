@@ -34,7 +34,7 @@ Manual content comparison may report a match or conflict, but it cannot promote 
 
 ## 5. HFM facade bridge — prepare-only
 
-The Phase 4 HFM adapter consumes a Phase 3 `retrieveCanonicalRecordsWithReport` result. It requires exactly one selected Memory ID, a matching provenance digest/source/revision, an explicit `ELIGIBLE / AUTHORIZED_READ` disposition, and an explicit `PUBLIC` access classification before preparing a manual Page draft.
+The Phase 4 HFM adapter consumes a Phase 3 `retrieveCanonicalRecordsWithReport` result. It requires an explicit numeric target Page ID, exactly one selected Memory ID, a matching provenance digest/source/revision, an explicit `ELIGIBLE / AUTHORIZED_READ` disposition, and an explicit `PUBLIC` access classification before preparing a manual Page draft. The Page ID is included in the draft and deterministic draft identity, preventing accidental reuse of the same draft identifier across different Pages.
 
 The bridge returns `PREPARED_MANUAL_POST_NO_EXTERNAL_ACTION`; it does not publish, commit Memory, emit a durable audit event, or claim that the report object is a cryptographic authorization token. The caller must obtain the report directly from the trusted in-process HFM facade.
 
