@@ -82,3 +82,13 @@ Status: IN PROGRESS
 - This is offline validation only; Page ownership, task grants and actual destination identity are not independently verified.
 - The Page-binding changes were committed after the previously successful integration run 41839660905 and require their own CI verification.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 009 — Page identity binding verified
+- Corrected a test-fixture defect found in CI: all HFM adapter negative-path tests now provide a target Page ID except the explicit missing-Page-ID rejection case.
+- Corrected the numeric Page ID validation regex after CI identified an over-escaped pattern; the regression now exercises numeric IDs, missing IDs and nonnumeric IDs.
+- CI run 41840422532 SUCCESS on commit 7f0d6cb5ed936dff7978cc40b2ebed1edfa597bf; job 126610228510 succeeded.
+- Job log confirms connector suite, HFM adapter suite and provider capability suite each report TESTS_FAILED=0. HFM authorized PUBLIC draft, private-record rejection, provenance/eligibility/identity guards and non-persisted untrusted import review passed.
+- Network requests=0; LIVE_META_API_CALLS=0; persistent writes=0; publish actions=0.
+- Prior CI failures 41839982028 through 41840341838 remain retained as failed attempts; they exposed and helped correct Page-ID validation/test-fixture defects. The successful run is the evidence for the corrected commit.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; TARGET_PAGE_ID_BINDING=OFFLINE_CONTRACT_VERIFIED; PRODUCTION_READINESS=NOT_CERTIFIED.
