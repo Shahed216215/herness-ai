@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const toolsDir = path.join(__dirname, '..', 'tools');
+const policyPath = path.join(__dirname, '..', 'services', 'mira-tool-execution-policy.js');
 const enginePath = path.join(__dirname, '..', 'services', 'mira-work-execution-engine.js');
 const registryPath = path.join(toolsDir, 'index.js');
 
@@ -50,7 +51,9 @@ assert.equal(new Set(names).size, names.length, 'duplicate runtime tool names');
 assert.ok(active.length > 0, 'no active tools discovered');
 
 const engine = fs.readFileSync(enginePath, 'utf8');
-const policyMatch = engine.match(/const TOOL_POLICIES\s*=\s*Object\.freeze\(\{([\s\S]*?)\n\}\);/);
+assert.match(engine, /require\(["']\.\/mira-tool-execution-policy["']\)/, 'engine must use shared tool policy module');
+const policySource = fs.readFileSync(policyPath, 'utf8');
+const policyMatch = policySource.match(/const TOOL_POLICIES\s*=\s*Object\.freeze\(\{([\s\S]*?)\n\}\);/);
 assert.ok(policyMatch, 'TOOL_POLICIES object not found');
 const policies = [...policyMatch[1].matchAll(/^\s{2}([a-z0-9_]+):\s*\{/gm)].map(match => match[1]);
 assert.equal(new Set(policies).size, policies.length, 'duplicate policy keys');
