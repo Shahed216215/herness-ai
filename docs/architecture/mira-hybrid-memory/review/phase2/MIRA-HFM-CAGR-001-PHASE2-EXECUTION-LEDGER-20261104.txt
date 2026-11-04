@@ -198,3 +198,11 @@ CI evidence:
 - The isolated route contract passed create, message create/memory update, list/detail, context read/write and memory retrieval. TESTS_FAILED=0.
 
 Scope limitation: route/store name and return-shape mismatch is corrected for the tested handlers. Message and context remain separate durable commits; route-level retry/idempotency is not yet established. No projectId schema migration, HFM guard wiring, production data access or provider cutover occurred.
+
+
+12. FINAL INTEGRATION CI CONFIRMATION — 2026-11-04
+- Run 41778080710 — SUCCESS — tested commit c5a08aa7a11f4a68929b81c438b36a1712ad54c2 — https://github.com/Shahed216215/herness-ai/actions/runs/41778080710
+- The full isolated Phase 2 workflow reran with the conversation route-contract test and both fault-injection tests included.
+- Conversation route contract PASS; conversation partial-commit recovery PASS; Knowledge Drive retry recovery PASS; all suites TESTS_FAILED=0.
+- REAL_GOOGLE_DRIVE_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+- The only commits after the tested code head were documentation-ledger updates; no source or workflow code changed after the successful run.
