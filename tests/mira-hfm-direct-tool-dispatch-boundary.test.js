@@ -10,6 +10,8 @@ const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const taskExecutionRoute = fs.readFileSync(path.join(routesDir, 'task-execution.js'), 'utf8');
 const learningRoute = fs.readFileSync(path.join(routesDir, 'autonomous-learning.js'), 'utf8');
 const controlledApply = fs.readFileSync(path.join(root, 'autonomous-learning-controlled-apply.js'), 'utf8');
+const knowledgeImprovementRoute = fs.readFileSync(path.join(routesDir, 'knowledge-improvements.js'), 'utf8');
+const knowledgeControlledApply = fs.readFileSync(path.join(root, 'knowledge-controlled-apply.js'), 'utf8');
 
 const routeFiles = fs.readdirSync(routesDir).filter(file => file.endsWith('.js')).sort();
 const directRouteCalls = [];
@@ -56,6 +58,14 @@ assert.match(learningRoute, /applyAutonomousLearningControlled\s*\(/);
 assert.match(controlledApply, /proposal\.status\s*!==\s*["']approved["']/);
 assert.match(controlledApply, /createVerifiedSnapshot\s*\(/);
 assert.match(controlledApply, /await\s+addLearning\s*\(/);
+assert.match(knowledgeImprovementRoute, /["']\/api\/admin\/knowledge-improvements\/:id\/apply["']\s*,\s*requireAdminPermission\s*\(/);
+assert.match(knowledgeImprovementRoute, /PERMISSIONS\.SYSTEM_ADMIN/);
+assert.match(knowledgeImprovementRoute, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(knowledgeImprovementRoute, /applyKnowledgeImprovementControlled\s*\(/);
+assert.match(knowledgeControlledApply, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(knowledgeControlledApply, /createSnapshot\s*\(/);
+assert.match(knowledgeControlledApply, /verifySnapshot\s*\(/);
+assert.match(knowledgeControlledApply, /await\s+updateLearning\s*\(/);
 
 for (const wrapper of ['memory-save', 'knowledge-save', 'learning-save']) {
   assert.equal(
@@ -73,5 +83,6 @@ console.log('MIRA_HFM_SEO_HISTORY_NAMED_ADMIN_GATE=PASS');
 console.log('MIRA_HFM_SEO_REVIEW_DEDICATED_DISPATCH=PASS');
 console.log('MIRA_HFM_TASK_EXECUTION_USES_GOVERNED_ENGINE=PASS');
 console.log('MIRA_HFM_AUTONOMOUS_LEARNING_DIRECT_WRITE_ADMIN_APPROVAL_AND_SNAPSHOT=PASS');
+console.log('MIRA_HFM_KNOWLEDGE_IMPROVEMENT_DIRECT_UPDATE_ADMIN_APPROVAL_AND_SNAPSHOT=PASS');
 console.log('MIRA_HFM_PERSISTENT_SAVE_WRAPPER_DIRECT_SERVER_IMPORTS=0');
 console.log('MIRA_HFM_DIRECT_DISPATCH_BOUNDARY_TESTS_FAILED=0');
