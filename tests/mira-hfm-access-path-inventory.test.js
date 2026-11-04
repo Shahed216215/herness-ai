@@ -6,14 +6,15 @@ const sample=[
  "const knowledge=loadKnowledge();",
  "const crm=listMessages(conversationId);",
  "const lessons=listLessons({});",
- "const experience=retrieveExperiences(text);",
+ "const experience=retrieveExperiences(text);
+ "const workKnowledge=getConsolidatedKnowledge();"",
  "const state=loadDriveState('knowledge');",
  "const raw=loadStore();",
  "// getKnowledge() is only a comment",
  "const unrelated=calculateHash(value);"
 ].join('\n');
 const result=classifySource('fixture/memory-boundary.js',sample);
-for(const category of ['DIRECT_STORE_READ','CRM_CONVERSATION_READ','WORK_LEARNING_OR_EXPERIENCE_READ','PROVIDER_OR_SNAPSHOT_READ']){
+for(const category of ['DIRECT_STORE_READ','CRM_CONVERSATION_READ','WORK_LEARNING_OR_EXPERIENCE_READ','WORK_KNOWLEDGE_READ','PROVIDER_OR_SNAPSHOT_READ']){
  assert.ok(result.matches.some(x=>x.category===category),category+' must be detected');
 }
 assert.equal(result.matches.some(x=>x.excerpt.includes('getKnowledge() is only a comment')),false);
