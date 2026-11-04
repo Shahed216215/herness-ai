@@ -41,7 +41,7 @@ const helperContext={...context,requestId:'request-host-adapter-flow-01'};
 assert.equal(authorizeMemoryRequest({requestContext:helperContext,operation:'READ',resourceScope:input.resourceScope,authorizeRequest:adapter,now}).authorized,true);
 console.log('HOST_ADAPTER_PROJECT_AUTHORITY_AND_REPLAY_PASS=PASS');
 const replayContext={...context,requestId:'request-host-adapter-replay-01'};
-const replayInput={...replayContext,operation:'READ',resourceScope:input.resourceScope};
+const replayInput={...replayContext,contextIssuedAt:replayContext.issuedAt,contextExpiresAt:replayContext.expiresAt,operation:'READ',resourceScope:input.resourceScope};
 assert.equal(adapter(replayInput).replayStatus,'FRESH');
 assert.throws(()=>authorizeMemoryRequest({requestContext:replayContext,operation:'READ',resourceScope:input.resourceScope,authorizeRequest:adapter,now}),/denied by host policy/);
 console.log('HOST_ADAPTER_REPLAY_DENIED_ON_SECOND_USE=PASS');
