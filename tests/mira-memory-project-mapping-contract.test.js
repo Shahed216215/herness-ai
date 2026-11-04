@@ -25,7 +25,7 @@ for(const patch of [
  {domain:'general_memory'},{sourceFileDigest:'not-a-sha256'},
  {sourceDigest:'not-a-sha256'},{memoryId:'short'},{revision:2},
  {classification:'UNKNOWN'},{approvalReference:''},{approvedBy:''}
-]) assert.throws(()=>validateProjectMapping({mapping:make(patch),verifyApproval:verifier,now}));
+]) assert.throws(()=>validateProjectMapping({mapping:make(patch),expectedDomain:'knowledge',expectedProjectId:'project-fixture-01',expectedSourceFileDigest:'a'.repeat(64),verifyApproval:verifier,now}));
 console.log('UNAPPROVED_AND_INVALID_MAPPING_REJECTED=PASS');
 assert.throws(()=>validateProjectMapping({mapping:make(),verifyApproval:undefined,now}),/Trusted approval verifier/);
 console.log('MISSING_TRUSTED_APPROVAL_VERIFIER_REJECTED=PASS');
