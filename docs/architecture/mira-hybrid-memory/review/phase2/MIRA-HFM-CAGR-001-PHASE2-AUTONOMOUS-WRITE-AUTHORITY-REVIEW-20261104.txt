@@ -1,0 +1,59 @@
+MIRA HYBRID MEMORY v0.2
+PHASE 2 — AUTONOMOUS WRITE AUTHORITY REVIEW
+Date: 2026-11-04
+Status: REVIEW_REQUIRED
+Scope: Static source review only; no production execution.
+
+1. FINDING: SAVE TOOL AUTHORITY IS TOO BROAD
+
+The dynamic registry in tools/index.js loads every tools/*.js module that exports name, declaration, and execute. The Stage 5.4 engine uses TOOL_POLICIES as its tool-level autonomous authorization boundary.
+
+The current policy entries classify these persistent-write tools as autonomous:
+- memory_save: operation=file_modify, autonomous=true, humanApprovalRequired=false, explicitConfirmation=false.
+- knowledge_save: operation=file_modify, autonomous=true, humanApprovalRequired=false, explicitConfirmation=false.
+- learning_save: operation=file_modify, autonomous=true, humanApprovalRequired=false, explicitConfirmation=false.
+
+The corresponding wrappers persist supplied content:
+- tools/memory-save.js calls addMemory("user", memoryContent).
+- tools/knowledge-save.js calls addKnowledge(title, url, content).
+- tools/learning-save.js calls learnFromContent({content, sourceTitle, sourceUrl}).
+
+Their descriptions express intended use, including an explicit user request for memory_save, but the execution engine does not receive or verify a cryptographically or structurally bound user-consent assertion for these writes. The model-generated tool arguments alone are not evidence of user approval.
+
+Risk: a model-selected or misrouted function call can persist content without an independently verified, action-scoped user authorization. This is an authority/provenance gap, not proof that arbitrary production data was changed.
+
+2. DISPATCH REVIEW
+
+server.js sends ordinary model function calls through executeWork(), with permissionGranted=true. This flag is generic dispatch context, not proof of explicit user consent. The engine still evaluates the seven checks and tool policy.
+
+Three special SEO paths are dispatched separately:
+- seo_workflow_review_decision uses mira-seo-review-dispatch.
+- seo_workflow_history calls the registered tool directly after a named admin browser-session check.
+- marketing_client_context is protected by the same named admin-session check before the ordinary engine path.
+
+No direct bypass of the HFM write policies was established for the reviewed ordinary dispatch branch. This is not a full audit of every route, worker, import, or dynamically registered module.
+
+3. RECOMMENDED CORRECTIVE CONTROL
+
+Until an action-scoped consent contract is implemented and tested:
+- Set memory_save, knowledge_save, and learning_save to autonomous=false and humanApprovalRequired=true.
+- Preserve explicit user intent, actor identity, target scope, exact content digest, operation, expiry, and one-time approval binding in an authorization record.
+- Ensure all alternate dispatch paths enforce the same policy; do not rely on tool descriptions or generic permissionGranted=true.
+- Add registry-versus-policy parity tests covering every dynamically registered tool and every policy key.
+- Test denial for missing, stale, mismatched, replayed, or cross-session approval.
+- Keep production Memory/Knowledge unchanged during these tests.
+
+4. EVIDENCE LIMITS
+
+- This is a static source review of tools/index.js, the three save wrappers, services/mira-work-execution-engine.js, services/tool-runner.js, and the model dispatch section of server.js.
+- A complete tools-directory inventory and registry/policy parity count were not established in this pass.
+- No runtime tool invocation, production Memory/Knowledge write, real Drive access, network request, or external action was performed.
+- No CI result was produced for a code change in this review.
+- Runtime remediation is NOT_APPLIED; the three policy entries remain as found until a safe, verified patch and regression suite can be committed.
+
+5. PHASE 2 STATUS
+
+Phase 2 remains IN_PROGRESS.
+Production readiness remains NOT_CERTIFIED.
+Mira Hybrid Memory remains v0.2.
+PR #4 remains open/draft/unmerged; no merge or PR state transition was performed.
