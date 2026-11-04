@@ -30,6 +30,8 @@ on:
       - 'services/mira-knowledge-duplicate-assessment.js'
       - 'tests/mira-knowledge-duplicate-assessment.test.js'
       - 'tests/mira-knowledge-cleanup-tool-boundary.test.js'
+      - 'scripts/mira-hfm-boundary-inventory.js'
+      - 'tests/mira-hfm-boundary-inventory.test.js'
       - 'tools/memory-version-recovery.js'
       - 'services/mira-knowledge-state-recovery.js'
       - 'services/mira-state-version-recovery.js'
@@ -137,6 +139,8 @@ jobs:
           node tests/mira-hfm-migration-manifest.test.js
           node tests/mira-knowledge-duplicate-assessment.test.js
           node tests/mira-knowledge-cleanup-tool-boundary.test.js
+          node tests/mira-hfm-boundary-inventory.test.js
+          node scripts/mira-hfm-boundary-inventory.js
           node tests/mira-conflict-quarantine-registry.test.js
           node tests/mira-knowledge-cleanup-storage-contract.test.js
           node tests/stage19-knowledge-improvement-state-test.js
