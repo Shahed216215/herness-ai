@@ -113,3 +113,20 @@ DR08_U06=REVIEW_REQUIRED
 FULL_PHASE2=REVIEW_REQUIRED
 
 END OF ASSESSMENT
+
+
+
+9. SHARED U06 TIMESTAMP PROFILE PROTOTYPE — RUN 499
+Added services/mira-hfm-timestamp-profile.js and tests/mira-hfm-timestamp-profile.test.js. The versioned profile MIRA-HFM-TIMESTAMP-RFC3339-UTC-MS-v1 accepts explicit RFC 3339 timezone input, normalizes offsets to UTC, pads zero-to-three fractional digits to exactly milliseconds and rejects invalid calendar dates, missing timezone, unknown -00:00 offset, leap seconds and precision beyond milliseconds.
+
+The independent audit-chain verifier now imports this shared canonical validator; the canonical test registry uses the same timestamp profile. Equivalent offsets normalize to identical UTC bytes. Run 499: https://github.com/Shahed216215/herness-ai/actions/runs/41774915451 — SUCCESS; U06_EQUIVALENT_OFFSETS_NORMALIZE_IDENTICALLY=PASS; U06_INVALID_DATE_TIME_OFFSET_LEAP_AND_PRECISION_REJECTED=PASS; TESTS_FAILED=0.
+
+Limitations: the legacy Memory timestamp validator and historical audit-log format were not changed. The profile is used by isolated HFM verifier/registry prototypes only; global production timestamp adoption and historical compatibility remain open.
+
+UPDATED STATUS
+U06_VERSIONED_CANONICAL_TIMESTAMP_UTILITY=ISOLATED_PASS
+U06_INDEPENDENT_VERIFIER_INTEGRATION=ISOLATED_PASS
+U06_TEST_REGISTRY_INTEGRATION=ISOLATED_PASS
+LEGACY_MEMORY_GLOBAL_PROFILE_ADOPTION=NOT_IMPLEMENTED
+HISTORICAL_AUDIT_TIMESTAMP_CONFORMANCE=NOT_TESTED
+U06=PARTIALLY_CLOSED_IN_ISOLATED_FIXTURE_ONLY
