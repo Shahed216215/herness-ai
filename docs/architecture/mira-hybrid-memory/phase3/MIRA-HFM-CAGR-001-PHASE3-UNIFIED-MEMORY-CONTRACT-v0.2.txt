@@ -311,3 +311,8 @@ Preparing a revision of an existing canonical record requires both `READ` and `W
 ## 24. Approval Evidence Expiry Addendum (2026-11-04)
 
 Trusted project-mapping approval evidence now includes an explicit `expiresAt` timestamp. Validation rejects evidence that is expired at evaluation time, expires at or before its own `verifiedAt`, or has invalid timestamp syntax. The host verifier must still check the authoritative registry's current revocation state and return a short-lived evidence expiry; this local validator does not provide replay protection or independently query the registry.
+
+
+## 25. Request Replay Decision Addendum (2026-11-04)
+
+The trusted host authorization decision must now include `replayStatus=FRESH`. Any other value, including `REPLAYED`, missing or unverifiable status, is denied. The host adapter is responsible for atomically checking and recording requestId/authorityRef replay state; this structural helper only enforces the returned decision and does not itself maintain a replay store.
