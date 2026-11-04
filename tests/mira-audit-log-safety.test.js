@@ -115,7 +115,7 @@ function runWorker(label) {
       error => error.code === 'AUDIT_LOCK_BUSY'
     );
     fs.unlinkSync(lockFile);
-    assert.equal(audit.loadAuditLog().length, 5);
+    assert.equal(audit.loadAuditLog().length, 7);
     console.log('AUDIT_LOG_STALE_LOCK_FAILS_CLOSED=PASS');
 
     const beforeLimit = fs.readFileSync(auditFile, 'utf8');
@@ -129,10 +129,10 @@ function runWorker(label) {
 
     const cleared = audit.clearAuditLog();
     assert.equal(cleared.success, true);
-    assert.equal(cleared.archivedEntries, 5);
+    assert.equal(cleared.archivedEntries, 7);
     assert.ok(cleared.archiveFile);
     const archive = JSON.parse(fs.readFileSync(path.join(root, cleared.archiveFile), 'utf8'));
-    assert.equal(archive.entries.length, 5);
+    assert.equal(archive.entries.length, 7);
     assert.deepEqual(audit.loadAuditLog(), []);
     assert.equal(audit.verifyAuditIntegrity().ok, true);
     console.log('AUDIT_LOG_CLEAR_PRESERVES_VERIFIED_ARCHIVE=PASS');
