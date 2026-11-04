@@ -203,3 +203,9 @@ MERGE=NOT_APPROVED
 - Phase 3 CI run 41816924159 SUCCESS: structured approval, CRM client binding, adapter, facade, provider and access inventory suites PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - Parent Phase 2 regression run 41816924207 SUCCESS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - Intermediate CI failures from the initial interface change remain visible in Actions history; the subsequent complete run is the accepted evidence.
+
+22. PROVIDER DATA-CLASSIFICATION / ENCRYPTION GATE
+- Provider operations now require explicit PUBLIC / PROJECT_PRIVATE / RESTRICTED classification; omission or unsupported labels fail closed.
+- Persisted provider operations for non-public data require encryptedAtRest=true. PREPARE_WRITE remains non-persistent and does not require provider encryption, but still requires explicit classification. Unencrypted providers are restricted to PUBLIC persisted data.
+- Tests cover missing/unknown classification, non-public read/commit without encryption, PUBLIC access without encryption and prepare-only semantics.
+- Phase 3 CI run 41817322561 SUCCESS; provider classification/encryption and all prior contract suites PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
