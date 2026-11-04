@@ -52,5 +52,16 @@ assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',re
 console.log('HOST_POLICY_DENY_ENFORCED=PASS');
 assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),replayStatus:'REPLAYED'}),now}),/replay detected/);
 console.log('REPLAYED_REQUEST_REJECTED=PASS');
+const consumedRequestAuthorities=new Set();
+const replayContext={...ctx,requestId:'request-replay-fixture-01',authorityRef:'host-authz-replay-fixture-01'};
+function replayAwareHost(input){
+ const key=input.authorityRef+'|'+input.requestId;
+ const replayed=consumedRequestAuthorities.has(key);
+ if(!replayed) consumedRequestAuthorities.add(key);
+ return {...allow(input),replayStatus:replayed?'REPLAYED':'FRESH'};
+}
+assert.equal(authorizeMemoryRequest({requestContext:replayContext,operation:'READ',resourceScope:'memory:x',authorizeRequest:replayAwareHost,now}).authorized,true);
+assert.throws(()=>authorizeMemoryRequest({requestContext:replayContext,operation:'READ',resourceScope:'memory:x',authorizeRequest:replayAwareHost,now}),/replay detected/);
+console.log('SYNTHETIC_REQUEST_ID_REPLAY_STORE_ENFORCES_SINGLE_USE=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_PHASE3_REQUEST_AUTHORIZATION_CONTRACT_PASS');
