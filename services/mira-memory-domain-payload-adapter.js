@@ -51,6 +51,13 @@ function validDate(value) {
   if(zone!=='Z'&&(+zone.slice(1,3)>23||+zone.slice(4,6)>59)) return false;
   return Number.isFinite(Date.parse(value));
 }
+function deepFreeze(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
 function requireText(value,label,max=100000) {
   if(typeof value!=='string'||!value.trim()||value.length>max) throw new Error(label+' is required.');
 }
@@ -101,7 +108,7 @@ function createCanonicalCandidate({domain,sourceEntry,mapping,capturedAt}) {
   };
   const errors=validateCanonicalMemoryRecord(record,'candidate');
   if(errors.length) throw new Error('Canonical candidate invalid: '+errors.join('; '));
-  return Object.freeze(record);
+  return deepFreeze(record);
 }
 function adaptLegacyRecord({domain,sourceEntry,mapping,expectedProjectId,expectedSourceFileDigest,capturedAt,verifyApproval,now=new Date()}) {
   if(typeof expectedProjectId!=='string'||!expectedProjectId.trim()) throw new Error('Independent expectedProjectId is required.');
