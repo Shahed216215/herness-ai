@@ -200,6 +200,12 @@ try {
   assert.ok(retainedEnvelope.originals[1].schemaValidationErrors.length === 0);
   assert.equal(retainedEnvelope.originals[1].declaredIntegrityStatus, 'FAILED');
   startReview(retainDirectory, retainConflict.conflictId);
+  assert.throws(() => resolveConflict({
+    directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
+    decision: 'RETAIN_QUARANTINED', acceptedOriginalIndex: 0,
+    actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }), /cannot select an accepted original/);
   assert.equal(resolveConflict({
     directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
     decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
@@ -247,6 +253,12 @@ try {
   const merged = record({ content: 'reviewed merged content', version: { revision: 3, contentHash: 'e'.repeat(64) } });
 
   startReview(mergeDirectory, mergeConflict.conflictId);
+  assert.throws(() => resolveConflict({
+    directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
+    decision: 'APPROVED_FIELD_MERGE', acceptedOriginalIndex: 0,
+    actor: 'reviewer', policyDecision: 'POLICY-2', resolutionProposal: resolutionProposal(),
+    mergedRecord: merged, auditWriter, authorizeResolution
+  }), /cannot select one original version/);
   assert.throws(() => resolveConflict({
     directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
     decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
@@ -411,6 +423,7 @@ try {
   console.log('GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS');
   console.log('BROADER_ACCESS_MERGE_REQUIRES_SEPARATE_AUTHORIZATION=PASS');
   console.log('GOVERNED_RETAIN_QUARANTINED=PASS');
+  console.log('INCOMPATIBLE_RESOLUTION_FIELDS_REJECTED=PASS');
   console.log('ALTERNATE_VERSION_INDEX_BOUNDS=PASS');
   console.log('MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS');
   console.log('FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS');
