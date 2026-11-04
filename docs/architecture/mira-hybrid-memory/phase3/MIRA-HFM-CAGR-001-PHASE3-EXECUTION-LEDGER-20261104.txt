@@ -242,3 +242,7 @@ MERGE=NOT_APPROVED
 - Updated the adapter fixture to provide bounded approval evidence expiry.
 - Phase 3 run 41818761195 SUCCESS at code commit 3b312cef518aebc4d1d01e9d260f46d5c87593b6: expired evidence rejection PASS; expiry-before-verification rejection PASS; project mapping, facade, adapter, provider and inventory suites all TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
 - Phase 2 regression run 41818761331 SUCCESS at the same code commit; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+28. REQUEST REPLAY DECISION GATE
+- Host authorization decisions now require replayStatus=FRESH. REPLAYED or missing/unverifiable replay status is denied. The host adapter must atomically check/record requestId + authorityRef; the helper does not implement persistent replay storage.
+- Added negative replay test and updated synthetic host fixtures. CI pending.
