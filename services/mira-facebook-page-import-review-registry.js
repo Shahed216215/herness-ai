@@ -12,7 +12,7 @@ function text(value, label, max = 512) {
 }
 function pageId(value) {
   const id = text(value, 'pageId', 32);
-  if (!/^\\d{1,32}$/.test(id)) throw new Error('pageId must be numeric.');
+  if (!/^\d{1,32}$/.test(id)) throw new Error('pageId must be numeric.');
   return id;
 }
 function safeDirectory(directory) {
@@ -49,7 +49,7 @@ function writeImmutableJson(filePath, value) {
   let linked = false;
   try {
     fd = fs.openSync(tempPath, 'wx', 0o600);
-    fs.writeFileSync(fd, JSON.stringify(value, null, 2) + '\\n', 'utf8');
+    fs.writeFileSync(fd, JSON.stringify(value, null, 2) + '\n', 'utf8');
     fs.fsyncSync(fd);
     fs.closeSync(fd);
     fd = undefined;
@@ -204,7 +204,7 @@ function listFacebookPageImportReviews({ directory, projectId } = {}) {
   const safeDirectoryPath = safeDirectory(directory);
   const safeProjectId = text(projectId, 'projectId', 128);
   return fs.readdirSync(safeDirectoryPath)
-    .filter(name => /^mira-fb-review-[a-f0-9]{64}\\.json$/.test(name))
+    .filter(name => /^mira-fb-review-[a-f0-9]{64}\.json$/.test(name))
     .map(name => {
       const filePath = path.join(safeDirectoryPath, name);
       const stat = fs.lstatSync(filePath);
