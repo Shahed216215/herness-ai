@@ -23,18 +23,20 @@ for (const file of routeFiles) {
 assert.deepEqual(directRouteCalls, [], 'route modules must not directly execute tool wrappers');
 assert.match(taskExecutionRoute, /executeWork\s*\(/, 'admin task execution route must use the governed work engine');
 
-function routeBlock(source, routePath, nextRoutePath) {
-  const start = source.indexOf('"' + routePath + '"');
-  assert.notEqual(start, -1, routePath + ' route exists');
-  const next = nextRoutePath ? source.indexOf('"' + nextRoutePath + '"', start + 1) : -1;
-  return source.slice(start, next === -1 ? Math.min(source.length, start + 1800) : next);
+function routeBlock(source, routePath) {
+  const marker = source.indexOf('"' + routePath + '"');
+  assert.notEqual(marker, -1, routePath + ' route exists');
+  const start = source.lastIndexOf('app.post(', marker);
+  assert.notEqual(start, -1, routePath + ' route registration exists');
+  const next = source.indexOf('\napp.post(', marker);
+  return source.slice(start, next === -1 ? source.length : next);
 }
 
-const backup = routeBlock(server, '/api/admin/backup', '/api/admin/restore');
+const backup = routeBlock(server, '/api/admin/backup');
 assert.match(backup, /requireAdminPermission\s*\(\s*PERMISSIONS\.BACKUP_RESTORE\s*\)/);
 assert.match(backup, /await\s+backupTool\.execute\s*\(/);
 
-const restore = routeBlock(server, '/api/admin/restore', '/api/admin/learning');
+const restore = routeBlock(server, '/api/admin/restore');
 assert.match(restore, /requireAdminPermission\s*\(\s*PERMISSIONS\.BACKUP_RESTORE\s*\)/);
 assert.match(restore, /confirm\s*!==\s*true/);
 assert.match(restore, /await\s+restoreTool\.execute\s*\(/);
