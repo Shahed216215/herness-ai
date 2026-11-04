@@ -329,3 +329,23 @@ UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
 PHASE2=IN_PROGRESS
 VERSION=v0.2
 PRODUCTION_READINESS=NOT_CERTIFIED
+
+
+18. CONVERSATION ROUTE-TO-STORE CONTRACT CORRECTION — 2026-11-04
+Source review found routes/conversations.js imported six names not exported by conversation-store.js: createConversation, createConversationMessage, listConversationMessages, getConversationMessage, getConversationContext and saveConversationContext. The route handlers therefore referenced undefined functions. The route's message input also passed participantType while conversation-schema.createConversationMessage() consumes participant.
+Scoped correction committed:
+- routes/conversations.js now calls the actual exported persistence APIs: createStoredConversation, createStoredMessage, listMessages, getMessage, getContext and saveContext.
+- Conversation creation and message creation now inspect the store result envelope and return HTTP 409 when the store reports that the record was not created.
+- The route maps participant or legacy participantType input into the schema's participant field.
+- Added tests/mira-hfm-conversation-route-contract.test.js using temporary storage and a lightweight route-registration harness. It exercises conversation creation, message create + memory update, message list/detail, context read/write and memory retrieval.
+- Workflow now includes routes/conversations.js and the isolated route-contract test.
+
+CI:
+- Run 41777990347 — SUCCESS — head ad4fd7475b1a642112c2ed2acd7951422edfc5fa.
+- Run 41777984461 — SUCCESS — head ad4fd7475b1a642112c2ed2acd7951422edfc5fa.
+- Both logs show CONVERSATION_CREATE_ROUTE_STORE_CONTRACT=PASS, CONVERSATION_MESSAGE_CREATE_AND_MEMORY_ROUTE=PASS, CONVERSATION_MESSAGE_LIST_ROUTE=PASS, CONVERSATION_MESSAGE_DETAIL_ROUTE=PASS, CONVERSATION_CONTEXT_READ_ROUTE=PASS, CONVERSATION_CONTEXT_WRITE_ROUTE=PASS, CONVERSATION_MEMORY_RETRIEVAL_ROUTE=PASS, TESTS_FAILED=0.
+
+Residual:
+- This closes the undefined-export/API-shape defect in the inspected conversation route path only.
+- Message persistence and derived context persistence are still separate commits. The prior partial-commit test proves retry recovery only when the same stored message is explicitly supplied to the memory engine; route-level retry/idempotency and transaction/outbox semantics remain NOT_ESTABLISHED.
+- No projectId schema change, HFM runtime guard wiring or production data migration was performed.
