@@ -194,3 +194,12 @@ Status: IN PROGRESS
 - E2E asserts that the import remains untrusted, human approval does not promote integrity/trust, matching readback does not commit canonical Memory, and no live transport or publishing occurs.
 - The test uses synthetic fixtures and a temporary local directory only. CI evidence pending.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; OFFLINE_E2E=IMPLEMENTED_PENDING_CI; LIVE_META_API_CALLS=0.
+
+
+## Entry 021 — Integrated offline E2E verified
+- CI run 41845922509 (push) and 41845932458 (pull_request) SUCCESS on commit da0ab827627afb6c2d2f4ae0a199b76925736950; both logs include all four E2E PASS markers and TESTS_FAILED=0.
+- After correcting PR path filters for the recovery and E2E suites, final branch-head CI run 41846017587 (push) and 41846028988 (pull_request) both SUCCESS on commit 786c6bceff4364789439eb4ddbcdd94a8b842a08.
+- Final branch-head job logs confirm all seven suites PASS with TESTS_FAILED=0: manual connector, HFM facade adapter, durable import review registry, operation recovery, integrated offline E2E, Meta permission/request planner and provider capability contract.
+- E2E flow verifies Phase 3 authorized PUBLIC record → manual draft → untrusted import → durable review queue → human approval for independent verification → uncertain WRITE classification → readback reconciliation. It asserts no trust promotion, no canonical Memory write and no external request.
+- Both final CI runs confirm NETWORK_REQUESTS=0, LIVE_META_API_CALLS=0, FACEBOOK_POSTS_PUBLISHED=0 and CANONICAL_MEMORY_WRITES=0.
+- VERSION=v0.2; OFFLINE_E2E=VERIFIED; PHASE4=IN_PROGRESS; LIVE_META_TRANSPORT=NOT_IMPLEMENTED_NOT_APPROVED; PRODUCTION_READINESS=NOT_CERTIFIED.

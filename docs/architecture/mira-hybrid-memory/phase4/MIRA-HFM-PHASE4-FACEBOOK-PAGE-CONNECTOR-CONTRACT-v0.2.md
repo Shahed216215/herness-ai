@@ -64,6 +64,7 @@ Future automatic transport must separately implement authenticated actor and Pag
 |HFM facade read-report to public manual-draft bridge|IMPLEMENTED — PREPARE ONLY|
 |Meta permission evidence preflight (caller-supplied, non-authorizing)|IMPLEMENTED — OFFLINE CONTRACT|
 |Version-pinned Graph request planner|IMPLEMENTED — NON-EXECUTABLE PLAN ONLY|
+|Integrated offline HFM-to-review-to-recovery E2E|IMPLEMENTED — CI VERIFIED|
 |Facebook import to HFM review candidate|IMPLEMENTED — DURABLE LOCAL REVIEW QUEUE; RAW CONTENT NOT STORED|
 |Project/Page/post-bound review queue identity and duplicate handling|IMPLEMENTED_OFFLINE_CONTRACT|
 |Immutable human review decision and authorization callback|IMPLEMENTED_OFFLINE_CONTRACT — NO TRUST PROMOTION|
