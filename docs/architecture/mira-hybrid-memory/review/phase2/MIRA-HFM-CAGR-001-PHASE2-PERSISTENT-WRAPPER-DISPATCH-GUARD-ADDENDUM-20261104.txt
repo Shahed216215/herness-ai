@@ -119,3 +119,14 @@ Historical CI failures remain visible and are not relabeled as passes:
 The direct dispatch scanner still covers server.js, routes and services only. This is not a universal proof for all repository source roots or dynamically constructed calls. Admin backup/restore and SEO history/review remain route-gated direct exceptions as described above. The raw tools map remains exported for internal use; the seven wrappers listed here now independently enforce their human-only policies.
 
 Phase 2 remains IN_PROGRESS; production readiness remains NOT_CERTIFIED; version remains v0.2; PR #4 remains draft/unmerged.
+
+
+8. TOOL DECLARATION ACCURACY (2026-11-04)
+
+Updated the declarations for all seven guarded wrappers so the model-facing tool descriptions explicitly state that execution is currently blocked and that an authenticated action-scoped approval workflow is not yet available. This avoids presenting a generic user request or tool invocation as sufficient authorization.
+
+The wrapper regression test now also asserts that every guarded tool declaration contains the current blocked-status disclosure.
+
+CI push run 41792424947 — SUCCESS on HEAD 2752402968b95d0a7743893584169b723ad31f2e. The updated wrapper tests, policy parity, registry guard, direct dispatch boundary inventory and all existing isolated Phase 2 suites passed. No production Memory/Knowledge data, Drive, network or external action was touched.
+
+This documentation change does not create an approval mechanism and does not reopen any human-only tool.
