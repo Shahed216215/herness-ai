@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { sha256Canonical, CANONICALIZATION_PROFILE, HASH_ALGORITHM, validCanonicalTimestamp } =
+const { canonicalizeJcs, sha256Canonical, CANONICALIZATION_PROFILE, HASH_ALGORITHM, validCanonicalTimestamp } =
   require('./mira-audit-chain-independent-verifier');
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
@@ -16,6 +16,11 @@ function safeRoot(root) {
   const stat = fs.lstatSync(root);
   if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error('Genesis anchor root is unsafe.');
   return root;
+}
+function anchorRecordDigest(envelope) {
+  const body = Object.create(null);
+  for (const key of Object.keys(envelope)) if (key !== 'anchorRecordHash') body[key] = envelope[key];
+  return crypto.createHash('sha256').update(Buffer.from(canonicalizeJcs(body), 'utf8')).digest('hex');
 }
 function anchorPath(root, projectId, chainId) {
   const key = crypto.createHash('sha256').update(projectId + '\0' + chainId, 'utf8').digest('hex');
@@ -95,7 +100,9 @@ function verifyGenesisAnchor({ root, projectId, chainId, trustedGenesisHash }) {
   const raw = fs.readFileSync(target, 'utf8');
   const envelope = JSON.parse(raw);
   if (envelope.envelopeSchemaVersion !== '1.0.0' || envelope.projectId !== projectId ||
-      envelope.chainId !== chainId || envelope.authenticity !== 'PINNED_HASH_ONLY') {
+      envelope.chainId !== chainId || envelope.authenticity !== 'PINNED_HASH_ONLY' ||
+      !nonEmpty(envelope.trustAnchorId) || !nonEmpty(envelope.authorityReference) ||
+      !nonEmpty(envelope.authorizedBy) || envelope.anchorRecordHash !== anchorRecordDigest(envelope)) {
     throw new Error('Genesis anchor envelope scope or schema mismatch.');
   }
   const genesisHash = validateGenesis(envelope.genesis, projectId, chainId);
