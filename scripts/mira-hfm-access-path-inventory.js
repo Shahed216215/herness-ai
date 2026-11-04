@@ -12,10 +12,10 @@ const RULES=[
  ['CRM_CONVERSATION_READ',/\b(?:getConversation|listConversations|getMessage|listMessages|getContext)\s*\(/],
  ['WORK_LEARNING_OR_EXPERIENCE_READ',/\b(?:getLearningRecord|listLearningRecords|getLessons|listLessons|getExperience|listExperiences|getExperienceStats|retrieveExperiences|getExperiencesForTask|getRetrievalStats)\s*\(/],
  ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidatedKnowledge|getConsolidationStats|findExistingProposal|verifyStoreIntegrity|getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/]
- ['CACHE_OR_INDEX_ACCESS,/\b(?:memory|knowledge|conversation|learning|experience)[\w$]*(?:cache|embedding|vector|index)[\w$]*\b|\b(?:cache|embedding|embeddings|vectorStore|vectorIndex|searchIndex)\b/i],
- ['EXPORT_ARCHIVE_OPERATION,/\b(?:export|dump|archive)(?:Memory|Knowledge|Conversation|Learning|Experience|Records?)\b|\b(?:Memory|Knowledge|Conversation|Learning|Experience)(?:Export|Dump|Archive)\b/i],
- ['BACKUP_RESTORE_OPERATION,/\b(?:createBackup|restoreMemory|createKnowledgeBackup|restoreKnowledge|restoreVersion|listVersions|verifyVersion|backupMemory|backupKnowledge|createSnapshot|verifySnapshot|restoreSnapshot)\s*\(/i],
- ['PROVIDER_MEMORY_WRITE,/\b(?:saveMemoryToDrive|saveKnowledgeToDrive)\s*\(/]
+ ['CACHE_OR_INDEX_ACCESS',/\b(?:memory|knowledge|conversation|learning|experience)[\w$]*(?:cache|embedding|vector|index)[\w$]*\b|\b(?:cache|embedding|embeddings|vectorStore|vectorIndex|searchIndex)\b/i],
+ ['EXPORT_ARCHIVE_OPERATION',/\b(?:export|dump|archive)(?:Memory|Knowledge|Conversation|Learning|Experience|Records?)\b|\b(?:Memory|Knowledge|Conversation|Learning|Experience)(?:Export|Dump|Archive)\b/i],
+ ['BACKUP_RESTORE_OPERATION',/\b(?:createBackup|restoreMemory|createKnowledgeBackup|restoreKnowledge|restoreVersion|listVersions|verifyVersion|backupMemory|backupKnowledge|createSnapshot|verifySnapshot|restoreSnapshot)\s*\(/i],
+ ['PROVIDER_MEMORY_WRITE',/\b(?:saveMemoryToDrive|saveKnowledgeToDrive)\s*\(/]
 ];
 const ALIASED_READ_CATEGORY='ALIASED_DOMAIN_READ';
 const NAMESPACE_READ_CATEGORY='NAMESPACE_DOMAIN_READ';
