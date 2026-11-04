@@ -25,9 +25,22 @@ function text(value, label, max = 256) {
   }
 }
 function timestamp(value, label) {
-  if (typeof value !== 'string' ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) ||
-      !Number.isFinite(Date.parse(value))) throw new Error(label + ' must be RFC 3339.');
+  if (typeof value !== 'string') throw new Error(label + ' must be RFC 3339.');
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$/.exec(value);
+  if (!match) throw new Error(label + ' must be RFC 3339.');
+  const [, y, mo, d, h, mi, s, zone] = match;
+  const year = Number(y), month = Number(mo), day = Number(d);
+  const hour = Number(h), minute = Number(mi), second = Number(s);
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 60) {
+    throw new Error(label + ' must be a valid RFC 3339 date-time.');
+  }
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > days[month - 1]) throw new Error(label + ' has an invalid calendar date.');
+  if (zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4, 6)) > 59)) {
+    throw new Error(label + ' has an invalid UTC offset.');
+  }
+  if (!Number.isFinite(Date.parse(value))) throw new Error(label + ' is not parseable.');
 }
 function bodyOf(mapping) {
   const body = {};
@@ -76,6 +89,7 @@ function validateProjectMapping({
   }
   const nowMs = now instanceof Date ? now.getTime() : Date.parse(now);
   if (!Number.isFinite(nowMs)) throw new Error('Current time is invalid.');
+  if (Date.parse(mapping.approvedAt) < Date.parse(mapping.createdAt)) throw new Error('Mapping approval cannot predate mapping creation.');
   if (Date.parse(mapping.approvedAt) > nowMs || Date.parse(mapping.createdAt) > nowMs) {
     throw new Error('Mapping approval/creation timestamp is in the future.');
   }
