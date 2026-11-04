@@ -27,10 +27,31 @@ function requiredText(value, label, max = 256) {
   }
 }
 function validTimestamp(value, label) {
-  if (typeof value !== 'string' ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) ||
-      !Number.isFinite(Date.parse(value))) {
+  if (typeof value !== 'string') {
     throw new Error(label + ' must be an RFC 3339 date-time.');
+  }
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$/.exec(value);
+  if (!match) throw new Error(label + ' must be an RFC 3339 date-time.');
+  const [, y, mo, d, h, mi, s, zone] = match;
+  const year = Number(y), month = Number(mo), day = Number(d);
+  const hour = Number(h), minute = Number(mi), second = Number(s);
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 60) {
+    throw new Error(label + ' must be a valid RFC 3339 date-time.');
+  }
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > days[month - 1]) {
+    throw new Error(label + ' must be a valid RFC 3339 calendar date.');
+  }
+  if (zone !== 'Z') {
+    const offsetHour = Number(zone.slice(1, 3));
+    const offsetMinute = Number(zone.slice(4, 6));
+    if (offsetHour > 23 || offsetMinute > 59) {
+      throw new Error(label + ' has an invalid UTC offset.');
+    }
+  }
+  if (!Number.isFinite(Date.parse(value))) {
+    throw new Error(label + ' must be parseable.');
   }
 }
 function validateRequestContext(context) {
@@ -88,7 +109,8 @@ function authorizeMemoryRequest({
   }
   validTimestamp(decision.issuedAt, 'authorization issuedAt');
   validTimestamp(decision.expiresAt, 'authorization expiresAt');
-  if (Date.parse(decision.issuedAt) > nowMs || Date.parse(decision.expiresAt) <= nowMs ||
+  if (Date.parse(decision.issuedAt) < Date.parse(context.issuedAt) ||
+      Date.parse(decision.issuedAt) > nowMs || Date.parse(decision.expiresAt) <= nowMs ||
       Date.parse(decision.expiresAt) > Date.parse(context.expiresAt)) {
     throw new Error('Authorization decision is expired, future-dated or outlives request context.');
   }
