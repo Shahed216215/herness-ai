@@ -9,7 +9,7 @@ const REQUEST_KEYS = [
   'authorityRef', 'issuedAt', 'expiresAt'
 ];
 const DECISION_KEYS = [
-  'decision', 'actorId', 'projectId', 'purpose', 'requestId',
+  'decision', 'actorId', 'actorType', 'projectId', 'purpose', 'requestId',
   'operation', 'resourceScope', 'authorityRef', 'issuedAt', 'expiresAt'
 ];
 
@@ -99,7 +99,7 @@ function authorizeMemoryRequest({
     throw new Error('Trusted host authorization decision has an invalid shape.');
   }
   if (decision.decision !== 'ALLOW') throw new Error('Memory operation denied by host policy.');
-  for (const key of ['actorId', 'projectId', 'purpose', 'requestId', 'authorityRef']) {
+  for (const key of ['actorId', 'actorType', 'projectId', 'purpose', 'requestId', 'authorityRef']) {
     if (decision[key] !== context[key]) {
       throw new Error('Authorization decision binding mismatch: ' + key + '.');
     }
