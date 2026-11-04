@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const Module = require('node:module');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-memory-test-'));
 const originalStorage = process.env.MIRA_STORAGE_DIR;
@@ -12,6 +13,17 @@ process.env.MIRA_MEMORY_FILE = path.join(root, 'memory.json');
 
 const store = require('../services/mira-local-memory-store');
 const memory = require('../memory');
+const policyPath = require.resolve('../services/mira-tool-execution-policy');
+const previousPolicy = require.cache[policyPath];
+const policyStub = new Module(policyPath);
+policyStub.filename = policyPath;
+policyStub.loaded = true;
+// This suite verifies restore mechanics after authorization. The separate
+// wrapper-guard suite tests the real human-only policy denial.
+policyStub.exports = {
+  checkToolSafety: () => ({ passed: true, reason: 'isolated restore fixture authorization' })
+};
+require.cache[policyPath] = policyStub;
 const restoreTool = require('../tools/memory-restore');
 
 async function main() {
@@ -113,6 +125,8 @@ async function main() {
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+    if (previousPolicy) require.cache[policyPath] = previousPolicy;
+    else delete require.cache[policyPath];
     if (originalStorage === undefined) delete process.env.MIRA_STORAGE_DIR;
     else process.env.MIRA_STORAGE_DIR = originalStorage;
   }
