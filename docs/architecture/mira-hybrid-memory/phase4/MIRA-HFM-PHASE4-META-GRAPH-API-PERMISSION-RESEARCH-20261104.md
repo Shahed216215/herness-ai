@@ -77,3 +77,23 @@ Therefore:
 6. Keep publishing disabled until explicit write approval, idempotency/reconciliation design, and post-publication readback tests are accepted.
 
 Version remains v0.2. This research note does not mark Phase 4 complete.
+
+
+## 7. Offline permission evidence contract
+
+Added `services/mira-facebook-page-permission-contract.js` and fixture tests. The evaluator requires an exact evidence schema and separately supplied expected app/actor/Page/operation context. It reports missing declared scopes, Page tasks and feature approvals; stale or future-dated evidence fails closed.
+
+Operation profiles currently model:
+- `READ_PAGE_OWNED`: `pages_read_engagement`.
+- `READ_PUBLIC_PAGE_CONTENT`: explicit `PAGE_PUBLIC_CONTENT_ACCESS` feature approval.
+- `READ_USER_CONTENT`: separate `pages_read_user_content` permission.
+- `WRITE_PAGE_POST`: `pages_manage_posts`, `pages_read_engagement`, `pages_show_list`, and `CREATE_CONTENT` Page task.
+
+These are conservative connector planning profiles, not universal guarantees for every endpoint or app configuration. Reconfirm the exact endpoint-specific Meta permission reference before implementing transport.
+
+The evaluator always returns:
+- `evidenceTrust=CALLER_SUPPLIED_NOT_INDEPENDENTLY_VERIFIED`
+- `authorizationState=NOT_AUTHORIZED_OFFLINE_EVIDENCE_ONLY`
+- `mayCallApi=false`
+
+It does not authenticate, parse tokens, make API calls, or grant authorization. Even complete caller-supplied fixture evidence cannot enable transport.
