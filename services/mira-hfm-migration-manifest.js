@@ -74,8 +74,9 @@ function buildMigrationCandidate({ domain, entry, sourceFileDigest, sourceOrdina
   let legacyId = null;
   const blockers = [];
   if (domain === 'general_memory') {
-    if (nonEmpty(entry.messageId)) legacyId = entry.messageId;
-    else blockers.push('GENERAL_MEMORY_IMMUTABLE_MESSAGE_ID_ABSENT');
+    // Legacy general Memory has no per-record ID. Bind a sidecar locator to
+    // the exact source snapshot digest and stable array ordinal, never content.
+    legacyId = 'legacy-memory:' + sourceFileDigest + ':' + sourceOrdinal;
   } else if (domain === 'knowledge') {
     if (nonEmpty(entry.id)) legacyId = entry.id;
     else blockers.push('KNOWLEDGE_LEGACY_ID_ABSENT');
@@ -104,6 +105,7 @@ function buildMigrationCandidate({ domain, entry, sourceFileDigest, sourceOrdina
     sourceFileDigest,
     sourceOrdinal,
     legacyId,
+    identityLocator: domain === 'general_memory' ? 'SOURCE_FILE_DIGEST_AND_ORDINAL' : 'PERSISTED_LEGACY_ID',
     sourceDigest: sourceDigest || null,
     canonicalMemoryId: mapping?.canonicalMemoryId || null,
     projectId: mapping?.projectId || null,
