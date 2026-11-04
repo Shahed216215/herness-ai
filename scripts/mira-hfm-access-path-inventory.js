@@ -13,6 +13,39 @@ const RULES=[
  ['WORK_LEARNING_OR_EXPERIENCE_READ',/\b(?:getLearningRecord|listLearningRecords|getLessons|listLessons|getExperience|listExperiences|getExperienceStats|retrieveExperiences|getExperiencesForTask|getRetrievalStats)\s*\(/],
  ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidatedKnowledge|getConsolidationStats|findExistingProposal|verifyStoreIntegrity|getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/]
 ];
+const ALIASED_READ_CATEGORY='ALIASED_DOMAIN_READ';
+const READ_EXPORTS=new Set([
+ 'getMemory','getKnowledge','getKnowledgeStats','getMemoryStats','searchKnowledge','searchMemory',
+ 'loadMemory','loadKnowledge','readJsonArray','readJsonObject','readState','loadMemoryFromDrive',
+ 'loadKnowledgeFromDrive','loadDriveState','readSnapshot','verifySnapshot','createSnapshot','restoreSnapshot',
+ 'getConversation','listConversations','getMessage','listMessages','getContext','getLearningRecord',
+ 'listLearningRecords','getLessons','listLessons','getExperience','listExperiences','getExperienceStats',
+ 'retrieveExperiences','getExperiencesForTask','getRetrievalStats','getConsolidatedKnowledge',
+ 'getConsolidationStats','findExistingProposal','verifyStoreIntegrity','getConsolidationItems',
+ 'listConsolidationItems','searchConsolidatedKnowledge','getWorkKnowledge','loadStore'
+]);
+function importedReadAliases(source){
+ const aliases=new Map();
+ const declarations=[
+  /(?:const|let|var)\\s*\\{([^}]+)\\}\\s*=\\s*require\\(\\s*['"]([^'"]+)['"]\\s*\\)/gs,
+  /import\\s*\\{([^}]+)\\}\\s*from\\s*['"]([^'"]+)['"]/gs
+ ];
+ for(const pattern of declarations){
+  pattern.lastIndex=0;
+  let match;
+  while((match=pattern.exec(String(source)))){
+   const specifier=match[2];
+   if(!/(memory|knowledge|conversation|learning|experience|work-knowledge|google-drive|snapshot|state-store|crm)/i.test(specifier)) continue;
+   for(const item of match[1].split(',')){
+    const parts=item.trim().split(/\\s+as\\s+|:\\s*/);
+    const original=parts[0].trim();
+    const alias=(parts[1]||original).trim();
+    if(READ_EXPORTS.has(original)&&alias&&alias!==original) aliases.set(alias,original);
+   }
+  }
+ }
+ return aliases;
+}
 function classifySource(relativePath,source){
  const matches=[];
  const lines=String(source).split(/\r?\n/);
@@ -21,6 +54,14 @@ function classifySource(relativePath,source){
   for(const [category,pattern] of RULES){
    pattern.lastIndex=0;
    if(pattern.test(lines[i])) matches.push({line:i+1,category,excerpt:lines[i].trim().slice(0,220)});
+  }
+ }
+ const aliases=importedReadAliases(source);
+ for(let i=0;i<lines.length;i++){
+  if(/^\\s*(?:\\/\\/|\\*|\\*\\/)/.test(lines[i])) continue;
+  for(const [alias,original] of aliases){
+   const call=new RegExp('\\\\b'+alias.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\ return {relativePath,matches};')+'\\\\s*\\(');
+   if(call.test(lines[i])) matches.push({line:i+1,category:ALIASED_READ_CATEGORY,excerpt:original+' as '+alias+': '+lines[i].trim().slice(0,180)});
   }
  }
  return {relativePath,matches};
@@ -47,7 +88,7 @@ if(require.main===module){
  const findings=scan(process.cwd());
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_INVENTORY=GENERATED');
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_COUNT='+findings.length);
- for(const [category] of RULES) console.log('MIRA_HFM_'+category+'_COUNT='+findings.filter(x=>x.category===category).length);
+ for(const [category] of RULES) console.log('MIRA_HFM_'+category+'_COUNT='+findings.filter(x=>x.category===category).length);\n console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);
  const byFile=new Map();
  for(const item of findings){
   const key=item.file+'|'+item.category;
@@ -60,4 +101,4 @@ if(require.main===module){
  console.log('RUNTIME_DATA_ACCESSED=NO');
  console.log('NETWORK_REQUESTS=0');
 }
-module.exports={classifySource,scan,RULES};
+module.exports={classifySource,scan,RULES,ALIASED_READ_CATEGORY,importedReadAliases};
