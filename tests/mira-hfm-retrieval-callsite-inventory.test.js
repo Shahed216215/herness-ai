@@ -67,7 +67,7 @@ for (const item of findings) {
     'MIRA_HFM_RETRIEVAL_CALLSITE=' +
     item.file + ':' + item.line + ':' + item.operation +
     ':trustedFilterInFile=' + item.trustedFilterInFile +
-    ':quarantineFilterInFile=' + item.quarantineFilter
+    ':quarantineFilterInFile=' + item.quarantine
   );
 }
 for (const file of unfilteredFiles) {
