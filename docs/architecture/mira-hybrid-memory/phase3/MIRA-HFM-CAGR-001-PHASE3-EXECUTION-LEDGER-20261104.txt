@@ -448,3 +448,10 @@ CURRENT ADDITIVE STATUS
 - `PHASE3_SECONDARY_CALLER_REVIEW=EXPANDED_PARTIAL`
 - `PHASE3_CACHE_EMBED_EXPORT_COVERAGE=REVIEW_REQUIRED`
 - `PHASE3=IN_PROGRESS`
+
+57. WORKFLOW FILE TARGETING / IMMEDIATE REVERT AUDIT
+- An attempted update to the Phase 2 workflow file used the contents-update endpoint and was observed on the repository default branch rather than the Phase 3 feature branch. No Phase 2 workflow change was retained in the Phase 3 branch.
+- The newly added default-branch workflow file was immediately deleted in commit 7d19fa1107cce3927757b2d32831a4b76dee2661.
+- Post-revert verification: fetching `.github/workflows/mira-hfm-phase2-core-safety.yml` from `main` returned NOT_FOUND; the Phase 3 feature branch retained its original workflow blob SHA 1c667c90c1fd112a9d5d850c91cb9ed6543475d5.
+- No application source, production memory data, provider credentials, deployment or runtime state was modified. The temporary workflow-file add/delete remains visible in Git history and is recorded here for audit transparency.
+- Future feature-branch edits use explicit Git tree/commit/ref updates with an expected-head lease; do not rely on the contents-update branch parameter without verifying the resulting ref.
