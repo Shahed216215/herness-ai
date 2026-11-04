@@ -51,6 +51,13 @@ for(const [domain,sourceEntry] of cases){
  console.log(domain.toUpperCase()+'_LOSSLESS_CANDIDATE_PASS=PASS');
 }
 const g=cases[0];
+const scopeFixture=fixture(g[0],g[1]);
+assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:g[1],mapping:scopeFixture.mapping,expectedProjectId:'project-other',expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/independently requested project/);
+console.log('INDEPENDENT_PROJECT_SCOPE_ENFORCED=PASS');
+assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:g[1],mapping:scopeFixture.mapping,expectedProjectId:scopeFixture.mapping.projectId,capturedAt,verifyApproval:verifier,now}),/Expected source snapshot SHA-256 is required/);
+console.log('MISSING_SOURCE_SNAPSHOT_REJECTED=PASS');
+assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:g[1],mapping:scopeFixture.mapping,expectedProjectId:scopeFixture.mapping.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt:'2026-11-04T12:01:00.000Z',verifyApproval:verifier,now}),/capture time is invalid or future-dated/);
+console.log('FUTURE_CAPTURE_TIME_REJECTED=PASS');
 const gm=fixture(g[0],g[1]).mapping;
 assert.throws(()=>adaptLegacyRecord({domain:g[0],sourceEntry:{...g[1],content:'tampered'},mapping:gm,expectedProjectId:gm.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
 console.log('SOURCE_TAMPER_REJECTED=PASS');
