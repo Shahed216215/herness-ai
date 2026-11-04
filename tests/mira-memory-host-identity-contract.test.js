@@ -11,7 +11,7 @@ function principal(overrides={}){
  };
 }
 const identity=normalizeTrustedActorIdentity({verifiedPrincipal:principal(),now});
-assert.equal(identity.actorId,'mira.users/user-fixture-01');
+assert.equal(identity.actorId,'mira:mira.users:user-fixture-01');
 assert.equal(identity.actorType,'HUMAN');
 assert.equal(Object.isFrozen(identity),true);
 console.log('TRUSTED_USER_SESSION_SUBJECT_NORMALIZED=PASS');
@@ -31,7 +31,7 @@ const admin=normalizeTrustedActorIdentity({verifiedPrincipal:principal({
  issuer:'mira.admins',subject:'admin-subject-01',actorType:'HUMAN',
  authenticationMethod:'ADMIN_SUBJECT',authenticationRef:'admin-auth-ref-01'
 }),now});
-assert.equal(admin.actorId,'mira.admins/admin-subject-01');
+assert.equal(admin.actorId,'mira:mira.admins:admin-subject-01');
 const service=normalizeTrustedActorIdentity({verifiedPrincipal:principal({
  issuer:'mira.services',subject:'service-agent-01',actorType:'SERVICE',
  authenticationMethod:'SERVICE_CREDENTIAL',authenticationRef:'service-auth-ref-01'
@@ -41,5 +41,10 @@ console.log('STABLE_ADMIN_AND_SERVICE_SUBJECTS_SUPPORTED=PASS');
 assert.throws(()=>normalizeTrustedActorIdentity({verifiedPrincipal:{...principal(),role:'SYSTEM_ADMIN'},now}),/exact supported fields/);
 assert.throws(()=>normalizeTrustedActorIdentity({verifiedPrincipal:null,now}),/required/);
 console.log('CALLER_ROLE_AND_MISSING_PRINCIPAL_REJECTED=PASS');
+for(const timestamp of ['2026-02-30T11:59:00.000Z','2026-11-04T25:00:00.000Z','2026-11-04T11:59:00.000+25:00']) assert.throws(()=>normalizeTrustedActorIdentity({verifiedPrincipal:principal({authenticatedAt:timestamp}),now}));
+const delimiterA=normalizeTrustedActorIdentity({verifiedPrincipal:principal({issuer:'a/b',subject:'c'}),now});
+const delimiterB=normalizeTrustedActorIdentity({verifiedPrincipal:principal({issuer:'a',subject:'b/c'}),now});
+assert.notEqual(delimiterA.actorId,delimiterB.actorId);
+console.log('STRICT_RFC3339_AND_UNAMBIGUOUS_ACTOR_NAMESPACE_PASS=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_HOST_IDENTITY_CONTRACT_PASS');
