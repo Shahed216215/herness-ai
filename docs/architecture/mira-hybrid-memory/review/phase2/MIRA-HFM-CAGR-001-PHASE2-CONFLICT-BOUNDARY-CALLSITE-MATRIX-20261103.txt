@@ -115,3 +115,46 @@ Write paths:
 - These routes are admin/agent permission gated, but the inspected route handlers do not themselves invoke the new conflict registry. Permission gating is not a substitute for conflict detection or retrieval exclusion.
 
 Additional route review is not a complete repository-wide call graph. Background jobs, workers, alternate tools, exports, backup/restore and direct JSON readers still require a full static inventory before universal integration can be claimed.
+
+
+9. EXPLICIT LEGACY IDENTITY ADAPTER PROTOTYPE — VERIFIED BY RUN 392
+
+Added:
+- services/mira-legacy-memory-knowledge-adapter.js
+- tests/mira-legacy-memory-knowledge-adapter.test.js
+
+The adapter is read-only and requires an explicit, exact mapping binding domain, projectId, legacyId, canonical memoryId, revision, sourceDigest and a canonical record. It verifies the legacy source digest, canonical schema/content hash, project scope, revision, provenance sourceId and exact content preservation. It does not write files, backfill IDs, alter legacy records or enable a production feature.
+
+Conversation Memory compatibility:
+- Existing role/content/time messages without messageId are rejected with an explicit identity-backfill requirement.
+- A conversation message is adapted only when an immutable messageId and explicit mapping are supplied.
+- The adapter does not derive message identity from mutable content or timestamps.
+
+Knowledge compatibility:
+- Existing Knowledge IDs may be used only as explicit legacyId values.
+- A caller must supply a reviewed project mapping and a canonical record; the adapter does not infer projectId or revision.
+- Quarantined canonical records are filtered through the existing project-scoped registry helper.
+
+GitHub Actions run 41768834680 (run 392), job 126373473545, completed SUCCESS on commit ecba9ca6e809c8f2c538e7d9e2a97a8733d6f540. The new suite reports:
+EXPLICIT_KNOWLEDGE_IDENTITY_MAPPING=PASS
+STALE_SOURCE_DIGEST_REJECTED=PASS
+MISSING_PROJECT_SCOPE_REJECTED=PASS
+LEGACY_MESSAGE_WITHOUT_STABLE_ID_FAILS_CLOSED=PASS
+EXPLICIT_CONVERSATION_MESSAGE_ID_MAPPING=PASS
+DUPLICATE_MAPPING_REJECTED=PASS
+CROSS_PROJECT_MAPPING_REJECTED=PASS
+QUARANTINED_RECORD_EXCLUDED=PASS
+CROSS_PROJECT_CONFLICT_ISOLATION=PASS
+ADAPTER_SCOPE_ENFORCED=PASS
+CANONICAL_HASH_TAMPER_REJECTED=PASS
+TESTS_FAILED=0
+RESULT=MIRA_LEGACY_MEMORY_KNOWLEDGE_ADAPTER_ISOLATED_PASS
+
+This closes the explicit mapping prototype/test gap only. It does not integrate the adapter into memory.js, knowledge.js, route handlers, workers, exports, backup/restore, Evolution or provider write boundaries. Existing conversation Memory records still lack immutable messageId; no projectId source or production migration is approved. Universal retrieval exclusion and all-write-boundary integration remain REVIEW_REQUIRED.
+
+ADAPTER_IMPLEMENTATION=ISOLATED_READ_ONLY_PROTOTYPE
+ADAPTER_CI=PASS_SCOPED_RUN_392
+RUNTIME_INTEGRATION=NOT_ENABLED
+PRODUCTION_DATA_ACCESSED=NO
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
