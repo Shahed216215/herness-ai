@@ -179,6 +179,20 @@ const TOOL_POLICIES = Object.freeze({
     explicitConfirmation: true
   },
 
+  /*
+   * The version-recovery wrapper exposes read-only list/verify
+   * as well as a restore action. The current engine has no
+   * action-scoped approval token, so keep the entire tool
+   * human-only until a separately authenticated read/restore
+   * dispatch contract is implemented and tested.
+   */
+  memory_version_recovery: {
+    operation: "file_modify",
+    autonomous: false,
+    humanApprovalRequired: true,
+    explicitConfirmation: true
+  },
+
   memory_save: {
     operation: "file_modify",
     autonomous: true,
