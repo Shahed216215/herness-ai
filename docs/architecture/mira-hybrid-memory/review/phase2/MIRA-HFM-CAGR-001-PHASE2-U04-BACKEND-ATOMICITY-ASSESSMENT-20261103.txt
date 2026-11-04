@@ -78,3 +78,22 @@ DR08_U04=REVIEW_REQUIRED
 FULL_PHASE2=REVIEW_REQUIRED
 
 END OF ASSESSMENT
+
+
+
+7. LOCAL CROSS-PROCESS APPEND ARBITER PROTOTYPE — RUN 518
+Added services/mira-hfm-local-append-arbiter.js with isolated synthetic fixtures. The prototype uses a cross-process exclusive lock file and compares the caller's expected sequence/head hash while holding the lock. It allocates the next sequence, appends the hash-linked event and updates the chain head in a single local JSON state replacement with fsync and authoritative readback.
+
+Four independent Node processes raced with the same expected head. Exactly one committed and three returned STALE_HEAD. Additional tests cover duplicate event IDs, stale lock fail-closed behavior and uncertain acknowledgement recovery by readback. A stale lock is never auto-stolen.
+
+Run 518: https://github.com/Shahed216215/herness-ai/actions/runs/41775628789 — SUCCESS; CROSS_PROCESS_CAS_SINGLE_WINNER=PASS; UNCERTAIN_ACK_RECOVERED_BY_AUTHORITATIVE_READBACK=PASS; TESTS_FAILED=0.
+
+Limitations: this prototype is not integrated with audit-log.js or production stores. It proves the isolated local-file arbiter fixture, not Google Drive CAS or remote provider atomicity. Drive cutover remains unauthorized and untested.
+
+UPDATED STATUS
+LOCAL_FILE_CROSS_PROCESS_CAS=ISOLATED_PROTOTYPE_PASS
+LOCAL_STALE_LOCK_RECOVERY=MANUAL_FAIL_CLOSED
+LOCAL_UNCERTAIN_ACK_RECOVERY=ISOLATED_PASS
+DRIVE_NATIVE_CAS=NOT_QUALIFIED
+PRODUCTION_AUDIT_APPEND_CUTOVER=NO
+U04=PARTIALLY_CLOSED_IN_ISOLATED_FIXTURE_ONLY
