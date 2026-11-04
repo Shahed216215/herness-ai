@@ -12,6 +12,10 @@ const RULES=[
  ['CRM_CONVERSATION_READ',/\b(?:getConversation|listConversations|getMessage|listMessages|getContext)\s*\(/],
  ['WORK_LEARNING_OR_EXPERIENCE_READ',/\b(?:getLearningRecord|listLearningRecords|getLessons|listLessons|getExperience|listExperiences|getExperienceStats|retrieveExperiences|getExperiencesForTask|getRetrievalStats)\s*\(/],
  ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidatedKnowledge|getConsolidationStats|findExistingProposal|verifyStoreIntegrity|getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/]
+ ['CACHE_OR_INDEX_ACCESS,/\b(?:memory|knowledge|conversation|learning|experience)[\w$]*(?:cache|embedding|vector|index)[\w$]*\b|\b(?:cache|embedding|embeddings|vectorStore|vectorIndex|searchIndex)\b/i],
+ ['EXPORT_ARCHIVE_OPERATION,/\b(?:export|dump|archive)(?:Memory|Knowledge|Conversation|Learning|Experience|Records?)\b|\b(?:Memory|Knowledge|Conversation|Learning|Experience)(?:Export|Dump|Archive)\b/i],
+ ['BACKUP_RESTORE_OPERATION,/\b(?:createBackup|restoreMemory|createKnowledgeBackup|restoreKnowledge|restoreVersion|listVersions|verifyVersion|backupMemory|backupKnowledge|createSnapshot|verifySnapshot|restoreSnapshot)\s*\(/i],
+ ['PROVIDER_MEMORY_WRITE,/\b(?:saveMemoryToDrive|saveKnowledgeToDrive)\s*\(/]
 ];
 const ALIASED_READ_CATEGORY='ALIASED_DOMAIN_READ';
 const NAMESPACE_READ_CATEGORY='NAMESPACE_DOMAIN_READ';
@@ -111,6 +115,9 @@ function classifySource(relativePath,source){
    matches.push({line:i+1,category:'CANONICAL_STORE_FILE_BACKED_READ',excerpt:line.trim().slice(0,180)});
   }
  }
+ const backgroundPath=/(?:^|[\\/])[^/\\]*(?:worker|queue|job)[^/\\]*\.(?:js|cjs|mjs|ts)$/i.test(relativePath);
+ const memoryCategories=new Set(['PUBLIC_OR_INTERNAL_RETRIEVAL','DIRECT_STORE_READ','DIRECT_MEMORY_FILE_IO','GENERIC_STORE_LOADER','PROVIDER_OR_SNAPSHOT_READ','CRM_CONVERSATION_READ','WORK_LEARNING_OR_EXPERIENCE_READ','WORK_KNOWLEDGE_READ',ALIASED_READ_CATEGORY,NAMESPACE_READ_CATEGORY,'CANONICAL_STORE_FILE_BACKED_READ']);
+ if(backgroundPath&&matches.some(item=>memoryCategories.has(item.category))) matches.push({line:0,category:'BACKGROUND_WORKER_DOMAIN_ACCESS',excerpt:'Worker/queue/job source contains a Memory/Knowledge/Conversation/Learning access candidate.'});
  return {relativePath,matches};
 }
 function walk(root,relative=''){
@@ -139,6 +146,7 @@ if(require.main===module){
  console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);
  console.log('MIRA_HFM_'+NAMESPACE_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===NAMESPACE_READ_CATEGORY).length);
  console.log('MIRA_HFM_CANONICAL_STORE_FILE_BACKED_READ_COUNT='+findings.filter(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ').length);
+ console.log('MIRA_HFM_BACKGROUND_WORKER_DOMAIN_ACCESS_COUNT='+findings.filter(x=>x.category==='BACKGROUND_WORKER_DOMAIN_ACCESS').length);
  const byFile=new Map();
  for(const item of findings){
   const key=item.file+'|'+item.category;
