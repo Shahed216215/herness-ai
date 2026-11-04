@@ -14,7 +14,7 @@ function authorityEvidence(overrides={}){
  const value={
   schemaVersion:'1.0.0',decision:'ALLOW',actorId:context.actorId,actorType:context.actorType,
   projectId:context.projectId,operation:'READ',resourceScope:'memory:memory-fixture-01',
-  authorityRef:context.authorityRef,membershipRef:'membership-fixture-01',membershipRole:'OWNER',
+  authorityRef:context.authorityRef,purpose:context.purpose,membershipRef:'membership-fixture-01',membershipRole:'OWNER',
   allowedOperations:['READ','LIST'],registryRevision:'registry-rev-01',status:'ACTIVE',
   revocationStatus:'ACTIVE',approvedBy:'admin-authority-01',approvedAt:'2026-11-04T11:58:00.000Z',
   verifiedAt:'2026-11-04T11:59:30.000Z',expiresAt:'2026-11-04T12:04:00.000Z'
