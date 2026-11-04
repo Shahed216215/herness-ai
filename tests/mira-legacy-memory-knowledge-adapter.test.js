@@ -176,7 +176,7 @@ assert.deepEqual(filterAdaptedLegacyEntries({
     projectId: 'project-alpha', status: 'QUARANTINED',
     originalMemoryIds: ['memory-0001']
   }],
-  projectId: 'project-alpha'
+  projectId: 'project-alpha', authorizeAccess, actorContext
 }), []);
 console.log('QUARANTINED_RECORD_EXCLUDED=PASS');
 
@@ -186,7 +186,7 @@ assert.equal(filterAdaptedLegacyEntries({
     projectId: 'project-beta', status: 'QUARANTINED',
     originalMemoryIds: ['memory-0001']
   }],
-  projectId: 'project-alpha'
+  projectId: 'project-alpha', authorizeAccess, actorContext
 }).length, 1);
 console.log('CROSS_PROJECT_CONFLICT_ISOLATION=PASS');
 
