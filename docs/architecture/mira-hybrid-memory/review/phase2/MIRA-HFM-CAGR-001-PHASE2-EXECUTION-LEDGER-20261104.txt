@@ -1,0 +1,98 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 2 EXECUTION LEDGER
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Current branch HEAD: 8043d1320fdcdd25e1f4947521ef7ab16b3a490c
+PR: #4 (OPEN / DRAFT / UNMERGED)
+Base: main @ 4ca0c7dc06bff3e9be1ffd5977a335f4d48e435f
+Status: PHASE 2 IN PROGRESS — NOT COMPLETE
+
+1. COMPLETED WITH EVIDENCE
+- Phase 2 isolated core safety suites previously established; latest CI continues to run them.
+- Read-only legacy Memory/Knowledge adapter prototype exists and is tested; it refuses missing immutable IDs, project scope mismatch, stale digest, duplicate mapping and tampered canonical content.
+- Conflict quarantine lifecycle tests cover project-scoped retrieval exclusion, resolution and preserved originals.
+- Knowledge state safety and backup/restore regression tests exist and run in CI.
+- Conversation store safety suite exists and runs in CI.
+- Work Knowledge and Work Learning fail-closed storage suites exist and run in CI.
+- Autonomous learning canonical store adapter suite exists and runs in CI.
+- Independent audit-chain verifier prototype suite exists and runs in CI.
+- 2026-11-04 callsite audits cover 50 targeted source paths across core, route, tool, provider and adjacent stores.
+- Domain identity/project-scope contract is documented for General Memory, Knowledge and CRM Conversation.
+- Read-only migration manifest planner binds candidates to exact source snapshot SHA-256, rejects incomplete mappings and only emits BLOCKED or READY_FOR_REVIEW with writeAuthorized=false.
+- Knowledge duplicate cleanup now removes only fully identical JSON record copies; different legacy IDs, provenance, metadata or revision values are preserved.
+- Knowledge cleanup tool integration test proves distinct IDs are preserved, only identical copies are removed, and inspect remains read-only.
+- Offline static boundary inventory scanner was added and run in CI.
+
+2. LATEST VERIFIED CI
+Run 422:
+URL: https://github.com/Shahed216215/herness-ai/actions/runs/41772311933
+Run ID: 41772311933
+Run number: 422
+Head SHA: 8043d1320fdcdd25e1f4947521ef7ab16b3a490c
+Job: isolated-core-safety
+Conclusion: SUCCESS
+
+Verified log markers include:
+- MIRA_HFM_DRY_RUN_MANIFEST_PLANNER_ISOLATED_PASS
+- MIRA_KNOWLEDGE_DUPLICATE_ASSESSMENT_ISOLATED_PASS
+- MIRA_KNOWLEDGE_CLEANUP_TOOL_BOUNDARY_ISOLATED_PASS
+- MIRA_HFM_STATIC_BOUNDARY_SCANNER_TEST_PASS
+- PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+- MIRA_CONVERSATION_STORE_SAFETY_PASS
+- MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS
+- MIRA_WORK_LEARNING_STORE_FAIL_CLOSED_PASS
+- MIRA_AUTONOMOUS_LEARNING_CANONICAL_STORE_ADAPTER_PASS
+- PHASE2_INDEPENDENT_AUDIT_CHAIN_VERIFIER_ISOLATED_PASS
+All executed suites reported TESTS_FAILED=0.
+
+Static scanner output:
+SCANNED_CODE_FILES=567
+DOMAIN_RELEVANT_FILES=282
+DOMAIN_CALLSITE_MATCHES=1125
+STATIC_REGEX_AUDIT_ONLY=true
+NETWORK_REQUESTS=0
+
+Interpretation: the scanner provides broad static callsite discovery, not semantic proof. 282 relevant files / 1125 regex hits require classification and deduplication; a count alone is not evidence that all runtime paths are guarded.
+
+3. OPEN HIGH-PRIORITY IMPLEMENTATION GAPS
+G1 — CRITICAL: Universal runtime Memory/Knowledge conflict guard is not integrated into shared production read/write boundaries. Existing adapter is read-only and isolated.
+G2 — CRITICAL: Authoritative projectId mapping is not established for General Memory, Knowledge or CRM Conversation. No guessed project scope is permitted.
+G3 — HIGH: General legacy Memory has no immutable per-message ID. Existing records cannot be safely mapped without an approved sidecar/migration manifest.
+G4 — HIGH: Knowledge legacy ID exists but is content-derived at creation; canonical immutable memoryId and historical revision history are not universally established.
+G5 — HIGH: Drive Knowledge/Memory read/write helpers and tools/knowledge-search.js retrieval path do not universally pass through the canonical quarantine guard.
+G6 — HIGH: Knowledge cleanup, controlled apply, Evolution, autonomous learning and backup/restore paths remain separate caller boundaries. Cleanup's exact-copy deletion semantics are safer, but it is not a substitute for universal conflict enforcement.
+G7 — HIGH: Full 567-file semantic review and callsite-to-guard coverage matrix are not complete. The scanner is regex-based and may have false positives/negatives.
+G8 — HIGH: U03 genesis persistence, signer authority, trust-anchor custody/rotation/revocation are not established.
+G9 — HIGH: U04 provider append arbitration/CAS is not established. Google Drive list-then-update is not accepted as an atomic arbiter.
+G10 — HIGH: U05 production immutable registry and authoritative legacy-ID alias service are not established.
+G11 — HIGH: U06 globally adopted timestamp profile and historical audit compatibility are not complete.
+G12 — HIGH: E-15 verifier prototype does not establish production trust-anchor authenticity or independent third-party review.
+G13 — SEPARATE NOT_AUTHORIZED GATES: HFM-004 Drive provider cutover and HFM-005 encrypted emergency backup/key custody remain outside this work and are not authorized.
+
+4. NEXT EXECUTION ORDER
+A. Export/classify all 1125 scanner matches into a deduplicated source-path/callsite registry; identify direct read, write, provider, backup, restore, export, cache, index, worker and route boundaries.
+B. Inspect every high-risk write path and define the common pre-commit policy contract without enabling production writes.
+C. Design a policy-aware Knowledge adapter with explicit project mapping and preserved legacy IDs; test all reads/writes on synthetic fixtures.
+D. Design a separate General Memory identity sidecar; do not backfill live records.
+E. Design CRM conversation-to-project mapping using authoritative conversation/project relations only.
+F. Integrate read filtering in isolated test harnesses across direct module, route, tool, Drive, Evolution, count, search, stats, export, backup and restore paths.
+G. Integrate write arbitration in isolated test harnesses across CRUD, cleanup, learning, controlled apply, provider, restore and recovery paths.
+H. Close U03/U04/U05/U06 and E-15 with explicit evidence or mark each as externally blocked.
+I. Run full regression, restart/recovery, update-triggered and independent bypass tests.
+J. Publish final Phase 2 evidence ledger and independent review. Do not merge PR #4 or certify production readiness without the user's explicit instruction and the required approvals.
+
+5. CURRENT SAFETY STATE
+PRODUCTION_MEMORY_READ=NO
+PRODUCTION_MEMORY_WRITE=NO
+PRODUCTION_MIGRATION=NO
+REAL_GOOGLE_DRIVE_CALLS=NO
+PROVIDER_CUTOVER=NO
+LIVE_CREDENTIALS_READ=NO
+NETWORK_REQUESTS_IN_CI=0
+RUNTIME_CONFLICT_GUARD=NOT_INTEGRATED
+VERSION=v0.2
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+PR4=OPEN_DRAFT_UNMERGED
+
+END OF LEDGER
