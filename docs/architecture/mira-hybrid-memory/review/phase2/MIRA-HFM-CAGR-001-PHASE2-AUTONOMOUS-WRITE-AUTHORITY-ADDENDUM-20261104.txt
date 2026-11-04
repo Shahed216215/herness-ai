@@ -59,3 +59,18 @@ Phase 2 remains IN_PROGRESS.
 Production readiness remains NOT_CERTIFIED.
 Mira Hybrid Memory remains v0.2.
 PR #4 remains open/draft/unmerged. No merge or PR state transition was performed.
+
+6. FOLLOW-UP IMPLEMENTATION AND VERIFIED EVIDENCE (2026-11-04)
+
+This section supersedes the earlier CI-INCONCLUSIVE and registry-parity limitations above, but does not close the residual approval/governance gaps.
+
+- Centralized the tool policy in services/mira-tool-execution-policy.js.
+- Added the shared policy check to tools/index.js executeTool(), preventing direct executeTool()/services/tool-runner.js calls from invoking human-only or non-autonomous wrappers.
+- Added static parity coverage: 24 statically identifiable active tool exports, zero missing policy entries, and one reviewed dormant policy-only key (memory_backup).
+- Added isolated runtime tests proving memory_save, knowledge_save and learning_save are blocked before wrapper invocation at the registry execution boundary; an eligible calculator remains executable.
+- Added direct-dispatch boundary checks for routes, server admin backup/restore, named-admin SEO history/review, governed task execution, and the separately approved autonomous-learning controlled-apply path.
+- Final CI on tested HEAD 8c3a3f731e9a25752ef201e5c24d84c1f8aa7450: push run 41788028954 SUCCESS; pull-request run 41788034594 SUCCESS. Both job logs confirm the tool registry guard, static policy parity, direct-dispatch assertions, TESTS_FAILED=0, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+See MIRA-HFM-CAGR-001-PHASE2-TOOL-EXECUTION-AUTHORITY-DISPATCH-ADDENDUM-20261104.txt for full scope, source boundaries and remaining gaps.
+
+The raw tools object still exposes module execute methods; a complete repository-wide direct-import/direct-execution proof and unified action-scoped approval contract remain open. Production readiness remains NOT_CERTIFIED; Phase 2 remains IN_PROGRESS; version remains v0.2.
