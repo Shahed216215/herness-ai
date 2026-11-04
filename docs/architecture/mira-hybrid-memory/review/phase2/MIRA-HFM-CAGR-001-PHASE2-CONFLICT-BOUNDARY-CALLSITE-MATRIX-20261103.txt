@@ -349,3 +349,43 @@ Residual:
 - This closes the undefined-export/API-shape defect in the inspected conversation route path only.
 - Message persistence and derived context persistence are still separate commits. The prior partial-commit test proves retry recovery only when the same stored message is explicitly supplied to the memory engine; route-level retry/idempotency and transaction/outbox semantics remain NOT_ESTABLISHED.
 - No projectId schema change, HFM runtime guard wiring or production data migration was performed.
+
+
+19. KNOWLEDGE TOOL / AGENT RETRIEVAL / PROVIDER STATUS REVIEW — 2026-11-04
+Expanded source inspection across the 91 source files listed in the static inventory identified these additional semantic edges:
+
+A. Retrieval fan-out
+- services/learning.js:3-8 imports searchKnowledge from ../knowledge. findImprovementCandidate() and learnFromContent() call it (around lines 350-470) to locate existing knowledge before learning or updating. This is an indirect Knowledge retrieval consumer, not an independent storage adapter.
+- tools/knowledge-search.js:1-2 and 35-70 reads local getKnowledge(), then replaces its search corpus with the complete Drive array whenever loadKnowledgeFromDrive() returns an array. No canonical project/trust/quarantine filter is applied in this tool. This is a confirmed separate retrieval path.
+- server.js:1520-1565 reads local getMemory() and calls searchKnowledge(cleanCommand, 2); the returned records are inserted into the agent message context. The prompt says stored knowledge is reference data, not instructions, but source trust/quarantine filtering is not applied at this callsite.
+- server.js admin Knowledge search/detail/edit/delete handlers around lines 1120-1460 are separate privileged direct API consumers. Authentication/role permission is not equivalent to HFM project scope and conflict trust.
+- tools/index.js dynamically loads every JS tool in tools/ and registers declarations/executors. Therefore the Knowledge and Memory tools are runtime-reachable through the tool registry; a file-level inventory alone must not omit these dynamically registered edges.
+- tools/knowledge-count.js and tools/memory-count.js expose raw local counts. They do not claim trust-filtered counts and must remain labelled as raw storage metrics until a canonical count API exists.
+- tools/capacity-change.js reads getKnowledgeStats() to propose capacity changes; this is metadata/aggregate use rather than content retrieval.
+
+B. Knowledge cleanup provider-status defect and correction
+- tools/knowledge-cleanup.js previously called replaceKnowledge(cleanedKnowledge), awaited saveKnowledgeToDrive(), then unconditionally returned driveSync=true without checking result.success. A rejected provider response or thrown provider exception could therefore be reported as synchronized after the local commit.
+- Corrected tools/knowledge-cleanup.js to preserve the local commit result while reporting driveSync=true only when provider result.success === true. A false/missing success flag or thrown exception now reports driveSync=false, driveStatus=FAILED_OR_UNCONFIRMED, localCommit=true and an explicit reconciliation message. Provider exception detail is bounded to 240 characters.
+- tests/mira-knowledge-cleanup-tool-boundary.test.js now injects both provider rejection and provider exception after local commit and asserts the tool does not claim sync.
+- tests/mira-knowledge-cleanup-storage-contract.test.js mock now returns explicit success:true for its successful provider scenario.
+
+C. Cache / export / provider qualification
+- tools/index.js dynamic registry is confirmed. No standalone HFM-specific cache or index module was identified among the named 91 source files, but this is not proof that no cache/index or dynamic edge exists elsewhere in the full repository.
+- No dedicated Memory/Knowledge export/download endpoint was confirmed in the inspected candidate paths. Snapshot, backup, restore and admin-read paths remain separate disclosure/recovery boundaries already classified above.
+- providers/index.js has dynamic provider loading, but the inspected provider registry is an AI model provider registry, not evidence of Memory/Knowledge storage-provider arbitration.
+- The source review does not establish that all 579 code files, dynamic imports, runtime routes, exports, caches, workers or provider adapters are semantically covered.
+
+D. New classification
+LEARNING_ENGINE_INDIRECT_KNOWLEDGE_RETRIEVAL=IDENTIFIED
+AGENT_PROMPT_KNOWLEDGE_RECALL_PATH=IDENTIFIED
+DYNAMIC_TOOL_REGISTRY_REACHABILITY=IDENTIFIED
+KNOWLEDGE_SEARCH_DRIVE_OVERRIDE=IDENTIFIED_NO_HFM_FILTER
+ADMIN_KNOWLEDGE_DIRECT_CALLERS=IDENTIFIED_NO_HFM_FILTER
+KNOWLEDGE_CLEANUP_PROVIDER_STATUS_BUG=FIXED_ISOLATED_CI_VERIFIED
+DEDICATED_HFM_CACHE_INDEX_MODULE=NOT_IDENTIFIED_IN_REVIEWED_CANDIDATES
+DEDICATED_KNOWLEDGE_EXPORT_ENDPOINT=NOT_CONFIRMED_IN_REVIEWED_CANDIDATES
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
