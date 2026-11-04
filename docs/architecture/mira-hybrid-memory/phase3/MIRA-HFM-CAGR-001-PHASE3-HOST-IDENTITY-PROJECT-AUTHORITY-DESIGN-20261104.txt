@@ -125,3 +125,7 @@ The additive `services/mira-memory-project-authority-contract.js` validator form
 
 13. PURPOSE-BOUND PROJECT AUTHORITY
 Project authority evidence now binds the exact request purpose in addition to actor, project, operation and resource. A valid membership for one purpose cannot be replayed as authority for a different purpose. The trusted registry verifier receives the purpose as part of the evidence digest binding.
+
+
+14. TRUSTED ACTOR IDENTITY NORMALIZATION CONTRACT (SYNTHETIC)
+`services/mira-memory-host-identity-contract.js` now formalizes the boundary between verified authentication middleware and HFM authorization. It accepts only an exact, credential-free verified-principal envelope (issuer, stable subject, actor type, authentication method/reference and validity timestamps), derives a namespaced actorId, rejects role-only/unverified/expired/future-dated/credential-bearing principals, and returns a deeply frozen identity. This module does not authenticate a session or token and must only receive a principal produced by trusted middleware. Synthetic tests cover user-session, separately provisioned admin subject and service subject. No runtime middleware or login flow was changed.
