@@ -18,7 +18,7 @@ function fixture(domain,sourceEntry,extra={}){
   legacyId:domain==='general_memory'?'legacy-memory:'+sourceFileDigest+':0':
    domain==='knowledge'?sourceEntry.id:sourceEntry.messageId,
   memoryId:'canonical-'+domain,projectId:'project-fixture-01',
-  parentConversationId:parent,revision:1,
+  parentConversationId:parent,clientId:domain==='crm_conversation_message'?sourceEntry.clientId:null,revision:1,
   sourceDigest:sourceDigestFor(domain,sourceEntry,parent),
   canonicalRecordDigest:'0'.repeat(64),classification:'PROJECT_PRIVATE',
   status:'APPROVED',approvalReference:'APPROVAL-FIXTURE',approvedBy:'human-fixture',
@@ -70,6 +70,8 @@ const crm=cases[2];
 const crmMap=fixture(crm[0],crm[1]).mapping;
 assert.throws(()=>adaptLegacyRecord({domain:crm[0],sourceEntry:{...crm[1],conversationId:'other-conversation'},mapping:crmMap,expectedProjectId:crmMap.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
 console.log('CRM_PARENT_CONVERSATION_SUBSTITUTION_REJECTED=PASS');
+assert.throws(()=>adaptLegacyRecord({domain:crm[0],sourceEntry:{...crm[1],clientId:'other-client'},mapping:crmMap,expectedProjectId:crmMap.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
+console.log('CRM_CLIENT_ID_SUBSTITUTION_REJECTED=PASS');
 const kb=cases[1];
 const kbMap=fixture(kb[0],kb[1]).mapping;
 assert.throws(()=>adaptLegacyRecord({domain:kb[0],sourceEntry:{...kb[1],id:'kb-other'},mapping:kbMap,expectedProjectId:kbMap.projectId,expectedSourceFileDigest:sourceFileDigest,capturedAt,verifyApproval:verifier,now}),/Source digest mismatch/);
