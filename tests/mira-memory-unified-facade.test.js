@@ -57,6 +57,12 @@ assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[pr
 console.log('WRITE_DUPLICATE_IDEMPOTENCY_REJECTED=PASS');
 assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[previous],pendingConflicts:[{projectId:'project-alpha',status:'UNDER_REVIEW',originalMemoryIds:[previous.memoryId]}],requestContext,authorizeRequest:authorize,expectedRevision:1,idempotencyKey:'idem-conflict-001',now}),/unresolved conflict/);
 console.log('WRITE_UNRESOLVED_CONFLICT_REJECTED=PASS');
+assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[previous],pendingConflicts:[{projectId:'project-alpha',status:'UNDER_REVIEW'}],requestContext,authorizeRequest:authorize,expectedRevision:1,idempotencyKey:'idem-malformed-conflict-001',now}),/Conflict metadata is malformed/);
+console.log('WRITE_MALFORMED_CONFLICT_STATE_REJECTED=PASS');
+assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[record({lifecycle:'ARCHIVED'})],pendingConflicts:[],requestContext,authorizeRequest:authorize,expectedRevision:1,idempotencyKey:'idem-archived-001',now}),/not eligible for update/);
+console.log('WRITE_NONACTIVE_EXISTING_RECORD_REJECTED=PASS');
+assert.throws(()=>prepareCanonicalWrite({incomingRecord:record({content:'changed createdAt',timestamps:{createdAt:'2026-11-04T11:01:00.000Z',updatedAt:'2026-11-04T11:45:00.000Z'},version:{revision:2,contentHash:'0'.repeat(64)}}),existingRecords:[previous],pendingConflicts:[],requestContext,authorizeRequest:authorize,expectedRevision:1,idempotencyKey:'idem-createdat-001',now}),/creation timestamp is immutable/);
+console.log('WRITE_CREATION_TIMESTAMP_IMMUTABLE=PASS');
 assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[previous],pendingConflicts:[],requestContext,authorizeRequest:input=>({...authorize(input),decision:'DENY'}),expectedRevision:1,idempotencyKey:'idem-denied-001',now}),/denied by host policy/);
 console.log('WRITE_HOST_POLICY_DENY_ENFORCED=PASS');
 assert.throws(()=>prepareCanonicalWrite({incomingRecord:record({version:{revision:3,contentHash:'0'.repeat(64)}}),existingRecords:[],pendingConflicts:[],requestContext,authorizeRequest:authorize,expectedRevision:null,idempotencyKey:'idem-rev-001',now}),/revision=1/);
