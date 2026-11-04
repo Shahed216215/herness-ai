@@ -610,3 +610,51 @@ PRODUCTION_RETRIEVAL_INTEGRATION=NOT_ENABLED
 PRODUCTION_WRITE_INTEGRATION=NOT_ENABLED
 FULL_PHASE2=REVIEW_REQUIRED
 VERSION=v0.2
+
+
+22. 2026-11-04 SUPPLEMENTAL CORE STORE INITIALIZATION HARDENING
+
+Follow-up source review found that several local stores still treated a missing primary as a first-run empty state even after they had previously been initialized. This could silently reinitialize data after primary-file loss.
+
+The following stores now use integrity-checked initialization markers and fail-closed missing-primary behavior:
+- General Memory: services/mira-local-memory-store.js
+- Knowledge: knowledge.js and services/mira-knowledge-state-recovery.js
+- Conversation Store: conversation-store.js
+- Work Learning: services/mira-work-learning-engine.js
+- Work Knowledge Consolidation: services/mira-work-knowledge-consolidation.js
+
+The reusable guard is services/mira-store-initialization-guard.js. It binds a marker to the store ID and primary filename, verifies the marker digest, rejects unsafe marker/primary/version paths, and treats an existing version directory as prior-store evidence even when its snapshot files have been removed.
+
+First-run empty state remains allowed only when no marker, backup or version-directory evidence exists. An initialized missing primary cannot be recreated by ordinary read/write/backup paths. General Memory and Knowledge have explicit verified restore paths; Conversation, Work Learning and Work Knowledge now fail closed pending their own recovery workflows.
+
+23. GENERAL MEMORY CAPACITY EVICTION QUARANTINE
+
+memory.js no longer silently discards older Memory records when the configured entry-count capacity is exceeded. Displaced records are written to the restricted local conflict quarantine before the active Memory array is atomically committed. If quarantine publication fails, the Memory write is blocked and the previous active state remains unchanged.
+
+24. SUPPLEMENTAL VERIFICATION — RUN 692
+
+GitHub Actions run 41805497174 (run 692), job 126487..., completed SUCCESS on code commit b7842afcc247169ca3e9a7c105995cb97ac3cf73. The workflow log verifies:
+- Conversation Store missing-primary and marker-tamper tests PASS.
+- Work Knowledge missing-primary and marker-tamper tests PASS.
+- Work Learning missing-primary and marker-tamper tests PASS.
+- Earlier CI runs 41803963553, 41804015063, 41804273088, 41805139634, 41805234496, 41805254557, 41805274370, 41805290888 and 41805400645 remain recorded as FAILURES for intermediate regressions. Later successful runs do not erase those failed results.
+- Run 692 reports TESTS_FAILED=0 for all invoked isolated Phase 2 suites; workflow reports PRODUCTION_MEMORY_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+25. PHASE 2 EXIT STATUS
+
+CORE_LOCAL_STORE_READ_FAILURE_PROTECTION=PASS_SCOPED
+CORE_LOCAL_STORE_ATOMIC_WRITE=PASS_SCOPED
+CORE_LOCAL_STORE_INTEGRITY=PASS_SCOPED
+CORE_LOCAL_STORE_VERSION_AND_RECOVERY=PASS_SCOPED
+GENERAL_MEMORY_CAPACITY_QUARANTINE=PASS_SCOPED
+CONFLICT_REGISTRY_LIFECYCLE=PASS_SCOPED
+CONFLICT_REGISTRY_UNIVERSAL_RUNTIME_INTEGRATION=REVIEW_REQUIRED
+CANONICAL_ACTOR_AND_PROJECT_SCOPE_MAPPING=NOT_APPROVED
+UNIVERSAL_RETRIEVAL_BOUNDARY=REVIEW_REQUIRED
+CANONICAL_AUDIT_TRUST_ANCHOR_AND_DISTRIBUTED_ARBITRATION=REVIEW_REQUIRED
+ENCRYPTED_EMERGENCY_BACKUP_AND_DRIVE_CUTOVER=NOT_IMPLEMENTED_IN_PHASE2
+FULL_PHASE2=REVIEW_REQUIRED
+PRODUCTION=NOT_APPROVED
+VERSION=v0.2
+
+The isolated Phase 2 core store-safety subset is substantially hardened and its selected CI suites pass. Full Phase 2 is not declared complete because the production retrieval/write boundaries cannot safely be connected until authoritative actor/project identity and the domain mapping contract are approved. The Phase 2 branch remains a draft PR; no merge or deployment was performed.
