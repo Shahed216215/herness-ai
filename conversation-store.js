@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
 const jsonStateStore = require('./services/mira-json-state-store');
+const { createStoreInitializationGuard } = require('./services/mira-store-initialization-guard');
 
 const {
   createConversation,
@@ -13,6 +14,10 @@ const {
 
 const CONVERSATION_FILE =
   storagePath("data/conversations.json");
+const CONVERSATION_GUARD = createStoreInitializationGuard({
+  primaryFile: CONVERSATION_FILE,
+  storeId: 'MIRA_CONVERSATION_STORE'
+});
 
 function validateStore(store) {
   if (
@@ -34,8 +39,17 @@ function ensureStore() {
     if (stat.isSymbolicLink() || !stat.isFile()) {
       throw new Error("Conversation store is not a safe regular file.");
     }
+    CONVERSATION_GUARD.ensureMarker();
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
+    if (CONVERSATION_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
+      const missing = new Error(
+        'Conversation store was previously initialized but its primary is missing; empty reinitialization is blocked.'
+      );
+      missing.code = 'CONVERSATION_PRIMARY_MISSING_RESTORE_REQUIRED';
+      throw missing;
+    }
+    CONVERSATION_GUARD.ensureMarker();
     const initial = {
       version: 1,
       updatedAt: new Date().toISOString(),
@@ -67,7 +81,6 @@ function ensureStore() {
     }
   }
 }
-
 function loadStore() {
   ensureStore();
 
