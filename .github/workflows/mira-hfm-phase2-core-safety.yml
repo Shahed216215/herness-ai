@@ -5,6 +5,7 @@ name: Mira Hybrid Memory Phase 2 Core Safety
 # Explicit accepted-version selection and separate access-change authorization are regression-tested.
 # Nonzero selected existing-version index must verify against the exact preserved original digest.
 # Resolution inputs reject incompatible selected-version fields for merge and retain outcomes.
+# Knowledge cleanup delegates to the configured atomic local state store; Drive sync is stubbed in tests.
 # Quarantine preserves malformed/integrity-failed originals and supports multi-version conflicts.
 # Contract Section 30 outcome assertions are individually surfaced in CI logs.
 # Resolution records bind affected versions, sources, hashes, access/trust, loss risks and recovery/verification plan.
@@ -37,6 +38,7 @@ on:
       - 'tests/mira-audit-chain-independent-verifier.test.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
       - 'tests/mira-conflict-quarantine-registry.test.js'
+      - 'tests/mira-knowledge-cleanup-storage-contract.test.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
       - 'tests/mira-knowledge-state-safety-test.js'
       - 'tests/mira-local-memory-safety-test.js'
@@ -103,6 +105,7 @@ jobs:
           node tests/mira-memory-evolution-integration-test.js
           node tests/mira-memory-conflict-assessment.test.js
           node tests/mira-conflict-quarantine-registry.test.js
+          node tests/mira-knowledge-cleanup-storage-contract.test.js
           node tests/mira-audit-chain-independent-verifier.test.js
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
           echo "REAL_GOOGLE_DRIVE_TOUCHED=NO"
