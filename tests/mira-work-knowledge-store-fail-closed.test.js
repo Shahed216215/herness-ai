@@ -45,7 +45,9 @@ try {
   assert.throws(() => engine.loadStore(), /empty and may be corrupted/);
   console.log('EMPTY_EXISTING_STORE_FAILS_CLOSED=PASS');
 
-  fs.writeFileSync(file, JSON.stringify({ schemaVersion: 1, items: [] }), 'utf8');
+  fs.writeFileSync(file, JSON.stringify({
+    schemaVersion: 1, items: [], integrityHash: 'f'.repeat(64)
+  }), 'utf8');
   assert.throws(() => engine.loadStore(), /integrity check failed/);
   console.log('INTEGRITY_MISMATCH_FAILS_CLOSED=PASS');
 
