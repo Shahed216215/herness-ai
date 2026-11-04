@@ -41,8 +41,9 @@ function validateProviderContract(contract) {
     capabilities:Object.freeze({...c})
   });
 }
-function assertProviderOperation({contract,operation}) {
+function assertProviderOperation({contract,operation,classification='PUBLIC'}) {
   const c=validateProviderContract(contract);
+  if(!['PUBLIC','PROJECT_PRIVATE','RESTRICTED'].includes(classification)) throw new Error('Data classification is unsupported.');
   if(!OPERATIONS.has(operation)) throw new Error('Unsupported provider operation.');
   const requirements={
     READ_SNAPSHOT:['readSnapshot','projectIsolation'],
@@ -53,11 +54,12 @@ function assertProviderOperation({contract,operation}) {
     RESTORE:['restore','immutableVersions','independentVerification','projectIsolation']
   }[operation];
   const missing=requirements.filter(key=>c.capabilities[key]!==true);
+  if(operation!=='PREPARE_WRITE'&&classification!=='PUBLIC'&&c.capabilities.encryptedAtRest!==true) missing.push('encryptedAtRest');
   if(missing.length) throw new Error('Provider operation '+operation+' is unsupported; missing: '+missing.join(', '));
   if(['READ_SNAPSHOT','LIST_BY_PROJECT','VERIFY_SNAPSHOT'].includes(operation)&&
      c.capabilities.snapshotConsistency!=='STRONG') {
     throw new Error('Provider operation '+operation+' requires STRONG snapshot consistency.');
   }
-  return Object.freeze({providerId:c.providerId,operation,supported:true,capabilityEvidence:Object.freeze(requirements.slice())});
+  return Object.freeze({providerId:c.providerId,operation,classification,supported:true,capabilityEvidence:Object.freeze([...requirements,...(operation!=='PREPARE_WRITE'&&classification!=='PUBLIC'?['encryptedAtRest']:[])])});
 }
 module.exports={validateProviderContract,assertProviderOperation,CAPABILITY_KEYS,OPERATIONS};
