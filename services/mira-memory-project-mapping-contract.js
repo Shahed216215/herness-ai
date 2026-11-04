@@ -3,15 +3,17 @@
 // Read-only validator for explicit, snapshot-bound domain-to-project mappings.
 // It never creates mappings, authenticates approvers, or writes a registry.
 const crypto = require('node:crypto');
-const DOMAINS = new Set([
-  'general_memory', 'knowledge', 'crm_conversation_message',
-  'work_learning', 'work_knowledge', 'experience_memory'
-]);
+const DOMAIN_SOURCE_SYSTEM = Object.freeze({
+  general_memory: 'mira_legacy_memory',
+  knowledge: 'mira_legacy_knowledge',
+  crm_conversation_message: 'mira_crm_conversation'
+});
+const DOMAINS = new Set(Object.keys(DOMAIN_SOURCE_SYSTEM));
 const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
 const STATUSES = new Set(['PENDING_REVIEW', 'APPROVED', 'REVOKED']);
 const KEYS = [
   'schemaVersion', 'mappingId', 'domain', 'sourceSystem', 'sourceFileDigest',
-  'sourceOrdinal', 'legacyId', 'memoryId', 'projectId', 'revision',
+  'sourceOrdinal', 'legacyId', 'memoryId', 'projectId', 'parentConversationId', 'revision',
   'sourceDigest', 'canonicalRecordDigest', 'classification', 'status',
   'approvalReference', 'approvedBy', 'approvedAt', 'createdAt', 'mappingDigest'
 ];
@@ -59,13 +61,29 @@ function validateProjectMapping({
   text(mapping.mappingId, 'mappingId');
   if (!DOMAINS.has(mapping.domain)) throw new Error('Unsupported mapping domain.');
   text(mapping.sourceSystem, 'sourceSystem');
+  if (!DOMAINS.has(mapping.domain)) throw new Error('Domain contract is not implemented for mapping.');
+  if (mapping.sourceSystem !== DOMAIN_SOURCE_SYSTEM[mapping.domain]) {
+    throw new Error('Mapping sourceSystem does not match the domain contract.');
+  }
   if (!/^[a-f0-9]{64}$/.test(mapping.sourceFileDigest || '') ||
       !/^[a-f0-9]{64}$/.test(mapping.sourceDigest || '') ||
       !/^[a-f0-9]{64}$/.test(mapping.canonicalRecordDigest || '')) {
     throw new Error('Mapping source and canonical digests must be SHA-256 hex values.');
   }
-  if (!Number.isInteger(mapping.sourceOrdinal) || mapping.sourceOrdinal < 0) {
-    throw new Error('Mapping sourceOrdinal must be a non-negative integer.');
+  if (mapping.domain === 'crm_conversation_message') {
+    if (mapping.sourceOrdinal !== null) throw new Error('CRM message mapping does not use a source array ordinal.');
+    text(mapping.parentConversationId, 'parentConversationId', 128);
+  } else {
+    if (!Number.isInteger(mapping.sourceOrdinal) || mapping.sourceOrdinal < 0) {
+      throw new Error('Mapping sourceOrdinal must be a non-negative integer.');
+    }
+    if (mapping.parentConversationId !== null) throw new Error('Non-CRM mapping cannot declare parentConversationId.');
+  }
+  if (mapping.domain === 'general_memory') {
+    const locator = /^legacy-memory:([a-f0-9]{64}):([0-9]+)$/.exec(mapping.legacyId || '');
+    if (!locator || locator[1] !== mapping.sourceFileDigest || Number(locator[2]) !== mapping.sourceOrdinal) {
+      throw new Error('General Memory legacyId must bind the exact source snapshot digest and ordinal.');
+    }
   }
   for (const key of ['legacyId', 'memoryId', 'projectId']) text(mapping[key], key, 128);
   if (mapping.memoryId.length < 8) throw new Error('Canonical memoryId must contain at least 8 characters.');
@@ -98,6 +116,7 @@ function validateProjectMapping({
   const approval = verifyApproval(Object.freeze({
     mappingId: mapping.mappingId, domain: mapping.domain,
     projectId: mapping.projectId, legacyId: mapping.legacyId,
+    parentConversationId: mapping.parentConversationId,
     memoryId: mapping.memoryId, approvalReference: mapping.approvalReference,
     approvedBy: mapping.approvedBy, approvedAt: mapping.approvedAt,
     mappingDigest: mapping.mappingDigest
