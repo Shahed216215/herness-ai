@@ -134,5 +134,5 @@ const unusedPlan = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, 
 assert.equal(unusedPlan.status, 'BLOCKED');
 assert.ok(unusedPlan.blockers.some(x => x.startsWith('UNUSED_MAPPING:')));
 console.log('UNUSED_MAPPING_REJECTED=PASS');
-\nconsole.log('TESTS_FAILED=0');
+console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_DRY_RUN_MANIFEST_PLANNER_ISOLATED_PASS');
