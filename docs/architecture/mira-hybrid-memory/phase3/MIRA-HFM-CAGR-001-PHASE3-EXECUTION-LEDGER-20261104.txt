@@ -1,0 +1,88 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 3 EXECUTION LEDGER
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Base branch: work/mira-hfm-v02-phase2-core-safety
+Base SHA: 63b34364cc428e8527842d3a0bfe0789d807a08d
+Phase 3 branch: work/mira-hfm-v02-phase3-unified-memory-contract-core
+PR: #6 (OPEN / DRAFT / UNMERGED)
+Parent PR: #4 (Phase 2; OPEN / DRAFT / UNMERGED)
+Version boundary: v0.2
+
+1. PHASE 3 SCOPE
+Phase 3 is the Unified Memory Contract / Actor and Project Identity Mapping phase inside v0.2. It does not start v0.3. The Phase 3 work is stacked on the Phase 2 branch and is isolated from main until its dependency chain is reviewed.
+
+2. RECONCILED SOURCE EVIDENCE
+- Existing canonical record validator: services/mira-memory-conflict-assessment.js; exact top-level schema v1.0.0.
+- Existing read-only snapshot-bound adapter: services/mira-legacy-memory-knowledge-adapter.js.
+- Existing local conflict lifecycle: services/mira-conflict-quarantine-registry.js.
+- Phase 2 domain identity/project-scope contract: MIRA-HFM-CAGR-001-PHASE2-DOMAIN-IDENTITY-PROJECT-SCOPE-CONTRACT-20261104.txt.
+- CRM relationship verification: opportunityId is not unique across projects and must not be used as project authority; explicit approved conversationId -> projectId mapping is required.
+- General legacy Memory {role, content, time} has no immutable per-message ID or projectId. Snapshot-bound sidecar locator is a migration locator only, not a permanent historical message ID.
+- Knowledge legacy ID is content-derived at creation and is not a canonical immutable memoryId or historical revision chain.
+- CRM messageId is usable only when persisted; it does not establish projectId.
+- Existing adapter and quarantine registry are prototypes, not universal production read/write boundaries.
+
+3. IMPLEMENTED ON THIS BRANCH
+- docs/architecture/mira-hybrid-memory/phase3/MIRA-HFM-CAGR-001-PHASE3-UNIFIED-MEMORY-CONTRACT-v0.2.txt
+- services/mira-memory-request-authorization.js
+  Structural request-context validation, bounded timestamps, operation/resource-bound host authorization decision, expiry checks and fail-closed binding checks. This helper does not authenticate callers; the host callback is an explicit trust dependency.
+- tests/mira-memory-request-authorization.test.js
+  Synthetic negative tests for missing/invalid fields, invalid dates, future/expired context, absent/malformed/denying host decisions, actor/project/operation/resource substitution and authorization lifetime.
+- services/mira-memory-project-mapping-contract.js
+  Read-only mapping validator; exact fields, source/canonical digests, explicit project/domain/snapshot binding, approved status, authority reference and trusted approval-verifier callback. Batch duplicate checks.
+- tests/mira-memory-project-mapping-contract.test.js
+  Synthetic negative tests for unapproved/revoked, invalid, tampered, stale, cross-project, duplicate and unverifiable mapping cases.
+- services/mira-memory-unified-facade.js
+  Synthetic in-memory retrieval facade composing request authorization and conflict/trust filtering; prepare-only write facade with expected revision, immutable identity/project/type, provenance/access invariance, idempotency and unresolved-conflict checks. No persistent commit function is provided.
+- tests/mira-memory-unified-facade.test.js
+  Synthetic retrieval filtering and write-preparation negative/positive fixtures.
+- CI workflow updated to include all three new test scripts. A separate Phase 3 contract workflow file was also added.
+
+4. TEST AND VERIFICATION STATE
+- Test source files are present and wired into the Phase 2 isolated workflow definition.
+- No verified GitHub Actions run ID or job log for these new Phase 3 tests has been captured in this ledger.
+- No local Node execution evidence has been captured.
+- Therefore every new Phase 3 suite remains CI_EXECUTION=NOT_VERIFIED; no PASS claim is made.
+- A code review of the source definitions is not a substitute for executing tests.
+
+5. SAFETY BOUNDARIES
+PRODUCTION_MEMORY_READ=NO
+PRODUCTION_MEMORY_WRITE=NO
+PRODUCTION_MIGRATION=NO
+REAL_GOOGLE_DRIVE_CALLS=NO
+FACEBOOK_PROVIDER_CALLS=NO
+LIVE_CREDENTIALS_READ=NO
+PROVIDER_CUTOVER=NO
+DEPLOYMENT=NO
+MERGE=NO
+NETWORK_REQUESTS_FROM_TESTS=NOT_EXECUTED
+EXTERNAL_ACTIONS_FROM_TESTS=NOT_EXECUTED
+
+6. KNOWN LIMITATIONS
+- Trusted host authentication/authorization implementation is not present; callbacks are injected dependencies and must be bound to the real authenticated host before runtime use.
+- Project mapping validator does not create, approve, persist, revoke or authenticate mappings; it validates supplied mapping evidence only.
+- Unified facade is in-memory and synthetic. It does not connect to Memory, Knowledge, CRM, Drive, Facebook, caches, embeddings, routes, tools, Evolution, backup or restore.
+- Write facade only prepares a candidate; it does not commit, provide provider CAS, persist idempotency keys or write audit records.
+- Provider-enforced CAS/distributed arbitration, immutable production mapping registry, full caller coverage, remote trust anchor, encryption and backup remain open.
+- Work Learning, Work Knowledge and Experience Memory authoritative project relations are not established.
+- General Memory historical immutable identity remains unavailable; no backfill is authorized.
+- Phase 2 recovery limitations and PR #4 review state remain dependencies.
+
+7. CURRENT STATUS
+PHASE3_CONTRACT_DESIGN=BASELINED
+PHASE3_REQUEST_AUTHORIZATION=IMPLEMENTED_ISOLATED_CI_NOT_VERIFIED
+PHASE3_PROJECT_MAPPING_VALIDATOR=IMPLEMENTED_READ_ONLY_CI_NOT_VERIFIED
+PHASE3_SYNTHETIC_RETRIEVAL_FACADE=IMPLEMENTED_CI_NOT_VERIFIED
+PHASE3_SYNTHETIC_WRITE_PREPARE=IMPLEMENTED_NO_COMMIT_CI_NOT_VERIFIED
+AUTHORITATIVE_ACTOR_AUTHENTICATION=NOT_ESTABLISHED
+PRODUCTION_PROJECT_MAPPING=NOT_APPROVED
+UNIVERSAL_PRODUCTION_RETRIEVAL=NOT_INTEGRATED
+UNIVERSAL_PRODUCTION_WRITE=NOT_INTEGRATED
+INDEPENDENT_VERIFICATION=NOT_STARTED
+PHASE3=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+MERGE=NOT_APPROVED
+DEPLOYMENT=NOT_APPROVED
+
+END OF LEDGER
