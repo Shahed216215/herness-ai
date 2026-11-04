@@ -98,6 +98,15 @@ function runWorker(eventId) {
     fs.unlinkSync(lock);
     console.log('STALE_LOCK_FAILS_CLOSED_NO_AUTO_STEAL=PASS');
 
+    const auditedAppend = await appendEvent({
+      root, projectId: 'project-a', chainId: 'chain-a',
+      expectedSequence: 1, expectedHeadHash: current.head.hash,
+      eventId: 'event-audit-check', timestamp: now, actorIdentity: 'fixture',
+      action: 'audit-check', auditWriter
+    });
+    assert.equal(auditedAppend.status, 'APPENDED');
+    console.log('APPEND_AUDITABLE_COMMIT_CONFIRMED=PASS');
+
     assert.ok(audit.some(x => x.action === 'hfm_append_event_intent'));
     assert.ok(audit.some(x => x.action === 'hfm_append_event_committed'));
     console.log('APPEND_ARBITER_AUDIT_INTENT_AND_COMMIT=PASS');
