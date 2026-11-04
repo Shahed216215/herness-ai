@@ -31,7 +31,7 @@ for (const file of walk(ROOT)) {
   const source = fs.readFileSync(file.full, 'utf8');
   const lines = source.split(/\r?\n/);
   lines.forEach((line, index) => {
-    if (/^\\s*(?:\\/\\/|\\*|\\*\\/)/.test(line)) return;
+    if (/^\s*(?:\/\/|\*|\*\/)/.test(line)) return;
     WRITER_CALL.lastIndex = 0;
     let match;
     while ((match = WRITER_CALL.exec(line)) !== null) {
