@@ -412,3 +412,31 @@ Scope:
 - Tests use temporary isolated storage. Production Knowledge/Memory, real Google Drive and network were not touched.
 - This closes the missing-primary initialization ambiguity for the local Knowledge store; it does not implement encrypted backup, Drive cutover, canonical provider migration or universal conflict-registry retrieval integration.
 - Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+20. EMPTY VERSION-DIRECTORY PRIOR-STORE EVIDENCE — VERIFIED BY RUNS 682/683
+
+Finding:
+- The first initialization-marker revision treated a version directory as prior-state evidence only when it still contained a .json snapshot.
+- If snapshot files had been removed but the directory remained, the missing-primary path could still be misclassified as first-run after marker loss.
+
+Correction:
+- Memory and the reusable Knowledge initialization guard now treat the existence of a safe version directory itself as prior-store evidence, including an empty directory.
+- Memory read fallback now checks version-directory evidence before returning [].
+- Knowledge missingPrimaryDecision() uses the same conservative rule.
+- An empty or unreadable version directory cannot be silently treated as a new empty store.
+
+Regression evidence:
+- EMPTY_MEMORY_VERSION_DIRECTORY_STILL_PROVES_PRIOR_STORE=PASS
+- EMPTY_KNOWLEDGE_VERSION_DIRECTORY_STILL_PROVES_PRIOR_STORE=PASS
+- MISSING_PRIMARY_AND_BACKUP_FAIL_CLOSED=PASS
+- KNOWLEDGE_MISSING_PRIMARY_AND_MARKER_TAMPER_FAIL_CLOSED=PASS
+- Both test suites reported TESTS_FAILED=0.
+
+CI:
+- Run 41804715258 — SUCCESS — Memory read-side version evidence, commit c228388bb9998b1c53fe7cd4a2294329750fd54d.
+- Run 41804725719 — SUCCESS — reusable guard version-directory evidence, commit 981579285876519d3be2199a53da24df4d620846.
+- Run 41804739802 — SUCCESS — Memory empty-version-directory regression, commit 5e78b8c0bc443ec6c7e72ee5a1f67babe64636d7.
+- Run 41804745095 — SUCCESS — Knowledge empty-version-directory regression, commit de843a51abc16d8d5d3b6e6034c8d08c33d30254.
+
+No production data, Google Drive, network or external action was used. This is local initialization metadata, not an independent remote trust anchor. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
