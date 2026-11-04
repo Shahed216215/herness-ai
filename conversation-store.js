@@ -473,6 +473,7 @@ function getStorePath() {
 
 module.exports = {
   CONVERSATION_FILE,
+  INITIALIZATION_FILE: CONVERSATION_GUARD.markerFile,
   loadStore,
   saveStore,
   getConversation,
