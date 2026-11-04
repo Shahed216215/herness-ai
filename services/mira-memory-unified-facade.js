@@ -149,6 +149,16 @@ function prepareCanonicalWrite({
       incomingRecord.lifecycle !== 'ACTIVE') {
     throw new Error('Only integrity-verified ACTIVE canonical records can be prepared for write.');
   }
+  const idempotencyPlan = Object.freeze({
+    key: idempotencyKey,
+    actorId: requestContext.actorId,
+    projectId: incomingRecord.projectId,
+    operation: current ? 'UPDATE' : 'CREATE',
+    memoryId: incomingRecord.memoryId,
+    incomingRecordDigest: digest(incomingRecord),
+    requiredAtomicity: 'HOST_ATOMIC_UNIQUE_CLAIM',
+    status: 'NOT_RESERVED_PREPARE_ONLY'
+  });
   const auditPlan = Object.freeze({
     actorId: requestContext.actorId,
     actorType: requestContext.actorType,
@@ -166,6 +176,8 @@ function prepareCanonicalWrite({
   return Object.freeze({
     status: 'PREPARED_NOT_COMMITTED',
     auditStatus: 'NOT_EMITTED_PREPARE_ONLY',
+    idempotencyStatus: 'NOT_ATOMIC_PREPARE_ONLY',
+    idempotencyPlan,
     auditPlan,
     committed: false,
     projectId: incomingRecord.projectId,
