@@ -74,3 +74,14 @@ PHASE4_INCREMENT=OFFLINE_CAPABILITY_AND_MANUAL_FALLBACK
 VERSION=v0.2
 LIVE_META_API_CALLS=0
 PRODUCTION_READINESS=NOT_CERTIFIED
+
+## 9. Durable Facebook import review intake — offline local registry
+
+- Imported Page posts can now be enqueued as immutable, project-scoped review locators.
+- The registry stores Page ID, post ID, source URL, content digest, observation time, actor and pending-review state; it deliberately does not persist raw post text, access tokens or credentials.
+- Queue identity is deterministic per project + Page + post. Repeated identical imports are idempotent; a changed content digest for the same Page post is rejected for manual conflict review and the original queue entry remains unchanged.
+- Queue entries use local SHA-256 envelope verification, exclusive immutable publication, file and directory fsync, mode-restricted files/directories, symlink rejection and fail-closed integrity checks.
+- A host-supplied durable audit writer is mandatory. If audit emission fails after queue publication, the operation reports `FACEBOOK_REVIEW_QUEUE_AUDIT_FAILED` and `stateCommitted=true`; operators must reconcile the existing queue item rather than blindly retrying as a new import.
+- This is a local review intake, not canonical Memory persistence. The item remains `PENDING_HUMAN_REVIEW`, `SOURCE_RECORDED`, and `UNVERIFIED`; no decision or verification promotion is implemented here.
+- The registry does not independently fetch or verify the public post. The original content is not stored; reviewers use the source locator and independently supplied evidence.
+- Production wiring must inject the trusted host audit writer and an approved project-scoped queue directory. No production data is migrated by this change.

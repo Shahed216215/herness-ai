@@ -131,3 +131,13 @@ Status: IN PROGRESS
 - Latest branch-head log: LIVE_META_API_CALLS=0; token use=0; authorization granted=0; persistent writes=0; Facebook publish actions=0.
 - PR #7 remains DRAFT and unmerged, stacked on the Phase 3 branch. No production migration/deployment. Phase 3 PR #6 remains separate and unmerged.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 014 — Durable import review intake (local-only)
+- Added `services/mira-facebook-page-import-review-registry.js` and its isolated filesystem test suite.
+- Phase 4 HFM adapter now offers an explicit enqueue operation for prepared untrusted imports. It requires project scope, actor identity, a project-owned queue directory and a host-supplied audit writer.
+- Registry persists a minimal immutable review locator only; raw post text, credentials and tokens are not stored. It uses deterministic Page-post identity, idempotent duplicate handling, changed-content conflict rejection, SHA-256 envelope verification, exclusive immutable publication, fsync, restrictive file modes and symlink-path rejection.
+- Queue publication is followed by mandatory host audit emission. Audit failure reports a committed queue state so recovery can reconcile rather than duplicate.
+- Queue state remains PENDING_HUMAN_REVIEW / SOURCE_RECORDED / UNVERIFIED. No canonical Memory write, live network call, Meta API call or post publication occurs.
+- Added CI coverage for queue integrity, idempotency, changed-content conflict, audit failure recovery, symlink rejection and raw-content non-persistence. Await CI evidence before marking this increment PASS.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; CANONICAL_MEMORY_WRITES=0; PRODUCTION_READINESS=NOT_CERTIFIED.

@@ -4,6 +4,7 @@
 // This adapter is deliberately prepare-only: no provider I/O, persistence,
 // audit emission, Facebook transport, or Memory commit is performed.
 const { digest } = require('./mira-memory-unified-facade');
+const { enqueueFacebookPageImportReview } = require('./mira-facebook-page-import-review-registry');
 const {
   createManualPostDraft,
   prepareManualPostImport
@@ -105,7 +106,29 @@ function prepareFacebookImportForHfmReview({
   });
 }
 
+/**
+ * Persist only a minimal review locator and emit the host's durable audit event.
+ * This never stores raw Facebook content or writes canonical Memory.
+ */
+function enqueueFacebookImportForHfmReview({
+  preparedReview, projectId, actor, directory, auditWriter
+} = {}) {
+  if (!object(preparedReview) ||
+      preparedReview.status !== 'REVIEW_CANDIDATE_NOT_PERSISTED' ||
+      preparedReview.hfmDisposition !== 'PENDING_HUMAN_REVIEW' ||
+      preparedReview.mayEnterTrustedMemory !== false ||
+      preparedReview.persistentWritePerformed !== false) {
+    throw new Error('A prepare-only untrusted Facebook import review candidate is required.');
+  }
+  return enqueueFacebookPageImportReview({
+    directory, projectId, actor,
+    candidate: preparedReview.candidate,
+    auditWriter
+  });
+}
+
 module.exports = {
   preparePublicPageDraftFromHfm,
-  prepareFacebookImportForHfmReview
+  prepareFacebookImportForHfmReview,
+  enqueueFacebookImportForHfmReview
 };
