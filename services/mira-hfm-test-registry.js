@@ -98,6 +98,9 @@ function validateExecutionRecord(record) {
   if (!Number.isInteger(record.externalActions) || record.externalActions < 0) errors.push('EXTERNAL_ACTION_COUNT_INVALID');
   if (!Array.isArray(record.limitations)) errors.push('LIMITATIONS_MUST_BE_ARRAY');
   if (!nonEmpty(record.workflowRunId) && !nonEmpty(record.localRunId)) errors.push('RUN_IDENTIFIER_REQUIRED');
+  if (nonEmpty(record.workflowRunId) && nonEmpty(record.localRunId)) errors.push('RUN_IDENTIFIER_AMBIGUOUS');
+  if (nonEmpty(record.workflowRunId) && !nonEmpty(record.jobId)) errors.push('CI_JOB_ID_REQUIRED');
+  if (isCanonicalTimestamp(record.completedAt) && isCanonicalTimestamp(record.recordedAt) && record.recordedAt < record.completedAt) errors.push('RECORDED_AT_PRECEDES_COMPLETION');
   if (record.executionStatus === 'TESTED_PASS' && (!nonEmpty(record.evidenceReference) || !isCommit(record.sourceCommit))) {
     errors.push('TESTED_PASS_EVIDENCE_REQUIRED');
   }
@@ -105,7 +108,7 @@ function validateExecutionRecord(record) {
       (!nonEmpty(record.notApplicableRationale) || !nonEmpty(record.reviewer))) {
     errors.push('NOT_APPLICABLE_REVIEW_REQUIRED');
   }
-  if (['INCONCLUSIVE', 'REVIEW_REQUIRED', 'NOT_APPROVED'].includes(record.executionStatus) &&
+  if (['INCONCLUSIVE', 'REVIEW_REQUIRED', 'NOT_APPROVED', 'NOT_EXECUTED'].includes(record.executionStatus) &&
       !nonEmpty(record.statusReason)) errors.push('STATUS_REASON_REQUIRED');
   return errors;
 }
@@ -190,9 +193,12 @@ function appendExecution({ root, execution, auditWriter }) {
   const errors = validateExecutionRecord(execution);
   if (errors.length) throw new Error('Invalid execution record: ' + errors.join('; '));
   const definitions = listRecords(root, 'definitions');
-  if (!definitions.some(item => item.testId === execution.testId &&
-      item.testDefinitionVersion === execution.testDefinitionVersion)) {
-    throw new Error('Execution references an unknown test definition version.');
+  const definition = definitions.find(item => item.testId === execution.testId &&
+      item.testDefinitionVersion === execution.testDefinitionVersion);
+  if (!definition) throw new Error('Execution references an unknown test definition version.');
+  if (['TESTED_PASS', 'TESTED_FAIL', 'INCONCLUSIVE'].includes(execution.executionStatus) &&
+      definition.approvalState !== 'APPROVED') {
+    throw new Error('Execution of an unapproved test definition is blocked.');
   }
   const key = execution.executionId;
   return appendImmutable({ root, collection: 'executions', key, record: execution, auditWriter });
@@ -223,6 +229,10 @@ function aggregateRequirementCoverage({ requirementId, mandatoryTestIds, definit
       continue;
     }
     const definition = versions[0];
+    if (definition.approvalState !== 'APPROVED') {
+      statuses.push({ testId, status: 'REVIEW_REQUIRED', reason: 'TEST_DEFINITION_NOT_APPROVED' });
+      continue;
+    }
     const runs = executions.filter(item => item.testId === testId &&
       item.testDefinitionVersion === definition.testDefinitionVersion)
       .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
