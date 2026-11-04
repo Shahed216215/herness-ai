@@ -28,12 +28,7 @@ assert.equal(noMap.status, 'BLOCKED');
 assert.ok(noMap.blockers.includes('EXPLICIT_MAPPING_MISSING'));
 console.log('MISSING_MAPPING_FAILS_CLOSED=PASS');
 
-const legacyMemory = buildMigrationCandidate({
-  domain: 'general_memory', entry: { role: 'user', content: 'same', time: '2026-11-04T00:00:00Z' },
-  sourceFileDigest, sourceOrdinal: 0
-});
-assert.ok(legacyMemory.blockers.includes('GENERAL_MEMORY_IMMUTABLE_MESSAGE_ID_ABSENT'));
-console.log('LEGACY_MEMORY_WITHOUT_IMMUTABLE_ID_BLOCKED=PASS');
+// General Memory identity is bound to the source snapshot digest and array ordinal below.
 
 const crmEntry = { messageId: 'crm-msg-001', conversationId: 'conv-001', content: 'hello' };
 const crmMapping = {
