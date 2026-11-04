@@ -92,3 +92,12 @@ Status: IN PROGRESS
 - Network requests=0; LIVE_META_API_CALLS=0; persistent writes=0; publish actions=0.
 - Prior CI failures 41839982028 through 41840341838 remain retained as failed attempts; they exposed and helped correct Page-ID validation/test-fixture defects. The successful run is the evidence for the corrected commit.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; TARGET_PAGE_ID_BINDING=OFFLINE_CONTRACT_VERIFIED; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 010 — Meta permission evidence preflight contract
+- Added strict offline permission-evidence schema and evaluator with exact expected app/actor/Page/operation binding.
+- Added separate operation profiles for Page-owned reads, public Page-content reads, user-generated Page-content reads and Page-post writes. Profiles report missing scopes, Page tasks and feature approvals without claiming universal endpoint permission guarantees.
+- Added explicit LIVE/ADVANCED/App Review production gate indicators; stale/future evidence, mismatched app/actor/Page/operation, unknown scopes and extra evidence fields fail closed.
+- Evaluator always returns `CALLER_SUPPLIED_NOT_INDEPENDENTLY_VERIFIED`, `NOT_AUTHORIZED_OFFLINE_EVIDENCE_ONLY` and `mayCallApi=false`; no token, OAuth, API call or credential is used.
+- Added synthetic tests and included them in Phase 4 CI. Verification pending for the new permission contract.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_PERMISSION_VERIFICATION=NOT_RUN; LIVE_API=NOT_USED.
