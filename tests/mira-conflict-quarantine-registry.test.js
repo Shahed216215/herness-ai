@@ -166,7 +166,7 @@ try {
   assert.ok(acceptedResolution.proposal.verificationPlan.length > 0);
   const repeatedResolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 1, actor: 'reviewer', policyDecision: 'POLICY-1',
     resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   });
   assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
