@@ -92,3 +92,15 @@ END OF LEDGER
 - Test fixtures now include invalid calendar-date and pre-context authorization decision cases.
 - Static source review confirms the three new test commands are present in the isolated Phase 2 workflow definition. This is workflow wiring evidence only, not execution evidence.
 - CI_EXECUTION remains NOT_VERIFIED; no PASS is claimed.
+
+8. VERIFIED CI EVIDENCE (2026-11-04)
+- Phase 3 isolated workflow run 41811363645 completed SUCCESS on commit 112fdd321303dc1237f09ed872ce8b2a3b6f18db.
+- Confirmed logs: REQUEST_AUTHORIZATION_CONTRACT_PASS; PROJECT_MAPPING_CONTRACT_PASS; SYNTHETIC_UNIFIED_FACADE_PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 isolated core-safety workflow run 41811363628 completed SUCCESS on the same commit; selected Phase 2 test suites also report TESTS_FAILED=0, NETWORK_REQUESTS=0, PRODUCTION_MEMORY_TOUCHED=NO.
+- Earlier failures were preserved as evidence and corrected; they are not overwritten or described as passes.
+- These runs validate isolated test fixtures and branch workflow only. They do not certify production integration, authentication, live provider behavior, distributed CAS, or migration readiness.
+
+9. DOMAIN CONTRACT IMPLEMENTATION LIMIT
+- Mapping validator now enforces source-system/domain binding for General Memory, Knowledge and CRM Conversation only.
+- General Memory locator binds source snapshot SHA-256 and ordinal; CRM mapping binds parentConversationId and does not invent an array ordinal.
+- Work Learning, Work Knowledge and Experience Memory are deliberately rejected by the mapping validator until their own authoritative identity/project-scope contracts are reviewed.
