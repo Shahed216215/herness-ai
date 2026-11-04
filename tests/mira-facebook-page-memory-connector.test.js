@@ -57,17 +57,20 @@ assert.equal(evaluateFacebookPageCapabilities({manualFallbackEnabled:false}).man
 assert.throws(()=>evaluateFacebookPageCapabilities({manualFallbackEnabled:'yes'}),/must be boolean/);
 console.log('RATE_LIMIT_AND_MANUAL_FALLBACK_STATES_PRESERVED=PASS');
 
-const draft=createManualPostDraft({record:baseRecord,pageName:'Mira Memory',generatedAt:now});
+const draft=createManualPostDraft({record:baseRecord,pageId:'123456789',pageName:'Mira Memory',generatedAt:now});
 assert.equal(draft.status,'PENDING_MANUAL_POST');
+assert.equal(draft.pageId,'123456789');
+assert.notEqual(draft.draftId,createManualPostDraft({record:baseRecord,pageId:'987654321',pageName:'Mira Memory',generatedAt:now}).draftId);
+assert.throws(()=>createManualPostDraft({record:baseRecord,pageName:'Mira Memory',generatedAt:now}),/pageId is required/);
 assert.equal(draft.content,baseRecord.content);
 assert.equal(draft.contentHash.length,64);
 console.log('MANUAL_POST_DRAFT_GENERATED_WITH_CONTENT_DIGEST=PASS');
-assert.throws(()=>createManualPostDraft({record:{...baseRecord,integrity:{status:'UNVERIFIED'}}}),/integrity-verified/);
+assert.throws(()=>createManualPostDraft({record:{...baseRecord,integrity:{status:'UNVERIFIED'}},pageId:'123456789'}),/integrity-verified/);
 console.log('UNVERIFIED_MEMORY_CANNOT_CREATE_POST_DRAFT=PASS');
-assert.throws(()=>createManualPostDraft({record:{...baseRecord,access:{classification:'PROJECT_PRIVATE'}}}),/explicitly PUBLIC/);
-assert.throws(()=>createManualPostDraft({record:{...baseRecord,access:undefined}}),/explicitly PUBLIC/);
+assert.throws(()=>createManualPostDraft({record:{...baseRecord,access:{classification:'PROJECT_PRIVATE'}},pageId:'123456789'}),/explicitly PUBLIC/);
+assert.throws(()=>createManualPostDraft({record:{...baseRecord,access:undefined},pageId:'123456789'}),/explicitly PUBLIC/);
 console.log('NONPUBLIC_MEMORY_CANNOT_ENTER_FACEBOOK_POST_DRAFT=PASS');
-assert.throws(()=>createManualPostDraft({record:{...baseRecord,content:'  '}}),/record.content/);
+assert.throws(()=>createManualPostDraft({record:{...baseRecord,content:'  '},pageId:'123456789'}),/record.content/);
 console.log('EMPTY_POST_CONTENT_REJECTED=PASS');
 
 const url='https://www.facebook.com/123456789/posts/987654321/';
