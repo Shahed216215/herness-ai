@@ -5,6 +5,7 @@ const path = require("path");
 const storagePath = require('../mira-storage');
 const crypto = require("crypto");
 const jsonStateStore = require("./mira-json-state-store");
+const { createStoreInitializationGuard } = require('./mira-store-initialization-guard');
 
 const {
   createProposal,
@@ -20,6 +21,10 @@ const ENGINE_VERSION = "6.2.1";
 const LEARNING_FILE =
   process.env.MIRA_LEARNING_FILE ||
   storagePath("data/work-learning-records.json");
+const LEARNING_GUARD = createStoreInitializationGuard({
+  primaryFile: LEARNING_FILE,
+  storeId: 'MIRA_WORK_LEARNING_STORE'
+});
 
 const MAX_RECORDS = 5000;
 
@@ -200,6 +205,13 @@ function loadStore() {
     raw = fs.readFileSync(LEARNING_FILE, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") {
+      if (LEARNING_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
+        const missing = new Error(
+          'Work learning store was previously initialized but its primary is missing; empty reinitialization is blocked.'
+        );
+        missing.code = 'WORK_LEARNING_PRIMARY_MISSING_RESTORE_REQUIRED';
+        throw missing;
+      }
       return { version: 1, updatedAt: now(), records: [] };
     }
     throw new Error(
@@ -225,6 +237,7 @@ function loadStore() {
   if (parsed.records.length > MAX_RECORDS) {
     throw new Error("Work learning store exceeds the supported record limit; refusing truncation.");
   }
+  LEARNING_GUARD.ensureMarker();
   return parsed;
 }
 
@@ -242,6 +255,7 @@ function saveStore(store) {
   }
 
   loadStore();
+  LEARNING_GUARD.assertWritable();
   const normalized = {
     version: 1,
     updatedAt: now(),
@@ -2210,6 +2224,7 @@ function getLearningStats() {
 module.exports = {
   ENGINE_VERSION,
   LEARNING_FILE,
+  INITIALIZATION_FILE: LEARNING_GUARD.markerFile,
   MAX_RECORDS,
   LEARNING_STATUSES,
 
