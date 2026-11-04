@@ -47,5 +47,14 @@ const directFileResult=classifySource('fixture/direct-memory-file-io.js',directF
 assert.equal(directFileResult.matches.filter(x=>x.category==='DIRECT_MEMORY_FILE_IO').length,3);
 assert.equal(directFileResult.matches.some(x=>x.category==='DIRECT_MEMORY_FILE_IO'&&x.excerpt.includes('users.json')),false);
 console.log('DIRECT_CANONICAL_MEMORY_FILE_READS_DETECTED=PASS');
+const indirectPathSample=[
+ "const MEMORY_FILE = storagePath('memory.json');",
+ "const raw = fs.readFileSync(MEMORY_FILE, 'utf8');",
+ "const unrelated = fs.readFileSync('users.json', 'utf8');"
+].join('\n');
+const indirectPathResult=classifySource('fixture/indirect-memory-file-io.js',indirectPathSample);
+assert.equal(indirectPathResult.matches.filter(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ').length,1);
+assert.ok(indirectPathResult.matches.some(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ'&&x.line===2));
+console.log('CANONICAL_STORE_PATH_CONSTANT_READ_LINKED=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_ACCESS_PATH_INVENTORY_TEST_PASS');
