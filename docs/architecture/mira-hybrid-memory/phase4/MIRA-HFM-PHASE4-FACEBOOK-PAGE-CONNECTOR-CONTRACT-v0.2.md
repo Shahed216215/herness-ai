@@ -26,7 +26,7 @@ The result is PENDING_MANUAL_POST. The draft is not a published post. The user m
 
 ## 4. Manual URL import
 
-Only HTTPS URLs on facebook.com, www.facebook.com or m.facebook.com using supported Page post permalink shapes are accepted. The supplied Page ID must match the expected Page ID.
+Only HTTPS URLs on facebook.com, www.facebook.com or m.facebook.com using supported Page post permalink shapes are accepted. Standard HTTPS port only; URL userinfo, fragments, host-suffix spoofing and non-standard ports are rejected. The supplied Page ID must match the expected Page ID.
 
 URL parsing is local only. It does not establish that the post exists, is public, belongs to the Page, or still contains the supplied content. Imported content remains integrity UNVERIFIED, trust SOURCE_RECORDED, lifecycle PENDING_REVIEW and verification MANUAL_IMPORT_PENDING_INDEPENDENT_READBACK.
 
@@ -43,7 +43,8 @@ Future automatic transport must separately implement authenticated actor and Pag
 |Requirement|Current status|
 |---|---|
 |Independent READ/WRITE capability assessment|IMPLEMENTED_OFFLINE_CONTRACT|
-|Unknown/missing permission evidence fail-closed|IMPLEMENTED_OFFLINE_CONTRACT|
+|Unknown/missing/stale/future/cross-operation permission evidence fail-closed|IMPLEMENTED_OFFLINE_CONTRACT|
+|URL userinfo, host-suffix and non-standard-port spoofing rejected|IMPLEMENTED_OFFLINE_CONTRACT|
 |Manual post draft generation|IMPLEMENTED — PUBLIC RECORDS ONLY|
 |Manual post publication|MANUAL_USER_ACTION_NOT_PERFORMED|
 |Page post URL shape validation|IMPLEMENTED_OFFLINE_ONLY|
