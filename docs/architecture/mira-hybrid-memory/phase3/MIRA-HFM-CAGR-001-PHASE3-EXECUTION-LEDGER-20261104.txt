@@ -289,3 +289,7 @@ MERGE=NOT_APPROVED
 - Read-only review of work-acceptance-schema.js and opportunity-schema.js confirms neither records authenticated ownerActorId/tenant identity. `acceptanceDecision.decidedBy` defaults to the literal `system`; it is not an authenticated principal.
 - project-store creation verifies accepted status and matching opportunityId but does not bind project to the authenticated creator. These workflow links cannot be treated as project authorization.
 - Project-owner registry remains NOT_ESTABLISHED; no schema/store data was modified.
+
+38. HOST IDENTITY / PROJECT AUTHORITY DESIGN BASELINED
+- Added MIRA-HFM-CAGR-001-PHASE3-HOST-IDENTITY-PROJECT-AUTHORITY-DESIGN-20261104.txt. It specifies trusted actor subject sources, role-only Bearer denial, sidecar project-owner registry, explicit memberships, owner transfer, existing-project UNASSIGNED_BLOCKED handling, legacy data mapping constraints, host callback requirements and acceptance tests.
+- Design only: no session/login changes, owner registry implementation, project owner assignments, migration, production access or grants were performed.
