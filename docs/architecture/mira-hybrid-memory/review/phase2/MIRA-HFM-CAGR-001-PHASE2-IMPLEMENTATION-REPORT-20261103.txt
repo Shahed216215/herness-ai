@@ -351,7 +351,7 @@ Further review found two Section 30 governance ambiguities in the isolated resol
 - Original array order was being treated as the implicit meaning of "existing" or "rejected change". The resolver now requires an explicit acceptedOriginalIndex for ACCEPT_EXISTING_VERSION and REJECT_CONFLICTING_CHANGE, and verifies the exact selected original digest. ACCEPT_ALTERNATE_VERSION also requires an explicit valid index.
 - Any change to the merged record's access policy is treated conservatively as a policy change. It requires a separate authorizeBroaderAccess callback to return true and a non-empty broaderAccessAuthorization evidence reference. The authorization callback receives the complete original/resulting access policies and their digests. The evidence reference is bound into resolution verification and idempotent/concurrent resolution comparisons. Merge and retain outcomes reject incompatible accepted-version selectors.
 
-GitHub Actions run 41751975605 (run 303), job 126318? (see run jobs), completed SUCCESS on commit 72ac52abf4cb5152e4a70c6eb06d40e23cdc841e. The log explicitly confirms:
+GitHub Actions run 41751975605 (run 303), job 126318975408, completed SUCCESS on commit 72ac52abf4cb5152e4a70c6eb06d40e23cdc841e. The log explicitly confirms:
 - GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
 - GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
 - GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
