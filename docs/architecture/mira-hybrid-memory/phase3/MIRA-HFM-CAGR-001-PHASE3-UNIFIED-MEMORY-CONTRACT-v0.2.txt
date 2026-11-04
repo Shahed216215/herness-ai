@@ -301,3 +301,8 @@ Every provider operation must now receive an explicit data classification (`PUBL
 ## 21. Host Authorization Request-Validity Binding Addendum (2026-11-04)
 
 The trusted host authorization callback input includes both `contextIssuedAt` and `contextExpiresAt`, in addition to actor, project, purpose, request ID, authority reference, operation and resource scope. The host adapter can therefore validate the exact request validity window and bind its decision to that window. The contract helper independently rejects not-yet-valid and expired request contexts, and rejects a host decision issued before the context or expiring after the context. This remains a synchronous, trusted-host callback contract; it does not itself authenticate the actor or persist replay protection. Production host integration and replay-state verification remain NOT_IMPLEMENTED.
+
+
+## 22. Existing-Record Update Authorization Addendum (2026-11-04)
+
+Preparing a revision of an existing canonical record requires both `READ` and `WRITE` authorization for the same `memory:<memoryId>` resource. The facade obtains READ authorization before exposing the prior revision/digest in a prepared update. Creating a new record continues to require WRITE authorization. A denied READ decision blocks update preparation even when WRITE is allowed.
