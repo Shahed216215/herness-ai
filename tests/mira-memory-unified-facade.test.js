@@ -37,7 +37,7 @@ assert.deepEqual(visible.map(item=>item.memoryId),['memory-fixture-001']);
 console.log('RETRIEVAL_SCOPE_TRUST_AND_QUARANTINE_FILTER_PASS=PASS');
 assert.throws(()=>retrieveCanonicalRecords({records:[active],pendingConflicts:[],projectId:'project-beta',requestContext,authorizeRequest:authorize,now}),/project scope/);
 console.log('RETRIEVAL_CROSS_PROJECT_CONTEXT_REJECTED=PASS');
-assert.deepEqual(retrieveCanonicalRecords({records:[active],pendingConflicts:[],projectId:'project-alpha',requestContext,authorizeRequest:input=>({...authorize(input),decision:'DENY'}),now}),[]);
+assert.deepEqual(retrieveCanonicalRecords({records:[active],pendingConflicts:[],projectId:'project-alpha',requestContext,authorizeRequest:input=>({...authorize(input),decision:input.operation==='READ'?'DENY':'ALLOW'}),now}),[]);
 console.log('RETRIEVAL_HOST_DENY_EXCLUDES_RECORDS=PASS');
 
 const newRecord=record();
