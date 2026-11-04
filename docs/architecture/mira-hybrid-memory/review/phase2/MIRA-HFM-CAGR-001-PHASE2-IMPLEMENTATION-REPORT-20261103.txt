@@ -443,3 +443,25 @@ GitHub Actions run 41763135774 (run 331), job 126355219013, completed SUCCESS on
 - Phase 2 core safety, recovery, Evolution integration, structural conflict assessment, conflict lifecycle and independent audit verifier also passed; production Memory/Knowledge and real Drive untouched; network requests and external actions zero.
 
 This covers the Work Learning record store only. It does not prove all application-owned state files or all retrieval/provider boundaries are now covered.
+
+
+18. CANONICAL CONTENT-HASH RECOMPUTATION IN CONFLICT ASSESSMENT — VERIFIED BY RUN 344
+
+Contract v0.2.4 Section 8.4 defines the record content hash as SHA-256(UTF-8(JCS(content))). The prior structural assessor checked only that contentHash was a 64-character hexadecimal string; a changed content string paired with an arbitrary well-shaped hash could pass structural validation.
+
+Correction:
+- services/mira-memory-conflict-assessment.js now recomputes SHA-256 over the RFC 8785 canonical JSON serialization of the content string (JSON.stringify for this string primitive) and rejects mismatches.
+- A mismatch returns REVIEW_REQUIRED with CONTENT_HASH_MISMATCH; it is never treated as a valid conflict record.
+- Valid records report CONTENT_HASH_MATCHED_ONLY, explicitly limiting the claim to content-hash consistency. This does not authenticate the source, verify a signature, validate a whole-record digest or prove trust-anchor custody.
+- Both assessment and conflict-registry test fixtures now generate contract-derived hashes. Tests cover a tampered hash and no-conflict reporting.
+
+GitHub Actions run 41763563166 (run 344), job 126356579621, completed SUCCESS on commit ed9bd539ca5676c5c6cd02050c433490cfb8b58f. Explicit evidence:
+- RFC3339_DATE_TIME_VALIDATION=PASS
+- CONTENT_HASH_JCS_RECOMPUTATION=PASS
+- CONTENT_HASH_MISMATCH_REQUIRES_REVIEW=PASS
+- TESTS_FAILED=0; RESULT=PHASE2_STRUCTURAL_CONFLICT_ASSESSMENT_PASS
+- The isolated conflict-quarantine lifecycle and the other Phase 2 suites also completed with PASS / TESTS_FAILED=0 markers.
+
+Intermediate runs 333–338 failed while the new content-hash behavior and fixture expectations were being aligned. The fixture hashes and verification-status expectations were corrected; run 344 is the later passing evidence. Historical failed runs remain visible.
+
+This is content integrity consistency only. Full cryptographic authenticity, independent trust-anchor provisioning, and production provider/retrieval integration remain unresolved.
