@@ -1,0 +1,92 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 2 TOOL / EXECUTION BOUNDARY AUDIT
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Scope: read-only source review of dynamic tool registration, selected Memory/Knowledge tools, and server/work-execution authorization.
+Production data: NOT ACCESSED
+Production writes: NONE
+Real Google Drive calls: NONE
+Network calls from reviewed tests: NONE
+Version: v0.2
+
+1. EXECUTIVE RESULT
+
+This review confirms that tools/index.js dynamically discovers every .js file in tools/ (except index.js), requires it, and registers modules that expose name, declaration, and execute. The resulting declarations are passed into the model-generation path in server.js. Therefore a tool file can become model-callable through directory registration without a separately maintained allow-list in tools/index.js.
+
+This does NOT mean every registered tool can execute autonomously. services/mira-work-execution-engine.js applies a separate TOOL_POLICIES registry. An unlisted tool is rejected with status unknown_tool before execution. Tools marked humanApprovalRequired or non-autonomous are rejected by the Stage 5.4 safety checks even though the server's chat handler passes permissionGranted:true into executeWork. The permissionGranted flag alone is not sufficient authorization.
+
+2. VERIFIED SOURCE FINDINGS
+
+A. Dynamic registration
+- tools/index.js reads the tools directory, filters *.js except index.js, requires each file, and registers it when name, declaration and execute are present.
+- It exports tools, declarations and executeTool.
+- server.js imports declarations and tools and supplies declarations to generate(...).
+Classification: MODEL_TOOL_DISCOVERY_DYNAMIC; EXECUTION_AUTHORITY_SEPARATE.
+
+B. Knowledge search retrieval
+- tools/knowledge-search.js first loads local getKnowledge().
+- It then calls loadKnowledgeFromDrive(); if the provider returns any array, that array replaces the local search corpus.
+- The inspected function performs normalization, duplicate suppression, relevance scoring and result limiting. No canonical projectId, lifecycle, integrity, trust-state or conflict-quarantine filter is called in this function.
+- This is a separate retrieval path from knowledge.js searchKnowledge and can expose a provider-returned corpus to the tool result without the canonical trusted-record adapter.
+Classification: HIGH — UNGUARDED_RETRIEVAL_PATH_IDENTIFIED.
+Scope note: source review proves the missing filter in this function; it does not prove a specific production record is exposed.
+
+C. Memory and Knowledge save tools
+- tools/memory-save.js calls addMemory("user", content) directly. The legacy Memory record shape remains role/content/time; immutable messageId and projectId are not supplied by this wrapper.
+- tools/knowledge-save.js calls addKnowledge(title, url, content) directly. No explicit projectId, canonical memoryId, revision, trust state or quarantine-resolution binding is supplied by this wrapper.
+Classification: WRITE_BOUNDARIES_IDENTIFIED; CANONICAL_IDENTITY_AND_PROJECT_SCOPE_NOT_ESTABLISHED.
+
+D. Counts and backup / restore wrappers
+- tools/knowledge-count.js and tools/memory-count.js expose raw local record counts, not trusted-record counts.
+- tools/knowledge-backup.js calls the local Knowledge backup service.
+- tools/knowledge-restore.js requires confirm === true before invoking restoreKnowledge.
+- tools/memory-restore.js requires confirm === true before invoking restoreMemory.
+- tools/memory-version-recovery.js exposes list, verify and restore; restore passes the caller-supplied confirm value to the version recovery service.
+- These wrappers are additional backup/recovery/write boundaries. A backup checksum or version snapshot does not itself establish HFM project scope, conflict clearance or trust eligibility.
+Classification: RAW_COUNT_SEMANTICS; BACKUP_AND_RESTORE_BOUNDARIES_IDENTIFIED.
+
+E. Execution authorization and fail-closed behavior
+- services/mira-work-execution-engine.js has a separate TOOL_POLICIES object.
+- knowledge_search and count tools are classified as autonomous read/inspection operations.
+- knowledge_save and memory_save are classified as autonomous file_modify operations in the inspected policy.
+- knowledge_backup and memory_backup are humanApprovalRequired and non-autonomous.
+- knowledge_restore and memory_restore are humanApprovalRequired, non-autonomous and explicitConfirmation-required.
+- hasDangerousConfirmationBypass rejects explicitConfirmation policies and rejects a restore call attempting confirm:true through autonomous execution.
+- checkToolSafety rejects humanApprovalRequired tools and tools not marked autonomous.
+- executeWork rejects tools missing from TOOL_POLICIES with status unknown_tool before execution.
+- server.js's ordinary model-tool dispatch passes permissionGranted:true to executeWork, but the separate work authorization, tool policy, risk and seven-check gates still run. The passed boolean must not be interpreted as user approval.
+- server.js also has a separate admin restore route guarded by requireAdminPermission(BACKUP_RESTORE), and it checks request-body confirm === true before calling the Knowledge restore tool.
+Classification: POLICY_GATE_PRESENT; POLICY_COVERAGE_IS_SEPARATE_FROM_DYNAMIC_REGISTRATION.
+
+3. IMPORTANT LIMITATIONS / REVIEW ITEMS
+
+- Dynamic tool registration and TOOL_POLICIES are two separate registries. This review did not establish a single automated invariant test proving every dynamically registered tool has an intentional policy classification.
+- The policy marks knowledge_save and memory_save as autonomous writes. Whether this remains acceptable under the final v0.2 authority model needs an explicit policy decision and caller-level tests; this audit does not change it.
+- memory_version_recovery was not found in the inspected TOOL_POLICIES excerpt. The engine's unknown-tool branch is fail-closed, but the exact runtime status for each action was not independently executed in this audit.
+- Tool declarations are supplied to model generation; the inspected chat dispatch path does not itself pass a named human actor or signed per-action approval object for generic tools. The work engine policy gate is the relevant protection observed here. Do not infer a stronger user-consent provenance guarantee from a boolean confirm parameter alone.
+- The audit did not exhaustively inspect all tool files, all tool call paths, all API routes, or all direct module imports. This is a scoped source review, not universal coverage.
+- No production Memory/Knowledge data was read, modified, restored, migrated or exported.
+
+4. RECOMMENDED NEXT STEPS — NO PRODUCTION ACTIVATION
+
+1. Add an isolated registry consistency test: enumerate dynamically registered tools and require each to have an explicit TOOL_POLICIES entry or an explicit documented exclusion. Unknown tools should remain blocked.
+2. Add isolated tests for the tool-to-engine path proving knowledge_backup, memory_backup, knowledge_restore, memory_restore and memory_version_recovery cannot be autonomously executed by model-generated calls, including forged confirm:true.
+3. Decide and document whether knowledge_save and memory_save may remain autonomous writes in v0.2; if retained, bind them to explicit user-originated content and audit metadata without inventing projectId/messageId.
+4. Design a canonical policy-aware Knowledge retrieval interface before wiring knowledge_search or agent recall. It must require explicit project scope and enforce lifecycle, integrity, trust state and quarantine exclusion; missing mapping must fail closed.
+5. Keep raw count tools clearly labelled as raw local counts; do not relabel them as trusted-record counts.
+6. Extend semantic review to remaining tools, route handlers, workers, provider adapters, exports, caches and indexes.
+
+5. STATUS
+
+TOOL_DYNAMIC_REGISTRATION=CONFIRMED
+KNOWLEDGE_SEARCH_CANONICAL_FILTER=NOT_PRESENT_IN_INSPECTED_FUNCTION
+MEMORY_KNOWLEDGE_SAVE_CANONICAL_SCOPE=NOT_ESTABLISHED
+BACKUP_RESTORE_POLICY_GATE=SOURCE_CONFIRMED
+DYNAMIC_REGISTRY_POLICY_COVERAGE_TEST=NOT_ESTABLISHED
+FULL_TOOL_AND_ROUTE_COVERAGE=IN_PROGRESS
+PRODUCTION_RUNTIME_GUARD=NOT_INTEGRATED
+PRODUCTION_READINESS=NOT_CERTIFIED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+
+END OF AUDIT
