@@ -7,7 +7,8 @@ const requestContext = {
  purpose:'phase3-facade-test',requestId:'request-facade-01',authorityRef:'host-authz-facade-01',
  issuedAt:'2026-11-04T11:59:00.000Z',expiresAt:'2026-11-04T12:05:00.000Z'
 };
-function authorize(input) { return {
+const observedAuthorizationScopes=[];
+function authorize(input) { observedAuthorizationScopes.push(input.resourceScope); return {
  decision:'ALLOW',replayStatus:'FRESH',actorId:input.actorId,actorType:input.actorType,projectId:input.projectId,purpose:input.purpose,
  requestId:input.requestId,operation:input.operation,resourceScope:input.resourceScope,
  authorityRef:input.authorityRef,issuedAt:'2026-11-04T11:59:30.000Z',expiresAt:'2026-11-04T12:04:00.000Z'
@@ -43,6 +44,13 @@ assert.throws(()=>retrieveCanonicalRecords({records:[active],pendingConflicts:[]
 console.log('RETRIEVAL_CROSS_PROJECT_CONTEXT_REJECTED=PASS');
 assert.deepEqual(retrieveCanonicalRecords({records:[active],pendingConflicts:[],projectId:'project-alpha',requestContext,authorizeRequest:input=>({...authorize(input),decision:input.operation==='READ'?'DENY':'ALLOW'}),now}),[]);
 console.log('RETRIEVAL_HOST_DENY_EXCLUDES_RECORDS=PASS');
+assert.ok(observedAuthorizationScopes.includes('memory:memory-fixture-001:classification:PROJECT_PRIVATE'));
+const restricted=record({memoryId:'memory-fixture-restricted',access:{classification:'RESTRICTED',allowedProjectIds:['project-alpha']}});
+assert.deepEqual(retrieveCanonicalRecords({records:[restricted],pendingConflicts:[],projectId:'project-alpha',requestContext,authorizeRequest:input=>input.resourceScope.endsWith(':RESTRICTED')?{...authorize(input),decision:'DENY'}:authorize(input),now}),[]);
+const wrongAllowedProject=record({memoryId:'memory-fixture-allowed-project-mismatch',access:{classification:'PROJECT_PRIVATE',allowedProjectIds:['project-beta']}});
+assert.deepEqual(retrieveCanonicalRecords({records:[wrongAllowedProject],pendingConflicts:[],projectId:'project-alpha',requestContext,authorizeRequest:authorize,now}),[]);
+console.log('RETRIEVAL_AUTHORIZATION_BINDS_CLASSIFICATION=PASS');
+console.log('RETRIEVAL_ALLOWED_PROJECT_LIST_ENFORCED=PASS');
 
 const newRecord=record();
 const preparedCreate=prepareCanonicalWrite({incomingRecord:newRecord,existingRecords:[],pendingConflicts:[],requestContext,authorizeRequest:authorize,expectedRevision:null,idempotencyKey:'idem-create-001',now});
