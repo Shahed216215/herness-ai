@@ -13,7 +13,7 @@ const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
 const STATUSES = new Set(['PENDING_REVIEW', 'APPROVED', 'REVOKED']);
 const KEYS = [
   'schemaVersion', 'mappingId', 'domain', 'sourceSystem', 'sourceFileDigest',
-  'sourceOrdinal', 'legacyId', 'memoryId', 'projectId', 'parentConversationId', 'revision',
+  'sourceOrdinal', 'legacyId', 'memoryId', 'projectId', 'parentConversationId', 'clientId', 'revision',
   'sourceDigest', 'canonicalRecordDigest', 'classification', 'status',
   'approvalReference', 'approvedBy', 'approvedAt', 'createdAt', 'mappingDigest'
 ];
@@ -73,11 +73,13 @@ function validateProjectMapping({
   if (mapping.domain === 'crm_conversation_message') {
     if (mapping.sourceOrdinal !== null) throw new Error('CRM message mapping does not use a source array ordinal.');
     text(mapping.parentConversationId, 'parentConversationId', 128);
+    text(mapping.clientId, 'clientId', 128);
   } else {
     if (!Number.isInteger(mapping.sourceOrdinal) || mapping.sourceOrdinal < 0) {
       throw new Error('Mapping sourceOrdinal must be a non-negative integer.');
     }
     if (mapping.parentConversationId !== null) throw new Error('Non-CRM mapping cannot declare parentConversationId.');
+    if (mapping.clientId !== null) throw new Error('Non-CRM mapping cannot declare clientId.');
   }
   if (mapping.domain === 'general_memory') {
     const locator = /^legacy-memory:([a-f0-9]{64}):([0-9]+)$/.exec(mapping.legacyId || '');
@@ -116,7 +118,7 @@ function validateProjectMapping({
   const approval = verifyApproval(Object.freeze({
     mappingId: mapping.mappingId, domain: mapping.domain,
     projectId: mapping.projectId, legacyId: mapping.legacyId,
-    parentConversationId: mapping.parentConversationId,
+    parentConversationId: mapping.parentConversationId, clientId: mapping.clientId,
     memoryId: mapping.memoryId, approvalReference: mapping.approvalReference,
     approvedBy: mapping.approvedBy, approvedAt: mapping.approvedAt,
     mappingDigest: mapping.mappingDigest
