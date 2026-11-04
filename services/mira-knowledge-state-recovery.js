@@ -5,10 +5,16 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const storagePath = require('../mira-storage');
 const jsonStateStore = require('./mira-json-state-store');
+const { createStoreInitializationGuard } = require('./mira-store-initialization-guard');
 
 const KNOWLEDGE_FILE = storagePath('knowledge.json');
 const BACKUP_FILE = storagePath('knowledge-backup.json');
 const SAFETY_BACKUP_FILE = storagePath('knowledge-before-restore.json');
+const KNOWLEDGE_GUARD = createStoreInitializationGuard({
+  primaryFile: KNOWLEDGE_FILE,
+  storeId: 'MIRA_KNOWLEDGE',
+  evidenceFiles: [BACKUP_FILE]
+});
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -108,10 +114,24 @@ function preservePreviousBackup() {
 }
 
 function createKnowledgeBackup() {
-  const entries = jsonStateStore.readJsonArray(KNOWLEDGE_FILE, 'Mira Knowledge', { missing: 'empty' });
+  let entries;
+  try {
+    entries = jsonStateStore.readJsonArray(KNOWLEDGE_FILE, 'Mira Knowledge');
+    KNOWLEDGE_GUARD.ensureMarker();
+  } catch (error) {
+    if (!/Mira Knowledge is missing\.$/.test(error.message)) throw error;
+    if (KNOWLEDGE_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
+      const missing = new Error('Knowledge primary is missing after initialization; restore is required before creating a new backup.');
+      missing.code = 'KNOWLEDGE_PRIMARY_MISSING_BACKUP_BLOCKED';
+      throw missing;
+    }
+    entries = [];
+  }
   const backup = makeBackup(entries, 'Mira local Knowledge backup');
   const preservedPrevious = preservePreviousBackup();
   const result = jsonStateStore.atomicWriteJson(BACKUP_FILE, backup, 'Knowledge backup');
+  // The newly created backup is now durable evidence that the store exists.
+  KNOWLEDGE_GUARD.ensureMarker();
   jsonStateStore.recordStateAudit('knowledge_backup_created', 'success', BACKUP_FILE, {
     stateHash: backup.sha256,
     entryCount: entries.length,
@@ -127,7 +147,6 @@ function createKnowledgeBackup() {
     preservedPreviousBackup: preservedPrevious
   };
 }
-
 function restoreKnowledge(options = {}) {
   if (options.confirm !== true) {
     return { success: false, restored: false, dataModified: false, message: 'Explicit confirmation is required.' };
@@ -141,13 +160,20 @@ function restoreKnowledge(options = {}) {
 
   let safetyBackup = null;
   let corruptPrimaryPreserved = false;
+  let primaryMissing = false;
   try {
     const current = jsonStateStore.readJsonArray(KNOWLEDGE_FILE, 'Mira Knowledge');
+    KNOWLEDGE_GUARD.ensureMarker();
     const safety = makeBackup(current, 'Automatic safety backup before Knowledge restore');
     const result = jsonStateStore.atomicWriteJson(SAFETY_BACKUP_FILE, safety, 'Knowledge safety backup');
     safetyBackup = { file: path.basename(SAFETY_BACKUP_FILE), sha256: result.sha256 };
   } catch (error) {
-    if (!/Mira Knowledge is missing\.$/.test(error.message)) {
+    if (/Mira Knowledge is missing\.$/.test(error.message)) {
+      primaryMissing = true;
+      const safety = makeBackup(validated.entries, 'Safety copy of verified backup before missing-primary Knowledge restore');
+      const result = jsonStateStore.atomicWriteJson(SAFETY_BACKUP_FILE, safety, 'Knowledge missing-primary safety backup');
+      safetyBackup = { file: path.basename(SAFETY_BACKUP_FILE), sha256: result.sha256 };
+    } else {
       let raw;
       try { raw = safeReadRaw(KNOWLEDGE_FILE, 'Corrupt Knowledge primary'); }
       catch (readError) { throw new Error('Cannot establish safe pre-restore state: ' + readError.message); }
@@ -179,7 +205,8 @@ function restoreKnowledge(options = {}) {
     corruptPrimaryPreserved
   });
 
-  const result = corruptPrimaryPreserved
+  KNOWLEDGE_GUARD.ensureMarker();
+  const result = corruptPrimaryPreserved || primaryMissing
     ? jsonStateStore.atomicWriteJson(KNOWLEDGE_FILE, validated.entries, 'Knowledge restore')
     : jsonStateStore.writeArrayState(KNOWLEDGE_FILE, validated.entries, 'Mira Knowledge');
 
