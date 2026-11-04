@@ -118,7 +118,7 @@ function adaptLegacyEntries({
   }
   return result;
 }
-function filterAdaptedLegacyEntries({ adaptedEntries, pendingConflicts, projectId }) {
+function filterAdaptedLegacyEntries({ adaptedEntries, pendingConflicts, projectId, authorizeAccess, actorContext }) {
   if (!Array.isArray(adaptedEntries) || !Array.isArray(pendingConflicts)) {
     throw new Error('Adapted entries and conflicts must be arrays.');
   }
@@ -127,7 +127,8 @@ function filterAdaptedLegacyEntries({ adaptedEntries, pendingConflicts, projectI
     throw new Error('Cross-project adapted record rejected.');
   }
   const visible = filterTrustedRecords(
-    adaptedEntries.map(item => item.canonicalRecord), pendingConflicts, projectId
+    adaptedEntries.map(item => item.canonicalRecord), pendingConflicts, projectId,
+    authorizeAccess, actorContext
   );
   const ids = new Set(visible.map(item => item.memoryId));
   return adaptedEntries.filter(item => ids.has(item.memoryId));
