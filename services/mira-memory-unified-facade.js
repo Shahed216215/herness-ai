@@ -9,6 +9,17 @@ const { authorizeMemoryRequest } = require('./mira-memory-request-authorization'
 function digest(value) {
   return crypto.createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
 }
+function cloneAndFreeze(value) {
+  const clone = JSON.parse(JSON.stringify(value));
+  const freeze = item => {
+    if (item && typeof item === 'object' && !Object.isFrozen(item)) {
+      for (const child of Object.values(item)) freeze(child);
+      Object.freeze(item);
+    }
+    return item;
+  };
+  return freeze(clone);
+}
 function requiredText(value, label) {
   if (typeof value !== 'string' || !value.trim()) throw new Error(label + ' is required.');
 }
@@ -47,7 +58,8 @@ function retrieveCanonicalRecords({
       return false;
     }
   };
-  return filterTrustedRecords(records, pendingConflicts, projectId, authorizeRecord, actorContext);
+  const visible = filterTrustedRecords(records, pendingConflicts, projectId, authorizeRecord, actorContext);
+  return visible.map(record => cloneAndFreeze(record));
 }
 function prepareCanonicalWrite({
   incomingRecord, existingRecords, pendingConflicts, requestContext,
@@ -68,6 +80,7 @@ function prepareCanonicalWrite({
       conflict.originalMemoryIds.some(id => typeof id !== 'string' || !id.trim()))) {
     throw new Error('Conflict metadata is malformed; write preparation fails closed.');
   }
+  incomingRecord = JSON.parse(JSON.stringify(incomingRecord));
   const errors = validateCanonicalMemoryRecord(incomingRecord, 'incomingRecord');
   if (errors.length) throw new Error('Incoming canonical record is invalid: ' + errors.join('; '));
   requiredText(idempotencyKey, 'idempotencyKey');
@@ -137,7 +150,7 @@ function prepareCanonicalWrite({
     idempotencyKey,
     previousRecordDigest: current ? digest(current) : null,
     incomingRecordDigest: digest(incomingRecord),
-    incomingRecord
+    incomingRecord: cloneAndFreeze(incomingRecord)
   });
 }
 module.exports = { retrieveCanonicalRecords, prepareCanonicalWrite, digest };
