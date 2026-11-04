@@ -41,7 +41,7 @@ const crmNoParent = buildMigrationCandidate({
   domain: 'crm_conversation_message', entry: crmEntry, sourceFileDigest, sourceOrdinal: 1, mapping: crmMapping
 });
 assert.ok(crmNoParent.blockers.includes('CRM_PARENT_CONVERSATION_NOT_VERIFIED'));
-console.log('CRM_PARENT_CONVERSATION_REQUIRED=PASS');
+console.log('CRM_APPROVED_PROJECT_MAPPING_REQUIRED=PASS');
 
 const crm = buildMigrationCandidate({
   domain: 'crm_conversation_message', entry: crmEntry, sourceFileDigest, sourceOrdinal: 1,
@@ -138,7 +138,7 @@ console.log('GENERAL_MEMORY_MISSING_SIDECAR_MAPPING_BLOCKED=PASS');
 const crmRaw = JSON.stringify([{ messageId: 'crm-msg-001', conversationId: 'conv-001', content: 'hello' }]);
 const crmPlan = planSnapshot({
   domain: 'crm_conversation_message', sourceText: crmRaw, mappings: [crmMapping],
-  parentConversations: { 'conv-001': { conversationId: 'conv-001' } }
+  parentConversations: { 'conv-001': { conversationId: 'conv-001', projectId: 'project-alpha', mappingStatus: 'APPROVED', approvalReference: 'CRM-PROJECT-MAP-001' } }
 });
 assert.equal(crmPlan.status, 'READY_FOR_REVIEW');
 console.log('CRM_SNAPSHOT_PARENT_MAPPING_VERIFIED=PASS');
