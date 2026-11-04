@@ -36,6 +36,17 @@ try {
   assert.equal(fs.existsSync(rootKnowledge), rootKnowledgeBefore !== null);
 
   Module._load = function(request, parent, isMain) {
+    if (request === '../services/mira-tool-execution-policy' &&
+        parent && parent.filename === path.join(root, 'tools', 'knowledge-cleanup.js')) {
+      // This suite tests canonical storage behavior after authorization.
+      // Real human-only denial is covered by mira-hfm-persistent-wrapper-guard.test.js.
+      return {
+        checkToolSafety: () => ({
+          passed: true,
+          reason: 'isolated storage fixture authorization'
+        })
+      };
+    }
     if (request === '../google-drive' &&
         parent && parent.filename === path.join(root, 'tools', 'knowledge-cleanup.js')) {
       return {
