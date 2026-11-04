@@ -96,3 +96,25 @@ PRODUCTION_READINESS=NOT_CERTIFIED
 PR4=OPEN_DRAFT_UNMERGED
 
 END OF LEDGER
+
+
+6. ADDITIONAL VERIFIED WORK — 2026-11-04 FOLLOW-UP
+- General legacy Memory now has a read-only snapshot-bound sidecar locator: legacy-memory:<sourceFileDigest>:<sourceOrdinal>. This avoids deriving identity from role/content/time and invalidates if the exact source snapshot changes.
+- Legacy adapter preserves the full source record payload for General Memory, Knowledge and CRM Conversation instead of copying only content.
+- Adapter requires exact source file digest + ordinal, per-record source digest, explicit projectId, canonical memoryId, revision 1, explicit classification, approval reference and canonical record validation.
+- CRM adapter/planner require an approved conversationId -> projectId mapping with matching conversationId/projectId, mappingStatus=APPROVED and approvalReference. opportunityId-only project mapping was rejected after schema review because project-store does not enforce unique opportunityId and the inspected Opportunity/Work Acceptance schemas do not supply an authoritative clientId link.
+- Trusted retrieval now requires matching projectId, ACTIVE lifecycle, VERIFIED integrity, and an explicit allowed trust state; pending-review, unverified, quarantined, missing-trust and cross-project records are excluded.
+- The full static inventory is committed at docs/architecture/mira-hybrid-memory/review/phase2/MIRA-HFM-CAGR-001-PHASE2-STATIC-BOUNDARY-INVENTORY-20261104.txt. It contains all 1125 regex hits across 261 files, with category totals: STATE_IO=794, DOMAIN_API=178, DOMAIN_IMPORT=120, RECOVERY_OR_SNAPSHOT=33.
+- Scanner remains regex-only; the 261 files require semantic classification and do not represent 261 confirmed HFM stores.
+
+7. LATEST CI AND BRANCH STATE
+Latest code CI Run 460:
+URL: https://github.com/Shahed216215/herness-ai/actions/runs/41773490260
+Head SHA: cb8a85631da3aa1d17d4db450550dbe41146e940
+Conclusion: SUCCESS. The run covers snapshot-bound adapter, dry-run planner, trusted retrieval exclusion, cleanup safety, static scanner and the other Phase 2 suites. All executed suites reported TESTS_FAILED=0.
+Full inventory CI Run 464:
+URL: https://github.com/Shahed216215/herness-ai/actions/runs/41773587365
+Head SHA: cd0e2802f254f96e2fe5f4cb73a0a122c261c819
+Conclusion: SUCCESS. Scanner full-output mode emitted all 1125 matches; counts were independently parsed and committed in the inventory report.
+Current branch HEAD after documentation-only inventory commit: 1f7af5e5f21a773df09a1ad8b18c98c013fb9c75.
+PR #4 remains OPEN / DRAFT / UNMERGED; base main remains 4ca0c7dc06bff3e9be1ffd5977a335f4d48e435f.
