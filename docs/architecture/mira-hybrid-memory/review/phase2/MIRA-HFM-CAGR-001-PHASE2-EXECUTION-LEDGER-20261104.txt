@@ -1,0 +1,298 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 2 EXECUTION LEDGER
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Current branch HEAD: 8043d1320fdcdd25e1f4947521ef7ab16b3a490c
+PR: #4 (OPEN / DRAFT / UNMERGED)
+Base: main @ 4ca0c7dc06bff3e9be1ffd5977a335f4d48e435f
+Status: PHASE 2 IN PROGRESS — NOT COMPLETE
+
+1. COMPLETED WITH EVIDENCE
+- Phase 2 isolated core safety suites previously established; latest CI continues to run them.
+- Read-only legacy Memory/Knowledge adapter prototype exists and is tested; it refuses missing immutable IDs, project scope mismatch, stale digest, duplicate mapping and tampered canonical content.
+- Conflict quarantine lifecycle tests cover project-scoped retrieval exclusion, resolution and preserved originals.
+- Knowledge state safety and backup/restore regression tests exist and run in CI.
+- Conversation store safety suite exists and runs in CI.
+- Work Knowledge and Work Learning fail-closed storage suites exist and run in CI.
+- Autonomous learning canonical store adapter suite exists and runs in CI.
+- Independent audit-chain verifier prototype suite exists and runs in CI.
+- 2026-11-04 callsite audits cover 50 targeted source paths across core, route, tool, provider and adjacent stores.
+- Domain identity/project-scope contract is documented for General Memory, Knowledge and CRM Conversation.
+- Read-only migration manifest planner binds candidates to exact source snapshot SHA-256, rejects incomplete mappings and only emits BLOCKED or READY_FOR_REVIEW with writeAuthorized=false.
+- Knowledge duplicate cleanup now removes only fully identical JSON record copies; different legacy IDs, provenance, metadata or revision values are preserved.
+- Knowledge cleanup tool integration test proves distinct IDs are preserved, only identical copies are removed, and inspect remains read-only.
+- Offline static boundary inventory scanner was added and run in CI.
+
+2. LATEST VERIFIED CI
+Run 422:
+URL: https://github.com/Shahed216215/herness-ai/actions/runs/41772311933
+Run ID: 41772311933
+Run number: 422
+Head SHA: 8043d1320fdcdd25e1f4947521ef7ab16b3a490c
+Job: isolated-core-safety
+Conclusion: SUCCESS
+
+Verified log markers include:
+- MIRA_HFM_DRY_RUN_MANIFEST_PLANNER_ISOLATED_PASS
+- MIRA_KNOWLEDGE_DUPLICATE_ASSESSMENT_ISOLATED_PASS
+- MIRA_KNOWLEDGE_CLEANUP_TOOL_BOUNDARY_ISOLATED_PASS
+- MIRA_HFM_STATIC_BOUNDARY_SCANNER_TEST_PASS
+- PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+- MIRA_CONVERSATION_STORE_SAFETY_PASS
+- MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS
+- MIRA_WORK_LEARNING_STORE_FAIL_CLOSED_PASS
+- MIRA_AUTONOMOUS_LEARNING_CANONICAL_STORE_ADAPTER_PASS
+- PHASE2_INDEPENDENT_AUDIT_CHAIN_VERIFIER_ISOLATED_PASS
+All executed suites reported TESTS_FAILED=0.
+
+Static scanner output:
+SCANNED_CODE_FILES=567
+DOMAIN_RELEVANT_FILES=282
+DOMAIN_CALLSITE_MATCHES=1125
+STATIC_REGEX_AUDIT_ONLY=true
+NETWORK_REQUESTS=0
+
+Interpretation: the scanner provides broad static callsite discovery, not semantic proof. 282 relevant files / 1125 regex hits require classification and deduplication; a count alone is not evidence that all runtime paths are guarded.
+
+3. OPEN HIGH-PRIORITY IMPLEMENTATION GAPS
+G1 — CRITICAL: Universal runtime Memory/Knowledge conflict guard is not integrated into shared production read/write boundaries. Existing adapter is read-only and isolated.
+G2 — CRITICAL: Authoritative projectId mapping is not established for General Memory, Knowledge or CRM Conversation. No guessed project scope is permitted.
+G3 — HIGH: General legacy Memory has no immutable per-message ID. Existing records cannot be safely mapped without an approved sidecar/migration manifest.
+G4 — HIGH: Knowledge legacy ID exists but is content-derived at creation; canonical immutable memoryId and historical revision history are not universally established.
+G5 — HIGH: Drive Knowledge/Memory read/write helpers and tools/knowledge-search.js retrieval path do not universally pass through the canonical quarantine guard.
+G6 — HIGH: Knowledge cleanup, controlled apply, Evolution, autonomous learning and backup/restore paths remain separate caller boundaries. Cleanup's exact-copy deletion semantics are safer, but it is not a substitute for universal conflict enforcement.
+G7 — HIGH: Full 567-file semantic review and callsite-to-guard coverage matrix are not complete. The scanner is regex-based and may have false positives/negatives.
+G8 — HIGH: U03 genesis persistence, signer authority, trust-anchor custody/rotation/revocation are not established.
+G9 — HIGH: U04 provider append arbitration/CAS is not established. Google Drive list-then-update is not accepted as an atomic arbiter.
+G10 — HIGH: U05 production immutable registry and authoritative legacy-ID alias service are not established.
+G11 — HIGH: U06 globally adopted timestamp profile and historical audit compatibility are not complete.
+G12 — HIGH: E-15 verifier prototype does not establish production trust-anchor authenticity or independent third-party review.
+G13 — SEPARATE NOT_AUTHORIZED GATES: HFM-004 Drive provider cutover and HFM-005 encrypted emergency backup/key custody remain outside this work and are not authorized.
+
+4. NEXT EXECUTION ORDER
+A. Export/classify all 1125 scanner matches into a deduplicated source-path/callsite registry; identify direct read, write, provider, backup, restore, export, cache, index, worker and route boundaries.
+B. Inspect every high-risk write path and define the common pre-commit policy contract without enabling production writes.
+C. Design a policy-aware Knowledge adapter with explicit project mapping and preserved legacy IDs; test all reads/writes on synthetic fixtures.
+D. Design a separate General Memory identity sidecar; do not backfill live records.
+E. Design CRM conversation-to-project mapping using authoritative conversation/project relations only.
+F. Integrate read filtering in isolated test harnesses across direct module, route, tool, Drive, Evolution, count, search, stats, export, backup and restore paths.
+G. Integrate write arbitration in isolated test harnesses across CRUD, cleanup, learning, controlled apply, provider, restore and recovery paths.
+H. Close U03/U04/U05/U06 and E-15 with explicit evidence or mark each as externally blocked.
+I. Run full regression, restart/recovery, update-triggered and independent bypass tests.
+J. Publish final Phase 2 evidence ledger and independent review. Do not merge PR #4 or certify production readiness without the user's explicit instruction and the required approvals.
+
+5. CURRENT SAFETY STATE
+PRODUCTION_MEMORY_READ=NO
+PRODUCTION_MEMORY_WRITE=NO
+PRODUCTION_MIGRATION=NO
+REAL_GOOGLE_DRIVE_CALLS=NO
+PROVIDER_CUTOVER=NO
+LIVE_CREDENTIALS_READ=NO
+NETWORK_REQUESTS_IN_CI=0
+RUNTIME_CONFLICT_GUARD=NOT_INTEGRATED
+VERSION=v0.2
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+PR4=OPEN_DRAFT_UNMERGED
+
+END OF LEDGER
+
+
+6. ADDITIONAL VERIFIED WORK — 2026-11-04 FOLLOW-UP
+- General legacy Memory now has a read-only snapshot-bound sidecar locator: legacy-memory:<sourceFileDigest>:<sourceOrdinal>. This avoids deriving identity from role/content/time and invalidates if the exact source snapshot changes.
+- Legacy adapter preserves the full source record payload for General Memory, Knowledge and CRM Conversation instead of copying only content.
+- Adapter requires exact source file digest + ordinal, per-record source digest, explicit projectId, canonical memoryId, revision 1, explicit classification, approval reference and canonical record validation.
+- CRM adapter/planner require an approved conversationId -> projectId mapping with matching conversationId/projectId, mappingStatus=APPROVED and approvalReference. opportunityId-only project mapping was rejected after schema review because project-store does not enforce unique opportunityId and the inspected Opportunity/Work Acceptance schemas do not supply an authoritative clientId link.
+- Trusted retrieval now requires matching projectId, ACTIVE lifecycle, VERIFIED integrity, and an explicit allowed trust state; pending-review, unverified, quarantined, missing-trust and cross-project records are excluded.
+- The full static inventory is committed at docs/architecture/mira-hybrid-memory/review/phase2/MIRA-HFM-CAGR-001-PHASE2-STATIC-BOUNDARY-INVENTORY-20261104.txt. It contains all 1125 regex hits across 261 files, with category totals: STATE_IO=794, DOMAIN_API=178, DOMAIN_IMPORT=120, RECOVERY_OR_SNAPSHOT=33.
+- Scanner remains regex-only; the 261 files require semantic classification and do not represent 261 confirmed HFM stores.
+
+7. LATEST CI AND BRANCH STATE
+Latest code CI Run 460:
+URL: https://github.com/Shahed216215/herness-ai/actions/runs/41773490260
+Head SHA: cb8a85631da3aa1d17d4db450550dbe41146e940
+Conclusion: SUCCESS. The run covers snapshot-bound adapter, dry-run planner, trusted retrieval exclusion, cleanup safety, static scanner and the other Phase 2 suites. All executed suites reported TESTS_FAILED=0.
+Full inventory CI Run 464:
+URL: https://github.com/Shahed216215/herness-ai/actions/runs/41773587365
+Head SHA: cd0e2802f254f96e2fe5f4cb73a0a122c261c819
+Conclusion: SUCCESS. Scanner full-output mode emitted all 1125 matches; counts were independently parsed and committed in the inventory report.
+Current branch HEAD after documentation-only inventory commit: 1f7af5e5f21a773df09a1ad8b18c98c013fb9c75.
+PR #4 remains OPEN / DRAFT / UNMERGED; base main remains 4ca0c7dc06bff3e9be1ffd5977a335f4d48e435f.
+
+
+8. FAILURE-INJECTION FOLLOW-UP — 2026-11-04
+Code and workflow commit: cc0553c14663363144767845a587f0180d15bd39
+New isolated test files:
+- tests/mira-hfm-conversation-partial-commit.test.js
+- tests/mira-hfm-knowledge-drive-retry.test.js
+
+CI evidence:
+- Run 41777222583 — SUCCESS — head cc0553c14663363144767845a587f0180d15bd39 — https://github.com/Shahed216215/herness-ai/actions/runs/41777222583
+- Run 41777228555 — SUCCESS — head cc0553c14663363144767845a587f0180d15bd39 — https://github.com/Shahed216215/herness-ai/actions/runs/41777228555
+
+Verified fault scenarios:
+- Conversation: message commit remains durable when the following context write is fault-injected; explicit retry writes context and does not duplicate the persisted message.
+- Knowledge: local write remains durable when Drive sync is fault-injected; a duplicate add retries sync and does not duplicate the local record.
+- Both are isolated synthetic tests; the Drive implementation is mocked. No production data, real Drive, network, or external action was touched.
+
+Limitations:
+- Conversation retry is not an atomic transaction and route-level exactly-once semantics remain unverified.
+- Knowledge retry does not establish provider CAS, conflict-free concurrent writers, remote version arbitration or a universal authority model.
+- Full semantic classification of all caller boundaries remains IN_PROGRESS.
+- Universal HFM runtime guard remains NOT_INTEGRATED.
+- Production readiness remains NOT_CERTIFIED; PR #4 remains OPEN / DRAFT / UNMERGED; release remains v0.2.
+
+
+9. EXTENDED CALLER SEMANTIC REVIEW — 2026-11-04
+Additional source files inspected and classified:
+- memory.js: legacy Memory entries are role/content/time, without immutable per-entry messageId/projectId; it delegates persistence to mira-local-memory-store.
+- mira-conversation-response-planner.js: reads getConversationMemory() to drive priority/clarification planning; no distinct canonical trust/quarantine filter found in the inspected path.
+- knowledge-memory-evolution.js: local Memory and Knowledge writes plus Google Drive load/save comparison/synchronization form separate provider paths.
+- knowledge-controlled-apply.js and autonomous-learning-controlled-apply.js: both perform local/Drive preflight, apply, verification and rollback; equality checks do not provide provider CAS or canonical HFM conflict arbitration.
+- google-drive.js: provider helpers save/load Knowledge and Memory arrays without canonical source-version/CAS tokens in the inspected functions.
+- mira-state-version-recovery.js: explicit-confirmation restore writes snapshot entries directly through the local JSON state store; snapshot SHA verification is not equivalent to canonical trust/quarantine eligibility.
+- knowledge-backup.js, knowledge-restore.js and memory-restore.js: explicit tool wrappers expose backup/restore boundaries.
+- routes/knowledge-improvements.js, routes/autonomous-learning.js and server.js admin Knowledge routes are additional privileged consumers/writers. Admin permission checks do not replace canonical project-scope and conflict guards.
+
+This is an expanded semantic review of identified callers only. The 567-file / 1125-match static inventory has not been fully semantically classified. Background workers, exports, caches/indexes and all provider callsites remain under review.
+
+Current classification:
+CONVERSATION_RESPONSE_PLANNER_RETRIEVAL=IDENTIFIED
+GENERAL_MEMORY_LEGACY_IDENTITY_GAP=CONFIRMED_BY_SOURCE
+EVOLUTION_LOCAL_DRIVE_PATHS=IDENTIFIED
+CONTROLLED_APPLY_AND_ROLLBACK_PATHS=IDENTIFIED
+VERSION_RESTORE_WRITE_BOUNDARY=IDENTIFIED
+ADMIN_AND_TOOL_BOUNDARIES=IDENTIFIED
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+VERSION=v0.2
+
+
+10. TOOL / WORKER / SEPARATE-DOMAIN FOLLOW-UP — 2026-11-04
+Additional caller findings:
+- tools/knowledge-search.js can replace its local Knowledge corpus with a Drive-returned array before searching; no canonical HFM trust/quarantine filter was observed in the inspected function.
+- tools/knowledge-save.js, knowledge-count.js, memory-save.js and memory-count.js expose additional raw API boundaries. Count outputs are raw record counts, not trusted-record counts.
+- tools/knowledge-cleanup.js performs local replacement followed by Drive save. Its inspected response sets driveSync=true without checking the provider result's success flag; recorded as REVIEW_REQUIRED for a separate correctness/reconciliation review.
+- tools/memory-save.js persists legacy role/content/time entries through memory.js; immutable messageId/projectId are absent from that entry shape.
+- tools/memory-version-recovery.js exposes explicit-confirmation snapshot restore.
+- Work Knowledge consolidation and Experience Memory are separate domains with their own persistence paths; canonical project mapping and cross-domain HFM policy coverage remain unproven. They are not counted as confirmed direct callers of the legacy Knowledge/Conversation stores based solely on their names.
+- Autonomous worker was inspected as a candidate; no direct core store call was established in the inspected source, so it is not misclassified as a confirmed HFM caller.
+
+The caller inventory is now broader but still incomplete. Next review targets include all remaining background workers, export/download surfaces, caches/indexes, provider adapters, and dynamic import/reachability edges.
+
+
+11. CONVERSATION ROUTE INTEGRATION FIX — 2026-11-04
+Code commits:
+- routes/conversations.js store API alignment: 98ed9e2cddbdda169d7ff231f79d175977baddf6
+- participant schema-field mapping: 51c963541e13908d4202945754fed31c64d499f9
+- tests/mira-hfm-conversation-route-contract.test.js: 9d51e62a47b3e799e6a7d31d329f1a653b465f7c
+- workflow coverage update: ad4fd7475b1a642112c2ed2acd7951422edfc5fa
+
+Finding: routes/conversations.js imported function names that conversation-store.js did not export. The route was changed to use the store's actual createStored*/list/get/save APIs and handle store result envelopes. The API participant field is mapped to the schema's participant property.
+
+CI evidence:
+- Run 41777990347 — SUCCESS — tested head ad4fd7475b1a642112c2ed2acd7951422edfc5fa — https://github.com/Shahed216215/herness-ai/actions/runs/41777990347
+- Run 41777984461 — SUCCESS — tested head ad4fd7475b1a642112c2ed2acd7951422edfc5fa — https://github.com/Shahed216215/herness-ai/actions/runs/41777984461
+- The isolated route contract passed create, message create/memory update, list/detail, context read/write and memory retrieval. TESTS_FAILED=0.
+
+Scope limitation: route/store name and return-shape mismatch is corrected for the tested handlers. Message and context remain separate durable commits; route-level retry/idempotency is not yet established. No projectId schema migration, HFM guard wiring, production data access or provider cutover occurred.
+
+
+12. FINAL INTEGRATION CI CONFIRMATION — 2026-11-04
+- Run 41778080710 — SUCCESS — tested commit c5a08aa7a11f4a68929b81c438b36a1712ad54c2 — https://github.com/Shahed216215/herness-ai/actions/runs/41778080710
+- The full isolated Phase 2 workflow reran with the conversation route-contract test and both fault-injection tests included.
+- Conversation route contract PASS; conversation partial-commit recovery PASS; Knowledge Drive retry recovery PASS; all suites TESTS_FAILED=0.
+- REAL_GOOGLE_DRIVE_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+- The only commits after the tested code head were documentation-ledger updates; no source or workflow code changed after the successful run.
+
+
+13. ADDITIONAL RETRIEVAL FAN-OUT AND CLEANUP PROVIDER-STATUS FIX — 2026-11-04
+Source review additions:
+- services/learning.js is an indirect Knowledge retrieval consumer via searchKnowledge() for learning duplicate/improvement decisions.
+- tools/knowledge-search.js can use the complete Drive array instead of local Knowledge when the provider returns an array; it currently lacks canonical HFM trust/quarantine filtering.
+- server.js agent request context recalls Memory and Knowledge before model invocation. Knowledge recall is inserted into model context; stored content is described as reference, not instructions, but no HFM conflict/project trust filter is applied at this callsite.
+- tools/index.js dynamically loads and registers every tool in tools/, confirming runtime reachability for the Memory/Knowledge tool wrappers.
+- Admin Knowledge search/detail/edit/delete paths are privileged direct callers; admin authorization is not an HFM data-scope or conflict-trust policy.
+- Count and capacity tools expose raw count/statistics rather than trusted-record counts.
+
+Corrected bug:
+- tools/knowledge-cleanup.js previously returned driveSync=true regardless of saveKnowledgeToDrive() result. It now reports confirmed sync only for result.success===true; provider rejection/missing success/exception is explicitly FAILED_OR_UNCONFIRMED while preserving the already-committed local cleanup.
+- Tests now inject provider rejection and provider exception and assert no false sync claim.
+- Successful storage contract fixture now returns explicit success:true.
+
+CI:
+- Run 41779320887 — SUCCESS — tested commit 128baf9cbbc2c16e47d666ec748463cd2373607f — https://github.com/Shahed216215/herness-ai/actions/runs/41779320887
+- Cleanup rejection case PASS; cleanup thrown-exception case PASS; storage contract PASS; all test scripts reported TESTS_FAILED=0.
+- An earlier run at 588c262... and run at 6a196d... failed because the existing storage-contract test double omitted the newly required success:true flag. The fixture was corrected; the rerun on 128baf9... succeeded. These failures were test-fixture compatibility failures, not concealed as PASS.
+
+Residual:
+- Agent recall, tools/knowledge-search and admin Knowledge direct paths still lack a universal canonical HFM filter.
+- No production runtime guard was wired. No real Drive, network or production Memory/Knowledge data touched.
+- Complete 579-code-file semantic coverage, dynamic edge resolution, all cache/index/export surfaces and provider storage arbitration remain IN_PROGRESS / NOT_ESTABLISHED.
+- Phase 2 remains IN_PROGRESS; version v0.2; production readiness NOT_CERTIFIED.
+
+
+14. PERSISTENT-WRITE POLICY, WRAPPER AND DIRECT-DISPATCH HARDENING — 2026-11-04
+
+Shared policy and registry:
+- Centralized TOOL_POLICIES and checkToolSafety() in services/mira-tool-execution-policy.js; services/mira-work-execution-engine.js imports the shared module.
+- tools/index.js executeTool() now checks the shared policy before invoking the registered wrapper. A blocked decision returns status BLOCKED / TOOL_POLICY_DENIED.
+- Static parity test reports 24 statically identifiable active tool exports, zero missing policy entries, and one reviewed dormant policy-only key memory_backup.
+- Registry runtime test proves memory_save, knowledge_save and learning_save are denied before their registry wrappers run; an eligible calculator remains executable.
+
+Direct wrapper guards:
+- Seven human-only wrappers now independently call checkToolSafety() before their persistence/side-effect dependencies:
+  memory_save, knowledge_save, learning_save, firewall_defense, memory_restore, memory_version_recovery, knowledge_cleanup.
+- Isolated VM test invokes each actual wrapper with throwing dependency stubs. All seven return BLOCKED / TOOL_POLICY_DENIED and zero dependency invocations occur.
+- The model-facing descriptions for all seven now disclose that execution is currently blocked and that the authenticated action-scoped approval workflow is not yet available.
+- Existing Memory restore mechanics and Knowledge cleanup business/storage mechanics tests inject test-only policy stubs to test post-authorization behavior. The real policy denial is separately tested; the stubs do not establish a production approval mechanism.
+
+Direct-dispatch inventory:
+- Added recursive source-level callsite inventory over server.js, routes and services. The current reviewed direct tool invocation set is:
+  server.js backupTool.execute (admin BACKUP_RESTORE permission);
+  server.js restoreTool.execute (same permission plus confirm===true before invocation);
+  server.js historyTool.execute (named-admin browser-session gate);
+  services/mira-seo-review-dispatch.js tool.execute (named authenticated admin session gate);
+  services/mira-verification-engine.js health.execute (read-only inspect policy).
+- The inventory test fails when a direct tool-shaped invocation is added or removed without review and allowlist update.
+- The raw tools map remains exported. The scanner is static and limited to server.js, routes and services; it is not a universal proof against dynamic construction, runtime mutation or external consumers.
+- Admin backup/restore and SEO history/review remain dedicated route/dispatch exceptions. Seven non-routed human-only wrappers are now guarded at their own module boundary.
+
+CI evidence:
+- Run 41791344114 — SUCCESS — tested HEAD 3b05b372487fd373695df6be1bb65b6062f28cad; direct dispatch inventory and existing suites passed.
+- Run 41792193805 — SUCCESS — tested HEAD 41528d0ded0f9f3d14284e132809bdbade622ffc; seven wrapper-denial tests, direct-dispatch tests, registry parity and cleanup/storage regression tests passed.
+- Run 41792424947 — SUCCESS — tested HEAD 2752402968b95d0a7743893584169b723ad31f2e; all seven wrapper tests plus accurate tool-description assertions passed.
+- All latest verified logs report TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0 and REAL_GOOGLE_DRIVE_TOUCHED=NO.
+- Historical failures 41791239959, 41791668141, 41791637032, 41791602417, 41791586808, 41791901687 and 41792011602 remain visible. The direct-call scanner pattern, test-only policy stubs and test cleanup code were corrected before the later authoritative passing runs. Run 41792193805 is a SUCCESS and is not part of the failure list. No failure is relabelled as PASS.
+
+Evidence document:
+docs/architecture/mira-hybrid-memory/review/phase2/MIRA-HFM-CAGR-001-PHASE2-PERSISTENT-WRAPPER-DISPATCH-GUARD-ADDENDUM-20261104.txt
+
+Remaining:
+- No authenticated, action-scoped approval mechanism exists for Memory/Knowledge writes; these tools remain blocked.
+- Backup/restore admin routes are source-tested with isolated request/session fixtures, not a live authenticated browser/API session.
+- Raw tools map and direct module exports remain an internal capability surface; a universal action-bound wrapper is not yet implemented.
+- Canonical project scope, conflict quarantine, integrity/trust filtering across every retrieval path, provider arbitration, U03/U04/U05/U06/E-15, HFM-004 and HFM-005 remain open as separately recorded.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2; PR #4 draft/unmerged.
+
+
+15. RESTRICTED WRAPPER IMPORT INVENTORY EXPANSION — 2026-11-04
+
+Expanded the repository-wide persistent-writer callsite test's direct-import denylist from the three persistent-save wrappers to all seven non-routed human-only wrappers:
+- memory-save
+- knowledge-save
+- learning-save
+- firewall-defense
+- memory-restore
+- memory-version-recovery
+- knowledge-cleanup
+
+The test scans application source files (excluding tests, docs, generated/backups and dependencies) and asserts none of these modules is directly imported outside the dynamic registry. Dedicated admin-route exceptions knowledge-backup and knowledge-restore are not included in this denylist because their only reviewed direct calls are protected by requireAdminPermission(BACKUP_RESTORE), with confirm===true required before restore.
+
+CI:
+- Run 41792648804 — SUCCESS — tested HEAD deb6ccec7cad1c9d7e356becadb364353329820c.
+- Log markers: MIRA_HFM_NONROUTED_HUMAN_ONLY_WRAPPER_DIRECT_IMPORTS=0; MIRA_HFM_PERSISTENT_WRITER_INVENTORY_TESTS_FAILED=0; MIRA_HFM_DIRECT_DISPATCH_BOUNDARY_TESTS_FAILED=0; TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0; REAL_GOOGLE_DRIVE_TOUCHED=NO.
+
+This remains a static source inventory, not proof against runtime dynamic import construction, external module consumers, or all possible execution mechanisms. Production readiness remains NOT_CERTIFIED; Phase 2 remains IN_PROGRESS; v0.2 unchanged.
