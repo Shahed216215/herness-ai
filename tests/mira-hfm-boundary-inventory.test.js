@@ -5,6 +5,7 @@ const { classifySource } = require('../scripts/mira-hfm-boundary-inventory');
 const source = [
   "const { getKnowledge } = require('../knowledge');",
   "const { loadKnowledgeFromDrive } = require('../google-drive');",
+  "getKnowledge(); loadKnowledgeFromDrive();",
   "const data = fs.readFileSync(file, 'utf8');",
   "const safe = true;"
 ].join('\n');
