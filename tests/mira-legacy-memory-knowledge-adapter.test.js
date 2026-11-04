@@ -124,11 +124,6 @@ assert.deepEqual(filterAdaptedLegacyEntries({
 }), []);
 console.log('MIGRATION_PENDING_REVIEW_NOT_RETRIEVABLE=PASS');
 
-assert.throws(() => filterAdaptedLegacyEntries({
-  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-alpha'
-}), /authenticated access authorizer is required/i);
-console.log('ADAPTER_ACCESS_AUTHORIZER_REQUIRED=PASS');
-
 const activeKnowledge = {
   ...adaptedKnowledge,
   canonicalRecord: {
@@ -137,6 +132,11 @@ const activeKnowledge = {
     lifecycle: 'ACTIVE'
   }
 };
+
+assert.throws(() => filterAdaptedLegacyEntries({
+  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-alpha'
+}), /authenticated access authorizer is required/i);
+console.log('ADAPTER_ACCESS_AUTHORIZER_REQUIRED=PASS');
 
 const crm = {
   messageId: 'crm-msg-001', conversationId: 'conv-001',
