@@ -7,6 +7,13 @@ on:
     paths:
       - 'services/mira-memory-conflict-assessment.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
+      - 'tests/mira-knowledge-cleanup-tool-boundary.test.js'
+      - 'tests/mira-hfm-admin-backup-restore-authority.test.js'
+      - 'tests/mira-hfm-conversation-route-contract.test.js'
+      - 'tests/mira-conversation-store-safety.test.js'
+      - 'tests/mira-hfm-direct-dispatch-boundary.test.js'
+      - 'tests/mira-hfm-direct-tool-dispatch-boundary.test.js'
+      - 'tests/mira-hfm-persistent-wrapper-guard.test.js'
       - 'services/mira-memory-host-identity-contract.js'
       - 'tests/mira-memory-host-identity-contract.test.js'
       - 'services/mira-memory-host-authorization-adapter.js'
@@ -47,6 +54,14 @@ jobs:
         run: |
           set -euo pipefail
           node tests/mira-memory-conflict-assessment.test.js
+          node tests/mira-knowledge-cleanup-tool-boundary.test.js
+          node tests/mira-hfm-admin-backup-restore-authority.test.js
+          node tests/mira-hfm-conversation-route-contract.test.js
+          node tests/mira-conversation-store-safety.test.js
+          node tests/mira-hfm-direct-dispatch-boundary.test.js
+          node tests/mira-hfm-direct-tool-dispatch-boundary.test.js
+          node tests/mira-hfm-persistent-wrapper-guard.test.js
+
           node tests/mira-memory-host-identity-contract.test.js
           node tests/mira-memory-host-authorization-adapter.test.js
           node tests/mira-memory-project-authority-contract.test.js
