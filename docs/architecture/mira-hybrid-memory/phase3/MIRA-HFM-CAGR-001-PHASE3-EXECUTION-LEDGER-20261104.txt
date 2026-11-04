@@ -259,3 +259,8 @@ MERGE=NOT_APPROVED
 31. ALIASED READ INVENTORY COVERAGE
 - Access-path scanner now detects simple CommonJS destructured aliases and ESM named import aliases for known read exports from memory/knowledge/conversation/learning/provider-related modules. Added ALIASED_DOMAIN_READ category and tests for both import styles.
 - This reduces one static blind spot only. Re-export chains, namespace imports, dynamic imports/requires, function-reference assignment, wrapper callbacks, reflection and runtime dependency injection remain unscanned and REVIEW_REQUIRED. CI run pending.
+
+32. ALIASED READ SCANNER CI
+- Phase 3 run 41819484778 SUCCESS: CommonJS/ESM alias-detection tests PASS; TESTS_FAILED=0; real repository inventory reports ALIASED_DOMAIN_READ_COUNT=0 and total lexical candidates=242; PRODUCTION_MEMORY_TOUCHED=NO.
+- Phase 2 regression run 41819560356 SUCCESS; ALIASED_DOMAIN_READ_COUNT=0; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Zero detected aliases is a scanner result for the current patterns, not proof that dynamic/re-export/reflection paths do not exist.
