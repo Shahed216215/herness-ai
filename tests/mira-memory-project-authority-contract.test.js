@@ -6,7 +6,7 @@ function make(overrides={}){
  const value={
   schemaVersion:'1.0.0',decision:'ALLOW',actorId:'actor-fixture-01',actorType:'HUMAN',
   projectId:'project-fixture-01',operation:'READ',resourceScope:'memory:memory-fixture-01',
-  authorityRef:'host-authority-fixture-01',membershipRef:'membership-fixture-01',
+  authorityRef:'host-authority-fixture-01',purpose:'memory_access',membershipRef:'membership-fixture-01',
   membershipRole:'OWNER',allowedOperations:['READ','LIST','WRITE'],registryRevision:'registry-rev-01',
   status:'ACTIVE',revocationStatus:'ACTIVE',approvedBy:'admin-authority-01',
   approvedAt:'2026-11-04T11:58:00.000Z',verifiedAt:'2026-11-04T11:59:30.000Z',
@@ -21,7 +21,7 @@ const evidence=make();
 const valid=validateProjectAuthorityEvidence({
  evidence,expectedActorId:'actor-fixture-01',expectedActorType:'HUMAN',
  expectedProjectId:'project-fixture-01',expectedOperation:'READ',
- expectedResourceScope:'memory:memory-fixture-01',verifyEvidence:verifier,now
+ expectedResourceScope:'memory:memory-fixture-01',expectedPurpose:'memory_access',verifyEvidence:verifier,now
 });
 assert.equal(valid.projectId,'project-fixture-01');
 assert.equal(Object.isFrozen(valid),true);
@@ -40,6 +40,7 @@ assert.throws(()=>validateProjectAuthorityEvidence({evidence,expectedActorId:'ac
 assert.throws(()=>validateProjectAuthorityEvidence({evidence,expectedProjectId:'project-other',verifyEvidence:verifier,now}),/binding mismatch: projectId/);
 assert.throws(()=>validateProjectAuthorityEvidence({evidence,expectedOperation:'WRITE',verifyEvidence:verifier,now}),/binding mismatch: operation/);
 assert.throws(()=>validateProjectAuthorityEvidence({evidence,expectedResourceScope:'memory:other',verifyEvidence:verifier,now}),/binding mismatch: resourceScope/);
+assert.throws(()=>validateProjectAuthorityEvidence({evidence,expectedPurpose:'different_purpose',verifyEvidence:verifier,now}),/binding mismatch: purpose/);
 console.log('PROJECT_AUTHORITY_EXACT_REQUEST_BINDING_ENFORCED=PASS');
 assert.throws(()=>validateProjectAuthorityEvidence({evidence:make({expiresAt:'2026-11-04T11:59:59.000Z'}),verifyEvidence:verifier,now}),/expired/);
 assert.throws(()=>validateProjectAuthorityEvidence({evidence:make({expiresAt:'2026-11-04T11:59:00.000Z'}),verifyEvidence:verifier,now}),/temporally inconsistent/);
