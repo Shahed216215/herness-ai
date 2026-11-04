@@ -150,3 +150,8 @@ This narrows the earlier broad gap: a local canonical path exists, but universal
 ### Conversation-store follow-up
 
 The separate conversation-store persistence boundary was subsequently hardened and CI-verified by run 369 (see the implementation report). It now rejects malformed/unsafe state, uses atomic writes and committed-state audit evidence. This closes a storage-integrity gap, not the conflict-awareness gap: conversation-store records are still not mapped to conflict IDs, source digests, trust decisions or quarantine-resolution status. No claim of conversation retrieval exclusion is made.
+
+
+### Work Knowledge Consolidation follow-up
+
+The separate Work Knowledge Consolidation store now validates its existing state before direct replacement and emits a committed-state audit event; its isolated regression suite passes in run 379. This is a persistence-integrity improvement only. Its records are not yet linked to conflict IDs, source-version digests or conflict-resolution status, so conflict-aware retrieval and cross-store reconciliation remain REVIEW_REQUIRED.
