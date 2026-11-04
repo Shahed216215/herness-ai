@@ -18,7 +18,7 @@ function createHostAuthorizationAdapter({
   }
   const evidence=getProjectAuthorityEvidence(Object.freeze({
    actorId:input.actorId,actorType:input.actorType,projectId:input.projectId,
-   operation:input.operation,resourceScope:input.resourceScope,authorityRef:input.authorityRef
+   operation:input.operation,resourceScope:input.resourceScope,purpose:input.purpose,authorityRef:input.authorityRef
   }));
   if(!evidence||evidence.authorityRef!==input.authorityRef) throw new Error('Project authority reference mismatch.');
   const current=now();
