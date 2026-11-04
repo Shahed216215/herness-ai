@@ -273,3 +273,21 @@ The CRM mapping contract now includes an explicit `clientId` field. For `crm_con
 - source snapshot digest and source record digest.
 
 The trusted approval verifier receives `clientId` as part of the approval evidence. The adapter rejects a source message whose client identity differs from the approved mapping. Non-CRM mappings must set `clientId=null`. This does **not** establish that the CRM client belongs to the canonical project by itself; that relationship must be independently verified by the trusted approval registry. Until such registry evidence exists, CRM production migration remains BLOCKED.
+
+
+## 21. Structured Approval Registry Evidence Contract (2026-11-04)
+
+The project-mapping validator no longer accepts a boolean approval callback. The trusted verifier must return an exact structured evidence object containing:
+- decision = APPROVED,
+- approvalReference,
+- mappingDigest,
+- projectId,
+- approvedBy,
+- approvedAt,
+- registryRevision,
+- revocationStatus = ACTIVE,
+- verifiedAt.
+
+The validator checks exact field shape, all mapping-bound values, active/non-revoked status, non-empty registry revision, RFC 3339 verification time, and that verification is not before approval or in the future. A boolean, malformed object, revoked decision, substituted project, or future verification timestamp is rejected.
+
+This is a verifier interface contract, not a live approval registry. Signature verification, identity authentication, revocation lookup and authoritative client-to-project ownership must be performed by the trusted host implementation; none is claimed to be integrated by this phase.
