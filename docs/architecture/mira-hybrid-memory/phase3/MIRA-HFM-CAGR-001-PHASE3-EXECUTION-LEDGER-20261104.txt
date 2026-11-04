@@ -217,3 +217,13 @@ MERGE=NOT_APPROVED
 21. UPDATE AUTHORIZATION LEAST-PRIVILEGE HARDENING
 - Facade review identified that a WRITE-only caller could prepare an update and receive the prior record digest/revision without READ permission. Existing-record update preparation now requires READ plus WRITE on the same memory resource; new-record creation still requires WRITE.
 - Added negative test: WRITE=ALLOW + READ=DENY rejects update preparation. CI pending for this change.
+
+
+22. CALLER DISPOSITION REGISTER
+- Added MIRA-HFM-CAGR-001-PHASE3-CALLER-DISPOSITION-REGISTER-20261104.txt on the Phase 3 branch. It maps scanner per-file categories to P0 blocked retrieval, P1 privileged/recovery, and separate application-domain dispositions.
+- The register explicitly distinguishes whole-file Drive reads, snapshot/restore, CRM conversation context, Work Learning/Experience fan-out, aggregate-only count tools, human-only cleanup, controlled apply, and generic application stores. It records that lexical candidates are not proof of actual HFM reads and categories overlap.
+- Phase 3 exit conditions now explicitly require host authentication/replay protection, authoritative project-owner registry, project scope for Work Learning/Experience/Work Knowledge or a governed exclusion, dynamic/indirect path coverage, P0/P1 bypass tests and independent regression/recovery verification.
+
+23. LEAST-PRIVILEGE UPDATE AUTHORIZATION
+- Existing-record update preparation now requires READ and WRITE on the same memory resource because it exposes previous revision/digest. New record creation remains WRITE-only.
+- Added negative test for READ denied while WRITE allowed. CI pending.
