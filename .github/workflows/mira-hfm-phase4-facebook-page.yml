@@ -11,6 +11,7 @@ on:
       - 'tests/mira-facebook-page-hfm-adapter.test.js'
       - 'services/mira-facebook-page-permission-contract.js'
       - 'tests/mira-facebook-page-permission-contract.test.js'
+      - 'services/mira-facebook-page-permission-contract.js'
       - '.github/workflows/mira-hfm-phase4-facebook-page.yml'
       - 'docs/architecture/mira-hybrid-memory/phase4/**'
   pull_request:
