@@ -149,8 +149,24 @@ function prepareCanonicalWrite({
       incomingRecord.lifecycle !== 'ACTIVE') {
     throw new Error('Only integrity-verified ACTIVE canonical records can be prepared for write.');
   }
+  const auditPlan = Object.freeze({
+    actorId: requestContext.actorId,
+    actorType: requestContext.actorType,
+    projectId: incomingRecord.projectId,
+    requestId: requestContext.requestId,
+    operation: current ? 'UPDATE' : 'CREATE',
+    memoryId: incomingRecord.memoryId,
+    previousRevision: current ? current.version.revision : null,
+    nextRevision: incomingRecord.version.revision,
+    idempotencyKey,
+    incomingRecordDigest: digest(incomingRecord),
+    outcome: 'PREPARED_NOT_COMMITTED',
+    eventRequiredBeforeCommit: true
+  });
   return Object.freeze({
     status: 'PREPARED_NOT_COMMITTED',
+    auditStatus: 'NOT_EMITTED_PREPARE_ONLY',
+    auditPlan,
     committed: false,
     projectId: incomingRecord.projectId,
     memoryId: incomingRecord.memoryId,
