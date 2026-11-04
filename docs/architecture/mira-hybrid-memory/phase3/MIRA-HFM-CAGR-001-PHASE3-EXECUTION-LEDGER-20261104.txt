@@ -293,3 +293,7 @@ MERGE=NOT_APPROVED
 38. HOST IDENTITY / PROJECT AUTHORITY DESIGN BASELINED
 - Added MIRA-HFM-CAGR-001-PHASE3-HOST-IDENTITY-PROJECT-AUTHORITY-DESIGN-20261104.txt. It specifies trusted actor subject sources, role-only Bearer denial, sidecar project-owner registry, explicit memberships, owner transfer, existing-project UNASSIGNED_BLOCKED handling, legacy data mapping constraints, host callback requirements and acceptance tests.
 - Design only: no session/login changes, owner registry implementation, project owner assignments, migration, production access or grants were performed.
+
+39. PROJECT AUTHORITY EVIDENCE CONTRACT PROTOTYPE
+- Added `services/mira-memory-project-authority-contract.js` as a read-only validator for trusted host membership/ownership evidence, bound to exact actor, project, operation and resource scope; it checks allowedOperations, ACTIVE/revocation state, registry revision, timestamps, digest and a mandatory trusted verifier callback.
+- Added synthetic negative/positive tests and wired them into Phase 3 CI. No project registry is connected and no owner/membership records are created. CI pending.
