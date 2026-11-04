@@ -19,7 +19,7 @@ function make(overrides = {}) {
 const verifier = evidence => ({
  decision:'APPROVED',approvalReference:evidence.approvalReference,mappingDigest:evidence.mappingDigest,
  projectId:evidence.projectId,approvedBy:evidence.approvedBy,approvedAt:evidence.approvedAt,
- registryRevision:'fixture-registry-rev-01',revocationStatus:'ACTIVE',verifiedAt:'2026-11-04T11:59:30.000Z'
+ registryRevision:'fixture-registry-rev-01',revocationStatus:'ACTIVE',verifiedAt:'2026-11-04T11:59:30.000Z',expiresAt:'2026-11-04T12:10:00.000Z'
 });
 const mapping=make();
 assert.equal(validateProjectMapping({mapping,expectedDomain:'knowledge',expectedProjectId:'project-fixture-01',expectedSourceFileDigest:'a'.repeat(64),verifyApproval:verifier,now}).mappingId,mapping.mappingId);
@@ -41,6 +41,10 @@ assert.throws(()=>validateProjectMapping({mapping,verifyApproval:e=>({...verifie
 console.log('APPROVAL_PROJECT_SUBSTITUTION_REJECTED=PASS');
 assert.throws(()=>validateProjectMapping({mapping,verifyApproval:e=>({...verifier(e),verifiedAt:'2026-11-04T12:01:00.000Z'}),now}),/invalid or future-dated/);
 console.log('FUTURE_APPROVAL_VERIFICATION_REJECTED=PASS');
+assert.throws(()=>validateProjectMapping({mapping,verifyApproval:e=>({...verifier(e),expiresAt:'2026-11-04T11:59:59.000Z'}),now}),/invalid or future-dated/);
+console.log('EXPIRED_APPROVAL_EVIDENCE_REJECTED=PASS');
+assert.throws(()=>validateProjectMapping({mapping,verifyApproval:e=>({...verifier(e),expiresAt:'2026-11-04T11:59:00.000Z'}),now}),/invalid or future-dated/);
+console.log('APPROVAL_EXPIRY_BEFORE_VERIFICATION_REJECTED=PASS');
 const tamperedMapping=make();
 tamperedMapping.mappingDigest='0'.repeat(64);
 assert.throws(()=>validateProjectMapping({mapping:tamperedMapping,verifyApproval:verifier,now}),/digest mismatch/);
