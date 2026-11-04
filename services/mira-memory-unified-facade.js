@@ -113,6 +113,12 @@ function prepareCanonicalWrite({
     const currentErrors = validateCanonicalMemoryRecord(current, 'existingRecord');
     if (currentErrors.length) throw new Error('Existing canonical record is invalid: ' + currentErrors.join('; '));
     if (current.projectId !== incomingRecord.projectId) throw new Error('Existing memory project mismatch.');
+    // Updating an existing record exposes its prior digest/revision and therefore requires READ as well as WRITE authority.
+    authorize({
+      requestContext, operation: 'READ',
+      resourceScope: 'memory:' + current.memoryId,
+      authorizeRequest, now
+    });
     if (current.lifecycle !== 'ACTIVE' || current.integrity.status !== 'VERIFIED') {
       throw new Error('Existing memory is not eligible for update; review/recovery is required.');
     }
