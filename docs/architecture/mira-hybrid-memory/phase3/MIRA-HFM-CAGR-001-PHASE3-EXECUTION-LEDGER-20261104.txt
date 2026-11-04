@@ -168,3 +168,9 @@ MERGE=NOT_APPROVED
 - Candidate inventory summary: 242 total candidates; 27 public/internal retrieval; 27 direct domain store reads; 91 generic loadStore calls; 36 provider/snapshot reads; 27 CRM conversation reads; 28 Work Learning/Experience reads; 6 Work Knowledge reads. Categories overlap; totals must not be summed as unique paths.
 - The scanner separates generic loadStore from domain-specific loadMemory/loadKnowledge and no longer misclassifies generic loadStore calls as CRM-only reads.
 - This broadens the review baseline beyond the prior 36 wrapper callsites. Every candidate still needs semantic classification; no production coverage claim is implied.
+
+17. CRM CLIENT IDENTITY BINDING
+- Read-only route/schema review found CRM conversations have clientId/opportunityId but no authoritative projectId; authenticated routes currently do not derive an approved projectId-to-clientId mapping before record reads.
+- Mapping contract now requires clientId for CRM message mappings, passes it to the trusted approval verifier, and the adapter checks sourceEntry.clientId against the approved mapping. Non-CRM mappings require clientId=null.
+- Added negative tests for missing CRM clientId, source client substitution and approved-mapping client substitution. The trusted verifier must independently confirm clientId-to-projectId authority; tests use synthetic verifier fixtures only.
+- Production CRM project isolation remains BLOCKED until the trusted mapping registry and route integration are implemented and independently tested.
