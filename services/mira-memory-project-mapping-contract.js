@@ -59,7 +59,7 @@ function validateProjectMapping({
   }
   if (mapping.schemaVersion !== '1.0.0') throw new Error('Unsupported mapping schemaVersion.');
   text(mapping.mappingId, 'mappingId');
-  if (!DOMAINS.has(mapping.domain)) throw new Error('Unsupported mapping domain.');
+  if (typeof mapping.domain !== 'string' || !mapping.domain.trim()) throw new Error('Mapping domain is required.');
   text(mapping.sourceSystem, 'sourceSystem');
   if (!DOMAINS.has(mapping.domain)) throw new Error('Domain contract is not implemented for mapping.');
   if (mapping.sourceSystem !== DOMAIN_SOURCE_SYSTEM[mapping.domain]) {
