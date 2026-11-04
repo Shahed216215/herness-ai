@@ -8,7 +8,7 @@ const sourceFileDigest='a'.repeat(64);
 const verifier=e=>({
  decision:'APPROVED',approvalReference:e.approvalReference,mappingDigest:e.mappingDigest,
  projectId:e.projectId,approvedBy:e.approvedBy,approvedAt:e.approvedAt,
- registryRevision:'fixture-registry-rev-01',revocationStatus:'ACTIVE',verifiedAt:'2026-11-04T11:59:30.000Z'
+ registryRevision:'fixture-registry-rev-01',revocationStatus:'ACTIVE',verifiedAt:'2026-11-04T11:59:30.000Z',expiresAt:'2026-11-04T12:10:00.000Z'
 });
 function fixture(domain,sourceEntry,extra={}){
  const parent=domain==='crm_conversation_message'?sourceEntry.conversationId:null;
