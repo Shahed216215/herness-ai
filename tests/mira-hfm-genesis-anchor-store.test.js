@@ -49,6 +49,20 @@ try {
   }).status, 'VERIFIED_PINNED_HASH_ONLY');
   console.log('GENESIS_ANCHOR_VERIFIED_AGAINST_EXTERNAL_PIN=PASS');
 
+  const storedFile = path.join(root, fs.readdirSync(root).find(name => name.endsWith('.json')));
+  const storedEnvelope = JSON.parse(fs.readFileSync(storedFile, 'utf8'));
+  storedEnvelope.authorityReference = 'TAMPERED-AUTHORITY-REF';
+  fs.writeFileSync(storedFile, JSON.stringify(storedEnvelope, null, 2) + '\\n');
+  assert.throws(() => verifyGenesisAnchor({
+    root, projectId: 'project-a', chainId: 'chain-a', trustedGenesisHash: genesis.genesisHash
+  }), /envelope scope or schema mismatch/);
+  console.log('GENESIS_AUTHORITY_METADATA_TAMPER_DETECTED=PASS');
+
+  fs.writeFileSync(storedFile, JSON.stringify({
+    ...storedEnvelope, authorityReference: 'AUTH-001',
+    anchorRecordHash: storedEnvelope.anchorRecordHash
+  }, null, 2) + '\\n');
+
   assert.throws(() => createGenesisAnchor({
     root, genesis, projectId: 'project-a', chainId: 'chain-a',
     trustedGenesisHash: genesis.genesisHash, trustAnchorId: 'pin-001',
