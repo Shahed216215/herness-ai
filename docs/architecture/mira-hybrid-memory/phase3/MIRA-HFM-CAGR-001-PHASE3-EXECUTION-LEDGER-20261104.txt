@@ -134,3 +134,10 @@ MERGE=NOT_APPROVED
 - Persistent autonomous write execution remains DENIED by the existing boundary scanner.
 - This is a critical production-integration gap. The synthetic facade is not connected to the 36 read callsites or 24 writer callsites.
 - CRM Conversation is covered by separate conversation-store/route contracts and is not included in the General Memory/Knowledge inventory count. Cache, embeddings, export, backup/restore, workers and provider paths require further inventory.
+
+13. WORK-RELATED DOMAIN SCOPE REVIEW
+- Added MIRA-HFM-CAGR-001-PHASE3-DOMAIN-SCOPE-REVIEW-20261104.txt after read-only inspection of Work Learning, Work Knowledge Consolidation, Experience Memory and Experience Retrieval source.
+- Work Learning has learningId/taskId/executionId but no authoritative projectId in the normalized task record; taskId/planId are not project authority.
+- Work Knowledge Consolidation uses content-fingerprint-derived item IDs and aggregated sourceRecords without projectId; it is a derived/deduplicated view, not a lossless source identity.
+- Experience Memory copies learningId into experienceId and derives from Work Learning; no authoritative projectId is present. Treat as a rebuildable projection, not a separate namespace.
+- All three remain NOT_MAPPED/BLOCKED until explicit project registry, stable identity and lossless/deterministic provenance contracts exist.
