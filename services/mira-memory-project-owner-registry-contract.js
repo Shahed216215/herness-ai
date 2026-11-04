@@ -5,7 +5,7 @@
 const crypto=require('node:crypto');
 const ACTOR_TYPES=new Set(['HUMAN','SERVICE','AGENT','SYSTEM']);
 const ROLES=new Set(['OWNER','EDITOR','VIEWER','SERVICE','ADMIN']);
-const OPERATIONS=new Set(['READ','WRITE','LIST','VERIFY','PLAN_MIGRATION']);
+const OPERATIONS=new Set(['READ','WRITE','LIST','VERIFY','PLAN_MIGRATION','APPROVE_MAPPING']);
 const ENTRY_STATUSES=new Set(['ACTIVE','SUSPENDED','REVOKED']);
 const ENTRY_KEYS=[
  'schemaVersion','authorityRecordId','projectId','tenantId','ownerActorId','memberships',
