@@ -148,3 +148,26 @@ Logs confirm MIRA_HFM_ADMIN_KNOWLEDGE_EDIT_DELETE_PERMISSION_RUNTIME=PASS and MI
 routes/knowledge-improvements.js uses SYSTEM_ADMIN permission, requires proposal.status === "approved", then calls prepareEvolution(), applyEvolution(), verifyEvolutionState(), and rollbackEvolution() on verification/commit failure. The direct-dispatch source test covers these route-level gates.
 
 The repository also contains knowledge-controlled-apply.js, which exports a direct updateLearning() controlled-apply path with its own approved-proposal check, Local/Drive preflight, snapshot verification and rollback. The reviewed knowledge-improvements route imports applyKnowledgeImprovementControlled but does not invoke it; the route currently uses the Stage 4.12 prepare/apply/verify evolution path instead. This legacy module's effective reachability remains REVIEW_REQUIRED until all import/call sites are reconciled. Do not count the unused import as proof that this direct writer is the active route path.
+
+11. REPOSITORY-WIDE PERSISTENT WRITER API CALLSITE INVENTORY
+
+Added tests/mira-hfm-persistent-writer-callsite-inventory.test.js. It recursively scans runtime JavaScript/TypeScript source (excluding tests, docs, backups, coverage, node_modules and .git) for calls/definitions of addMemory, addKnowledge, addLearning, updateKnowledge, updateLearning, deleteKnowledge, replaceKnowledge and learnFromContent.
+
+The current inventory is 24 matches across exactly 10 reviewed files, with no unexpected or missing writer-callsite files:
+- autonomous-learning-controlled-apply.js: rollback replaceKnowledge and approved-proposal addLearning.
+- knowledge-controlled-apply.js: updateLearning in the legacy controlled-apply module; reachability remains REVIEW_REQUIRED.
+- knowledge.js: writer function definitions.
+- memory.js: addMemory function definition.
+- server.js: admin delete/edit writers and ordinary conversation transcript addMemory writes.
+- services/learning.js: learnFromContent, addLearning and updateLearning implementation.
+- tools/knowledge-cleanup.js: replaceKnowledge.
+- tools/knowledge-save.js: addKnowledge.
+- tools/learning-save.js: learnFromContent.
+- tools/memory-save.js: addMemory.
+
+CI on tested HEAD 4126f156f3d48dd22b66021453f944266fa8c414:
+- Push run 41789396448: SUCCESS.
+- Pull-request run 41789404479: SUCCESS.
+The push job log reports MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS, 10 files, 24 matches, zero unreviewed files and zero missing reviewed files; TESTS_FAILED=0, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+This is a source-level callsite inventory, not a proof of dynamic import reachability or runtime authorization for every writer. It does not scan non-JavaScript native modules or external provider implementations. Keep the previously stated approval and raw-tools-object residual gaps open.
