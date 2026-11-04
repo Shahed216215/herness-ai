@@ -77,6 +77,7 @@ on:
       - 'services/mira-work-execution-engine.js'
       - 'tests/mira-hfm-memory-version-recovery-policy.test.js'
       - 'tests/mira-hfm-persistent-write-policy.test.js'
+      - 'tests/mira-hfm-persistent-wrapper-guard.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'tests/mira-hfm-tool-registry-execution-guard.test.js'
       - 'tests/mira-hfm-direct-dispatch-boundary.test.js'
@@ -176,6 +177,7 @@ jobs:
           node tests/mira-hfm-phase2-core-safety.test.js
           node tests/mira-hfm-memory-version-recovery-policy.test.js
           node tests/mira-hfm-persistent-write-policy.test.js
+          node tests/mira-hfm-persistent-wrapper-guard.test.js
           node tests/mira-hfm-tool-registry-policy-parity.test.js
           node tests/mira-hfm-tool-registry-execution-guard.test.js
           node tests/mira-hfm-direct-dispatch-boundary.test.js
