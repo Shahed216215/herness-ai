@@ -12,7 +12,7 @@ function digest(value) {
 }
 function createFacebookPageOperationIdentity({ pageId, actionId, contentHash } = {}) {
   const safePageId = requiredText(pageId, 'pageId', 32);
-  if (!/^\\d{1,32}$/.test(safePageId)) throw new Error('pageId must be numeric.');
+  if (!/^\d{1,32}$/.test(safePageId)) throw new Error('pageId must be numeric.');
   const safeActionId = requiredText(actionId, 'actionId', 256);
   const safeHash = requiredText(contentHash, 'contentHash', 64);
   if (!/^[a-f0-9]{64}$/.test(safeHash)) throw new Error('contentHash must be SHA-256.');
@@ -105,7 +105,7 @@ function planFacebookPageRetry({ operation, attempt, maxAttempts = 3, retryAfter
  */
 function reconcileFacebookPageWrite({ expectedPageId, expectedPostId, expectedContentHash, providerReadback } = {}) {
   const pageId = requiredText(expectedPageId, 'expectedPageId', 32);
-  if (!/^\\d{1,32}$/.test(pageId)) throw new Error('expectedPageId must be numeric.');
+  if (!/^\d{1,32}$/.test(pageId)) throw new Error('expectedPageId must be numeric.');
   const contentHash = requiredText(expectedContentHash, 'expectedContentHash', 64);
   if (!/^[a-f0-9]{64}$/.test(contentHash)) throw new Error('expectedContentHash must be SHA-256.');
   if (!object(providerReadback) || typeof providerReadback.found !== 'boolean') throw new Error('providerReadback must explicitly declare found.');
