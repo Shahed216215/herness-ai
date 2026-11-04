@@ -1,5 +1,4 @@
 'use strict';
-
 const fs=require('node:fs');
 const path=require('node:path');
 const EXTENSIONS=new Set(['.js','.cjs','.mjs','.ts']);
@@ -27,8 +26,8 @@ const READ_EXPORTS=new Set([
 function importedReadAliases(source){
  const aliases=new Map();
  const declarations=[
-  /(?:const|let|var)\\s*\\{([^}]+)\\}\\s*=\\s*require\\(\\s*['"]([^'"]+)['"]\\s*\\)/gs,
-  /import\\s*\\{([^}]+)\\}\\s*from\\s*['"]([^'"]+)['"]/gs
+  /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*require\(\s*['"]([^'"]+)['"]\s*\)/gs,
+  /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/gs
  ];
  for(const pattern of declarations){
   pattern.lastIndex=0;
@@ -37,7 +36,7 @@ function importedReadAliases(source){
    const specifier=match[2];
    if(!/(memory|knowledge|conversation|learning|experience|work-knowledge|google-drive|snapshot|state-store|crm)/i.test(specifier)) continue;
    for(const item of match[1].split(',')){
-    const parts=item.trim().split(/\\s+as\\s+|:\\s*/);
+    const parts=item.trim().split(/\s+as\s+|:\s*/);
     const original=parts[0].trim();
     const alias=(parts[1]||original).trim();
     if(READ_EXPORTS.has(original)&&alias&&alias!==original) aliases.set(alias,original);
@@ -58,9 +57,9 @@ function classifySource(relativePath,source){
  }
  const aliases=importedReadAliases(source);
  for(let i=0;i<lines.length;i++){
-  if(/^\\s*(?:\\/\\/|\\*|\\*\\/)/.test(lines[i])) continue;
+  if(/^\s*(?:\/\/|\*|\*\/)/.test(lines[i])) continue;
   for(const [alias,original] of aliases){
-   const call=new RegExp('\\\\b'+alias.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\ return {relativePath,matches};')+'\\\\s*\\(');
+   const call=new RegExp('\\b'+alias+'\\s*\\(');
    if(call.test(lines[i])) matches.push({line:i+1,category:ALIASED_READ_CATEGORY,excerpt:original+' as '+alias+': '+lines[i].trim().slice(0,180)});
   }
  }
@@ -88,7 +87,8 @@ if(require.main===module){
  const findings=scan(process.cwd());
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_INVENTORY=GENERATED');
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_COUNT='+findings.length);
- for(const [category] of RULES) console.log('MIRA_HFM_'+category+'_COUNT='+findings.filter(x=>x.category===category).length);\n console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);
+ for(const [category] of RULES) console.log('MIRA_HFM_'+category+'_COUNT='+findings.filter(x=>x.category===category).length);
+ console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);
  const byFile=new Map();
  for(const item of findings){
   const key=item.file+'|'+item.category;
