@@ -16,7 +16,7 @@ const base = {
 const mapping = {
   domain: 'knowledge', legacyId: 'kb_legacy_01', canonicalMemoryId: 'memory-canonical-0001',
   projectId: 'project-approved-01', revision: 1, sourceDigest: digest(base.entry),
-  classification: 'PROJECT_PRIVATE', approvalReference: 'ARCH-DECISION-REF-001'
+  sourceFileDigest, sourceOrdinal: 0, classification: 'PROJECT_PRIVATE', approvalReference: 'ARCH-DECISION-REF-001'
 };
 const candidate = buildMigrationCandidate({ ...base, mapping });
 assert.equal(candidate.status, 'READY_FOR_REVIEW');
@@ -34,7 +34,7 @@ const crmEntry = { messageId: 'crm-msg-001', conversationId: 'conv-001', content
 const crmMapping = {
   domain: 'crm_conversation_message', legacyId: crmEntry.messageId,
   canonicalMemoryId: 'memory-canonical-crm-001', projectId: 'project-approved-01',
-  revision: 1, sourceDigest: digest(crmEntry), classification: 'RESTRICTED',
+  revision: 1, sourceDigest: digest(crmEntry), sourceFileDigest, sourceOrdinal: 1, classification: 'RESTRICTED',
   approvalReference: 'ARCH-DECISION-REF-002'
 };
 const crmNoParent = buildMigrationCandidate({
@@ -104,6 +104,11 @@ const changedPlan = planSnapshot({ domain: 'knowledge', sourceText: changedSnaps
 assert.equal(changedPlan.status, 'BLOCKED');
 assert.ok(changedPlan.blockers.some(x => x.includes('SOURCE_DIGEST_MISMATCH')));
 console.log('SOURCE_SNAPSHOT_CHANGE_INVALIDATES_MAPPING=PASS');
+const appendedSnapshot = JSON.stringify([base.entry, { id: 'kb-unrelated', title: 'Unrelated', content: 'other' }]);
+const appendedPlan = planSnapshot({ domain: 'knowledge', sourceText: appendedSnapshot, mappings: [mapping] });
+assert.equal(appendedPlan.status, 'BLOCKED');
+assert.ok(appendedPlan.blockers.some(x => x.includes('SOURCE_SNAPSHOT_LOCATOR_MISMATCH')));
+console.log('UNRELATED_SNAPSHOT_CHANGE_INVALIDATES_MANIFEST=PASS');
 
 assert.throws(() => planSnapshot({ domain: 'knowledge', sourceText: '{bad json', mappings: [] }), /valid JSON/);
 console.log('INVALID_SOURCE_SNAPSHOT_REJECTED=PASS');
@@ -122,7 +127,7 @@ const generalLegacyId = 'legacy-memory:' + generalSourceFileDigest + ':0';
 const generalMapping = {
   domain: 'general_memory', legacyId: generalLegacyId,
   canonicalMemoryId: 'memory-canonical-general-001', projectId: 'project-approved-01',
-  revision: 1, sourceDigest: digest(generalEntry), classification: 'PROJECT_PRIVATE',
+  revision: 1, sourceDigest: digest(generalEntry), sourceFileDigest: generalSourceFileDigest, sourceOrdinal: 0, classification: 'PROJECT_PRIVATE',
   approvalReference: 'ARCH-DECISION-REF-GENERAL'
 };
 const generalPlan = planSnapshot({ domain: 'general_memory', sourceText: generalRaw, mappings: [generalMapping] });
