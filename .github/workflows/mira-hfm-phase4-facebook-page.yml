@@ -86,10 +86,6 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_read_only_meta_get == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    env:
-      MIRA_META_READ_ONLY_APPROVED: 'true'
-      META_PAGE_ID: ${{ inputs.page_id }}
-      META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
     steps:
       - name: Checkout selected Phase 4 branch
         uses: actions/checkout@v4
@@ -98,6 +94,9 @@ jobs:
         with:
           node-version: '24'
       - name: Fail closed if the Page token secret is absent
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ inputs.page_id }}
         run: |
           set -euo pipefail
           test -n "$META_PAGE_ACCESS_TOKEN" || {
@@ -106,4 +105,8 @@ jobs:
           }
           test -n "$META_PAGE_ID"
       - name: Execute exactly one read-only Page metadata GET
+        env:
+          MIRA_META_READ_ONLY_APPROVED: 'true'
+          META_PAGE_ID: ${{ inputs.page_id }}
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
         run: node services/mira-facebook-page-read-only-probe.js
