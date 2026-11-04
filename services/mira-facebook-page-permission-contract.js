@@ -121,9 +121,9 @@ function assessDeclaredMetaPermissionEvidence({evidence,expectedContext,now=new 
 function buildMetaGraphRequestPlan({operation,pageId,apiVersion,recordClassification}={}) {
   if(!OPERATIONS.has(operation)) throw new Error('Unsupported Meta Page operation.');
   const targetPageId=text(pageId,'pageId',32);
-  if(!/^\\d{1,32}$/.test(targetPageId)) throw new Error('pageId must be numeric.');
+  if(!/^\d{1,32}$/.test(targetPageId)) throw new Error('pageId must be numeric.');
   const version=text(apiVersion,'apiVersion',16);
-  if(!/^v\\d{1,3}\\.\\d{1,2}$/.test(version)) throw new Error('apiVersion must be an explicit version such as v26.0.');
+  if(!/^v\d{1,3}\.\d{1,2}$/.test(version)) throw new Error('apiVersion must be an explicit version such as v26.0.');
   let method='GET',edge='/posts',bodyFields=[];
   if(operation==='READ_USER_CONTENT') edge='/feed';
   if(operation==='WRITE_PAGE_POST') {
