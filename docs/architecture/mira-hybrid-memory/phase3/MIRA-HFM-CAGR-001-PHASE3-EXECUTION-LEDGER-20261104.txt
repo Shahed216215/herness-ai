@@ -251,3 +251,7 @@ MERGE=NOT_APPROVED
 - Initial replay-gate CI failed because the synthetic authorization helpers in the request/facade tests did not yet return replayStatus. Those fixture mismatches remain in Actions history and were corrected; no production integration ran.
 - Phase 3 run 41818932471 SUCCESS: REPLAYED_REQUEST_REJECTED=PASS; request validity-window binding PASS; expired approval evidence rejection PASS; update READ+WRITE authorization PASS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
 - Phase 2 regression run 41818932184 SUCCESS: TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+30. SYNTHETIC REPLAY REGISTRY HARNESS
+- Extended the authorization test to use a one-time in-memory host replay registry keyed by authorityRef + requestId. First use returns FRESH; second use returns REPLAYED and the contract denies it.
+- This verifies the callback interaction and duplicate-request denial in an isolated process only. It does not prove cross-process/distributed replay atomicity or persistent replay storage. CI pending.
