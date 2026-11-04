@@ -82,6 +82,7 @@ assert.equal(report.records.length, 1);
 const prepared = preparePublicPageDraftFromHfm({
   retrievalReport: report,
   memoryId: publicRecord.memoryId,
+  pageId: '123456789',
   pageName: 'Mira Memory',
   generatedAt: '2026-11-04T12:00:00.000Z'
 });
@@ -90,6 +91,8 @@ assert.equal(prepared.committed, false);
 assert.equal(prepared.published, false);
 assert.equal(prepared.hfm.retrievalEligibility, 'AUTHORIZED_READ');
 assert.equal(prepared.draft.status, 'PENDING_MANUAL_POST');
+assert.equal(prepared.draft.pageId, '123456789');
+assert.throws(() => preparePublicPageDraftFromHfm({ retrievalReport: report, memoryId: publicRecord.memoryId }), /pageId is required/);
 assert.equal(prepared.draft.content, publicRecord.content);
 console.log('HFM_AUTHORIZED_PUBLIC_RECORD_DRAFT_PREPARE_PASS=PASS');
 
