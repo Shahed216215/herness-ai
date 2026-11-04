@@ -6,9 +6,11 @@ const path = require('node:path');
 const knowledgePath = require.resolve('../knowledge');
 const drivePath = require.resolve('../google-drive');
 const toolPath = require.resolve('../tools/knowledge-cleanup');
+const policyPath = require.resolve('../services/mira-tool-execution-policy');
 const previousKnowledge = require.cache[knowledgePath];
 const previousDrive = require.cache[drivePath];
 const previousTool = require.cache[toolPath];
+const previousPolicy = require.cache[policyPath];
 
 let records = [];
 let replaceCalls = 0;
@@ -21,6 +23,18 @@ knowledgeStub.exports = {
   getKnowledge: () => records,
   replaceKnowledge: value => { replaceCalls++; records = value; return value; }
 };
+const policyStub = new Module(policyPath);
+policyStub.filename = policyPath;
+policyStub.loaded = true;
+// This suite tests post-authorization cleanup semantics only. The separate
+// persistent-wrapper guard suite verifies the real human-only policy denial.
+policyStub.exports = {
+  checkToolSafety: () => ({
+    passed: true,
+    reason: 'isolated fixture authorization stub'
+  })
+};
+
 const driveStub = new Module(drivePath);
 driveStub.filename = drivePath;
 driveStub.loaded = true;
@@ -33,6 +47,7 @@ driveStub.exports = {
   }
 };
 require.cache[knowledgePath] = knowledgeStub;
+  require.cache[policyPath] = policyStub;
 require.cache[drivePath] = driveStub;
 delete require.cache[toolPath];
 
@@ -98,6 +113,8 @@ delete require.cache[toolPath];
     if (previousDrive) require.cache[drivePath] = previousDrive;
     else delete require.cache[drivePath];
     if (previousTool) require.cache[toolPath] = previousTool;
+    if (previousPolicy) require.cache[policyPath] = previousPolicy;
+    else delete require.cache[policyPath];
     else delete require.cache[toolPath];
   }
 })();
