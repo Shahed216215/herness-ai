@@ -255,3 +255,7 @@ MERGE=NOT_APPROVED
 30. SYNTHETIC REPLAY REGISTRY HARNESS
 - Extended the authorization test to use a one-time in-memory host replay registry keyed by authorityRef + requestId. First use returns FRESH; second use returns REPLAYED and the contract denies it.
 - This verifies the callback interaction and duplicate-request denial in an isolated process only. It does not prove cross-process/distributed replay atomicity or persistent replay storage. CI pending.
+
+31. ALIASED READ INVENTORY COVERAGE
+- Access-path scanner now detects simple CommonJS destructured aliases and ESM named import aliases for known read exports from memory/knowledge/conversation/learning/provider-related modules. Added ALIASED_DOMAIN_READ category and tests for both import styles.
+- This reduces one static blind spot only. Re-export chains, namespace imports, dynamic imports/requires, function-reference assignment, wrapper callbacks, reflection and runtime dependency injection remain unscanned and REVIEW_REQUIRED. CI run pending.
