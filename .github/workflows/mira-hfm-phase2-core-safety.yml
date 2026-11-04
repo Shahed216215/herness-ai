@@ -43,6 +43,8 @@ on:
       - 'services/mira-legacy-memory-knowledge-adapter.js'
       - 'services/mira-hfm-migration-manifest.js'
       - 'tests/mira-hfm-migration-manifest.test.js'
+      - 'services/mira-hfm-test-registry.js'
+      - 'tests/mira-hfm-test-registry.test.js'
       - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'services/mira-hfm-migration-manifest.js'
@@ -137,6 +139,7 @@ jobs:
           node tests/mira-memory-conflict-assessment.test.js
           node tests/mira-legacy-memory-knowledge-adapter.test.js
           node tests/mira-hfm-migration-manifest.test.js
+          node tests/mira-hfm-test-registry.test.js
           node tests/mira-knowledge-duplicate-assessment.test.js
           node tests/mira-knowledge-cleanup-tool-boundary.test.js
           node tests/mira-hfm-boundary-inventory.test.js
