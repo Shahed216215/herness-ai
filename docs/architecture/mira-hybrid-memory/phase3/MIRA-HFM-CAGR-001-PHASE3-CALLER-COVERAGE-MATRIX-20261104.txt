@@ -60,3 +60,21 @@ D. Re-run independent negative tests, full regression and inventory drift checks
 E. Keep merge/deployment/migration/provider cutover gated.
 
 END OF MATRIX
+
+8. SECONDARY CALLER DISPOSITION — MANUAL SOURCE REVIEW
+|Path / component|Observed role|Phase 3 disposition|
+|---|---|---|
+|scripts/mira-memory-backup.js; services/mira-local-memory-store.js|Local General Memory backup, versioning and atomic readback|PRIVILEGED_P1; not project-scoped|
+|tools/knowledge-backup.js; services/mira-knowledge-state-recovery.js|Local checksummed Knowledge backup and audit|PRIVILEGED_P1; not project-scoped|
+|tools/knowledge-restore.js|Explicitly confirmed restore with validation, quarantine and readback|PRIVILEGED_P1; separate restore authority|
+|tools/memory-restore.js; tools/memory-version-recovery.js|Human/action-scoped recovery wrappers|BLOCKED at wrapper boundary|
+|snapshot-manager.js|Generic file snapshot, SHA-256 verification and restore|PRIVILEGED_P1; no HFM actor/project authority|
+|knowledge-memory-evolution.js; autonomous-learning-controlled-apply.js; knowledge-controlled-apply.js|Snapshot, provider state, controlled apply and rollback|PRIVILEGED_P1; keep separate recovery lifecycle|
+|google-drive.js; tools/knowledge-search.js|Whole-file provider load/save; local/Drive array substitution|BLOCKED from ordinary HFM retrieval; no cutover|
+|services/mira-autonomous-worker.js|Governed research task processing and report output|No direct HFM store access found in reviewed path|
+|services/mira-execution-queue-engine.js; project queue services|Queue construction from supplied priority/project records|Separate task domain; no direct HFM store read found|
+|services/mira-experience-memory.js; mira-experience-retrieval-engine.js|Derived global Experience projection and ranking|BLOCKED pending project authority and source lineage|
+|services/mira-work-learning-engine.js; mira-work-knowledge-consolidation.js|Separate persistent learning/knowledge stores|BLOCKED pending authoritative project mapping|
+|Cache / embedding / vector / export paths|No dedicated module filename found in 614-source-file tree; inline/dynamic paths not ruled out|REVIEW_REQUIRED|
+
+The table is a semantic disposition of reviewed paths, not proof that every dynamic or runtime-injected path has been found. No production caller was modified.

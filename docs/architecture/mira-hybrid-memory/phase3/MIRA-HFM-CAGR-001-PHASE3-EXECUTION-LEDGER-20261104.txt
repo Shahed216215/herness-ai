@@ -435,3 +435,16 @@ CURRENT ADDITIVE STATUS
 `PHASE3_DURABLE_REPLAY_STORE=NOT_IMPLEMENTED`
 `PHASE3=IN_PROGRESS`
 `VERSION=v0.2`
+
+56. SECONDARY CALLER REVIEW ADDENDUM
+- Reviewed 28 targeted source paths covering local Memory/Knowledge stores, backup/restore, snapshot/recovery, Google Drive provider, knowledge search, autonomous worker, execution/project queues, Work Learning/Experience/Work Knowledge and CRM Conversation memory/planning.
+- Confirmed backup/restore and snapshot operations are privileged global-store recovery paths, not ordinary project-scoped retrieval. Knowledge restore validates checksum/count, preserves corrupt originals, records audit and verifies readback; Memory restore/version-recovery wrappers remain blocked pending action-scoped human approval.
+- Confirmed Google Drive and Knowledge Search expose whole-file provider reads without HFM record-level project/trust/quarantine filtering; remain blocked from ordinary HFM retrieval.
+- Confirmed reviewed autonomous worker and queue services do not directly access canonical HFM Memory/Knowledge stores. They remain separate research/task domains; this is limited to inspected source paths.
+- Confirmed Experience retrieval obtains global Experiences and ranks by task text without project scope; Work Learning/Experience/Work Knowledge remain explicitly BLOCKED from unified adaptation.
+- Full Git tree listing: 614 JavaScript/CommonJS/ESM/TypeScript source files; tree response was not truncated. No dedicated Memory Cache, Embedding/Vector Index or Memory Export source path was found by filename. Inline, reflective and runtime-injected paths remain REVIEW_REQUIRED.
+- No production caller, persistent data, Google Drive, Facebook provider, cache, embedding or export service was changed or invoked.
+- This addendum expands semantic coverage but does not claim exhaustive call-graph proof. Dynamic import/re-export chains, reflection, computed properties and runtime dependency injection remain limitations.
+- `PHASE3_SECONDARY_CALLER_REVIEW=EXPANDED_PARTIAL`
+- `PHASE3_CACHE_EMBED_EXPORT_COVERAGE=REVIEW_REQUIRED`
+- `PHASE3=IN_PROGRESS`

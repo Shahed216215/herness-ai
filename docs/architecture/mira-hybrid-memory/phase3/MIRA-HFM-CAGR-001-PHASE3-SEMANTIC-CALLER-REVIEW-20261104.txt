@@ -131,3 +131,33 @@ The CommonJS/ESM/static dynamic-import namespace scanner found 27 additional nam
 | services/mira-state-version-recovery.js | 2 | Generic privileged state recovery; exact store path must be scoped by caller |
 
 Disposition totals: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13; privileged recovery 5; adjacent Stage 13 governance 1. No production caller was modified. Namespace scanning now has synthetic coverage for CommonJS require, ESM namespace import and static dynamic import. It remains lexical and does not resolve re-export chains, runtime dependency injection or computed property names.
+
+14. SECONDARY PERSISTENCE / BACKUP / RESTORE CALLER REVIEW
+- `scripts/mira-memory-backup.js` delegates to `services/mira-local-memory-store.js:createBackup`; this is a local General Memory backup path, not a unified project-scoped HFM provider.
+- `tools/knowledge-backup.js` delegates to `services/mira-knowledge-state-recovery.js:createKnowledgeBackup`; backup is local-only, versioned/checksummed and emits a state audit.
+- `tools/knowledge-restore.js` delegates to `restoreKnowledge`; explicit confirmation is required, backup SHA-256 and entry count are validated, corrupt prior state is preserved/quarantined, restore is followed by audit and readback verification. The legacy unchecksummed path is separately gated by an explicit flag.
+- `tools/memory-restore.js` is blocked at its wrapper boundary pending authenticated action-scoped human approval. `tools/memory-version-recovery.js` similarly blocks list/verify/restore pending the recovery authorization workflow.
+- `snapshot-manager.js` provides generic file snapshots with a manifest and per-file SHA-256 verification; restore copies snapshot files into project paths. It is a privileged recovery primitive and does not establish actor/project ownership or HFM record-level authorization.
+- `services/mira-local-memory-store.js` owns local General Memory read/write/backup/version behavior, initialization evidence and atomic readback. Its safety contract is not a multi-project access boundary.
+- `services/mira-knowledge-state-recovery.js` owns local Knowledge backup/restore, checksum validation, previous-backup preservation, corrupt-primary quarantine, audit and post-restore readback. It remains a privileged global-store recovery path.
+- `knowledge-memory-evolution.js`, `autonomous-learning-controlled-apply.js` and `knowledge-controlled-apply.js` use local/Drive state, snapshots, verification and rollback. These are governed recovery/apply paths, not ordinary retrieval. Do not route them through user-facing filtering or bypass their separate approval/recovery lifecycle.
+- Disposition: BACKUP_RESTORE_AND_SNAPSHOT=PRIVILEGED_P1_REVIEWED; no production HFM migration or Drive cutover.
+
+15. PROVIDER, SEARCH, WORKER AND QUEUE REVIEW
+- `google-drive.js` exposes whole-file Memory/Knowledge load/save functions. It has no record-level project isolation and remains a provider boundary only; no live Drive calls or provider cutover were performed.
+- `tools/knowledge-search.js` reads local Knowledge and may replace the local array with a whole-file Drive result. It does not apply HFM project, trust or quarantine filtering. Keep this path blocked from unified model retrieval until a guarded adapter is integrated.
+- `tools/web-search.js` calls the external search provider; it is a research/search tool, not a persistent Memory retrieval provider. It must not promote search snippets to trusted instructions or verified Memory without source validation.
+- `services/mira-autonomous-worker.js` reads task and research-governance inputs, enforces opt-in/budget gates, executes research through the governed work path and writes research-report metadata. The reviewed worker path does not directly read or write canonical General Memory/Knowledge/CRM stores.
+- `services/mira-execution-queue-engine.js`, `services/mira-project-execution-queue-service.js` and `services/mira-multi-project-queue-coordinator-service.js` transform supplied priority/project records into queue results; the reviewed code does not load canonical HFM Memory stores. Task/queue state remains a separate application domain.
+- Disposition: PROVIDER_RAW_READ=BLOCKED_FROM_ORDINARY_HFM_RETRIEVAL; WORKER_AND_QUEUE_DIRECT_HFM_ACCESS=NOT_FOUND_IN_REVIEWED_PATHS; dynamic injection and indirect wrappers remain scanner limitations.
+
+16. DERIVED LEARNING / EXPERIENCE REVIEW
+- `services/mira-experience-memory.js` derives Experience records from Work Learning records; it is a projection, not an independent project namespace.
+- `services/mira-experience-retrieval-engine.js:retrieveExperiences` obtains the global result of `listExperiences`, scores/ranks it against task text and only then applies result limits. No project/actor context is enforced before ranking.
+- `services/mira-work-learning-engine.js` and `services/mira-work-knowledge-consolidation.js` own separate persistent Work Learning and Work Knowledge stores. Existing taskId/learningId/source lineage is not authoritative project ownership.
+- Disposition: WORK_LEARNING_EXPERIENCE_WORK_KNOWLEDGE=BLOCKED_FROM_UNIFIED_MEMORY_ADAPTATION until an approved project/tenant authority and projection-lineage contract exists. Do not infer project scope from task text, taskId, opportunityId, title or content.
+
+17. CACHE / EMBEDDING / EXPORT PATH LIMITATION
+- The complete Git tree response was not truncated and listed 614 JavaScript/CommonJS/ESM/TypeScript source files. No dedicated source path named for Memory Cache, Embedding/Vector Index or Memory Export was present in the reviewed path inventory.
+- This is not proof that no inline cache, runtime-injected index, serialization/export helper or indirect reference exists. Those categories remain REVIEW_REQUIRED until a targeted source search or runtime dependency inventory can rule them in/out.
+- Scanner counts remain lexical candidates, not a complete call graph. Re-export chains, reflection, computed properties, runtime dependency injection and dynamically constructed module paths are not exhaustively resolved.
