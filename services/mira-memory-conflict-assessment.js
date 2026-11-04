@@ -150,6 +150,6 @@ function assessMemoryConflict(existing, incoming) {
       cryptographicVerification: 'CONTENT_HASH_MATCHED_ONLY'
     };
   }
-  return { status: 'NO_CONFLICT_DETECTED', conflictTypes: [], validationErrors: [], cryptographicVerification: 'NOT_PERFORMED' };
+  return { status: 'NO_CONFLICT_DETECTED', conflictTypes: [], validationErrors: [], cryptographicVerification: 'CONTENT_HASH_MATCHED_ONLY' };
 }
 module.exports = { validateCanonicalMemoryRecord, assessMemoryConflict };
