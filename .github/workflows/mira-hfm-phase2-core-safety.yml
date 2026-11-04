@@ -34,6 +34,8 @@ on:
       - 'services/mira-local-memory-store.js'
       - 'knowledge-memory-evolution.js'
       - 'services/mira-memory-conflict-assessment.js'
+      - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'services/mira-audit-chain-independent-verifier.js'
       - 'tests/mira-audit-chain-independent-verifier.test.js'
@@ -123,6 +125,7 @@ jobs:
           node tests/mira-memory-local-store-contract-test.js
           node tests/mira-memory-evolution-integration-test.js
           node tests/mira-memory-conflict-assessment.test.js
+          node tests/mira-legacy-memory-knowledge-adapter.test.js
           node tests/mira-conflict-quarantine-registry.test.js
           node tests/mira-knowledge-cleanup-storage-contract.test.js
           node tests/stage19-knowledge-improvement-state-test.js
