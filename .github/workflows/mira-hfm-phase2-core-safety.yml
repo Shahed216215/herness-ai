@@ -24,6 +24,7 @@ on:
       - work/mira-hfm-v02-phase2-core-safety
     paths:
       - 'knowledge.js'
+      - 'knowledge-controlled-apply.js'
       - 'tools/**'
       - 'tools/knowledge-backup.js'
       - 'tools/knowledge-restore.js'
@@ -95,6 +96,7 @@ on:
       - main
     paths:
       - 'knowledge.js'
+      - 'knowledge-controlled-apply.js'
       - 'tools/**'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'tests/mira-hfm-tool-registry-execution-guard.test.js'
