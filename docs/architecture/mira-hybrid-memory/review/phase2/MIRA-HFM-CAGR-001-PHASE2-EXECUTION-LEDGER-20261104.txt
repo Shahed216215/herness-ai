@@ -141,3 +141,30 @@ Limitations:
 - Full semantic classification of all caller boundaries remains IN_PROGRESS.
 - Universal HFM runtime guard remains NOT_INTEGRATED.
 - Production readiness remains NOT_CERTIFIED; PR #4 remains OPEN / DRAFT / UNMERGED; release remains v0.2.
+
+
+9. EXTENDED CALLER SEMANTIC REVIEW — 2026-11-04
+Additional source files inspected and classified:
+- memory.js: legacy Memory entries are role/content/time, without immutable per-entry messageId/projectId; it delegates persistence to mira-local-memory-store.
+- mira-conversation-response-planner.js: reads getConversationMemory() to drive priority/clarification planning; no distinct canonical trust/quarantine filter found in the inspected path.
+- knowledge-memory-evolution.js: local Memory and Knowledge writes plus Google Drive load/save comparison/synchronization form separate provider paths.
+- knowledge-controlled-apply.js and autonomous-learning-controlled-apply.js: both perform local/Drive preflight, apply, verification and rollback; equality checks do not provide provider CAS or canonical HFM conflict arbitration.
+- google-drive.js: provider helpers save/load Knowledge and Memory arrays without canonical source-version/CAS tokens in the inspected functions.
+- mira-state-version-recovery.js: explicit-confirmation restore writes snapshot entries directly through the local JSON state store; snapshot SHA verification is not equivalent to canonical trust/quarantine eligibility.
+- knowledge-backup.js, knowledge-restore.js and memory-restore.js: explicit tool wrappers expose backup/restore boundaries.
+- routes/knowledge-improvements.js, routes/autonomous-learning.js and server.js admin Knowledge routes are additional privileged consumers/writers. Admin permission checks do not replace canonical project-scope and conflict guards.
+
+This is an expanded semantic review of identified callers only. The 567-file / 1125-match static inventory has not been fully semantically classified. Background workers, exports, caches/indexes and all provider callsites remain under review.
+
+Current classification:
+CONVERSATION_RESPONSE_PLANNER_RETRIEVAL=IDENTIFIED
+GENERAL_MEMORY_LEGACY_IDENTITY_GAP=CONFIRMED_BY_SOURCE
+EVOLUTION_LOCAL_DRIVE_PATHS=IDENTIFIED
+CONTROLLED_APPLY_AND_ROLLBACK_PATHS=IDENTIFIED
+VERSION_RESTORE_WRITE_BOUNDARY=IDENTIFIED
+ADMIN_AND_TOOL_BOUNDARIES=IDENTIFIED
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+VERSION=v0.2
