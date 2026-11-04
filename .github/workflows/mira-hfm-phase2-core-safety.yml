@@ -68,6 +68,8 @@ on:
       - 'tests/mira-hfm-knowledge-drive-retry.test.js'
       - 'tests/stage19-knowledge-improvement-state-test.js'
       - 'services/mira-work-knowledge-consolidation.js'
+      - 'services/mira-work-execution-engine.js'
+      - 'tests/mira-hfm-memory-version-recovery-policy.test.js'
       - 'tests/mira-work-knowledge-store-fail-closed.test.js'
       - 'services/mira-work-learning-engine.js'
       - 'tests/mira-work-learning-store-fail-closed.test.js'
@@ -142,6 +144,7 @@ jobs:
           unset GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_REFRESH_TOKEN
           export MIRA_TEST_OFFLINE_DRIVE=1
           node tests/mira-hfm-phase2-core-safety.test.js
+          node tests/mira-hfm-memory-version-recovery-policy.test.js
           node tests/mira-knowledge-state-safety-test.js
           node tests/mira-phase2-recovery-regression.test.js
           node tests/mira-local-memory-safety-test.js
