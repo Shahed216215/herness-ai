@@ -315,3 +315,8 @@ MERGE=NOT_APPROVED
 43. PROJECT AUTHORITY PURPOSE BINDING
 - Project authority evidence now includes purpose; the validator requires it and can compare expectedPurpose. The injected host adapter passes the request purpose into validation. Added a negative purpose-substitution test.
 - This prevents reusing an otherwise valid actor/project/resource membership proof for a different request purpose. CI pending.
+
+38. TRUSTED HOST IDENTITY NORMALIZATION CONTRACT ADDED
+- Added `services/mira-memory-host-identity-contract.js`: exact-shape credential-free verified-principal normalization; namespaced stable actorId; bounded identity fields; expiry/future-time checks; immutable output. It rejects unverified, role-only, unsupported-auth-method, expired, extra-field and credential-bearing inputs.
+- Added `tests/mira-memory-host-identity-contract.test.js` for user-session, separately provisioned admin subject and service principal fixtures, plus negative cases.
+- Wired the new test into the Phase 3 CI workflow. This is a pure contract only: it does not authenticate, inspect request bodies, read users.json, modify sessionIdentity, provision admin IDs, or connect to project registry. CI pending.
