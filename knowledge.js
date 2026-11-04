@@ -71,7 +71,7 @@ function loadKnowledge() {
     KNOWLEDGE_GUARD.ensureMarker();
     return entries;
   } catch (error) {
-    if (!/Mira Knowledge is missing\\.$/.test(error.message)) throw error;
+    if (!/Mira Knowledge is missing\.$/.test(error.message)) throw error;
     if (KNOWLEDGE_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
       const missing = new Error(
         'Mira Knowledge was previously initialized but its primary is missing; explicit verified restore is required.'
