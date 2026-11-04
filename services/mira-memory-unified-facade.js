@@ -20,8 +20,8 @@ function cloneAndFreeze(value) {
   };
   return freeze(clone);
 }
-function requiredText(value, label) {
-  if (typeof value !== 'string' || !value.trim()) throw new Error(label + ' is required.');
+function requiredText(value, label, max = 512) {
+  if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(label + ' is required and must be bounded text.');
 }
 function authorize({ requestContext, operation, resourceScope, authorizeRequest, now }) {
   return authorizeMemoryRequest({ requestContext, operation, resourceScope, authorizeRequest, now });
@@ -70,7 +70,7 @@ function prepareCanonicalWrite({
       !Array.isArray(seenIdempotencyKeys)) {
     throw new Error('Existing records, conflict metadata and idempotency history must be arrays.');
   }
-  if (seenIdempotencyKeys.some(key => typeof key !== 'string' || !key.trim())) {
+  if (seenIdempotencyKeys.length > 10000 || seenIdempotencyKeys.some(key => typeof key !== 'string' || !key.trim() || key.length > 256)) {
     throw new Error('Idempotency history is malformed; write preparation fails closed.');
   }
   if (pendingConflicts.some(conflict => !conflict || typeof conflict !== 'object' || Array.isArray(conflict) ||
@@ -83,7 +83,7 @@ function prepareCanonicalWrite({
   incomingRecord = JSON.parse(JSON.stringify(incomingRecord));
   const errors = validateCanonicalMemoryRecord(incomingRecord, 'incomingRecord');
   if (errors.length) throw new Error('Incoming canonical record is invalid: ' + errors.join('; '));
-  requiredText(idempotencyKey, 'idempotencyKey');
+  requiredText(idempotencyKey, 'idempotencyKey', 256);
   if (seenIdempotencyKeys.includes(idempotencyKey)) throw new Error('Duplicate idempotency key rejected.');
   if (!requestContext || requestContext.projectId !== incomingRecord.projectId) {
     throw new Error('Request actor project scope does not match write project.');
