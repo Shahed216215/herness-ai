@@ -43,7 +43,9 @@ function decisionPath(directory, queueId) {
 }
 function readRegularJson(filePath) {
   const stat = fs.lstatSync(filePath);
-  if (stat.isSymbolicLink() || !stat.isFile()) throw new Error('Review queue entry is not a safe regular file.');
+  if (stat.isSymbolicLink() || !stat.isFile() || (stat.mode & 0o077) !== 0 || stat.size > 64 * 1024) {
+    throw new Error('Review queue entry is not a safe, bounded owner-only regular file.');
+  }
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 function writeImmutableJson(filePath, value) {

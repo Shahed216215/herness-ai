@@ -107,7 +107,14 @@ try {
     directory: path.join(symlinkRoot, 'linked'), projectId: 'project-fixture',
     actor: 'human-reviewer', candidate, auditWriter
   }), /unsafe directory component/);
-  console.log('FACEBOOK_REVIEW_QUEUE_SYMLINK_PATH_REJECTED=PASS');
+  const insecureDirectory = path.join(root, 'insecure');
+  fs.mkdirSync(insecureDirectory, { mode: 0o755 });
+  fs.chmodSync(insecureDirectory, 0o755);
+  assert.throws(() => enqueueFacebookPageImportReview({
+    directory: insecureDirectory, projectId: 'project-fixture',
+    actor: 'human-reviewer', candidate, auditWriter
+  }), /owner-only/);
+  console.log('FACEBOOK_REVIEW_QUEUE_SYMLINK_AND_PERMISSION_BOUNDARIES_PASS=PASS');
 
   const decision = decideFacebookPageImportReview({
     directory, queueId: queued.queueId, projectId: 'project-fixture',

@@ -151,3 +151,11 @@ Status: IN PROGRESS
 - Audit emission remains mandatory and any post-publication audit failure is explicitly reported as committed state.
 - Await branch-head CI before marking this increment PASS.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; CANONICAL_MEMORY_WRITES=0.
+
+
+## Entry 016 — Review registry filesystem hardening
+- Queue storage now rejects group/world-accessible queue directories and queue/decision files, requires owner-only modes, and caps each JSON entry at 64 KiB.
+- Added a regression for permissive directory mode; existing symlink rejection remains in the suite.
+- These are local filesystem safeguards only; production directory ownership, Android/Termux filesystem semantics, backup policy and encryption-at-rest still require deployment-specific review.
+- CI evidence pending for this hardening increment.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; PRODUCTION_READINESS=NOT_CERTIFIED.

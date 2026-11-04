@@ -94,3 +94,5 @@ PRODUCTION_READINESS=NOT_CERTIFIED
 - Approval means only that the item may proceed to a separate independent verification step. It does not mean the post was fetched, its content verified, or that it may enter trusted Memory.
 - Every decision remains `SOURCE_RECORDED`, `UNVERIFIED`, `mayEnterTrustedMemory=false`, and `canonicalMemoryWrite=false`.
 - Conflicting second decisions are rejected; identical retries are idempotent. Audit failure after immutable decision publication reports a committed state.
+
+- Filesystem hardening additionally requires an owner-only queue directory (0700), owner-only regular queue/decision files (0600), and bounded entry size (64 KiB); unsafe modes and oversized files fail closed.
