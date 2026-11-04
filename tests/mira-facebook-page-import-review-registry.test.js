@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const {
   prepareFacebookImportForHfmReview,
   enqueueFacebookImportForHfmReview
@@ -30,7 +31,7 @@ const candidate = {
     observedAt: '2026-11-04T12:00:00.000Z'
   },
   content: 'This raw post body must not be persisted.',
-  contentHash: 'a'.repeat(64),
+  contentHash: crypto.createHash('sha256').update('This raw post body must not be persisted.', 'utf8').digest('hex'),
   integrity: { status: 'UNVERIFIED', algorithm: 'SHA-256' },
   trust: { status: 'SOURCE_RECORDED' },
   verificationStatus: 'MANUAL_IMPORT_PENDING_INDEPENDENT_READBACK',
