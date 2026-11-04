@@ -65,15 +65,22 @@ function classifySource(relativePath,source){
    if(call.test(lines[i])) matches.push({line:i+1,category:ALIASED_READ_CATEGORY,excerpt:original+' as '+alias+': '+lines[i].trim().slice(0,180)});
   }
  }
- const canonicalPathMentioned=sourceLines.some(line=>
-  !/^\s*(?:\/\/|\*|\*\/)/.test(line)&&/(?:memory\.json|knowledge\.json|conversations\.json|work-learning-records\.json|work-knowledge-consolidation\.json)/i.test(line)
- );
- if(canonicalPathMentioned){
-  for(let i=0;i<sourceLines.length;i++){
-   if(/^\s*(?:\/\/|\*|\*\/)/.test(sourceLines[i])) continue;
-   if(/\b(?:readFileSync|readFile|createReadStream|readJsonArray|readJsonObject|readState)\s*\(/.test(sourceLines[i])){
-    matches.push({line:i+1,category:'CANONICAL_STORE_FILE_BACKED_READ',excerpt:sourceLines[i].trim().slice(0,180)});
-   }
+ const canonicalFilePattern=/(?:memory\.json|knowledge\.json|conversations\.json|work-learning-records\.json|work-knowledge-consolidation\.json)/i;
+ const canonicalPathVariables=new Set();
+ for(const line of sourceLines){
+  if(/^\s*(?:\/\/|\*|\*\/)/.test(line)) continue;
+  const declaration=/(?:const|let|var)\s+(\w+)\s*=\s*[^;\n]{0,300}/i.exec(line);
+  if(declaration&&canonicalFilePattern.test(line)) canonicalPathVariables.add(declaration[1]);
+ }
+ for(let i=0;i<sourceLines.length;i++){
+  const line=sourceLines[i];
+  if(/^\s*(?:\/\/|\*|\*\/)/.test(line)) continue;
+  const read=/\b(?:readFileSync|readFile|createReadStream|readJsonArray|readJsonObject|readState)\s*\(([^)]{0,500})\)/.exec(line);
+  if(!read) continue;
+  const directPath=canonicalFilePattern.test(read[1]);
+  const linkedVariable=[...canonicalPathVariables].some(name=>new RegExp('\\b'+name+'\\b').test(read[1]));
+  if(directPath||linkedVariable){
+   matches.push({line:i+1,category:'CANONICAL_STORE_FILE_BACKED_READ',excerpt:line.trim().slice(0,180)});
   }
  }
  return {relativePath,matches};
