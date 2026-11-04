@@ -78,3 +78,15 @@ END OF MATRIX
 |Cache / embedding / vector / export paths|No dedicated module filename found in 614-source-file tree; inline/dynamic paths not ruled out|REVIEW_REQUIRED|
 
 The table is a semantic disposition of reviewed paths, not proof that every dynamic or runtime-injected path has been found. No production caller was modified.
+
+9. SECONDARY INVENTORY — PINNED CI BASELINE
+|Category|CI count|Disposition|
+|---|---:|---|
+|Cache / vector / embedding / index candidates|0|No matching Memory-cache/vector candidate under the refined rule; dynamic/inline behavior not ruled out|
+|Explicit Memory / Knowledge / Conversation / Learning export/archive candidates|0|No matching explicit export/archive function name; alternate serializers remain a limitation|
+|Worker / queue / job direct Memory-domain candidates|0|No direct access candidate in the scanned worker/queue/job paths|
+|Backup / restore / snapshot candidates|32|All 32 lines manually classified as privileged local recovery or generic code snapshots|
+|Google Drive Memory / Knowledge write candidates|8|All 8 lines manually classified; whole-file provider writes remain outside HFM facade|
+|Total access-path lexical candidates|312|Heuristic inventory only; not a complete call graph|
+
+False-positive handling: `conversationIndex` is a numeric array position from `findIndex`, `require.cache` is Node module-loader cache, and HTTP `Cache-Control: no-store` is a response policy. These are not Memory data caches. Synthetic regression assertions ensure they are not counted as Memory cache candidates.

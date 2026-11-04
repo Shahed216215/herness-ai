@@ -161,3 +161,21 @@ Disposition totals: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13
 - The complete Git tree response was not truncated and listed 614 JavaScript/CommonJS/ESM/TypeScript source files. No dedicated source path named for Memory Cache, Embedding/Vector Index or Memory Export was present in the reviewed path inventory.
 - This is not proof that no inline cache, runtime-injected index, serialization/export helper or indirect reference exists. Those categories remain REVIEW_REQUIRED until a targeted source search or runtime dependency inventory can rule them in/out.
 - Scanner counts remain lexical candidates, not a complete call graph. Re-export chains, reflection, computed properties, runtime dependency injection and dynamically constructed module paths are not exhaustively resolved.
+
+18. SECONDARY ACCESS INVENTORY — CI-VERIFIED
+- Extended the repository-wide lexical inventory with backup/restore, provider-memory-write, cache/vector/index, export/archive and worker-domain categories.
+- Corrected the cache candidate rule to avoid treating an array position named `conversationIndex`, Node's `require.cache`, HTTP `Cache-Control: no-store` headers or the scanner's own rule declaration as Memory cache. Synthetic false-positive controls pass.
+- CI run 41834938933 SUCCESS on commit debfa4dce3af98f96f3b442d9f2567c02379d5cc; inventory baseline is 312 total lexical candidates:
+  - `CACHE_OR_INDEX_ACCESS=0`
+  - `EXPORT_ARCHIVE_OPERATION=0`
+  - `BACKGROUND_WORKER_DOMAIN_ACCESS=0`
+  - `BACKUP_RESTORE_OPERATION=32`
+  - `PROVIDER_MEMORY_WRITE=8`
+- All 32 backup/restore/snapshot candidate lines were reviewed:
+  - Generic code-apply snapshots: `apply-engine.js` (4) — source-code apply/rollback snapshots, not canonical Memory/Knowledge stores.
+  - Controlled Knowledge/Learning apply and evolution: `autonomous-learning-controlled-apply.js` (3 snapshot calls), `knowledge-controlled-apply.js` (3 snapshot calls), `knowledge-memory-evolution.js` (4 snapshot calls) — privileged apply/rollback paths.
+  - Local Memory/Knowledge recovery: `scripts/mira-memory-backup.js` (1), `services/mira-local-memory-store.js` (2), `services/mira-knowledge-state-recovery.js` (2), `services/mira-state-version-recovery.js` (3), `snapshot-manager.js` (4) — global/local recovery primitives, not project-scoped HFM access.
+  - Tool wrappers: `tools/knowledge-backup.js` (1), `tools/knowledge-restore.js` (1), `tools/memory-restore.js` (1), `tools/memory-version-recovery.js` (3) — privileged recovery; Memory/version recovery wrappers remain human/action-approval blocked.
+- All 8 provider-memory-write candidate lines were reviewed: `google-drive.js` (2 provider function definitions), `knowledge.js` (1 Knowledge save), `autonomous-learning-controlled-apply.js` (1), `knowledge-controlled-apply.js` (1), `knowledge-memory-evolution.js` (2) and `tools/knowledge-cleanup.js` (1). These are existing whole-file Drive writes; they do not pass through the HFM facade and remain blocked from ordinary unified retrieval/writes. No Drive call was executed and no Drive behavior was changed.
+- Zero explicit export/archive or worker/queue Memory-access candidates were found by the targeted rules. This is not proof against dynamic, reflective, indirect or runtime-injected behavior; those limitations remain.
+- `PHASE3_SECONDARY_ACCESS_INVENTORY=PASS_CI_HEURISTIC`; `SEMANTIC_DISPOSITION=REVIEWED_WITH_LIMITATIONS`.

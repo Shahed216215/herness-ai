@@ -455,3 +455,15 @@ CURRENT ADDITIVE STATUS
 - Post-revert verification: fetching `.github/workflows/mira-hfm-phase2-core-safety.yml` from `main` returned NOT_FOUND; the Phase 3 feature branch retained its original workflow blob SHA 1c667c90c1fd112a9d5d850c91cb9ed6543475d5.
 - No application source, production memory data, provider credentials, deployment or runtime state was modified. The temporary workflow-file add/delete remains visible in Git history and is recorded here for audit transparency.
 - Future feature-branch edits use explicit Git tree/commit/ref updates with an expected-head lease; do not rely on the contents-update branch parameter without verifying the resulting ref.
+
+58. SECONDARY ACCESS INVENTORY — REFINED AND PINNED
+- Added targeted categories for Memory cache/vector/index, explicit export/archive, backup/restore, provider Memory writes and worker/queue/job Memory access.
+- Refined cache detection and added false-positive tests for `conversationIndex` array offsets, Node `require.cache`, and HTTP `Cache-Control: no-store`. The scanner's own rule declaration is excluded from self-matching.
+- Phase 3 CI run 41834938933 SUCCESS on commit debfa4dce3af98f96f3b442d9f2567c02379d5cc; all contract, registry, fixture-host, caller inventory and writer inventory suites passed; `TESTS_FAILED=0`.
+- Pinned secondary counts: cache/vector/index 0; export/archive 0; worker/queue/job 0; backup/restore/snapshot 32; provider Memory writes 8; total lexical access candidates 312.
+- All 32 recovery/snapshot and all 8 Drive-write candidates were manually classified in the semantic review and caller matrix. Existing whole-file Drive writes remain outside HFM and unchanged.
+- The 0 counts are rule-scoped observations, not proof that no dynamic cache, serializer, indirect worker path or runtime-injected adapter exists.
+- `PHASE3_SECONDARY_ACCESS_INVENTORY=PASS_CI_HEURISTIC`
+- `PHASE3_SECONDARY_CANDIDATE_SEMANTIC_REVIEW=COMPLETED_FOR_40_LINES`
+- `PHASE3_DYNAMIC_CALL_GRAPH_COVERAGE=REVIEW_REQUIRED`
+- `PHASE3=IN_PROGRESS`
