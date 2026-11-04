@@ -8,7 +8,7 @@ const ctx = {
  issuedAt:'2026-11-04T11:59:00.000Z',expiresAt:'2026-11-04T12:05:00.000Z'
 };
 function allow(input){return {
- decision:'ALLOW',actorId:input.actorId,actorType:input.actorType,projectId:input.projectId,purpose:input.purpose,
+ decision:'ALLOW',replayStatus:'FRESH',actorId:input.actorId,actorType:input.actorType,projectId:input.projectId,purpose:input.purpose,
  requestId:input.requestId,operation:input.operation,resourceScope:input.resourceScope,
  authorityRef:input.authorityRef,issuedAt:'2026-11-04T11:59:30.000Z',expiresAt:'2026-11-04T12:04:00.000Z'
 };}
@@ -50,5 +50,7 @@ assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',re
 console.log('PRE_CONTEXT_AUTHORIZATION_DECISION_REJECTED=PASS');
 assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),decision:'DENY'}),now}),/denied by host policy/);
 console.log('HOST_POLICY_DENY_ENFORCED=PASS');
+assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),replayStatus:'REPLAYED'}),now}),/replay detected/);
+console.log('REPLAYED_REQUEST_REJECTED=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_PHASE3_REQUEST_AUTHORIZATION_CONTRACT_PASS');
