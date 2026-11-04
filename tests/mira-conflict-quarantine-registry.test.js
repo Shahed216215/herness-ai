@@ -44,6 +44,11 @@ function startReview(directory, conflictId) {
 try {
   const originalA = record();
   const originalB = record({ content: 'competing fact', version: { revision: 1, contentHash: 'b'.repeat(64) } });
+  const broadenedMerge = record({
+    content: 'broadened merged content',
+    version: { revision: 3, contentHash: '9'.repeat(64) },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['*'] }
+  });
   const created = createConflictQuarantine({
     directory, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
     records: [originalA, originalB], reason: 'fixture conflict', actor: 'test-suite', auditWriter
@@ -240,11 +245,7 @@ try {
     actor: 'test-suite', auditWriter
   });
   const merged = record({ content: 'reviewed merged content', version: { revision: 3, contentHash: 'e'.repeat(64) } });
-  const broadenedMerge = record({
-    content: 'broadened merged content',
-    version: { revision: 3, contentHash: '9'.repeat(64) },
-    access: { classification: 'PUBLIC', allowedProjectIds: ['*'] }
-  });
+
   startReview(mergeDirectory, mergeConflict.conflictId);
   assert.throws(() => resolveConflict({
     directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
