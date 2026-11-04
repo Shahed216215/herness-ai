@@ -43,11 +43,28 @@ function ensureStore() {
       messages: [],
       contexts: []
     };
-    jsonStateStore.atomicWriteJson(
+    const result = jsonStateStore.atomicWriteJson(
       CONVERSATION_FILE,
       initial,
       "Mira conversation store"
     );
+    try {
+      jsonStateStore.recordStateAudit(
+        "conversation_store_initialized",
+        "success",
+        CONVERSATION_FILE,
+        {
+          stateHash: result.sha256,
+          conversationCount: 0,
+          messageCount: 0,
+          contextCount: 0
+        }
+      );
+    } catch (auditError) {
+      auditError.code = "CONVERSATION_STORE_INITIALIZED_AUDIT_FAILED";
+      auditError.stateCommitted = true;
+      throw auditError;
+    }
   }
 }
 
