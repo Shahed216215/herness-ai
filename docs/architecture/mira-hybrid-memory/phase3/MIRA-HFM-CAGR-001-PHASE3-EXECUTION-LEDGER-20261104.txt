@@ -301,3 +301,8 @@ MERGE=NOT_APPROVED
 40. PROJECT AUTHORITY EVIDENCE CONTRACT CI VERIFIED
 - Initial run 41821258604 failed because the negative-test loop treated actorId/projectId substitutions as invalid without supplying expected actor/project bindings. The validator correctly permits caller-selected expected bindings to be optional for generic evidence inspection; dedicated exact-binding tests already provide expected values. The test was corrected to separate malformed/denied evidence from expected-context substitution checks.
 - Phase 3 run 41821482820 SUCCESS: project authority exact request binding, expiry/future evidence, missing/failed verifier, tamper and unknown-field tests PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+
+41. INJECTED HOST AUTHORIZATION ADAPTER
+- Added `services/mira-memory-host-authorization-adapter.js`: composes project authority evidence verification, exact actor/project/operation/resource binding, and injected replay consumption into the request authorization decision shape.
+- Added tests for valid owner access, replay denial on second use, non-owner, unapproved operation, authority reference substitution and missing dependencies. Workflow wiring added; CI pending.
+- Adapter is synchronous and dependency-injected; no live identity provider, registry, persistent/distributed replay storage or production caller is connected.
