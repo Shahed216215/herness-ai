@@ -85,6 +85,48 @@ assert.match(healthPolicy, /operation: "inspect"/);
 assert.match(healthPolicy, /autonomous: true/);
 assert.match(healthPolicy, /humanApprovalRequired: false/);
 
+function collectRuntimeFiles(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return collectRuntimeFiles(fullPath);
+    return /\.(?:js|cjs|mjs)$/.test(entry.name) ? [fullPath] : [];
+  });
+}
+
+const runtimeFiles = [
+  path.join(root, 'server.js'),
+  ...collectRuntimeFiles(path.join(root, 'routes')),
+  ...collectRuntimeFiles(path.join(root, 'services'))
+];
+const observedDirectCalls = [];
+const directCallPattern = /\b([A-Za-z_$][\w$]*(?:Tool|tool|health))\.execute\s*\(|\btools\s*\[[^\]]+\]\s*\.execute\s*\(/g;
+
+for (const file of runtimeFiles) {
+  const relative = path.relative(root, file).split(path.sep).join('/');
+  const source = fs.readFileSync(file, 'utf8');
+  for (const [index, line] of source.split('\n').entries()) {
+    directCallPattern.lastIndex = 0;
+    let match;
+    while ((match = directCallPattern.exec(line)) !== null) {
+      const target = match[1] ? match[1] + '.execute' : 'tools[...].execute';
+      observedDirectCalls.push(relative + ':' + target);
+    }
+  }
+}
+
+const expectedDirectCalls = [
+  'server.js:backupTool.execute',
+  'server.js:historyTool.execute',
+  'server.js:restoreTool.execute',
+  'services/mira-seo-review-dispatch.js:tool.execute',
+  'services/mira-verification-engine.js:health.execute'
+].sort();
+assert.deepEqual(
+  observedDirectCalls.sort(),
+  expectedDirectCalls,
+  'new or removed direct tool invocation requires security review and allowlist update'
+);
+
 console.log('MIRA_HFM_ADMIN_BACKUP_PERMISSION_GATE=PASS');
 console.log('MIRA_HFM_ADMIN_RESTORE_CONFIRMATION_ORDER=PASS');
 console.log('MIRA_HFM_SEO_REVIEW_NAMED_ADMIN_GATE=PASS');
