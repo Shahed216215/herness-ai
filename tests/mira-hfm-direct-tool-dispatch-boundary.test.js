@@ -8,6 +8,8 @@ const root = path.join(__dirname, '..');
 const routesDir = path.join(root, 'routes');
 const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const taskExecutionRoute = fs.readFileSync(path.join(routesDir, 'task-execution.js'), 'utf8');
+const learningRoute = fs.readFileSync(path.join(routesDir, 'autonomous-learning.js'), 'utf8');
+const controlledApply = fs.readFileSync(path.join(root, 'autonomous-learning-controlled-apply.js'), 'utf8');
 
 const routeFiles = fs.readdirSync(routesDir).filter(file => file.endsWith('.js')).sort();
 const directRouteCalls = [];
@@ -48,6 +50,13 @@ assert.match(server, /toolResult\s*=\s*await\s+historyTool\.execute\s*\(/);
 assert.match(server, /executeSeoWorkflowReviewDecision\s*\(/);
 assert.match(server, /await\s+executeWork\s*\(/);
 
+assert.match(learningRoute, /router\.post\s*\(\s*["']\/proposals\/:id\/apply["']\s*,\s*requireSystemAdmin/);
+assert.match(learningRoute, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(learningRoute, /applyAutonomousLearningControlled\s*\(/);
+assert.match(controlledApply, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(controlledApply, /createVerifiedSnapshot\s*\(/);
+assert.match(controlledApply, /await\s+addLearning\s*\(/);
+
 for (const wrapper of ['memory-save', 'knowledge-save', 'learning-save']) {
   assert.equal(
     server.includes('require("./tools/' + wrapper + '")') ||
@@ -63,5 +72,6 @@ console.log('MIRA_HFM_ADMIN_RESTORE_PERMISSION_AND_CONFIRMATION=PASS');
 console.log('MIRA_HFM_SEO_HISTORY_NAMED_ADMIN_GATE=PASS');
 console.log('MIRA_HFM_SEO_REVIEW_DEDICATED_DISPATCH=PASS');
 console.log('MIRA_HFM_TASK_EXECUTION_USES_GOVERNED_ENGINE=PASS');
+console.log('MIRA_HFM_AUTONOMOUS_LEARNING_DIRECT_WRITE_ADMIN_APPROVAL_AND_SNAPSHOT=PASS');
 console.log('MIRA_HFM_PERSISTENT_SAVE_WRAPPER_DIRECT_SERVER_IMPORTS=0');
 console.log('MIRA_HFM_DIRECT_DISPATCH_BOUNDARY_TESTS_FAILED=0');
