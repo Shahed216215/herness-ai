@@ -61,6 +61,8 @@ const preparedUpdate=prepareCanonicalWrite({incomingRecord:next,existingRecords:
 assert.equal(preparedUpdate.previousRecordDigest,digest(previous));
 assert.equal(preparedUpdate.nextRevision,2);
 console.log('WRITE_MONOTONIC_REVISION_PREPARE_PASS=PASS');
+assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[previous],pendingConflicts:[],requestContext,authorizeRequest:input=>({...authorize(input),decision:input.operation==='READ'?'DENY':'ALLOW'}),expectedRevision:1,idempotencyKey:'idem-update-read-denied-001',now}),/denied by host policy/);
+console.log('WRITE_UPDATE_REQUIRES_READ_AND_WRITE_AUTHORITY=PASS');
 assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[previous],pendingConflicts:[],requestContext,authorizeRequest:authorize,expectedRevision:0,idempotencyKey:'idem-stale-001',now}),/Expected revision/);
 console.log('WRITE_STALE_REVISION_REJECTED=PASS');
 assert.throws(()=>prepareCanonicalWrite({incomingRecord:next,existingRecords:[previous],pendingConflicts:[],requestContext,authorizeRequest:authorize,expectedRevision:1,idempotencyKey:'idem-update-001',seenIdempotencyKeys:['idem-update-001'],now}),/Duplicate idempotency/);
