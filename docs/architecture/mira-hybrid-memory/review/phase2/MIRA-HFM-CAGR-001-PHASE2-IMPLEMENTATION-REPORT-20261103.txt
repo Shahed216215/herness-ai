@@ -389,3 +389,32 @@ GitHub Actions run 41752515491 (run 311), job 126320777081, completed SUCCESS on
 - Production Memory/Knowledge not touched; real Google Drive not touched; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
 
 This validates the cleanup adapter in an isolated test environment only. The production duplicate-removal tool still has its pre-existing Google Drive sync behavior after local commit; no Drive cutover or provider behavior was changed here. This isolated PASS is not a claim that every Memory/Knowledge/Evolution read/write path has been audited or integrated with the conflict registry.
+
+
+16. WORK-KNOWLEDGE CONSOLIDATION STORE FAIL-CLOSED AND ATOMICITY — VERIFIED BY RUN 326
+
+A source audit found that services/mira-work-knowledge-consolidation.js treated every read/parse/permission error as an empty store. It also silently truncated records beyond MAX_ITEMS. Either behavior could hide corruption or discard existing consolidation evidence.
+
+Changes:
+- Only ENOENT (a genuinely missing first-run store) returns an empty store. Existing empty, malformed, unreadable, invalid-shape, integrity-mismatched, symlinked and unsupported over-capacity state now fails closed.
+- saveStore() validates the items array and uses mira-json-state-store.atomicWriteJson() for exclusive temporary creation, fsync, atomic rename and readback integrity verification.
+- verifyStoreIntegrity() rejects symlinks/non-regular files and invalid store shape instead of bypassing the path guard.
+- normalizeStore() no longer silently truncates records above MAX_ITEMS; it rejects the oversized state to preserve evidence.
+- Added tests/mira-work-knowledge-store-fail-closed.test.js with an isolated temporary MIRA_STORAGE_DIR and audit path.
+
+GitHub Actions run 41762903930 (run 326), job 126354472903, completed SUCCESS on commit 1c1d1feb888c85572c06893c30fa57b336dac2ca. Explicit log evidence:
+- MISSING_CONSOLIDATION_STORE_IS_EMPTY_FIRST_RUN=PASS
+- CONSOLIDATION_STORE_ATOMIC_WRITE_AND_READBACK=PASS
+- OVERCAPACITY_STORE_REJECTED_WITHOUT_TRUNCATION=PASS
+- CORRUPT_JSON_FAILS_CLOSED=PASS
+- EMPTY_EXISTING_STORE_FAILS_CLOSED=PASS
+- INTEGRITY_MISMATCH_FAILS_CLOSED=PASS
+- INVALID_STORE_SHAPE_FAILS_CLOSED=PASS
+- SYMLINKED_STORE_READ_VERIFY_AND_WRITE_REJECTED=PASS
+- INVALID_SAVE_SHAPE_REJECTED=PASS
+- TESTS_FAILED=0; RESULT=MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS.
+- Core safety, recovery, Evolution integration, structural conflict assessment, isolated conflict lifecycle and independent audit-chain verifier also report PASS markers with TESTS_FAILED=0.
+
+Run 315/316 exposed a test-fixture mistake: a legacy record without an integrityHash was expected to fail integrity verification, but legacy records without that field are intentionally supported. The fixture was corrected to use an explicit mismatched digest. Run 326 is the later passing evidence; the historical failures remain visible and are not reclassified.
+
+All tests use isolated temporary state. Production Memory/Knowledge and real Google Drive remain untouched; network requests and external actions are zero. This hardening applies to the work-knowledge consolidation store and does not establish universal provider/retrieval integration or Phase 2 completion.
