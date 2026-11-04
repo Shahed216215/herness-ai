@@ -57,6 +57,12 @@ try {
   assert.deepEqual(registry.validateExecutionRecord(validExecution), []);
   registry.appendExecution({ root, execution: validExecution, auditWriter });
   console.log('EXECUTION_REQUIRES_REGISTERED_DEFINITION=PASS');
+  assert.throws(() => registry.appendExecution({ root, execution: validExecution, auditWriter }), /already exists/);
+  console.log('EXECUTION_RECORD_APPEND_ONLY=PASS');
+  const noJob = { ...validExecution, executionId: 'exec-no-job' };
+  delete noJob.jobId;
+  assert.ok(registry.validateExecutionRecord(noJob).includes('CI_JOB_ID_REQUIRED'));
+  console.log('CI_EXECUTION_REQUIRES_JOB_ID=PASS');
   assert.throws(() => registry.appendExecution({
     root, execution: { ...validExecution, executionId: 'exec-unknown', testId: 'MIRA-HFM-TST-STATE-0009' }, auditWriter
   }), /unknown test definition/);
@@ -109,6 +115,38 @@ try {
   });
   assert.equal(failed.status, 'FAIL');
   console.log('TESTED_FAIL_AGGREGATES_TO_FAIL=PASS');
+
+  const notRun = registry.aggregateRequirementCoverage({
+    requirementId: 'HFM-R-001', mandatoryTestIds: [def.testId],
+    definitions, executions: [execution('exec-not-run', 'NOT_EXECUTED')]
+  });
+  assert.equal(notRun.status, 'REVIEW_REQUIRED');
+  console.log('NOT_EXECUTED_NEVER_AGGREGATES_TO_PASS=PASS');
+
+  const notApplicable = registry.aggregateRequirementCoverage({
+    requirementId: 'HFM-R-001', mandatoryTestIds: [def.testId],
+    definitions, executions: [execution('exec-na', 'NOT_APPLICABLE')]
+  });
+  assert.equal(notApplicable.status, 'REVIEW_REQUIRED');
+  const approvedNotApplicable = registry.aggregateRequirementCoverage({
+    requirementId: 'HFM-R-001', mandatoryTestIds: [def.testId],
+    definitions, executions: [execution('exec-na-approved', 'NOT_APPLICABLE')],
+    approvedNotApplicable: [def.testId]
+  });
+  assert.equal(approvedNotApplicable.status, 'PASS');
+  console.log('NOT_APPLICABLE_REQUIRES_REVIEW_APPROVAL=PASS');
+
+  const unapprovedDefinition = { ...def, testDefinitionVersion: 2, approvalState: 'NOT_APPROVED' };
+  registry.appendDefinition({ root, definition: unapprovedDefinition, auditWriter });
+  assert.throws(() => registry.appendExecution({
+    root, execution: { ...execution('exec-unapproved'), testDefinitionVersion: 2 }, auditWriter
+  }), /unapproved test definition/);
+  const unapprovedCoverage = registry.aggregateRequirementCoverage({
+    requirementId: 'HFM-R-001', mandatoryTestIds: [def.testId],
+    definitions: registry.listRecords(root, 'definitions'), executions
+  });
+  assert.equal(unapprovedCoverage.status, 'REVIEW_REQUIRED');
+  console.log('UNAPPROVED_DEFINITION_CANNOT_EXECUTE_OR_PASS=PASS');
 
   assert.ok(registry.validateDefinition({ ...def, unexpected: true }).includes('DEFINITION_FIELDS_INVALID'));
   console.log('STRICT_SCHEMA_ADDITIONAL_FIELD_REJECTED=PASS');
