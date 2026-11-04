@@ -187,3 +187,10 @@ Status: IN PROGRESS
 - Phase 4 remains IN_PROGRESS because authenticated Meta Graph transport, real permission verification, real provider readback, runtime audit/queue wiring, production storage policy and live E2E remain unimplemented or unapproved. These are not represented as PASS.
 - PR #7 remains OPEN / DRAFT / UNMERGED; Phase 3 PR #6 remains separate. No production migration or deployment.
 - VERSION=v0.2; OFFLINE_CONTRACTS=VERIFIED; LIVE_INTEGRATION=NOT_IMPLEMENTED_NOT_APPROVED; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 020 — Integrated offline Phase 4 E2E
+- Added `tests/mira-facebook-page-phase4-offline-e2e.test.js` to exercise the complete synthetic flow: Phase 3 authorized PUBLIC record → manual Page draft → external import preparation → durable project-scoped review queue → human approval for independent verification → uncertain WRITE classification → readback reconciliation.
+- E2E asserts that the import remains untrusted, human approval does not promote integrity/trust, matching readback does not commit canonical Memory, and no live transport or publishing occurs.
+- The test uses synthetic fixtures and a temporary local directory only. CI evidence pending.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; OFFLINE_E2E=IMPLEMENTED_PENDING_CI; LIVE_META_API_CALLS=0.
