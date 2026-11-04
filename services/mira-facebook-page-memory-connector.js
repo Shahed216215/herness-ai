@@ -79,6 +79,9 @@ function createManualPostDraft({record,pageName,generatedAt=new Date().toISOStri
  if(record.integrity?.status!=='VERIFIED'||record.lifecycle!=='ACTIVE') {
   throw new Error('Only ACTIVE integrity-verified records may produce a manual post draft.');
  }
+ if(record.access?.classification!=='PUBLIC') {
+  throw new Error('Only explicitly PUBLIC records may produce a Facebook Page post draft.');
+ }
  const createdAt=isoTime(generatedAt,'generatedAt');
  const title=pageName===undefined?'Mira Memory':requiredText(pageName,'pageName',128);
  const payload={
