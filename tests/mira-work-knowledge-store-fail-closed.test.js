@@ -25,6 +25,7 @@ try {
 
   const missing = engine.loadStore();
   assert.deepEqual(missing.items, []);
+  assert.throws(() => engine.saveStore({ schemaVersion: 1 }), /must include an items array/);
   console.log('MISSING_CONSOLIDATION_STORE_IS_EMPTY_FIRST_RUN=PASS');
 
   const saved = engine.saveStore({
@@ -60,8 +61,10 @@ try {
   fs.writeFileSync(target, JSON.stringify(saved), 'utf8');
   fs.symlinkSync(target, file);
   assert.throws(() => engine.loadStore(), /not a safe regular file/);
+  assert.throws(() => engine.verifyStoreIntegrity(), /not a safe regular file/);
   assert.throws(() => engine.saveStore({ items: [] }), /not a safe regular file/);
-  console.log('SYMLINKED_STORE_READ_AND_WRITE_REJECTED=PASS');
+  console.log('SYMLINKED_STORE_READ_VERIFY_AND_WRITE_REJECTED=PASS');
+  console.log('INVALID_SAVE_SHAPE_REJECTED=PASS');
 
   console.log('TESTS_FAILED=0');
   console.log('RESULT=MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS');
