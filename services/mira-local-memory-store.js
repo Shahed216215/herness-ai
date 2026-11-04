@@ -21,6 +21,107 @@ const SAFETY_QUARANTINE_FILE = path.join(
   'memory-corrupt-before-restore.json'
 );
 
+const INITIALIZATION_FILE = MEMORY_FILE + '.hfm-initialized.json';
+const INITIALIZATION_STORE_ID = 'MIRA_GENERAL_MEMORY';
+
+function validateInitializationMarker(marker) {
+  if (!marker || typeof marker !== 'object' || Array.isArray(marker) ||
+      Object.keys(marker).length !== 5 ||
+      !['schemaVersion', 'storeId', 'primaryFile', 'initializedAt', 'sha256']
+        .every(key => Object.prototype.hasOwnProperty.call(marker, key)) ||
+      marker.schemaVersion !== '1.0.0' ||
+      marker.storeId !== INITIALIZATION_STORE_ID ||
+      marker.primaryFile !== path.basename(MEMORY_FILE) ||
+      typeof marker.initializedAt !== 'string' ||
+      !Number.isFinite(Date.parse(marker.initializedAt)) ||
+      typeof marker.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(marker.sha256)) {
+    throw new Error('Mira Memory initialization marker is malformed.');
+  }
+  const body = {
+    schemaVersion: marker.schemaVersion,
+    storeId: marker.storeId,
+    primaryFile: marker.primaryFile,
+    initializedAt: marker.initializedAt
+  };
+  if (sha256(JSON.stringify(body)) !== marker.sha256) {
+    throw new Error('Mira Memory initialization marker integrity verification failed.');
+  }
+  return marker;
+}
+
+function readInitializationMarker() {
+  let stat;
+  try {
+    stat = fs.lstatSync(INITIALIZATION_FILE);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw new Error('Mira Memory initialization marker cannot be inspected: ' + (error.code || 'IO_ERROR'));
+  }
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    throw new Error('Mira Memory initialization marker is not a safe regular file.');
+  }
+  let marker;
+  try {
+    marker = JSON.parse(fs.readFileSync(INITIALIZATION_FILE, 'utf8'));
+  } catch {
+    throw new Error('Mira Memory initialization marker contains invalid JSON.');
+  }
+  return validateInitializationMarker(marker);
+}
+
+function ensureInitializationMarker() {
+  fs.mkdirSync(MEMORY_DIR, { recursive: true, mode: 0o700 });
+  const directoryStat = fs.lstatSync(MEMORY_DIR);
+  if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
+    throw new Error('Mira Memory directory is unsafe.');
+  }
+  const existing = readInitializationMarker();
+  if (existing) return existing;
+
+  const body = {
+    schemaVersion: '1.0.0',
+    storeId: INITIALIZATION_STORE_ID,
+    primaryFile: path.basename(MEMORY_FILE),
+    initializedAt: new Date().toISOString()
+  };
+  const marker = { ...body, sha256: sha256(JSON.stringify(body)) };
+  const tempPath = INITIALIZATION_FILE + '.tmp-' + process.pid + '-' + crypto.randomBytes(6).toString('hex');
+  let fd;
+  let linked = false;
+  try {
+    fd = fs.openSync(tempPath, 'wx', 0o600);
+    fs.writeFileSync(fd, JSON.stringify(marker, null, 2) + '\n', 'utf8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = undefined;
+    fs.linkSync(tempPath, INITIALIZATION_FILE);
+    linked = true;
+    fs.unlinkSync(tempPath);
+    const dirFd = fs.openSync(MEMORY_DIR, 'r');
+    try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
+    return readInitializationMarker();
+  } catch (error) {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+    try { fs.unlinkSync(tempPath); } catch {}
+    if (linked) error.stateCommitted = true;
+    if (error.code === 'EEXIST') return readInitializationMarker();
+    throw error;
+  }
+}
+
+function memoryPrimaryExists() {
+  try {
+    const stat = fs.lstatSync(MEMORY_FILE);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error('Mira Memory is not a safe regular file.');
+    }
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
@@ -144,17 +245,29 @@ function atomicWriteJson(filePath, value, label = 'Memory') {
 
 function readMemory() {
   try {
-    return readArray(MEMORY_FILE, 'Mira Memory', false);
+    const entries = readArray(MEMORY_FILE, 'Mira Memory', false);
+    // A verified read of an existing legacy store establishes a durable
+    // initialization marker. This is metadata-only; the Memory bytes are unchanged.
+    ensureInitializationMarker();
+    return entries;
   } catch (error) {
-    if (!/Mira Memory is missing\.$/.test(error.message)) throw error;
+    if (!/Mira Memory is missing\\.$/.test(error.message)) throw error;
 
-    // If the primary file disappeared but a verified backup exists, expose
-    // that data read-only. Never turn this condition into an empty write.
+    const marker = readInitializationMarker();
     try {
-      fs.lstatSync(BACKUP_FILE);
-      return readBackupFile().entries;
+      const backup = readBackupFile();
+      // A valid backup proves that this store existed, even if its primary is gone.
+      if (!marker) ensureInitializationMarker();
+      return backup.entries;
     } catch (backupError) {
       if (backupError.code === 'ENOENT' || /Memory backup not found/.test(backupError.message)) {
+        if (marker) {
+          const missing = new Error(
+            'Mira Memory was previously initialized, but both the primary and verified backup are missing; explicit recovery is required.'
+          );
+          missing.code = 'MEMORY_PRIMARY_AND_BACKUP_MISSING';
+          throw missing;
+        }
         return [];
       }
       throw new Error(`Mira Memory primary is missing and backup recovery failed: ${backupError.message}`);
@@ -166,6 +279,16 @@ function writeMemory(entries) {
   if (!Array.isArray(entries)) {
     throw new Error('Memory must be an array.');
   }
+  const primaryExists = memoryPrimaryExists();
+  const marker = readInitializationMarker();
+  if (!primaryExists && marker) {
+    const error = new Error(
+      'Mira Memory primary is missing after initialization; explicit verified restore is required before writing.'
+    );
+    error.code = 'MEMORY_PRIMARY_MISSING_RESTORE_REQUIRED';
+    throw error;
+  }
+  ensureInitializationMarker();
   const result = jsonStateStore.writeArrayState(MEMORY_FILE, entries, 'Mira Memory');
   return {
     ...result,
@@ -317,9 +440,13 @@ function restoreMemory() {
     entryCount: backup.entries.length
   });
 
-  // Corrupt bytes have been preserved verbatim, so explicit restore may replace
-  // that known-bad regular file using the verified atomic writer.
-  const result = corruptPrimaryPreserved
+  const primaryMissing = !memoryPrimaryExists();
+  // Explicit restore is the only operation allowed to recreate a previously
+  // initialized but missing primary. The marker remains durable across recovery.
+  ensureInitializationMarker();
+  // Corrupt bytes are preserved verbatim; a missing primary has its verified
+  // backup copied to the safety-backup path above.
+  const result = corruptPrimaryPreserved || primaryMissing
     ? atomicWriteJson(MEMORY_FILE, backup.entries, 'Mira Memory restore')
     : writeMemory(backup.entries);
 
@@ -349,6 +476,7 @@ function restoreMemory() {
 
 module.exports = {
   MEMORY_FILE,
+  INITIALIZATION_FILE,
   BACKUP_FILE,
   SAFETY_BACKUP_FILE,
   SAFETY_QUARANTINE_FILE,
