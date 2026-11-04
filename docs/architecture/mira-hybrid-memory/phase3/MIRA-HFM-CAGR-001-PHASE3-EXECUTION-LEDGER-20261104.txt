@@ -326,3 +326,8 @@ MERGE=NOT_APPROVED
 - New host identity suite: TRUSTED_USER_SESSION_SUBJECT_NORMALIZED=PASS; unverified/role-only/expired/credential-bearing principals denied; stable admin/service subjects supported; caller role and missing principal rejected; TESTS_FAILED=0.
 - Existing Phase 3 contract suites also TESTS_FAILED=0. PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - Phase 2 regression run 41823659084 SUCCESS. This remains a synthetic identity normalization contract; runtime sessionIdentity propagation and real admin/service principal provisioning are NOT_IMPLEMENTED.
+
+40. PERSISTENT WRITER INVENTORY DRIFT GUARD STRENGTHENED
+- Writer callsite test now pins exact operation counts per file, not only the set of files. Current reviewed baseline: 16 calls across 8 consumer files; any added, removed or changed operation fails CI pending semantic review.
+- Phase 3 run 41823920720 SUCCESS on commit c700584a423234a202b083b67a206305da26ee79: MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS; MATCH_COUNT=16; INVENTORY_TESTS_FAILED=0; all contract tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- Phase 2 regression run 41823920729 SUCCESS. This is an inventory drift guard, not evidence that the legacy writers are safe or integrated with the HFM facade.
