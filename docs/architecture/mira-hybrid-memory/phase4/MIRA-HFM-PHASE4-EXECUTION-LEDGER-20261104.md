@@ -72,3 +72,13 @@ Status: IN PROGRESS
 - Earlier failed run 41839569641 remains recorded as FAIL on its earlier commit; it was caused by the integration test's incorrect nested property assertion, which was corrected and verified in the later successful run.
 - Latest documentation-only commit triggers another branch push run; no claim is made about that run until it completes.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; HFM_FACADE_BRIDGE=OFFLINE_PREPARE_ONLY_VERIFIED; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 008 — Target Page identity binding
+- Security review found that the manual draft previously carried a Page display name but not a stable target Page ID. This could allow draft reuse/ambiguity when the same Memory record is prepared for multiple Pages.
+- Updated draft generation to require a numeric Facebook Page ID, include it in the draft payload, and include it in deterministic draft ID derivation.
+- Updated the HFM bridge to require and forward the target Page ID.
+- Added regressions for missing/nonnumeric Page IDs and for distinct draft IDs across different target Pages.
+- This is offline validation only; Page ownership, task grants and actual destination identity are not independently verified.
+- The Page-binding changes were committed after the previously successful integration run 41839660905 and require their own CI verification.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; PRODUCTION_READINESS=NOT_CERTIFIED.
