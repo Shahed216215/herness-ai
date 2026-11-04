@@ -206,3 +206,24 @@ VERSION=v0.2
 FULL_PHASE2=REVIEW_REQUIRED
 
 END OF SPECIFICATION
+
+
+
+14. ISOLATED CANONICAL TEST REGISTRY PROTOTYPE — RUN 486
+Added services/mira-hfm-test-registry.js and tests/mira-hfm-test-registry.test.js.
+- Strict versioned definition, execution and historical alias validators reject unknown fields/statuses.
+- Definition versions and execution/alias records are append-only exclusive-create files; existing IDs cannot be overwritten.
+- Execution records must reference a registered definition; CI records require jobId and run identity; execution records carry production-data/network/external-action declarations and canonical timestamps.
+- TESTED_PASS requires retained evidence reference and source commit; NOT_APPLICABLE requires rationale and reviewer; NOT_EXECUTED/INCONCLUSIVE/NOT_APPROVED/REVIEW_REQUIRED require a reason.
+- Unapproved definitions cannot be executed as tested outcomes.
+- Requirement aggregation refuses PASS when a mandatory test is missing, NOT_EXECUTED, INCONCLUSIVE, NOT_APPROVED, REVIEW_REQUIRED or unapproved. TESTED_FAIL yields FAIL. NOT_APPLICABLE is excluded only with explicit approvedNotApplicable input and reviewer rationale.
+- The prototype uses synthetic temp-directory fixtures only; it does not register or reclassify existing repository tests.
+
+Run 486: https://github.com/Shahed216215/herness-ai/actions/runs/41774593307 — SUCCESS. Markers include CANONICAL_TEST_DEFINITION_APPEND=PASS, DEFINITION_VERSION_IMMUTABLE=PASS, UNKNOWN_EXECUTION_STATUS_REJECTED=PASS, MISSING_TEST_NEVER_AGGREGATES_TO_PASS=PASS, INCONCLUSIVE_NEVER_AGGREGATES_TO_PASS=PASS, TESTED_FAIL_AGGREGATES_TO_FAIL=PASS and TESTS_FAILED=0.
+
+UPDATED STATUS
+CANONICAL_TEST_REGISTRY=ISOLATED_PROTOTYPE_PASS
+HISTORICAL_REPOSITORY_TEST_ALIAS_MAPPING=NOT_COMPLETED
+FULL_REPOSITORY_TEST_RECLASSIFICATION=NOT_PERFORMED
+CI_WIDE_REGISTRY_ADOPTION=NOT_COMPLETED
+U05=PARTIALLY_CLOSED_IN_ISOLATED_FIXTURE_ONLY
