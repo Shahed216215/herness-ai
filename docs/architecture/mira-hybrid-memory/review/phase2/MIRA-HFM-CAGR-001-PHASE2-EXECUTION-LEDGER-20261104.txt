@@ -232,3 +232,47 @@ Residual:
 - No production runtime guard was wired. No real Drive, network or production Memory/Knowledge data touched.
 - Complete 579-code-file semantic coverage, dynamic edge resolution, all cache/index/export surfaces and provider storage arbitration remain IN_PROGRESS / NOT_ESTABLISHED.
 - Phase 2 remains IN_PROGRESS; version v0.2; production readiness NOT_CERTIFIED.
+
+
+14. PERSISTENT-WRITE POLICY, WRAPPER AND DIRECT-DISPATCH HARDENING — 2026-11-04
+
+Shared policy and registry:
+- Centralized TOOL_POLICIES and checkToolSafety() in services/mira-tool-execution-policy.js; services/mira-work-execution-engine.js imports the shared module.
+- tools/index.js executeTool() now checks the shared policy before invoking the registered wrapper. A blocked decision returns status BLOCKED / TOOL_POLICY_DENIED.
+- Static parity test reports 24 statically identifiable active tool exports, zero missing policy entries, and one reviewed dormant policy-only key memory_backup.
+- Registry runtime test proves memory_save, knowledge_save and learning_save are denied before their registry wrappers run; an eligible calculator remains executable.
+
+Direct wrapper guards:
+- Seven human-only wrappers now independently call checkToolSafety() before their persistence/side-effect dependencies:
+  memory_save, knowledge_save, learning_save, firewall_defense, memory_restore, memory_version_recovery, knowledge_cleanup.
+- Isolated VM test invokes each actual wrapper with throwing dependency stubs. All seven return BLOCKED / TOOL_POLICY_DENIED and zero dependency invocations occur.
+- The model-facing descriptions for all seven now disclose that execution is currently blocked and that the authenticated action-scoped approval workflow is not yet available.
+- Existing Memory restore mechanics and Knowledge cleanup business/storage mechanics tests inject test-only policy stubs to test post-authorization behavior. The real policy denial is separately tested; the stubs do not establish a production approval mechanism.
+
+Direct-dispatch inventory:
+- Added recursive source-level callsite inventory over server.js, routes and services. The current reviewed direct tool invocation set is:
+  server.js backupTool.execute (admin BACKUP_RESTORE permission);
+  server.js restoreTool.execute (same permission plus confirm===true before invocation);
+  server.js historyTool.execute (named-admin browser-session gate);
+  services/mira-seo-review-dispatch.js tool.execute (named authenticated admin session gate);
+  services/mira-verification-engine.js health.execute (read-only inspect policy).
+- The inventory test fails when a direct tool-shaped invocation is added or removed without review and allowlist update.
+- The raw tools map remains exported. The scanner is static and limited to server.js, routes and services; it is not a universal proof against dynamic construction, runtime mutation or external consumers.
+- Admin backup/restore and SEO history/review remain dedicated route/dispatch exceptions. Seven non-routed human-only wrappers are now guarded at their own module boundary.
+
+CI evidence:
+- Run 41791344114 — SUCCESS — tested HEAD 3b05b372487fd373695df6be1bb65b6062f28cad; direct dispatch inventory and existing suites passed.
+- Run 41792193805 — SUCCESS — tested HEAD 41528d0ded0f9f3d14284e132809bdbade622ffc; seven wrapper-denial tests, direct-dispatch tests, registry parity and cleanup/storage regression tests passed.
+- Run 41792424947 — SUCCESS — tested HEAD 2752402968b95d0a7743893584169b723ad31f2e; all seven wrapper tests plus accurate tool-description assertions passed.
+- All latest verified logs report TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0 and REAL_GOOGLE_DRIVE_TOUCHED=NO.
+- Historical failures 41791239959, 41791668141, 41791901687, 41792011602 and 41792193805? (correction: 41792193805 is PASS, not failure) remain visible. The direct-call scanner pattern, test-only policy stubs and test cleanup code were corrected before the later authoritative passing runs. No failure is relabelled as PASS.
+
+Evidence document:
+docs/architecture/mira-hybrid-memory/review/phase2/MIRA-HFM-CAGR-001-PHASE2-PERSISTENT-WRAPPER-DISPATCH-GUARD-ADDENDUM-20261104.txt
+
+Remaining:
+- No authenticated, action-scoped approval mechanism exists for Memory/Knowledge writes; these tools remain blocked.
+- Backup/restore admin routes are source-tested with isolated request/session fixtures, not a live authenticated browser/API session.
+- Raw tools map and direct module exports remain an internal capability surface; a universal action-bound wrapper is not yet implemented.
+- Canonical project scope, conflict quarantine, integrity/trust filtering across every retrieval path, provider arbitration, U03/U04/U05/U06/E-15, HFM-004 and HFM-005 remain open as separately recorded.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2; PR #4 draft/unmerged.
