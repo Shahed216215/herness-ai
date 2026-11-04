@@ -58,13 +58,23 @@ Future automatic transport must separately implement authenticated actor and Pag
 |Page post URL shape validation|IMPLEMENTED_OFFLINE_ONLY|
 |Manual import|IMPLEMENTED — UNVERIFIED / PENDING_REVIEW|
 |Readback comparison|IMPLEMENTED — CANNOT_PROMOTE_TO_VERIFIED|
-|Automatic READ / WRITE / UPDATE|NOT_IMPLEMENTED|
-|Provider readback verification|NOT_IMPLEMENTED|
+|Automatic READ / WRITE / UPDATE|NOT_IMPLEMENTED — LIVE TRANSPORT NOT_ENABLED|
+|Provider readback verification|OFFLINE RECONCILIATION CONTRACT ONLY — LIVE VERIFICATION NOT_RUN|
 |Live Meta API permission verification|NOT_RUN|
 |HFM facade read-report to public manual-draft bridge|IMPLEMENTED — PREPARE ONLY|
 |Meta permission evidence preflight (caller-supplied, non-authorizing)|IMPLEMENTED — OFFLINE CONTRACT|
 |Version-pinned Graph request planner|IMPLEMENTED — NON-EXECUTABLE PLAN ONLY|
-|Facebook import to HFM review candidate|IMPLEMENTED — NOT PERSISTED|
+|Facebook import to HFM review candidate|IMPLEMENTED — DURABLE LOCAL REVIEW QUEUE; RAW CONTENT NOT STORED|
+|Project/Page/post-bound review queue identity and duplicate handling|IMPLEMENTED_OFFLINE_CONTRACT|
+|Immutable human review decision and authorization callback|IMPLEMENTED_OFFLINE_CONTRACT — NO TRUST PROMOTION|
+|Queue tamper detection, owner-only permissions and audit-failure recovery|IMPLEMENTED_OFFLINE_CONTRACT|
+|Facebook source URL canonicalization / tracking parameter removal|IMPLEMENTED_OFFLINE_CONTRACT|
+|WRITE timeout / 429 / 5xx uncertainty classification|IMPLEMENTED_OFFLINE_CONTRACT|
+|Bounded READ retry schedule and WRITE reconcile-before-retry|IMPLEMENTED_OFFLINE_CONTRACT|
+|Provider readback reconciliation|SIMULATED / CALLER-SUPPLIED EVIDENCE ONLY|
+|Runtime durable audit-writer wiring|HOST INJECTION REQUIRED — NOT WIRED TO PRODUCTION|
+|Production review-queue directory / backup / encryption policy|NOT_CONFIGURED — DEPLOYMENT REVIEW REQUIRED|
+|Authenticated Meta Graph transport and automatic READ/WRITE|NOT_IMPLEMENTED — EXPLICIT APPROVAL REQUIRED|
 |Production migration / deployment|NOT_APPROVED|
 
 ## 8. Phase status

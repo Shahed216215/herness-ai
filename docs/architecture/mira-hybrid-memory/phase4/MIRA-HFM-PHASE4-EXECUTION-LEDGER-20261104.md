@@ -168,3 +168,12 @@ Status: IN PROGRESS
 - This module performs no HTTP request, sleep, publishing or Memory commit.
 - Await CI evidence for this increment.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; FACEBOOK_POSTS_PUBLISHED=0; CANONICAL_MEMORY_WRITES=0.
+
+
+## Entry 018 — Recovery contract CI verified
+- CI run 41845033530 (push) and 41845045087 (pull_request) both SUCCESS on code commit 2dec74d573a9c046a7d4acdf4007c9b29199f489.
+- Verified job logs confirm all six suites pass with TESTS_FAILED=0: Facebook manual connector, Phase 3 HFM facade adapter, durable import review registry, operation recovery contract, Meta permission/request planner and provider capability contract.
+- Operation recovery regressions confirm deterministic Page-bound operation identity; uncertain WRITE, WRITE 429 and WRITE 5xx outcomes require readback before retry; READ retry scheduling is bounded; 2xx WRITE remains pending readback; matching readback never verifies canonical Memory.
+- The same CI logs confirm NETWORK_REQUESTS=0, LIVE_META_API_CALLS=0 and FACEBOOK_POSTS_PUBLISHED=0.
+- Earlier failed CI attempts 41844948763 / 41844959896 (over-escaped numeric Page ID validation), 41844153700 / 41844167532 (directory-mode guard missing), 41843800746 / 41843811056 (queue-tamper test order), 41843670665 / 41843681589 (changed-content fixture digest), 41843527716 / 41843539563 (audit event count), and earlier attempts remain FAIL; corrected commits were verified by later green runs. Failed attempts are not relabelled.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; OFFLINE_RECOVERY_CONTRACT=VERIFIED; LIVE_META_TRANSPORT=NOT_IMPLEMENTED; PRODUCTION_READINESS=NOT_CERTIFIED.
