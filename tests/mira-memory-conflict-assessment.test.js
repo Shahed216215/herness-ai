@@ -29,7 +29,9 @@ function expectConflict(existing, incoming, type) {
 }
 const base = record();
 assert.deepEqual(validateCanonicalMemoryRecord(base), []);
-assert.equal(assessMemoryConflict(base, record()).status, 'NO_CONFLICT_DETECTED');
+const noConflict = assessMemoryConflict(base, record());
+assert.equal(noConflict.status, 'NO_CONFLICT_DETECTED');
+assert.equal(noConflict.cryptographicVerification, 'CONTENT_HASH_MATCHED_ONLY');
 expectConflict(base, record({ memoryId: 'memory-0002' }), 'IDENTITY_CONFLICT');
 expectConflict(base, record({ version: { revision: 2, contentHash: 'b'.repeat(64) } }), 'REVISION_CONFLICT');
 expectConflict(base, record({ content: 'changed' }), 'CONTENT_CONFLICT');
