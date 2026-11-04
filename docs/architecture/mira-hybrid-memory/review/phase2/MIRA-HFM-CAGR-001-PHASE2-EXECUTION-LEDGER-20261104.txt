@@ -265,7 +265,7 @@ CI evidence:
 - Run 41792193805 — SUCCESS — tested HEAD 41528d0ded0f9f3d14284e132809bdbade622ffc; seven wrapper-denial tests, direct-dispatch tests, registry parity and cleanup/storage regression tests passed.
 - Run 41792424947 — SUCCESS — tested HEAD 2752402968b95d0a7743893584169b723ad31f2e; all seven wrapper tests plus accurate tool-description assertions passed.
 - All latest verified logs report TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0 and REAL_GOOGLE_DRIVE_TOUCHED=NO.
-- Historical failures 41791239959, 41791668141, 41791901687, 41792011602 and 41792193805? (correction: 41792193805 is PASS, not failure) remain visible. The direct-call scanner pattern, test-only policy stubs and test cleanup code were corrected before the later authoritative passing runs. No failure is relabelled as PASS.
+- Historical failures 41791239959, 41791668141, 41791637032, 41791602417, 41791586808, 41791901687 and 41792011602 remain visible. The direct-call scanner pattern, test-only policy stubs and test cleanup code were corrected before the later authoritative passing runs. Run 41792193805 is a SUCCESS and is not part of the failure list. No failure is relabelled as PASS.
 
 Evidence document:
 docs/architecture/mira-hybrid-memory/review/phase2/MIRA-HFM-CAGR-001-PHASE2-PERSISTENT-WRAPPER-DISPATCH-GUARD-ADDENDUM-20261104.txt
