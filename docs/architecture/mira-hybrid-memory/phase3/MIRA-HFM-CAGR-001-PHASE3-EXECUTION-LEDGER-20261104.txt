@@ -149,3 +149,15 @@ MERGE=NOT_APPROVED
 - Phase 3 CI run 41812738317 completed SUCCESS: request authorization, mapping, unified facade, domain payload adapter and provider capability tests all PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - Parent regression CI run 41812738498 completed SUCCESS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - Phase 2 isolated workflow run 41812746347 completed SUCCESS on the workflow update commit.
+
+15. LATEST FACADE HARDENING AND CI
+- Unified facade now caps idempotency keys at 256 characters and idempotency history at 10,000 entries; oversized inputs fail closed.
+- Retrieval results and prepared candidates are detached and deeply frozen. Tests prove callers cannot mutate returned objects after validation/hash calculation.
+- Phase 3 CI run 41812953604 SUCCESS on commit eb7d2291fe5daaf4dff5409466cc374b498591f3; all request, mapping, facade, domain adapter and provider contract suites report PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 regression run 41812953586 SUCCESS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+16. SEMANTIC CALLER REVIEW
+- Added MIRA-HFM-CAGR-001-PHASE3-SEMANTIC-CALLER-REVIEW-20261104.txt.
+- Manually classified the 14 static retrieval-consumer files into broad raw accessors, ordinary/model-context retrieval, counts, maintenance/cleanup, and privileged snapshot/recovery flows.
+- Key distinction: controlled-apply/evolution reads must use privileged snapshot/verify APIs that preserve originals; ordinary retrieval must filter trust/quarantine/access before ranking/model context. Applying one filter indiscriminately to both would break recovery.
+- The 36-call scanner inventory is still not exhaustive for direct loadKnowledge/loadMemory calls, dynamic/indirect wrappers, CRM, caches, embeddings, exports, workers or provider paths. Semantic coverage therefore remains PARTIAL/REVIEW_REQUIRED.
