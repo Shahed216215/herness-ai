@@ -48,6 +48,10 @@ on:
       - 'tests/mira-local-memory-safety-test.js'
       - 'tests/mira-memory-local-store-contract-test.js'
       - 'tests/mira-memory-evolution-integration-test.js'
+      - 'autonomous-learning-controlled-apply.js'
+      - 'tests/mira-autonomous-learning-canonical-store-adapter.test.js'
+      - 'services/mira-work-learning-engine.js'
+      - 'tests/mira-work-learning-store-fail-closed.test.js'
       - '.github/workflows/mira-hfm-phase2-core-safety.yml'
   pull_request:
     branches:
@@ -77,6 +81,10 @@ on:
       - 'tests/mira-local-memory-safety-test.js'
       - 'tests/mira-memory-local-store-contract-test.js'
       - 'tests/mira-memory-evolution-integration-test.js'
+      - 'autonomous-learning-controlled-apply.js'
+      - 'tests/mira-autonomous-learning-canonical-store-adapter.test.js'
+      - 'services/mira-work-learning-engine.js'
+      - 'tests/mira-work-learning-store-fail-closed.test.js'
       - '.github/workflows/mira-hfm-phase2-core-safety.yml'
 
 permissions:
@@ -115,6 +123,7 @@ jobs:
           node tests/mira-knowledge-cleanup-storage-contract.test.js
           node tests/mira-work-knowledge-store-fail-closed.test.js
           node tests/mira-work-learning-store-fail-closed.test.js
+          node tests/mira-autonomous-learning-canonical-store-adapter.test.js
           node tests/mira-audit-chain-independent-verifier.test.js
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
           echo "REAL_GOOGLE_DRIVE_TOUCHED=NO"
