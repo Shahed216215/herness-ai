@@ -1,14 +1,5 @@
-const fs = require("fs");
-const path = require("path");
-
-const { getKnowledge } = require("../knowledge");
+const { getKnowledge, replaceKnowledge } = require("../knowledge");
 const { saveKnowledgeToDrive } = require("../google-drive");
-
-const KNOWLEDGE_FILE = path.join(
-  __dirname,
-  "..",
-  "knowledge.json"
-);
 
 function normalize(text) {
   return String(text || "")
@@ -106,11 +97,7 @@ async function removeDuplicates() {
     };
   }
 
-  fs.writeFileSync(
-    KNOWLEDGE_FILE,
-    JSON.stringify(cleanedKnowledge, null, 2),
-    "utf8"
-  );
+  replaceKnowledge(cleanedKnowledge);
 
   const driveResult =
     await saveKnowledgeToDrive(cleanedKnowledge);
