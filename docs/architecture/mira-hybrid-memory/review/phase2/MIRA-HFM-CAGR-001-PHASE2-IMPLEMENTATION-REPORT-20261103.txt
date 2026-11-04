@@ -546,5 +546,6 @@ GitHub Actions run 41764989142 (run 369), job 126361148970, completed SUCCESS on
 - CONVERSATION_STORE_ATOMIC_INITIALIZATION=PASS
 - CONVERSATION_STORE_ATOMIC_WRITE_AND_AUDIT=PASS
 - TESTS_FAILED=0; PRODUCTION_CONVERSATIONS_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+- A follow-up added an explicit audit event for first-time store initialization and a regression assertion for that event. Final combined workflow run 41765199743 (run 374), job 126361815880, SUCCESS on commit 6e1c7f46e762677096068e746aff5a002f8993ea; all four conversation-store assertions still PASS, TESTS_FAILED=0, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
 
 This hardens conversation-store persistence but does not yet make conversation records conflict-registry-aware or establish universal retrieval exclusion. The existing conversation store's concurrency arbitration is also not qualified by this test; U04 remains an open design/implementation boundary.
