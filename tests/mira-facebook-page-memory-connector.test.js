@@ -32,7 +32,7 @@ assert.equal(evaluateFacebookPageCapabilities({apiConfigured:true,pageId:'123456
 console.log('READ_PERMISSION_DENIAL_PRESERVED=PASS');
 assert.equal(evaluateFacebookPageCapabilities({apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'UNKNOWN',readPermission:'AVAILABLE'}).read.state,'UNKNOWN');
 console.log('UNKNOWN_API_SUPPORT_FAILS_CLOSED=PASS');
-assert.throws(()=>evaluateFacebookPageCapabilities({apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'AVAILABLE',readPermission:'AVAILABLE',permissionEvidence:{read:{...goodEvidence('READ'),pageId:'other'}}}),/undefined/);
+assert.equal(evaluateFacebookPageCapabilities({apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'AVAILABLE',readPermission:'AVAILABLE',permissionEvidence:{read:{...goodEvidence('READ'),pageId:'other'}}}).read.state,'UNKNOWN');
 console.log('MISMATCHED_PAGE_EVIDENCE_NOT_ACCEPTED=PASS');
 
 const draft=createManualPostDraft({record:baseRecord,pageName:'Mira Memory',generatedAt:now});
