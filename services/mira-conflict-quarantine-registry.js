@@ -339,6 +339,7 @@ function verifyResolution({ directory, conflictId, projectId }) {
     : resolution.decision === 'RETAIN_QUARANTINED'
       ? (!resolution.resultingRecord && resolution.acceptedOriginalDigest === null && resolution.acceptedOriginalIndex === null && resolution.broaderAccessAuthorization === null)
       : (DECISIONS.has(resolution.decision) && acceptedIndexValid && !resolution.resultingRecord &&
+         resolution.broaderAccessAuthorization === null &&
          resolution.acceptedOriginalIndex === acceptedIndex &&
          resolution.acceptedOriginalDigest === acceptedDigest);
   return {
@@ -519,6 +520,9 @@ function resolveConflict({
   let resultRecord = null;
   let acceptedOriginalDigest = null;
   if (decision === 'APPROVED_FIELD_MERGE') {
+    if (acceptedOriginalIndex !== undefined && acceptedOriginalIndex !== null) {
+      throw new Error('APPROVED_FIELD_MERGE cannot select one original version.');
+    }
     if (!mergedRecord) throw new Error('APPROVED_FIELD_MERGE requires an explicit mergedRecord.');
     validateRecord(mergedRecord, envelope.projectId);
     if (originals.some(record => record.memoryId !== originals[0].memoryId)) {
@@ -551,6 +555,9 @@ function resolveConflict({
     resultRecord = mergedRecord;
   } else {
     if (mergedRecord) throw new Error('Only APPROVED_FIELD_MERGE may include a mergedRecord.');
+    if (decision === 'RETAIN_QUARANTINED' && acceptedOriginalIndex !== undefined && acceptedOriginalIndex !== null) {
+      throw new Error('RETAIN_QUARANTINED cannot select an accepted original version.');
+    }
     if (decision === 'ACCEPT_EXISTING_VERSION' || decision === 'REJECT_CONFLICTING_CHANGE') {
       if (acceptedOriginalIndex === undefined) {
         throw new Error(decision + ' requires an explicit acceptedOriginalIndex; original ordering is not authority.');
