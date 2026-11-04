@@ -25,7 +25,7 @@ function expectConflict(existing, incoming, type) {
   assert.equal(result.status, 'CONFLICT');
   assert.equal(result.state, 'DETECTED');
   assert.ok(result.conflictTypes.includes(type), type);
-  assert.equal(result.cryptographicVerification, 'NOT_PERFORMED');
+  assert.equal(result.cryptographicVerification, 'CONTENT_HASH_MATCHED_ONLY');
 }
 const base = record();
 assert.deepEqual(validateCanonicalMemoryRecord(base), []);
