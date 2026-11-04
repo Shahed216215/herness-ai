@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const { retrieveCanonicalRecords, prepareCanonicalWrite, digest } = require('../services/mira-memory-unified-facade');
+const { retrieveCanonicalRecords, retrieveCanonicalRecordsWithReport, prepareCanonicalWrite, digest } = require('../services/mira-memory-unified-facade');
 const now = new Date('2026-11-04T12:00:00.000Z');
 const requestContext = {
  actorId:'actor-fixture-01',actorType:'HUMAN',projectId:'project-alpha',
@@ -38,6 +38,24 @@ assert.deepEqual(visible.map(item=>item.memoryId),['memory-fixture-001']);
 assert.equal(Object.isFrozen(visible[0]),true);
 assert.equal(Object.isFrozen(visible[0].access),true);
 assert.notEqual(visible[0],active);
+const report=retrieveCanonicalRecordsWithReport({records:[active,pending,cross,quarantined],pendingConflicts:conflicts,projectId:'project-alpha',requestContext,authorizeRequest:authorize,now});
+assert.deepEqual(report.records.map(item=>item.memoryId),['memory-fixture-001']);
+assert.equal(report.excludedSummary.totalCandidates,4);
+assert.equal(report.excludedSummary.eligibleCount,1);
+assert.equal(report.excludedSummary.excludedCount,3);
+assert.deepEqual(report.excludedSummary.excludedByReason,{
+ LIFECYCLE_NOT_ACTIVE:1,
+ PROJECT_SCOPE_MISMATCH:1,
+ CONFLICT_QUARANTINED_OR_UNSELECTED_VERSION:1
+});
+assert.equal(report.provenance[0].recordDigest,digest(active));
+assert.deepEqual(report.provenance[0].source,active.source);
+assert.equal(report.eligibility[0].reasonCode,'AUTHORIZED_READ');
+assert.equal(report.auditStatus,'NOT_EMITTED_REPORT_ONLY');
+assert.equal(JSON.stringify(report).includes('memory-fixture-002'),false);
+assert.equal(Object.isFrozen(report),true);
+assert.equal(Object.isFrozen(report.excludedSummary.excludedByReason),true);
+console.log('RETRIEVAL_PROVENANCE_AND_NONLEAKING_ELIGIBILITY_REPORT_PASS=PASS');
 console.log('RETRIEVAL_SCOPE_TRUST_AND_QUARANTINE_FILTER_PASS=PASS');
 console.log('RETRIEVAL_RESULTS_ARE_DETACHED_AND_DEEPLY_FROZEN=PASS');
 assert.throws(()=>retrieveCanonicalRecords({records:[active],pendingConflicts:[],projectId:'project-beta',requestContext,authorizeRequest:authorize,now}),/project scope/);
@@ -69,6 +87,12 @@ assert.equal(preparedCreate.auditPlan.projectId,requestContext.projectId);
 assert.equal(preparedCreate.auditPlan.requestId,requestContext.requestId);
 assert.equal(preparedCreate.auditPlan.eventRequiredBeforeCommit,true);
 assert.equal(preparedCreate.auditPlan.outcome,'PREPARED_NOT_COMMITTED');
+assert.equal(preparedCreate.auditPlan.previousRecordDigest,null);
+assert.equal(preparedCreate.rollbackPlan.action,'NOOP_UNCOMMITTED_CREATE');
+assert.equal(preparedCreate.rollbackPlan.status,'PLAN_ONLY_NOT_EXECUTED');
+assert.equal(preparedCreate.rollbackPlan.deleteOriginals,false);
+assert.equal(preparedCreate.rollbackPlan.requiresHumanApproval,true);
+assert.equal(Object.isFrozen(preparedCreate.rollbackPlan),true);
 assert.equal(Object.isFrozen(preparedCreate.auditPlan),true);
 assert.notEqual(preparedCreate.incomingRecord,newRecord);
 assert.equal(Object.isFrozen(preparedCreate.incomingRecord),true);
@@ -89,6 +113,18 @@ assert.equal(preparedUpdate.idempotencyPlan.key,'idem-update-001');
 assert.equal(preparedUpdate.idempotencyPlan.requiredAtomicity,'HOST_ATOMIC_UNIQUE_CLAIM');
 assert.equal(preparedUpdate.idempotencyStatus,'NOT_ATOMIC_PREPARE_ONLY');
 assert.equal(preparedUpdate.auditPlan.previousRevision,1);
+assert.equal(preparedUpdate.auditPlan.previousRecordDigest,digest(previous));
+assert.equal(preparedUpdate.rollbackPlan.action,'APPEND_COMPENSATING_REVISION_FROM_VERIFIED_PRIOR');
+assert.equal(preparedUpdate.rollbackPlan.priorRevision,1);
+assert.equal(preparedUpdate.rollbackPlan.preparedRevision,2);
+assert.equal(preparedUpdate.rollbackPlan.rollbackRevisionAfterCommit,3);
+assert.equal(preparedUpdate.rollbackPlan.priorRecordDigest,digest(previous));
+assert.equal(preparedUpdate.rollbackPlan.preserveOriginalRevision,true);
+assert.equal(preparedUpdate.rollbackPlan.deleteOriginals,false);
+assert.equal(preparedUpdate.rollbackPlan.status,'PLAN_ONLY_NOT_EXECUTED');
+assert.equal(Object.isFrozen(preparedUpdate.rollbackPlan),true);
+assert.equal(previous.version.revision,1);
+assert.equal(previous.content,'synthetic content');
 assert.equal(preparedUpdate.auditPlan.nextRevision,2);
 assert.equal(preparedUpdate.auditPlan.eventRequiredBeforeCommit,true);
 assert.equal(preparedUpdate.auditStatus,'NOT_EMITTED_PREPARE_ONLY');

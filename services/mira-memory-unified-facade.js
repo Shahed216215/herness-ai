@@ -29,7 +29,7 @@ function memoryResourceScope(record) {
 function authorize({ requestContext, operation, resourceScope, authorizeRequest, now }) {
   return authorizeMemoryRequest({ requestContext, operation, resourceScope, authorizeRequest, now });
 }
-function retrieveCanonicalRecords({
+function retrieveCanonicalRecordsWithReport({
   records, pendingConflicts, projectId, requestContext, authorizeRequest, now = new Date()
 }) {
   if (!Array.isArray(records) || !Array.isArray(pendingConflicts)) {
@@ -49,6 +49,7 @@ function retrieveCanonicalRecords({
     purpose: listDecision.purpose,
     requestId: listDecision.requestId
   };
+  const decisions = [];
   const authorizeRecord = record => {
     try {
       authorize({
@@ -61,8 +62,44 @@ function retrieveCanonicalRecords({
       return false;
     }
   };
-  const visible = filterTrustedRecords(records, pendingConflicts, projectId, authorizeRecord, actorContext);
-  return visible.map(record => cloneAndFreeze(record));
+  const visible = filterTrustedRecords(
+    records, pendingConflicts, projectId, authorizeRecord, actorContext,
+    decision => decisions.push(decision)
+  );
+  const excludedByReason = {};
+  for (const decision of decisions) {
+    if (!decision.eligible) {
+      excludedByReason[decision.reasonCode] = (excludedByReason[decision.reasonCode] || 0) + 1;
+    }
+  }
+  const detachedRecords = visible.map(record => cloneAndFreeze(record));
+  const provenance = visible.map(record => ({
+    memoryId: record.memoryId,
+    projectId: record.projectId,
+    revision: record.version.revision,
+    recordDigest: digest(record),
+    source: record.source
+  }));
+  const eligibility = visible.map(record => ({
+    memoryId: record.memoryId,
+    status: 'ELIGIBLE',
+    reasonCode: 'AUTHORIZED_READ'
+  }));
+  return cloneAndFreeze({
+    records: detachedRecords,
+    provenance,
+    eligibility,
+    excludedSummary: {
+      totalCandidates: records.length,
+      eligibleCount: visible.length,
+      excludedCount: records.length - visible.length,
+      excludedByReason
+    },
+    auditStatus: 'NOT_EMITTED_REPORT_ONLY'
+  });
+}
+function retrieveCanonicalRecords(input) {
+  return retrieveCanonicalRecordsWithReport(input).records;
 }
 function prepareCanonicalWrite({
   incomingRecord, existingRecords, pendingConflicts, requestContext,
@@ -167,11 +204,29 @@ function prepareCanonicalWrite({
     operation: current ? 'UPDATE' : 'CREATE',
     memoryId: incomingRecord.memoryId,
     previousRevision: current ? current.version.revision : null,
+    previousRecordDigest: current ? digest(current) : null,
     nextRevision: incomingRecord.version.revision,
     idempotencyKey,
     incomingRecordDigest: digest(incomingRecord),
     outcome: 'PREPARED_NOT_COMMITTED',
     eventRequiredBeforeCommit: true
+  });
+  const rollbackPlan = cloneAndFreeze({
+    status: 'PLAN_ONLY_NOT_EXECUTED',
+    action: current ? 'APPEND_COMPENSATING_REVISION_FROM_VERIFIED_PRIOR' : 'NOOP_UNCOMMITTED_CREATE',
+    projectId: incomingRecord.projectId,
+    memoryId: incomingRecord.memoryId,
+    priorRevision: current ? current.version.revision : null,
+    preparedRevision: incomingRecord.version.revision,
+    rollbackRevisionAfterCommit: current ? current.version.revision + 2 : null,
+    priorRecordDigest: current ? digest(current) : null,
+    preparedRecordDigest: digest(incomingRecord),
+    preserveOriginalRevision: true,
+    deleteOriginals: false,
+    requiresHumanApproval: true,
+    requiredProviderCapabilities: ['ATOMIC_CONDITIONAL_WRITE','IMMUTABLE_VERSIONS','INDEPENDENT_READBACK'],
+    postRollbackReadbackRequired: true,
+    auditEventRequired: true
   });
   return Object.freeze({
     status: 'PREPARED_NOT_COMMITTED',
@@ -179,6 +234,7 @@ function prepareCanonicalWrite({
     idempotencyStatus: 'NOT_ATOMIC_PREPARE_ONLY',
     idempotencyPlan,
     auditPlan,
+    rollbackPlan,
     committed: false,
     projectId: incomingRecord.projectId,
     memoryId: incomingRecord.memoryId,
@@ -190,4 +246,4 @@ function prepareCanonicalWrite({
     incomingRecord: cloneAndFreeze(incomingRecord)
   });
 }
-module.exports = { retrieveCanonicalRecords, prepareCanonicalWrite, digest, memoryResourceScope };
+module.exports = { retrieveCanonicalRecords, retrieveCanonicalRecordsWithReport, prepareCanonicalWrite, digest, memoryResourceScope };

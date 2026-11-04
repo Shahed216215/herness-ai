@@ -658,7 +658,8 @@ function filterTrustedRecords(
   pendingConflicts,
   projectId,
   authorizeAccess,
-  actorContext
+  actorContext,
+  decisionSink
 ) {
   if (!Array.isArray(records) || !Array.isArray(pendingConflicts)) {
     throw new Error('Arrays are required.');
@@ -668,6 +669,9 @@ function filterTrustedRecords(
   }
   if (typeof authorizeAccess !== 'function') {
     throw new Error('An authenticated access authorizer is required; retrieval fails closed.');
+  }
+  if (decisionSink !== undefined && typeof decisionSink !== 'function') {
+    throw new Error('decisionSink must be a function when supplied.');
   }
   if (!actorContext || typeof actorContext !== 'object' ||
       typeof actorContext.actorId !== 'string' || !actorContext.actorId.trim() ||
@@ -751,43 +755,52 @@ function filterTrustedRecords(
     addAllDigests();
   }
 
-  return records.filter(record => {
-    if (!record ||
-        validateCanonicalMemoryRecord(record).length !== 0 ||
-        record.projectId !== projectId ||
-        record.lifecycle !== 'ACTIVE' ||
-        record.integrity?.status !== 'VERIFIED' ||
-        !RETRIEVABLE_TRUST_STATES.has(record.trust?.status) ||
-        blockedMemoryIds.has(record.memoryId) ||
-        blockedRecordDigests.has(digest(record))) {
-      return false;
+  const eligibleRecords = [];
+  for (const record of records) {
+    let reasonCode = null;
+    if (!record) reasonCode = 'INVALID_RECORD';
+    else if (validateCanonicalMemoryRecord(record).length !== 0) reasonCode = 'INVALID_CANONICAL_RECORD';
+    else if (record.projectId !== projectId) reasonCode = 'PROJECT_SCOPE_MISMATCH';
+    else if (record.lifecycle !== 'ACTIVE') reasonCode = 'LIFECYCLE_NOT_ACTIVE';
+    else if (record.integrity?.status !== 'VERIFIED') reasonCode = 'INTEGRITY_NOT_VERIFIED';
+    else if (!RETRIEVABLE_TRUST_STATES.has(record.trust?.status)) reasonCode = 'TRUST_STATE_NOT_RETRIEVABLE';
+    else if (blockedMemoryIds.has(record.memoryId) || blockedRecordDigests.has(digest(record))) reasonCode = 'CONFLICT_QUARANTINED_OR_UNSELECTED_VERSION';
+
+    if (!reasonCode) {
+      const classification = record.access?.classification;
+      const allowedProjectIds = record.access?.allowedProjectIds;
+      if (allowedProjectIds !== undefined &&
+          (!Array.isArray(allowedProjectIds) || !allowedProjectIds.includes(projectId))) {
+        reasonCode = 'ACCESS_PROJECT_NOT_ALLOWED';
+      } else if (!['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED'].includes(classification)) {
+        reasonCode = 'ACCESS_CLASSIFICATION_INVALID';
+      } else {
+        try {
+          if (authorizeAccess(record, {
+            projectId,
+            actorId: actorContext.actorId,
+            memoryId: record.memoryId,
+            classification,
+            purpose: actorContext.purpose,
+            requestId: actorContext.requestId
+          }) !== true) reasonCode = 'HOST_AUTHORIZATION_DENIED';
+        } catch {
+          reasonCode = 'HOST_AUTHORIZATION_ERROR';
+        }
+      }
     }
 
-    const classification = record.access?.classification;
-    const allowedProjectIds = record.access?.allowedProjectIds;
-    if (allowedProjectIds !== undefined &&
-        (!Array.isArray(allowedProjectIds) || !allowedProjectIds.includes(projectId))) {
-      return false;
+    const eligible = reasonCode === null;
+    if (typeof decisionSink === 'function') {
+      decisionSink({
+        eligible,
+        reasonCode: eligible ? 'AUTHORIZED_READ' : reasonCode,
+        memoryId: eligible ? record.memoryId : null
+      });
     }
-    if (!['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED'].includes(classification)) {
-      return false;
-    }
-
-    // This helper does not authenticate actors. The caller must bind this
-    // callback to the authenticated request/session and the active access policy.
-    try {
-      return authorizeAccess(record, {
-        projectId,
-        actorId: actorContext.actorId,
-        memoryId: record.memoryId,
-        classification,
-        purpose: actorContext.purpose,
-        requestId: actorContext.requestId
-      }) === true;
-    } catch {
-      return false;
-    }
-  });
+    if (eligible) eligibleRecords.push(record);
+  }
+  return eligibleRecords;
 }
 module.exports = {
   createConflictQuarantine, readConflict, verifyConflict,
