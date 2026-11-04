@@ -11,7 +11,7 @@ const RULES=[
  ['PROVIDER_OR_SNAPSHOT_READ',/\b(?:loadMemoryFromDrive|loadKnowledgeFromDrive|loadDriveState|readSnapshot|verifySnapshot|createSnapshot|restoreSnapshot)\s*\(/],
  ['CRM_CONVERSATION_READ',/\b(?:getConversation|listConversations|getMessage|listMessages|getContext)\s*\(/],
  ['WORK_LEARNING_OR_EXPERIENCE_READ',/\b(?:getLearningRecord|listLearningRecords|getLessons|listLessons|getExperience|listExperiences|getExperienceStats|retrieveExperiences|getExperiencesForTask|getRetrievalStats)\s*\(/],
- ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/]
+ ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidatedKnowledge|getConsolidationStats|findExistingProposal|verifyStoreIntegrity|getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/]
 ];
 function classifySource(relativePath,source){
  const matches=[];
