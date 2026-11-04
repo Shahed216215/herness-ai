@@ -58,7 +58,7 @@ function stringSet(value,label,allowed) {
   }
   return value;
 }
-function assessDeclaredMetaPermissionEvidence({evidence,now=new Date(),maxAgeMs=15*60*1000}={}) {
+function assessDeclaredMetaPermissionEvidence({evidence,expectedContext,now=new Date(),maxAgeMs=15*60*1000}={}) {
   if(!exactKeys(evidence,ROOT_KEYS)) {
     throw new Error('Meta permission evidence must contain the exact supported fields.');
   }
@@ -66,6 +66,11 @@ function assessDeclaredMetaPermissionEvidence({evidence,now=new Date(),maxAgeMs=
   const appId=text(evidence.appId,'appId',64);
   const actorId=text(evidence.actorId,'actorId',128);
   const pageId=text(evidence.pageId,'pageId',32);
+  const contextKeys=['appId','actorId','pageId','operation'];
+  if(!exactKeys(expectedContext,contextKeys)) throw new Error('Expected Meta identity context must contain exact app/actor/Page/operation fields.');
+  for(const key of contextKeys) text(expectedContext[key],'expectedContext.'+key,key==='pageId'?32:128);
+  if(expectedContext.pageId!==undefined&&!/^\\d{1,32}$/.test(expectedContext.pageId)) throw new Error('Expected Page ID must be numeric.');
+  if(contextKeys.some(key=>evidence[key]!==expectedContext[key])) throw new Error('Permission evidence identity/operation binding mismatch.');
   if(!/^\d{1,32}$/.test(pageId)) throw new Error('pageId must be numeric.');
   if(!OPERATIONS.has(evidence.operation)) throw new Error('Unsupported Meta Page operation.');
   if(!APP_MODES.has(evidence.appMode)) throw new Error('Unsupported Meta app mode.');
