@@ -31,6 +31,8 @@ function safeDirectory(directory) {
     const stat = fs.lstatSync(current);
     if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error('Review queue path contains an unsafe directory component.');
   }
+  const finalStat = fs.lstatSync(resolved);
+  if ((finalStat.mode & 0o077) !== 0) throw new Error('Review queue directory permissions must be owner-only (0700).');
   return resolved;
 }
 function queuePath(directory, queueId) {
