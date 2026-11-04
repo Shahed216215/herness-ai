@@ -206,3 +206,29 @@ Scope limitation: route/store name and return-shape mismatch is corrected for th
 - Conversation route contract PASS; conversation partial-commit recovery PASS; Knowledge Drive retry recovery PASS; all suites TESTS_FAILED=0.
 - REAL_GOOGLE_DRIVE_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
 - The only commits after the tested code head were documentation-ledger updates; no source or workflow code changed after the successful run.
+
+
+13. ADDITIONAL RETRIEVAL FAN-OUT AND CLEANUP PROVIDER-STATUS FIX — 2026-11-04
+Source review additions:
+- services/learning.js is an indirect Knowledge retrieval consumer via searchKnowledge() for learning duplicate/improvement decisions.
+- tools/knowledge-search.js can use the complete Drive array instead of local Knowledge when the provider returns an array; it currently lacks canonical HFM trust/quarantine filtering.
+- server.js agent request context recalls Memory and Knowledge before model invocation. Knowledge recall is inserted into model context; stored content is described as reference, not instructions, but no HFM conflict/project trust filter is applied at this callsite.
+- tools/index.js dynamically loads and registers every tool in tools/, confirming runtime reachability for the Memory/Knowledge tool wrappers.
+- Admin Knowledge search/detail/edit/delete paths are privileged direct callers; admin authorization is not an HFM data-scope or conflict-trust policy.
+- Count and capacity tools expose raw count/statistics rather than trusted-record counts.
+
+Corrected bug:
+- tools/knowledge-cleanup.js previously returned driveSync=true regardless of saveKnowledgeToDrive() result. It now reports confirmed sync only for result.success===true; provider rejection/missing success/exception is explicitly FAILED_OR_UNCONFIRMED while preserving the already-committed local cleanup.
+- Tests now inject provider rejection and provider exception and assert no false sync claim.
+- Successful storage contract fixture now returns explicit success:true.
+
+CI:
+- Run 41779320887 — SUCCESS — tested commit 128baf9cbbc2c16e47d666ec748463cd2373607f — https://github.com/Shahed216215/herness-ai/actions/runs/41779320887
+- Cleanup rejection case PASS; cleanup thrown-exception case PASS; storage contract PASS; all test scripts reported TESTS_FAILED=0.
+- An earlier run at 588c262... and run at 6a196d... failed because the existing storage-contract test double omitted the newly required success:true flag. The fixture was corrected; the rerun on 128baf9... succeeded. These failures were test-fixture compatibility failures, not concealed as PASS.
+
+Residual:
+- Agent recall, tools/knowledge-search and admin Knowledge direct paths still lack a universal canonical HFM filter.
+- No production runtime guard was wired. No real Drive, network or production Memory/Knowledge data touched.
+- Complete 579-code-file semantic coverage, dynamic edge resolution, all cache/index/export surfaces and provider storage arbitration remain IN_PROGRESS / NOT_ESTABLISHED.
+- Phase 2 remains IN_PROGRESS; version v0.2; production readiness NOT_CERTIFIED.
