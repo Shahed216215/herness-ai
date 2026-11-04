@@ -22,6 +22,7 @@ on:
   push:
     branches:
       - work/mira-hfm-v02-phase2-core-safety
+      - work/mira-hfm-v02-phase3-unified-memory-contract-core
     paths:
       - 'knowledge.js'
       - 'audit-log.js'
@@ -30,6 +31,8 @@ on:
       - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
       - 'tests/mira-hfm-retrieval-callsite-inventory.test.js'
       - 'services/**'
+      - 'tests/mira-memory-request-authorization.test.js'
+      - '.github/workflows/mira-hfm-phase3-contract.yml'
       - 'memory.js'
       - 'knowledge-controlled-apply.js'
       - 'tools/**'
@@ -103,6 +106,7 @@ on:
   pull_request:
     branches:
       - main
+      - work/mira-hfm-v02-phase2-core-safety
     paths:
       - 'knowledge.js'
       - 'audit-log.js'
@@ -199,6 +203,7 @@ jobs:
           node tests/mira-memory-evolution-integration-test.js
           node tests/mira-memory-conflict-assessment.test.js
           node tests/mira-legacy-memory-knowledge-adapter.test.js
+          node tests/mira-memory-request-authorization.test.js
           node tests/mira-hfm-migration-manifest.test.js
           node tests/mira-hfm-test-registry.test.js
           node tests/mira-hfm-timestamp-profile.test.js
