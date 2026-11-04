@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const {
   createConflictQuarantine, readConflict, verifyConflict,
   beginConflictReview, verifyReview, listConflicts,
@@ -10,18 +11,22 @@ const {
 } = require('../services/mira-conflict-quarantine-registry');
 
 function record(overrides = {}) {
-  return {
+  const base = {
     schemaVersion: '1.0.0', memoryId: 'memory-0001', projectId: 'project-a',
     recordType: 'fact', content: 'original fact',
     source: { sourceType: 'manual', sourceId: 'source-1', sourceUrl: null, observedAt: '2026-11-03T10:00:00.000Z' },
     timestamps: { createdAt: '2026-11-03T10:00:00.000Z', updatedAt: '2026-11-03T10:00:00.000Z' },
-    version: { revision: 1, contentHash: 'a'.repeat(64) },
+    version: { revision: 1, contentHash: '' },
     integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
     trust: { status: 'SOURCE_RECORDED' },
     access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-a'] },
-    lifecycle: 'ACTIVE',
-    ...overrides
+    lifecycle: 'ACTIVE'
   };
+  const merged = { ...base, ...overrides };
+  merged.version = { ...base.version, ...(overrides.version || {}) };
+  merged.version.contentHash = crypto.createHash('sha256')
+    .update(JSON.stringify(merged.content), 'utf8').digest('hex');
+  return merged;
 }
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-conflict-registry-'));
 const auditEvents = [];
