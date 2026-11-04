@@ -1,0 +1,139 @@
+MIRA HYBRID MEMORY v0.2
+PHASE 2 — PERSISTENT WRAPPER AND DIRECT DISPATCH GUARD ADDENDUM
+Date: 2026-11-04
+Status: ISOLATED_CI_PASS_WITH_EXPLICIT_RESIDUALS
+Branch: work/mira-hfm-v02-phase2-core-safety
+Tested HEAD: 3b05b372487fd373695df6be1bb65b6062f28cad
+GitHub Actions push run: 41791344114 — SUCCESS
+Run URL: https://github.com/Shahed216215/herness-ai/actions/runs/41791344114
+
+1. ADDITIONAL PERSISTENT-WRITER DEFENCE
+
+The shared policy check was already enforced by tools/index.js executeTool(). The exported raw tools map, however, allows trusted application code to call a module's execute() method directly without passing through executeTool().
+
+To close that specific bypass for the three persistent-write wrappers, added a second policy check at the beginning of each wrapper:
+- tools/memory-save.js — memory_save
+- tools/knowledge-save.js — knowledge_save
+- tools/learning-save.js — learning_save
+
+Each wrapper now invokes checkToolSafety() before validating or using persistence dependencies. Under the current human-only policies, the wrapper returns a structured BLOCKED / TOOL_POLICY_DENIED response and does not call addMemory(), addKnowledge(), or learnFromContent().
+
+No generic chat argument, permissionGranted flag, or wrapper argument can turn this denial into approval. These tools remain unavailable for autonomous or generic direct execution until a genuine authenticated action-scoped approval contract is implemented.
+
+2. DIRECT WRAPPER TEST
+
+Added tests/mira-hfm-persistent-wrapper-guard.test.js. It evaluates each actual wrapper source in an isolated Node VM and injects stub persistence dependencies that throw if called. The test asserts:
+- each wrapper returns BLOCKED / TOOL_POLICY_DENIED;
+- the denial reason identifies explicit human approval as required;
+- each persistence dependency invocation count remains zero.
+
+CI log markers on tested HEAD:
+- MIRA_HFM_MEMORY_SAVE_DIRECT_WRAPPER_DENIED=PASS
+- MIRA_HFM_KNOWLEDGE_SAVE_DIRECT_WRAPPER_DENIED=PASS
+- MIRA_HFM_LEARNING_SAVE_DIRECT_WRAPPER_DENIED=PASS
+- MIRA_HFM_PERSISTENT_WRAPPER_INVOCATIONS=0
+- TESTS_FAILED=0
+
+3. DIRECT DISPATCH CALLSITE INVENTORY
+
+A static inventory was added to tests/mira-hfm-direct-dispatch-boundary.test.js. It recursively scans server.js, routes/**/*.js|cjs|mjs and services/**/*.js|cjs|mjs for direct tool-shaped .execute() calls and tools[...].execute() calls. The current reviewed inventory is exactly:
+- server.js: backupTool.execute — /api/admin/backup; protected by requireAdminPermission(PERMISSIONS.BACKUP_RESTORE).
+- server.js: restoreTool.execute — /api/admin/restore; protected by the same admin permission and a confirm === true check before invocation.
+- server.js: historyTool.execute — SEO workflow history; protected by the named-admin browser-session authorization branch.
+- services/mira-seo-review-dispatch.js: tool.execute — SEO review decision; validates requestRole=admin, authenticated admin session and nonempty named username before execution.
+- services/mira-verification-engine.js: health.execute — tool-health inspection; policy is operation=inspect, autonomous=true, humanApprovalRequired=false.
+
+The inventory test fails when a direct tool-shaped callsite is added or removed without a deliberate review and allowlist update. CI markers:
+- MIRA_HFM_ADMIN_BACKUP_PERMISSION_GATE=PASS
+- MIRA_HFM_ADMIN_RESTORE_CONFIRMATION_ORDER=PASS
+- MIRA_HFM_SEO_REVIEW_NAMED_ADMIN_GATE=PASS
+- MIRA_HFM_SEO_HISTORY_NAMED_ADMIN_GATE=PASS
+- MIRA_HFM_HEALTH_DIRECT_CALL_READ_ONLY_POLICY=PASS
+- MIRA_HFM_REVIEWED_DIRECT_DISPATCH_BOUNDARIES=PASS
+- MIRA_HFM_DIRECT_DISPATCH_BOUNDARY_TESTS_FAILED=0
+
+This is a source-level callsite inventory over server.js, routes and services. It is not a proof against arbitrary dynamic property access, eval-like construction, runtime monkey-patching, external consumers of the module, or direct calls from source trees outside those scanned roots.
+
+4. POLICY PARITY AND REGISTRY GUARD EVIDENCE
+
+The dependency-free static registry/policy test reports:
+- 24 statically identifiable active tool exports;
+- zero active exports missing a policy;
+- one reviewed dormant policy-only key: memory_backup;
+- zero unexpected policy-only keys.
+
+The registry execution test confirms the three persistent-write tools are blocked before their registered wrapper is invoked, while an eligible calculator tool remains executable.
+
+5. CI AND SAFETY EVIDENCE
+
+GitHub Actions push run 41791344114 completed SUCCESS on HEAD 3b05b372487fd373695df6be1bb65b6062f28cad. The job log confirms all above test markers, TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0, and REAL_GOOGLE_DRIVE_TOUCHED=NO.
+
+No production Memory/Knowledge data was read or written. No real Drive, provider, network, migration, restore, deployment or external action was performed.
+
+6. REMAINING GAPS — NOT CLOSED BY THIS ADDENDUM
+
+- The raw tools object remains exported for internal application integration. The three persistent save wrappers now independently deny execution, but this does not yet establish a universal capability-secure wrapper for every human-only tool.
+- Admin backup/restore and SEO review/history direct dispatch rely on route-level permission/session gates. Their authorization is source-tested, but no authenticated end-to-end browser/API session test was run.
+- A unified authenticated, action-scoped approval object, replay protection, audit binding and independent verifier are not implemented for Memory/Knowledge write operations.
+- The callsite scanner is static and limited to server.js, routes and services; it does not prove runtime reachability or exclude every possible dynamic dispatch pattern.
+- Production provider arbitration, conflict quarantine integration, canonical project scoping, trust-anchor custody, Drive cutover and encrypted emergency backup remain separate open gates.
+
+Phase 2 remains IN_PROGRESS.
+Production readiness remains NOT_CERTIFIED.
+Mira Hybrid Memory remains v0.2.
+PR #4 remains open/draft/unmerged. No merge or PR state transition was performed.
+
+
+7. EXPANDED HUMAN-ONLY WRAPPER COVERAGE (2026-11-04)
+
+After the initial three persistent-save wrappers were guarded, the same direct-module bypass was reviewed for additional active tools whose whole-tool policy is human-only and which have no dedicated authenticated direct route in the reviewed callsite inventory.
+
+Added an entry guard using the shared checkToolSafety() policy to:
+- tools/firewall-defense.js — firewall_defense
+- tools/memory-restore.js — memory_restore
+- tools/memory-version-recovery.js — memory_version_recovery
+- tools/knowledge-cleanup.js — knowledge_cleanup
+
+Together with memory_save, knowledge_save and learning_save, seven human-only tool wrappers now deny direct execute() invocation before calling their underlying state or provider dependencies. This is deliberately conservative: even read-only sub-actions of a mixed-scope wrapper remain blocked where the whole tool policy is human-only.
+
+The direct wrapper regression test now executes all seven actual wrapper sources in isolated Node VM contexts with throwing dependency stubs. All seven returned BLOCKED / TOOL_POLICY_DENIED; zero injected dependencies were invoked.
+
+The existing Knowledge cleanup business-logic and canonical-storage tests now inject a test-only permissive policy stub. Those suites validate the cleanup algorithm/storage semantics after the authorization boundary; they do not assert real policy approval. The real policy denial is independently asserted by the seven-wrapper guard test. The Local Memory restore-mechanics test uses the same test-only separation: restore mechanics are tested after an isolated authorization stub, while the actual wrapper denial is tested separately.
+
+Latest passing evidence:
+- HEAD: 41528d0ded0f9f3d14284e132809bdbade622ffc
+- GitHub Actions run 41792193805 — SUCCESS
+- Job 126447892258 — SUCCESS
+- All seven direct-wrapper denial markers PASS.
+- Static tool policy parity: 24 active exports, zero missing policy entries.
+- Direct dispatch inventory and route authorization tests PASS.
+- Knowledge cleanup business-logic and canonical-storage tests PASS.
+- TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0, REAL_GOOGLE_DRIVE_TOUCHED=NO.
+
+Historical CI failures remain visible and are not relabeled as passes:
+- Run 41791239959 failed because the direct-call scanner initially missed bare tool/health variable names; the scanner pattern was corrected.
+- Runs 41791668141 and 41791901687 exposed the expected test-harness incompatibility when newly human-only wrappers were first applied to existing mechanics tests; isolated test-only policy stubs were added so mechanics tests remain scoped to post-authorization behavior.
+- Run 41792011602 exposed a misplaced test cleanup branch; corrected in the following commit.
+- Run 41792193805 is the later authoritative passing run for this wrapper-guard expansion.
+
+The direct dispatch scanner still covers server.js, routes and services only. This is not a universal proof for all repository source roots or dynamically constructed calls. Admin backup/restore and SEO history/review remain route-gated direct exceptions as described above. The raw tools map remains exported for internal use; the seven wrappers listed here now independently enforce their human-only policies.
+
+Phase 2 remains IN_PROGRESS; production readiness remains NOT_CERTIFIED; version remains v0.2; PR #4 remains draft/unmerged.
+
+
+8. TOOL DECLARATION ACCURACY (2026-11-04)
+
+Updated the declarations for all seven guarded wrappers so the model-facing tool descriptions explicitly state that execution is currently blocked and that an authenticated action-scoped approval workflow is not yet available. This avoids presenting a generic user request or tool invocation as sufficient authorization.
+
+The wrapper regression test now also asserts that every guarded tool declaration contains the current blocked-status disclosure.
+
+CI push run 41792424947 — SUCCESS on HEAD 2752402968b95d0a7743893584169b723ad31f2e. The updated wrapper tests, policy parity, registry guard, direct dispatch boundary inventory and all existing isolated Phase 2 suites passed. No production Memory/Knowledge data, Drive, network or external action was touched.
+
+This documentation change does not create an approval mechanism and does not reopen any human-only tool.
+
+
+9. REPOSITORY IMPORT DENYLIST EXPANSION (2026-11-04)
+
+The persistent-writer inventory test now also rejects direct imports of all seven non-routed human-only wrappers, not only memory_save / knowledge_save / learning_save. The dedicated admin backup/restore modules remain separately reviewed route exceptions.
+
+CI run 41792648804 — SUCCESS on tested HEAD deb6ccec7cad1c9d7e356becadb364353329820c. The expanded import scan reports MIRA_HFM_NONROUTED_HUMAN_ONLY_WRAPPER_DIRECT_IMPORTS=0. Direct dispatch inventory and all isolated Phase 2 suites pass; no production Memory/Knowledge, real Drive, network or external action was touched.
