@@ -98,13 +98,6 @@ try {
   }), error => error.code === 'FACEBOOK_REVIEW_QUEUE_AUDIT_FAILED' && error.stateCommitted === true && error.queueId === queued.queueId);
   console.log('FACEBOOK_REVIEW_QUEUE_AUDIT_FAILURE_EXPOSES_COMMITTED_STATE=PASS');
 
-  const tampered = JSON.parse(stored);
-  tampered.status = 'VERIFIED';
-  fs.writeFileSync(file, JSON.stringify(tampered));
-  assert.equal(verifyFacebookPageImportReview({ directory, queueId: queued.queueId }).status, 'INTEGRITY_FAILED');
-  assert.throws(() => listFacebookPageImportReviews({ directory, projectId: 'project-fixture' }), /integrity verification failed/);
-  console.log('FACEBOOK_REVIEW_QUEUE_TAMPER_DETECTION_FAILS_CLOSED=PASS');
-
   const symlinkRoot = path.join(root, 'symlink-root');
   fs.mkdirSync(symlinkRoot);
   const outside = path.join(root, 'outside');
@@ -154,6 +147,13 @@ try {
   fs.writeFileSync(decisionFile, JSON.stringify(decisionTamper));
   assert.equal(verifyFacebookPageImportReviewDecision({ directory, queueId: queued.queueId }).status, 'INTEGRITY_FAILED');
   console.log('HUMAN_REVIEW_DECISION_TAMPER_DETECTION=PASS');
+
+  const tampered = JSON.parse(stored);
+  tampered.status = 'VERIFIED';
+  fs.writeFileSync(file, JSON.stringify(tampered));
+  assert.equal(verifyFacebookPageImportReview({ directory, queueId: queued.queueId }).status, 'INTEGRITY_FAILED');
+  assert.throws(() => listFacebookPageImportReviews({ directory, projectId: 'project-fixture' }), /integrity verification failed/);
+  console.log('FACEBOOK_REVIEW_QUEUE_TAMPER_DETECTION_FAILS_CLOSED=PASS');
 
   console.log('NETWORK_REQUESTS=0');
   console.log('RAW_POST_CONTENT_PERSISTED=0');
