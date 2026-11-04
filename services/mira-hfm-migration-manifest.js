@@ -84,8 +84,13 @@ function buildMigrationCandidate({ domain, entry, sourceFileDigest, sourceOrdina
     if (nonEmpty(entry.messageId)) legacyId = entry.messageId;
     else blockers.push('CRM_PERSISTED_MESSAGE_ID_ABSENT');
     if (!nonEmpty(entry.conversationId)) blockers.push('CRM_CONVERSATION_ID_ABSENT');
-    if (!isObject(parentConversation) || parentConversation.conversationId !== entry.conversationId) {
-      blockers.push('CRM_PARENT_CONVERSATION_NOT_VERIFIED');
+    if (!isObject(parentConversation) ||
+        parentConversation.conversationId !== entry.conversationId ||
+        parentConversation.mappingStatus !== 'APPROVED' ||
+        !nonEmpty(parentConversation.projectId) ||
+        parentConversation.projectId !== mapping?.projectId ||
+        !nonEmpty(parentConversation.approvalReference)) {
+      blockers.push('CRM_APPROVED_CONVERSATION_PROJECT_MAPPING_REQUIRED');
     }
   }
 
