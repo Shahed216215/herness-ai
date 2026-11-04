@@ -11,6 +11,11 @@ function requiredText(value,label,max=512){
  if(typeof value!=='string'||!value.trim()||value.length>max) throw new Error(label+' is required and must be bounded text.');
  return value.trim();
 }
+function facebookPageId(value,label='pageId'){
+ const id=requiredText(value,label,32);
+ if(!/^\\d{1,32}$/.test(id)) throw new Error(label+' must be a numeric Facebook Page ID.');
+ return id;
+}
 function isoTime(value,label){
  const parsed=Date.parse(value);
  if(!Number.isFinite(parsed)) throw new Error(label+' must be a valid timestamp.');
@@ -32,7 +37,7 @@ function evaluateFacebookPageCapabilities({
  permissionEvidence={},manualFallbackEnabled=true
 }={}){
  if(typeof manualFallbackEnabled!=='boolean') throw new Error('manualFallbackEnabled must be boolean.');
- const safePageId=pageId===undefined||pageId===null?null:requiredText(pageId,'pageId',128);
+ const safePageId=pageId===undefined||pageId===null?null:facebookPageId(pageId);
  const safeApiVersion=apiVersion===undefined||apiVersion===null?null:requiredText(apiVersion,'apiVersion',32);
  if(typeof apiConfigured!=='boolean') throw new Error('apiConfigured must be boolean.');
  const apiState=state(apiSupported,'apiSupported');
@@ -73,7 +78,7 @@ function evaluateFacebookPageCapabilities({
 /** Create an exact, reviewable post draft; no Facebook publishing occurs. */
 function createManualPostDraft({record,pageId,pageName,generatedAt=new Date().toISOString()}={}){
  if(!object(record)) throw new Error('A canonical Memory record is required.');
- const targetPageId=requiredText(pageId,'pageId',128);
+ const targetPageId=facebookPageId(pageId);
  const memoryId=requiredText(record.memoryId,'record.memoryId',128);
  const projectId=requiredText(record.projectId,'record.projectId',128);
  const content=requiredText(record.content,'record.content',100000);
@@ -99,7 +104,7 @@ function createManualPostDraft({record,pageId,pageName,generatedAt=new Date().to
 /** Validate only public Page post URL shapes. This function performs no fetch. */
 function parsePublicPagePostUrl(value,{expectedPageId}={}){
  requiredText(value,'postUrl',2048);
- const pageId=requiredText(expectedPageId,'expectedPageId',128);
+ const pageId=facebookPageId(expectedPageId,'expectedPageId');
  let url;
  try{url=new URL(value);}catch{throw new Error('Facebook post URL is invalid.');}
  if(url.protocol!=='https:'||!FACEBOOK_HOSTS.has(url.hostname.toLowerCase())||
