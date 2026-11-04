@@ -135,4 +135,65 @@ function validateCandidateSet(candidates) {
   }
   return { ok: blockers.length === 0, blockers };
 }
-module.exports = { digest, buildMigrationCandidate, validateCandidateSet };
+
+function planSnapshot({ domain, sourceText, mappings = [], parentConversations = {} } = {}) {
+  if (!DOMAINS.has(domain)) throw new Error('Unsupported migration domain.');
+  if (typeof sourceText !== 'string' || !sourceText.length) throw new Error('Exact source snapshot text is required.');
+  if (!Array.isArray(mappings)) throw new Error('Mappings must be an array.');
+  if (!isObject(parentConversations)) throw new Error('parentConversations must be an object.');
+  let entries;
+  try {
+    entries = JSON.parse(sourceText);
+  } catch {
+    throw new Error('Source snapshot is not valid JSON.');
+  }
+  if (!Array.isArray(entries)) throw new Error('Source snapshot must be a JSON array.');
+  const sourceFileDigest = crypto.createHash('sha256').update(sourceText, 'utf8').digest('hex');
+  const byLegacyId = new Map();
+  const mappingErrors = [];
+  for (const mapping of mappings) {
+    if (!isObject(mapping) || !nonEmpty(mapping.legacyId)) {
+      mappingErrors.push('MAPPING_WITHOUT_LEGACY_ID');
+      continue;
+    }
+    if (byLegacyId.has(mapping.legacyId)) {
+      mappingErrors.push('DUPLICATE_MAPPING:' + mapping.legacyId);
+      continue;
+    }
+    byLegacyId.set(mapping.legacyId, mapping);
+  }
+  const used = new Set();
+  const candidates = entries.map((entry, sourceOrdinal) => {
+    const legacyId = domain === 'knowledge' ? entry?.id
+      : domain === 'crm_conversation_message' ? entry?.messageId
+      : entry?.messageId;
+    const mapping = nonEmpty(legacyId) ? byLegacyId.get(legacyId) : undefined;
+    if (mapping) used.add(legacyId);
+    const parentConversation = domain === 'crm_conversation_message' && nonEmpty(entry?.conversationId)
+      ? parentConversations[entry.conversationId]
+      : undefined;
+    return buildMigrationCandidate({
+      domain, entry, sourceFileDigest, sourceOrdinal, mapping, parentConversation
+    });
+  });
+  for (const legacyId of byLegacyId.keys()) {
+    if (!used.has(legacyId)) mappingErrors.push('UNUSED_MAPPING:' + legacyId);
+  }
+  const setValidation = validateCandidateSet(candidates.filter(item => item.status === 'READY_FOR_REVIEW'));
+  const blockers = [
+    ...mappingErrors,
+    ...candidates.flatMap((item, index) => item.blockers.map(reason => 'ENTRY_' + index + ':' + reason)),
+    ...setValidation.blockers
+  ];
+  return Object.freeze({
+    schemaVersion: '1.0.0',
+    domain,
+    sourceFileDigest,
+    entryCount: entries.length,
+    candidates,
+    status: blockers.length ? 'BLOCKED' : 'READY_FOR_REVIEW',
+    blockers,
+    writeAuthorized: false
+  });
+}
+\nmodule.exports = { digest, buildMigrationCandidate, validateCandidateSet, planSnapshot };
