@@ -106,11 +106,11 @@ assert.throws(() => adaptLegacyEntry({
   domain: 'crm_conversation_message', entry: crm, mapping: crmMapping,
   projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
 }), /parent conversation identity is not verified/);
-console.log('CRM_PARENT_CONVERSATION_REQUIRED=PASS');
+console.log('CRM_APPROVED_PROJECT_MAPPING_REQUIRED=PASS');
 const adaptedCrm = adaptLegacyEntry({
   domain: 'crm_conversation_message', entry: crm, mapping: crmMapping,
   projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0,
-  parentConversation: { conversationId: 'conv-001' }
+  parentConversation: { conversationId: 'conv-001', projectId: 'project-alpha', mappingStatus: 'APPROVED', approvalReference: 'CRM-PROJECT-MAP-001' }
 });
 assert.equal(adaptedCrm.legacyId, 'crm-msg-001');
 console.log('CRM_EXPLICIT_PARENT_MAPPING_PASS=PASS');
