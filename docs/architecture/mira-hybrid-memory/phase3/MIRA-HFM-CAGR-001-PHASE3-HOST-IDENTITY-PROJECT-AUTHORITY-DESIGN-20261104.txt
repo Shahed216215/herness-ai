@@ -1,0 +1,115 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 3 HOST IDENTITY AND PROJECT AUTHORITY DESIGN
+Date: 2026-11-04
+Status: DESIGN PROPOSAL ONLY — NO PRODUCTION AUTHORITY OR OWNER DATA CREATED
+Parent: MIRA-HFM-CAGR-001 v1.0.0 / Phase 3 Unified Memory Contract
+
+1. PURPOSE
+Define the minimum trusted identity and project-ownership boundary required before the Phase 3 request authorization callback can be connected to Mira runtime callers. This design does not assign owners to existing projects, migrate data, alter login behavior or grant access.
+
+2. SOURCE FACTS
+- Registered user authentication returns a stable users.json userId. server.js stores it in the session at login, but sessionIdentity currently returns only role/permissions and drops userId from its route identity object.
+- Admin session login stores username but does not have an immutable admin subject ID in the current user model.
+- Legacy Bearer authentication in admin-auth.js sets role and permissions only. getIdentity returns role and permissions, not actorId.
+- A raw Bearer token is a credential, not an actor identifier. It must never be copied into Memory records, logs or actorId.
+- project-schema.js has projectId, acceptanceId, opportunityId, scope and taskIds but no ownerActorId, tenantId or clientId.
+- project-store.js validates acceptance/opportunity workflow linkage but does not bind a project to the authenticated creator.
+- Work Acceptance and Opportunity records also lack authenticated owner identity. acceptanceDecision.decidedBy defaults to the literal "system"; it is not proof of a human principal.
+- Consequently, the existing project store is not an authoritative project-owner registry.
+
+3. ACTOR IDENTITY CONTRACT
+The trusted host adapter may construct actor identity only from a verified authentication subject:
+- Registered user: immutable users.json userId from the authenticated server session.
+- Admin: a separately provisioned immutable admin subject ID. Username may be display metadata but is not the primary key.
+- Service/agent/system: provisioned service principal ID issued by the host authority, never a caller-supplied string.
+- Legacy Bearer role-only authentication: HFM operations MUST be denied unless an explicit trusted token-to-subject adapter supplies a stable subject ID and token validity/revocation evidence.
+- Missing or ambiguous subject => NO_ACTOR_IDENTITY / DENY.
+- Role and permissions are authorization attributes, not identity.
+
+The host adapter should propagate a normalized immutable identity object to downstream routes without exposing credentials:
+{ actorId, actorType, authenticationMethod, authenticationRef, authenticatedAt, sessionOrTokenExpiresAt }
+The object must be constructed by trusted middleware, not from request body, query parameters, headers other than the authenticated credential parser, or model output.
+
+4. PROJECT OWNER REGISTRY
+Preferred v0.2 design: a separate authoritative sidecar registry rather than silently editing legacy project records.
+Registry entry logical fields:
+- schemaVersion
+- authorityRecordId
+- projectId
+- tenantId (required if multi-tenant isolation is enabled)
+- ownerActorId
+- membership entries (actorId, role, allowedOperations, status, validFrom, validUntil)
+- sourceProjectSnapshotDigest
+- approvalReference / approvedBy / approvedAt
+- registryRevision
+- status (ACTIVE, SUSPENDED, REVOKED)
+- createdAt / updatedAt
+- recordDigest
+
+Rules:
+- projectId must resolve to an existing canonical project; registry entry cannot create a project.
+- ownerActorId must be a stable authenticated subject, not username, email, opportunityId, acceptanceId, clientId or role.
+- Membership is explicit and operation-scoped. Owner status does not automatically grant every destructive/admin operation.
+- New project ownership is bound at project creation from the authenticated creator's host identity; client-supplied ownerActorId is ignored/rejected.
+- Existing projects with no independently evidenced owner are UNASSIGNED_BLOCKED. Do not infer the creator from opportunity, proposal, acceptance or timestamps.
+- Owner transfer requires a separate approved transfer event, previous owner/current authority checks, audit evidence and a new monotonic registry revision.
+- Revocation/suspension must take effect before further authorization decisions.
+- Registry evidence is versioned, digest-bound, short-lived when presented to request authorization, and independently verifiable.
+- Approval of a legacy project-owner mapping must be performed by a trusted administrator/owner authority; synthetic test fixtures do not count.
+
+5. HOST AUTHORIZATION CALLBACK
+For each operation, host policy must verify:
+1. Authenticated actor subject and actor type.
+2. Project registry ACTIVE status and actor membership/ownership for that exact project.
+3. Operation and resourceScope, including memoryId-level ACL.
+4. Classification and allowedProjectIds.
+5. Registry revision and current revocation state.
+6. Request validity window and replay key (authorityRef + requestId).
+7. Whether the operation is ordinary READ/LIST, WRITE, VERIFY, migration planning or a privileged recovery/admin operation.
+
+Returned decision must bind the exact actorId, actorType, projectId, purpose, requestId, authorityRef, operation, resourceScope and request validity window; include replayStatus=FRESH; and be short-lived. Denial, missing registry, expired authority, revoked membership, replay, malformed evidence or unavailable policy => FAIL CLOSED.
+
+6. LEGACY DATA MAPPING
+- General Memory has role/content/time but no stable authenticated actor or project field. Do not assign it to the current user or project based on role/content/time.
+- Knowledge has a legacy ID and source metadata but no authoritative owner/project relation.
+- CRM messages have clientId and parent conversation identity but no trusted client-to-project registry. clientId is a relationship key, not actor identity or project authority.
+- Work Learning/Experience/Work Knowledge lack project authority and must remain BLOCKED until a task/work-item-to-project registry and projection lineage are approved.
+- Mapping approval binds the source snapshot and record mapping; it does not prove project ownership unless the trusted authority registry independently verifies that relationship.
+
+7. MIGRATION PLAN FOR EXISTING PROJECTS
+No migration is authorized by this design. A future owner-registry migration must:
+- Inventory all project IDs and current project-store snapshot digest.
+- Identify candidate owner evidence from independently verifiable records only; never infer from opportunity/acceptance IDs alone.
+- Mark every unresolved project UNASSIGNED_BLOCKED.
+- Produce a per-project mapping proposal with source evidence and conflict report.
+- Require explicit approval by the authorized project owner/admin authority.
+- Store registry entries sidecar-first; preserve the original projects.json unchanged.
+- Verify every entry, registry digest, owner uniqueness/transfer rules, project scope and audit chain.
+- Test owner/non-owner/cross-project/revoked/replayed access in an isolated fixture.
+- Only after separate approval may a future migration plan update project creation flows or existing project records.
+
+8. NON-GOALS / SAFETY
+- No user sessions, passwords, bearer tokens, project records, acceptance records, opportunity records or Memory data were read from production runtime or modified by this design.
+- No production owner assignments, project memberships or access grants were created.
+- No login changes, provider calls, network access, migration, merge or deployment were performed.
+- No default/global project scope is allowed.
+
+9. ACCEPTANCE TESTS REQUIRED BEFORE RUNTIME INTEGRATION
+- Registered user session subject is propagated unchanged; missing userId is denied.
+- Admin subject ID is stable and separately provisioned; role-only admin session is denied for HFM.
+- Legacy bearer with no subject mapping is denied; mapped bearer expiry/revocation is checked without exposing token.
+- Client-supplied actorId/ownerActorId/projectId cannot override trusted host context.
+- Owner can access only assigned project and allowed operations.
+- Non-owner, unassigned project, suspended owner, revoked membership, stale registry revision, expired evidence and replayed request are denied.
+- Owner transfer preserves history and invalidates old authority.
+- Existing unassigned projects remain inaccessible to HFM until approved mapping.
+- All tests run against synthetic stores; production data untouched.
+
+10. STATUS
+HOST_ACTOR_IDENTITY_SOURCE=PARTIAL_EXISTING_SESSION_SUBJECT_ONLY
+ADMIN_ACTOR_IDENTITY=NOT_ESTABLISHED
+LEGACY_BEARER_ACTOR_IDENTITY=NOT_ESTABLISHED
+PROJECT_OWNER_REGISTRY=NOT_IMPLEMENTED
+EXISTING_PROJECT_OWNER_ASSIGNMENT=NOT_APPROVED
+PROJECT_AUTHORITY_CALLBACK=CONTRACT_ONLY
+PRODUCTION_AUTHORIZATION=NOT_APPROVED
+PHASE3=IN_PROGRESS
