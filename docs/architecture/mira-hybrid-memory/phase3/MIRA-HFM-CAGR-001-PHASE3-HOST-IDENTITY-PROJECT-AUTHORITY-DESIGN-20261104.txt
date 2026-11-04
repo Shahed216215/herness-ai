@@ -121,3 +121,7 @@ The additive `services/mira-memory-project-authority-contract.js` validator form
 
 12. INJECTED HOST AUTHORIZATION ADAPTER PROTOTYPE
 `services/mira-memory-host-authorization-adapter.js` composes the request-bound project authority evidence validator with injected host registry lookup, evidence verification and replay-consumption callbacks. It returns the exact decision envelope expected by the request authorization contract, caps decision expiry at the earlier of registry evidence expiry and request context expiry, and denies replay. The adapter is synchronous and dependency-injected; no live identity provider, registry, replay database or project-store integration exists.
+
+
+13. PURPOSE-BOUND PROJECT AUTHORITY
+Project authority evidence now binds the exact request purpose in addition to actor, project, operation and resource. A valid membership for one purpose cannot be replayed as authority for a different purpose. The trusted registry verifier receives the purpose as part of the evidence digest binding.
