@@ -7,7 +7,7 @@ module.exports = {
   declaration: {
     name: "memory_save",
     description:
-      "Save an important user-provided fact or instruction to Mira's conversation memory when the user explicitly asks Mira to remember it.",
+      "Currently blocked for autonomous execution. This persistent Memory write requires an authenticated, action-scoped human-approval workflow, which is not yet available. Do not invoke as a substitute for approval.",
     parameters: {
       type: "object",
       properties: {
