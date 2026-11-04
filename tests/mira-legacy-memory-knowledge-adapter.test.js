@@ -7,7 +7,7 @@ const {
 } = require('../services/mira-legacy-memory-knowledge-adapter');
 
 const authorizeAccess = () => true;
-const actorContext = { actorId: 'fixture-actor', purpose: 'isolated-adapter-test', requestId: 'adapter-request-001' };
+const actorContext = { actorId: 'fixture-actor', projectId: 'project-alpha', purpose: 'isolated-adapter-test', requestId: 'adapter-request-001' };
 
 const sourceFileDigest = 'a'.repeat(64);
 function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projectId = 'project-alpha', classification = 'PROJECT_PRIVATE') {
