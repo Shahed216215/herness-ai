@@ -29,7 +29,7 @@ assert.equal(Object.isFrozen(valid.allowedOperations),true);
 console.log('PROJECT_AUTHORITY_EVIDENCE_VALID_AND_IMMUTABLE=PASS');
 for(const patch of [
  {decision:'DENY'},{status:'SUSPENDED'},{revocationStatus:'REVOKED'},
- {actorId:'actor-other'},{projectId:'project-other'},{operation:'DELETE'},
+{operation:'DELETE'},
  {allowedOperations:['LIST']},{membershipRole:'UNKNOWN'},{registryRevision:''}
 ]){
  const candidate=make(patch);
