@@ -107,6 +107,26 @@ function runWorker(eventId) {
     assert.equal(auditedAppend.status, 'APPENDED');
     console.log('APPEND_AUDITABLE_COMMIT_CONFIRMED=PASS');
 
+    let uncertainError;
+    try {
+      await appendEvent({
+        root, projectId: 'project-a', chainId: 'chain-a',
+        expectedSequence: 2, expectedHeadHash: auditedAppend.head.hash,
+        eventId: 'event-uncertain-ack', timestamp: now, actorIdentity: 'fixture',
+        action: 'uncertain-ack', auditWriter: event => {
+          if (event.action === 'hfm_append_event_committed') throw new Error('INJECTED_ACK_FAILURE');
+        }
+      });
+    } catch (error) {
+      uncertainError = error;
+    }
+    assert.ok(uncertainError);
+    assert.equal(uncertainError.stateCommitted, true);
+    const recovered = await readChainState({ root, projectId: 'project-a', chainId: 'chain-a' });
+    assert.equal(recovered.head.sequence, 3);
+    assert.equal(recovered.state.events[2].eventId, 'event-uncertain-ack');
+    console.log('UNCERTAIN_ACK_RECOVERED_BY_AUTHORITATIVE_READBACK=PASS');
+
     assert.ok(audit.some(x => x.action === 'hfm_append_event_intent'));
     assert.ok(audit.some(x => x.action === 'hfm_append_event_committed'));
     console.log('APPEND_ARBITER_AUDIT_INTENT_AND_COMMIT=PASS');
