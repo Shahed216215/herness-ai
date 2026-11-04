@@ -83,3 +83,11 @@ PHASE3=IN_PROGRESS
 7. LATEST ALIAS SCAN RESULT
 - Tested Phase 3 inventory run 41819484778 reports ALIASED_DOMAIN_READ_COUNT=0 and total lexical candidates=242. Alias detector synthetic tests passed for both CommonJS and ESM.
 - This is only the result for the current scanner patterns; dynamic imports, re-exports, namespace references, function assignment and runtime injection remain outside its guarantee.
+
+
+8. HOST ACTOR AND PROJECT AUTHORITY READINESS REVIEW
+- `session-auth.js` returns a stable `userId` for registered users; `server.js` stores `req.session.userId` at login (lines 537-550), but `sessionIdentity()` currently returns only role/permissions (lines 237-252) and does not expose that authenticated userId to route authorization context.
+- Admin session login stores username but no stable admin subject ID. Legacy bearer authentication in `admin-auth.js` assigns only role/permissions and `getIdentity()` returns only role/permissions; it does not establish an actorId. A bearer token value itself must never be used as actor identity.
+- `project-schema.js:createProject()` has projectId, acceptanceId, opportunityId and scope metadata, but no ownerActorId, tenantId or clientId. `project-store.js` reads and writes projects without an owner binding; `listProjects()` filters status/acceptance/opportunity only. Acceptance/opportunity linkage is not authenticated project ownership.
+- Therefore the current host cannot safely construct a universal `(actorId, projectId)` authorization context for all routes. Registered-user sessions contain a potential stable subject (`userId`) that is not propagated; admin and legacy bearer paths need explicit stable subject configuration/identity provider. Project ownership needs a trusted registry or governed owner binding. Do not infer actor/project authority from `req.role`, username, bearer token, opportunityId or clientId.
+- No production identity adapter was changed. Required follow-on: design a backward-compatible identity propagation and project-owner registry, with migration for existing project records, before HFM runtime integration.
