@@ -85,7 +85,23 @@ function validateCandidate(candidate) {
       parsed.username || parsed.password || parsed.hash || (parsed.port && parsed.port !== '443')) {
     throw new Error('Review queue accepts only validated HTTPS Facebook post URLs.');
   }
-  if (!/^[a-f0-9]{64}$/.test(candidate.contentHash || '')) throw new Error('candidate.contentHash must be a SHA-256 digest.');
+  const parts = parsed.pathname.split('/').filter(Boolean);
+  const resolvedPageId = parts.length === 3 && parts[1] === 'posts'
+    ? parts[0]
+    : parsed.pathname === '/permalink.php' ? parsed.searchParams.get('id') : null;
+  const resolvedPostId = parts.length === 3 && parts[1] === 'posts'
+    ? parts[2]
+    : parsed.pathname === '/permalink.php' ? parsed.searchParams.get('story_fbid') : null;
+  if (resolvedPageId !== id || resolvedPostId !== postId) {
+    throw new Error('Facebook source URL does not match the candidate Page/post identity.');
+  }
+  if (typeof candidate.content !== 'string' || !candidate.content.trim() || candidate.content.length > 100000) {
+    throw new Error('candidate.content must be bounded non-empty text for digest verification.');
+  }
+  const actualContentHash = crypto.createHash('sha256').update(candidate.content, 'utf8').digest('hex');
+  if (!/^[a-f0-9]{64}$/.test(candidate.contentHash || '') || candidate.contentHash !== actualContentHash) {
+    throw new Error('candidate.contentHash does not match the supplied content.');
+  }
   const observedAt = text(candidate.source.observedAt, 'source.observedAt', 64);
   if (!Number.isFinite(Date.parse(observedAt))) throw new Error('source.observedAt must be a valid timestamp.');
   if (candidate.integrity?.status !== 'UNVERIFIED' || candidate.trust?.status !== 'SOURCE_RECORDED' ||
@@ -153,6 +169,16 @@ function enqueueFacebookPageImportReview({ directory, projectId, actor, candidat
     }
   }
   const stored = readRegularJson(target);
+  let decisionStatus = null;
+  try {
+    const decisionStat = fs.lstatSync(decisionPath(safeDirectoryPath, queueId));
+    if (decisionStat.isSymbolicLink() || !decisionStat.isFile()) throw new Error('Review decision entry is unsafe.');
+    const decision = verifyFacebookPageImportReviewDecision({ directory: safeDirectoryPath, queueId, projectId: safeProjectId });
+    if (decision.status !== 'VERIFIED') throw new Error('Review decision integrity verification failed.');
+    decisionStatus = decision.reviewStatus;
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
   try {
     auditWriter({
       actorRole: safeActor,
@@ -184,7 +210,8 @@ function enqueueFacebookPageImportReview({ directory, projectId, actor, candidat
     projectId: safeProjectId,
     pageId: source.pageId,
     postId: source.postId,
-    reviewStatus: stored.status,
+    reviewStatus: decisionStatus || stored.status,
+    decisionStatus,
     rawContentStored: false,
     canonicalMemoryWrite: false,
     auditEmitted: true
@@ -217,7 +244,19 @@ function listFacebookPageImportReviews({ directory, projectId } = {}) {
       if (entry.projectId !== safeProjectId) return null;
       const verification = verifyFacebookPageImportReview({ directory: safeDirectoryPath, queueId: entry.queueId, projectId: safeProjectId });
       if (verification.status !== 'VERIFIED') throw new Error('Review queue integrity verification failed.');
-      return Object.freeze({ queueId: entry.queueId, pageId: entry.pageId, postId: entry.postId, status: entry.status, contentHash: entry.contentHash });
+      let status = entry.status;
+      let decision = null;
+      try {
+        const decisionStat = fs.lstatSync(decisionPath(safeDirectoryPath, entry.queueId));
+        if (decisionStat.isSymbolicLink() || !decisionStat.isFile()) throw new Error('Review decision entry is unsafe.');
+        const decisionResult = verifyFacebookPageImportReviewDecision({ directory: safeDirectoryPath, queueId: entry.queueId, projectId: safeProjectId });
+        if (decisionResult.status !== 'VERIFIED') throw new Error('Review decision integrity verification failed.');
+        status = decisionResult.reviewStatus;
+        decision = decisionResult.reviewStatus;
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+      return Object.freeze({ queueId: entry.queueId, pageId: entry.pageId, postId: entry.postId, status, decision, queueStatus: entry.status, contentHash: entry.contentHash });
     })
     .filter(Boolean);
 }

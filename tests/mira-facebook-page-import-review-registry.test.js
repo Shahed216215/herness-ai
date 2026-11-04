@@ -61,6 +61,15 @@ try {
   assert.equal(queued.auditEmitted, true);
   assert.equal(verifyFacebookPageImportReview({ directory, queueId: queued.queueId, projectId: 'project-fixture' }).status, 'VERIFIED');
   assert.equal(listFacebookPageImportReviews({ directory, projectId: 'project-fixture' }).length, 1);
+  assert.throws(() => enqueueFacebookPageImportReview({
+    directory, projectId: 'project-fixture', actor: 'human-reviewer',
+    candidate: { ...candidate, source: { ...candidate.source, sourceUrl: 'https://www.facebook.com/999/posts/987654321/' } },
+    auditWriter
+  }), /does not match the candidate Page\/post identity/);
+  assert.throws(() => enqueueFacebookPageImportReview({
+    directory, projectId: 'project-fixture', actor: 'human-reviewer',
+    candidate: { ...candidate, contentHash: 'c'.repeat(64) }, auditWriter
+  }), /does not match the supplied content/);
   const file = path.join(directory, queued.queueId + '.json');
   const stored = fs.readFileSync(file, 'utf8');
   assert.equal(stored.includes(candidate.content), false);
@@ -119,6 +128,7 @@ try {
   assert.equal(decision.mayEnterTrustedMemory, false);
   assert.equal(decision.canonicalMemoryWrite, false);
   assert.equal(verifyFacebookPageImportReviewDecision({ directory, queueId: queued.queueId, projectId: 'project-fixture' }).status, 'VERIFIED');
+  assert.equal(listFacebookPageImportReviews({ directory, projectId: 'project-fixture' })[0].status, 'APPROVED_FOR_INDEPENDENT_VERIFICATION');
   assert.equal(decideFacebookPageImportReview({
     directory, queueId: queued.queueId, projectId: 'project-fixture',
     actor: 'human-reviewer', decision: 'APPROVE_FOR_INDEPENDENT_VERIFICATION',
