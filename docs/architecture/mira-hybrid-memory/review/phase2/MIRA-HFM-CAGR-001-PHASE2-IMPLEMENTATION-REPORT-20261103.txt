@@ -549,3 +549,21 @@ GitHub Actions run 41764989142 (run 369), job 126361148970, completed SUCCESS on
 - A follow-up added an explicit audit event for first-time store initialization and a regression assertion for that event. Final combined workflow run 41765199743 (run 374), job 126361815880, SUCCESS on commit 6e1c7f46e762677096068e746aff5a002f8993ea; all four conversation-store assertions still PASS, TESTS_FAILED=0, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
 
 This hardens conversation-store persistence but does not yet make conversation records conflict-registry-aware or establish universal retrieval exclusion. The existing conversation store's concurrency arbitration is also not qualified by this test; U04 remains an open design/implementation boundary.
+
+
+17. WORK KNOWLEDGE CONSOLIDATION STORE COMMIT GOVERNANCE — VERIFIED BY RUN 379
+
+The separate Work Knowledge Consolidation store already used the verified atomic JSON writer and failed closed on malformed, empty, over-capacity, structurally invalid, integrity-mismatched and symlinked state. Follow-up review found that a direct save call could nevertheless overwrite an existing corrupt regular file, and successful writes did not emit a store-specific committed-state audit event.
+
+The save path now validates the existing store before replacement, so a direct save cannot bypass the fail-closed read boundary. Successful writes record SHA-256 and item count through the audit log; post-commit audit failure is marked with stateCommitted=true.
+
+The existing isolated regression suite now verifies the commit audit and confirms direct save cannot overwrite malformed or empty existing state while preserving the original bytes.
+
+GitHub Actions run 41765344278 (run 379), job 126362291976, completed SUCCESS on commit bf8a23c2c0c30d9ea6575193d0c25e7228428cb3. Explicit log evidence:
+- CONSOLIDATION_STORE_COMMIT_AUDIT=PASS
+- DIRECT_SAVE_CANNOT_OVERWRITE_CORRUPT_STORE=PASS
+- DIRECT_SAVE_CANNOT_OVERWRITE_EMPTY_STORE=PASS
+- RESULT=MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS
+- TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This closes the scoped direct-overwrite and commit-audit gaps for the Work Knowledge Consolidation store. It does not connect that separate store to conflict-registry status or establish universal trusted retrieval exclusion.
