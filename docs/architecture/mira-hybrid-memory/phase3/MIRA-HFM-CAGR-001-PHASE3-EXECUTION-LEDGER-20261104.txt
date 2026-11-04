@@ -86,3 +86,9 @@ MERGE=NOT_APPROVED
 DEPLOYMENT=NOT_APPROVED
 
 END OF LEDGER
+
+8. FOLLOW-UP REVIEW
+- The request authorization timestamp parser was tightened to reject impossible calendar dates and authorization decisions issued before the request context.
+- Test fixtures now include invalid calendar-date and pre-context authorization decision cases.
+- Static source review confirms the three new test commands are present in the isolated Phase 2 workflow definition. This is workflow wiring evidence only, not execution evidence.
+- CI_EXECUTION remains NOT_VERIFIED; no PASS is claimed.
