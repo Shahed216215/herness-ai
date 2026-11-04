@@ -25,6 +25,7 @@ try {
 
   const missing = engine.loadStore();
   assert.deepEqual(missing.items, []);
+  assert.equal(fs.existsSync(engine.INITIALIZATION_FILE), false);
   assert.throws(() => engine.saveStore({ schemaVersion: 1 }), /must include an items array/);
   console.log('MISSING_CONSOLIDATION_STORE_IS_EMPTY_FIRST_RUN=PASS');
 
@@ -34,6 +35,7 @@ try {
     items: [{ id: 'fixture-1', lesson: 'preserve this evidence' }]
   });
   assert.equal(engine.loadStore().items[0].id, 'fixture-1');
+  assert.equal(fs.existsSync(engine.INITIALIZATION_FILE), true);
   assert.equal(engine.verifyStoreIntegrity().valid, true);
   assert.ok(fs.statSync(file).mode & 0o100000);
   const auditEntries = JSON.parse(fs.readFileSync(process.env.MIRA_AUDIT_FILE, 'utf8'));
@@ -85,6 +87,18 @@ try {
   assert.throws(() => engine.saveStore({ items: [] }), /not a safe regular file/);
   console.log('SYMLINKED_STORE_READ_VERIFY_AND_WRITE_REJECTED=PASS');
   console.log('INVALID_SAVE_SHAPE_REJECTED=PASS');
+
+  fs.unlinkSync(file);
+  assert.throws(() => engine.loadStore(), /previously initialized/i);
+  assert.throws(() => engine.saveStore({ schemaVersion: 1, items: [] }), /previously initialized/i);
+  assert.throws(() => engine.verifyStoreIntegrity(), /previously initialized/i);
+  console.log('WORK_KNOWLEDGE_MISSING_PRIMARY_FAILS_CLOSED=PASS');
+
+  const marker = JSON.parse(fs.readFileSync(engine.INITIALIZATION_FILE, 'utf8'));
+  marker.sha256 = '0'.repeat(64);
+  fs.writeFileSync(engine.INITIALIZATION_FILE, JSON.stringify(marker), { mode: 0o600 });
+  assert.throws(() => engine.loadStore(), /initialization marker integrity/i);
+  console.log('WORK_KNOWLEDGE_MARKER_TAMPER_FAILS_CLOSED=PASS');
 
   console.log('TESTS_FAILED=0');
   console.log('RESULT=MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS');
