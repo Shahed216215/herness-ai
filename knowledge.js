@@ -72,6 +72,14 @@ function saveLocalKnowledge(data) {
   );
 }
 
+function replaceKnowledge(data) {
+  if (!Array.isArray(data)) {
+    throw new Error("Knowledge replacement must be an array.");
+  }
+  const capacityResult = applyKnowledgeCapacity(data.slice(), "replace");
+  return saveLocalKnowledge(capacityResult.entries);
+}
+
 function applyKnowledgeCapacity(entries, operation) {
   const capacity = getMaxKnowledgeEntries();
   if (entries.length <= capacity) return { entries, quarantine: null };
@@ -1258,6 +1266,7 @@ module.exports = {
   deleteKnowledge,
   searchKnowledge,
   getKnowledge,
+  replaceKnowledge,
   getKnowledgeStats,
   validateLearningInput
 };
