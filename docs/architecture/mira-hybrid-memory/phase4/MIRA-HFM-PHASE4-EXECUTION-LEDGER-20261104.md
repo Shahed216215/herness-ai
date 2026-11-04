@@ -101,3 +101,14 @@ Status: IN PROGRESS
 - Evaluator always returns `CALLER_SUPPLIED_NOT_INDEPENDENTLY_VERIFIED`, `NOT_AUTHORIZED_OFFLINE_EVIDENCE_ONLY` and `mayCallApi=false`; no token, OAuth, API call or credential is used.
 - Added synthetic tests and included them in Phase 4 CI. Verification pending for the new permission contract.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_PERMISSION_VERIFICATION=NOT_RUN; LIVE_API=NOT_USED.
+
+
+## Entry 011 — Meta permission evidence contract CI verified
+- CI run 41840762726 SUCCESS on corrected permission-test commit 4b5a8ffbcd4c086d867ebc3f9befc59a9711410c; job 126611421077 completed successfully.
+- Connector suite: `TESTS_FAILED=0`, `MIRA_HFM_PHASE4_FACEBOOK_MANUAL_CONNECTOR_CONTRACT_PASS`.
+- HFM facade bridge suite: `TESTS_FAILED=0`, `MIRA_HFM_PHASE4_FACADE_ADAPTER_PASS`.
+- Meta permission evidence suite: `TESTS_FAILED=0`, `MIRA_HFM_META_PERMISSION_EVIDENCE_CONTRACT_PASS`; explicit write scope/task/review gate, public content feature, separate user-content permission, non-production app blocker, stale/future evidence and cross-context/schema guards passed.
+- Provider capability suite: `TESTS_FAILED=0`, `MIRA_HFM_PROVIDER_CAPABILITY_CONTRACT_PASS`.
+- Logs confirm LIVE_META_API_CALLS=0, TOKEN_USE=0, AUTHORIZATION_GRANTED=0, persistent writes=0 and publish actions=0.
+- An earlier assertion mismatch in the expected Page ID error message was corrected and then verified by this successful run. Failed attempts remain in CI history; no failed run is relabelled PASS.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; OFFLINE_PERMISSION_EVIDENCE_PREFLIGHT=VERIFIED; LIVE_PERMISSION_VERIFICATION=NOT_RUN.
