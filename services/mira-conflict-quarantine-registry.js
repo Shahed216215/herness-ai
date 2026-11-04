@@ -333,7 +333,10 @@ function verifyResolution({ directory, conflictId, projectId }) {
        resolution.resultingRecord.memoryId === envelope.originals[0].memoryId &&
        envelope.originals.every(item => item.memoryId === envelope.originals[0].memoryId) &&
        resolution.resultingRecord.version.revision ===
-         Math.max(...envelope.originals.map(item => item.revision)) + 1)
+         Math.max(...envelope.originals.map(item => item.revision)) + 1 &&
+       (envelope.originals.some(item => digest(item.record.access || null) !== digest(resolution.resultingRecord.access || null))
+         ? (typeof resolution.broaderAccessAuthorization === 'string' && resolution.broaderAccessAuthorization.trim().length > 0)
+         : resolution.broaderAccessAuthorization === null))
     : resolution.decision === 'RETAIN_QUARANTINED'
       ? (!resolution.resultingRecord && resolution.acceptedOriginalDigest === null && resolution.acceptedOriginalIndex === null)
       : (DECISIONS.has(resolution.decision) && acceptedIndexValid && !resolution.resultingRecord &&
@@ -493,7 +496,8 @@ function listConflicts({ directory, projectId }) {
 }
 function resolveConflict({
   directory, conflictId, projectId, decision, actor, policyDecision,
-  mergedRecord, acceptedOriginalIndex, resolutionProposal, auditWriter, authorizeResolution
+  mergedRecord, acceptedOriginalIndex, resolutionProposal, auditWriter, authorizeResolution,
+  authorizeBroaderAccess, broaderAccessAuthorization
 }) {
   if (!DECISIONS.has(decision)) throw new Error('Unsupported conflict resolution decision.');
   if (typeof actor !== 'string' || !actor.trim()) throw new Error('Resolution actor is required.');
@@ -528,14 +532,31 @@ function resolveConflict({
     if (mergedRecord.version.revision !== Math.max(...originals.map(r => r.version.revision)) + 1) {
       throw new Error('Merged record revision must increment exactly once above the highest original revision.');
     }
+    const accessChanged = originals.some(record => digest(record.access || null) !== digest(mergedRecord.access || null));
+    if (accessChanged) {
+      if (typeof authorizeBroaderAccess !== 'function' || authorizeBroaderAccess({
+        conflictId, projectId: envelope.projectId, actor, policyDecision,
+        originalAccessClasses: originals.map(record => record.access?.classification || 'MISSING'),
+        resultingAccessClass: mergedRecord.access?.classification || 'MISSING',
+        originalDigests: envelope.originals.map(item => item.recordDigest)
+      }) !== true || typeof broaderAccessAuthorization !== 'string' || !broaderAccessAuthorization.trim()) {
+        throw new Error('Changed access classification or policy requires separate broader-access authorization evidence.');
+      }
+    } else if (broaderAccessAuthorization !== undefined && broaderAccessAuthorization !== null) {
+      throw new Error('Unnecessary broader-access authorization evidence is not accepted.');
+    }
     resultRecord = mergedRecord;
   } else {
     if (mergedRecord) throw new Error('Only APPROVED_FIELD_MERGE may include a mergedRecord.');
     if (decision === 'ACCEPT_EXISTING_VERSION' || decision === 'REJECT_CONFLICTING_CHANGE') {
-      acceptedOriginalIndex = 0;
-      acceptedOriginalDigest = envelope.originals[0].recordDigest;
+      if (acceptedOriginalIndex === undefined) {
+        throw new Error(decision + ' requires an explicit acceptedOriginalIndex; original ordering is not authority.');
+      }
+      if (!Number.isInteger(acceptedOriginalIndex) || acceptedOriginalIndex < 0 || acceptedOriginalIndex >= envelope.originals.length) {
+        throw new Error(decision + ' requires a valid acceptedOriginalIndex.');
+      }
+      acceptedOriginalDigest = envelope.originals[acceptedOriginalIndex].recordDigest;
     } else if (decision === 'ACCEPT_ALTERNATE_VERSION') {
-      if (acceptedOriginalIndex === undefined && envelope.originals.length === 2) acceptedOriginalIndex = 1;
       if (!Number.isInteger(acceptedOriginalIndex) || acceptedOriginalIndex < 1 || acceptedOriginalIndex >= envelope.originals.length) {
         throw new Error('ACCEPT_ALTERNATE_VERSION requires a valid acceptedOriginalIndex from 1 through the final original index.');
       }
@@ -552,6 +573,7 @@ function resolveConflict({
     reviewDigest: review.reviewDigest,
     acceptedOriginalIndex: acceptedOriginalIndex ?? null,
     acceptedOriginalDigest,
+    broaderAccessAuthorization: broaderAccessAuthorization || null,
     resultingRecord: resultRecord,
     resolvedAt: new Date().toISOString()
   };
