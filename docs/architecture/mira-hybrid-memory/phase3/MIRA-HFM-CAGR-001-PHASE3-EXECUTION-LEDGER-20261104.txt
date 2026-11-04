@@ -161,3 +161,10 @@ MERGE=NOT_APPROVED
 - Manually classified the 14 static retrieval-consumer files into broad raw accessors, ordinary/model-context retrieval, counts, maintenance/cleanup, and privileged snapshot/recovery flows.
 - Key distinction: controlled-apply/evolution reads must use privileged snapshot/verify APIs that preserve originals; ordinary retrieval must filter trust/quarantine/access before ranking/model context. Applying one filter indiscriminately to both would break recovery.
 - The 36-call scanner inventory is still not exhaustive for direct loadKnowledge/loadMemory calls, dynamic/indirect wrappers, CRM, caches, embeddings, exports, workers or provider paths. Semantic coverage therefore remains PARTIAL/REVIEW_REQUIRED.
+
+17. BROADER ACCESS-PATH CANDIDATE INVENTORY
+- Added scripts/mira-hfm-access-path-inventory.js and tests/mira-hfm-access-path-inventory.test.js. The scanner is explicitly a static candidate scan, not semantic proof.
+- Phase 3 run 41813748565 SUCCESS; access-path inventory test PASS; TESTS_FAILED=0.
+- Candidate inventory summary: 242 total candidates; 27 public/internal retrieval; 27 direct domain store reads; 91 generic loadStore calls; 36 provider/snapshot reads; 27 CRM conversation reads; 28 Work Learning/Experience reads; 6 Work Knowledge reads. Categories overlap; totals must not be summed as unique paths.
+- The scanner separates generic loadStore from domain-specific loadMemory/loadKnowledge and no longer misclassifies generic loadStore calls as CRM-only reads.
+- This broadens the review baseline beyond the prior 36 wrapper callsites. Every candidate still needs semantic classification; no production coverage claim is implied.
