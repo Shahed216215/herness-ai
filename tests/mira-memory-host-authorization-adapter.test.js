@@ -23,7 +23,7 @@ function authorityEvidence(overrides={}){
 }
 const consumed=new Set();
 const adapter=createHostAuthorizationAdapter({
- getProjectAuthorityEvidence:()=>authorityEvidence(),
+ getProjectAuthorityEvidence:input=>{assert.equal(input.purpose,context.purpose);return authorityEvidence();},
  verifyProjectAuthorityEvidence:e=>e.registryRevision==='registry-rev-01',
  consumeReplayRequest:input=>{
   const key=input.authorityRef+'|'+input.requestId;
