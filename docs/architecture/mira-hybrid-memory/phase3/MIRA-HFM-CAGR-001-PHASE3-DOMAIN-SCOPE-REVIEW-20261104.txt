@@ -22,3 +22,10 @@ ACCEPTED PHASE 3 RULE
 - This review authorizes no migration, production read/write, provider access or runtime integration.
 
 END OF REVIEW
+
+
+GENERAL MEMORY AND KNOWLEDGE SOURCE AUTHORITY REVIEW
+- General Memory legacy entries expose role/content/time but no stable authenticated actorId, tenantId or projectId. The source snapshot digest + ordinal is a stable migration locator only; it does not establish who owns the record or which project may access it.
+- Knowledge legacy entries have stable legacy IDs and content/source metadata, but no authoritative projectId/tenant ownership field. A stable ID and source digest prove record identity/integrity, not project authorization.
+- CRM Conversation has clientId and parent conversation identity but no projectId; the mapping now binds clientId explicitly, yet the client-to-project relationship still needs an independently trusted approval registry.
+- Therefore all three currently supported adapters can create only synthetic review candidates when supplied with externally approved mappings. The adapter itself does not discover or infer project ownership. No legacy record may be auto-assigned to a default project or current user.
