@@ -33,13 +33,13 @@ function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projec
     lifecycle: 'PENDING_REVIEW'
   };
 }
-function mapping(domain, entry, sourceOrdinal = 0, memoryId = 'memory-0001', projectId = 'project-alpha', fileDigest = sourceFileDigest) {
+function mapping(domain, entry, sourceOrdinal = 0, memoryId = 'memory-0001', projectId = 'project-alpha', fileDigest = sourceFileDigest, classification = 'PROJECT_PRIVATE') {
   const legacyId = sourceLocator(domain, entry, fileDigest, sourceOrdinal);
   return {
     domain, projectId, legacyId, memoryId, revision: 1,
     sourceDigest: digest(entry), sourceFileDigest: fileDigest, sourceOrdinal,
-    classification: 'PROJECT_PRIVATE', approvalReference: 'APPROVED-MAP-001',
-    canonicalRecord: makeCanonical(domain, legacyId, entry, memoryId, projectId, 'PROJECT_PRIVATE')
+    classification, approvalReference: 'APPROVED-MAP-001',
+    canonicalRecord: makeCanonical(domain, legacyId, entry, memoryId, projectId, classification)
   };
 }
 
@@ -96,6 +96,26 @@ assert.equal(adaptedKnowledge.legacyId, 'kb_legacy_01');
 assert.deepEqual(JSON.parse(adaptedKnowledge.canonicalRecord.content).record, knowledge);
 console.log('EXPLICIT_KNOWLEDGE_IDENTITY_MAPPING=PASS');
 console.log('KNOWLEDGE_FULL_RECORD_PRESERVED=PASS');
+const missingApproval = { ...knowledgeMapping };
+delete missingApproval.approvalReference;
+assert.throws(() => adaptLegacyEntry({
+  domain: 'knowledge', entry: knowledge, mapping: missingApproval,
+  projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
+}), /exact explicit identity mapping/);
+console.log('APPROVAL_REFERENCE_REQUIRED=PASS');
+
+const classificationMismatch = {
+  ...knowledgeMapping,
+  canonicalRecord: {
+    ...knowledgeMapping.canonicalRecord,
+    access: { ...knowledgeMapping.canonicalRecord.access, classification: 'PUBLIC' }
+  }
+};
+assert.throws(() => adaptLegacyEntry({
+  domain: 'knowledge', entry: knowledge, mapping: classificationMismatch,
+  projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
+}), /full payload and provenance/);
+console.log('CLASSIFICATION_MISMATCH_REJECTED=PASS');
 assert.deepEqual(filterAdaptedLegacyEntries({
   adaptedEntries: [adaptedKnowledge], pendingConflicts: [], projectId: 'project-alpha'
 }), []);
@@ -115,7 +135,7 @@ const crm = {
   clientId: 'client-001', participant: 'client', content: 'hello',
   createdAt: '2026-11-04T00:00:00.000Z'
 };
-const crmMapping = mapping('crm_conversation_message', crm);
+const crmMapping = mapping('crm_conversation_message', crm, 0, 'memory-0001', 'project-alpha', sourceFileDigest, 'RESTRICTED');
 assert.throws(() => adaptLegacyEntry({
   domain: 'crm_conversation_message', entry: crm, mapping: crmMapping,
   projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
