@@ -352,3 +352,8 @@ MERGE=NOT_APPROVED
 - Added tests proving a host denial for RESTRICTED classification excludes the record, and an allowedProjectIds mismatch excludes a record even when its projectId matches.
 - Phase 3 run 41825305707 SUCCESS: RETRIEVAL_AUTHORIZATION_BINDS_CLASSIFICATION=PASS; RETRIEVAL_ALLOWED_PROJECT_LIST_ENFORCED=PASS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - This is synthetic facade behavior. The production host registry must still implement and independently verify classification-specific policy.
+
+44. CLASSIFICATION-BOUND WRITE AUTHORIZATION VERIFIED
+- Added negative test that a host policy denial for RESTRICTED classification blocks prepare-write.
+- Existing-record update test now asserts both WRITE and READ authorization use the identical classification-bound resource scope; no downgrade to a classification-blind resource is allowed.
+- Phase 3 run 41825424686 SUCCESS: WRITE_READ_AND_WRITE_SHARE_CLASSIFICATION_BOUND_SCOPE=PASS; WRITE_RESTRICTED_CLASSIFICATION_HOST_DENY_ENFORCED=PASS; all contract/inventory suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
