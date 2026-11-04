@@ -96,3 +96,12 @@ PRODUCTION_READINESS=NOT_CERTIFIED
 - Conflicting second decisions are rejected; identical retries are idempotent. Audit failure after immutable decision publication reports a committed state.
 
 - Filesystem hardening additionally requires an owner-only queue directory (0700), owner-only regular queue/decision files (0600), and bounded entry size (64 KiB); unsafe modes and oversized files fail closed.
+
+## 11. Write uncertainty, retry and readback recovery contract
+
+- A deterministic operation identity binds Page ID, caller action ID and intended content digest.
+- READ and WRITE outcomes are classified separately. An uncertain or rate-limited WRITE is never automatically retried; independent readback/reconciliation must happen first.
+- READ retries use a bounded exponential schedule and respect a larger provider Retry-After value. This is a schedule only; no timer or transport runs.
+- A successful provider WRITE response remains pending readback. A supplied readback match remains caller-supplied evidence and cannot verify canonical Memory.
+- Conflicting readback requires quarantine; an asserted absence still requires human approval before retry. No recovery branch writes canonical Memory.
+- This is an offline recovery contract and deterministic test harness, not a live Meta transport implementation.

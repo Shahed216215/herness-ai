@@ -159,3 +159,12 @@ Status: IN PROGRESS
 - These are local filesystem safeguards only; production directory ownership, Android/Termux filesystem semantics, backup policy and encryption-at-rest still require deployment-specific review.
 - CI evidence pending for this hardening increment.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 017 — Transport outcome and uncertain-write recovery contract
+- Added `services/mira-facebook-page-operation-recovery.js` and deterministic tests for Page-bound operation identity, READ/WRITE outcome classification, rate limits, retry scheduling and post-publication readback reconciliation.
+- READ retries are bounded and scheduled with exponential backoff / Retry-After; WRITE is never auto-retried and requires readback reconciliation first.
+- A 2xx WRITE response is only provider-accepted pending readback. A matching readback remains caller-supplied evidence and does not promote canonical Memory. Conflicts require quarantine; asserted absence requires human approval before retry.
+- This module performs no HTTP request, sleep, publishing or Memory commit.
+- Await CI evidence for this increment.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; FACEBOOK_POSTS_PUBLISHED=0; CANONICAL_MEMORY_WRITES=0.

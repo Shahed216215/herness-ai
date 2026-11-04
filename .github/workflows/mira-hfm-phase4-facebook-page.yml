@@ -9,6 +9,8 @@ on:
       - 'tests/mira-facebook-page-memory-connector.test.js'
       - 'services/mira-facebook-page-hfm-adapter.js'
       - 'services/mira-facebook-page-import-review-registry.js'
+      - 'services/mira-facebook-page-operation-recovery.js'
+      - 'tests/mira-facebook-page-operation-recovery.test.js'
       - 'tests/mira-facebook-page-import-review-registry.test.js'
       - 'tests/mira-facebook-page-hfm-adapter.test.js'
       - 'services/mira-facebook-page-permission-contract.js'
@@ -50,6 +52,7 @@ jobs:
           node tests/mira-facebook-page-memory-connector.test.js
           node tests/mira-facebook-page-hfm-adapter.test.js
           node tests/mira-facebook-page-import-review-registry.test.js
+          node tests/mira-facebook-page-operation-recovery.test.js
           node tests/mira-facebook-page-permission-contract.test.js
           node tests/mira-memory-provider-contract.test.js
       - name: Report external action boundary
