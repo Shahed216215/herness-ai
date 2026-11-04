@@ -63,7 +63,7 @@ try {
 
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
     resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   }), /UNDER_REVIEW state/);
   const visibleBefore = filterTrustedRecords([
@@ -89,25 +89,46 @@ try {
 
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'unapproved-user', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'unapproved-user', policyDecision: 'POLICY-1',
     resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }), /authorization denied/);
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
     auditWriter, authorizeResolution
   }), /structured resolutionProposal is required/);
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
     resolutionProposal: {}, auditWriter, authorizeResolution
   }), /fieldLevelChanges is invalid/);
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
     resolutionProposal: resolutionProposal(), auditWriter
   }), /authorizeResolution callback is required/);
+
+  const accessAuthorizationDirectory = path.join(directory, 'access-authorization-fixture');
+  const accessAuthorizationConflict = createConflictQuarantine({
+    directory: accessAuthorizationDirectory, projectId: 'project-a', conflictTypes: ['ACCESS_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  startReview(accessAuthorizationDirectory, accessAuthorizationConflict.conflictId);
+  assert.equal(resolveConflict({
+    directory: accessAuthorizationDirectory, conflictId: accessAuthorizationConflict.conflictId,
+    projectId: 'project-a', decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer',
+    policyDecision: 'POLICY-ACCESS-CHANGE', resolutionProposal: resolutionProposal(),
+    mergedRecord: broadenedMerge, auditWriter, authorizeResolution,
+    authorizeBroaderAccess: request => request.resultingAccessClass === 'PUBLIC',
+    broaderAccessAuthorization: 'SEPARATE-ACCESS-APPROVAL-001'
+  }).status, 'RESOLVED');
+  const accessResolution = JSON.parse(fs.readFileSync(path.join(accessAuthorizationDirectory, accessAuthorizationConflict.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(accessResolution.broaderAccessAuthorization, 'SEPARATE-ACCESS-APPROVAL-001');
+  assert.equal(verifyResolution({
+    directory: accessAuthorizationDirectory, conflictId: accessAuthorizationConflict.conflictId,
+    projectId: 'project-a'
+  }).status, 'VERIFIED');
 
   const invalidMerge = record({ version: { revision: 1, contentHash: 'c'.repeat(64) } });
   assert.throws(() => resolveConflict({
@@ -119,7 +140,7 @@ try {
 
   const resolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
     resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   });
   assert.equal(resolution.status, 'RESOLVED');
@@ -133,7 +154,7 @@ try {
   assert.ok(acceptedResolution.proposal.verificationPlan.length > 0);
   const repeatedResolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
     resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   });
   assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
@@ -146,7 +167,7 @@ try {
   startReview(rejectDirectory, rejectConflict.conflictId);
   assert.equal(resolveConflict({
     directory: rejectDirectory, conflictId: rejectConflict.conflictId, projectId: 'project-a',
-    decision: 'REJECT_CONFLICTING_CHANGE', actor: 'reviewer', policyDecision: 'POLICY-REJECT',
+    decision: 'REJECT_CONFLICTING_CHANGE', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-REJECT',
     resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }).status, 'RESOLVED');
@@ -212,7 +233,18 @@ try {
     actor: 'test-suite', auditWriter
   });
   const merged = record({ content: 'reviewed merged content', version: { revision: 3, contentHash: 'e'.repeat(64) } });
+  const broadenedMerge = record({
+    content: 'broadened merged content',
+    version: { revision: 3, contentHash: '9'.repeat(64) },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['*'] }
+  });
   startReview(mergeDirectory, mergeConflict.conflictId);
+  assert.throws(() => resolveConflict({
+    directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
+    decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
+    resolutionProposal: resolutionProposal(), mergedRecord: broadenedMerge,
+    auditWriter, authorizeResolution
+  }), /separate broader-access authorization/);
   assert.equal(resolveConflict({
     directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
     decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
@@ -222,6 +254,7 @@ try {
   const mergedResolution = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
   assert.deepEqual(mergedResolution.originalDigests.length, 2);
   assert.equal(mergedResolution.resultingRecord.version.revision, 3);
+  assert.equal(mergedResolution.broaderAccessAuthorization, null);
   assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
 
   const resolutionTamper = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
@@ -283,14 +316,14 @@ try {
   startReview(resolutionAuditDir, resolutionAuditConflict.conflictId);
   assert.throws(() => resolveConflict({
     directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-3',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-3',
     resolutionProposal: resolutionProposal(),
     auditWriter: () => { throw new Error('resolution audit unavailable'); }, authorizeResolution
   }), error => error.code === 'CONFLICT_RESOLUTION_AUDIT_FAILED' && error.stateCommitted === true);
   assert.equal(listConflicts({ directory: resolutionAuditDir, projectId: 'project-a' })[0].status, 'RESOLVED');
   assert.equal(resolveConflict({
     directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-3',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-3',
     resolutionProposal: resolutionProposal(),
     auditWriter, authorizeResolution
   }).status, 'ALREADY_RESOLVED');
@@ -368,6 +401,7 @@ try {
   console.log('GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS');
   console.log('GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS');
   console.log('GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS');
+  console.log('BROADER_ACCESS_MERGE_REQUIRES_SEPARATE_AUTHORIZATION=PASS');
   console.log('GOVERNED_RETAIN_QUARANTINED=PASS');
   console.log('ALTERNATE_VERSION_INDEX_BOUNDS=PASS');
   console.log('MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS');
