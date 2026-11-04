@@ -119,7 +119,7 @@ const crmMapping = mapping('crm_conversation_message', crm);
 assert.throws(() => adaptLegacyEntry({
   domain: 'crm_conversation_message', entry: crm, mapping: crmMapping,
   projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
-}), /parent conversation identity is not verified/);
+}), /Approved CRM conversation-to-project mapping is required/);
 console.log('CRM_APPROVED_PROJECT_MAPPING_REQUIRED=PASS');
 const adaptedCrm = adaptLegacyEntry({
   domain: 'crm_conversation_message', entry: crm, mapping: crmMapping,
