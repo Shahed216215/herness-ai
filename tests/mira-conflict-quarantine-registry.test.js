@@ -117,7 +117,8 @@ try {
   const accessAuthorizationDirectory = path.join(directory, 'access-authorization-fixture');
   const accessAuthorizationConflict = createConflictQuarantine({
     directory: accessAuthorizationDirectory, projectId: 'project-a', conflictTypes: ['ACCESS_CONFLICT'],
-    records: [originalA, originalB], actor: 'test-suite', auditWriter
+    records: [originalA, record({ version: { revision: 2, contentHash: '8'.repeat(64) } })],
+    actor: 'test-suite', auditWriter
   });
   startReview(accessAuthorizationDirectory, accessAuthorizationConflict.conflictId);
   assert.equal(resolveConflict({
