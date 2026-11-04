@@ -395,3 +395,10 @@ MERGE=NOT_APPROVED
 - Tests prove CREATE/UPDATE audit plan fields, same-scope READ/WRITE, immutable plan and explicit no-emission status.
 - Phase 3 run 41827659135 SUCCESS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - This is a host commit/audit handoff plan only. No commit function or actual audit writer has been added to the synthetic facade.
+
+51. ATOMIC IDEMPOTENCY HANDOFF PLAN ADDED
+- Prepared writes now expose an immutable `idempotencyPlan` binding key, actorId, projectId, CREATE/UPDATE operation, memoryId and incomingRecordDigest, with `requiredAtomicity=HOST_ATOMIC_UNIQUE_CLAIM` and `status=NOT_RESERVED_PREPARE_ONLY`.
+- Result explicitly reports `idempotencyStatus=NOT_ATOMIC_PREPARE_ONLY`; the synthetic seen-key array is only a local preparation snapshot and is not represented as a concurrency-safe reservation.
+- Tests cover create/update binding, immutable plan and no-reservation status.
+- Phase 3 run 41827923148 SUCCESS; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- A real host writer must still implement persistent atomic unique-key claim/CAS and recovery of in-progress/committed idempotency outcomes. No commit or reservation store exists in this facade.
