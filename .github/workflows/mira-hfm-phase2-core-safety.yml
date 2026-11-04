@@ -77,6 +77,7 @@ on:
       - 'routes/**'
       - 'server.js'
       - 'tests/mira-hfm-direct-tool-dispatch-boundary.test.js'
+      - 'tests/mira-hfm-admin-backup-restore-authority.test.js'
       - 'services/mira-tool-execution-policy.js'
       - 'tests/mira-work-knowledge-store-fail-closed.test.js'
       - 'services/mira-work-learning-engine.js'
@@ -100,6 +101,7 @@ on:
       - 'routes/**'
       - 'server.js'
       - 'tests/mira-hfm-direct-tool-dispatch-boundary.test.js'
+      - 'tests/mira-hfm-admin-backup-restore-authority.test.js'
       - 'services/mira-tool-execution-policy.js'
       - 'services/mira-work-execution-engine.js'
       - 'tools/knowledge-backup.js'
@@ -165,6 +167,7 @@ jobs:
           node tests/mira-hfm-tool-registry-policy-parity.test.js
           node tests/mira-hfm-tool-registry-execution-guard.test.js
           node tests/mira-hfm-direct-tool-dispatch-boundary.test.js
+          node tests/mira-hfm-admin-backup-restore-authority.test.js
           node tests/mira-knowledge-state-safety-test.js
           node tests/mira-phase2-recovery-regression.test.js
           node tests/mira-local-memory-safety-test.js
