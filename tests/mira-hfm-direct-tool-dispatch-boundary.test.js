@@ -46,7 +46,7 @@ assert.match(restore, /await\s+restoreTool\.execute\s*\(/);
 assert.match(server, /const requiresNamedAdminSession\s*=\s*\[/);
 assert.match(server, /"seo_workflow_history"/);
 assert.match(server, /req\.session\.authenticated\s*===\s*true/);
-assert.match(server, /toolResult\s*=\s*await\s+historyTool\.execute\s*\(/);
+assert.match(server, /const rawHistoryResult\\s*=\\s*await\\s+historyTool\\.execute\\s*\\(/);
 assert.match(server, /executeSeoWorkflowReviewDecision\s*\(/);
 assert.match(server, /await\s+executeWork\s*\(/);
 
