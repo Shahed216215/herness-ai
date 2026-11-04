@@ -141,3 +141,13 @@ Status: IN PROGRESS
 - Queue state remains PENDING_HUMAN_REVIEW / SOURCE_RECORDED / UNVERIFIED. No canonical Memory write, live network call, Meta API call or post publication occurs.
 - Added CI coverage for queue integrity, idempotency, changed-content conflict, audit failure recovery, symlink rejection and raw-content non-persistence. Await CI evidence before marking this increment PASS.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; CANONICAL_MEMORY_WRITES=0; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 015 — Immutable human review decisions
+- Extended the local Facebook review registry with immutable, project-bound human decision records.
+- Supported outcomes: APPROVE_FOR_INDEPENDENT_VERIFICATION, REJECT_IMPORT, RETAIN_QUARANTINED. A trusted host authorization callback is mandatory.
+- Approval is deliberately not a trust promotion: all outcomes remain SOURCE_RECORDED / UNVERIFIED, cannot enter trusted Memory, and cannot write canonical Memory.
+- Identical retries are idempotent; conflicting second decisions and unauthorized reviewers fail closed. Decision envelope tamper detection is covered.
+- Audit emission remains mandatory and any post-publication audit failure is explicitly reported as committed state.
+- Await branch-head CI before marking this increment PASS.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; CANONICAL_MEMORY_WRITES=0.

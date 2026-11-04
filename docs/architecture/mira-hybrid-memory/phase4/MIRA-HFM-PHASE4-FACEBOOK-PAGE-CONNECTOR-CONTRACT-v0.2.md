@@ -85,3 +85,12 @@ PRODUCTION_READINESS=NOT_CERTIFIED
 - This is a local review intake, not canonical Memory persistence. The item remains `PENDING_HUMAN_REVIEW`, `SOURCE_RECORDED`, and `UNVERIFIED`; no decision or verification promotion is implemented here.
 - The registry does not independently fetch or verify the public post. The original content is not stored; reviewers use the source locator and independently supplied evidence.
 - Production wiring must inject the trusted host audit writer and an approved project-scoped queue directory. No production data is migrated by this change.
+
+## 10. Human review decision boundary
+
+- A reviewer decision is recorded as a separate immutable, digest-verified event bound to the project and queue item.
+- Supported decisions are `APPROVE_FOR_INDEPENDENT_VERIFICATION`, `REJECT_IMPORT`, and `RETAIN_QUARANTINED`.
+- A trusted host authorization callback must explicitly approve the reviewer, project, queue item and policy decision. Missing or denied authorization fails closed.
+- Approval means only that the item may proceed to a separate independent verification step. It does not mean the post was fetched, its content verified, or that it may enter trusted Memory.
+- Every decision remains `SOURCE_RECORDED`, `UNVERIFIED`, `mayEnterTrustedMemory=false`, and `canonicalMemoryWrite=false`.
+- Conflicting second decisions are rejected; identical retries are idempotent. Audit failure after immutable decision publication reports a committed state.

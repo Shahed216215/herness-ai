@@ -37,6 +37,10 @@ function queuePath(directory, queueId) {
   if (!/^mira-fb-review-[a-f0-9]{64}$/.test(queueId)) throw new Error('Invalid Facebook review queue ID.');
   return path.join(directory, queueId + '.json');
 }
+function decisionPath(directory, queueId) {
+  if (!/^mira-fb-review-[a-f0-9]{64}$/.test(queueId)) throw new Error('Invalid Facebook review queue ID.');
+  return path.join(directory, queueId + '.decision.json');
+}
 function readRegularJson(filePath) {
   const stat = fs.lstatSync(filePath);
   if (stat.isSymbolicLink() || !stat.isFile()) throw new Error('Review queue entry is not a safe regular file.');
@@ -217,4 +221,99 @@ function listFacebookPageImportReviews({ directory, projectId } = {}) {
     })
     .filter(Boolean);
 }
-module.exports = { enqueueFacebookPageImportReview, verifyFacebookPageImportReview, listFacebookPageImportReviews };
+
+function decideFacebookPageImportReview({
+  directory, queueId, projectId, actor, decision, policyDecision,
+  authorizeDecision, auditWriter
+} = {}) {
+  const safeDirectoryPath = safeDirectory(directory);
+  const safeProjectId = text(projectId, 'projectId', 128);
+  const safeActor = text(actor, 'actor', 128);
+  const safePolicyDecision = text(policyDecision, 'policyDecision', 256);
+  const decisions = new Set(['APPROVE_FOR_INDEPENDENT_VERIFICATION', 'REJECT_IMPORT', 'RETAIN_QUARANTINED']);
+  if (!decisions.has(decision)) throw new Error('Unsupported Facebook import review decision.');
+  if (typeof authorizeDecision !== 'function' || authorizeDecision({
+    actor: safeActor, projectId: safeProjectId, queueId, decision, policyDecision: safePolicyDecision
+  }) !== true) throw new Error('Facebook import review decision authorization denied.');
+  if (typeof auditWriter !== 'function') throw new Error('An explicit durable auditWriter is required.');
+  const queue = verifyFacebookPageImportReview({ directory: safeDirectoryPath, queueId, projectId: safeProjectId });
+  if (queue.status !== 'VERIFIED') throw new Error('Facebook import review queue integrity verification failed.');
+  const target = decisionPath(safeDirectoryPath, queueId);
+  const status = decision === 'APPROVE_FOR_INDEPENDENT_VERIFICATION'
+    ? 'APPROVED_FOR_INDEPENDENT_VERIFICATION'
+    : decision === 'REJECT_IMPORT' ? 'REJECTED' : 'RETAINED_QUARANTINED';
+  const envelope = {
+    schemaVersion: '1.0.0', queueId, projectId: safeProjectId,
+    queueEnvelopeDigest: readRegularJson(queuePath(safeDirectoryPath, queueId)).envelopeDigest,
+    decision, status, actor: safeActor, policyDecision: safePolicyDecision,
+    decidedAt: new Date().toISOString(),
+    trustStatus: 'SOURCE_RECORDED', integrityStatus: 'UNVERIFIED',
+    mayEnterTrustedMemory: false, canonicalMemoryWrite: false
+  };
+  envelope.envelopeDigest = digest(envelope);
+  let alreadyExists = false;
+  try {
+    const existing = readRegularJson(target);
+    const { envelopeDigest, ...body } = existing;
+    if (envelopeDigest !== digest(body)) throw new Error('Existing Facebook review decision failed integrity verification.');
+    if (existing.decision !== decision || existing.actor !== safeActor ||
+        existing.policyDecision !== safePolicyDecision || existing.projectId !== safeProjectId) {
+      throw new Error('An immutable, different review decision already exists.');
+    }
+    alreadyExists = true;
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (!alreadyExists) {
+    try { writeImmutableJson(target, envelope); }
+    catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      const existing = readRegularJson(target);
+      if (existing.decision !== decision || existing.actor !== safeActor ||
+          existing.policyDecision !== safePolicyDecision || existing.projectId !== safeProjectId) {
+        throw new Error('Concurrent conflicting Facebook review decision rejected.');
+      }
+      alreadyExists = true;
+    }
+  }
+  const stored = readRegularJson(target);
+  try {
+    auditWriter({
+      actorRole: safeActor, action: 'facebook_page_import_review_decided',
+      resource: 'facebook_page_import_review', resourceId: queueId, status: 'success',
+      details: {
+        projectId: safeProjectId, decision, reviewStatus: status,
+        trustStatus: 'SOURCE_RECORDED', integrityStatus: 'UNVERIFIED',
+        mayEnterTrustedMemory: false, canonicalMemoryWrite: false,
+        outcome: alreadyExists ? 'ALREADY_DECIDED' : 'DECIDED'
+      }
+    });
+  } catch (error) {
+    error.code = 'FACEBOOK_REVIEW_DECISION_AUDIT_FAILED';
+    error.stateCommitted = true;
+    error.queueId = queueId;
+    throw error;
+  }
+  return Object.freeze({
+    status: alreadyExists ? 'ALREADY_DECIDED' : 'DECIDED',
+    queueId, decision: stored.decision, reviewStatus: stored.status,
+    trustStatus: stored.trustStatus, integrityStatus: stored.integrityStatus,
+    mayEnterTrustedMemory: stored.mayEnterTrustedMemory,
+    canonicalMemoryWrite: stored.canonicalMemoryWrite,
+    envelopeDigest: stored.envelopeDigest
+  });
+}
+function verifyFacebookPageImportReviewDecision({ directory, queueId, projectId } = {}) {
+  const safeDirectoryPath = safeDirectory(directory);
+  const entry = readRegularJson(decisionPath(safeDirectoryPath, queueId));
+  const { envelopeDigest, ...body } = entry;
+  const valid = envelopeDigest === digest(body) && entry.queueId === queueId &&
+    (!projectId || entry.projectId === projectId) &&
+    ['APPROVE_FOR_INDEPENDENT_VERIFICATION', 'REJECT_IMPORT', 'RETAIN_QUARANTINED'].includes(entry.decision) &&
+    ['APPROVED_FOR_INDEPENDENT_VERIFICATION', 'REJECTED', 'RETAINED_QUARANTINED'].includes(entry.status) &&
+    entry.trustStatus === 'SOURCE_RECORDED' && entry.integrityStatus === 'UNVERIFIED' &&
+    entry.mayEnterTrustedMemory === false && entry.canonicalMemoryWrite === false;
+  return { status: valid ? 'VERIFIED' : 'INTEGRITY_FAILED', queueId, reviewStatus: entry.status };
+}
+
+module.exports = { enqueueFacebookPageImportReview, verifyFacebookPageImportReview, listFacebookPageImportReviews, decideFacebookPageImportReview, verifyFacebookPageImportReviewDecision };

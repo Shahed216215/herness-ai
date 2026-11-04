@@ -7,7 +7,9 @@ const path = require('node:path');
 const {
   enqueueFacebookPageImportReview,
   verifyFacebookPageImportReview,
-  listFacebookPageImportReviews
+  listFacebookPageImportReviews,
+  decideFacebookPageImportReview,
+  verifyFacebookPageImportReviewDecision
 } = require('../services/mira-facebook-page-import-review-registry');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-facebook-review-'));
@@ -84,6 +86,45 @@ try {
     actor: 'human-reviewer', candidate, auditWriter
   }), /unsafe directory component/);
   console.log('FACEBOOK_REVIEW_QUEUE_SYMLINK_PATH_REJECTED=PASS');
+
+  const decision = decideFacebookPageImportReview({
+    directory, queueId: queued.queueId, projectId: 'project-fixture',
+    actor: 'human-reviewer', decision: 'APPROVE_FOR_INDEPENDENT_VERIFICATION',
+    policyDecision: 'POLICY-APPROVE-VERIFY-ONLY',
+    authorizeDecision: () => true, auditWriter
+  });
+  assert.equal(decision.status, 'DECIDED');
+  assert.equal(decision.reviewStatus, 'APPROVED_FOR_INDEPENDENT_VERIFICATION');
+  assert.equal(decision.trustStatus, 'SOURCE_RECORDED');
+  assert.equal(decision.integrityStatus, 'UNVERIFIED');
+  assert.equal(decision.mayEnterTrustedMemory, false);
+  assert.equal(decision.canonicalMemoryWrite, false);
+  assert.equal(verifyFacebookPageImportReviewDecision({ directory, queueId: queued.queueId, projectId: 'project-fixture' }).status, 'VERIFIED');
+  assert.equal(decideFacebookPageImportReview({
+    directory, queueId: queued.queueId, projectId: 'project-fixture',
+    actor: 'human-reviewer', decision: 'APPROVE_FOR_INDEPENDENT_VERIFICATION',
+    policyDecision: 'POLICY-APPROVE-VERIFY-ONLY',
+    authorizeDecision: () => true, auditWriter
+  }).status, 'ALREADY_DECIDED');
+  assert.throws(() => decideFacebookPageImportReview({
+    directory, queueId: queued.queueId, projectId: 'project-fixture',
+    actor: 'different-reviewer', decision: 'REJECT_IMPORT',
+    policyDecision: 'POLICY-REJECT', authorizeDecision: () => true, auditWriter
+  }), /different review decision/);
+  assert.throws(() => decideFacebookPageImportReview({
+    directory, queueId: queued.queueId, projectId: 'project-fixture',
+    actor: 'unauthorized', decision: 'REJECT_IMPORT',
+    policyDecision: 'POLICY-REJECT', authorizeDecision: () => false, auditWriter
+  }), /authorization denied/);
+  console.log('HUMAN_REVIEW_DECISION_IS_IMMUTABLE_AND_NEVER_TRUST_PROMOTES=PASS');
+
+  const decisionFile = path.join(directory, queued.queueId + '.decision.json');
+  const decisionTamper = JSON.parse(fs.readFileSync(decisionFile, 'utf8'));
+  decisionTamper.mayEnterTrustedMemory = true;
+  fs.writeFileSync(decisionFile, JSON.stringify(decisionTamper));
+  assert.equal(verifyFacebookPageImportReviewDecision({ directory, queueId: queued.queueId }).status, 'INTEGRITY_FAILED');
+  console.log('HUMAN_REVIEW_DECISION_TAMPER_DETECTION=PASS');
+
   console.log('NETWORK_REQUESTS=0');
   console.log('RAW_POST_CONTENT_PERSISTED=0');
   console.log('CANONICAL_MEMORY_WRITES=0');
