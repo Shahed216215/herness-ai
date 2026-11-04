@@ -14,7 +14,7 @@ assert.equal(valid.providerId,strong.providerId);
 assert.equal(Object.isFrozen(valid.capabilities),true);
 console.log('PROVIDER_CAPABILITY_CONTRACT_VALID=PASS');
 for(const operation of ['READ_SNAPSHOT','LIST_BY_PROJECT','PREPARE_WRITE','COMMIT_WRITE','VERIFY_SNAPSHOT','RESTORE']){
- assert.equal(assertProviderOperation({contract:strong,operation}).supported,true);
+ assert.equal(assertProviderOperation({contract:strong,operation,classification:'PUBLIC'}).supported,true);
 }
 console.log('STRONG_PROVIDER_OPERATIONS_PASS=PASS');
 const driveLike={
@@ -44,7 +44,9 @@ assert.throws(()=>validateProviderContract({...strong,capabilities:{...strong.ca
 console.log('ATOMIC_WRITE_WITHOUT_IMMUTABLE_VERSIONS_REJECTED=PASS');
 assert.throws(()=>validateProviderContract({...strong,capabilities:{...strong.capabilities,independentVerification:true,stableSourceIds:false}}),/requires stable source IDs/);
 console.log('INDEPENDENT_VERIFY_WITHOUT_STABLE_IDS_REJECTED=PASS');
-assert.throws(()=>assertProviderOperation({contract:strong,operation:'DELETE'}),/Unsupported provider operation/);
+assert.throws(()=>assertProviderOperation({contract:strong,operation:'DELETE',classification:'PUBLIC'}),/Unsupported provider operation/);
 console.log('UNDECLARED_PROVIDER_OPERATION_REJECTED=PASS');
+assert.throws(()=>assertProviderOperation({contract:strong,operation:'READ_SNAPSHOT'}),/classification is unsupported/);
+console.log('MISSING_PROVIDER_DATA_CLASSIFICATION_REJECTED=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_PROVIDER_CAPABILITY_CONTRACT_PASS');
