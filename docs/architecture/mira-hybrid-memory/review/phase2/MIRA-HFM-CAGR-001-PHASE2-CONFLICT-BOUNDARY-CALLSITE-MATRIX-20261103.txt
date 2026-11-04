@@ -158,3 +158,54 @@ RUNTIME_INTEGRATION=NOT_ENABLED
 PRODUCTION_DATA_ACCESSED=NO
 VERSION=v0.2
 FULL_PHASE2=REVIEW_REQUIRED
+
+
+10. SEMANTIC CALLSITE REVIEW — 2026-11-04
+The following source ranges were fetched from the Phase 2 branch and manually classified. These are direct observations of the current branch source, not assumptions from regex matches.
+
+A. Conversation persistence and retrieval
+- conversation-store.js:13-42 validateStore()/ensureStore(): creates/validates the conversations.json envelope and initializes empty conversations/messages/contexts. It does not assign a projectId to each message.
+- conversation-store.js:300-370 createStoredMessage(): validates parent conversation existence, rejects duplicate messageId, appends message and increments parent messageCount, then persists via saveStore(). This is a direct message write boundary.
+- conversation-store.js:390-460 getContext()/saveContext(): contexts are keyed by conversationId; saveContext merges and persists without a canonical HFM projectId/revision mapping or conflict-registry arbitration.
+- services/mira-conversation-memory-engine.js:155-169 getConversationHistory(): retrieves all messages for a conversation and returns messageId/participant/direction/status/content/createdAt.
+- services/mira-conversation-memory-engine.js:283-357 updateConversationMemory(): derives context from a supplied message and writes context through store.saveContext(). This is a second write path, distinct from message persistence.
+- services/mira-conversation-memory-engine.js:364-399 getConversationMemory(): returns parent conversation, stored context and full history. No conflict quarantine registry call is present in this retrieval path.
+- routes/conversations.js:240-285 incoming message route calls createConversationMessage() then updateConversationMemory(); the two persistence operations are sequential rather than one transaction. A failure after message commit can leave message/history and derived context out of sync.
+- routes/conversations.js:445-485 GET conversation memory calls getConversationMemory() directly after conversation existence check; it does not apply canonical HFM trusted-record filtering.
+Conclusion: conversation message storage has immutable messageId at the schema/store boundary for new messages, but existing legacy messages may lack it; the context record has conversationId but no independently approved projectId mapping. The isolated sidecar adapter must remain opt-in/read-only until identity and project mapping are established for every legacy record.
+
+B. Knowledge persistence and retrieval
+- knowledge.js:150-240 addKnowledge(): loads the complete local Knowledge array, creates an ID, appends and writes the array; duplicate detection is semantic rather than canonical source-version arbitration.
+- knowledge.js:700-820 updateLearning(): locates an existing item by ID or normalized title, replaces selected fields, writes the array and invokes Drive synchronization. This is a direct local write boundary followed by a provider sync attempt.
+- knowledge.js:820-900 searchKnowledge(): calls loadKnowledge(), tokenizes the query and ranks entries; no conflict registry or canonical trust-state filter is called in the inspected search path.
+- knowledge.js:900-980 getKnowledge()/getKnowledgeStats(): reads the active array directly; no canonical quarantine filter is called in the inspected list/stat path.
+- services/mira-knowledge-state-recovery.js:110-143 createKnowledgeBackup(): reads the entire Knowledge array and writes a backup envelope. It does not currently filter pending/quarantined canonical records by HFM policy.
+- services/mira-knowledge-state-recovery.js:146-220 restoreKnowledge(): after explicit confirm, validates backup, preserves a safety copy/quarantine, writes the restored entries and verifies readback. This is a destructive state-replacement boundary; HFM quarantine policy is not integrated into restore eligibility.
+Conclusion: Knowledge still uses a legacy array model with per-entry IDs, no universally enforced projectId/revision, and local+Drive synchronization. The HFM adapter is not wired into these paths. Backup/restore and Drive synchronization require separate explicit policy integration and dedicated tests.
+
+C. Local Memory persistence and recovery
+- services/mira-local-memory-store.js:19-63 readArray(): rejects symlink/non-file, empty or invalid JSON and non-array payloads.
+- services/mira-local-memory-store.js:74-140 atomicWriteJson(): temp-file exclusive create, fsync, chmod, rename, directory fsync best-effort and readback hash verification.
+- services/mira-local-memory-store.js:143 onward readMemory(): reads the primary Memory array; on missing primary it can expose a verified backup read-only and avoids turning a missing primary into an empty write.
+- services/mira-local-memory-store.js exports createBackup()/restoreMemory(); those paths remain separate from HFM conflict-registry retrieval and write arbitration.
+Conclusion: local store has meaningful filesystem integrity controls, but they are not equivalent to HFM identity, trust, project-scope or conflict-resolution controls.
+
+D. Route and cross-domain boundary implications
+- Conversation routes and Knowledge routes are separate call paths; no single shared guard currently intercepts both.
+- Knowledge add/update/delete, conversation message create, conversation context save, Knowledge search/list, conversation history/context retrieval, backup and restore each need an explicit integration decision and a dedicated test.
+- A route-level authentication/authorization check does not establish canonical record integrity, project isolation, trusted provenance or conflict arbitration.
+- A regex inventory match is not counted as a semantic HFM boundary unless the inspected source establishes that role. The broader 1125-match inventory remains a review index, not 1125 confirmed HFM operations.
+
+11. UPDATED STATUS AFTER SEMANTIC REVIEW
+CONVERSATION_MESSAGE_WRITE_BOUNDARY=IDENTIFIED
+CONVERSATION_CONTEXT_WRITE_BOUNDARY=IDENTIFIED
+CONVERSATION_MEMORY_RETRIEVAL_BOUNDARY=IDENTIFIED
+KNOWLEDGE_ADD_UPDATE_DELETE_BOUNDARIES=IDENTIFIED
+KNOWLEDGE_SEARCH_LIST_STATS_BOUNDARIES=IDENTIFIED
+KNOWLEDGE_BACKUP_RESTORE_BOUNDARIES=IDENTIFIED
+LOCAL_MEMORY_FILESYSTEM_INTEGRITY=EXISTING_CONTROLS_VERIFIED_BY_SOURCE_REVIEW
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+VERSION=v0.2
