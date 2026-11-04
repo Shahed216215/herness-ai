@@ -7,7 +7,7 @@ module.exports = {
   declaration: {
     name: "knowledge_save",
     description:
-      "Save useful information to Mira's knowledge memory. Duplicate entries are skipped safely.",
+      "Currently blocked for autonomous execution. Persistent Knowledge writes require an authenticated, action-scoped human-approval workflow, which is not yet available. Do not invoke as a substitute for approval.",
     parameters: {
       type: "object",
       properties: {
