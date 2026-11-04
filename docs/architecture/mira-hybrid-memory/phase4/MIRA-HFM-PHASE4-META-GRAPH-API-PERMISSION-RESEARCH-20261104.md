@@ -97,3 +97,10 @@ The evaluator always returns:
 - `mayCallApi=false`
 
 It does not authenticate, parse tokens, make API calls, or grant authorization. Even complete caller-supplied fixture evidence cannot enable transport.
+
+
+## 8. Version-pinned request planning
+
+The offline permission contract now provides `buildMetaGraphRequestPlan`. It requires an explicit Graph API version and numeric target Page ID, returns the planned method/path/required permission profile, and refuses non-PUBLIC records for a future Page-post write plan.
+
+Every plan is marked `REQUEST_PLAN_ONLY`, `transportEnabled=false`, `mayCallApi=false`, and `credentialIncluded=false`. No HTTP client, token injection, OAuth exchange, request execution, retry or write operation exists in this planner. Endpoint paths and field requirements must still be confirmed against the current version-specific Meta reference before transport implementation.
