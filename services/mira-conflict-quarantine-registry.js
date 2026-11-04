@@ -665,6 +665,7 @@ function filterTrustedRecords(
   }
   if (!actorContext || typeof actorContext !== 'object' ||
       typeof actorContext.actorId !== 'string' || !actorContext.actorId.trim() ||
+      actorContext.projectId !== projectId ||
       typeof actorContext.purpose !== 'string' || !actorContext.purpose.trim() ||
       typeof actorContext.requestId !== 'string' || !actorContext.requestId.trim()) {
     throw new Error('Authenticated actorId, purpose and requestId are required for access evaluation.');
@@ -702,6 +703,9 @@ function filterTrustedRecords(
       return authorizeAccess(record, {
         projectId,
         actorId: actorContext.actorId,
+        projectId: actorContext.projectId,
+        memoryId: record.memoryId,
+        classification,
         purpose: actorContext.purpose,
         requestId: actorContext.requestId
       }) === true;
