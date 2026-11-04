@@ -577,7 +577,7 @@ The save path now validates the existing store before replacement, writes throug
 
 The existing isolated test now verifies the commit audit and confirms direct save cannot overwrite corrupt or empty existing state.
 
-GitHub Actions run 41765526400 (run 386), job 126362? (see latest job evidence), completed SUCCESS on commit 18f5af9b6d18eda0c79b3df9e29a44ce6ce363f0. The run log explicitly confirms:
+GitHub Actions run 41765526400 (run 386), job 126362873618, completed SUCCESS on commit 18f5af9b6d18eda0c79b3df9e29a44ce6ce363f0. The run log explicitly confirms:
 - WORK_LEARNING_STORE_COMMIT_AUDIT=PASS
 - WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_CORRUPT=PASS
 - WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_EMPTY=PASS
