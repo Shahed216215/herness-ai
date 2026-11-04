@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
-const {classifySource}=require('../scripts/mira-hfm-access-path-inventory');
+const {classifySource,scan}=require('../scripts/mira-hfm-access-path-inventory');
 const sample=[
  "const memory=loadMemory();",
  "const knowledge=loadKnowledge();",
@@ -56,5 +56,23 @@ const indirectPathResult=classifySource('fixture/indirect-memory-file-io.js',ind
 assert.equal(indirectPathResult.matches.filter(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ').length,1);
 assert.ok(indirectPathResult.matches.some(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ'&&x.line===2));
 console.log('CANONICAL_STORE_PATH_CONSTANT_READ_LINKED=PASS');
+const repositoryInventory=scan(process.cwd());
+const categoryCounts={};
+for(const item of repositoryInventory) categoryCounts[item.category]=(categoryCounts[item.category]||0)+1;
+assert.deepEqual(categoryCounts,{
+ PUBLIC_OR_INTERNAL_RETRIEVAL:27,
+ DIRECT_STORE_READ:27,
+ DIRECT_MEMORY_FILE_IO:0,
+ GENERIC_STORE_LOADER:91,
+ PROVIDER_OR_SNAPSHOT_READ:36,
+ CRM_CONVERSATION_READ:27,
+ WORK_LEARNING_OR_EXPERIENCE_READ:28,
+ WORK_KNOWLEDGE_READ:6,
+ ALIASED_DOMAIN_READ:0,
+ CANONICAL_STORE_FILE_BACKED_READ:3
+},'repository access-path inventory drifted; review all new/removed candidates before updating baseline');
+assert.equal(repositoryInventory.length,245,'repository lexical candidate total changed; semantic review required');
+console.log('REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS');
+console.log('REPOSITORY_ACCESS_PATH_CANDIDATE_COUNT=245');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_ACCESS_PATH_INVENTORY_TEST_PASS');
