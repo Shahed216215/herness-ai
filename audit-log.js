@@ -27,9 +27,11 @@ const AUDIT_GUARD = createStoreInitializationGuard({
 function acquireAuditLock(attempts = 100, delayMs = 10) {
   const waitCell = new Int32Array(new SharedArrayBuffer(4));
   for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let fd;
+    let stat;
     try {
-      const fd = fs.openSync(AUDIT_LOCK_FILE, "wx", 0o600);
-      const stat = fs.fstatSync(fd);
+      fd = fs.openSync(AUDIT_LOCK_FILE, "wx", 0o600);
+      stat = fs.fstatSync(fd);
       fs.writeFileSync(fd, JSON.stringify({
         pid: process.pid,
         createdAt: new Date().toISOString()
@@ -37,6 +39,17 @@ function acquireAuditLock(attempts = 100, delayMs = 10) {
       fs.fsyncSync(fd);
       return { fd, dev: stat.dev, ino: stat.ino };
     } catch (error) {
+      if (fd !== undefined) {
+        try { fs.closeSync(fd); } catch {}
+        if (stat) {
+          try {
+            const current = fs.lstatSync(AUDIT_LOCK_FILE);
+            if (!current.isSymbolicLink() && current.dev === stat.dev && current.ino === stat.ino) {
+              fs.unlinkSync(AUDIT_LOCK_FILE);
+            }
+          } catch {}
+        }
+      }
       if (error.code !== "EEXIST") throw error;
       if (attempt + 1 < attempts) Atomics.wait(waitCell, 0, 0, delayMs);
     }
@@ -78,7 +91,6 @@ function withAuditLock(callback) {
   if (failure) throw failure;
   return result;
 }
-
 function loadAuditLog() {
   const exists = AUDIT_GUARD.primaryExists();
   if (!exists) {
@@ -158,7 +170,18 @@ function saveAuditLog(entries) {
       }
       previousHash = entry.integrityHash;
     }
-    return writeAuditLogAtomic(entries);
+    const previousCount = current.length;
+    const result = writeAuditLogAtomic(entries);
+    if (entries.length > previousCount) {
+      try {
+        writeAnchor(entries[entries.length - 1]);
+      } catch (error) {
+        error.code = "AUDIT_ANCHOR_WRITE_FAILED";
+        error.stateCommitted = true;
+        throw error;
+      }
+    }
+    return result;
   });
 }
 
