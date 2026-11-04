@@ -26,7 +26,7 @@ const candidate = {
   source: {
     sourceType: 'facebook_page',
     sourceId: '987654321',
-    sourceUrl: 'https://www.facebook.com/123456789/posts/987654321/',
+    sourceUrl: 'https://www.facebook.com/123456789/posts/987654321/?utm_source=tracking-fixture',
     pageId: '123456789',
     observedAt: '2026-11-04T12:00:00.000Z'
   },
@@ -74,6 +74,8 @@ try {
   const file = path.join(directory, queued.queueId + '.json');
   const stored = fs.readFileSync(file, 'utf8');
   assert.equal(stored.includes(candidate.content), false);
+  assert.equal(stored.includes('utm_source'), false);
+  assert.equal(stored.includes('https://www.facebook.com/123456789/posts/987654321/'), true);
   assert.equal(stored.includes('PENDING_HUMAN_REVIEW'), true);
   console.log('FACEBOOK_IMPORT_MINIMAL_IMMUTABLE_REVIEW_QUEUE_PASS=PASS');
 

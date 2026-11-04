@@ -113,7 +113,7 @@ function validateCandidate(candidate) {
       candidate.verificationStatus !== 'MANUAL_IMPORT_PENDING_INDEPENDENT_READBACK') {
     throw new Error('Candidate trust and review state must remain unverified and pending.');
   }
-  return { pageId: id, postId, sourceUrl: parsed.toString(), contentHash: candidate.contentHash, observedAt };
+  return { pageId: id, postId, sourceUrl: 'https://www.facebook.com/' + id + '/posts/' + postId + '/', contentHash: candidate.contentHash, observedAt };
 }
 
 /**
