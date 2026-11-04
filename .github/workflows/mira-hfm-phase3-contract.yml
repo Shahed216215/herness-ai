@@ -12,6 +12,8 @@ on:
       - 'services/mira-memory-unified-facade.js'
       - 'services/mira-memory-domain-payload-adapter.js'
       - 'services/mira-memory-provider-contract.js'
+      - 'scripts/mira-hfm-access-path-inventory.js'
+      - 'tests/mira-hfm-access-path-inventory.test.js'
       - 'tests/mira-memory-provider-contract.test.js'
       - 'tests/mira-memory-domain-payload-adapter.test.js'
       - 'tests/mira-memory-unified-facade.test.js'
@@ -40,6 +42,9 @@ jobs:
           node tests/mira-memory-unified-facade.test.js
           node tests/mira-memory-domain-payload-adapter.test.js
           node tests/mira-memory-provider-contract.test.js
+          node tests/mira-hfm-access-path-inventory.test.js
+          node scripts/mira-hfm-access-path-inventory.js > "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
+          grep -E '^MIRA_HFM_(ACCESS_PATH_CANDIDATE_COUNT|PUBLIC_OR_INTERNAL_RETRIEVAL_COUNT|DIRECT_STORE_READ_COUNT|PROVIDER_OR_SNAPSHOT_READ_COUNT|CRM_CONVERSATION_READ_COUNT|WORK_LEARNING_OR_EXPERIENCE_READ_COUNT|WORK_KNOWLEDGE_READ_COUNT)=' "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
       - name: Report isolation boundary
         run: |
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
