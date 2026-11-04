@@ -84,7 +84,7 @@ assert.deepEqual(categoryCounts,{
  WORK_LEARNING_OR_EXPERIENCE_READ:28,
  WORK_KNOWLEDGE_READ:6,
  ALIASED_DOMAIN_READ:0,
- NAMESPACE_DOMAIN_READ:81,
+ NAMESPACE_DOMAIN_READ:27,
  CANONICAL_STORE_FILE_BACKED_READ:3
 },'repository access-path inventory drifted; review all new/removed candidates before updating baseline');
 assert.equal(repositoryInventory.length,272,'repository lexical candidate total changed; semantic review required');
