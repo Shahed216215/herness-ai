@@ -73,6 +73,8 @@ on:
       - 'tests/mira-hfm-memory-version-recovery-policy.test.js'
       - 'tests/mira-hfm-persistent-write-policy.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
+      - 'tests/mira-hfm-tool-registry-execution-guard.test.js'
+      - 'services/mira-tool-execution-policy.js'
       - 'tests/mira-work-knowledge-store-fail-closed.test.js'
       - 'services/mira-work-learning-engine.js'
       - 'tests/mira-work-learning-store-fail-closed.test.js'
@@ -91,6 +93,8 @@ on:
       - 'knowledge.js'
       - 'tools/**'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
+      - 'tests/mira-hfm-tool-registry-execution-guard.test.js'
+      - 'services/mira-tool-execution-policy.js'
       - 'services/mira-work-execution-engine.js'
       - 'tools/knowledge-backup.js'
       - 'tools/knowledge-restore.js'
@@ -153,6 +157,7 @@ jobs:
           node tests/mira-hfm-memory-version-recovery-policy.test.js
           node tests/mira-hfm-persistent-write-policy.test.js
           node tests/mira-hfm-tool-registry-policy-parity.test.js
+          node tests/mira-hfm-tool-registry-execution-guard.test.js
           node tests/mira-knowledge-state-safety-test.js
           node tests/mira-phase2-recovery-regression.test.js
           node tests/mira-local-memory-safety-test.js
