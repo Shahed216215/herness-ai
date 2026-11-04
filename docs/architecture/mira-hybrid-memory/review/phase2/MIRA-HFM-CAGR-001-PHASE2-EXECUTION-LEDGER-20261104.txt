@@ -440,3 +440,28 @@ CI:
 - Run 41804745095 — SUCCESS — Knowledge empty-version-directory regression, commit de843a51abc16d8d5d3b6e6034c8d08c33d30254.
 
 No production data, Google Drive, network or external action was used. This is local initialization metadata, not an independent remote trust anchor. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+21. GENERAL MEMORY CAPACITY-EVICTION PRESERVATION — VERIFIED BY RUN 685
+
+Finding:
+- memory.js saveMemory() previously used memory.slice(-maxMemory) and silently discarded every older entry beyond the configured capacity.
+- This bypassed the conflict-preservation behavior already added to Knowledge, Work Learning and Work Knowledge Consolidation.
+
+Correction:
+- Before committing a bounded Memory array, saveMemory() now identifies all displaced records and writes them to the local restricted memory-conflicts quarantine using the shared atomic JSON writer.
+- The quarantine envelope records the source digest, store/domain, capacity, original/retained/evicted counts and the exact displaced records.
+- The active Memory state is committed only after quarantine publication and audit succeed.
+- If quarantine publication fails (including an unsafe/symlink quarantine directory), the active Memory write is blocked and the previous Memory remains unchanged.
+
+Regression evidence:
+- MEMORY_CAPACITY_EVICTION_PRESERVED_BEFORE_COMMIT=PASS
+- MEMORY_CAPACITY_QUARANTINE_FAILURE_BLOCKS_WRITE=PASS
+- TESTS_FAILED=0.
+
+CI:
+- Run 41804912005 — SUCCESS — source implementation commit 458af7838c2d3fda08714e272a7795d360be3080.
+- Run 41804930923 — SUCCESS — regression test commit b07240283097b433683a919d80323084efa02741.
+- Run 685 log confirms both new assertions and all invoked isolated Phase 2 suites report TESTS_FAILED=0.
+
+No production Memory was accessed or changed; tests used isolated MIRA_STORAGE_DIR. No Drive/API/network/external action occurred. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
