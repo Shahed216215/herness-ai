@@ -1,0 +1,44 @@
+MIRA HFM v0.2 — PHASE 3 SEMANTIC CALLER REVIEW
+Date: 2026-11-04
+Evidence: static callsite inventory run 41811910860 plus manual source review of all 14 retrieval-consumer files.
+Status: SEMANTIC REVIEW PARTIAL; NO RUNTIME WIRING AUTHORIZED
+
+1. CORE DOMAIN ACCESSORS
+- memory.js:getMemory -> returns raw local Memory array. This is a general-purpose data accessor, not a policy-filtered retrieval boundary.
+- knowledge.js:getKnowledge -> returns raw local Knowledge array. Not project-scoped or trust/quarantine-filtered.
+- knowledge.js:searchKnowledge -> searches raw local Knowledge; must become a policy-aware query surface before model/user consumption.
+- knowledge.js:getKnowledgeStats -> direct local aggregate read; counts also need scope/privacy review.
+Finding: these accessors are broad internal primitives. Do not retrofit a project default. Introduce explicit policy-aware APIs and migrate each consumer deliberately.
+
+2. ORDINARY RETRIEVAL / MODEL-CONTEXT CONSUMERS
+- server.js: search endpoint (searchKnowledge), command recall (getMemory + searchKnowledge), and knowledge list/detail/update lookups (getKnowledge). These are externally reachable or feed model context; require authenticated project context and pre-ranking trust/quarantine/access filtering.
+- tools/knowledge-search.js: local getKnowledge followed by optional Drive load; a Drive array replaces the local array when returned. Neither branch applies unified trust/quarantine filtering. Must not send unfiltered Drive/local results to model context.
+- services/learning.js: searchKnowledge used to find existing improvement candidates; derived candidates must inherit source scope and exclude ineligible records.
+- tools/knowledge-improve.js: getKnowledge used for title/topic lookup; this is a mutation-support lookup, not user-facing retrieval, but still needs project/authority scope.
+- routes/knowledge-improvements.js: getKnowledge reads current state before an approved proposal apply; must be a governed mutation precondition and must not be treated as unrestricted retrieval.
+- tools/knowledge-count.js and tools/memory-count.js: raw counts expose aggregate store size without project/access filtering. Counts need a privacy-safe, authorized aggregate contract.
+
+3. SNAPSHOT / RECOVERY / CONTROLLED-APPLY CONSUMERS
+- autonomous-learning-controlled-apply.js: local and Drive reads are used for pre/post state comparison, snapshot verification and rollback. These are privileged recovery reads, not ordinary search. They need a dedicated authorized readSnapshot/verifySnapshot path that preserves originals and quarantine evidence; filtering them like user retrieval would break recovery.
+- knowledge-controlled-apply.js: reads local and Drive state before/after controlled updates and rollback. Same privileged snapshot classification; require explicit operation authority and state digest verification.
+- knowledge-memory-evolution.js: loadDriveState reads Memory/Knowledge snapshots for evolution/rollback comparison. Must use privileged snapshot authority and never expose raw snapshots to model context.
+- google-drive.js: loadKnowledgeFromDrive/loadMemoryFromDrive return raw provider arrays. They are provider boundary functions; no project/trust/quarantine guard is present in these loaders. They must remain unavailable to ordinary consumers until a guarded adapter is introduced.
+
+4. MAINTENANCE / CLEANUP
+- tools/knowledge-cleanup.js: getKnowledge feeds duplicate inspection and exact-duplicate cleanup. It is a maintenance/mutation path; quarantine originals and restricted entries must be preserved, and removal must remain separately governed.
+- tools/knowledge-improve.js: getKnowledge feeds duplicate/improvement lookup. Do not let a candidate inherit a project from title/topic/content.
+
+5. COVERAGE LIMITATIONS
+- Manual review covered the 14 files listed in the static retrieval inventory, but not every internal direct loadKnowledge/loadMemory call, dynamic import, reflection path or indirect wrapper across the whole repository.
+- The scanner's 36 retrieval callsites are a baseline, not proof of exhaustive semantic coverage.
+- CRM Conversation, cache, embeddings, exports, backup/restore, workers, provider callbacks and background jobs require separate semantic inventories.
+- Current source accessors and Drive loaders are still unguarded for HFM purposes. No production caller has been modified or claimed safe.
+
+6. REQUIRED FOLLOW-UP
+A. Replace broad accessors with explicit request-context/project-scoped retrieval and snapshot APIs, in isolated fixtures first.
+B. Add tests proving user/model retrieval cannot call snapshot APIs or bypass trust/quarantine filters.
+C. Add recovery tests proving snapshot APIs preserve all originals while refusing unauthorized access.
+D. Extend the scanner to direct storage loads and indirect call chains; verify semantic coverage with independent review.
+E. Only propose production wiring after full caller coverage, host authentication and mapping authority are accepted.
+
+END OF REVIEW
