@@ -8,6 +8,13 @@ on:
       - 'services/mira-facebook-page-memory-connector.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
       - '.github/workflows/mira-hfm-phase4-facebook-page.yml'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase3-unified-memory-contract-core
+    paths:
+      - 'services/mira-facebook-page-memory-connector.js'
+      - 'tests/mira-facebook-page-memory-connector.test.js'
+      - '.github/workflows/mira-hfm-phase4-facebook-page.yml'
   workflow_dispatch:
 
 permissions:
