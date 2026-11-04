@@ -15,6 +15,7 @@ const CONFLICT_TYPES = new Set([
   'INTEGRITY_CONFLICT'
 ]);
 const DECISIONS = new Set(['ACCEPT_EXISTING_VERSION', 'ACCEPT_ALTERNATE_VERSION', 'APPROVED_FIELD_MERGE', 'REJECT_CONFLICTING_CHANGE', 'RETAIN_QUARANTINED']);
+const RETRIEVABLE_TRUST_STATES = new Set(['SOURCE_RECORDED', 'SOURCE_REACHABLE', 'CONTENT_VERIFIED', 'HUMAN_VERIFIED']);
 
 function digest(value) {
   return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -658,7 +659,7 @@ function filterTrustedRecords(records, pendingConflicts, projectId) {
     record.projectId === projectId &&
     record.lifecycle === 'ACTIVE' &&
     record.integrity?.status === 'VERIFIED' &&
-    !['UNVERIFIED', 'QUARANTINED'].includes(record.trust?.status) &&
+    RETRIEVABLE_TRUST_STATES.has(record.trust?.status) &&
     !blocked.has(record.memoryId)
   );
 }
