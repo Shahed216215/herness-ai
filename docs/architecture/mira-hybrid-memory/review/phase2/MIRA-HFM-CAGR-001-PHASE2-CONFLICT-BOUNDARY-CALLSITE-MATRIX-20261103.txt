@@ -302,3 +302,30 @@ VERSION=v0.2
 PRODUCTION_READINESS=NOT_CERTIFIED
 
 The next required step is to continue source-level caller discovery for background workers, exports, caches/indexes, provider adapters and any additional direct imports, then build a deduplicated callsite-to-guard coverage matrix. No runtime adapter wiring or production data change is implied by this review.
+
+
+17. TOOL AND WORKER CONSUMER REVIEW — 2026-11-04
+- tools/knowledge-search.js:1-55 reads local Knowledge, then replaces its search corpus with the Drive array whenever Drive returns an array. This is a distinct provider-backed retrieval path and has no canonical project/trust/quarantine filter in the inspected tool.
+- tools/knowledge-save.js:1-50 exposes addKnowledge() and reports local-only success versus Drive sync status.
+- tools/knowledge-count.js:1-30 exposes raw local array count; tools/memory-count.js:1-35 exposes raw local Memory count. Counts are not trust-filtered and must not be interpreted as trusted-record counts.
+- tools/knowledge-cleanup.js:1-95 inspects raw local Knowledge and can call replaceKnowledge() before saving to Drive. The inspected response sets driveSync=true after awaiting saveKnowledgeToDrive() without validating result.success; this is a separate provider-status accuracy/reconciliation issue to review. The cleanup helper has its own duplicate-assessment contract, not universal HFM quarantine enforcement.
+- tools/memory-save.js:1-55 calls memory.addMemory("user", content); memory.js persists role/content/time and therefore remains a legacy identity path without immutable messageId/projectId.
+- tools/memory-version-recovery.js invokes services/mira-state-version-recovery.restoreVersion() after explicit confirmation; this is a separate historical-state replacement boundary.
+- services/mira-autonomous-worker.js was inspected as a candidate worker, but the initial source scan did not establish a direct import/call to the core conversation-store, knowledge.js or mira-local-memory-store APIs in the inspected file. Do not classify it as a confirmed HFM caller solely because it is a worker.
+- services/mira-work-knowledge-consolidation.js uses its own data/work-knowledge-consolidation.json store, SHA-256 integrity envelope and audit events. It is a separate Work Knowledge domain; mapping its learning/task references to canonical HFM project scope remains unproven.
+- services/mira-experience-memory.js consumes the Work Learning engine and appears to be a separate Experience Memory domain. It remains a candidate for cross-domain mapping review, not a confirmed direct caller of the legacy Memory/Knowledge arrays.
+
+NEW REVIEW FINDINGS
+KNOWLEDGE_TOOL_DRIVE_SEARCH_OVERRIDE=IDENTIFIED
+KNOWLEDGE_CLEANUP_PROVIDER_STATUS_VALIDATION=REVIEW_REQUIRED
+KNOWLEDGE_AND_MEMORY_COUNT_TOOLS=RAW_COUNT_BOUNDARIES_IDENTIFIED
+LEGACY_MEMORY_SAVE_TOOL=IDENTITY_GAP_CONFIRMED
+VERSION_RESTORE_TOOL_BOUNDARY=IDENTIFIED
+WORK_KNOWLEDGE_STORE=SEPARATE_DOMAIN_MAPPING_REVIEW_REQUIRED
+EXPERIENCE_MEMORY=SEPARATE_DOMAIN_MAPPING_REVIEW_REQUIRED
+AUTONOMOUS_WORKER_CORE_STORE_CALL=NOT_ESTABLISHED_BY_INSPECTED_SOURCE
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
