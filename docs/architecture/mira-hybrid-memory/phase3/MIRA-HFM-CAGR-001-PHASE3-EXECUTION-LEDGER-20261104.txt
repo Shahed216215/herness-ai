@@ -311,3 +311,7 @@ MERGE=NOT_APPROVED
 - Initial host-adapter CI attempts failed because direct synthetic calls omitted the request validity-window fields required by the actual authorization callback contract. Test fixtures were corrected to include contextIssuedAt/contextExpiresAt and use distinct request IDs for separate one-time replay checks.
 - Phase 3 run 41822069514 SUCCESS: project authority + replay composition PASS; second-use replay denied; non-owner, unapproved operation, authority-reference substitution and missing dependencies rejected; all Phase 3 suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
 - This is a dependency-injected synchronous prototype only. No production identity provider, owner registry, persistent replay store or runtime caller is connected.
+
+43. PROJECT AUTHORITY PURPOSE BINDING
+- Project authority evidence now includes purpose; the validator requires it and can compare expectedPurpose. The injected host adapter passes the request purpose into validation. Added a negative purpose-substitution test.
+- This prevents reusing an otherwise valid actor/project/resource membership proof for a different request purpose. CI pending.
