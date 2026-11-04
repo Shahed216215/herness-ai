@@ -13,7 +13,9 @@ const MAPPING_KEYS = [
 const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
 
 function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 function stableValue(value, seen = new Set()) {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
@@ -178,9 +180,9 @@ function planSnapshot({ domain, sourceText, mappings = [], parentConversations =
       : 'legacy-memory:' + sourceFileDigest + ':' + sourceOrdinal;
     const mapping = nonEmpty(legacyId) ? byLegacyId.get(legacyId) : undefined;
     if (mapping) used.add(legacyId);
-    const parentConversation = domain === 'crm_conversation_message' && nonEmpty(entry?.conversationId)
-      ? parentConversations[entry.conversationId]
-      : undefined;
+    const hasParentMapping = domain === 'crm_conversation_message' && nonEmpty(entry?.conversationId) &&
+      Object.prototype.hasOwnProperty.call(parentConversations, entry.conversationId);
+    const parentConversation = hasParentMapping ? parentConversations[entry.conversationId] : undefined;
     return buildMigrationCandidate({
       domain, entry, sourceFileDigest, sourceOrdinal, mapping, parentConversation
     });
