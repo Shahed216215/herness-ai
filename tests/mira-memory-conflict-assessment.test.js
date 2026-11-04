@@ -1,19 +1,24 @@
 'use strict';
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const { validateCanonicalMemoryRecord, assessMemoryConflict } = require('../services/mira-memory-conflict-assessment');
 function record(overrides = {}) {
-  return {
+  const base = {
     schemaVersion: '1.0.0', memoryId: 'memory-0001', projectId: 'project-a',
     recordType: 'fact', content: 'original fact',
     source: { sourceType: 'manual', sourceId: 'source-1', sourceUrl: null, observedAt: '2026-11-03T10:00:00.000Z' },
     timestamps: { createdAt: '2026-11-03T10:00:00.000Z', updatedAt: '2026-11-03T10:00:00.000Z' },
-    version: { revision: 1, contentHash: 'a'.repeat(64) },
+    version: { revision: 1, contentHash: '' },
     integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
     trust: { status: 'SOURCE_RECORDED' },
     access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-a'] },
-    lifecycle: 'ACTIVE',
-    ...overrides
+    lifecycle: 'ACTIVE'
   };
+  const merged = { ...base, ...overrides };
+  merged.version = { ...base.version, ...(overrides.version || {}) };
+  merged.version.contentHash = crypto.createHash('sha256')
+    .update(JSON.stringify(merged.content), 'utf8').digest('hex');
+  return merged;
 }
 function expectConflict(existing, incoming, type) {
   const result = assessMemoryConflict(existing, incoming);
@@ -49,6 +54,12 @@ for (const badTimestamp of [
 assert.deepEqual(validateCanonicalMemoryRecord(record({
   timestamps: { createdAt: '2024-02-29T10:00:00+06:00', updatedAt: '2026-11-03T10:00:00.000Z' }
 })), []);
+const tamperedHashRecord = record();
+tamperedHashRecord.version.contentHash = 'f'.repeat(64);
+const hashMismatch = assessMemoryConflict(base, tamperedHashRecord);
+assert.equal(hashMismatch.status, 'REVIEW_REQUIRED');
+assert.equal(hashMismatch.cryptographicVerification, 'CONTENT_HASH_MISMATCH');
+assert.ok(hashMismatch.validationErrors.some(error => error.includes('SHA-256(JCS(content))')));
 const malformed = assessMemoryConflict(base, record({ version: { revision: 0, contentHash: 'bad' } }));
 assert.equal(malformed.status, 'REVIEW_REQUIRED');
 assert.ok(malformed.validationErrors.length);
@@ -56,7 +67,7 @@ const extra = record({ unexpected: true });
 assert.equal(assessMemoryConflict(base, extra).status, 'REVIEW_REQUIRED');
 const unverified = assessMemoryConflict(base, record({ integrity: { status: 'UNVERIFIED', algorithm: 'SHA-256' } }));
 assert.equal(unverified.status, 'REVIEW_REQUIRED');
-assert.equal(unverified.cryptographicVerification, 'NOT_PERFORMED');
+assert.equal(unverified.cryptographicVerification, 'CONTENT_HASH_MATCHED_ONLY');
 const crossProject = assessMemoryConflict(base, record({ projectId: 'project-b' }));
 assert.ok(crossProject.conflictTypes.includes('ACCESS_CONFLICT'));
 console.log('CONFLICT_STATE_DETECTED=PASS');
@@ -69,6 +80,8 @@ console.log('SCHEMA_CONFLICT=PASS');
 console.log('INTEGRITY_CONFLICT=PASS');
 console.log('MALFORMED_AND_EXTRA_FIELDS_FAIL_CLOSED=PASS');
 console.log('RFC3339_DATE_TIME_VALIDATION=PASS');
+console.log('CONTENT_HASH_JCS_RECOMPUTATION=PASS');
+console.log('CONTENT_HASH_MISMATCH_REQUIRES_REVIEW=PASS');
 console.log('UNVERIFIED_RECORD_REVIEW_REQUIRED=PASS');
 console.log('READ_ONLY_NO_QUARANTINE_OR_WRITE=PASS');
 console.log('TESTS_FAILED=0');
