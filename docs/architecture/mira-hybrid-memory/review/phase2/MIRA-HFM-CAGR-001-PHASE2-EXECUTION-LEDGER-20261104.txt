@@ -497,3 +497,49 @@ CI history:
 - Run 692 logs confirm Conversation Store, Work Knowledge Consolidation and Work Learning missing-primary/marker-tamper tests all PASS; no error markers.
 
 No production Conversation, Learning or Knowledge records were accessed or changed. No Google Drive, network or external actions occurred. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+23. AUDIT LOG FAIL-CLOSED / ATOMIC / LOCAL CONCURRENCY HARDENING — VERIFIED BY RUN 697
+
+Findings:
+- audit-log.js previously returned [] for malformed/non-array audit state, wrote through a separate temp/rename path, silently truncated history beyond 500 entries, and did not serialize concurrent writers.
+- A corrupt or missing audit log could therefore be treated as an empty stream or lose appended events.
+- Anchor write failures were logged but not surfaced to the caller.
+
+Corrections:
+- audit-log.js now uses the reusable initialized-store guard. A missing initialized audit log, empty file, malformed JSON, non-array content, unsafe primary or tampered marker fails closed.
+- Audit writes use the shared atomic JSON writer and verify existing chain integrity before appending.
+- Synchronous local filesystem lock serializes append, save and clear operations across Node processes. A stale lock blocks writes and requires manual recovery; it is never auto-stolen.
+- Automatic 500-entry truncation is removed. Reaching the retention limit blocks further append until an explicit archive/clear operation.
+- clearAuditLog() now writes a local archive of the existing verified entries before resetting the active log.
+- Anchor-write failure is surfaced as AUDIT_ANCHOR_WRITE_FAILED with stateCommitted=true. The next verified append can recover a one-entry-ahead anchor state.
+
+Regression evidence:
+- AUDIT_LOG_TRUE_FIRST_RUN_EMPTY=PASS
+- AUDIT_LOG_INITIALIZATION_MARKER_AND_HMAC=PASS
+- AUDIT_LOG_CROSS_PROCESS_APPEND_NO_LOST_EVENTS=PASS
+- AUDIT_LOG_ANCHOR_FAILURE_REPORTED_AFTER_COMMIT=PASS
+- AUDIT_LOG_ANCHOR_RECOVERS_ON_NEXT_VERIFIED_APPEND=PASS
+- AUDIT_LOG_STALE_LOCK_FAILS_CLOSED=PASS
+- AUDIT_LOG_RETENTION_LIMIT_NEVER_TRUNCATES=PASS
+- AUDIT_LOG_CLEAR_PRESERVES_VERIFIED_ARCHIVE=PASS
+- AUDIT_LOG_EMPTY_FILE_FAILS_CLOSED=PASS
+- AUDIT_LOG_INVALID_JSON_FAILS_CLOSED=PASS
+- AUDIT_LOG_NON_ARRAY_FAILS_CLOSED=PASS
+- AUDIT_LOG_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- AUDIT_LOG_MARKER_TAMPER_FAILS_CLOSED=PASS
+
+CI history:
+- Run 41806102523 — FAILURE — isolated fixture copy did not yet include the new initialization-guard dependency.
+- Run 41806289090 — FAILURE — second isolated fixture (Stage 19 proposal state test) also omitted the helper dependency.
+- Run 41806371853 — SUCCESS — fixture dependency corrected; all previously failing isolated contract and Stage 19 suites passed.
+- Run 41806446515 — FAILURE — anchor-failure regression assertions passed; archive count assertion still expected five entries after two additional test events.
+- Run 41806461195 — SUCCESS — corrected archive assertions and full Phase 2 workflow, commit f9e4c44c227f32ecb0fa1bee10c6a720b80cc6ae.
+- Run 697 confirms all audit log safety assertions, isolated Memory contract, Stage 19 proposal state, Conversation, Work Learning and Work Knowledge tests passed; TESTS_FAILED=0 in all invoked suites.
+
+Scope and residual:
+- This is local filesystem serialization only. It is not a distributed/cloud append arbiter and does not create an independent remote trust anchor.
+- Stale audit lock recovery is intentionally manual and fail-closed.
+- Audit archive is local and integrity-verifiable from its embedded event chain; encrypted emergency backup is still a separate future task.
+- No production audit log, Memory, Knowledge, Drive, network or external action was touched.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
