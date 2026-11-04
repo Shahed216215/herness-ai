@@ -102,7 +102,7 @@ assert.throws(()=>assessDeclaredMetaPermissionEvidence({
 }),/unique array of supported values/);
 assert.throws(()=>assessDeclaredMetaPermissionEvidence({
  evidence:evidence({pageId:'not-numeric'}),expectedContext:{...context,pageId:'not-numeric'},now
-}),/pageId must be numeric/);
+}),/Expected Page ID must be numeric/);
 console.log('EXACT_SCHEMA_UNKNOWN_SCOPE_AND_CROSS_PAGE_EVIDENCE_REJECTED=PASS');
 
 console.log('META_PERMISSION_CONTRACT_NETWORK_REQUESTS=0');
