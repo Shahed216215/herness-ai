@@ -31,7 +31,9 @@ assert.throws(()=>validateProjectMapping({mapping:make(),verifyApproval:undefine
 console.log('MISSING_TRUSTED_APPROVAL_VERIFIER_REJECTED=PASS');
 assert.throws(()=>validateProjectMapping({mapping:make(),verifyApproval:()=>false,now}),/could not be independently verified/);
 console.log('UNVERIFIED_APPROVAL_REJECTED=PASS');
-assert.throws(()=>validateProjectMapping({mapping:make({mappingDigest:'0'.repeat(64)}),verifyApproval:verifier,now}),/digest mismatch/);
+const tamperedMapping=make();
+tamperedMapping.mappingDigest='0'.repeat(64);
+assert.throws(()=>validateProjectMapping({mapping:tamperedMapping,verifyApproval:verifier,now}),/digest mismatch/);
 console.log('MAPPING_TAMPER_REJECTED=PASS');
 assert.throws(()=>validateProjectMapping({mapping:make(),expectedProjectId:'project-other',verifyApproval:verifier,now}),/project scope mismatch/);
 console.log('CROSS_PROJECT_MAPPING_REJECTED=PASS');
