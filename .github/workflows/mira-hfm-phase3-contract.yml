@@ -5,6 +5,8 @@ on:
     branches:
       - work/mira-hfm-v02-phase3-unified-memory-contract-core
     paths:
+      - 'services/mira-memory-project-authority-contract.js'
+      - 'tests/mira-memory-project-authority-contract.test.js'
       - 'services/mira-memory-request-authorization.js'
       - 'tests/mira-memory-request-authorization.test.js'
       - 'services/mira-memory-project-mapping-contract.js'
@@ -38,6 +40,7 @@ jobs:
       - name: Run isolated request authorization contract tests
         run: |
           set -euo pipefail
+          node tests/mira-memory-project-authority-contract.test.js
           node tests/mira-memory-request-authorization.test.js
           node tests/mira-memory-project-mapping-contract.test.js
           node tests/mira-memory-unified-facade.test.js
