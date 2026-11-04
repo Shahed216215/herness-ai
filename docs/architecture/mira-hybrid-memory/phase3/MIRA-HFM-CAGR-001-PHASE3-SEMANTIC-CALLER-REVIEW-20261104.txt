@@ -55,3 +55,29 @@ Verified CI run 41813748565 reports 242 candidates (overlapping categories): 27 
 - It does not accept authoritative actor/project/request context in its current signature. It must remain blocked from universal autonomous writes until an approved project/actor binding and host authorization path are designed and independently tested.
 - Updated persistent writer inventory's reviewed definition-file baseline to include services/learning.js. This records the existing API; it does not route or modify the writer.
 - This discovery demonstrates why static inventory baselines must be updated only after source-level semantic review, not by suppressing the guard.
+
+
+8. CRM CONVERSATION AND WORK-LEARNING SCOPE REVIEW
+
+CRM Conversation Store
+- conversation-schema.js:createConversation persists clientId, opportunityId and proposalId, but no authoritative projectId or tenant scope.
+- conversation-store.js:getConversation/getMessage are ID lookups; listConversations filters optional clientId/opportunityId/status; listMessages filters optional conversationId/clientId/direction. None requires a trusted project scope.
+- routes/conversations.js applies requireAgentAuth + CLIENT_PROJECTS permission, but list routes accept req.query.clientId and record lookups use caller-supplied conversationId. The route code does not derive/verify an authorized projectId-to-clientId mapping before returning records.
+- Incoming message creation accepts body.clientId || conversation.clientId and message reads are keyed by conversationId. Conversation memory engine returns history/context using conversationId only.
+- Therefore current route-level authentication is not evidence of per-project record isolation. Existing CRM mapping's messageId + parentConversationId provides stable message lineage, but it does not establish project ownership. CRM migration remains BLOCKED until an independently approved project/client/conversation mapping and caller-side authorization contract exist.
+
+Work Learning / Experience
+- mira-work-learning-engine.js:getLearningRecord keys by learningId; listLearningRecords filters taskId/status/qaStatus/limit. Neither method requires projectId or actor context.
+- mira-experience-memory.js:getExperience and listExperiences are projections over Work Learning records; experienceId is derived from learningId. It is not an independent namespace and inherits the missing project-scope issue.
+- mira-experience-retrieval-engine.js:retrieveExperiences ranks all records returned by listExperiences using task text and optional taskId/status filters; no project boundary is enforced by this retrieval layer.
+- Work Knowledge Consolidation's getConsolidatedKnowledge returns all items; the items are derived/deduplicated and source provenance is aggregated. No authoritative projectId contract exists.
+- Work Learning, Experience Memory/Retrieval and Work Knowledge remain BLOCKED for unified memory adaptation; no project may be inferred from taskId, planId, clientId, title, topic or content.
+
+Scope distinction
+- The scanner's 242 candidates include generic state-store accessors for other application domains (client profile, follow-up, opportunity, task, deliverable and work-acceptance stores). These are not automatically HFM Memory domains. They remain separate domain-governance candidates and must not be mislabeled as 242 Memory retrieval callsites.
+- Current inventory categories: 27 public/internal Memory/Knowledge retrieval matches; 27 direct domain store reads; 91 generic loadStore calls; 36 provider/snapshot calls; 27 CRM Conversation calls; 28 Work Learning/Experience calls; 6 Work Knowledge calls. Categories may overlap and are lexical candidates, not unique callsite totals.
+- Generic store loaders are distributed across client-communication-store.js, client-follow-up-store.js, client-profile-store.js, deliverable-store.js, opportunity-store.js, task-store.js, work-acceptance-store.js, and other state stores. They need domain-specific scope review, not automatic inclusion in the Memory migration.
+
+9. CANDIDATE IMMUTABILITY
+- The domain payload adapter now deeply freezes nested candidate objects, including source/version/access metadata and allowedProjectIds. Tests assert nested mutation attempts throw.
+- This is candidate integrity protection only; it does not make a candidate trusted, approved for use, persisted or committed.
