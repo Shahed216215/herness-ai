@@ -1,6 +1,7 @@
 const { getKnowledge, replaceKnowledge } = require("../knowledge");
 const { saveKnowledgeToDrive } = require("../google-drive");
 const { findDuplicateGroups, removeExactDuplicateCopies } = require("../services/mira-knowledge-duplicate-assessment");
+const { checkToolSafety } = require("../services/mira-tool-execution-policy");
 
 async function inspectKnowledge() {
   const knowledge = getKnowledge();
@@ -102,7 +103,17 @@ module.exports = {
     }
   },
 
-  execute: async ({ action }) => {
+  execute: async (args = {}) => {
+    const safety = checkToolSafety("knowledge_cleanup", args);
+    if (!safety || safety.passed !== true) {
+      return JSON.stringify({
+        success: false,
+        status: "BLOCKED",
+        code: "TOOL_POLICY_DENIED",
+        reason: safety?.reason || "Tool execution policy could not be verified."
+      });
+    }
+    const { action } = args;
     if (action === "inspect") {
       const result = await inspectKnowledge();
 
