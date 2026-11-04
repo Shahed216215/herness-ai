@@ -418,3 +418,28 @@ GitHub Actions run 41762903930 (run 326), job 126354472903, completed SUCCESS on
 Run 315/316 exposed a test-fixture mistake: a legacy record without an integrityHash was expected to fail integrity verification, but legacy records without that field are intentionally supported. The fixture was corrected to use an explicit mismatched digest. Run 326 is the later passing evidence; the historical failures remain visible and are not reclassified.
 
 All tests use isolated temporary state. Production Memory/Knowledge and real Google Drive remain untouched; network requests and external actions are zero. This hardening applies to the work-knowledge consolidation store and does not establish universal provider/retrieval integration or Phase 2 completion.
+
+
+17. WORK-LEARNING STORE FAIL-CLOSED, ATOMIC WRITE AND CAPACITY QUARANTINE — VERIFIED BY RUN 331
+
+A further caller audit found services/mira-work-learning-engine.js silently treated an existing empty file as an empty store, converted a malformed records field to [], and wrote through a temporary file without the canonical exclusive-create/fsync/readback safeguards. Its capacity limit also discarded oldest learning records without preserving them.
+
+Changes:
+- Missing file remains a valid first-run empty state; existing empty, malformed, unreadable, invalid-shape, symlinked and over-capacity stores now fail closed.
+- saveStore() requires a records array within MAX_RECORDS and uses mira-json-state-store.atomicWriteJson().
+- persistLearningRecord() now writes any capacity-evicted records to local memory-conflicts quarantine before committing the bounded active store. A quarantine failure blocks the commit.
+- Added tests/mira-work-learning-store-fail-closed.test.js using temporary MIRA_LEARNING_FILE and MIRA_AUDIT_FILE paths.
+
+GitHub Actions run 41763135774 (run 331), job 126355219013, completed SUCCESS on commit e69e2026a2bd0a7b87effa61a416e9c8edc4818c. Explicit evidence:
+- MISSING_WORK_LEARNING_STORE_FIRST_RUN=PASS
+- WORK_LEARNING_STORE_ATOMIC_WRITE=PASS
+- WORK_LEARNING_CAPACITY_EVICTION_PRESERVED_BEFORE_COMMIT=PASS
+- WORK_LEARNING_OVERFLOW_REJECTED_WITHOUT_TRUNCATION=PASS
+- WORK_LEARNING_CORRUPT_JSON_FAILS_CLOSED=PASS
+- WORK_LEARNING_EMPTY_EXISTING_STORE_FAILS_CLOSED=PASS
+- WORK_LEARNING_INVALID_SHAPE_FAILS_CLOSED=PASS
+- WORK_LEARNING_SYMLINK_READ_WRITE_REJECTED=PASS
+- TESTS_FAILED=0; RESULT=MIRA_WORK_LEARNING_STORE_FAIL_CLOSED_PASS.
+- Phase 2 core safety, recovery, Evolution integration, structural conflict assessment, conflict lifecycle and independent audit verifier also passed; production Memory/Knowledge and real Drive untouched; network requests and external actions zero.
+
+This covers the Work Learning record store only. It does not prove all application-owned state files or all retrieval/provider boundaries are now covered.
