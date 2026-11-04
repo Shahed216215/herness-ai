@@ -174,3 +174,13 @@ MERGE=NOT_APPROVED
 - Mapping contract now requires clientId for CRM message mappings, passes it to the trusted approval verifier, and the adapter checks sourceEntry.clientId against the approved mapping. Non-CRM mappings require clientId=null.
 - Added negative tests for missing CRM clientId, source client substitution and approved-mapping client substitution. The trusted verifier must independently confirm clientId-to-projectId authority; tests use synthetic verifier fixtures only.
 - Production CRM project isolation remains BLOCKED until the trusted mapping registry and route integration are implemented and independently tested.
+
+18. EXTENDED SEMANTIC REVIEW AND CRM CLIENT BINDING
+- Access-path inventory now emits per-file/category summaries. Verified candidate counts: 242 total lexical candidates; 27 public/internal Memory/Knowledge retrieval matches; 27 direct domain store reads; 91 generic loadStore calls; 36 provider/snapshot reads; 27 CRM Conversation reads; 28 Work Learning/Experience reads; 6 Work Knowledge reads. These categories overlap and are not unique callsite totals. Generic store loaders include other app domains and are not all HFM Memory.
+- Reviewed CRM schema/store/routes: conversation records have clientId/opportunityId but no authoritative projectId; routes require agent auth + CLIENT_PROJECTS permission but do not derive an approved projectId-to-clientId binding before record reads. CRM production mapping remains blocked.
+- CRM mapping contract now requires clientId for CRM messages, sends it to the approval verifier and checks it against sourceEntry.clientId. Tests reject missing clientId, source client substitution and a substituted approved mapping.
+- Reviewed Work Learning/Experience and Work Knowledge. Work Learning read APIs use learningId/taskId/status/qaStatus only; Experience is a projection over Work Learning; Work Knowledge returns derived items without authoritative project scope. All remain BLOCKED.
+- Reviewed downstream fan-out: cross-task learning, future strategies, repeat-work detection and opportunity matching consume experience/lesson data without project scope. Admin learning-history routes are privileged SYSTEM_ADMIN reads and remain a separate review class.
+- Domain payload adapter candidates are now deeply frozen; tests reject nested mutation.
+- Phase 3 CI run 41815988737 SUCCESS: all contract, adapter, provider and inventory suites PASS; CRM client-binding negative tests PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 regression run 41815988759 SUCCESS; conversation store/route/recovery, work learning/knowledge fail-closed, independent audit verifier all PASS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
