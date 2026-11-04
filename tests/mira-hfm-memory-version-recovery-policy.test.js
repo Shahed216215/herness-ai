@@ -7,16 +7,18 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const toolSource = fs.readFileSync(path.join(root, 'tools/memory-version-recovery.js'), 'utf8');
 const engineSource = fs.readFileSync(path.join(root, 'services/mira-work-execution-engine.js'), 'utf8');
+const policySource = fs.readFileSync(path.join(root, 'services/mira-tool-execution-policy.js'), 'utf8');
+assert.match(engineSource, /require\(["']\.\/mira-tool-execution-policy["']\)/);
 
 assert.match(toolSource, /name:\s*['"]memory_version_recovery['"]/);
 assert.match(toolSource, /declaration:\s*\{/);
 assert.match(toolSource, /execute:\s*async/);
 
-const policyStart = engineSource.indexOf('  memory_version_recovery: {');
+const policyStart = policySource.indexOf('  memory_version_recovery: {');
 assert.notEqual(policyStart, -1, 'memory_version_recovery must have an explicit engine policy');
-const policyEnd = engineSource.indexOf('\n  },', policyStart);
+const policyEnd = policySource.indexOf('\n  },', policyStart);
 assert.notEqual(policyEnd, -1, 'memory_version_recovery policy block must be complete');
-const policy = engineSource.slice(policyStart, policyEnd);
+const policy = policySource.slice(policyStart, policyEnd);
 assert.match(policy, /operation:\s*"file_modify"/);
 assert.match(policy, /autonomous:\s*false/);
 assert.match(policy, /humanApprovalRequired:\s*true/);
