@@ -168,3 +168,16 @@ ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
 PHASE2=IN_PROGRESS
 PRODUCTION_READINESS=NOT_CERTIFIED
 VERSION=v0.2
+
+
+10. TOOL / WORKER / SEPARATE-DOMAIN FOLLOW-UP — 2026-11-04
+Additional caller findings:
+- tools/knowledge-search.js can replace its local Knowledge corpus with a Drive-returned array before searching; no canonical HFM trust/quarantine filter was observed in the inspected function.
+- tools/knowledge-save.js, knowledge-count.js, memory-save.js and memory-count.js expose additional raw API boundaries. Count outputs are raw record counts, not trusted-record counts.
+- tools/knowledge-cleanup.js performs local replacement followed by Drive save. Its inspected response sets driveSync=true without checking the provider result's success flag; recorded as REVIEW_REQUIRED for a separate correctness/reconciliation review.
+- tools/memory-save.js persists legacy role/content/time entries through memory.js; immutable messageId/projectId are absent from that entry shape.
+- tools/memory-version-recovery.js exposes explicit-confirmation snapshot restore.
+- Work Knowledge consolidation and Experience Memory are separate domains with their own persistence paths; canonical project mapping and cross-domain HFM policy coverage remain unproven. They are not counted as confirmed direct callers of the legacy Knowledge/Conversation stores based solely on their names.
+- Autonomous worker was inspected as a candidate; no direct core store call was established in the inspected source, so it is not misclassified as a confirmed HFM caller.
+
+The caller inventory is now broader but still incomplete. Next review targets include all remaining background workers, export/download surfaces, caches/indexes, provider adapters, and dynamic import/reachability edges.
