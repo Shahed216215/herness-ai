@@ -174,6 +174,9 @@ function loadStore() {
 }
 
 function saveStore(store) {
+  if (!store || typeof store !== "object" || Array.isArray(store) || !Array.isArray(store.items)) {
+    throw new Error("Work knowledge consolidation store must include an items array before saving.");
+  }
   const normalized = normalizeStore(store);
   normalized.updatedAt = new Date().toISOString();
   normalized.integrityHash = calculateIntegrityHash(normalized);
@@ -876,34 +879,23 @@ async function consolidateLearningRecord(
 }
 
 function verifyStoreIntegrity() {
-  const raw =
-    JSON.parse(
-      fs.readFileSync(
-        STORE_FILE,
-        "utf8"
-      )
-    );
+  const stat = fs.lstatSync(STORE_FILE);
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    throw new Error("Work knowledge consolidation store is not a safe regular file.");
+  }
 
-  const expected =
-    calculateIntegrityHash(raw);
+  const raw = JSON.parse(fs.readFileSync(STORE_FILE, "utf8"));
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.items)) {
+    throw new Error("Work knowledge consolidation store must contain an object with an items array.");
+  }
 
+  const expected = calculateIntegrityHash(raw);
   return {
-    valid:
-      raw.integrityHash === expected,
-
-    schemaVersion:
-      raw.schemaVersion,
-
-    itemCount:
-      Array.isArray(raw.items)
-        ? raw.items.length
-        : 0,
-
-    integrityHash:
-      raw.integrityHash,
-
-    expectedHash:
-      expected
+    valid: typeof raw.integrityHash === "string" && raw.integrityHash === expected,
+    schemaVersion: raw.schemaVersion,
+    itemCount: raw.items.length,
+    integrityHash: raw.integrityHash || null,
+    expectedHash: expected
   };
 }
 
