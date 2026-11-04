@@ -8,7 +8,7 @@ const OPERATIONS=new Set(['READ','WRITE','LIST','VERIFY','PLAN_MIGRATION']);
 const MEMBERSHIP_ROLES=new Set(['OWNER','EDITOR','VIEWER','SERVICE','ADMIN']);
 const KEYS=[
  'schemaVersion','decision','actorId','actorType','projectId','operation','resourceScope',
- 'authorityRef','membershipRef','membershipRole','allowedOperations','registryRevision',
+ 'authorityRef','purpose','membershipRef','membershipRole','allowedOperations','registryRevision',
  'status','revocationStatus','approvedBy','approvedAt','verifiedAt','expiresAt','evidenceDigest'
 ];
 function isObject(value){return value!==null&&typeof value==='object'&&!Array.isArray(value);}
@@ -47,7 +47,7 @@ function deepFreeze(value){
 }
 function validateProjectAuthorityEvidence({
  evidence,expectedActorId,expectedActorType,expectedProjectId,expectedOperation,
- expectedResourceScope,verifyEvidence,now=new Date()
+ expectedResourceScope,expectedPurpose,verifyEvidence,now=new Date()
 }){
  if(!exactKeys(evidence)) throw new Error('Project authority evidence must contain the exact supported fields.');
  if(evidence.schemaVersion!=='1.0.0') throw new Error('Unsupported project authority schemaVersion.');
@@ -57,6 +57,7 @@ function validateProjectAuthorityEvidence({
  if(!OPERATIONS.has(evidence.operation)) throw new Error('Unsupported project authority operation.');
  text(evidence.resourceScope,'resourceScope',512);
  text(evidence.authorityRef,'authorityRef');
+ text(evidence.purpose,'purpose',256);
  text(evidence.membershipRef,'membershipRef');
  if(!MEMBERSHIP_ROLES.has(evidence.membershipRole)) throw new Error('Unsupported membershipRole.');
  if(!Array.isArray(evidence.allowedOperations)||!evidence.allowedOperations.length||
@@ -83,7 +84,7 @@ function validateProjectAuthorityEvidence({
  }
  for(const [key,expected] of [
   ['actorId',expectedActorId],['actorType',expectedActorType],['projectId',expectedProjectId],
-  ['operation',expectedOperation],['resourceScope',expectedResourceScope]
+  ['operation',expectedOperation],['resourceScope',expectedResourceScope],['purpose',expectedPurpose]
  ]){
   if(expected!==undefined&&evidence[key]!==expected) throw new Error('Project authority binding mismatch: '+key+'.');
  }
@@ -94,7 +95,7 @@ function validateProjectAuthorityEvidence({
  if(verifyEvidence(Object.freeze({
   authorityRef:evidence.authorityRef,membershipRef:evidence.membershipRef,
   actorId:evidence.actorId,actorType:evidence.actorType,projectId:evidence.projectId,
-  operation:evidence.operation,resourceScope:evidence.resourceScope,
+  operation:evidence.operation,resourceScope:evidence.resourceScope,purpose:evidence.purpose,
   registryRevision:evidence.registryRevision,evidenceDigest:evidence.evidenceDigest,
   approvedBy:evidence.approvedBy,approvedAt:evidence.approvedAt,
   verifiedAt:evidence.verifiedAt,expiresAt:evidence.expiresAt
