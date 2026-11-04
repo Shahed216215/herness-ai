@@ -82,3 +82,40 @@ Phase 2 remains IN_PROGRESS.
 Production readiness remains NOT_CERTIFIED.
 Mira Hybrid Memory remains v0.2.
 PR #4 remains open/draft/unmerged. No merge or PR state transition was performed.
+
+
+7. EXPANDED HUMAN-ONLY WRAPPER COVERAGE (2026-11-04)
+
+After the initial three persistent-save wrappers were guarded, the same direct-module bypass was reviewed for additional active tools whose whole-tool policy is human-only and which have no dedicated authenticated direct route in the reviewed callsite inventory.
+
+Added an entry guard using the shared checkToolSafety() policy to:
+- tools/firewall-defense.js — firewall_defense
+- tools/memory-restore.js — memory_restore
+- tools/memory-version-recovery.js — memory_version_recovery
+- tools/knowledge-cleanup.js — knowledge_cleanup
+
+Together with memory_save, knowledge_save and learning_save, seven human-only tool wrappers now deny direct execute() invocation before calling their underlying state or provider dependencies. This is deliberately conservative: even read-only sub-actions of a mixed-scope wrapper remain blocked where the whole tool policy is human-only.
+
+The direct wrapper regression test now executes all seven actual wrapper sources in isolated Node VM contexts with throwing dependency stubs. All seven returned BLOCKED / TOOL_POLICY_DENIED; zero injected dependencies were invoked.
+
+The existing Knowledge cleanup business-logic and canonical-storage tests now inject a test-only permissive policy stub. Those suites validate the cleanup algorithm/storage semantics after the authorization boundary; they do not assert real policy approval. The real policy denial is independently asserted by the seven-wrapper guard test. The Local Memory restore-mechanics test uses the same test-only separation: restore mechanics are tested after an isolated authorization stub, while the actual wrapper denial is tested separately.
+
+Latest passing evidence:
+- HEAD: 41528d0ded0f9f3d14284e132809bdbade622ffc
+- GitHub Actions run 41792193805 — SUCCESS
+- Job 126447892258 — SUCCESS
+- All seven direct-wrapper denial markers PASS.
+- Static tool policy parity: 24 active exports, zero missing policy entries.
+- Direct dispatch inventory and route authorization tests PASS.
+- Knowledge cleanup business-logic and canonical-storage tests PASS.
+- TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0, REAL_GOOGLE_DRIVE_TOUCHED=NO.
+
+Historical CI failures remain visible and are not relabeled as passes:
+- Run 41791239959 failed because the direct-call scanner initially missed bare tool/health variable names; the scanner pattern was corrected.
+- Runs 41791668141 and 41791901687 exposed the expected test-harness incompatibility when newly human-only wrappers were first applied to existing mechanics tests; isolated test-only policy stubs were added so mechanics tests remain scoped to post-authorization behavior.
+- Run 41792011602 exposed a misplaced test cleanup branch; corrected in the following commit.
+- Run 41792193805 is the later authoritative passing run for this wrapper-guard expansion.
+
+The direct dispatch scanner still covers server.js, routes and services only. This is not a universal proof for all repository source roots or dynamically constructed calls. Admin backup/restore and SEO history/review remain route-gated direct exceptions as described above. The raw tools map remains exported for internal use; the seven wrappers listed here now independently enforce their human-only policies.
+
+Phase 2 remains IN_PROGRESS; production readiness remains NOT_CERTIFIED; version remains v0.2; PR #4 remains draft/unmerged.
