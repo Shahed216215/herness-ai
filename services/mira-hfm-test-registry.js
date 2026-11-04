@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { isCanonicalTimestamp } = require('./mira-hfm-timestamp-profile');
 
 const EXECUTION_STATUSES = new Set([
   'TESTED_PASS', 'TESTED_FAIL', 'INCONCLUSIVE', 'NOT_APPROVED',
@@ -44,11 +45,6 @@ function exactKeys(value, required, optional = []) {
 }
 function nonEmpty(value) {
   return typeof value === 'string' && value.trim().length > 0;
-}
-function isCanonicalTimestamp(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) && date.toISOString() === value;
 }
 function isCommit(value) {
   return typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
