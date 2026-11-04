@@ -133,8 +133,8 @@ assert.equal(imported.status, 'REVIEW_CANDIDATE_NOT_PERSISTED');
 assert.equal(imported.hfmDisposition, 'PENDING_HUMAN_REVIEW');
 assert.equal(imported.mayEnterTrustedMemory, false);
 assert.equal(imported.persistentWritePerformed, false);
-assert.equal(imported.candidate.candidate.integrity.status, 'UNVERIFIED');
-assert.equal(imported.candidate.candidate.lifecycle, 'PENDING_REVIEW');
+assert.equal(imported.candidate.integrity.status, 'UNVERIFIED');
+assert.equal(imported.candidate.lifecycle, 'PENDING_REVIEW');
 console.log('FACEBOOK_IMPORT_REMAINS_UNTRUSTED_NONPERSISTED_REVIEW_CANDIDATE=PASS');
 
 console.log('FACEBOOK_HFM_ADAPTER_NETWORK_REQUESTS=0');
