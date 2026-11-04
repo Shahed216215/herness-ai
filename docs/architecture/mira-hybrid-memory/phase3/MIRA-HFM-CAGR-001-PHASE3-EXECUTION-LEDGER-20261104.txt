@@ -227,3 +227,8 @@ MERGE=NOT_APPROVED
 23. LEAST-PRIVILEGE UPDATE AUTHORIZATION
 - Existing-record update preparation now requires READ and WRITE on the same memory resource because it exposes previous revision/digest. New record creation remains WRITE-only.
 - Added negative test for READ denied while WRITE allowed. CI pending.
+
+24. LATEST LEAST-PRIVILEGE CI EVIDENCE
+- Phase 3 contract run 41818106537 SUCCESS at tested code commit ebfe8911e247226db9053521e1119e26a4d4467f. Request validity-window binding PASS; update READ+WRITE gate PASS; all contract suites report TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Phase 2 isolated regression run 41818107517 SUCCESS at the same code commit; relevant isolated safety tests pass; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Caller disposition register is now committed to the Phase 3 branch (commit d030532ad8c114e56e4a0c50c58eb24f2ae95fdd). It is a source-review register, not evidence that production paths are integrated.
