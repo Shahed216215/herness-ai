@@ -70,6 +70,7 @@ const cases = [
 (async () => {
   for (const item of cases) {
     const source = fs.readFileSync(path.join(root, 'tools', item.file), 'utf8');
+    assert.match(source, /Currently blocked/i, item.name + ' tool description must disclose its current gate');
     const calls = { writer: 0 };
     const dependencyExports = Object.fromEntries(
       Object.entries(item.dependencies).map(([request, methods]) => [
