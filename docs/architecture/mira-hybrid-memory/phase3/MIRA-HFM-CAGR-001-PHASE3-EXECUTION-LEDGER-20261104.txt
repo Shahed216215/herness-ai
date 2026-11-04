@@ -246,3 +246,8 @@ MERGE=NOT_APPROVED
 28. REQUEST REPLAY DECISION GATE
 - Host authorization decisions now require replayStatus=FRESH. REPLAYED or missing/unverifiable replay status is denied. The host adapter must atomically check/record requestId + authorityRef; the helper does not implement persistent replay storage.
 - Added negative replay test and updated synthetic host fixtures. CI pending.
+
+29. REQUEST REPLAY GATE VERIFIED
+- Initial replay-gate CI failed because the synthetic authorization helpers in the request/facade tests did not yet return replayStatus. Those fixture mismatches remain in Actions history and were corrected; no production integration ran.
+- Phase 3 run 41818932471 SUCCESS: REPLAYED_REQUEST_REJECTED=PASS; request validity-window binding PASS; expired approval evidence rejection PASS; update READ+WRITE authorization PASS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Phase 2 regression run 41818932184 SUCCESS: TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
