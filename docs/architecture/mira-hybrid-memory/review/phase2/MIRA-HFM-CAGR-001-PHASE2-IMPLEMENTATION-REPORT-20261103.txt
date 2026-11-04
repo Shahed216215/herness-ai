@@ -501,3 +501,26 @@ An attempt to add the legacy tests/stage62-work-learning-e2e-test.js and tests/s
 Those two legacy tests were removed from the isolated workflow. The workflow now uses the new dedicated temporary-directory contract suites for Work Learning and Work Knowledge Consolidation instead. Latest isolated workflow run 41764130114 (run 357), job 126358397328, completed SUCCESS on commit 6ca02e76409471b993cc704d2bab92e0ecba9a98; all focused suites show TESTS_FAILED=0, including both new store suites and the autonomous-learning adapter test.
 
 Legacy Stage 6.2 / 6.2.3 end-to-end compatibility remains INCONCLUSIVE / NOT_EXECUTED in a clean isolated environment because their fixtures assume existing local project files. The isolated persistence contract tests are PASS; they are not a substitute claim for the full legacy E2E flows.
+
+
+15. KNOWLEDGE IMPROVEMENT PROPOSAL STATE HARDENING — VERIFIED BY RUN 362
+
+A repository-wide targeted persistence audit found that knowledge-improvement.js stored proposal records under the configured storage root, but used a permissive reader (empty/malformed/non-array content could become an empty proposal list) and a predictable temporary-file write without the canonical state-store safeguards.
+
+The proposal store now:
+- reads through mira-json-state-store.readJsonArray with missing-only empty semantics (malformed, empty, non-array, symlink and unsafe files fail closed);
+- writes through the verified atomic JSON writer;
+- records a committed-state audit event including the resulting SHA-256 and entry count;
+- marks audit failure after a successful state write with stateCommitted=true so callers cannot mistake it for an uncommitted operation.
+
+The existing Stage 19 knowledge-improvement test was extended to run from an isolated temporary module copy with the required state-store and audit dependencies. It verifies normal proposal approval/apply/reject behavior, malformed-state fail-closed behavior without overwriting corrupt bytes, and symlink rejection without following the external target.
+
+GitHub Actions run 41764593311 (run 362), job 126359878939, completed SUCCESS on commit 03eba09ffe56b5019aa492a8bb5cef48aba9caf4. Explicit log evidence:
+- PASS: malformed proposal state fails closed without overwrite;
+- PASS: symlink proposal state is rejected without following target;
+- STAGE19_KNOWLEDGE_IMPROVEMENT_STATE_GATE=PASS;
+- KNOWLEDGE_PROPOSALS_FAIL_CLOSED=PASS;
+- KNOWLEDGE_PROPOSALS_SYMLINK_PROTECTION=PASS;
+- TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This closes the identified proposal-state read/write hardening gap only. It does not establish universal retrieval exclusion or production integration of the isolated conflict-quarantine lifecycle.
