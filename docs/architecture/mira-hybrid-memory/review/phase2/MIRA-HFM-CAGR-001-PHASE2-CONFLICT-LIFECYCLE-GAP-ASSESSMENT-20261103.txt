@@ -145,3 +145,8 @@ The following concrete paths were inspected after the initial assessment:
 - No source changes, production data reads, Drive calls, network requests or external actions were performed for this read-only audit.
 
 This narrows the earlier broad gap: a local canonical path exists, but universal trusted retrieval exclusion cannot be claimed until every alternate retrieval adapter and provider/cache path is mapped and tested.
+
+
+### Conversation-store follow-up
+
+The separate conversation-store persistence boundary was subsequently hardened and CI-verified by run 369 (see the implementation report). It now rejects malformed/unsafe state, uses atomic writes and committed-state audit evidence. This closes a storage-integrity gap, not the conflict-awareness gap: conversation-store records are still not mapped to conflict IDs, source digests, trust decisions or quarantine-resolution status. No claim of conversation retrieval exclusion is made.
