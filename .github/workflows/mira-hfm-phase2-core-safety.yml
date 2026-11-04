@@ -32,6 +32,7 @@ on:
       - 'tests/mira-hfm-retrieval-callsite-inventory.test.js'
       - 'services/**'
       - 'tests/mira-memory-request-authorization.test.js'
+      - 'tests/mira-memory-project-mapping-contract.test.js'
       - '.github/workflows/mira-hfm-phase3-contract.yml'
       - 'memory.js'
       - 'knowledge-controlled-apply.js'
@@ -204,6 +205,7 @@ jobs:
           node tests/mira-memory-conflict-assessment.test.js
           node tests/mira-legacy-memory-knowledge-adapter.test.js
           node tests/mira-memory-request-authorization.test.js
+          node tests/mira-memory-project-mapping-contract.test.js
           node tests/mira-hfm-migration-manifest.test.js
           node tests/mira-hfm-test-registry.test.js
           node tests/mira-hfm-timestamp-profile.test.js
