@@ -14,9 +14,13 @@ async function main() {
 
   try {
     const knowledge = require('../knowledge');
+    const recovery = require('../services/mira-knowledge-state-recovery');
     const file = path.join(root, 'knowledge.json');
+    const markerFile = file + '.hfm-initialized.json';
 
     assert.deepEqual(knowledge.getKnowledge(), []);
+    assert.equal(fs.existsSync(markerFile), false);
+    console.log('KNOWLEDGE_FIRST_RUN_EMPTY_WITHOUT_MARKER=PASS');
 
     const added = await knowledge.addKnowledge(
       'Phase 2 fixture',
@@ -26,6 +30,8 @@ async function main() {
     assert.equal(added.added, true);
     assert.equal(added.drive, false);
     assert.equal(knowledge.getKnowledge().length, 1);
+    assert.equal(fs.existsSync(markerFile), true);
+    console.log('KNOWLEDGE_INITIALIZATION_MARKER_CREATED_ON_FIRST_WRITE=PASS');
 
     const secondAdded = await knowledge.addKnowledge(
       'Phase 2 second fixture',
@@ -39,6 +45,24 @@ async function main() {
     const versionsDir = file + '.versions';
     assert.equal(fs.existsSync(versionsDir), true);
     assert.ok(fs.readdirSync(versionsDir).length >= 1);
+
+    const backup = recovery.createKnowledgeBackup();
+    assert.equal(backup.success, true);
+    assert.equal(fs.existsSync(path.join(root, 'knowledge-backup.json')), true);
+    fs.unlinkSync(file);
+    assert.throws(() => knowledge.getKnowledge(), /previously initialized/i);
+    await assert.rejects(
+      knowledge.addKnowledge('Must require restore', '', 'no empty overwrite'),
+      /previously initialized/i
+    );
+    assert.throws(() => recovery.createKnowledgeBackup(), /restore is required/i);
+    console.log('KNOWLEDGE_MISSING_PRIMARY_BLOCKS_READ_WRITE_AND_BACKUP=PASS');
+
+    const restoredMissingPrimary = recovery.restoreKnowledge({ confirm: true });
+    assert.equal(restoredMissingPrimary.success, true);
+    assert.equal(restoredMissingPrimary.restored, true);
+    assert.equal(knowledge.getKnowledge().length, 2);
+    console.log('KNOWLEDGE_MISSING_PRIMARY_EXPLICIT_RESTORE=PASS');
 
     const validBeforeCorruption = fs.readFileSync(file, 'utf8');
     fs.writeFileSync(file, '{invalid');
