@@ -38,6 +38,12 @@ try {
   assert.ok(fs.statSync(file).mode & 0o100000);
   console.log('CONSOLIDATION_STORE_ATOMIC_WRITE_AND_READBACK=PASS');
 
+  const overflow = Array.from({ length: 5001 }, (_, index) => ({ id: index }));
+  assert.throws(() => engine.saveStore({ schemaVersion: 1, items: overflow }), /exceeds the supported item limit/);
+  fs.writeFileSync(file, JSON.stringify({ schemaVersion: 1, items: overflow }), 'utf8');
+  assert.throws(() => engine.loadStore(), /exceeds the supported item limit/);
+  console.log('OVERCAPACITY_STORE_REJECTED_WITHOUT_TRUNCATION=PASS');
+
   fs.writeFileSync(file, '{broken json', 'utf8');
   assert.throws(() => engine.loadStore(), /contains invalid JSON/);
   console.log('CORRUPT_JSON_FAILS_CLOSED=PASS');
