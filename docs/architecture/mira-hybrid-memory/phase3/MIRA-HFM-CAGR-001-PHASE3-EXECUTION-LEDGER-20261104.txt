@@ -275,3 +275,7 @@ MERGE=NOT_APPROVED
 - Read-only review of session-auth.js/server.js: registered login returns userId and server stores it in the session, but sessionIdentity drops userId from its returned identity. Admin sessions store username only. Legacy bearer auth exposes role/permissions only; it does not expose a stable actorId. Do not treat a role or raw bearer token as actor identity.
 - Read-only review of project-schema.js/project-store.js: project records have projectId/acceptanceId/opportunityId/work scope but no ownerActorId/tenantId/clientId; project listing is not owner-filtered. Acceptance/opportunity links do not prove user ownership.
 - This is a concrete blocker for the trusted host adapter and project mapping authority. No project owner may be inferred. Runtime integration remains BLOCKED until a stable actor subject is propagated and an authoritative project-owner registry/migration is approved.
+
+35. PROJECT-OWNER AUTHORIZATION HARNESS
+- Added a synthetic host authorization fixture with an explicit projectId -> ownerActorId registry. The owner is allowed; the same actor is denied when requesting a different/unregistered project.
+- This tests the contract callback boundary only. It does not establish real project owners in project-store or authorize any existing project. CI pending.
