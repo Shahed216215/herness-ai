@@ -8,7 +8,7 @@ const RULES=[
  ['PUBLIC_OR_INTERNAL_RETRIEVAL',/\b(?:getMemory|getKnowledge|getKnowledgeStats|getMemoryStats|searchKnowledge|searchMemory)\s*\(/],
  ['DIRECT_STORE_READ',/\b(?:loadMemory|loadKnowledge|loadStore|readJsonArray|readJsonObject|readState)\s*\(/],
  ['PROVIDER_OR_SNAPSHOT_READ',/\b(?:loadMemoryFromDrive|loadKnowledgeFromDrive|loadDriveState|readSnapshot|verifySnapshot|createSnapshot|restoreSnapshot)\s*\(/],
- ['CRM_CONVERSATION_READ',/\b(?:getConversation|listConversations|getMessage|listMessages|getContext|loadStore)\s*\(/],
+ ['CRM_CONVERSATION_READ',/\b(?:getConversation|listConversations|getMessage|listMessages|getContext)\s*\(/],
  ['WORK_LEARNING_OR_EXPERIENCE_READ',/\b(?:getLearningRecord|listLearningRecords|getLessons|listLessons|getExperience|listExperiences|getExperienceStats|retrieveExperiences|getExperiencesForTask|getRetrievalStats)\s*\(/],
  ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/]
 ];
