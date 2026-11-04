@@ -120,10 +120,25 @@ assert.equal(duplicatedMappings.status, 'BLOCKED');
 assert.ok(duplicatedMappings.blockers.some(x => x.startsWith('DUPLICATE_MAPPING:')));
 console.log('DUPLICATE_SNAPSHOT_MAPPING_REJECTED=PASS');
 
-const generalRaw = JSON.stringify([{ role: 'user', content: 'no id', time: '2026-11-04T00:00:00Z' }]);
-const generalPlan = planSnapshot({ domain: 'general_memory', sourceText: generalRaw, mappings: [] });
-assert.equal(generalPlan.status, 'BLOCKED');
-console.log('GENERAL_MEMORY_SNAPSHOT_WITHOUT_ID_BLOCKED=PASS');
+const generalEntry = { role: 'user', content: 'no id', time: '2026-11-04T00:00:00Z' };
+const generalRaw = JSON.stringify([generalEntry]);
+const generalSourceFileDigest = require('node:crypto').createHash('sha256').update(generalRaw, 'utf8').digest('hex');
+const generalLegacyId = 'legacy-memory:' + generalSourceFileDigest + ':0';
+const generalMapping = {
+  domain: 'general_memory', legacyId: generalLegacyId,
+  canonicalMemoryId: 'memory-canonical-general-001', projectId: 'project-approved-01',
+  revision: 1, sourceDigest: digest(generalEntry), classification: 'PROJECT_PRIVATE',
+  approvalReference: 'ARCH-DECISION-REF-GENERAL'
+};
+const generalPlan = planSnapshot({ domain: 'general_memory', sourceText: generalRaw, mappings: [generalMapping] });
+assert.equal(generalPlan.status, 'READY_FOR_REVIEW');
+assert.equal(generalPlan.candidates[0].identityLocator, 'SOURCE_FILE_DIGEST_AND_ORDINAL');
+assert.equal(generalPlan.writeAuthorized, false);
+console.log('GENERAL_MEMORY_SNAPSHOT_SIDECAR_IDENTITY_READY_FOR_REVIEW=PASS');
+
+const generalMissing = planSnapshot({ domain: 'general_memory', sourceText: generalRaw, mappings: [] });
+assert.equal(generalMissing.status, 'BLOCKED');
+console.log('GENERAL_MEMORY_MISSING_SIDECAR_MAPPING_BLOCKED=PASS');
 
 const crmRaw = JSON.stringify([{ messageId: 'crm-msg-001', conversationId: 'conv-001', content: 'hello' }]);
 const crmPlan = planSnapshot({
