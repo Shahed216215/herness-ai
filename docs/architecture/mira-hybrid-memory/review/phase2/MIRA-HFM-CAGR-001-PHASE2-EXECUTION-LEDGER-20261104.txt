@@ -276,3 +276,30 @@ Remaining:
 - Raw tools map and direct module exports remain an internal capability surface; a universal action-bound wrapper is not yet implemented.
 - Canonical project scope, conflict quarantine, integrity/trust filtering across every retrieval path, provider arbitration, U03/U04/U05/U06/E-15, HFM-004 and HFM-005 remain open as separately recorded.
 - Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2; PR #4 draft/unmerged.
+
+
+16. RETRIEVAL TRUST BOUNDARY SEMANTIC REVIEW — 2026-11-04
+
+The CI inventory emits 36 retrieval calls across 14 application source files; all 14 lack both recognized in-file trust-filter and conflict-quarantine-filter markers. A separate semantic review classifies them by risk rather than treating every match as a confirmed exposure.
+
+Highest-priority boundaries:
+- server.js agent request context: getMemory() and searchKnowledge() results are assembled into model context without explicit canonical project/trust/quarantine filtering.
+- tools/knowledge-search.js: Drive-returned arrays replace the local search corpus before matching; no canonical filter is present in the inspected function.
+- server.js admin Knowledge search/detail/edit/delete reads: SYSTEM_ADMIN is an actor permission, not an HFM project-scope or trust-clearance waiver.
+- services/learning.js: searchKnowledge() influences duplicate/improvement decisions without an HFM filter.
+
+Other callsites include controlled apply/rollback and Drive reconciliation, core local APIs, evolution synchronization, raw counts and cleanup. These are separately classified; they are not all equivalent user-facing retrievals.
+
+The legacy identity blocker remains: historical Conversation Memory does not universally have immutable messageId/projectId, and legacy Knowledge does not universally have explicit canonical project mapping/trust metadata. Wiring a fail-closed filter without source-bound mappings would either exclude legacy data or tempt synthetic identity derivation. No such mapping or migration was invented.
+
+Read-only report:
+MIRA-HFM-CAGR-001-PHASE2-RETRIEVAL-BOUNDARY-SEMANTIC-REVIEW-20261104.txt
+
+CI inventory evidence: run 41792648804 SUCCESS; 36 calls, 14 consumer files, 14 review-required files; TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0, REAL_GOOGLE_DRIVE_TOUCHED=NO.
+
+Remediation sequence: define an authenticated project-scoped canonical retrieval facade; validate canonical identity/content hash/lifecycle/integrity/trust/quarantine; apply identical filtering to local and Drive corpora; integrate first into model context and Knowledge search; then learning and admin read paths; preserve separate recovery/provider reconciliation semantics. All missing mappings fail closed. No production retrieval behavior changed in this review.
+
+RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED
+PRODUCTION_READINESS=NOT_CERTIFIED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
