@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('../mira-storage');
 const crypto = require("crypto");
+const jsonStateStore = require("./mira-json-state-store");
 
 const {
   createProposal,
@@ -134,62 +135,53 @@ function normalizeStore(raw) {
 }
 
 function loadStore() {
+  let rawText;
   try {
-    const raw = JSON.parse(
-      fs.readFileSync(STORE_FILE, "utf8")
-    );
-
-    const store = normalizeStore(raw);
-
-    if (
-      raw &&
-      raw.integrityHash &&
-      raw.integrityHash !== calculateIntegrityHash(raw)
-    ) {
-      throw new Error(
-        "Work knowledge consolidation integrity check failed."
-      );
+    const stat = fs.lstatSync(STORE_FILE);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error("Work knowledge consolidation store is not a safe regular file.");
     }
-
-    store.integrityHash =
-      calculateIntegrityHash(store);
-
-    return store;
+    rawText = fs.readFileSync(STORE_FILE, "utf8");
   } catch (error) {
-    if (
-      error &&
-      error.message &&
-      error.message.includes("integrity check failed")
-    ) {
-      throw error;
-    }
-
-    return emptyStore();
+    if (error.code === "ENOENT") return emptyStore();
+    throw new Error(
+      `Work knowledge consolidation store cannot be read: ${error.code || error.message || "IO_ERROR"}`
+    );
   }
+
+  if (!rawText.trim()) {
+    throw new Error("Work knowledge consolidation store is empty and may be corrupted.");
+  }
+
+  let raw;
+  try {
+    raw = JSON.parse(rawText);
+  } catch {
+    throw new Error("Work knowledge consolidation store contains invalid JSON.");
+  }
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.items)) {
+    throw new Error("Work knowledge consolidation store must contain an object with an items array.");
+  }
+
+  if (raw.integrityHash && raw.integrityHash !== calculateIntegrityHash(raw)) {
+    throw new Error("Work knowledge consolidation integrity check failed.");
+  }
+
+  const store = normalizeStore(raw);
+  store.integrityHash = calculateIntegrityHash(store);
+  return store;
 }
 
 function saveStore(store) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-
   const normalized = normalizeStore(store);
-
-  normalized.updatedAt =
-    new Date().toISOString();
-
-  normalized.integrityHash =
-    calculateIntegrityHash(normalized);
-
-  const tempFile =
-    `${STORE_FILE}.tmp-${process.pid}-${Date.now()}`;
-
-  fs.writeFileSync(
-    tempFile,
-    `${JSON.stringify(normalized, null, 2)}\n`,
-    "utf8"
+  normalized.updatedAt = new Date().toISOString();
+  normalized.integrityHash = calculateIntegrityHash(normalized);
+  jsonStateStore.atomicWriteJson(
+    STORE_FILE,
+    normalized,
+    "Work knowledge consolidation"
   );
-
-  fs.renameSync(tempFile, STORE_FILE);
-
   return normalized;
 }
 
