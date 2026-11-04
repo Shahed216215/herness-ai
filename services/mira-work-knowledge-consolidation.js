@@ -912,10 +912,27 @@ async function consolidateLearningRecord(
 }
 
 function verifyStoreIntegrity() {
-  const stat = fs.lstatSync(STORE_FILE);
+  let stat;
+  try {
+    stat = fs.lstatSync(STORE_FILE);
+  } catch (error) {
+    if (error.code === 'ENOENT' &&
+        STORE_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
+      const missing = new Error(
+        'Work knowledge consolidation store was previously initialized but its primary is missing; integrity verification is blocked.'
+      );
+      missing.code = 'WORK_KNOWLEDGE_CONSOLIDATION_PRIMARY_MISSING_RESTORE_REQUIRED';
+      throw missing;
+    }
+    if (error.code === 'ENOENT') {
+      return { valid: false, reason: 'FIRST_RUN_STORE_MISSING', itemCount: 0 };
+    }
+    throw error;
+  }
   if (stat.isSymbolicLink() || !stat.isFile()) {
     throw new Error("Work knowledge consolidation store is not a safe regular file.");
   }
+  STORE_GUARD.ensureMarker();
 
   const raw = JSON.parse(fs.readFileSync(STORE_FILE, "utf8"));
   if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.items)) {
