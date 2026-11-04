@@ -171,3 +171,14 @@ CI on tested HEAD 4126f156f3d48dd22b66021453f944266fa8c414:
 The push job log reports MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS, 10 files, 24 matches, zero unreviewed files and zero missing reviewed files; TESTS_FAILED=0, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
 
 This is a source-level callsite inventory, not a proof of dynamic import reachability or runtime authorization for every writer. It does not scan non-JavaScript native modules or external provider implementations. Keep the previously stated approval and raw-tools-object residual gaps open.
+
+12. RESTRICTED WRAPPER DIRECT-IMPORT CHECK
+
+The repository-wide writer inventory now also scans literal CommonJS imports of memory-save, knowledge-save and learning-save wrappers. The latest test found zero direct imports outside the dynamic registry path.
+
+CI on tested HEAD 1e7f704d7d305d8507c5b2b05c103a4fea5e691b:
+- Push run 41789588358: SUCCESS.
+- Pull-request run 41789593954: SUCCESS.
+The push job confirms MIRA_HFM_RESTRICTED_WRAPPER_DIRECT_IMPORTS=0 and MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS.
+
+This literal-import scan does not prove that no dynamically constructed path or raw tools-object invocation can ever reach a wrapper. The raw tools object remains exported and its full direct-execution call graph remains a residual review item.
