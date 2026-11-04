@@ -101,7 +101,8 @@ if(require.main===module){
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_INVENTORY=GENERATED');
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_COUNT='+findings.length);
  for(const [category] of RULES) console.log('MIRA_HFM_'+category+'_COUNT='+findings.filter(x=>x.category===category).length);
- console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);\n console.log('MIRA_HFM_CANONICAL_STORE_FILE_BACKED_READ_COUNT='+findings.filter(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ').length);
+ console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);
+ console.log('MIRA_HFM_CANONICAL_STORE_FILE_BACKED_READ_COUNT='+findings.filter(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ').length);
  const byFile=new Map();
  for(const item of findings){
   const key=item.file+'|'+item.category;
