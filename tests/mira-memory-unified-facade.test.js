@@ -57,6 +57,12 @@ const preparedCreate=prepareCanonicalWrite({incomingRecord:newRecord,existingRec
 assert.equal(preparedCreate.status,'PREPARED_NOT_COMMITTED');
 assert.equal(preparedCreate.committed,false);
 assert.equal(preparedCreate.auditStatus,'NOT_EMITTED_PREPARE_ONLY');
+assert.equal(preparedCreate.idempotencyStatus,'NOT_ATOMIC_PREPARE_ONLY');
+assert.equal(preparedCreate.idempotencyPlan.key,'idem-create-001');
+assert.equal(preparedCreate.idempotencyPlan.requiredAtomicity,'HOST_ATOMIC_UNIQUE_CLAIM');
+assert.equal(preparedCreate.idempotencyPlan.status,'NOT_RESERVED_PREPARE_ONLY');
+assert.equal(preparedCreate.idempotencyPlan.incomingRecordDigest,preparedCreate.incomingRecordDigest);
+assert.equal(Object.isFrozen(preparedCreate.idempotencyPlan),true);
 assert.equal(preparedCreate.auditPlan.operation,'CREATE');
 assert.equal(preparedCreate.auditPlan.actorId,requestContext.actorId);
 assert.equal(preparedCreate.auditPlan.projectId,requestContext.projectId);
@@ -78,6 +84,10 @@ const preparedUpdate=prepareCanonicalWrite({incomingRecord:next,existingRecords:
 assert.equal(preparedUpdate.previousRecordDigest,digest(previous));
 assert.equal(preparedUpdate.nextRevision,2);
 assert.equal(preparedUpdate.auditPlan.operation,'UPDATE');
+assert.equal(preparedUpdate.idempotencyPlan.operation,'UPDATE');
+assert.equal(preparedUpdate.idempotencyPlan.key,'idem-update-001');
+assert.equal(preparedUpdate.idempotencyPlan.requiredAtomicity,'HOST_ATOMIC_UNIQUE_CLAIM');
+assert.equal(preparedUpdate.idempotencyStatus,'NOT_ATOMIC_PREPARE_ONLY');
 assert.equal(preparedUpdate.auditPlan.previousRevision,1);
 assert.equal(preparedUpdate.auditPlan.nextRevision,2);
 assert.equal(preparedUpdate.auditPlan.eventRequiredBeforeCommit,true);
