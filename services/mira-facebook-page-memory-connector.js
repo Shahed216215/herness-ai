@@ -71,8 +71,9 @@ function evaluateFacebookPageCapabilities({
 }
 
 /** Create an exact, reviewable post draft; no Facebook publishing occurs. */
-function createManualPostDraft({record,pageName,generatedAt=new Date().toISOString()}={}){
+function createManualPostDraft({record,pageId,pageName,generatedAt=new Date().toISOString()}={}){
  if(!object(record)) throw new Error('A canonical Memory record is required.');
+ const targetPageId=requiredText(pageId,'pageId',128);
  const memoryId=requiredText(record.memoryId,'record.memoryId',128);
  const projectId=requiredText(record.projectId,'record.projectId',128);
  const content=requiredText(record.content,'record.content',100000);
@@ -86,8 +87,8 @@ function createManualPostDraft({record,pageName,generatedAt=new Date().toISOStri
  const title=pageName===undefined?'Mira Memory':requiredText(pageName,'pageName',128);
  const payload={
   schemaVersion:'1.0.0',
-  draftId:'fbpage-draft-'+sha256(memoryId+'|'+projectId+'|'+sha256(content)).slice(0,24),
-  providerId:'facebook-page',pageName:title,projectId,memoryId,
+  draftId:'fbpage-draft-'+sha256(targetPageId+'|'+memoryId+'|'+projectId+'|'+sha256(content)).slice(0,24),
+  providerId:'facebook-page',pageId:targetPageId,pageName:title,projectId,memoryId,
   content,contentHash:sha256(content),createdAt,
   status:'PENDING_MANUAL_POST',
   warning:'Review visibility and remove restricted information before posting. This draft has not been published or verified.'
