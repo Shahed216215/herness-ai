@@ -40,6 +40,7 @@ on:
       - 'tests/mira-memory-conflict-assessment.test.js'
       - 'tests/mira-conflict-quarantine-registry.test.js'
       - 'tests/mira-knowledge-cleanup-storage-contract.test.js'
+      - 'tests/stage19-knowledge-improvement-state-test.js'
       - 'services/mira-work-knowledge-consolidation.js'
       - 'tests/mira-work-knowledge-store-fail-closed.test.js'
       - 'services/mira-work-learning-engine.js'
@@ -122,6 +123,7 @@ jobs:
           node tests/mira-memory-conflict-assessment.test.js
           node tests/mira-conflict-quarantine-registry.test.js
           node tests/mira-knowledge-cleanup-storage-contract.test.js
+          node tests/stage19-knowledge-improvement-state-test.js
           node tests/mira-work-knowledge-store-fail-closed.test.js
           node tests/mira-work-learning-store-fail-closed.test.js
           node tests/mira-autonomous-learning-canonical-store-adapter.test.js
