@@ -25,7 +25,7 @@ function requiredText(value, label, max = 128) {
  * callers must obtain it directly from the trusted in-process HFM facade.
  */
 function preparePublicPageDraftFromHfm({
-  retrievalReport, memoryId, pageName, generatedAt
+  retrievalReport, memoryId, pageId, pageName, generatedAt
 } = {}) {
   if (!object(retrievalReport) ||
       !Array.isArray(retrievalReport.records) ||
@@ -34,6 +34,7 @@ function preparePublicPageDraftFromHfm({
     throw new Error('A Phase 3 HFM retrieval report is required.');
   }
   const targetId = requiredText(memoryId, 'memoryId');
+  const targetPageId = requiredText(pageId, 'pageId');
   const records = retrievalReport.records.filter(record =>
     object(record) && record.memoryId === targetId
   );
@@ -64,7 +65,7 @@ function preparePublicPageDraftFromHfm({
   if (record.access?.classification !== 'PUBLIC') {
     throw new Error('Facebook Page drafts accept only explicitly PUBLIC Memory records.');
   }
-  const draft = createManualPostDraft({ record, pageName, generatedAt });
+  const draft = createManualPostDraft({ record, pageId: targetPageId, pageName, generatedAt });
   return Object.freeze({
     schemaVersion: '1.0.0',
     providerId: 'facebook-page',
