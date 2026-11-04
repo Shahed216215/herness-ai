@@ -5,6 +5,10 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {
+  prepareFacebookImportForHfmReview,
+  enqueueFacebookImportForHfmReview
+} = require('../services/mira-facebook-page-hfm-adapter');
+const {
   enqueueFacebookPageImportReview,
   verifyFacebookPageImportReview,
   listFacebookPageImportReviews,
@@ -33,6 +37,21 @@ const candidate = {
   lifecycle: 'PENDING_REVIEW'
 };
 try {
+  const preparedByAdapter = prepareFacebookImportForHfmReview({
+    postUrl: candidate.source.sourceUrl,
+    expectedPageId: candidate.source.pageId,
+    content: candidate.content,
+    observedAt: candidate.source.observedAt
+  });
+  const adapterQueued = enqueueFacebookImportForHfmReview({
+    preparedReview: preparedByAdapter, projectId: 'project-adapter',
+    actor: 'human-reviewer', directory, auditWriter
+  });
+  assert.equal(adapterQueued.status, 'QUEUED');
+  assert.equal(adapterQueued.canonicalMemoryWrite, false);
+  assert.equal(adapterQueued.rawContentStored, false);
+  console.log('HFM_ADAPTER_TO_DURABLE_REVIEW_QUEUE_INTEGRATION_PASS=PASS');
+
   const queued = enqueueFacebookPageImportReview({
     directory, projectId: 'project-fixture', actor: 'human-reviewer', candidate, auditWriter
   });

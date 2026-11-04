@@ -307,10 +307,16 @@ function verifyFacebookPageImportReviewDecision({ directory, queueId, projectId 
   const safeDirectoryPath = safeDirectory(directory);
   const entry = readRegularJson(decisionPath(safeDirectoryPath, queueId));
   const { envelopeDigest, ...body } = entry;
+  const queue = verifyFacebookPageImportReview({ directory: safeDirectoryPath, queueId, projectId });
+  const queuedEntry = readRegularJson(queuePath(safeDirectoryPath, queueId));
+  const expectedStatus = entry.decision === 'APPROVE_FOR_INDEPENDENT_VERIFICATION'
+    ? 'APPROVED_FOR_INDEPENDENT_VERIFICATION'
+    : entry.decision === 'REJECT_IMPORT' ? 'REJECTED' : 'RETAINED_QUARANTINED';
   const valid = envelopeDigest === digest(body) && entry.queueId === queueId &&
+    queue.status === 'VERIFIED' && entry.queueEnvelopeDigest === queuedEntry.envelopeDigest &&
     (!projectId || entry.projectId === projectId) &&
     ['APPROVE_FOR_INDEPENDENT_VERIFICATION', 'REJECT_IMPORT', 'RETAIN_QUARANTINED'].includes(entry.decision) &&
-    ['APPROVED_FOR_INDEPENDENT_VERIFICATION', 'REJECTED', 'RETAINED_QUARANTINED'].includes(entry.status) &&
+    entry.status === expectedStatus &&
     entry.trustStatus === 'SOURCE_RECORDED' && entry.integrityStatus === 'UNVERIFIED' &&
     entry.mayEnterTrustedMemory === false && entry.canonicalMemoryWrite === false;
   return { status: valid ? 'VERIFIED' : 'INTEGRITY_FAILED', queueId, reviewStatus: entry.status };
