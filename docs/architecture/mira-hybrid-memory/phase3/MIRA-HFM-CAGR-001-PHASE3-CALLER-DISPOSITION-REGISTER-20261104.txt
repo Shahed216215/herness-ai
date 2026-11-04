@@ -72,3 +72,9 @@ PHASE3_PRODUCTION_WRITER_INTEGRATION=NOT_APPROVED
 PHASE3_MIGRATION=NOT_APPROVED
 PHASE3_PROVIDER_CUTOVER=NOT_APPROVED
 PHASE3=IN_PROGRESS
+
+
+6. STATIC SCANNER COVERAGE LIMITATION ADDENDUM
+- Scanner now detects simple CommonJS destructured aliases (`const { getMemory: readMemory } = require('../memory')`) and ESM named aliases (`import { listMessages as fetchMessages } from '../conversation-store'`) when the module specifier identifies a relevant memory/knowledge/conversation/learning/provider domain.
+- New category: ALIASED_DOMAIN_READ. This is additive to direct-call categories and may overlap the same logical path. Latest CI tests prove both alias forms are detected.
+- It does not yet resolve re-export chains, namespace imports, dynamic import/require, function-reference assignment, wrapper callbacks, reflection, generated code or runtime dependency injection. Those remain REVIEW_REQUIRED; scanner output is not exhaustive proof.
