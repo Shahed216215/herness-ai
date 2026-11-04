@@ -150,3 +150,22 @@ VERSION=v0.2
 PHASE2=IN_PROGRESS
 
 END OF CONTRACT
+
+
+11. IMPLEMENTATION REFINEMENT — GENERAL MEMORY SIDE-CAR IDENTITY
+The existing general Memory record is {role, content, time} and does not carry an immutable per-record ID. The isolated planner and adapter now support a read-only sidecar locator:
+legacyId = "legacy-memory:" + sourceFileDigest + ":" + sourceOrdinal
+This locator is bound to the exact raw JSON source snapshot SHA-256 and stable array ordinal. It is not a content-derived identity and does not modify the legacy record. Any source-file change invalidates the mapping. Canonical memoryId remains a separately allocated immutable ID. The adapter preserves the complete source object in the canonical payload, not only the content string.
+
+12. IMPLEMENTATION REFINEMENT — CRM PROJECT MAPPING
+A direct schema relationship review found that conversation has opportunityId but no projectId; Project has opportunityId but project-store does not enforce uniqueness of opportunityId; Opportunity and Work Acceptance schemas do not expose an authoritative clientId relation for validating the conversation's clientId. Therefore opportunityId-only joins are not sufficient project authority.
+The CRM adapter and dry-run planner now require a separately approved conversationId -> projectId mapping with matching conversationId, projectId, mappingStatus="APPROVED", and a non-empty approvalReference. Missing or mismatched mapping fails closed.
+
+13. RETRIEVAL POLICY REFINEMENT
+Project-scoped trusted retrieval now requires all of:
+- record.projectId exactly matches requested projectId;
+- lifecycle is ACTIVE;
+- integrity.status is VERIFIED;
+- trust.status is one of SOURCE_RECORDED, SOURCE_REACHABLE, CONTENT_VERIFIED, HUMAN_VERIFIED;
+- record is not blocked by a project-scoped conflict state.
+Pending-review migration candidates, unverified/integrity-failed records, quarantined trust states, missing trust state and cross-project records are excluded.
