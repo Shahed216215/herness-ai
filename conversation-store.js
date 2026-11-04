@@ -83,6 +83,8 @@ function loadStore() {
 
 function saveStore(store) {
   validateStore(store);
+  // Refuse to replace a corrupt or unsafe existing state through a direct save call.
+  loadStore();
   const updated = {
     ...store,
     updatedAt: new Date().toISOString()
