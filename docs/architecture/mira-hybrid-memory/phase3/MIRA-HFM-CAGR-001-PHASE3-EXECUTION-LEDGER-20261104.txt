@@ -126,3 +126,11 @@ PHASE3=IN_PROGRESS
 PRODUCTION_INTEGRATION=NOT_ENABLED
 PRODUCTION_READINESS=NOT_CERTIFIED
 MERGE=NOT_APPROVED
+
+12. CALLER COVERAGE BASELINE
+- Added docs/architecture/mira-hybrid-memory/phase3/MIRA-HFM-CAGR-001-PHASE3-CALLER-COVERAGE-MATRIX-20261104.txt.
+- Verified static inventory: 24 persistent writer callsites across 10 files; 36 retrieval callsites across 14 files.
+- All 36 retrieval callsites currently report trustedFilterInFile=false and quarantineFilterInFile=undefined; all 14 retrieval consumer files are REVIEW_REQUIRED.
+- Persistent autonomous write execution remains DENIED by the existing boundary scanner.
+- This is a critical production-integration gap. The synthetic facade is not connected to the 36 read callsites or 24 writer callsites.
+- CRM Conversation is covered by separate conversation-store/route contracts and is not included in the General Memory/Knowledge inventory count. Cache, embeddings, export, backup/restore, workers and provider paths require further inventory.
