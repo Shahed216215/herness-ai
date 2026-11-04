@@ -87,7 +87,7 @@ try {
 
   assert.throws(() => enqueueFacebookPageImportReview({
     directory, projectId: 'project-fixture', actor: 'human-reviewer',
-    candidate: { ...candidate, contentHash: 'b'.repeat(64) }, auditWriter
+    candidate: { ...candidate, content: 'changed post content', contentHash: crypto.createHash('sha256').update('changed post content', 'utf8').digest('hex') }, auditWriter
   }), /different import version/);
   assert.equal(verifyFacebookPageImportReview({ directory, queueId: queued.queueId }).status, 'VERIFIED');
   console.log('FACEBOOK_POST_CONTENT_CHANGE_REQUIRES_MANUAL_CONFLICT_REVIEW=PASS');
