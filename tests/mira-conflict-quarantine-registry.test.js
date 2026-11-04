@@ -87,7 +87,8 @@ try {
     record({ memoryId: 'memory-pending', lifecycle: 'PENDING_REVIEW' }),
     record({ memoryId: 'memory-unverified', integrity: { status: 'UNVERIFIED', algorithm: 'SHA-256' } }),
     record({ memoryId: 'memory-quarantined-trust', trust: { status: 'QUARANTINED' } }),
-    record({ memoryId: 'memory-missing-trust', trust: undefined })
+    record({ memoryId: 'memory-missing-trust', trust: undefined }),
+    record({ memoryId: 'memory-malformed', unexpectedField: 'reject-me' })
   ], [], 'project-a'), []);
   console.log('PENDING_UNVERIFIED_AND_CROSS_PROJECT_RECORDS_EXCLUDED=PASS');
   const mainReview = startReview(directory, created.conflictId);
