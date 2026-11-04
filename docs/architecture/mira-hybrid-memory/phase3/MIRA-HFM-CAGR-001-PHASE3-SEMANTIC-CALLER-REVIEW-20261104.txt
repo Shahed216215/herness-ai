@@ -101,3 +101,10 @@ Scope distinction
 - Knowledge cleanup: tools/knowledge-cleanup.js calls replaceKnowledge after exact duplicate analysis. The shared tool policy marks knowledge_cleanup human-only; this path remains blocked from autonomous execution.
 - services/learning.js:learnFromContent calls addLearning after model extraction and duplicate lookup, with no actor/project/request context in its function signature. applyKnowledgeImprovement calls updateLearning; both require a governed caller and project-scoped authority before HFM routing.
 - No existing persistent writer has been wired to the new unified facade. Autonomous persistent writes remain DENIED. A future migration must distinguish chat transcript append, approved admin edit, controlled apply, and human-approved save/cleanup rather than routing all through one generic write method.
+
+
+12. CANONICAL STORE PATH-BACKED FILE READ REVIEW
+- The access-path scanner now links canonical filename constants (`memory.json`, `knowledge.json`, `conversations.json`, Work Learning and Work Knowledge store filenames) to read calls that use the same declared path variable, in addition to direct literal file reads.
+- Synthetic tests cover direct literal reads, storagePath-derived variables, and rejection of an unrelated `users.json` read in the same source file.
+- CI run 41824965668 found 3 path-linked reads in `services/mira-knowledge-state-recovery.js` (2 source-state reads and 1 restore readback through `readJsonArray(KNOWLEDGE_FILE, ...)`). These are privileged recovery/verification operations, not ordinary user/model retrieval. They require explicit recovery authority and preservation of original state; they must not be filtered as ordinary retrieval if doing so would compromise restore verification.
+- Current inventory after this extension: 245 lexical candidates (overlapping categories), `CANONICAL_STORE_FILE_BACKED_READ_COUNT=3`. This remains a heuristic: indirect helper parameters, dynamically constructed paths, aliases across modules, reflection and runtime injection may be missed. The count is not a total number of unique read paths.
