@@ -138,12 +138,19 @@ try {
     mergedRecord: invalidMerge, auditWriter, authorizeResolution
   }), /increment exactly once/);
 
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }), /explicit acceptedOriginalIndex/);
   const resolution = resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
-    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 1, actor: 'reviewer', policyDecision: 'POLICY-1',
     resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   });
   assert.equal(resolution.status, 'RESOLVED');
+  assert.equal(resolution.acceptedOriginalIndex, 1);
+  assert.equal(resolution.acceptedOriginalDigest, read.originals[1].recordDigest);
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'RESOLVED');
   assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   assert.equal(verifyResolution({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
