@@ -109,3 +109,39 @@ VERSION=v0.2
 FULL_PHASE2=REVIEW_REQUIRED
 
 END OF ASSESSMENT
+
+
+## 8. Follow-up repository retrieval-path audit (2026-11-04)
+
+The following concrete paths were inspected after the initial assessment:
+
+1. knowledge.js
+   - searchKnowledge() (around lines 860 onward) reads only loadKnowledge(), which reads the configured active knowledge.json through mira-json-state-store.readJsonArray.
+   - getKnowledge() likewise returns the active canonical local Knowledge array.
+   - This path does not enumerate or read the separate memory-conflicts quarantine directory. This is a useful local retrieval boundary, but it is not proof that every caller/provider uses this path.
+
+2. tools/knowledge-search.js
+   - Starts with getKnowledge() from local Knowledge.
+   - Then calls loadKnowledgeFromDrive() and replaces the local candidate set with the returned Drive array whenever that is an array.
+   - Therefore the tool has a separate provider-backed retrieval path that is not governed by the local knowledge.js reader. It is part of the HFM-004 Drive/provider boundary and is NOT changed here because Drive cutover/provider migration is not authorized.
+   - No live Drive request was made during this source inspection.
+
+3. knowledge-memory-evolution.js
+   - Uses local Memory/Knowledge plus Drive load/save adapters for reconciliation and Evolution.
+   - Its mismatch path can quarantine payloads, but no repository-wide evidence yet establishes that all subsequent Evolution/retrieval consumers exclude quarantined or unresolved source versions.
+
+4. services/mira-experience-retrieval-engine.js
+   - Retrieves from the separate mira-experience-memory subsystem through listExperiences().
+   - It is not the canonical memory.json or knowledge.json reader and has not been demonstrated to consume the conflict registry's resolution state.
+
+5. services/mira-conversation-memory-engine.js
+   - Uses the separate conversation-store subsystem. Its relationship to conflict quarantine, trust state and project-scoped retrieval has not yet been proven by the current audit.
+
+### Updated retrieval-boundary status
+
+- Canonical local Knowledge active-state retrieval via knowledge.js: SOURCE_INSPECTED; quarantine directory is not read by that module.
+- Tool-level Knowledge retrieval with Drive override: REVIEW_REQUIRED; distinct provider path exists and remains under HFM-004 authorization boundary.
+- Memory, conversation, experience, Evolution, cache and provider-wide exclusion: REVIEW_REQUIRED; full call-graph and runtime regression evidence are still missing.
+- No source changes, production data reads, Drive calls, network requests or external actions were performed for this read-only audit.
+
+This narrows the earlier broad gap: a local canonical path exists, but universal trusted retrieval exclusion cannot be claimed until every alternate retrieval adapter and provider/cache path is mapped and tested.
