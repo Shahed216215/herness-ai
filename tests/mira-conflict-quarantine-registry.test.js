@@ -10,6 +10,10 @@ const {
   resolveConflict, verifyResolution, filterTrustedRecords
 } = require('../services/mira-conflict-quarantine-registry');
 
+function digestForTest(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
 function record(overrides = {}) {
   const base = {
     schemaVersion: '1.0.0', memoryId: 'memory-0001', projectId: 'project-a',
@@ -198,6 +202,14 @@ try {
     resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
   });
   assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
+  const acceptedVisible = filterTrustedRecords(
+    [originalA, originalB, record({ memoryId: 'memory-independent' })],
+    listConflicts({ directory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(acceptedVisible.map(item => digestForTest(item)), [
+    digestForTest(originalB), digestForTest(record({ memoryId: 'memory-independent' }))
+  ]);
 
   const rejectDirectory = path.join(directory, 'reject-fixture');
   const rejectConflict = createConflictQuarantine({
@@ -216,6 +228,11 @@ try {
   assert.equal(rejectRecord.originalDigests.length, 2);
   assert.equal(listConflicts({ directory: rejectDirectory, projectId: 'project-a' })[0].status, 'REJECTED');
   assert.equal(listConflicts({ directory: rejectDirectory, projectId: 'project-a' })[0].state, 'REJECTED');
+  const rejectedVisible = filterTrustedRecords(
+    [originalA, originalB], listConflicts({ directory: rejectDirectory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(rejectedVisible, [originalA]);
 
   const retainDirectory = path.join(directory, 'retain-fixture');
   const failedIntegrityOriginal = record({ integrity: { status: 'FAILED', algorithm: 'SHA-256' } });
@@ -271,6 +288,12 @@ try {
   const multiResolution = JSON.parse(fs.readFileSync(path.join(multiDirectory, multiConflict.conflictId + '.resolution.json'), 'utf8'));
   assert.equal(multiResolution.acceptedOriginalDigest, readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals[2].recordDigest);
   assert.equal(verifyResolution({ directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const alternateVisible = filterTrustedRecords(
+    [originalA, originalB, thirdOriginal],
+    listConflicts({ directory: multiDirectory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(alternateVisible, [thirdOriginal]);
 
   const mergeDirectory = path.join(directory, 'merge-fixture');
   const mergeConflict = createConflictQuarantine({
@@ -304,6 +327,12 @@ try {
   assert.equal(mergedResolution.resultingRecord.version.revision, 3);
   assert.equal(mergedResolution.broaderAccessAuthorization, null);
   assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const mergedVisible = filterTrustedRecords(
+    [originalA, record({ version: { revision: 2, contentHash: 'd'.repeat(64) } }), merged],
+    listConflicts({ directory: mergeDirectory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(mergedVisible, [merged]);
 
   const resolutionTamper = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
   resolutionTamper.proposal.requiredAuthority = 'TAMPERED';
