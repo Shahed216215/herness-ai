@@ -18,6 +18,11 @@ const authorized=authorizeMemoryRequest({requestContext:ctx,operation:'READ',res
 assert.equal(authorized.authorized,true);
 assert.equal(authorized.projectId,ctx.projectId);
 console.log('HOST_AUTHORIZATION_BINDING_PASS=PASS');
+let hostAuthorizationInput;
+authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:project-fixture-01',authorizeRequest:input=>(hostAuthorizationInput=input,allow(input)),now});
+assert.equal(hostAuthorizationInput.contextIssuedAt,ctx.issuedAt);
+assert.equal(hostAuthorizationInput.contextExpiresAt,ctx.expiresAt);
+console.log('HOST_AUTHORIZATION_RECEIVES_REQUEST_VALIDITY_WINDOW_PASS=PASS');
 for(const patch of [
  {actorId:''},{actorType:'ROOT'},{projectId:''},{purpose:''},{requestId:''},{authorityRef:''},
  {issuedAt:'2026-11-04'},{issuedAt:'2026-02-30T11:59:00.000Z'},{expiresAt:'2026-11-04T11:59:00.000Z'}
