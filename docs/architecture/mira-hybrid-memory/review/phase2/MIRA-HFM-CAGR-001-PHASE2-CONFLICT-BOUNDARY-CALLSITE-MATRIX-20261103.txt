@@ -209,3 +209,27 @@ ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
 PHASE2=IN_PROGRESS
 PRODUCTION_READINESS=NOT_CERTIFIED
 VERSION=v0.2
+
+
+12. IDENTITY SCHEMA AND FAILURE-ATOMICITY FINDINGS — 2026-11-04
+- conversation-schema.js:123-178 createConversation() persists clientId, opportunityId and proposalId but has no projectId field. The schema therefore cannot itself prove conversationId -> projectId.
+- conversation-schema.js:181-228 createConversationMessage() creates a messageId when absent for new messages and stores conversationId/clientId, but no projectId. This does not retroactively provide immutable IDs to legacy records that were already persisted without them.
+- routes/conversations.js:240-285 performs message creation and context update as separate calls. The message store commit precedes derived context update; if the latter fails, the endpoint can return an error while the message has already been persisted. No transaction/outbox/compensating rollback was found in the inspected path. Treat as a consistency/recovery gap, not as a confirmed data-loss incident.
+- knowledge.js:150-240 and 700-820 perform local array writes before/around asynchronous Drive synchronization. A provider failure can leave local and remote state divergent; the current path needs explicit idempotency/version arbitration and reconciliation evidence before it can be considered a single authoritative write boundary.
+
+13. FOLLOW-UP WORK ORDER (SAFE, NON-PRODUCTION)
+1. Add isolated fault-injection tests for conversation message commit followed by context-save failure; specify the accepted recovery contract (retry/idempotent context rebuild or explicit partial-commit response).
+2. Add isolated fault-injection tests for local Knowledge commit followed by Drive sync failure; document local-authoritative versus provider-authoritative semantics and retry reconciliation.
+3. Extend callsite inventory to all callers of conversation-store, knowledge APIs and local Memory store, including background tasks, tools, exports and admin diagnostics; record each caller and whether it can expose data outside its project.
+4. Design a project-scope source for conversations (do not add inferred projectId based only on opportunityId until uniqueness and authority are proven).
+5. Only then propose a production guard design. No adapter wiring, schema mutation, production migration, Drive write or data rewrite is authorized by this audit.
+
+14. STATUS UPDATE
+CONVERSATION_SCHEMA_PROJECT_ID=ABSENT
+NEW_CONVERSATION_MESSAGE_ID_GENERATION=EXISTING
+LEGACY_MESSAGE_ID_BACKFILL=NOT_AUTHORIZED
+CONVERSATION_MESSAGE_CONTEXT_ATOMICITY=GAP_IDENTIFIED_NOT_RUNTIME_PATCHED
+KNOWLEDGE_LOCAL_PROVIDER_DIVERGENCE=RECONCILIATION_GAP_IDENTIFIED
+HFM_RUNTIME_ADAPTER=NOT_ENABLED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
