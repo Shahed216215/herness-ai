@@ -25,6 +25,7 @@ on:
     paths:
       - 'knowledge.js'
       - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
+      - 'tests/mira-hfm-retrieval-callsite-inventory.test.js'
       - 'services/**'
       - 'memory.js'
       - 'knowledge-controlled-apply.js'
@@ -100,6 +101,7 @@ on:
     paths:
       - 'knowledge.js'
       - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
+      - 'tests/mira-hfm-retrieval-callsite-inventory.test.js'
       - 'services/**'
       - 'memory.js'
       - 'knowledge-controlled-apply.js'
@@ -177,6 +179,7 @@ jobs:
           node tests/mira-hfm-direct-tool-dispatch-boundary.test.js
           node tests/mira-hfm-admin-backup-restore-authority.test.js
           node tests/mira-hfm-persistent-writer-callsite-inventory.test.js
+          node tests/mira-hfm-retrieval-callsite-inventory.test.js
           node tests/mira-knowledge-state-safety-test.js
           node tests/mira-phase2-recovery-regression.test.js
           node tests/mira-local-memory-safety-test.js
