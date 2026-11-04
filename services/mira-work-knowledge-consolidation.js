@@ -970,6 +970,7 @@ function getConsolidationStats() {
 module.exports = {
   ENGINE_VERSION,
   STORE_FILE,
+  INITIALIZATION_FILE: STORE_GUARD.markerFile,
 
   loadStore,
   saveStore,
