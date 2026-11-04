@@ -108,3 +108,26 @@ Scope distinction
 - Synthetic tests cover direct literal reads, storagePath-derived variables, and rejection of an unrelated `users.json` read in the same source file.
 - CI run 41824965668 found 3 path-linked reads in `services/mira-knowledge-state-recovery.js` (2 source-state reads and 1 restore readback through `readJsonArray(KNOWLEDGE_FILE, ...)`). These are privileged recovery/verification operations, not ordinary user/model retrieval. They require explicit recovery authority and preservation of original state; they must not be filtered as ordinary retrieval if doing so would compromise restore verification.
 - Current inventory after this extension: 245 lexical candidates (overlapping categories), `CANONICAL_STORE_FILE_BACKED_READ_COUNT=3`. This remains a heuristic: indirect helper parameters, dynamically constructed paths, aliases across modules, reflection and runtime injection may be missed. The count is not a total number of unique read paths.
+
+
+13. NAMESPACE-IMPORT READ CALLSITE SEMANTIC REVIEW
+The CommonJS/ESM/static dynamic-import namespace scanner found 27 additional namespace-based read candidates across 14 files (CI run 41826616667). These are separate lexical matches and may overlap the earlier 245-candidate categories; the current combined inventory baseline is 272.
+
+| File | Matches | Semantic disposition |
+|---|---:|---|
+| knowledge-improvement.js | 1 | Knowledge state read via jsonStateStore; governed improvement/mutation precondition |
+| knowledge-memory-evolution.js | 1 | Knowledge state read; privileged evolution/snapshot path |
+| knowledge.js | 1 | Canonical Knowledge store read |
+| services/mira-conversation-memory-engine.js | 4 | CRM Conversation read/context boundary; requires project/client authority |
+| services/mira-conversation-response-planner.js | 1 | CRM Conversation read for response planning; requires same authority |
+| services/mira-cross-task-learning-engine.js | 1 | Experience retrieval into cross-task planning; requires project scope |
+| services/mira-experience-memory.js | 4 | Work Learning source reads; no authoritative project scope |
+| services/mira-experience-retrieval-engine.js | 2 | Experience retrieval/ranking; must filter by authorized project before ranking |
+| services/mira-future-strategy-engine.js | 1 | Lesson retrieval; taskId is not project authority |
+| services/mira-knowledge-state-recovery.js | 3 | Privileged Knowledge recovery/readback; preserve originals and require recovery authority |
+| services/mira-learning-history.js | 3 | Learning/Experience history read; current admin boundary does not establish per-project scope |
+| services/mira-repeat-work-detection-engine.js | 2 | Experience retrieval; opportunity text is not project authority |
+| services/mira-stage13-capability-integration.js | 1 | Stage 13 governance store (`learning.loadStore`), adjacent governance domain, not canonical HFM Memory |
+| services/mira-state-version-recovery.js | 2 | Generic privileged state recovery; exact store path must be scoped by caller |
+
+Disposition totals: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13; privileged recovery 5; adjacent Stage 13 governance 1. No production caller was modified. Namespace scanning now has synthetic coverage for CommonJS require, ESM namespace import and static dynamic import. It remains lexical and does not resolve re-export chains, runtime dependency injection or computed property names.
