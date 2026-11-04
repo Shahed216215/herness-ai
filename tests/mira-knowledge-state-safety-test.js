@@ -79,7 +79,16 @@ async function main() {
     fs.writeFileSync(file, validBeforeCorruption);
     assert.equal(knowledge.getKnowledge().length, 2);
 
-    console.log('TESTS_PASSED=14');
+    fs.unlinkSync(file);
+    fs.unlinkSync(path.join(root, 'knowledge-backup.json'));
+    assert.throws(() => knowledge.getKnowledge(), /previously initialized/i);
+    const marker = JSON.parse(fs.readFileSync(markerFile, 'utf8'));
+    marker.sha256 = '0'.repeat(64);
+    fs.writeFileSync(markerFile, JSON.stringify(marker), { mode: 0o600 });
+    assert.throws(() => knowledge.getKnowledge(), /initialization marker integrity/i);
+    console.log('KNOWLEDGE_MISSING_PRIMARY_AND_MARKER_TAMPER_FAIL_CLOSED=PASS');
+
+    console.log('TESTS_PASSED=20');
     console.log('TESTS_FAILED=0');
     console.log('PRODUCTION_KNOWLEDGE_TOUCHED=NO');
     console.log('REAL_GOOGLE_DRIVE_TOUCHED=NO');
