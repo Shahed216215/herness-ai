@@ -131,4 +131,61 @@ function adaptLegacyRecord({domain,sourceEntry,mapping,expectedProjectId,expecte
     mappingId:approved.mappingId,sourceDigest,canonicalRecordDigest,record
   });
 }
-module.exports={createCanonicalCandidate,adaptLegacyRecord,sourceDigestFor,stableStringify};
+
+function adaptLegacyBatch({
+  domain,sourceEntries,mappings,expectedProjectId,expectedSourceFileDigest,
+  capturedAt,verifyApproval,now=new Date()
+}) {
+  if(!Array.isArray(sourceEntries)||!Array.isArray(mappings)) throw new Error('Source entries and mappings must be arrays.');
+  if(typeof expectedProjectId!=='string'||!expectedProjectId.trim()) throw new Error('Independent expectedProjectId is required.');
+  if(typeof expectedSourceFileDigest!=='string'||! /^[a-f0-9]{64}$/.test(expectedSourceFileDigest)) throw new Error('Expected source snapshot SHA-256 is required.');
+  if(!SOURCES[domain]) throw new Error('Domain adapter is not implemented.');
+  if(!validDate(capturedAt)) throw new Error('capturedAt must be RFC 3339.');
+  const validated=validateProjectMappings({
+    mappings,expectedDomain:domain,expectedProjectId,
+    expectedSourceFileDigest,verifyApproval,now
+  });
+  const byLegacyId=new Map();
+  for(const mapping of validated) {
+    if(byLegacyId.has(mapping.legacyId)) throw new Error('Ambiguous mapping: source locator maps more than once.');
+    byLegacyId.set(mapping.legacyId,mapping);
+  }
+  const seenSourceIds=new Set();
+  const consumedMappingIds=new Set();
+  const candidates=[];
+  for(let ordinal=0;ordinal<sourceEntries.length;ordinal++) {
+    if(!Object.prototype.hasOwnProperty.call(sourceEntries,ordinal)) throw new Error('Sparse source arrays are not supported.');
+    const sourceEntry=sourceEntries[ordinal];
+    if(!isObject(sourceEntry)) throw new Error('Source entry at ordinal '+ordinal+' must be an object.');
+    let legacyId;
+    if(domain==='general_memory') {
+      legacyId='legacy-memory:'+expectedSourceFileDigest+':'+ordinal;
+    } else if(domain==='knowledge') {
+      requireText(sourceEntry.id,'Knowledge id',128);
+      legacyId=sourceEntry.id;
+    } else if(domain==='crm_conversation_message') {
+      requireText(sourceEntry.messageId,'Persisted CRM messageId',200);
+      legacyId=sourceEntry.messageId;
+    } else {
+      throw new Error('Domain adapter is not implemented.');
+    }
+    if(seenSourceIds.has(legacyId)) throw new Error('Ambiguous or duplicate source locator: '+legacyId);
+    seenSourceIds.add(legacyId);
+    const mapping=byLegacyId.get(legacyId);
+    if(!mapping) throw new Error('Missing mapping for source locator: '+legacyId);
+    if(domain!=='crm_conversation_message'&&mapping.sourceOrdinal!==ordinal) {
+      throw new Error('Mapping sourceOrdinal does not match source snapshot position.');
+    }
+    if(consumedMappingIds.has(mapping.mappingId)) throw new Error('Ambiguous mapping reuse detected.');
+    const adapted=adaptLegacyRecord({
+      domain,sourceEntry,mapping,expectedProjectId,expectedSourceFileDigest,
+      capturedAt,verifyApproval,now
+    });
+    consumedMappingIds.add(mapping.mappingId);
+    candidates.push(adapted);
+  }
+  const unused=validated.filter(mapping=>!consumedMappingIds.has(mapping.mappingId));
+  if(unused.length) throw new Error('Unused mapping entries are not permitted in a complete batch.');
+  return Object.freeze(candidates);
+}
+module.exports={createCanonicalCandidate,adaptLegacyRecord,adaptLegacyBatch,sourceDigestFor,stableStringify};

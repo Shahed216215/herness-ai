@@ -38,6 +38,7 @@ on:
       - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
       - 'tests/mira-memory-provider-contract.test.js'
       - 'tests/mira-memory-domain-payload-adapter.test.js'
+      - 'tests/mira-memory-domain-batch-adapter.test.js'
       - 'tests/mira-memory-unified-facade.test.js'
       - '.github/workflows/mira-hfm-phase3-contract.yml'
   workflow_dispatch:
@@ -80,6 +81,7 @@ jobs:
           node tests/mira-memory-project-mapping-contract.test.js
           node tests/mira-memory-unified-facade.test.js
           node tests/mira-memory-domain-payload-adapter.test.js
+          node tests/mira-memory-domain-batch-adapter.test.js
           node tests/mira-memory-provider-contract.test.js
           node tests/mira-hfm-access-path-inventory.test.js
           node tests/mira-hfm-persistent-writer-callsite-inventory.test.js
