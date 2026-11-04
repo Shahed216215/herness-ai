@@ -242,7 +242,8 @@ function registerConversationRoutes(
             clientId:
               body.clientId ||
               conversation.clientId,
-            participantType:
+            participant:
+              body.participant ||
               body.participantType ||
               "client",
             direction:
