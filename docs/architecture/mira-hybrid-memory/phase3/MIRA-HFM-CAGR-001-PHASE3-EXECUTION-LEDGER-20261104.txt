@@ -1,0 +1,510 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 3 EXECUTION LEDGER
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Base branch: work/mira-hfm-v02-phase2-core-safety
+Base SHA: 63b34364cc428e8527842d3a0bfe0789d807a08d
+Phase 3 branch: work/mira-hfm-v02-phase3-unified-memory-contract-core
+PR: #6 (OPEN / DRAFT / UNMERGED)
+Parent PR: #4 (Phase 2; OPEN / DRAFT / UNMERGED)
+Version boundary: v0.2
+
+1. PHASE 3 SCOPE
+Phase 3 is the Unified Memory Contract / Actor and Project Identity Mapping phase inside v0.2. It does not start v0.3. The Phase 3 work is stacked on the Phase 2 branch and is isolated from main until its dependency chain is reviewed.
+
+2. RECONCILED SOURCE EVIDENCE
+- Existing canonical record validator: services/mira-memory-conflict-assessment.js; exact top-level schema v1.0.0.
+- Existing read-only snapshot-bound adapter: services/mira-legacy-memory-knowledge-adapter.js.
+- Existing local conflict lifecycle: services/mira-conflict-quarantine-registry.js.
+- Phase 2 domain identity/project-scope contract: MIRA-HFM-CAGR-001-PHASE2-DOMAIN-IDENTITY-PROJECT-SCOPE-CONTRACT-20261104.txt.
+- CRM relationship verification: opportunityId is not unique across projects and must not be used as project authority; explicit approved conversationId -> projectId mapping is required.
+- General legacy Memory {role, content, time} has no immutable per-message ID or projectId. Snapshot-bound sidecar locator is a migration locator only, not a permanent historical message ID.
+- Knowledge legacy ID is content-derived at creation and is not a canonical immutable memoryId or historical revision chain.
+- CRM messageId is usable only when persisted; it does not establish projectId.
+- Existing adapter and quarantine registry are prototypes, not universal production read/write boundaries.
+
+3. IMPLEMENTED ON THIS BRANCH
+- docs/architecture/mira-hybrid-memory/phase3/MIRA-HFM-CAGR-001-PHASE3-UNIFIED-MEMORY-CONTRACT-v0.2.txt
+- services/mira-memory-request-authorization.js
+  Structural request-context validation, bounded timestamps, operation/resource-bound host authorization decision, expiry checks and fail-closed binding checks. This helper does not authenticate callers; the host callback is an explicit trust dependency.
+- tests/mira-memory-request-authorization.test.js
+  Synthetic negative tests for missing/invalid fields, invalid dates, future/expired context, absent/malformed/denying host decisions, actor/project/operation/resource substitution and authorization lifetime.
+- services/mira-memory-project-mapping-contract.js
+  Read-only mapping validator; exact fields, source/canonical digests, explicit project/domain/snapshot binding, approved status, authority reference and trusted approval-verifier callback. Batch duplicate checks.
+- tests/mira-memory-project-mapping-contract.test.js
+  Synthetic negative tests for unapproved/revoked, invalid, tampered, stale, cross-project, duplicate and unverifiable mapping cases.
+- services/mira-memory-unified-facade.js
+  Synthetic in-memory retrieval facade composing request authorization and conflict/trust filtering; prepare-only write facade with expected revision, immutable identity/project/type, provenance/access invariance, idempotency and unresolved-conflict checks. No persistent commit function is provided.
+- tests/mira-memory-unified-facade.test.js
+  Synthetic retrieval filtering and write-preparation negative/positive fixtures.
+- CI workflow updated to include all three new test scripts. A separate Phase 3 contract workflow file was also added.
+
+4. TEST AND VERIFICATION STATE
+- Test source files are present and wired into the Phase 2 isolated workflow definition.
+- No verified GitHub Actions run ID or job log for these new Phase 3 tests has been captured in this ledger.
+- No local Node execution evidence has been captured.
+- Therefore every new Phase 3 suite remains CI_EXECUTION=NOT_VERIFIED; no PASS claim is made.
+- A code review of the source definitions is not a substitute for executing tests.
+
+5. SAFETY BOUNDARIES
+PRODUCTION_MEMORY_READ=NO
+PRODUCTION_MEMORY_WRITE=NO
+PRODUCTION_MIGRATION=NO
+REAL_GOOGLE_DRIVE_CALLS=NO
+FACEBOOK_PROVIDER_CALLS=NO
+LIVE_CREDENTIALS_READ=NO
+PROVIDER_CUTOVER=NO
+DEPLOYMENT=NO
+MERGE=NO
+NETWORK_REQUESTS_FROM_TESTS=NOT_EXECUTED
+EXTERNAL_ACTIONS_FROM_TESTS=NOT_EXECUTED
+
+6. KNOWN LIMITATIONS
+- Trusted host authentication/authorization implementation is not present; callbacks are injected dependencies and must be bound to the real authenticated host before runtime use.
+- Project mapping validator does not create, approve, persist, revoke or authenticate mappings; it validates supplied mapping evidence only.
+- Unified facade is in-memory and synthetic. It does not connect to Memory, Knowledge, CRM, Drive, Facebook, caches, embeddings, routes, tools, Evolution, backup or restore.
+- Write facade only prepares a candidate; it does not commit, provide provider CAS, persist idempotency keys or write audit records.
+- Provider-enforced CAS/distributed arbitration, immutable production mapping registry, full caller coverage, remote trust anchor, encryption and backup remain open.
+- Work Learning, Work Knowledge and Experience Memory authoritative project relations are not established.
+- General Memory historical immutable identity remains unavailable; no backfill is authorized.
+- Phase 2 recovery limitations and PR #4 review state remain dependencies.
+
+7. CURRENT STATUS
+PHASE3_CONTRACT_DESIGN=BASELINED
+PHASE3_REQUEST_AUTHORIZATION=IMPLEMENTED_ISOLATED_CI_NOT_VERIFIED
+PHASE3_PROJECT_MAPPING_VALIDATOR=IMPLEMENTED_READ_ONLY_CI_NOT_VERIFIED
+PHASE3_SYNTHETIC_RETRIEVAL_FACADE=IMPLEMENTED_CI_NOT_VERIFIED
+PHASE3_SYNTHETIC_WRITE_PREPARE=IMPLEMENTED_NO_COMMIT_CI_NOT_VERIFIED
+AUTHORITATIVE_ACTOR_AUTHENTICATION=NOT_ESTABLISHED
+PRODUCTION_PROJECT_MAPPING=NOT_APPROVED
+UNIVERSAL_PRODUCTION_RETRIEVAL=NOT_INTEGRATED
+UNIVERSAL_PRODUCTION_WRITE=NOT_INTEGRATED
+INDEPENDENT_VERIFICATION=NOT_STARTED
+PHASE3=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+MERGE=NOT_APPROVED
+DEPLOYMENT=NOT_APPROVED
+
+END OF LEDGER
+
+8. FOLLOW-UP REVIEW
+- The request authorization timestamp parser was tightened to reject impossible calendar dates and authorization decisions issued before the request context.
+- Test fixtures now include invalid calendar-date and pre-context authorization decision cases.
+- Static source review confirms the three new test commands are present in the isolated Phase 2 workflow definition. This is workflow wiring evidence only, not execution evidence.
+- CI_EXECUTION remains NOT_VERIFIED; no PASS is claimed.
+
+8. VERIFIED CI EVIDENCE (2026-11-04)
+- Phase 3 isolated workflow run 41811363645 completed SUCCESS on commit 112fdd321303dc1237f09ed872ce8b2a3b6f18db.
+- Confirmed logs: REQUEST_AUTHORIZATION_CONTRACT_PASS; PROJECT_MAPPING_CONTRACT_PASS; SYNTHETIC_UNIFIED_FACADE_PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 isolated core-safety workflow run 41811363628 completed SUCCESS on the same commit; selected Phase 2 test suites also report TESTS_FAILED=0, NETWORK_REQUESTS=0, PRODUCTION_MEMORY_TOUCHED=NO.
+- Earlier failures were preserved as evidence and corrected; they are not overwritten or described as passes.
+- These runs validate isolated test fixtures and branch workflow only. They do not certify production integration, authentication, live provider behavior, distributed CAS, or migration readiness.
+
+9. DOMAIN CONTRACT IMPLEMENTATION LIMIT
+- Mapping validator now enforces source-system/domain binding for General Memory, Knowledge and CRM Conversation only.
+- General Memory locator binds source snapshot SHA-256 and ordinal; CRM mapping binds parentConversationId and does not invent an array ordinal.
+- Work Learning, Work Knowledge and Experience Memory are deliberately rejected by the mapping validator until their own authoritative identity/project-scope contracts are reviewed.
+
+10. DOMAIN PAYLOAD ADAPTER AND FOLLOW-UP CI (2026-11-04)
+- Added services/mira-memory-domain-payload-adapter.js and tests/mira-memory-domain-payload-adapter.test.js.
+- Adapter serializes complete General Memory {role, content, time}, Knowledge source records, and persisted CRM message records into deterministic domain-tagged canonical content envelopes. It validates explicit mapping evidence, source digest, canonical candidate digest, domain/source-system binding and parent conversation binding.
+- Candidate records are always integrity=UNVERIFIED, trust=SOURCE_RECORDED, lifecycle=PENDING_REVIEW. Output is READY_FOR_REVIEW_NOT_COMMITTED; no persistence, promotion or source mutation exists.
+- Positive/negative synthetic adapter suite passed in Phase 3 workflow run 41811852566 (commit 16a138efa9afe1d276f1112afd22221c3b461c53): all three domain payload-preservation assertions PASS; TESTS_FAILED=0.
+- Parent Phase 2 regression workflow run 41811910860 (commit 2b5eab5f43dcf2c0ad5c3b5cb0833e08fc7fe01d) completed SUCCESS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+- These are isolated synthetic tests only; not evidence of live migration or production caller integration.
+
+11. CURRENT STATUS UPDATE
+PHASE3_REQUEST_AUTHORIZATION_TESTS=PASS_CI
+PHASE3_PROJECT_MAPPING_TESTS=PASS_CI
+PHASE3_SYNTHETIC_UNIFIED_FACADE_TESTS=PASS_CI
+PHASE3_DOMAIN_PAYLOAD_ADAPTER_TESTS=PASS_CI
+PHASE3_DOMAIN_MAPPING_COVERAGE=GENERAL_MEMORY_KNOWLEDGE_CRM_ONLY
+WORK_LEARNING_MAPPING=BLOCKED_PENDING_DOMAIN_CONTRACT
+WORK_KNOWLEDGE_MAPPING=BLOCKED_PENDING_DOMAIN_CONTRACT
+EXPERIENCE_MEMORY_MAPPING=BLOCKED_PENDING_DOMAIN_CONTRACT
+PHASE3=IN_PROGRESS
+PRODUCTION_INTEGRATION=NOT_ENABLED
+PRODUCTION_READINESS=NOT_CERTIFIED
+MERGE=NOT_APPROVED
+
+12. CALLER COVERAGE BASELINE
+- Added docs/architecture/mira-hybrid-memory/phase3/MIRA-HFM-CAGR-001-PHASE3-CALLER-COVERAGE-MATRIX-20261104.txt.
+- Verified static inventory: 24 persistent writer callsites across 10 files; 36 retrieval callsites across 14 files.
+- All 36 retrieval callsites currently report trustedFilterInFile=false and quarantineFilterInFile=undefined; all 14 retrieval consumer files are REVIEW_REQUIRED.
+- Persistent autonomous write execution remains DENIED by the existing boundary scanner.
+- This is a critical production-integration gap. The synthetic facade is not connected to the 36 read callsites or 24 writer callsites.
+- CRM Conversation is covered by separate conversation-store/route contracts and is not included in the General Memory/Knowledge inventory count. Cache, embeddings, export, backup/restore, workers and provider paths require further inventory.
+
+13. WORK-RELATED DOMAIN SCOPE REVIEW
+- Added MIRA-HFM-CAGR-001-PHASE3-DOMAIN-SCOPE-REVIEW-20261104.txt after read-only inspection of Work Learning, Work Knowledge Consolidation, Experience Memory and Experience Retrieval source.
+- Work Learning has learningId/taskId/executionId but no authoritative projectId in the normalized task record; taskId/planId are not project authority.
+- Work Knowledge Consolidation uses content-fingerprint-derived item IDs and aggregated sourceRecords without projectId; it is a derived/deduplicated view, not a lossless source identity.
+- Experience Memory copies learningId into experienceId and derives from Work Learning; no authoritative projectId is present. Treat as a rebuildable projection, not a separate namespace.
+- All three remain NOT_MAPPED/BLOCKED until explicit project registry, stable identity and lossless/deterministic provenance contracts exist.
+
+14. PROVIDER CAPABILITY CONTRACT AND IMMUTABILITY HARDENING
+- Added services/mira-memory-provider-contract.js and tests/mira-memory-provider-contract.test.js. This validates provider capability declarations only; it does not connect to any provider.
+- Provider COMMIT_WRITE is denied unless atomicConditionalWrite, immutableVersions, projectIsolation and independentVerification are all declared. Read/list/verify require STRONG snapshot consistency. A Drive-like non-atomic fixture is rejected for commit while prepare-only remains permitted.
+- Unified facade now detaches and deeply freezes retrieval results and prepared write candidates, preventing callers from mutating returned objects after validation/hash calculation.
+- Phase 3 CI run 41812738317 completed SUCCESS: request authorization, mapping, unified facade, domain payload adapter and provider capability tests all PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent regression CI run 41812738498 completed SUCCESS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Phase 2 isolated workflow run 41812746347 completed SUCCESS on the workflow update commit.
+
+15. LATEST FACADE HARDENING AND CI
+- Unified facade now caps idempotency keys at 256 characters and idempotency history at 10,000 entries; oversized inputs fail closed.
+- Retrieval results and prepared candidates are detached and deeply frozen. Tests prove callers cannot mutate returned objects after validation/hash calculation.
+- Phase 3 CI run 41812953604 SUCCESS on commit eb7d2291fe5daaf4dff5409466cc374b498591f3; all request, mapping, facade, domain adapter and provider contract suites report PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 regression run 41812953586 SUCCESS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+16. SEMANTIC CALLER REVIEW
+- Added MIRA-HFM-CAGR-001-PHASE3-SEMANTIC-CALLER-REVIEW-20261104.txt.
+- Manually classified the 14 static retrieval-consumer files into broad raw accessors, ordinary/model-context retrieval, counts, maintenance/cleanup, and privileged snapshot/recovery flows.
+- Key distinction: controlled-apply/evolution reads must use privileged snapshot/verify APIs that preserve originals; ordinary retrieval must filter trust/quarantine/access before ranking/model context. Applying one filter indiscriminately to both would break recovery.
+- The 36-call scanner inventory is still not exhaustive for direct loadKnowledge/loadMemory calls, dynamic/indirect wrappers, CRM, caches, embeddings, exports, workers or provider paths. Semantic coverage therefore remains PARTIAL/REVIEW_REQUIRED.
+
+17. BROADER ACCESS-PATH CANDIDATE INVENTORY
+- Added scripts/mira-hfm-access-path-inventory.js and tests/mira-hfm-access-path-inventory.test.js. The scanner is explicitly a static candidate scan, not semantic proof.
+- Phase 3 run 41813748565 SUCCESS; access-path inventory test PASS; TESTS_FAILED=0.
+- Candidate inventory summary: 242 total candidates; 27 public/internal retrieval; 27 direct domain store reads; 91 generic loadStore calls; 36 provider/snapshot reads; 27 CRM conversation reads; 28 Work Learning/Experience reads; 6 Work Knowledge reads. Categories overlap; totals must not be summed as unique paths.
+- The scanner separates generic loadStore from domain-specific loadMemory/loadKnowledge and no longer misclassifies generic loadStore calls as CRM-only reads.
+- This broadens the review baseline beyond the prior 36 wrapper callsites. Every candidate still needs semantic classification; no production coverage claim is implied.
+
+17. CRM CLIENT IDENTITY BINDING
+- Read-only route/schema review found CRM conversations have clientId/opportunityId but no authoritative projectId; authenticated routes currently do not derive an approved projectId-to-clientId mapping before record reads.
+- Mapping contract now requires clientId for CRM message mappings, passes it to the trusted approval verifier, and the adapter checks sourceEntry.clientId against the approved mapping. Non-CRM mappings require clientId=null.
+- Added negative tests for missing CRM clientId, source client substitution and approved-mapping client substitution. The trusted verifier must independently confirm clientId-to-projectId authority; tests use synthetic verifier fixtures only.
+- Production CRM project isolation remains BLOCKED until the trusted mapping registry and route integration are implemented and independently tested.
+
+18. EXTENDED SEMANTIC REVIEW AND CRM CLIENT BINDING
+- Access-path inventory now emits per-file/category summaries. Verified candidate counts: 242 total lexical candidates; 27 public/internal Memory/Knowledge retrieval matches; 27 direct domain store reads; 91 generic loadStore calls; 36 provider/snapshot reads; 27 CRM Conversation reads; 28 Work Learning/Experience reads; 6 Work Knowledge reads. These categories overlap and are not unique callsite totals. Generic store loaders include other app domains and are not all HFM Memory.
+- Reviewed CRM schema/store/routes: conversation records have clientId/opportunityId but no authoritative projectId; routes require agent auth + CLIENT_PROJECTS permission but do not derive an approved projectId-to-clientId binding before record reads. CRM production mapping remains blocked.
+- CRM mapping contract now requires clientId for CRM messages, sends it to the approval verifier and checks it against sourceEntry.clientId. Tests reject missing clientId, source client substitution and a substituted approved mapping.
+- Reviewed Work Learning/Experience and Work Knowledge. Work Learning read APIs use learningId/taskId/status/qaStatus only; Experience is a projection over Work Learning; Work Knowledge returns derived items without authoritative project scope. All remain BLOCKED.
+- Reviewed downstream fan-out: cross-task learning, future strategies, repeat-work detection and opportunity matching consume experience/lesson data without project scope. Admin learning-history routes are privileged SYSTEM_ADMIN reads and remain a separate review class.
+- Domain payload adapter candidates are now deeply frozen; tests reject nested mutation.
+- Phase 3 CI run 41815988737 SUCCESS: all contract, adapter, provider and inventory suites PASS; CRM client-binding negative tests PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 regression run 41815988759 SUCCESS; conversation store/route/recovery, work learning/knowledge fail-closed, independent audit verifier all PASS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+19. PERSISTENT WRITER REVIEW
+- Reviewed the 16 latest lexical writer call matches across 8 consumer files and 3 API-definition files. Controlled apply paths have snapshots/rollback but lack HFM project scope; admin writes are SYSTEM_ADMIN-gated but target global legacy stores; chat transcript addMemory is a distinct session-persistence path; human-only memory_save/knowledge_save/learning_save and knowledge_cleanup are denied by the shared registry policy before wrapper invocation.
+- services/learning.js learnFromContent and applyKnowledgeImprovement require explicit actor/project/request context before HFM routing. No writer was connected to the unified facade.
+- Existing runtime tool registry guard tests prove memory_save, knowledge_save and learning_save are blocked before their execute wrappers run. This verifies the current autonomous-denial boundary only; no complete human approval workflow is claimed.
+
+20. SOURCE OWNERSHIP AUTHORITY GAP
+- General Memory legacy entries have role/content/time but no authenticated actorId, tenantId or projectId; snapshot digest + ordinal proves locator integrity only, not ownership.
+- Knowledge legacy entries have stable IDs and source metadata but no authoritative project/tenant field; record identity does not prove project authorization.
+- CRM now binds clientId, but client-to-project ownership still requires an independently trusted approval registry.
+- The three current adapters are therefore synthetic review-candidate serializers only. They do not infer ownership or auto-assign a default project/user. No migration or production integration is authorized.
+
+21. STRUCTURED APPROVAL EVIDENCE AND RE-VERIFICATION
+- Replaced boolean-only mapping approval callback acceptance with an exact structured verifier evidence contract: APPROVED decision, approvalReference, mappingDigest, projectId, approvedBy, approvedAt, registryRevision, ACTIVE revocationStatus and verifiedAt.
+- Validator binds every approval field to the mapping, rejects revoked/denied decisions, malformed/extra/missing fields, missing registry revision and future/pre-approval verification timestamps.
+- Added negative tests for revoked approval, project substitution and future verification time. Synthetic verifier fixture only; no live signature, identity or revocation service is connected.
+- Phase 3 CI run 41816924159 SUCCESS: structured approval, CRM client binding, adapter, facade, provider and access inventory suites PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 regression run 41816924207 SUCCESS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Intermediate CI failures from the initial interface change remain visible in Actions history; the subsequent complete run is the accepted evidence.
+
+22. PROVIDER DATA-CLASSIFICATION / ENCRYPTION GATE
+- Provider operations now require explicit PUBLIC / PROJECT_PRIVATE / RESTRICTED classification; omission or unsupported labels fail closed.
+- Persisted provider operations for non-public data require encryptedAtRest=true. PREPARE_WRITE remains non-persistent and does not require provider encryption, but still requires explicit classification. Unencrypted providers are restricted to PUBLIC persisted data.
+- Tests cover missing/unknown classification, non-public read/commit without encryption, PUBLIC access without encryption and prepare-only semantics.
+- Phase 3 CI run 41817322561 SUCCESS; provider classification/encryption and all prior contract suites PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+
+20. HOST AUTHORIZATION VALIDITY-WINDOW BINDING
+- Code review found the trusted host callback received authorityRef and request identity but not the request context's issuedAt/expiresAt. Added contextIssuedAt/contextExpiresAt to the immutable callback input so the host can verify exact request validity and bind its decision to that window.
+- Added synthetic assertion that the host callback receives the exact request validity timestamps. Production authentication, signature verification and replay protection remain NOT_IMPLEMENTED; no production caller is wired.
+
+21. UPDATE AUTHORIZATION LEAST-PRIVILEGE HARDENING
+- Facade review identified that a WRITE-only caller could prepare an update and receive the prior record digest/revision without READ permission. Existing-record update preparation now requires READ plus WRITE on the same memory resource; new-record creation still requires WRITE.
+- Added negative test: WRITE=ALLOW + READ=DENY rejects update preparation. CI pending for this change.
+
+
+22. CALLER DISPOSITION REGISTER
+- Added MIRA-HFM-CAGR-001-PHASE3-CALLER-DISPOSITION-REGISTER-20261104.txt on the Phase 3 branch. It maps scanner per-file categories to P0 blocked retrieval, P1 privileged/recovery, and separate application-domain dispositions.
+- The register explicitly distinguishes whole-file Drive reads, snapshot/restore, CRM conversation context, Work Learning/Experience fan-out, aggregate-only count tools, human-only cleanup, controlled apply, and generic application stores. It records that lexical candidates are not proof of actual HFM reads and categories overlap.
+- Phase 3 exit conditions now explicitly require host authentication/replay protection, authoritative project-owner registry, project scope for Work Learning/Experience/Work Knowledge or a governed exclusion, dynamic/indirect path coverage, P0/P1 bypass tests and independent regression/recovery verification.
+
+23. LEAST-PRIVILEGE UPDATE AUTHORIZATION
+- Existing-record update preparation now requires READ and WRITE on the same memory resource because it exposes previous revision/digest. New record creation remains WRITE-only.
+- Added negative test for READ denied while WRITE allowed. CI pending.
+
+24. LATEST LEAST-PRIVILEGE CI EVIDENCE
+- Phase 3 contract run 41818106537 SUCCESS at tested code commit ebfe8911e247226db9053521e1119e26a4d4467f. Request validity-window binding PASS; update READ+WRITE gate PASS; all contract suites report TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Phase 2 isolated regression run 41818107517 SUCCESS at the same code commit; relevant isolated safety tests pass; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Caller disposition register is now committed to the Phase 3 branch (commit d030532ad8c114e56e4a0c50c58eb24f2ae95fdd). It is a source-review register, not evidence that production paths are integrated.
+
+26. APPROVAL EVIDENCE EXPIRY HARDENING
+- Project mapping approval evidence now requires expiresAt; validation rejects already-expired evidence and expiry at/before verifiedAt.
+- Added negative tests for expired evidence and expiry preceding verification. CI pending.
+
+27. APPROVAL EXPIRY TEST CORRECTION AND VERIFIED CI
+- First expiry-hardening CI attempt failed because the domain payload adapter's independent synthetic verifier fixture had not yet been extended with the new expiresAt evidence field. This was a fixture-contract mismatch, not a production-data test failure; the failing runs remain visible in Actions.
+- Updated the adapter fixture to provide bounded approval evidence expiry.
+- Phase 3 run 41818761195 SUCCESS at code commit 3b312cef518aebc4d1d01e9d260f46d5c87593b6: expired evidence rejection PASS; expiry-before-verification rejection PASS; project mapping, facade, adapter, provider and inventory suites all TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Phase 2 regression run 41818761331 SUCCESS at the same code commit; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+28. REQUEST REPLAY DECISION GATE
+- Host authorization decisions now require replayStatus=FRESH. REPLAYED or missing/unverifiable replay status is denied. The host adapter must atomically check/record requestId + authorityRef; the helper does not implement persistent replay storage.
+- Added negative replay test and updated synthetic host fixtures. CI pending.
+
+29. REQUEST REPLAY GATE VERIFIED
+- Initial replay-gate CI failed because the synthetic authorization helpers in the request/facade tests did not yet return replayStatus. Those fixture mismatches remain in Actions history and were corrected; no production integration ran.
+- Phase 3 run 41818932471 SUCCESS: REPLAYED_REQUEST_REJECTED=PASS; request validity-window binding PASS; expired approval evidence rejection PASS; update READ+WRITE authorization PASS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Phase 2 regression run 41818932184 SUCCESS: TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+30. SYNTHETIC REPLAY REGISTRY HARNESS
+- Extended the authorization test to use a one-time in-memory host replay registry keyed by authorityRef + requestId. First use returns FRESH; second use returns REPLAYED and the contract denies it.
+- This verifies the callback interaction and duplicate-request denial in an isolated process only. It does not prove cross-process/distributed replay atomicity or persistent replay storage. CI pending.
+
+31. ALIASED READ INVENTORY COVERAGE
+- Access-path scanner now detects simple CommonJS destructured aliases and ESM named import aliases for known read exports from memory/knowledge/conversation/learning/provider-related modules. Added ALIASED_DOMAIN_READ category and tests for both import styles.
+- This reduces one static blind spot only. Re-export chains, namespace imports, dynamic imports/requires, function-reference assignment, wrapper callbacks, reflection and runtime dependency injection remain unscanned and REVIEW_REQUIRED. CI run pending.
+
+32. ALIASED READ SCANNER CI
+- Phase 3 run 41819484778 SUCCESS: CommonJS/ESM alias-detection tests PASS; TESTS_FAILED=0; real repository inventory reports ALIASED_DOMAIN_READ_COUNT=0 and total lexical candidates=242; PRODUCTION_MEMORY_TOUCHED=NO.
+- Phase 2 regression run 41819560356 SUCCESS; ALIASED_DOMAIN_READ_COUNT=0; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Zero detected aliases is a scanner result for the current patterns, not proof that dynamic/re-export/reflection paths do not exist.
+
+33. SCANNER CHANGE CONTROL / VERIFIED RESTORE
+- A namespace/static-dynamic-import detector experiment (commit 25818fc42004cac633c6eb323b99a47eb09b3e85) produced invalid scanner source and failed CI run 41819773006. The experiment was not retained.
+- Restored the previously verified CommonJS/ESM named-alias scanner from known-good commit 57924c2a27a3f11c6908b91dad8b60294fcee6a7 in commit d84308e4c9bd713dc7227830bf38ac76c5ff97a1.
+- Follow-up Phase 3 run 41819935933 SUCCESS: all request/mapping/facade/adapter/provider/inventory suites TESTS_FAILED=0; CommonJS/ESM alias tests PASS; ALIASED_DOMAIN_READ_COUNT=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Namespace imports, static dynamic-import namespace tracking and re-export chains remain explicitly NOT_SCANNED. The failed experiment remains visible in Actions history; it is not reported as PASS.
+
+34. HOST IDENTITY / PROJECT OWNERSHIP GAP CONFIRMED
+- Read-only review of session-auth.js/server.js: registered login returns userId and server stores it in the session, but sessionIdentity drops userId from its returned identity. Admin sessions store username only. Legacy bearer auth exposes role/permissions only; it does not expose a stable actorId. Do not treat a role or raw bearer token as actor identity.
+- Read-only review of project-schema.js/project-store.js: project records have projectId/acceptanceId/opportunityId/work scope but no ownerActorId/tenantId/clientId; project listing is not owner-filtered. Acceptance/opportunity links do not prove user ownership.
+- This is a concrete blocker for the trusted host adapter and project mapping authority. No project owner may be inferred. Runtime integration remains BLOCKED until a stable actor subject is propagated and an authoritative project-owner registry/migration is approved.
+
+35. PROJECT-OWNER AUTHORIZATION HARNESS
+- Added a synthetic host authorization fixture with an explicit projectId -> ownerActorId registry. The owner is allowed; the same actor is denied when requesting a different/unregistered project.
+- This tests the contract callback boundary only. It does not establish real project owners in project-store or authorize any existing project. CI pending.
+
+36. PROJECT OWNER AUTHORIZATION CI VERIFIED
+- Phase 3 run 41820353336 SUCCESS: SYNTHETIC_PROJECT_OWNER_AUTHORIZATION_ENFORCED=PASS; request/mapping/facade/adapter/provider/inventory tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Phase 2 regression run 41820353269 SUCCESS: TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- The synthetic owner registry fixture is test evidence only. It does not create ownerActorId on existing project records or authorize a production project.
+
+37. PROJECT OWNERSHIP SOURCE REVIEW EXTENDED
+- Read-only review of work-acceptance-schema.js and opportunity-schema.js confirms neither records authenticated ownerActorId/tenant identity. `acceptanceDecision.decidedBy` defaults to the literal `system`; it is not an authenticated principal.
+- project-store creation verifies accepted status and matching opportunityId but does not bind project to the authenticated creator. These workflow links cannot be treated as project authorization.
+- Project-owner registry remains NOT_ESTABLISHED; no schema/store data was modified.
+
+38. HOST IDENTITY / PROJECT AUTHORITY DESIGN BASELINED
+- Added MIRA-HFM-CAGR-001-PHASE3-HOST-IDENTITY-PROJECT-AUTHORITY-DESIGN-20261104.txt. It specifies trusted actor subject sources, role-only Bearer denial, sidecar project-owner registry, explicit memberships, owner transfer, existing-project UNASSIGNED_BLOCKED handling, legacy data mapping constraints, host callback requirements and acceptance tests.
+- Design only: no session/login changes, owner registry implementation, project owner assignments, migration, production access or grants were performed.
+
+39. PROJECT AUTHORITY EVIDENCE CONTRACT PROTOTYPE
+- Added `services/mira-memory-project-authority-contract.js` as a read-only validator for trusted host membership/ownership evidence, bound to exact actor, project, operation and resource scope; it checks allowedOperations, ACTIVE/revocation state, registry revision, timestamps, digest and a mandatory trusted verifier callback.
+- Added synthetic negative/positive tests and wired them into Phase 3 CI. No project registry is connected and no owner/membership records are created. CI pending.
+
+40. PROJECT AUTHORITY EVIDENCE CONTRACT CI VERIFIED
+- Initial run 41821258604 failed because the negative-test loop treated actorId/projectId substitutions as invalid without supplying expected actor/project bindings. The validator correctly permits caller-selected expected bindings to be optional for generic evidence inspection; dedicated exact-binding tests already provide expected values. The test was corrected to separate malformed/denied evidence from expected-context substitution checks.
+- Phase 3 run 41821482820 SUCCESS: project authority exact request binding, expiry/future evidence, missing/failed verifier, tamper and unknown-field tests PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+
+41. INJECTED HOST AUTHORIZATION ADAPTER
+- Added `services/mira-memory-host-authorization-adapter.js`: composes project authority evidence verification, exact actor/project/operation/resource binding, and injected replay consumption into the request authorization decision shape.
+- Added tests for valid owner access, replay denial on second use, non-owner, unapproved operation, authority reference substitution and missing dependencies. Workflow wiring added; CI pending.
+- Adapter is synchronous and dependency-injected; no live identity provider, registry, persistent/distributed replay storage or production caller is connected.
+
+42. HOST AUTHORIZATION ADAPTER VERIFIED
+- Initial host-adapter CI attempts failed because direct synthetic calls omitted the request validity-window fields required by the actual authorization callback contract. Test fixtures were corrected to include contextIssuedAt/contextExpiresAt and use distinct request IDs for separate one-time replay checks.
+- Phase 3 run 41822069514 SUCCESS: project authority + replay composition PASS; second-use replay denied; non-owner, unapproved operation, authority-reference substitution and missing dependencies rejected; all Phase 3 suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- This is a dependency-injected synchronous prototype only. No production identity provider, owner registry, persistent replay store or runtime caller is connected.
+
+43. PROJECT AUTHORITY PURPOSE BINDING
+- Project authority evidence now includes purpose; the validator requires it and can compare expectedPurpose. The injected host adapter passes the request purpose into validation. Added a negative purpose-substitution test.
+- This prevents reusing an otherwise valid actor/project/resource membership proof for a different request purpose. CI pending.
+
+38. TRUSTED HOST IDENTITY NORMALIZATION CONTRACT ADDED
+- Added `services/mira-memory-host-identity-contract.js`: exact-shape credential-free verified-principal normalization; namespaced stable actorId; bounded identity fields; expiry/future-time checks; immutable output. It rejects unverified, role-only, unsupported-auth-method, expired, extra-field and credential-bearing inputs.
+- Added `tests/mira-memory-host-identity-contract.test.js` for user-session, separately provisioned admin subject and service principal fixtures, plus negative cases.
+- Wired the new test into the Phase 3 CI workflow. This is a pure contract only: it does not authenticate, inspect request bodies, read users.json, modify sessionIdentity, provision admin IDs, or connect to project registry. CI pending.
+
+39. TRUSTED HOST IDENTITY CONTRACT CI VERIFIED
+- Phase 3 run 41823659126 SUCCESS on commit dc1e54e5f30477ab2e8e7f54855da89a9fa3867e.
+- New host identity suite: TRUSTED_USER_SESSION_SUBJECT_NORMALIZED=PASS; unverified/role-only/expired/credential-bearing principals denied; stable admin/service subjects supported; caller role and missing principal rejected; TESTS_FAILED=0.
+- Existing Phase 3 contract suites also TESTS_FAILED=0. PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- Phase 2 regression run 41823659084 SUCCESS. This remains a synthetic identity normalization contract; runtime sessionIdentity propagation and real admin/service principal provisioning are NOT_IMPLEMENTED.
+
+40. PERSISTENT WRITER INVENTORY DRIFT GUARD STRENGTHENED
+- Writer callsite test now pins exact operation counts per file, not only the set of files. Current reviewed baseline: 16 calls across 8 consumer files; any added, removed or changed operation fails CI pending semantic review.
+- Phase 3 run 41823920720 SUCCESS on commit c700584a423234a202b083b67a206305da26ee79: MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS; MATCH_COUNT=16; INVENTORY_TESTS_FAILED=0; all contract tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- Phase 2 regression run 41823920729 SUCCESS. This is an inventory drift guard, not evidence that the legacy writers are safe or integrated with the HFM facade.
+
+41. IDENTITY CONTRACT STRICTNESS REFINEMENT
+- Actor IDs now use an unambiguous namespaced encoding (`mira:` + percent-encoded issuer + `:` + percent-encoded subject), avoiding delimiter collisions between issuer/subject pairs.
+- Timestamp validation now checks RFC3339 structure, calendar day/leap-year validity, clock bounds and UTC-offset bounds before parsing.
+- First CI attempt on intermediate code commit c10196e58a5c929d5bfcf705c043089be483c118 failed because the prior test still asserted the old actorId format. The assertion was updated to the new canonical format and collision/invalid-timestamp tests were added.
+- Corrected Phase 3 run 41824153867 SUCCESS on commit 2142e9b95960e519943f608e032802da7c111841; identity and all other contract suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- The failed intermediate run remains in Actions history and is not counted as PASS.
+
+42. CANONICAL PATH-BACKED READ SCANNER EXTENSION
+- Added `DIRECT_MEMORY_FILE_IO` for same-line literal canonical Memory/Knowledge/Conversation file reads and `CANONICAL_STORE_FILE_BACKED_READ` for reads using a variable declared from a canonical store filename.
+- Synthetic tests verify direct literal reads, storagePath-derived variable reads and unrelated `users.json` exclusion.
+- The scanner initially emitted a malformed newline escape and then over-reported an unrelated read in the same file. Both intermediate CI failures are retained in Actions history; the source was corrected to use real line splitting and argument-linked path-variable matching.
+- Verified Phase 3 run 41824965668 SUCCESS: 245 lexical candidates; `CANONICAL_STORE_FILE_BACKED_READ_COUNT=3`; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- The three hits are in `services/mira-knowledge-state-recovery.js`, all recovery/readback paths. They are classified as privileged recovery, not ordinary retrieval. The scanner remains heuristic and does not resolve arbitrary helper parameters, dynamic paths or cross-module call chains.
+
+43. CLASSIFICATION-BOUND RETRIEVAL AUTHORIZATION
+- The synthetic facade now includes each record's access classification in its authorization resource scope (`memory:<memoryId>:classification:<classification>`) for retrieval, creation and existing-record update authorization.
+- This lets the trusted host policy distinguish PUBLIC, PROJECT_PRIVATE and RESTRICTED resources rather than authorizing every record under a classification-blind `memory:<id>` scope.
+- Added tests proving a host denial for RESTRICTED classification excludes the record, and an allowedProjectIds mismatch excludes a record even when its projectId matches.
+- Phase 3 run 41825305707 SUCCESS: RETRIEVAL_AUTHORIZATION_BINDS_CLASSIFICATION=PASS; RETRIEVAL_ALLOWED_PROJECT_LIST_ENFORCED=PASS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- This is synthetic facade behavior. The production host registry must still implement and independently verify classification-specific policy.
+
+44. CLASSIFICATION-BOUND WRITE AUTHORIZATION VERIFIED
+- Added negative test that a host policy denial for RESTRICTED classification blocks prepare-write.
+- Existing-record update test now asserts both WRITE and READ authorization use the identical classification-bound resource scope; no downgrade to a classification-blind resource is allowed.
+- Phase 3 run 41825424686 SUCCESS: WRITE_READ_AND_WRITE_SHARE_CLASSIFICATION_BOUND_SCOPE=PASS; WRITE_RESTRICTED_CLASSIFICATION_HOST_DENY_ENFORCED=PASS; all contract/inventory suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+
+45. REPOSITORY ACCESS-PATH INVENTORY BASELINE PINNED
+- The inventory test now runs the scanner against the full checked-out repository and pins all 10 category counts plus the total candidate count. Any added/removed candidate causes CI failure and requires source-level semantic review before baseline update.
+- Baseline: 245 overlapping lexical candidates = public/internal retrieval 27; direct store reads 27; direct literal file reads 0; generic store loaders 91; provider/snapshot reads 36; CRM reads 27; Work Learning/Experience reads 28; Work Knowledge reads 6; named aliases 0; canonical path-backed reads 3.
+- Initial test revision omitted zero-count categories from the actual map and failed; explicit zero initialization corrected it. The failed run remains visible in Actions history.
+- Verified Phase 3 run 41825657375 SUCCESS: REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS; candidate count 245; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- This is a drift guard for the current scanner's patterns, not proof of exhaustive semantic/runtime coverage.
+
+46. NAMESPACE IMPORT READ SCANNER AND SEMANTIC CLASSIFICATION
+- Added CommonJS `const store=require(...)`, ESM `import * as store from ...`, and static `await import(...)` namespace tracking for known domain read exports.
+- Synthetic tests cover all three forms. Repository inventory discovered 27 namespace-based read callsites across 14 files, increasing the overlapping lexical candidate total from 245 to 272.
+- Semantic dispositions recorded in the caller review: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13; privileged recovery 5; adjacent Stage 13 governance 1.
+- Verified Phase 3 run 41826616667 SUCCESS: NAMESPACE_DOMAIN_READ_COUNT=27; REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS; candidate count=272; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- The scanner is not a full call graph; re-export chains, computed property names, reflection and runtime injection remain REVIEW_REQUIRED.
+
+47. CANONICAL RECORD COMPATIBILITY SUITE WIRED INTO PHASE 3 CI
+- Added the existing `tests/mira-memory-conflict-assessment.test.js` to the Phase 3 workflow triggers and execution sequence so P3-D canonical record checks run alongside request, mapping, facade and provider suites.
+- Verified Phase 3 run 41826911511 SUCCESS: canonical record conflict states, malformed/extra fields, RFC3339 date-time validation and SHA-256(JCS(content)) recomputation all PASS; `TESTS_FAILED=0`; repository access-path baseline pinned; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
+- This verifies the current v1.0.0 canonical record validator's structural/content-hash compatibility, not source authenticity, host authorization or whole-record cryptographic attestation.
+
+48. ISOLATED ROUTE / RECOVERY / WRITER-BYPASS REGRESSION SUITES ADDED
+- Phase 3 CI now also runs seven existing isolated regression suites: Knowledge cleanup semantics; admin backup/restore permission and confirmation; CRM conversation route contract; Conversation Store fail-closed/symlink/marker integrity; direct admin/SEO dispatch boundaries; direct tool dispatch boundaries; and persistent human-only wrapper denial.
+- Verified run 41827185752 SUCCESS. Admin backup/restore and Knowledge edit/delete permission gates PASS; CRM route create/list/detail/context/memory tests PASS; Conversation Store corrupt-state, symlink, missing-primary and marker-tamper tests PASS; direct route tool calls=0; all seven persistent wrappers (memory-save, knowledge-save, learning-save, firewall-defense, memory-restore, memory-version-recovery, knowledge-cleanup) were denied with zero underlying writer invocations.
+- All Phase 3 contract/inventory suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0; EXTERNAL_ACTIONS_FROM_TEST=0.
+- These are isolated regression/bypass checks for the existing route/tool boundaries. They do not prove the HFM facade is wired into production routes.
+
+49. PROVIDER RETRY / LOSSLESS LEGACY MAPPING / RECOVERY POLICY REGRESSIONS
+- Phase 3 CI now includes `mira-hfm-knowledge-drive-retry.test.js`, `mira-legacy-memory-knowledge-adapter.test.js`, and `mira-hfm-memory-version-recovery-policy.test.js`.
+- Verified run 41827437501 SUCCESS: local Knowledge commit survives injected Drive sync failure; duplicate retry reconciles provider without duplicate local record; General Memory and Knowledge payloads preserve full source records; pending-review migration candidates remain non-retrievable; Memory version-recovery wrapper has explicit human-only policy and autonomous execution is denied.
+- The provider test uses a stubbed Drive dependency and isolated temporary storage; `REAL_GOOGLE_DRIVE_TOUCHED=NO`, `NETWORK_REQUESTS=0`, `EXTERNAL_ACTIONS=0`.
+- All Phase 3 tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+
+50. PREPARED-WRITE AUDIT PLAN ADDED (NO AUDIT EMISSION CLAIM)
+- Synthetic write preparation now returns an immutable `auditPlan` binding actorId, actorType, projectId, requestId, CREATE/UPDATE operation, memoryId, previous/next revision, idempotencyKey, incoming record digest and outcome `PREPARED_NOT_COMMITTED`.
+- Explicit `auditStatus=NOT_EMITTED_PREPARE_ONLY` and `eventRequiredBeforeCommit=true` prevent the prepare-only facade from implying that an audit event was persisted or emitted.
+- Tests prove CREATE/UPDATE audit plan fields, same-scope READ/WRITE, immutable plan and explicit no-emission status.
+- Phase 3 run 41827659135 SUCCESS; all suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- This is a host commit/audit handoff plan only. No commit function or actual audit writer has been added to the synthetic facade.
+
+51. ATOMIC IDEMPOTENCY HANDOFF PLAN ADDED
+- Prepared writes now expose an immutable `idempotencyPlan` binding key, actorId, projectId, CREATE/UPDATE operation, memoryId and incomingRecordDigest, with `requiredAtomicity=HOST_ATOMIC_UNIQUE_CLAIM` and `status=NOT_RESERVED_PREPARE_ONLY`.
+- Result explicitly reports `idempotencyStatus=NOT_ATOMIC_PREPARE_ONLY`; the synthetic seen-key array is only a local preparation snapshot and is not represented as a concurrency-safe reservation.
+- Tests cover create/update binding, immutable plan and no-reservation status.
+- Phase 3 run 41827923148 SUCCESS; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- A real host writer must still implement persistent atomic unique-key claim/CAS and recovery of in-progress/committed idempotency outcomes. No commit or reservation store exists in this facade.
+
+52. PHASE 2 REGRESSION CROSS-CHECK
+- Phase 2 core safety regression workflow run 41827923194 completed SUCCESS on the same code commit a1a5584e2c18d96766ba65c6a0d15a9a89489b46 as Phase 3 run 41827923148.
+- Phase 3 changes therefore passed both the Phase 3 contract/bypass suite and the existing Phase 2 core-safety regression suite. No merge or production deployment occurred.
+
+53. PROJECT OWNER REGISTRY CONTRACT TESTS
+- Added `tests/mira-memory-project-owner-registry-contract.test.js` for the existing read-only owner-registry validator.
+- Coverage: exact schema, immutable normalized output, expected project/tenant binding, mandatory trusted verifier, active owner binding, owner/membership uniqueness, membership status, timestamp consistency, source snapshot digest, record digest, tamper and unknown-field rejection.
+- Added the test to the Phase 3 isolated CI workflow.
+- Phase 3 run 41833591729 SUCCESS on commit baa31879b85b7ea3e366110406039ecc765e8c62: `PROJECT_OWNER_REGISTRY_*=PASS`; `TESTS_FAILED=0`.
+- This validates registry-entry evidence only. It does not create, persist, approve, revoke or assign real project owners.
+
+54. FIXTURE-BACKED HOST IDENTITY / PROJECT AUTHORITY INTEGRATION
+- Added `tests/mira-memory-host-identity-integration.test.js`.
+- The isolated fixture composes trusted-principal normalization, project-owner registry validation, project-authority evidence validation, host authorization adapter and request authorization.
+- Positive path: verified fixture owner receives project-bound READ authority with expiry capped by request context.
+- Negative paths: replay, non-owner, cross-project, ungranted WRITE, unverified principal, expired principal, credential-bearing principal and invalid authority proof are denied.
+- Phase 3 run 41833591729 SUCCESS: `FIXTURE_HOST_*=PASS`; `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`; `EXTERNAL_ACTIONS_FROM_TEST=0`.
+- This is a fixture-backed integration test, not a production authentication integration. Real sessionIdentity propagation, stable admin/service subject provisioning, persistent owner registry and durable/distributed replay consumption remain NOT_IMPLEMENTED.
+
+55. TEST FAILURE / CORRECTION RECORD
+- Initial run 41833496380 FAILED because the new duplicate-owner assertion expected the later semantic error text, while the validator correctly rejected the duplicate actor first. No validator defect or production data impact was observed.
+- The assertion was corrected to accept the actual duplicate-membership validation order.
+- Corrected run 41833591729 completed SUCCESS. The failed run remains retained in Actions history and is not counted as PASS.
+
+CURRENT ADDITIVE STATUS
+`PHASE3_PROJECT_OWNER_REGISTRY_CONTRACT_TEST=PASS_CI`
+`PHASE3_HOST_IDENTITY_FIXTURE_INTEGRATION=PASS_CI`
+`PHASE3_REAL_HOST_SESSION_INTEGRATION=NOT_IMPLEMENTED`
+`PHASE3_PERSISTENT_PROJECT_OWNER_REGISTRY=NOT_IMPLEMENTED`
+`PHASE3_DURABLE_REPLAY_STORE=NOT_IMPLEMENTED`
+`PHASE3=IN_PROGRESS`
+`VERSION=v0.2`
+
+56. SECONDARY CALLER REVIEW ADDENDUM
+- Reviewed 28 targeted source paths covering local Memory/Knowledge stores, backup/restore, snapshot/recovery, Google Drive provider, knowledge search, autonomous worker, execution/project queues, Work Learning/Experience/Work Knowledge and CRM Conversation memory/planning.
+- Confirmed backup/restore and snapshot operations are privileged global-store recovery paths, not ordinary project-scoped retrieval. Knowledge restore validates checksum/count, preserves corrupt originals, records audit and verifies readback; Memory restore/version-recovery wrappers remain blocked pending action-scoped human approval.
+- Confirmed Google Drive and Knowledge Search expose whole-file provider reads without HFM record-level project/trust/quarantine filtering; remain blocked from ordinary HFM retrieval.
+- Confirmed reviewed autonomous worker and queue services do not directly access canonical HFM Memory/Knowledge stores. They remain separate research/task domains; this is limited to inspected source paths.
+- Confirmed Experience retrieval obtains global Experiences and ranks by task text without project scope; Work Learning/Experience/Work Knowledge remain explicitly BLOCKED from unified adaptation.
+- Full Git tree listing: 614 JavaScript/CommonJS/ESM/TypeScript source files; tree response was not truncated. No dedicated Memory Cache, Embedding/Vector Index or Memory Export source path was found by filename. Inline, reflective and runtime-injected paths remain REVIEW_REQUIRED.
+- No production caller, persistent data, Google Drive, Facebook provider, cache, embedding or export service was changed or invoked.
+- This addendum expands semantic coverage but does not claim exhaustive call-graph proof. Dynamic import/re-export chains, reflection, computed properties and runtime dependency injection remain limitations.
+- `PHASE3_SECONDARY_CALLER_REVIEW=EXPANDED_PARTIAL`
+- `PHASE3_CACHE_EMBED_EXPORT_COVERAGE=REVIEW_REQUIRED`
+- `PHASE3=IN_PROGRESS`
+
+57. WORKFLOW FILE TARGETING / IMMEDIATE REVERT AUDIT
+- An attempted update to the Phase 2 workflow file used the contents-update endpoint and was observed on the repository default branch rather than the Phase 3 feature branch. No Phase 2 workflow change was retained in the Phase 3 branch.
+- The newly added default-branch workflow file was immediately deleted in commit 7d19fa1107cce3927757b2d32831a4b76dee2661.
+- Post-revert verification: fetching `.github/workflows/mira-hfm-phase2-core-safety.yml` from `main` returned NOT_FOUND; the Phase 3 feature branch retained its original workflow blob SHA 1c667c90c1fd112a9d5d850c91cb9ed6543475d5.
+- No application source, production memory data, provider credentials, deployment or runtime state was modified. The temporary workflow-file add/delete remains visible in Git history and is recorded here for audit transparency.
+- Future feature-branch edits use explicit Git tree/commit/ref updates with an expected-head lease; do not rely on the contents-update branch parameter without verifying the resulting ref.
+
+58. SECONDARY ACCESS INVENTORY — REFINED AND PINNED
+- Added targeted categories for Memory cache/vector/index, explicit export/archive, backup/restore, provider Memory writes and worker/queue/job Memory access.
+- Refined cache detection and added false-positive tests for `conversationIndex` array offsets, Node `require.cache`, and HTTP `Cache-Control: no-store`. The scanner's own rule declaration is excluded from self-matching.
+- Phase 3 CI run 41834938933 SUCCESS on commit debfa4dce3af98f96f3b442d9f2567c02379d5cc; all contract, registry, fixture-host, caller inventory and writer inventory suites passed; `TESTS_FAILED=0`.
+- Pinned secondary counts: cache/vector/index 0; export/archive 0; worker/queue/job 0; backup/restore/snapshot 32; provider Memory writes 8; total lexical access candidates 312.
+- All 32 recovery/snapshot and all 8 Drive-write candidates were manually classified in the semantic review and caller matrix. Existing whole-file Drive writes remain outside HFM and unchanged.
+- The 0 counts are rule-scoped observations, not proof that no dynamic cache, serializer, indirect worker path or runtime-injected adapter exists.
+- `PHASE3_SECONDARY_ACCESS_INVENTORY=PASS_CI_HEURISTIC`
+- `PHASE3_SECONDARY_CANDIDATE_SEMANTIC_REVIEW=COMPLETED_FOR_40_LINES`
+- `PHASE3_DYNAMIC_CALL_GRAPH_COVERAGE=REVIEW_REQUIRED`
+- `PHASE3=IN_PROGRESS`
+
+59. FULL CURRENT CANDIDATE-SET SEMANTIC DISPOSITION
+- Phase 3 run 41835215735 SUCCESS on commit e6151e307cea4facc6a5c9732d2e0c12573141d6 emitted all candidate lines from the repository-wide inventory; Phase 2 run 41835215665 SUCCESS on the same commit.
+- Parsed 312 emitted candidate lines and grouped them by file/category. The 312 total includes category overlap and is not a unique callsite count.
+- All current candidate groups now have a documented file/domain disposition in the semantic review and coverage matrix: canonical Memory/Knowledge accessors; server/model consumers; proposal and governance stores; CRM Conversation/communication; Work Learning/Experience/Work Knowledge; generic business/workflow stores; Drive provider/snapshot; backup/restore; provider writes; worker/queue; cache/vector/export.
+- The 91 generic store-loader lines were classified by their owning domain: proposal, client communication/follow-up/profile, CRM Conversation, deliverable, opportunity, task, autonomous workflow, Stage 13 governance, Work Learning and Work Knowledge. Non-HFM business stores are not automatically migrated.
+- The 27 CRM Conversation, 28 Work Learning/Experience and 6 Work Knowledge candidate lines remain BLOCKED until authoritative project/tenant mapping and caller authorization exist.
+- The 36 provider/snapshot reads and 32 backup/restore candidates are privileged provider/recovery paths; the 8 Drive writer candidates remain outside the HFM facade. No provider was called or changed.
+- Refined scan results: cache/vector/index 0; explicit export/archive 0; worker/queue/job HFM access 0. Synthetic false-positive tests pass for conversationIndex, require.cache and HTTP no-store headers.
+- `PHASE3_CURRENT_CANDIDATE_SET=312_LINES_SEMANTICALLY_DISPOSITIONED`
+- `PHASE3_INVENTORY_CATEGORY_COUNTS=PINNED_CI`
+- `PHASE3_DYNAMIC_CALL_GRAPH_COVERAGE=REVIEW_REQUIRED`
+- `PHASE3=IN_PROGRESS`
+
+60. RETRIEVAL ELIGIBILITY REPORT AND ROLLBACK PLAN
+- Added `retrieveCanonicalRecordsWithReport` while preserving the existing array-returning `retrieveCanonicalRecords` compatibility API.
+- The report carries detached/frozen eligible records, provenance (source, revision, project and digest), per-record authorized-read status and aggregate exclusion reason counts. Excluded IDs/content are not exposed.
+- Added optional decision-sink support to `filterTrustedRecords`; existing callers retain their original array return contract. Malformed conflict metadata continues to fail closed.
+- Added previous-record digest to the write audit plan and a frozen rollback plan. Existing update rollback is compensating-revision-only; originals are preserved and deleteOriginals=false. New uncommitted create has a no-op rollback plan.
+- Explicit status: `NOT_EMITTED_REPORT_ONLY` for retrieval audit, `PLAN_ONLY_NOT_EXECUTED` for rollback. No provider commit, durable audit event, atomic idempotency reservation or rollback execution was added.
+- Phase 3 run 41835662189 SUCCESS and Phase 2 run 41835662290 SUCCESS on commit 2b3af5b0011ddb432b843c2d32ba1a815888e420. Test output includes `RETRIEVAL_PROVENANCE_AND_NONLEAKING_ELIGIBILITY_REPORT_PASS=PASS`, all synthetic write checks, `TESTS_FAILED=0`, and `RESULT=MIRA_HFM_PHASE3_UNIFIED_CONTRACT_CI_COMPLETE`.
+- `PHASE3_RETRIEVAL_PROVENANCE_AND_ELIGIBILITY_REPORT=PASS_CI_SYNTHETIC`
+- `PHASE3_WRITE_AUDIT_AND_ROLLBACK_PLAN=PASS_CI_SYNTHETIC`
+- `PHASE3_AUDIT_EMISSION=NOT_IMPLEMENTED`
+- `PHASE3_PROVIDER_ROLLBACK_EXECUTION=NOT_IMPLEMENTED`
+- `PHASE3=IN_PROGRESS`
+
+62. COMPLETE BATCH MAPPING AND OWNER-BOUND APPROVAL
+- Added `adaptLegacyBatch` for General Memory, Knowledge and CRM Conversation messages. It validates full source snapshot mapping coverage, source ordinal, legacy locator, source digest, snapshot digest, project binding, canonical Memory ID, CRM parent/client binding and trusted mapping approval.
+- Missing mapping, unused mapping, duplicate/ambiguous source locator, duplicate mapping, ordinal mismatch, cross-project, stale snapshot, unapproved mapping, CRM client substitution, sparse source array and unsupported domain all fail closed.
+- Added `createProjectMappingOwnerApprovalVerifier`: mapping approval is bound to a verified project-owner registry and requires active HUMAN OWNER membership with `APPROVE_MAPPING`. Registry project/tenant, trusted verifier, approver identity, approval timestamp and short-lived evidence expiry are validated.
+- Added `APPROVE_MAPPING` to the supported owner-registry operation enum.
+- Phase 3 run 41836592815 SUCCESS and Phase 2 run 41836592893 SUCCESS on commit 07e7e7707d0d7f3f0d22abbb2ed0972a82b461de. All owner-bound mapping tests passed; `TESTS_FAILED=0`; `NETWORK_REQUESTS=0`; `PERSISTENT_WRITES=0`.
+- Production mapping disposition is now explicit: General Memory, Knowledge and CRM Conversation BLOCKED_FOR_PRODUCTION; Work Learning/Experience/Work Knowledge BLOCKED; adjacent client/business/governance stores OUT_OF_SCOPE_SEPARATE_DOMAIN; Facebook/Drive/Web providers NOT_ENABLED_IN_PHASE3.
+- `PHASE3_BATCH_MAPPING_ADAPTER=PASS_CI_SYNTHETIC`
+- `PHASE3_OWNER_BOUND_MAPPING_APPROVAL=PASS_CI_FIXTURE`
+- `PHASE3_PRODUCTION_DOMAIN_AUTHORITY=BLOCKED_PENDING_APPROVAL`
+- `PHASE3=COMPLETE_SYNTHETIC_CONTRACT_ONLY`
+- `VERSION=v0.2`
+- `PRODUCTION_RUNTIME_INTEGRATION=NOT_APPROVED`
+- `PRODUCTION_READINESS=NOT_CERTIFIED`

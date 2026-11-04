@@ -1,0 +1,131 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 3 CALLER COVERAGE MATRIX
+Date: 2026-11-04
+Evidence source: CI run 41811910860, commit 2b5eab5f43dcf2c0ad5c3b5cb0833e08fc7fe01d
+Status: READ-ONLY INVENTORY; NOT A PRODUCTION INTEGRATION APPROVAL
+
+1. VERIFIED INVENTORY COUNTS
+- Persistent writer callsites: 24 across 10 files.
+- Retrieval callsites: 36 across 14 files.
+- Retrieval consumer files without both trusted/quarantine filter markers: 14 of 14.
+- Scanner reports MIRA_HFM_RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED.
+- Scanner reports MIRA_HFM_PERSISTENT_WRITE_AUTONOMOUS_EXECUTION=DENIED.
+- Phase 2/3 isolated tests: TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+2. WRITER CALLSITE FILE COVERAGE
+- autonomous-learning-controlled-apply.js (2)
+- knowledge-controlled-apply.js (1)
+- knowledge.js (6)
+- memory.js (1)
+- server.js (7)
+- services/learning.js (3)
+- tools/knowledge-cleanup.js (1)
+- tools/knowledge-save.js (1)
+- tools/learning-save.js (1)
+- tools/memory-save.js (1)
+
+The exact line/function pairs are preserved in CI logs. This inventory does not prove that every dynamic/reflection-based writer has been found; it is the scanner's current static coverage.
+
+3. RETRIEVAL CALLSITE FILE COVERAGE
+- autonomous-learning-controlled-apply.js (6)
+- google-drive.js (2)
+- knowledge-controlled-apply.js (4)
+- knowledge-memory-evolution.js (2)
+- knowledge.js (2)
+- memory.js (1)
+- routes/knowledge-improvements.js (1)
+- server.js (8)
+- services/learning.js (2)
+- tools/knowledge-cleanup.js (2)
+- tools/knowledge-count.js (1)
+- tools/knowledge-improve.js (1)
+- tools/knowledge-search.js (2)
+- tools/memory-count.js (1)
+
+4. CRITICAL GAP
+Every one of the 36 listed retrieval callsites currently reports trustedFilterInFile=false and quarantineFilterInFile=undefined. All 14 consumer files are REVIEW_REQUIRED. Therefore the new synthetic facade is NOT the production retrieval boundary. No production claim may be made that all routes/tools/counts/search/Drive/Evolution paths exclude quarantined or untrusted records.
+
+5. WRITER GAP
+The static writer inventory finds 24 callsites. The current Phase 3 write facade only prepares synthetic candidates and does not commit. The runtime writer callsites are not yet routed through it. Existing controlled-apply boundaries must remain denied until the canonical policy gate is integrated and independently verified.
+
+6. SCOPE NOT COVERED BY THIS INVENTORY
+- CRM Conversation message/context read/write callsites are governed by the separate conversation-store and CRM route tests; they are not counted as General Memory/Knowledge retrieval callsites here.
+- Work Learning, Work Knowledge and Experience Memory identity/project mappings remain unimplemented in the mapping validator.
+- Cache, embedding, export, backup/restore, background worker and provider-specific retrieval paths require a separate exhaustive boundary review; absence from this list is not evidence of absence.
+
+7. NEXT REQUIRED WORK
+A. Extend the inventory to cover indirect wrappers, CRM Conversation, provider Drive reads, caches, exports, embeddings, backups/restores and workers.
+B. Build an explicit caller-to-facade contract matrix and add bypass tests for each path.
+C. Integrate only in isolated fixture-backed paths after the full matrix is stable; do not activate production routes.
+D. Re-run independent negative tests, full regression and inventory drift checks.
+E. Keep merge/deployment/migration/provider cutover gated.
+
+END OF MATRIX
+
+8. SECONDARY CALLER DISPOSITION — MANUAL SOURCE REVIEW
+|Path / component|Observed role|Phase 3 disposition|
+|---|---|---|
+|scripts/mira-memory-backup.js; services/mira-local-memory-store.js|Local General Memory backup, versioning and atomic readback|PRIVILEGED_P1; not project-scoped|
+|tools/knowledge-backup.js; services/mira-knowledge-state-recovery.js|Local checksummed Knowledge backup and audit|PRIVILEGED_P1; not project-scoped|
+|tools/knowledge-restore.js|Explicitly confirmed restore with validation, quarantine and readback|PRIVILEGED_P1; separate restore authority|
+|tools/memory-restore.js; tools/memory-version-recovery.js|Human/action-scoped recovery wrappers|BLOCKED at wrapper boundary|
+|snapshot-manager.js|Generic file snapshot, SHA-256 verification and restore|PRIVILEGED_P1; no HFM actor/project authority|
+|knowledge-memory-evolution.js; autonomous-learning-controlled-apply.js; knowledge-controlled-apply.js|Snapshot, provider state, controlled apply and rollback|PRIVILEGED_P1; keep separate recovery lifecycle|
+|google-drive.js; tools/knowledge-search.js|Whole-file provider load/save; local/Drive array substitution|BLOCKED from ordinary HFM retrieval; no cutover|
+|services/mira-autonomous-worker.js|Governed research task processing and report output|No direct HFM store access found in reviewed path|
+|services/mira-execution-queue-engine.js; project queue services|Queue construction from supplied priority/project records|Separate task domain; no direct HFM store read found|
+|services/mira-experience-memory.js; mira-experience-retrieval-engine.js|Derived global Experience projection and ranking|BLOCKED pending project authority and source lineage|
+|services/mira-work-learning-engine.js; mira-work-knowledge-consolidation.js|Separate persistent learning/knowledge stores|BLOCKED pending authoritative project mapping|
+|Cache / embedding / vector / export paths|No dedicated module filename found in 614-source-file tree; inline/dynamic paths not ruled out|REVIEW_REQUIRED|
+
+The table is a semantic disposition of reviewed paths, not proof that every dynamic or runtime-injected path has been found. No production caller was modified.
+
+9. SECONDARY INVENTORY — PINNED CI BASELINE
+|Category|CI count|Disposition|
+|---|---:|---|
+|Cache / vector / embedding / index candidates|0|No matching Memory-cache/vector candidate under the refined rule; dynamic/inline behavior not ruled out|
+|Explicit Memory / Knowledge / Conversation / Learning export/archive candidates|0|No matching explicit export/archive function name; alternate serializers remain a limitation|
+|Worker / queue / job direct Memory-domain candidates|0|No direct access candidate in the scanned worker/queue/job paths|
+|Backup / restore / snapshot candidates|32|All 32 lines manually classified as privileged local recovery or generic code snapshots|
+|Google Drive Memory / Knowledge write candidates|8|All 8 lines manually classified; whole-file provider writes remain outside HFM facade|
+|Total access-path lexical candidates|312|Heuristic inventory only; not a complete call graph|
+
+False-positive handling: `conversationIndex` is a numeric array position from `findIndex`, `require.cache` is Node module-loader cache, and HTTP `Cache-Control: no-store` is a response policy. These are not Memory data caches. Synthetic regression assertions ensure they are not counted as Memory cache candidates.
+
+10. FULL CURRENT INVENTORY DISPOSITION
+|Area|Observed files/domains|Disposition|
+|---|---|---|
+|Canonical Memory / Knowledge accessors and server consumers|memory.js, knowledge.js, server.js, services/learning.js, knowledge-improvements route, search/count/improve/cleanup/capacity tools|Raw/global or admin/maintenance access; no HFM ordinary retrieval until request/project scope and trust/quarantine filtering are applied|
+|Generic JSON / research / proposal / orchestration stores|mira-json-state-store, mira-research-governance, knowledge-improvement, autonomous-learning-proposals, autonomous-orchestrator|Separate helper/governance/proposal/workflow domains; not canonical Memory|
+|Client / work business stores|client-communication, client-follow-up, client-profile, deliverable, opportunity, task, work-acceptance|Separate business domains; no automatic HFM adaptation; require independent domain/project authority if ever proposed|
+|CRM Conversation|client-communication-store, conversation-store, routes/conversations, conversation-memory-engine, response-planner|BLOCKED pending approved client/conversation-to-project ownership and caller-side scope enforcement|
+|Work Learning / Experience / Work Knowledge|work-learning-engine, experience-memory/retrieval, cross-task/future-strategy/opportunity/repeat-work/learning-history, work-knowledge-consolidation|BLOCKED pending authoritative project mapping and source/projection lineage|
+|Drive / snapshot / recovery|google-drive, knowledge-memory-evolution, controlled apply, snapshot-manager, local memory/knowledge recovery and version tools|PRIVILEGED recovery/provider path; no raw Drive read into ordinary retrieval; no provider cutover|
+|Background worker / queue|autonomous-worker, execution queue, project queue coordinator, autonomous orchestrator|No direct HFM Memory access candidate in current scan; separate task/workflow state|
+|Cache / embedding / vector / export|Refined scanner found 0 explicit candidates|No candidate under current rules; dynamic/runtime-injected paths remain REVIEW_REQUIRED|
+
+The complete current emitted candidate set is 312 lines across overlapping categories. Every candidate group has a file/domain disposition; counts are not unique callsite totals. Static and semantic review does not resolve arbitrary runtime dependency injection, reflection or computed property access.
+
+11. RETRIEVAL EXPLANATION / RECOVERY PREPARATION
+|Capability|Evidence|Disposition|
+|---|---|---|
+|Eligible retrieval provenance|memoryId, projectId, revision, record digest and source are returned only for eligible records|PASS_CI synthetic|
+|Eligibility reason reporting|Aggregate exclusion counts distinguish schema, scope, lifecycle, integrity, trust, conflict, access and host-policy reasons|PASS_CI synthetic|
+|Excluded-record privacy|No excluded memoryId/content is exposed by the report|PASS_CI synthetic|
+|Audit status|Report says NOT_EMITTED_REPORT_ONLY|No durable audit claim|
+|Write audit plan|Includes previous and incoming digests, actor, project, request, revision and event-before-commit requirement|PASS_CI synthetic|
+|Rollback plan|Create no-op before commit; update uses compensating revision and preserves originals|PASS_CI plan only|
+|Actual provider commit / rollback / audit / idempotency|No runtime operation exists in facade|NOT_IMPLEMENTED / NOT_APPROVED|
+
+13. BATCH MAPPING / OWNER AUTHORITY / DOMAIN EXIT STATUS
+|Requirement|Evidence|Status|
+|---|---|---|
+|Complete source-to-mapping coverage|adaptLegacyBatch enforces no missing or unused mapping|PASS_CI|
+|No ambiguous/duplicate locators|Duplicate source, mapping ID, legacy locator and canonical Memory ID rejection|PASS_CI|
+|Snapshot/ordinal binding|Expected snapshot SHA-256, source digest and ordinal equality|PASS_CI|
+|Project/tenant authority|Project owner registry trusted verifier and expected project/tenant binding|PASS_CI fixture|
+|Mapping approver authority|Active HUMAN OWNER with APPROVE_MAPPING; bounded evidence expiry|PASS_CI fixture|
+|CRM message binding|messageId + parent conversation + client binding; substitution denied|PASS_CI|
+|Production General Memory / Knowledge / CRM mapping|No approved production owner mappings or persistent registry|BLOCKED_FOR_PRODUCTION|
+|Work Learning / Experience / Work Knowledge|No authoritative mapping/lineage|BLOCKED|
+|Adjacent business/governance stores|Separate domains, not automatically migrated|OUT_OF_SCOPE|
+|Provider connectors|Facebook/Drive/Web not part of Phase 3|NOT_ENABLED|

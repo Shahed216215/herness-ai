@@ -1,0 +1,224 @@
+MIRA HFM v0.2 — PHASE 3 SEMANTIC CALLER REVIEW
+Date: 2026-11-04
+Evidence: static callsite inventory run 41811910860 plus manual source review of all 14 retrieval-consumer files.
+Status: SEMANTIC REVIEW PARTIAL; NO RUNTIME WIRING AUTHORIZED
+
+1. CORE DOMAIN ACCESSORS
+- memory.js:getMemory -> returns raw local Memory array. This is a general-purpose data accessor, not a policy-filtered retrieval boundary.
+- knowledge.js:getKnowledge -> returns raw local Knowledge array. Not project-scoped or trust/quarantine-filtered.
+- knowledge.js:searchKnowledge -> searches raw local Knowledge; must become a policy-aware query surface before model/user consumption.
+- knowledge.js:getKnowledgeStats -> direct local aggregate read; counts also need scope/privacy review.
+Finding: these accessors are broad internal primitives. Do not retrofit a project default. Introduce explicit policy-aware APIs and migrate each consumer deliberately.
+
+2. ORDINARY RETRIEVAL / MODEL-CONTEXT CONSUMERS
+- server.js: search endpoint (searchKnowledge), command recall (getMemory + searchKnowledge), and knowledge list/detail/update lookups (getKnowledge). These are externally reachable or feed model context; require authenticated project context and pre-ranking trust/quarantine/access filtering.
+- tools/knowledge-search.js: local getKnowledge followed by optional Drive load; a Drive array replaces the local array when returned. Neither branch applies unified trust/quarantine filtering. Must not send unfiltered Drive/local results to model context.
+- services/learning.js: searchKnowledge used to find existing improvement candidates; derived candidates must inherit source scope and exclude ineligible records.
+- tools/knowledge-improve.js: getKnowledge used for title/topic lookup; this is a mutation-support lookup, not user-facing retrieval, but still needs project/authority scope.
+- routes/knowledge-improvements.js: getKnowledge reads current state before an approved proposal apply; must be a governed mutation precondition and must not be treated as unrestricted retrieval.
+- tools/knowledge-count.js and tools/memory-count.js: raw counts expose aggregate store size without project/access filtering. Counts need a privacy-safe, authorized aggregate contract.
+
+3. SNAPSHOT / RECOVERY / CONTROLLED-APPLY CONSUMERS
+- autonomous-learning-controlled-apply.js: local and Drive reads are used for pre/post state comparison, snapshot verification and rollback. These are privileged recovery reads, not ordinary search. They need a dedicated authorized readSnapshot/verifySnapshot path that preserves originals and quarantine evidence; filtering them like user retrieval would break recovery.
+- knowledge-controlled-apply.js: reads local and Drive state before/after controlled updates and rollback. Same privileged snapshot classification; require explicit operation authority and state digest verification.
+- knowledge-memory-evolution.js: loadDriveState reads Memory/Knowledge snapshots for evolution/rollback comparison. Must use privileged snapshot authority and never expose raw snapshots to model context.
+- google-drive.js: loadKnowledgeFromDrive/loadMemoryFromDrive return raw provider arrays. They are provider boundary functions; no project/trust/quarantine guard is present in these loaders. They must remain unavailable to ordinary consumers until a guarded adapter is introduced.
+
+4. MAINTENANCE / CLEANUP
+- tools/knowledge-cleanup.js: getKnowledge feeds duplicate inspection and exact-duplicate cleanup. It is a maintenance/mutation path; quarantine originals and restricted entries must be preserved, and removal must remain separately governed.
+- tools/knowledge-improve.js: getKnowledge feeds duplicate/improvement lookup. Do not let a candidate inherit a project from title/topic/content.
+
+5. COVERAGE LIMITATIONS
+- Manual review covered the 14 files listed in the static retrieval inventory, but not every internal direct loadKnowledge/loadMemory call, dynamic import, reflection path or indirect wrapper across the whole repository.
+- The scanner's 36 retrieval callsites are a baseline, not proof of exhaustive semantic coverage.
+- CRM Conversation, cache, embeddings, exports, backup/restore, workers, provider callbacks and background jobs require separate semantic inventories.
+- Current source accessors and Drive loaders are still unguarded for HFM purposes. No production caller has been modified or claimed safe.
+
+6. REQUIRED FOLLOW-UP
+A. Replace broad accessors with explicit request-context/project-scoped retrieval and snapshot APIs, in isolated fixtures first.
+B. Add tests proving user/model retrieval cannot call snapshot APIs or bypass trust/quarantine filters.
+C. Add recovery tests proving snapshot APIs preserve all originals while refusing unauthorized access.
+D. Extend the scanner to direct storage loads and indirect call chains; verify semantic coverage with independent review.
+E. Only propose production wiring after full caller coverage, host authentication and mapping authority are accepted.
+
+END OF REVIEW
+
+
+ACCESS-PATH INVENTORY ADDENDUM (2026-11-04)
+A broader static candidate scanner now covers domain accessors, direct loadMemory/loadKnowledge calls, generic loadStore loaders, provider/snapshot reads, CRM Conversation reads, Work Learning/Experience and Work Knowledge APIs.
+Verified CI run 41813748565 reports 242 candidates (overlapping categories): 27 public/internal retrieval, 27 direct domain store reads, 91 generic store loaders, 36 provider/snapshot reads, 27 CRM Conversation reads, 28 Work Learning/Experience reads and 6 Work Knowledge reads. This is candidate inventory only; it does not establish unique semantic call paths or complete coverage. Every candidate still needs classification.
+
+
+7. ADDITIONAL PERSISTENT WRITER API DISCOVERED
+- The persistent-writer definition guard detected services/learning.js:394 learnFromContent({content, sourceTitle, sourceUrl}) as a third writer API definition file, in addition to knowledge.js and memory.js.
+- Source review: learnFromContent obtains AI-generated learning content, performs duplicate lookup with searchKnowledge, then calls addLearning({...learning, source}) at lines 479-482. It is therefore a model-assisted persistent writer path, not merely a retrieval helper.
+- It does not accept authoritative actor/project/request context in its current signature. It must remain blocked from universal autonomous writes until an approved project/actor binding and host authorization path are designed and independently tested.
+- Updated persistent writer inventory's reviewed definition-file baseline to include services/learning.js. This records the existing API; it does not route or modify the writer.
+- This discovery demonstrates why static inventory baselines must be updated only after source-level semantic review, not by suppressing the guard.
+
+
+8. CRM CONVERSATION AND WORK-LEARNING SCOPE REVIEW
+
+CRM Conversation Store
+- conversation-schema.js:createConversation persists clientId, opportunityId and proposalId, but no authoritative projectId or tenant scope.
+- conversation-store.js:getConversation/getMessage are ID lookups; listConversations filters optional clientId/opportunityId/status; listMessages filters optional conversationId/clientId/direction. None requires a trusted project scope.
+- routes/conversations.js applies requireAgentAuth + CLIENT_PROJECTS permission, but list routes accept req.query.clientId and record lookups use caller-supplied conversationId. The route code does not derive/verify an authorized projectId-to-clientId mapping before returning records.
+- Incoming message creation accepts body.clientId || conversation.clientId and message reads are keyed by conversationId. Conversation memory engine returns history/context using conversationId only.
+- Therefore current route-level authentication is not evidence of per-project record isolation. Existing CRM mapping's messageId + parentConversationId provides stable message lineage, but it does not establish project ownership. CRM migration remains BLOCKED until an independently approved project/client/conversation mapping and caller-side authorization contract exist.
+
+Work Learning / Experience
+- mira-work-learning-engine.js:getLearningRecord keys by learningId; listLearningRecords filters taskId/status/qaStatus/limit. Neither method requires projectId or actor context.
+- mira-experience-memory.js:getExperience and listExperiences are projections over Work Learning records; experienceId is derived from learningId. It is not an independent namespace and inherits the missing project-scope issue.
+- mira-experience-retrieval-engine.js:retrieveExperiences ranks all records returned by listExperiences using task text and optional taskId/status filters; no project boundary is enforced by this retrieval layer.
+- Work Knowledge Consolidation's getConsolidatedKnowledge returns all items; the items are derived/deduplicated and source provenance is aggregated. No authoritative projectId contract exists.
+- Work Learning, Experience Memory/Retrieval and Work Knowledge remain BLOCKED for unified memory adaptation; no project may be inferred from taskId, planId, clientId, title, topic or content.
+
+Scope distinction
+- The scanner's 242 candidates include generic state-store accessors for other application domains (client profile, follow-up, opportunity, task, deliverable and work-acceptance stores). These are not automatically HFM Memory domains. They remain separate domain-governance candidates and must not be mislabeled as 242 Memory retrieval callsites.
+- Current inventory categories: 27 public/internal Memory/Knowledge retrieval matches; 27 direct domain store reads; 91 generic loadStore calls; 36 provider/snapshot calls; 27 CRM Conversation calls; 28 Work Learning/Experience calls; 6 Work Knowledge calls. Categories may overlap and are lexical candidates, not unique callsite totals.
+- Generic store loaders are distributed across client-communication-store.js, client-follow-up-store.js, client-profile-store.js, deliverable-store.js, opportunity-store.js, task-store.js, work-acceptance-store.js, and other state stores. They need domain-specific scope review, not automatic inclusion in the Memory migration.
+
+9. CANDIDATE IMMUTABILITY
+- The domain payload adapter now deeply freezes nested candidate objects, including source/version/access metadata and allowedProjectIds. Tests assert nested mutation attempts throw.
+- This is candidate integrity protection only; it does not make a candidate trusted, approved for use, persisted or committed.
+
+
+10. DOWNSTREAM WORK-LEARNING RETRIEVAL FAN-OUT
+- mira-cross-task-learning-engine.js calls retrieveExperiences(taskText, {limit}) without projectId/actor context, then transfers selected experiences and strategies into cross-task planning.
+- mira-future-strategy-engine.js calls listLessons using taskId/status/qaStatus only; no project scope is passed.
+- mira-repeat-work-detection-engine.js calls getExperiencesForTask/retrieveExperiences using opportunity text and limit only. It catches retrieval exceptions and falls back to an empty result, which can mask future authorization failures unless errors are surfaced distinctly.
+- mira-opportunity-matching-engine.js calls listExperiences() with no filters, then uses prior experiences as evidence for opportunity matching. This is a high-priority cross-project learning-consumption path.
+- routes/learning-history.js exposes global learning-history/lesson reads behind SYSTEM_ADMIN middleware. This is a privileged administrative surface, not ordinary retrieval; it still needs explicit global-admin scope, audit and data-minimization review.
+- These consumers must not be wired to unified Memory until their request context contains an independently authorized project scope and the retrieval facade filters before ranking. Task text, taskId, opportunityId and skill matches are not project authority.
+
+
+11. PERSISTENT WRITER SEMANTIC REVIEW
+- Writer inventory run 41815988737 reports 16 lexical writer calls across 8 consumer files and 3 API-definition files (knowledge.js, memory.js, services/learning.js). The earlier 24-call/10-file figure was a prior inventory baseline; the latest guard's current counted matches are the 16 listed below.
+- Controlled apply/recovery: autonomous-learning-controlled-apply.js uses replaceKnowledge and addLearning after snapshot creation/verification and has rollback logic; knowledge-controlled-apply.js uses updateLearning after snapshot verification and rollback. These are governed mutation paths, but they are not project-scoped HFM facade calls and remain outside universal writer integration.
+- Admin routes: server.js calls deleteKnowledge, updateLearning and updateKnowledge behind SYSTEM_ADMIN middleware. They are privileged admin operations but currently operate on the global legacy stores, not an independently scoped project mapping. Keep them separate from ordinary autonomous write access.
+- Chat transcript persistence: server.js calls addMemory for user/assistant interaction records. This is a session/conversation persistence path, not a canonical project-scoped HFM writer. Its actor/session/retention semantics require explicit contract mapping before migration.
+- Human-only tool wrappers: tools/memory-save.js, tools/knowledge-save.js and tools/learning-save.js call the corresponding write APIs only after checkToolSafety. Shared policy declares humanApprovalRequired=true; registry execution guard test proves all three are denied before wrapper invocation. This is PASS for the current autonomous denial boundary, not proof of a complete human approval workflow.
+- Knowledge cleanup: tools/knowledge-cleanup.js calls replaceKnowledge after exact duplicate analysis. The shared tool policy marks knowledge_cleanup human-only; this path remains blocked from autonomous execution.
+- services/learning.js:learnFromContent calls addLearning after model extraction and duplicate lookup, with no actor/project/request context in its function signature. applyKnowledgeImprovement calls updateLearning; both require a governed caller and project-scoped authority before HFM routing.
+- No existing persistent writer has been wired to the new unified facade. Autonomous persistent writes remain DENIED. A future migration must distinguish chat transcript append, approved admin edit, controlled apply, and human-approved save/cleanup rather than routing all through one generic write method.
+
+
+12. CANONICAL STORE PATH-BACKED FILE READ REVIEW
+- The access-path scanner now links canonical filename constants (`memory.json`, `knowledge.json`, `conversations.json`, Work Learning and Work Knowledge store filenames) to read calls that use the same declared path variable, in addition to direct literal file reads.
+- Synthetic tests cover direct literal reads, storagePath-derived variables, and rejection of an unrelated `users.json` read in the same source file.
+- CI run 41824965668 found 3 path-linked reads in `services/mira-knowledge-state-recovery.js` (2 source-state reads and 1 restore readback through `readJsonArray(KNOWLEDGE_FILE, ...)`). These are privileged recovery/verification operations, not ordinary user/model retrieval. They require explicit recovery authority and preservation of original state; they must not be filtered as ordinary retrieval if doing so would compromise restore verification.
+- Current inventory after this extension: 245 lexical candidates (overlapping categories), `CANONICAL_STORE_FILE_BACKED_READ_COUNT=3`. This remains a heuristic: indirect helper parameters, dynamically constructed paths, aliases across modules, reflection and runtime injection may be missed. The count is not a total number of unique read paths.
+
+
+13. NAMESPACE-IMPORT READ CALLSITE SEMANTIC REVIEW
+The CommonJS/ESM/static dynamic-import namespace scanner found 27 additional namespace-based read candidates across 14 files (CI run 41826616667). These are separate lexical matches and may overlap the earlier 245-candidate categories; the current combined inventory baseline is 272.
+
+| File | Matches | Semantic disposition |
+|---|---:|---|
+| knowledge-improvement.js | 1 | Knowledge state read via jsonStateStore; governed improvement/mutation precondition |
+| knowledge-memory-evolution.js | 1 | Knowledge state read; privileged evolution/snapshot path |
+| knowledge.js | 1 | Canonical Knowledge store read |
+| services/mira-conversation-memory-engine.js | 4 | CRM Conversation read/context boundary; requires project/client authority |
+| services/mira-conversation-response-planner.js | 1 | CRM Conversation read for response planning; requires same authority |
+| services/mira-cross-task-learning-engine.js | 1 | Experience retrieval into cross-task planning; requires project scope |
+| services/mira-experience-memory.js | 4 | Work Learning source reads; no authoritative project scope |
+| services/mira-experience-retrieval-engine.js | 2 | Experience retrieval/ranking; must filter by authorized project before ranking |
+| services/mira-future-strategy-engine.js | 1 | Lesson retrieval; taskId is not project authority |
+| services/mira-knowledge-state-recovery.js | 3 | Privileged Knowledge recovery/readback; preserve originals and require recovery authority |
+| services/mira-learning-history.js | 3 | Learning/Experience history read; current admin boundary does not establish per-project scope |
+| services/mira-repeat-work-detection-engine.js | 2 | Experience retrieval; opportunity text is not project authority |
+| services/mira-stage13-capability-integration.js | 1 | Stage 13 governance store (`learning.loadStore`), adjacent governance domain, not canonical HFM Memory |
+| services/mira-state-version-recovery.js | 2 | Generic privileged state recovery; exact store path must be scoped by caller |
+
+Disposition totals: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13; privileged recovery 5; adjacent Stage 13 governance 1. No production caller was modified. Namespace scanning now has synthetic coverage for CommonJS require, ESM namespace import and static dynamic import. It remains lexical and does not resolve re-export chains, runtime dependency injection or computed property names.
+
+14. SECONDARY PERSISTENCE / BACKUP / RESTORE CALLER REVIEW
+- `scripts/mira-memory-backup.js` delegates to `services/mira-local-memory-store.js:createBackup`; this is a local General Memory backup path, not a unified project-scoped HFM provider.
+- `tools/knowledge-backup.js` delegates to `services/mira-knowledge-state-recovery.js:createKnowledgeBackup`; backup is local-only, versioned/checksummed and emits a state audit.
+- `tools/knowledge-restore.js` delegates to `restoreKnowledge`; explicit confirmation is required, backup SHA-256 and entry count are validated, corrupt prior state is preserved/quarantined, restore is followed by audit and readback verification. The legacy unchecksummed path is separately gated by an explicit flag.
+- `tools/memory-restore.js` is blocked at its wrapper boundary pending authenticated action-scoped human approval. `tools/memory-version-recovery.js` similarly blocks list/verify/restore pending the recovery authorization workflow.
+- `snapshot-manager.js` provides generic file snapshots with a manifest and per-file SHA-256 verification; restore copies snapshot files into project paths. It is a privileged recovery primitive and does not establish actor/project ownership or HFM record-level authorization.
+- `services/mira-local-memory-store.js` owns local General Memory read/write/backup/version behavior, initialization evidence and atomic readback. Its safety contract is not a multi-project access boundary.
+- `services/mira-knowledge-state-recovery.js` owns local Knowledge backup/restore, checksum validation, previous-backup preservation, corrupt-primary quarantine, audit and post-restore readback. It remains a privileged global-store recovery path.
+- `knowledge-memory-evolution.js`, `autonomous-learning-controlled-apply.js` and `knowledge-controlled-apply.js` use local/Drive state, snapshots, verification and rollback. These are governed recovery/apply paths, not ordinary retrieval. Do not route them through user-facing filtering or bypass their separate approval/recovery lifecycle.
+- Disposition: BACKUP_RESTORE_AND_SNAPSHOT=PRIVILEGED_P1_REVIEWED; no production HFM migration or Drive cutover.
+
+15. PROVIDER, SEARCH, WORKER AND QUEUE REVIEW
+- `google-drive.js` exposes whole-file Memory/Knowledge load/save functions. It has no record-level project isolation and remains a provider boundary only; no live Drive calls or provider cutover were performed.
+- `tools/knowledge-search.js` reads local Knowledge and may replace the local array with a whole-file Drive result. It does not apply HFM project, trust or quarantine filtering. Keep this path blocked from unified model retrieval until a guarded adapter is integrated.
+- `tools/web-search.js` calls the external search provider; it is a research/search tool, not a persistent Memory retrieval provider. It must not promote search snippets to trusted instructions or verified Memory without source validation.
+- `services/mira-autonomous-worker.js` reads task and research-governance inputs, enforces opt-in/budget gates, executes research through the governed work path and writes research-report metadata. The reviewed worker path does not directly read or write canonical General Memory/Knowledge/CRM stores.
+- `services/mira-execution-queue-engine.js`, `services/mira-project-execution-queue-service.js` and `services/mira-multi-project-queue-coordinator-service.js` transform supplied priority/project records into queue results; the reviewed code does not load canonical HFM Memory stores. Task/queue state remains a separate application domain.
+- Disposition: PROVIDER_RAW_READ=BLOCKED_FROM_ORDINARY_HFM_RETRIEVAL; WORKER_AND_QUEUE_DIRECT_HFM_ACCESS=NOT_FOUND_IN_REVIEWED_PATHS; dynamic injection and indirect wrappers remain scanner limitations.
+
+16. DERIVED LEARNING / EXPERIENCE REVIEW
+- `services/mira-experience-memory.js` derives Experience records from Work Learning records; it is a projection, not an independent project namespace.
+- `services/mira-experience-retrieval-engine.js:retrieveExperiences` obtains the global result of `listExperiences`, scores/ranks it against task text and only then applies result limits. No project/actor context is enforced before ranking.
+- `services/mira-work-learning-engine.js` and `services/mira-work-knowledge-consolidation.js` own separate persistent Work Learning and Work Knowledge stores. Existing taskId/learningId/source lineage is not authoritative project ownership.
+- Disposition: WORK_LEARNING_EXPERIENCE_WORK_KNOWLEDGE=BLOCKED_FROM_UNIFIED_MEMORY_ADAPTATION until an approved project/tenant authority and projection-lineage contract exists. Do not infer project scope from task text, taskId, opportunityId, title or content.
+
+17. CACHE / EMBEDDING / EXPORT PATH LIMITATION
+- The complete Git tree response was not truncated and listed 614 JavaScript/CommonJS/ESM/TypeScript source files. No dedicated source path named for Memory Cache, Embedding/Vector Index or Memory Export was present in the reviewed path inventory.
+- This is not proof that no inline cache, runtime-injected index, serialization/export helper or indirect reference exists. Those categories remain REVIEW_REQUIRED until a targeted source search or runtime dependency inventory can rule them in/out.
+- Scanner counts remain lexical candidates, not a complete call graph. Re-export chains, reflection, computed properties, runtime dependency injection and dynamically constructed module paths are not exhaustively resolved.
+
+18. SECONDARY ACCESS INVENTORY — CI-VERIFIED
+- Extended the repository-wide lexical inventory with backup/restore, provider-memory-write, cache/vector/index, export/archive and worker-domain categories.
+- Corrected the cache candidate rule to avoid treating an array position named `conversationIndex`, Node's `require.cache`, HTTP `Cache-Control: no-store` headers or the scanner's own rule declaration as Memory cache. Synthetic false-positive controls pass.
+- CI run 41834938933 SUCCESS on commit debfa4dce3af98f96f3b442d9f2567c02379d5cc; inventory baseline is 312 total lexical candidates:
+  - `CACHE_OR_INDEX_ACCESS=0`
+  - `EXPORT_ARCHIVE_OPERATION=0`
+  - `BACKGROUND_WORKER_DOMAIN_ACCESS=0`
+  - `BACKUP_RESTORE_OPERATION=32`
+  - `PROVIDER_MEMORY_WRITE=8`
+- All 32 backup/restore/snapshot candidate lines were reviewed:
+  - Generic code-apply snapshots: `apply-engine.js` (4) — source-code apply/rollback snapshots, not canonical Memory/Knowledge stores.
+  - Controlled Knowledge/Learning apply and evolution: `autonomous-learning-controlled-apply.js` (3 snapshot calls), `knowledge-controlled-apply.js` (3 snapshot calls), `knowledge-memory-evolution.js` (4 snapshot calls) — privileged apply/rollback paths.
+  - Local Memory/Knowledge recovery: `scripts/mira-memory-backup.js` (1), `services/mira-local-memory-store.js` (2), `services/mira-knowledge-state-recovery.js` (2), `services/mira-state-version-recovery.js` (3), `snapshot-manager.js` (4) — global/local recovery primitives, not project-scoped HFM access.
+  - Tool wrappers: `tools/knowledge-backup.js` (1), `tools/knowledge-restore.js` (1), `tools/memory-restore.js` (1), `tools/memory-version-recovery.js` (3) — privileged recovery; Memory/version recovery wrappers remain human/action-approval blocked.
+- All 8 provider-memory-write candidate lines were reviewed: `google-drive.js` (2 provider function definitions), `knowledge.js` (1 Knowledge save), `autonomous-learning-controlled-apply.js` (1), `knowledge-controlled-apply.js` (1), `knowledge-memory-evolution.js` (2) and `tools/knowledge-cleanup.js` (1). These are existing whole-file Drive writes; they do not pass through the HFM facade and remain blocked from ordinary unified retrieval/writes. No Drive call was executed and no Drive behavior was changed.
+- Zero explicit export/archive or worker/queue Memory-access candidates were found by the targeted rules. This is not proof against dynamic, reflective, indirect or runtime-injected behavior; those limitations remain.
+- `PHASE3_SECONDARY_ACCESS_INVENTORY=PASS_CI_HEURISTIC`; `SEMANTIC_DISPOSITION=REVIEWED_WITH_LIMITATIONS`.
+
+19. COMPLETE CURRENT CANDIDATE-SET DISPOSITION (2026-11-04)
+CI run 41835215735 emitted all 312 candidate lines. Category counts overlap and are not unique callsite totals. The current scanned set has a file/domain disposition as follows:
+
+|Candidate category|Count|Source/domain disposition|
+|---|---:|---|
+|PUBLIC_OR_INTERNAL_RETRIEVAL|27|Raw Memory/Knowledge accessors, server/model-context endpoints, maintenance lookups, admin mutation preconditions and aggregate count/capacity tools; blocked from ordinary unified consumption until request/project policy is enforced|
+|DIRECT_STORE_READ|27|Memory/Knowledge direct access, proposal state, generic JSON helper, research-governance state and privileged version/recovery reads; each classified by owning domain|
+|GENERIC_STORE_LOADER|91|Proposal store, client communication/follow-up/profile, CRM Conversation, deliverable, opportunity, task, autonomous workflow, Stage 13 governance, Work Learning and Work Knowledge stores; not one universal Memory namespace|
+|PROVIDER_OR_SNAPSHOT_READ|36|Google Drive whole-file reads, controlled apply/evolution snapshots, generic code-apply snapshots and knowledge-search Drive fallback; privileged or raw-provider paths, not ordinary retrieval|
+|CRM_CONVERSATION_READ|27|Client communication, conversation store, conversation routes, conversation-memory engine and response planner; BLOCKED pending authoritative project/client/conversation mapping|
+|WORK_LEARNING_OR_EXPERIENCE_READ|28|Cross-task learning, experience projection/retrieval, future strategy, learning history, opportunity matching, repeat-work detection, learning-history route and Work Learning engine; BLOCKED pending project authority and source lineage|
+|WORK_KNOWLEDGE_READ|6|Work Knowledge Consolidation; BLOCKED pending authoritative project mapping|
+|NAMESPACE_DOMAIN_READ|27|Namespace-import matches across 14 files; overlaps direct/domain/retrieval categories and has the file-level dispositions in Section 13|
+|CANONICAL_STORE_FILE_BACKED_READ|3|Knowledge recovery source/readback operations; privileged recovery, not ordinary retrieval|
+|BACKUP_RESTORE_OPERATION|32|Local Memory/Knowledge backup, restore, version recovery and generic apply/snapshot operations; all 32 lines reviewed in Section 18|
+|PROVIDER_MEMORY_WRITE|8|Google Drive Memory/Knowledge writer definitions and callsites; all 8 lines reviewed in Section 18|
+|CACHE_OR_INDEX_ACCESS|0|No candidate under the refined Memory-cache/vector rule; false-positive controls pass|
+|EXPORT_ARCHIVE_OPERATION|0|No candidate under the explicit named Memory/Knowledge/Conversation/Learning export/archive rule|
+|BACKGROUND_WORKER_DOMAIN_ACCESS|0|No direct HFM-domain access candidate in scanned worker/queue/job paths|
+
+Generic loader domain detail (91 lines): `autonomous-learning-proposals.js` (9) is proposal lifecycle state; `client-communication-store.js` (12) is a separate CRM communication store; `client-follow-up-store.js` (6), `client-profile-store.js` (6), `deliverable-store.js` (6), `opportunity-store.js` (7), `task-store.js` (7) and `work-acceptance-store.js` (7) are separate business/work domains; `conversation-store.js` (11) is CRM Conversation and remains BLOCKED; `services/autonomous-orchestrator.js` (3) is Stage 16/17 workflow job state; `services/mira-stage13-capability-integration.js` (1) and `services/mira-stage13-learning-governance.js` (4) are Stage 13 governance state; `services/mira-work-knowledge-consolidation.js` (4) and `services/mira-work-learning-engine.js` (8) are explicitly BLOCKED HFM-adjacent domains.
+
+Other direct-read dispositions: `knowledge-improvement.js` and `autonomous-learning-proposals.js` own proposal state, not canonical Knowledge; `services/mira-research-governance.js` owns research policy/usage state; `services/mira-json-state-store.js` is a generic JSON helper; `services/mira-stage13-capability-integration.js` and `services/mira-stage13-learning-governance.js` are adjacent governance domains; `tools/capacity-change.js` reads Knowledge statistics / Memory capacity configuration, not Memory content; Memory/Knowledge count tools expose global aggregates and need a privacy-safe authorized aggregate contract.
+
+The 312 total is the emitted candidate-line count with category overlap. It must not be interpreted as 312 unique Memory read/write callsites. All current scanner candidates have a documented file/domain disposition; indirect re-export chains, reflection, computed property names, dynamic module paths and runtime-injected dependencies remain outside complete static proof. Status: `CURRENT_STATIC_CANDIDATE_SET=SEMANTICALLY_DISPOSITIONED`; `DYNAMIC_CALL_GRAPH=REVIEW_REQUIRED`.
+
+20. RETRIEVAL REPORT AND ROLLBACK-PLAN REVIEW
+- `retrieveCanonicalRecordsWithReport` now returns only eligible records plus source provenance, revision, digest, per-result `AUTHORIZED_READ` eligibility and aggregate excluded reason counts.
+- Excluded records do not disclose memoryId or content. Reason counts distinguish invalid schema, project mismatch, inactive lifecycle, integrity/trust failure, unresolved/unselected conflict version, access-project mismatch, invalid classification and host authorization denial/error.
+- The legacy `retrieveCanonicalRecords` array return contract remains compatible. The conflict filter's optional decision sink is additive; default callers retain the same array behavior.
+- The report labels `auditStatus=NOT_EMITTED_REPORT_ONLY`; it is not evidence of durable audit emission.
+- Synthetic write preparation now includes `auditPlan.previousRecordDigest` and a frozen rollback plan. Existing-record recovery is compensating-revision-only; prior revisions are preserved and original deletion is false.
+- Create rollback plan is `NOOP_UNCOMMITTED_CREATE`; update rollback plan is `APPEND_COMPENSATING_REVISION_FROM_VERIFIED_PRIOR`. Both remain `PLAN_ONLY_NOT_EXECUTED`.
+- Phase 3 CI run 41835662189 SUCCESS and Phase 2 regression run 41835662290 SUCCESS on commit 2b3af5b0011ddb432b843c2d32ba1a815888e420; retrieval provenance/non-leaking eligibility, create/update rollback-plan assertions, all existing facade tests and Phase 2 safety regression passed with TESTS_FAILED=0.
+- Actual provider commit, atomic idempotency reservation, audit emission and rollback execution remain NOT_IMPLEMENTED.
+
+22. BATCH MAPPING AND OWNER-APPROVAL AUTHORITY REVIEW
+- `adaptLegacyBatch` requires one-to-one coverage of the full source snapshot. Missing, unused, duplicate/ambiguous source or mapping locators, ordinal mismatch, stale snapshot, unapproved mapping, cross-project mapping, CRM client substitution, sparse source array and unsupported domain all fail closed.
+- Supported domains are limited to General Memory, Knowledge and CRM Conversation messages. Output is pending-review/unverified and never committed.
+- `createProjectMappingOwnerApprovalVerifier` validates the owner registry through a required trusted verifier and requires an active HUMAN OWNER with `APPROVE_MAPPING`. It binds approval evidence to project, mapping digest, approver, registry revision and membership validity, with bounded short-lived expiry.
+- Production domain status is explicit: General Memory, Knowledge and CRM Conversation are BLOCKED_FOR_PRODUCTION pending approved mappings and host authority; Work Learning/Experience/Work Knowledge are BLOCKED; adjacent business/governance stores are separate/out of scope; Facebook/Drive/Web providers are not enabled in Phase 3.
+- Phase 3 run 41836592815 and Phase 2 run 41836592893 SUCCESS on commit 07e7e7707d0d7f3f0d22abbb2ed0972a82b461de; owner-bound mapping approval cases all PASS; TESTS_FAILED=0; no network or persistent writes.

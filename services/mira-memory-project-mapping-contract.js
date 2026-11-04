@@ -1,0 +1,168 @@
+'use strict';
+
+// Read-only validator for explicit, snapshot-bound domain-to-project mappings.
+// It never creates mappings, authenticates approvers, or writes a registry.
+const crypto = require('node:crypto');
+const DOMAIN_SOURCE_SYSTEM = Object.freeze({
+  general_memory: 'mira_legacy_memory',
+  knowledge: 'mira_legacy_knowledge',
+  crm_conversation_message: 'mira_crm_conversation'
+});
+const DOMAINS = new Set(Object.keys(DOMAIN_SOURCE_SYSTEM));
+const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
+const STATUSES = new Set(['PENDING_REVIEW', 'APPROVED', 'REVOKED']);
+const APPROVAL_EVIDENCE_KEYS = [
+  'decision', 'approvalReference', 'mappingDigest', 'projectId', 'approvedBy',
+  'approvedAt', 'registryRevision', 'revocationStatus', 'verifiedAt', 'expiresAt'
+];
+const KEYS = [
+  'schemaVersion', 'mappingId', 'domain', 'sourceSystem', 'sourceFileDigest',
+  'sourceOrdinal', 'legacyId', 'memoryId', 'projectId', 'parentConversationId', 'clientId', 'revision',
+  'sourceDigest', 'canonicalRecordDigest', 'classification', 'status',
+  'approvalReference', 'approvedBy', 'approvedAt', 'createdAt', 'mappingDigest'
+];
+function object(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
+function digest(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+}
+function text(value, label, max = 256) {
+  if (typeof value !== 'string' || !value.trim() || value.length > max) {
+    throw new Error(label + ' is required and must be bounded text.');
+  }
+}
+function timestamp(value, label) {
+  if (typeof value !== 'string') throw new Error(label + ' must be RFC 3339.');
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:[.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$/.exec(value);
+  if (!match) throw new Error(label + ' must be RFC 3339.');
+  const [, y, mo, d, h, mi, s, zone] = match;
+  const year = Number(y), month = Number(mo), day = Number(d);
+  const hour = Number(h), minute = Number(mi), second = Number(s);
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 60) {
+    throw new Error(label + ' must be a valid RFC 3339 date-time.');
+  }
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > days[month - 1]) throw new Error(label + ' has an invalid calendar date.');
+  if (zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4, 6)) > 59)) {
+    throw new Error(label + ' has an invalid UTC offset.');
+  }
+  if (!Number.isFinite(Date.parse(value))) throw new Error(label + ' is not parseable.');
+}
+function bodyOf(mapping) {
+  const body = {};
+  for (const key of KEYS) if (key !== 'mappingDigest') body[key] = mapping[key];
+  return body;
+}
+function validateProjectMapping({
+  mapping, expectedDomain, expectedProjectId, expectedSourceFileDigest,
+  verifyApproval, now = new Date()
+}) {
+  if (!object(mapping) || Object.keys(mapping).length !== KEYS.length ||
+      KEYS.some(key => !Object.prototype.hasOwnProperty.call(mapping, key))) {
+    throw new Error('Mapping must contain the exact supported fields.');
+  }
+  if (mapping.schemaVersion !== '1.0.0') throw new Error('Unsupported mapping schemaVersion.');
+  text(mapping.mappingId, 'mappingId');
+  if (typeof mapping.domain !== 'string' || !mapping.domain.trim()) throw new Error('Mapping domain is required.');
+  text(mapping.sourceSystem, 'sourceSystem');
+  if (!DOMAINS.has(mapping.domain)) throw new Error('Domain contract is not implemented for mapping.');
+  if (mapping.sourceSystem !== DOMAIN_SOURCE_SYSTEM[mapping.domain]) {
+    throw new Error('Mapping sourceSystem does not match the domain contract.');
+  }
+  if (!/^[a-f0-9]{64}$/.test(mapping.sourceFileDigest || '') ||
+      !/^[a-f0-9]{64}$/.test(mapping.sourceDigest || '') ||
+      !/^[a-f0-9]{64}$/.test(mapping.canonicalRecordDigest || '')) {
+    throw new Error('Mapping source and canonical digests must be SHA-256 hex values.');
+  }
+  if (mapping.domain === 'crm_conversation_message') {
+    if (mapping.sourceOrdinal !== null) throw new Error('CRM message mapping does not use a source array ordinal.');
+    text(mapping.parentConversationId, 'parentConversationId', 128);
+    text(mapping.clientId, 'clientId', 128);
+  } else {
+    if (!Number.isInteger(mapping.sourceOrdinal) || mapping.sourceOrdinal < 0) {
+      throw new Error('Mapping sourceOrdinal must be a non-negative integer.');
+    }
+    if (mapping.parentConversationId !== null) throw new Error('Non-CRM mapping cannot declare parentConversationId.');
+    if (mapping.clientId !== null) throw new Error('Non-CRM mapping cannot declare clientId.');
+  }
+  if (mapping.domain === 'general_memory') {
+    const locator = /^legacy-memory:([a-f0-9]{64}):([0-9]+)$/.exec(mapping.legacyId || '');
+    if (!locator || locator[1] !== mapping.sourceFileDigest || Number(locator[2]) !== mapping.sourceOrdinal) {
+      throw new Error('General Memory legacyId must bind the exact source snapshot digest and ordinal.');
+    }
+  }
+  for (const key of ['legacyId', 'memoryId', 'projectId']) text(mapping[key], key, 128);
+  if (mapping.memoryId.length < 8) throw new Error('Canonical memoryId must contain at least 8 characters.');
+  if (!Number.isInteger(mapping.revision) || mapping.revision !== 1) {
+    throw new Error('Migration baseline revision must be exactly 1.');
+  }
+  if (!CLASSIFICATIONS.has(mapping.classification)) throw new Error('Mapping classification is invalid.');
+  if (!STATUSES.has(mapping.status)) throw new Error('Mapping status is invalid.');
+  text(mapping.approvalReference, 'approvalReference');
+  text(mapping.approvedBy, 'approvedBy');
+  timestamp(mapping.approvedAt, 'approvedAt');
+  timestamp(mapping.createdAt, 'createdAt');
+  if (!/^[a-f0-9]{64}$/.test(mapping.mappingDigest || '') ||
+      mapping.mappingDigest !== digest(bodyOf(mapping))) {
+    throw new Error('Mapping digest mismatch.');
+  }
+  if (expectedDomain && mapping.domain !== expectedDomain) throw new Error('Mapping domain mismatch.');
+  if (expectedProjectId && mapping.projectId !== expectedProjectId) throw new Error('Mapping project scope mismatch.');
+  if (expectedSourceFileDigest && mapping.sourceFileDigest !== expectedSourceFileDigest) {
+    throw new Error('Mapping source snapshot mismatch.');
+  }
+  const nowMs = now instanceof Date ? now.getTime() : Date.parse(now);
+  if (!Number.isFinite(nowMs)) throw new Error('Current time is invalid.');
+  if (Date.parse(mapping.approvedAt) < Date.parse(mapping.createdAt)) throw new Error('Mapping approval cannot predate mapping creation.');
+  if (Date.parse(mapping.approvedAt) > nowMs || Date.parse(mapping.createdAt) > nowMs) {
+    throw new Error('Mapping approval/creation timestamp is in the future.');
+  }
+  if (mapping.status !== 'APPROVED') throw new Error('Mapping is not approved and cannot authorize adaptation.');
+  if (typeof verifyApproval !== 'function') throw new Error('Trusted approval verifier is required.');
+  const approval = verifyApproval(Object.freeze({
+    mappingId: mapping.mappingId, domain: mapping.domain,
+    projectId: mapping.projectId, legacyId: mapping.legacyId,
+    parentConversationId: mapping.parentConversationId, clientId: mapping.clientId,
+    memoryId: mapping.memoryId, approvalReference: mapping.approvalReference,
+    approvedBy: mapping.approvedBy, approvedAt: mapping.approvedAt,
+    mappingDigest: mapping.mappingDigest
+  }));
+  if (!object(approval) || Object.keys(approval).length !== APPROVAL_EVIDENCE_KEYS.length ||
+      APPROVAL_EVIDENCE_KEYS.some(key => !Object.prototype.hasOwnProperty.call(approval, key))) {
+    throw new Error('Trusted approval verifier returned an invalid evidence shape.');
+  }
+  if (approval.decision !== 'APPROVED' || approval.revocationStatus !== 'ACTIVE') {
+    throw new Error('Mapping approval is denied or revoked.');
+  }
+  for (const key of ['approvalReference', 'mappingDigest', 'projectId', 'approvedBy', 'approvedAt']) {
+    if (approval[key] !== mapping[key]) throw new Error('Approval evidence binding mismatch: ' + key + '.');
+  }
+  text(approval.registryRevision, 'approval registryRevision');
+  timestamp(approval.verifiedAt, 'approval verifiedAt');
+  timestamp(approval.expiresAt, 'approval expiresAt');
+  if (Date.parse(approval.verifiedAt) < Date.parse(mapping.approvedAt) || Date.parse(approval.verifiedAt) > nowMs ||
+      Date.parse(approval.expiresAt) <= nowMs || Date.parse(approval.expiresAt) <= Date.parse(approval.verifiedAt)) {
+    throw new Error('Approval verification timestamp is invalid or future-dated.');
+  }
+  return Object.freeze({ ...mapping });
+}
+function validateProjectMappings({ mappings, expectedDomain, expectedProjectId, expectedSourceFileDigest, verifyApproval, now }) {
+  if (!Array.isArray(mappings)) throw new Error('Mappings must be an array.');
+  const validated = mappings.map(mapping => validateProjectMapping({
+    mapping, expectedDomain, expectedProjectId, expectedSourceFileDigest, verifyApproval, now
+  }));
+  const legacyKeys = new Set();
+  const memoryIds = new Set();
+  const mappingIds = new Set();
+  for (const mapping of validated) {
+    const legacyKey = mapping.domain + ':' + mapping.sourceFileDigest + ':' + mapping.legacyId;
+    if (legacyKeys.has(legacyKey)) throw new Error('Duplicate legacy mapping rejected.');
+    if (memoryIds.has(mapping.memoryId)) throw new Error('Duplicate canonical memoryId mapping rejected.');
+    if (mappingIds.has(mapping.mappingId)) throw new Error('Duplicate mappingId rejected.');
+    legacyKeys.add(legacyKey);
+    memoryIds.add(mapping.memoryId);
+    mappingIds.add(mapping.mappingId);
+  }
+  return Object.freeze(validated);
+}
+module.exports = { validateProjectMapping, validateProjectMappings, digest, bodyOf, DOMAINS, APPROVAL_EVIDENCE_KEYS };
