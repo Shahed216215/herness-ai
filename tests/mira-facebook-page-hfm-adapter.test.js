@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const {
   retrieveCanonicalRecordsWithReport
-} = require('./mira-memory-unified-facade');
+} = require('../services/mira-memory-unified-facade');
 const {
   preparePublicPageDraftFromHfm,
   prepareFacebookImportForHfmReview
