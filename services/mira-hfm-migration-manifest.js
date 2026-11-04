@@ -42,7 +42,7 @@ function stableValue(value, seen = new Set()) {
 }
 function digest(value) {
   return crypto.createHash('sha256')
-    .update(JSON.stringify(stableValue(value)), 'utf8')
+    .update(JSON.stringify(value), 'utf8')
     .digest('hex');
 }
 function nonEmpty(value) {
