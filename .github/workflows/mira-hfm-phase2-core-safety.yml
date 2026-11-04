@@ -24,6 +24,9 @@ on:
       - work/mira-hfm-v02-phase2-core-safety
     paths:
       - 'knowledge.js'
+      - 'audit-log.js'
+      - 'tests/mira-audit-log-safety.test.js'
+      - 'tests/fixtures/mira-audit-log-append-worker.js'
       - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
       - 'tests/mira-hfm-retrieval-callsite-inventory.test.js'
       - 'services/**'
@@ -102,6 +105,9 @@ on:
       - main
     paths:
       - 'knowledge.js'
+      - 'audit-log.js'
+      - 'tests/mira-audit-log-safety.test.js'
+      - 'tests/fixtures/mira-audit-log-append-worker.js'
       - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
       - 'tests/mira-hfm-retrieval-callsite-inventory.test.js'
       - 'services/**'
@@ -175,6 +181,7 @@ jobs:
           unset GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_REFRESH_TOKEN
           export MIRA_TEST_OFFLINE_DRIVE=1
           node tests/mira-hfm-phase2-core-safety.test.js
+          node tests/mira-audit-log-safety.test.js
           node tests/mira-hfm-memory-version-recovery-policy.test.js
           node tests/mira-hfm-persistent-write-policy.test.js
           node tests/mira-hfm-persistent-wrapper-guard.test.js
