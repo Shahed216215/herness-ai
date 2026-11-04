@@ -382,3 +382,9 @@ MERGE=NOT_APPROVED
 - Verified run 41827185752 SUCCESS. Admin backup/restore and Knowledge edit/delete permission gates PASS; CRM route create/list/detail/context/memory tests PASS; Conversation Store corrupt-state, symlink, missing-primary and marker-tamper tests PASS; direct route tool calls=0; all seven persistent wrappers (memory-save, knowledge-save, learning-save, firewall-defense, memory-restore, memory-version-recovery, knowledge-cleanup) were denied with zero underlying writer invocations.
 - All Phase 3 contract/inventory suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0; EXTERNAL_ACTIONS_FROM_TEST=0.
 - These are isolated regression/bypass checks for the existing route/tool boundaries. They do not prove the HFM facade is wired into production routes.
+
+49. PROVIDER RETRY / LOSSLESS LEGACY MAPPING / RECOVERY POLICY REGRESSIONS
+- Phase 3 CI now includes `mira-hfm-knowledge-drive-retry.test.js`, `mira-legacy-memory-knowledge-adapter.test.js`, and `mira-hfm-memory-version-recovery-policy.test.js`.
+- Verified run 41827437501 SUCCESS: local Knowledge commit survives injected Drive sync failure; duplicate retry reconciles provider without duplicate local record; General Memory and Knowledge payloads preserve full source records; pending-review migration candidates remain non-retrievable; Memory version-recovery wrapper has explicit human-only policy and autonomous execution is denied.
+- The provider test uses a stubbed Drive dependency and isolated temporary storage; `REAL_GOOGLE_DRIVE_TOUCHED=NO`, `NETWORK_REQUESTS=0`, `EXTERNAL_ACTIONS=0`.
+- All Phase 3 tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
