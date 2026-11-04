@@ -29,6 +29,8 @@ function record(overrides = {}) {
   return merged;
 }
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-conflict-registry-'));
+const authorizeAccess = () => true;
+const actorContext = { actorId: 'fixture-actor', purpose: 'isolated-test', requestId: 'request-fixture-001' };
 const auditEvents = [];
 const auditWriter = event => { auditEvents.push(event); };
 const authorizeResolution = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-') && request.resolutionProposal?.requiredAuthority === 'authorized-human-reviewer';
@@ -80,7 +82,7 @@ try {
     originalA, originalB, record({ memoryId: 'memory-0002' }),
     record({ memoryId: 'memory-0001', projectId: 'project-b',
       access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-b'] } })
-  ], listConflicts({ directory, projectId: 'project-a' }), 'project-a');
+  ], listConflicts({ directory, projectId: 'project-a' }), 'project-a', authorizeAccess, actorContext);
   assert.deepEqual(visibleBefore.map(item => item.projectId + ':' + item.memoryId),
     ['project-a:memory-0002']);
   assert.deepEqual(filterTrustedRecords([
@@ -89,14 +91,14 @@ try {
     record({ memoryId: 'memory-quarantined-trust', trust: { status: 'QUARANTINED' } }),
     record({ memoryId: 'memory-missing-trust', trust: undefined }),
     record({ memoryId: 'memory-malformed', unexpectedField: 'reject-me' })
-  ], [], 'project-a'), []);
+  ], [], 'project-a', authorizeAccess, actorContext), []);
   console.log('PENDING_UNVERIFIED_AND_CROSS_PROJECT_RECORDS_EXCLUDED=PASS');
   const mainReview = startReview(directory, created.conflictId);
   assert.equal(mainReview.status, 'UNDER_REVIEW');
   assert.equal(verifyReview({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
   assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'UNDER_REVIEW');
   assert.deepEqual(filterTrustedRecords([originalA, originalB],
-    listConflicts({ directory, projectId: 'project-a' }), 'project-a'), []);
+    listConflicts({ directory, projectId: 'project-a' }), 'project-a', authorizeAccess, actorContext), []);
   assert.equal(startReview(directory, created.conflictId).status, 'ALREADY_UNDER_REVIEW');
   assert.throws(() => beginConflictReview({
     directory, conflictId: created.conflictId, projectId: 'project-a',
@@ -104,6 +106,18 @@ try {
     authorizeReview: () => true, auditWriter
   }), /different review authority/);
   assert.throws(() => filterTrustedRecords([], [], ''), /projectId is required/);
+  assert.throws(() => filterTrustedRecords([originalA], [], 'project-a'), /authenticated access authorizer is required/i);
+  assert.deepEqual(filterTrustedRecords([
+    record({ memoryId: 'memory-restricted-outside-allowlist',
+      access: { classification: 'RESTRICTED', allowedProjectIds: ['project-b'] } })
+  ], [], 'project-a', authorizeAccess, actorContext), []);
+  assert.deepEqual(filterTrustedRecords([
+    originalA
+  ], [], 'project-a', () => false, actorContext), []);
+  console.log('ACCESS_AUTHORIZER_REQUIRED_FAIL_CLOSED=PASS');
+  console.log('RESTRICTED_ALLOWLIST_ENFORCED=PASS');
+  console.log('ACTOR_ACCESS_DECISION_ENFORCED=PASS');
+
 
   assert.throws(() => resolveConflict({
     directory, conflictId: created.conflictId, projectId: 'project-a',
@@ -229,7 +243,7 @@ try {
   assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].status, 'RETAINED_QUARANTINED');
   assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].state, 'QUARANTINED');
   assert.deepEqual(filterTrustedRecords([originalA, originalB],
-    listConflicts({ directory: retainDirectory, projectId: 'project-a' }), 'project-a'), []);
+    listConflicts({ directory: retainDirectory, projectId: 'project-a' }), 'project-a', authorizeAccess, actorContext), []);
 
   const multiDirectory = path.join(directory, 'multi-original-fixture');
   const thirdOriginal = record({
