@@ -88,6 +88,7 @@ assert.deepEqual(categoryCounts,{
  CANONICAL_STORE_FILE_BACKED_READ:3
 },'repository access-path inventory drifted; review all new/removed candidates before updating baseline');
 assert.equal(repositoryInventory.length,272,'repository lexical candidate total changed; semantic review required');
+for(const item of repositoryInventory.filter(x=>x.category==='NAMESPACE_DOMAIN_READ')) console.log('MIRA_HFM_NAMESPACE_CALLSITE='+item.file+':'+item.line+':'+item.excerpt);
 console.log('REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS');
 console.log('REPOSITORY_ACCESS_PATH_CANDIDATE_COUNT=272');
 console.log('TESTS_FAILED=0');
