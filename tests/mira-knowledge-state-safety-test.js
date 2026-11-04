@@ -82,6 +82,15 @@ async function main() {
     fs.unlinkSync(file);
     fs.unlinkSync(path.join(root, 'knowledge-backup.json'));
     assert.throws(() => knowledge.getKnowledge(), /previously initialized/i);
+    const versionDirectory = file + '.versions';
+    for (const name of fs.readdirSync(versionDirectory)) {
+      fs.unlinkSync(path.join(versionDirectory, name));
+    }
+    fs.unlinkSync(markerFile);
+    assert.throws(() => knowledge.getKnowledge(), /previously initialized/i);
+    assert.equal(fs.existsSync(markerFile), true);
+    console.log('EMPTY_KNOWLEDGE_VERSION_DIRECTORY_STILL_PROVES_PRIOR_STORE=PASS');
+
     const marker = JSON.parse(fs.readFileSync(markerFile, 'utf8'));
     marker.sha256 = '0'.repeat(64);
     fs.writeFileSync(markerFile, JSON.stringify(marker), { mode: 0o600 });
