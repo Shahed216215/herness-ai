@@ -1,7 +1,7 @@
 'use strict';
 
 const assert=require('node:assert/strict');
-const {assessDeclaredMetaPermissionEvidence}=require('../services/mira-facebook-page-permission-contract');
+const {assessDeclaredMetaPermissionEvidence,buildMetaGraphRequestPlan}=require('../services/mira-facebook-page-permission-contract');
 
 const now=new Date('2026-11-04T12:00:00.000Z');
 const context={appId:'111222333',actorId:'444555666',pageId:'123456789',operation:'WRITE_PAGE_POST'};
@@ -104,6 +104,33 @@ assert.throws(()=>assessDeclaredMetaPermissionEvidence({
  evidence:evidence({pageId:'not-numeric'}),expectedContext:{...context,pageId:'not-numeric'},now
 }),/Expected Page ID must be numeric/);
 console.log('EXACT_SCHEMA_UNKNOWN_SCOPE_AND_CROSS_PAGE_EVIDENCE_REJECTED=PASS');
+
+const writePlan=buildMetaGraphRequestPlan({
+ operation:'WRITE_PAGE_POST',pageId:'123456789',apiVersion:'v26.0',recordClassification:'PUBLIC'
+});
+assert.equal(writePlan.status,'REQUEST_PLAN_ONLY');
+assert.equal(writePlan.method,'POST');
+assert.equal(writePlan.endpointPath,'/123456789/feed');
+assert.deepEqual(writePlan.bodyFields,['message']);
+assert.equal(writePlan.transportEnabled,false);
+assert.equal(writePlan.mayCallApi,false);
+assert.equal(writePlan.credentialIncluded,false);
+assert.throws(()=>buildMetaGraphRequestPlan({
+ operation:'WRITE_PAGE_POST',pageId:'123456789',apiVersion:'v26.0',recordClassification:'PROJECT_PRIVATE'
+}),/Only PUBLIC records/);
+const readPlan=buildMetaGraphRequestPlan({
+ operation:'READ_PAGE_OWNED',pageId:'123456789',apiVersion:'v26.0'
+});
+assert.equal(readPlan.method,'GET');
+assert.equal(readPlan.endpointPath,'/123456789/posts');
+assert.equal(readPlan.transportEnabled,false);
+assert.throws(()=>buildMetaGraphRequestPlan({
+ operation:'READ_PAGE_OWNED',pageId:'123456789',apiVersion:'26.0'
+}),/explicit version/);
+assert.throws(()=>buildMetaGraphRequestPlan({
+ operation:'READ_PAGE_OWNED',pageId:'not-numeric',apiVersion:'v26.0'
+}),/pageId must be numeric/);
+console.log('VERSION_PINNED_READ_WRITE_REQUEST_PLANS_REMAIN_NONEXECUTABLE=PASS');
 
 console.log('META_PERMISSION_CONTRACT_NETWORK_REQUESTS=0');
 console.log('META_PERMISSION_CONTRACT_TOKEN_USE=0');
