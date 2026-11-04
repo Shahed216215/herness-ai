@@ -32,13 +32,21 @@ URL parsing is local only. It does not establish that the post exists, is public
 
 Manual content comparison may report a match or conflict, but it cannot promote the record to VERIFIED or trusted Memory. Mismatch must be quarantined/reviewed.
 
-## 5. Automatic API operations
+## 5. HFM facade bridge — prepare-only
+
+The Phase 4 HFM adapter consumes a Phase 3 `retrieveCanonicalRecordsWithReport` result. It requires exactly one selected Memory ID, a matching provenance digest/source/revision, an explicit `ELIGIBLE / AUTHORIZED_READ` disposition, and an explicit `PUBLIC` access classification before preparing a manual Page draft.
+
+The bridge returns `PREPARED_MANUAL_POST_NO_EXTERNAL_ACTION`; it does not publish, commit Memory, emit a durable audit event, or claim that the report object is a cryptographic authorization token. The caller must obtain the report directly from the trusted in-process HFM facade.
+
+External Page content is wrapped as `REVIEW_CANDIDATE_NOT_PERSISTED` and `PENDING_HUMAN_REVIEW`. It remains UNVERIFIED and cannot enter trusted Memory. No persistent quarantine write is performed by this adapter.
+
+## 6. Automatic API operations
 
 Automatic READ and WRITE are explicitly NOT_IMPLEMENTED_NO_LIVE_API_CALL. The Phase 4 adapter returns a fail-closed disposition even if caller-supplied capability evidence says AVAILABLE.
 
 Future automatic transport must separately implement authenticated actor and Page binding, least-privilege scopes, access-token secrecy, permission revalidation, rate limits, timeouts, idempotency, uncertain-write reconciliation, provider revision handling, readback, source provenance and audit.
 
-## 6. Acceptance status
+## 7. Acceptance status
 
 |Requirement|Current status|
 |---|---|
@@ -53,10 +61,11 @@ Future automatic transport must separately implement authenticated actor and Pag
 |Automatic READ / WRITE / UPDATE|NOT_IMPLEMENTED|
 |Provider readback verification|NOT_IMPLEMENTED|
 |Live Meta API permission verification|NOT_RUN|
-|HFM persistent provider integration|NOT_IMPLEMENTED|
+|HFM facade read-report to public manual-draft bridge|IMPLEMENTED — PREPARE ONLY|
+|Facebook import to HFM review candidate|IMPLEMENTED — NOT PERSISTED|
 |Production migration / deployment|NOT_APPROVED|
 
-## 7. Phase status
+## 8. Phase status
 
 PHASE4=IN_PROGRESS
 PHASE4_INCREMENT=OFFLINE_CAPABILITY_AND_MANUAL_FALLBACK
