@@ -367,3 +367,12 @@ The synthetic `prepareCanonicalWrite()` result now contains an immutable `auditP
 This makes the future host commit boundary's audit obligation explicit without claiming that an event has been written. The facade still has no persistence, commit or audit-emission function. The real host writer must atomically enforce idempotency/CAS, preserve the prior version, emit the audit event with commit outcome, and report post-commit audit failure accurately.
 
 Verified Phase 3 CI run 41827659135 SUCCESS; all tests `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
+
+
+## 31. Atomic idempotency handoff (2026-11-04)
+
+The prepare-only write result now includes an immutable `idempotencyPlan` binding the key to actorId, projectId, CREATE/UPDATE operation, memoryId and incoming record digest. It declares `requiredAtomicity=HOST_ATOMIC_UNIQUE_CLAIM`, `status=NOT_RESERVED_PREPARE_ONLY`, and the outer result reports `idempotencyStatus=NOT_ATOMIC_PREPARE_ONLY`.
+
+The caller-supplied `seenIdempotencyKeys` list is a synthetic preflight snapshot only. It is not an atomic reservation, distributed uniqueness guarantee or protection against concurrent writers. A future host commit adapter must perform a durable atomic unique-key claim/CAS and distinguish in-progress, committed, failed and replayed outcomes. No such store or commit function exists in this facade.
+
+Verified Phase 3 CI run 41827923148 SUCCESS; all tests `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
