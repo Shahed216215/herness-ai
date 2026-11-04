@@ -27,6 +27,17 @@ assert.throws(()=>assertProviderOperation({contract:driveLike,operation:'READ_SN
 console.log('WEAK_SNAPSHOT_CONSISTENCY_REJECTED=PASS');
 assert.equal(assertProviderOperation({contract:driveLike,operation:'PREPARE_WRITE'}).supported,true);
 console.log('PREPARE_ONLY_WITHOUT_COMMIT_CAPABILITY_PASS=PASS');
+const unencrypted={...strong,providerId:'synthetic-unencrypted',capabilities:{...strong.capabilities,encryptedAtRest:false}};
+assert.throws(()=>assertProviderOperation({contract:unencrypted,operation:'READ_SNAPSHOT',classification:'PROJECT_PRIVATE'}),/missing: encryptedAtRest/);
+console.log('NONPUBLIC_READ_REQUIRES_AT_REST_ENCRYPTION=PASS');
+assert.throws(()=>assertProviderOperation({contract:unencrypted,operation:'COMMIT_WRITE',classification:'RESTRICTED'}),/missing: encryptedAtRest/);
+console.log('RESTRICTED_COMMIT_REQUIRES_AT_REST_ENCRYPTION=PASS');
+assert.equal(assertProviderOperation({contract:unencrypted,operation:'READ_SNAPSHOT',classification:'PUBLIC'}).supported,true);
+console.log('PUBLIC_READ_MAY_USE_UNENCRYPTED_PROVIDER=PASS');
+assert.equal(assertProviderOperation({contract:unencrypted,operation:'PREPARE_WRITE',classification:'RESTRICTED'}).supported,true);
+console.log('NONPERSISTENT_PREPARE_DOES_NOT_REQUIRE_PROVIDER_ENCRYPTION=PASS');
+assert.throws(()=>assertProviderOperation({contract:strong,operation:'READ_SNAPSHOT',classification:'TOP_SECRET'}),/classification is unsupported/);
+console.log('UNKNOWN_DATA_CLASSIFICATION_REJECTED=PASS');
 assert.throws(()=>validateProviderContract({...strong,extra:true}),/exact supported fields/);
 console.log('UNKNOWN_PROVIDER_FIELD_REJECTED=PASS');
 assert.throws(()=>validateProviderContract({...strong,capabilities:{...strong.capabilities,atomicConditionalWrite:true,immutableVersions:false}}),/Atomic writes require/);
