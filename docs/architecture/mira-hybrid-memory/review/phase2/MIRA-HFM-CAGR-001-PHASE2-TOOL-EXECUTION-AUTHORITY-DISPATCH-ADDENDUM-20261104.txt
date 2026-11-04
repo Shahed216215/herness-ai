@@ -129,3 +129,22 @@ CI:
 Both logs confirm MIRA_HFM_ADMIN_BACKUP_PERMISSION_RUNTIME=PASS, MIRA_HFM_ADMIN_RESTORE_CONFIRMATION_RUNTIME=PASS, MIRA_HFM_UNAUTHORIZED_ADMIN_WRITE_CALLS=0, TESTS_FAILED=0, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
 
 This verifies the route-level permission/confirmation gate in an isolated harness. It does not execute production backup/restore or certify provider behavior.
+
+9. ADMIN KNOWLEDGE EDIT/DELETE WRITE PATHS
+
+Further source review found two direct server-side Knowledge write routes:
+- DELETE /api/admin/knowledge/:id calls deleteKnowledge(id).
+- POST /api/admin/knowledge/:id/edit calls updateLearning() for an existing learning record or updateKnowledge() for a normal Knowledge record.
+
+Both routes require requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN) and write audit events. They are dedicated authenticated admin endpoints, not model-callable save tools. They do not use a separate confirm:true field or the shared action-scoped approval-token contract; retain this as a governance integration gap rather than claiming a universal approval protocol.
+
+Expanded tests/mira-hfm-admin-backup-restore-authority.test.js executes the actual permission helper and these actual route handlers in an isolated VM with stubbed storage functions. It proves missing SYSTEM_ADMIN permission blocks delete/edit before the write stub, while an authorized admin can invoke the controlled fixture stubs. CI on tested HEAD 2b9234058d5b162c64216236bcc200d1088d57b5:
+- Push run 41788966357: SUCCESS.
+- Pull-request run 41788971765: SUCCESS.
+Logs confirm MIRA_HFM_ADMIN_KNOWLEDGE_EDIT_DELETE_PERMISSION_RUNTIME=PASS and MIRA_HFM_UNAUTHORIZED_ADMIN_WRITE_CALLS=0.
+
+10. KNOWLEDGE IMPROVEMENT APPLY AND LEGACY MODULE REACHABILITY
+
+routes/knowledge-improvements.js uses SYSTEM_ADMIN permission, requires proposal.status === "approved", then calls prepareEvolution(), applyEvolution(), verifyEvolutionState(), and rollbackEvolution() on verification/commit failure. The direct-dispatch source test covers these route-level gates.
+
+The repository also contains knowledge-controlled-apply.js, which exports a direct updateLearning() controlled-apply path with its own approved-proposal check, Local/Drive preflight, snapshot verification and rollback. The reviewed knowledge-improvements route imports applyKnowledgeImprovementControlled but does not invoke it; the route currently uses the Stage 4.12 prepare/apply/verify evolution path instead. This legacy module's effective reachability remains REVIEW_REQUIRED until all import/call sites are reconciled. Do not count the unused import as proof that this direct writer is the active route path.
