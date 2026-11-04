@@ -96,6 +96,17 @@ try {
     record({ memoryId: 'memory-missing-trust', trust: undefined }),
     record({ memoryId: 'memory-malformed', unexpectedField: 'reject-me' })
   ], [], 'project-a', authorizeAccess, actorContext), []);
+  assert.deepEqual(filterTrustedRecords(
+    [originalA],
+    [{ projectId: 'project-a', status: 'RESOLVED', originalMemoryIds: ['memory-0001'] }],
+    'project-a', authorizeAccess, actorContext
+  ), []);
+  assert.throws(() => filterTrustedRecords(
+    [originalA],
+    [{ status: 'QUARANTINED', originalMemoryIds: ['memory-0001'] }],
+    'project-a', authorizeAccess, actorContext
+  ), /Conflict quarantine metadata is malformed/);
+  console.log('INCOMPLETE_CONFLICT_METADATA_FAILS_CLOSED=PASS');
   console.log('PENDING_UNVERIFIED_AND_CROSS_PROJECT_RECORDS_EXCLUDED=PASS');
   const mainReview = startReview(directory, created.conflictId);
   assert.equal(mainReview.status, 'UNDER_REVIEW');
@@ -210,6 +221,7 @@ try {
   assert.deepEqual(acceptedVisible.map(item => digestForTest(item)), [
     digestForTest(originalB), digestForTest(record({ memoryId: 'memory-independent' }))
   ]);
+  console.log('RESOLVED_CONFLICT_ACCEPTED_VERSION_ONLY_RETRIEVABLE=PASS');
 
   const rejectDirectory = path.join(directory, 'reject-fixture');
   const rejectConflict = createConflictQuarantine({
@@ -233,6 +245,7 @@ try {
     'project-a', authorizeAccess, actorContext
   );
   assert.deepEqual(rejectedVisible, [originalA]);
+  console.log('REJECTED_CONFLICT_UNSELECTED_VERSION_EXCLUDED=PASS');
 
   const retainDirectory = path.join(directory, 'retain-fixture');
   const failedIntegrityOriginal = record({ integrity: { status: 'FAILED', algorithm: 'SHA-256' } });
@@ -294,6 +307,7 @@ try {
     'project-a', authorizeAccess, actorContext
   );
   assert.deepEqual(alternateVisible, [thirdOriginal]);
+  console.log('ALTERNATE_VERSION_SELECTION_ENFORCED=PASS');
 
   const mergeDirectory = path.join(directory, 'merge-fixture');
   const mergeConflict = createConflictQuarantine({
@@ -333,6 +347,7 @@ try {
     'project-a', authorizeAccess, actorContext
   );
   assert.deepEqual(mergedVisible, [merged]);
+  console.log('APPROVED_MERGE_ORIGINALS_EXCLUDED=PASS');
 
   const resolutionTamper = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
   resolutionTamper.proposal.requiredAuthority = 'TAMPERED';
