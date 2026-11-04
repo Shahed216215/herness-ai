@@ -1,6 +1,10 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { digest, buildMigrationCandidate, validateCandidateSet, planSnapshot } = require('../services/mira-hfm-migration-manifest');
+const { digest: legacyAdapterDigest } = require('../services/mira-legacy-memory-knowledge-adapter');
+
+assert.equal(digest({ b: 2, a: 1 }), legacyAdapterDigest({ b: 2, a: 1 }));
+console.log('LEGACY_ADAPTER_SOURCE_DIGEST_COMPATIBLE=PASS');
 
 const sourceFileDigest = 'a'.repeat(64);
 const base = {
