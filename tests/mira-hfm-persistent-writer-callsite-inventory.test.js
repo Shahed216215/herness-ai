@@ -26,7 +26,7 @@ function walk(directory, relative = '') {
   return output;
 }
 
-const findings = [];
+const findings = [];\nconst definitions = [];
 for (const file of walk(ROOT)) {
   const source = fs.readFileSync(file.full, 'utf8');
   const lines = source.split(/\r?\n/);
@@ -58,7 +58,7 @@ const reviewedFiles = [
   'tools/memory-save.js'
 ].sort();
 
-const restrictedWrapperImports = [];
+const actualDefinitionFiles = [...new Set(definitions.map(item => item.file))].sort();\nconst reviewedDefinitionFiles = ['knowledge.js', 'memory.js'].sort();\nassert.deepEqual(actualDefinitionFiles, reviewedDefinitionFiles, 'writer API definition files changed and require review');\n\nconst restrictedWrapperImports = [];
 const restrictedImportPattern = /require\s*\(\s*["'][^"']*\/tools\/(?:memory-save|knowledge-save|learning-save|firewall-defense|memory-restore|memory-version-recovery|knowledge-cleanup)(?:\.js)?["']\s*\)/g;
 for (const file of walk(ROOT)) {
   const source = fs.readFileSync(file.full, 'utf8');
@@ -74,7 +74,7 @@ assert.deepEqual(unexpected, [], 'new persistent writer callsite file requires r
 assert.deepEqual(missing, [], 'reviewed persistent writer callsite inventory changed');
 
 console.log('MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS');
-console.log('MIRA_HFM_PERSISTENT_WRITER_FILE_COUNT=' + actualFiles.length);
+console.log('MIRA_HFM_PERSISTENT_WRITER_FILE_COUNT=' + actualFiles.length);\nconsole.log('MIRA_HFM_PERSISTENT_WRITER_API_DEFINITION_COUNT=' + definitions.length);\nconsole.log('MIRA_HFM_PERSISTENT_WRITER_API_DEFINITION_FILE_COUNT=' + actualDefinitionFiles.length);
 console.log('MIRA_HFM_PERSISTENT_WRITER_MATCH_COUNT=' + findings.length);
 console.log('MIRA_HFM_UNREVIEWED_WRITER_FILES=0');
 console.log('MIRA_HFM_MISSING_REVIEWED_WRITER_FILES=0');
