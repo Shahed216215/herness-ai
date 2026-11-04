@@ -1,8 +1,9 @@
 'use strict';
 
 // Read-only structural conflict assessment against the v0.2.4 canonical
-// Memory record contract. This module never writes, merges, resolves,
-// quarantines, or claims cryptographic verification.
+// Memory record contract. It verifies SHA-256(JCS(content)) consistency only;
+// it does not authenticate a source, signature, whole-record digest or trust anchor.
+const crypto = require('node:crypto');
 const HASH_RE = /^[a-f0-9]{64}$/;
 const SOURCE_TYPES = new Set([
   'facebook_page', 'facebook_group', 'web', 'manual',
@@ -29,6 +30,11 @@ function object(value) {
 }
 function exactKeys(value, allowed) {
   return object(value) && Object.keys(value).every(key => allowed.includes(key));
+}
+function canonicalContentHash(content) {
+  // Contract v0.2.4 defines JCS(content). content is a JSON string primitive,
+  // for which JSON.stringify is the RFC 8785 canonical serialization.
+  return crypto.createHash('sha256').update(JSON.stringify(content), 'utf8').digest('hex');
 }
 function validDate(value) {
   if (typeof value !== 'string') return false;
@@ -77,6 +83,9 @@ function validateCanonicalMemoryRecord(record, label = 'record') {
       !Number.isInteger(record.version.revision) || record.version.revision < 1 ||
       typeof record.version.contentHash !== 'string' || !HASH_RE.test(record.version.contentHash)) {
     errors.push(label + '.version violates canonical revision/hash shape');
+  } else if (typeof record.content === 'string' &&
+      record.version.contentHash !== canonicalContentHash(record.content)) {
+    errors.push(label + '.version.contentHash does not match SHA-256(JCS(content))');
   }
   if (!exactKeys(record.integrity, ['status', 'algorithm']) ||
       !INTEGRITY.has(record.integrity.status) || record.integrity.algorithm !== 'SHA-256') {
@@ -107,7 +116,11 @@ function assessMemoryConflict(existing, incoming) {
     ...validateCanonicalMemoryRecord(incoming, 'incoming')
   ];
   if (validationErrors.length) {
-    return { status: 'REVIEW_REQUIRED', conflictTypes: [], validationErrors, cryptographicVerification: 'NOT_PERFORMED' };
+    return {
+      status: 'REVIEW_REQUIRED', conflictTypes: [], validationErrors,
+      cryptographicVerification: validationErrors.some(error => error.includes('contentHash does not match'))
+        ? 'CONTENT_HASH_MISMATCH' : 'NOT_COMPLETED'
+    };
   }
   const conflicts = [];
   if (existing.memoryId !== incoming.memoryId) conflicts.push('IDENTITY_CONFLICT');
@@ -128,13 +141,13 @@ function assessMemoryConflict(existing, incoming) {
 
   const conflictTypes = [...new Set(conflicts)];
   if (conflictTypes.length) {
-    return { status: 'CONFLICT', state: 'DETECTED', conflictTypes, validationErrors: [], cryptographicVerification: 'NOT_PERFORMED' };
+    return { status: 'CONFLICT', state: 'DETECTED', conflictTypes, validationErrors: [], cryptographicVerification: 'CONTENT_HASH_MATCHED_ONLY' };
   }
   if (existing.integrity.status !== 'VERIFIED' || incoming.integrity.status !== 'VERIFIED') {
     return {
       status: 'REVIEW_REQUIRED', conflictTypes: [],
       validationErrors: ['Both records must declare VERIFIED integrity before a no-conflict structural assessment.'],
-      cryptographicVerification: 'NOT_PERFORMED'
+      cryptographicVerification: 'CONTENT_HASH_MATCHED_ONLY'
     };
   }
   return { status: 'NO_CONFLICT_DETECTED', conflictTypes: [], validationErrors: [], cryptographicVerification: 'NOT_PERFORMED' };
