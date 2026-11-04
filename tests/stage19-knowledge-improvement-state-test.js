@@ -27,6 +27,10 @@ try {
     path.join(isolatedDir, "services", "mira-json-state-store.js")
   );
   fs.copyFileSync(
+    path.join(path.resolve(__dirname, ".."), "services", "mira-store-initialization-guard.js"),
+    path.join(isolatedDir, "services", "mira-store-initialization-guard.js")
+  );
+  fs.copyFileSync(
     path.join(path.resolve(__dirname, ".."), "audit-log.js"),
     path.join(isolatedDir, "audit-log.js")
   );
