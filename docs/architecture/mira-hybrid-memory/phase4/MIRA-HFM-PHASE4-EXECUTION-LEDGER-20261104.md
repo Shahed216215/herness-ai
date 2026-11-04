@@ -212,4 +212,13 @@ Status: IN PROGRESS
 - Added synthetic fetch tests; CI tests perform zero real network requests.
 - Added separate manual workflow job, gated by explicit boolean confirmation and a supplied Page ID. It fails before transport if the repository secret is absent. Offline CI remains network-free.
 - This does not yet perform a live test. Repository owner must add `META_PAGE_ACCESS_TOKEN` in GitHub Settings → Secrets and variables → Actions, then manually dispatch this workflow on the Phase 4 branch with the intended Page ID and confirmation enabled.
-- VERSION=v0.2; LIVE_READ_ONLY_PROBE=IMPLEMENTED_PENDING_CI_AND_OWNER_SECRET; LIVE_META_API_CALLS=0; META_WRITE_REQUESTS=0.
+- VERSION=v0.2; LIVE_READ_ONLY_PROBE=IMPLEMENTED_CI_VERIFIED_PENDING_OWNER_SECRET_AND_MANUAL_DISPATCH; LIVE_META_API_CALLS=0; META_WRITE_REQUESTS=0.
+
+
+## Entry 023 — Read-only probe contract CI verified
+- Push CI run 41858857046 and pull_request CI run 41858867138 both SUCCESS on commit 8447301049bdddda3161abd7b20fa3415d1f6339.
+- The new synthetic probe suite confirms exact host/version/Page ID binding, GET-only method, fields restricted to id/name, bearer-header-only token placement, redirect rejection, no-cache behavior, bounded response size, permission/rate-limit failure handling and no token exposure.
+- Probe tests use an injected fake fetch. CI confirms LIVE_META_API_CALLS=0, META_WRITE_REQUESTS=0, FACEBOOK_POSTS_PUBLISHED=0, CANONICAL_MEMORY_WRITES=0 and TESTS_FAILED=0.
+- The conditional live workflow job was skipped during normal push/PR CI; no real Meta request has occurred.
+- Next external prerequisite is owner configuration of GitHub Actions secret META_PAGE_ACCESS_TOKEN, followed by manual workflow_dispatch with exact Page ID and confirm_read_only_meta_get=true.
+- VERSION=v0.2; READ_ONLY_PROBE_CONTRACT=PASS; LIVE_META_READ_ONLY_TEST=NOT_RUN; PHASE4=IN_PROGRESS.
