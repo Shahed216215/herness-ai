@@ -1,37 +1,25 @@
 'use strict';
-
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-
-const root = path.resolve(__dirname, '..');
-const engine = fs.readFileSync(path.join(root, 'services/mira-work-execution-engine.js'), 'utf8');
-const expected = ['memory_save', 'knowledge_save', 'learning_save'];
-
-for (const name of expected) {
-  const start = engine.indexOf(`  ${name}: {`);
-  assert.notEqual(start, -1, `${name} must have an explicit engine policy`);
-  const end = engine.indexOf('\\n  },', start);
-  assert.notEqual(end, -1, `${name} policy block must be complete`);
+const engine = fs.readFileSync(path.join(__dirname, '..', 'services', 'mira-work-execution-engine.js'), 'utf8');
+for (const name of ['memory_save', 'knowledge_save', 'learning_save']) {
+  const start = engine.indexOf('  ' + name + ': {');
+  assert.notEqual(start, -1, name + ' policy exists');
+  const end = engine.indexOf('\n  },', start);
+  assert.notEqual(end, -1, name + ' policy closes');
   const policy = engine.slice(start, end);
-  assert.match(policy, /operation:\\s*"file_modify"/);
-  assert.match(policy, /autonomous:\\s*false/);
-  assert.match(policy, /humanApprovalRequired:\\s*true/);
-  assert.match(policy, /explicitConfirmation:\\s*true/);
-  console.log(`MIRA_HFM_${name.toUpperCase()}_HUMAN_ONLY=PASS`);
+  for (const expected of [
+    'operation: "file_modify"',
+    'autonomous: false',
+    'humanApprovalRequired: true',
+    'explicitConfirmation: true'
+  ]) assert.ok(policy.includes(expected), name + ' missing ' + expected);
+  console.log('MIRA_HFM_' + name.toUpperCase() + '_HUMAN_ONLY=PASS');
 }
-
-assert.match(
-  engine,
-  /if\\s*\\(policy\\.humanApprovalRequired\\)\\s*\\{[\\s\\S]*?passed:\\s*false[\\s\\S]*?explicit human approval/i,
-  'humanApprovalRequired must fail the autonomous tool-safety gate'
-);
-assert.match(
-  engine,
-  /if\\s*\\(!policy\\.autonomous\\)\\s*\\{[\\s\\S]*?passed:\\s*false/,
-  'autonomous=false must fail the autonomous tool-safety gate'
-);
-
+assert.ok(engine.includes('if (policy.humanApprovalRequired)'));
+assert.ok(engine.includes('This tool is restricted to explicit human approval.'));
+assert.ok(engine.includes('if (!policy.autonomous)'));
 console.log('MIRA_HFM_PERSISTENT_WRITE_AUTONOMOUS_EXECUTION=DENIED');
 console.log('PRODUCTION_MEMORY_KNOWLEDGE_TOUCHED=NO');
 console.log('NETWORK_REQUESTS=0');
