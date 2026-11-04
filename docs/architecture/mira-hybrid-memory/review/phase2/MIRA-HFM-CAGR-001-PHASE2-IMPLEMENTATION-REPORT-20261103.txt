@@ -567,3 +567,21 @@ GitHub Actions run 41765344278 (run 379), job 126362291976, completed SUCCESS on
 - TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
 
 This closes the scoped direct-overwrite and commit-audit gaps for the Work Knowledge Consolidation store. It does not connect that separate store to conflict-registry status or establish universal trusted retrieval exclusion.
+
+
+18. WORK LEARNING STORE COMMIT GOVERNANCE — VERIFIED BY RUN 386
+
+The Work Learning store already rejected malformed, empty, over-capacity, invalid-shape and symlinked state, and preserved capacity-evicted records in quarantine. Follow-up review found that a direct save call could replace an existing corrupt regular file and that successful writes had no store-specific committed-state audit event.
+
+The save path now validates the existing store before replacement, writes through the verified atomic JSON writer, and records a committed-state audit event with SHA-256 and record count. Audit failure after commit is explicitly marked stateCommitted=true.
+
+The existing isolated test now verifies the commit audit and confirms direct save cannot overwrite corrupt or empty existing state.
+
+GitHub Actions run 41765526400 (run 386), job 126362? (see latest job evidence), completed SUCCESS on commit 18f5af9b6d18eda0c79b3df9e29a44ce6ce363f0. The run log explicitly confirms:
+- WORK_LEARNING_STORE_COMMIT_AUDIT=PASS
+- WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_CORRUPT=PASS
+- WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_EMPTY=PASS
+- RESULT=MIRA_WORK_LEARNING_STORE_FAIL_CLOSED_PASS
+- TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This closes scoped direct-overwrite and commit-audit gaps in the Work Learning store. It does not qualify U04 cross-process append arbitration or link Work Learning/Experience records to conflict-registry resolution status.
