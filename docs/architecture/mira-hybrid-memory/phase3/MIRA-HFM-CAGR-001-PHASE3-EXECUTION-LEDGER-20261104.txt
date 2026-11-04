@@ -406,3 +406,32 @@ MERGE=NOT_APPROVED
 52. PHASE 2 REGRESSION CROSS-CHECK
 - Phase 2 core safety regression workflow run 41827923194 completed SUCCESS on the same code commit a1a5584e2c18d96766ba65c6a0d15a9a89489b46 as Phase 3 run 41827923148.
 - Phase 3 changes therefore passed both the Phase 3 contract/bypass suite and the existing Phase 2 core-safety regression suite. No merge or production deployment occurred.
+
+53. PROJECT OWNER REGISTRY CONTRACT TESTS
+- Added `tests/mira-memory-project-owner-registry-contract.test.js` for the existing read-only owner-registry validator.
+- Coverage: exact schema, immutable normalized output, expected project/tenant binding, mandatory trusted verifier, active owner binding, owner/membership uniqueness, membership status, timestamp consistency, source snapshot digest, record digest, tamper and unknown-field rejection.
+- Added the test to the Phase 3 isolated CI workflow.
+- Phase 3 run 41833591729 SUCCESS on commit baa31879b85b7ea3e366110406039ecc765e8c62: `PROJECT_OWNER_REGISTRY_*=PASS`; `TESTS_FAILED=0`.
+- This validates registry-entry evidence only. It does not create, persist, approve, revoke or assign real project owners.
+
+54. FIXTURE-BACKED HOST IDENTITY / PROJECT AUTHORITY INTEGRATION
+- Added `tests/mira-memory-host-identity-integration.test.js`.
+- The isolated fixture composes trusted-principal normalization, project-owner registry validation, project-authority evidence validation, host authorization adapter and request authorization.
+- Positive path: verified fixture owner receives project-bound READ authority with expiry capped by request context.
+- Negative paths: replay, non-owner, cross-project, ungranted WRITE, unverified principal, expired principal, credential-bearing principal and invalid authority proof are denied.
+- Phase 3 run 41833591729 SUCCESS: `FIXTURE_HOST_*=PASS`; `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`; `EXTERNAL_ACTIONS_FROM_TEST=0`.
+- This is a fixture-backed integration test, not a production authentication integration. Real sessionIdentity propagation, stable admin/service subject provisioning, persistent owner registry and durable/distributed replay consumption remain NOT_IMPLEMENTED.
+
+55. TEST FAILURE / CORRECTION RECORD
+- Initial run 41833496380 FAILED because the new duplicate-owner assertion expected the later semantic error text, while the validator correctly rejected the duplicate actor first. No validator defect or production data impact was observed.
+- The assertion was corrected to accept the actual duplicate-membership validation order.
+- Corrected run 41833591729 completed SUCCESS. The failed run remains retained in Actions history and is not counted as PASS.
+
+CURRENT ADDITIVE STATUS
+`PHASE3_PROJECT_OWNER_REGISTRY_CONTRACT_TEST=PASS_CI`
+`PHASE3_HOST_IDENTITY_FIXTURE_INTEGRATION=PASS_CI`
+`PHASE3_REAL_HOST_SESSION_INTEGRATION=NOT_IMPLEMENTED`
+`PHASE3_PERSISTENT_PROJECT_OWNER_REGISTRY=NOT_IMPLEMENTED`
+`PHASE3_DURABLE_REPLAY_STORE=NOT_IMPLEMENTED`
+`PHASE3=IN_PROGRESS`
+`VERSION=v0.2`
