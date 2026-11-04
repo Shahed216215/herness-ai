@@ -62,6 +62,8 @@ Future automatic transport must separately implement authenticated actor and Pag
 |Provider readback verification|NOT_IMPLEMENTED|
 |Live Meta API permission verification|NOT_RUN|
 |HFM facade read-report to public manual-draft bridge|IMPLEMENTED — PREPARE ONLY|
+|Meta permission evidence preflight (caller-supplied, non-authorizing)|IMPLEMENTED — OFFLINE CONTRACT|
+|Version-pinned Graph request planner|IMPLEMENTED — NON-EXECUTABLE PLAN ONLY|
 |Facebook import to HFM review candidate|IMPLEMENTED — NOT PERSISTED|
 |Production migration / deployment|NOT_APPROVED|
 
