@@ -1,6 +1,7 @@
 'use strict';
 
 const { restoreMemory } = require('../services/mira-local-memory-store');
+const { checkToolSafety } = require('../services/mira-tool-execution-policy');
 
 module.exports = {
   name: 'memory_restore',
@@ -21,7 +22,18 @@ module.exports = {
     }
   },
 
-  execute: async ({ confirm } = {}) => {
+  execute: async (args = {}) => {
+    const safety = checkToolSafety("memory_restore", args);
+    if (!safety || safety.passed !== true) {
+      return JSON.stringify({
+        success: false,
+        restored: false,
+        status: "BLOCKED",
+        code: "TOOL_POLICY_DENIED",
+        reason: safety?.reason || "Tool execution policy could not be verified."
+      });
+    }
+    const { confirm } = args;
     if (confirm !== true) {
       return JSON.stringify({
         success: false,
