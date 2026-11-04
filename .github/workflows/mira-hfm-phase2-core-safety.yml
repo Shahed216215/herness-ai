@@ -41,6 +41,8 @@ on:
       - 'tests/mira-knowledge-cleanup-storage-contract.test.js'
       - 'services/mira-work-knowledge-consolidation.js'
       - 'tests/mira-work-knowledge-store-fail-closed.test.js'
+      - 'services/mira-work-learning-engine.js'
+      - 'tests/mira-work-learning-store-fail-closed.test.js'
       - 'tests/mira-hfm-phase2-core-safety.test.js'
       - 'tests/mira-knowledge-state-safety-test.js'
       - 'tests/mira-local-memory-safety-test.js'
@@ -112,6 +114,7 @@ jobs:
           node tests/mira-conflict-quarantine-registry.test.js
           node tests/mira-knowledge-cleanup-storage-contract.test.js
           node tests/mira-work-knowledge-store-fail-closed.test.js
+          node tests/mira-work-learning-store-fail-closed.test.js
           node tests/mira-audit-chain-independent-verifier.test.js
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
           echo "REAL_GOOGLE_DRIVE_TOUCHED=NO"
