@@ -7,7 +7,7 @@ module.exports = {
   name: 'memory_version_recovery',
   declaration: {
     name: 'memory_version_recovery',
-    description: 'List and verify immutable local Memory/Knowledge version snapshots, or restore one only with explicit confirmation. No version is automatically deleted; restore refuses corrupt current state.',
+    description: 'Currently blocked at the tool wrapper boundary. Listing, verification and restore are all held until an authenticated, action-scoped Memory/Knowledge recovery workflow is implemented.',
     parameters: {
       type: 'object',
       properties: {
