@@ -60,3 +60,15 @@ Status: IN PROGRESS
 - First integration CI run 41839569641 FAILED at a test-only property-path assertion. Connector suite passed in that run; HFM bridge's first three guards also passed before the assertion. Corrected the assertion from nested `candidate.candidate` to `candidate` in commit cb1c30914a68702c9a02bd97ff62fac4a5e5bf92.
 - CI runs 41839650098 (push) and 41839660905 (pull_request) for corrected commit cb1c3091 were observed IN_PROGRESS at ledger update time. Their final result must be read before declaring integration PASS.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; FACEBOOK_POSTS_PUBLISHED=0; PERSISTENT_MEMORY_WRITES=0.
+
+
+## Entry 007 — Corrected HFM adapter integration CI verified
+- GitHub Actions run 41839660905 completed SUCCESS for corrected code commit cb1c30914a68702c9a02bd97ff62fac4a5e5bf92; job 126607557388 completed all steps successfully.
+- Retrieved job log confirms:
+  - Connector: `TESTS_FAILED=0`, `RESULT=MIRA_HFM_PHASE4_FACEBOOK_MANUAL_CONNECTOR_CONTRACT_PASS`.
+  - HFM bridge: authorized PUBLIC draft preparation, private record rejection, provenance/eligibility/identity guards and untrusted non-persisted import review all passed; `TESTS_FAILED=0`, `RESULT=MIRA_HFM_PHASE4_FACADE_ADAPTER_PASS`.
+  - Provider capability suite: `TESTS_FAILED=0`, `RESULT=MIRA_HFM_PROVIDER_CAPABILITY_CONTRACT_PASS`.
+  - `NETWORK_REQUESTS=0`, `LIVE_META_API_CALLS=0`, `PERSISTENT_WRITES=0`, `FACEBOOK_HFM_ADAPTER_PUBLISH_ACTIONS=0`.
+- Earlier failed run 41839569641 remains recorded as FAIL on its earlier commit; it was caused by the integration test's incorrect nested property assertion, which was corrected and verified in the later successful run.
+- Latest documentation-only commit triggers another branch push run; no claim is made about that run until it completes.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; HFM_FACADE_BRIDGE=OFFLINE_PREPARE_ONLY_VERIFIED; PRODUCTION_READINESS=NOT_CERTIFIED.
