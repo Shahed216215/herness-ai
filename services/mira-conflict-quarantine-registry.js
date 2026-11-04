@@ -653,7 +653,14 @@ function filterTrustedRecords(records, pendingConflicts, projectId) {
     .filter(item => item.projectId === projectId &&
       ['QUARANTINED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(item.status))
     .flatMap(item => item.originalMemoryIds || []));
-  return records.filter(record => !(record && record.projectId === projectId && blocked.has(record.memoryId)));
+  return records.filter(record =>
+    record &&
+    record.projectId === projectId &&
+    record.lifecycle === 'ACTIVE' &&
+    record.integrity?.status === 'VERIFIED' &&
+    !['UNVERIFIED', 'QUARANTINED'].includes(record.trust?.status) &&
+    !blocked.has(record.memoryId)
+  );
 }
 
 module.exports = {
