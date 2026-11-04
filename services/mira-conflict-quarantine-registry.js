@@ -491,7 +491,13 @@ function listConflicts({ directory, projectId }) {
         conflictTypes: envelope.conflictTypes,
         status, state: ['INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(status) ? 'QUARANTINED' : status,
         integrity, reviewIntegrity: review.status, resolutionIntegrity: resolution.status,
-        originalMemoryIds: envelope.originals.map(item => item.memoryId)
+        originalMemoryIds: envelope.originals.map(item => item.memoryId),
+        originalRecordDigests: envelope.originals.map(item => item.recordDigest),
+        resolutionDecision: resolutionRecord?.decision || null,
+        acceptedOriginalDigest: resolutionRecord?.acceptedOriginalDigest || null,
+        resultingRecordDigest: resolutionRecord?.resultingRecord
+          ? digest(resolutionRecord.resultingRecord)
+          : null
       };
     }).filter(Boolean);
 }
@@ -671,10 +677,79 @@ function filterTrustedRecords(
     throw new Error('Authenticated actorId, purpose and requestId are required for access evaluation.');
   }
 
-  const blocked = new Set(pendingConflicts
-    .filter(item => item.projectId === projectId &&
-      ['QUARANTINED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(item.status))
-    .flatMap(item => item.originalMemoryIds || []));
+  const hashPattern = /^[a-f0-9]{64}$/;
+  const blockedMemoryIds = new Set();
+  const blockedRecordDigests = new Set();
+  const pendingStatuses = new Set([
+    'QUARANTINED', 'UNDER_REVIEW', 'PENDING_REVIEW',
+    'INTEGRITY_FAILED', 'RETAINED_QUARANTINED'
+  ]);
+  const acceptedVersionDecisions = new Set([
+    'ACCEPT_EXISTING_VERSION', 'ACCEPT_ALTERNATE_VERSION',
+    'REJECT_CONFLICTING_CHANGE'
+  ]);
+
+  for (const conflict of pendingConflicts) {
+    if (!conflict || typeof conflict !== 'object' || Array.isArray(conflict) ||
+        typeof conflict.projectId !== 'string' || !conflict.projectId.trim() ||
+        typeof conflict.status !== 'string' || !conflict.status.trim() ||
+        !Array.isArray(conflict.originalMemoryIds) ||
+        conflict.originalMemoryIds.some(id => typeof id !== 'string' || !id.trim())) {
+      throw new Error('Conflict quarantine metadata is malformed; retrieval fails closed.');
+    }
+    if (conflict.projectId !== projectId) continue;
+
+    const ids = conflict.originalMemoryIds;
+    const digests = conflict.originalRecordDigests;
+    const addAllIds = () => ids.forEach(id => blockedMemoryIds.add(id));
+    const addAllDigests = () => {
+      if (Array.isArray(digests)) {
+        digests.filter(value => typeof value === 'string' && hashPattern.test(value))
+          .forEach(value => blockedRecordDigests.add(value));
+      }
+    };
+
+    if (pendingStatuses.has(conflict.status)) {
+      addAllIds();
+      addAllDigests();
+      continue;
+    }
+
+    if (conflict.status === 'RESOLVED' || conflict.status === 'REJECTED') {
+      if (!Array.isArray(digests) || digests.length === 0 ||
+          digests.some(value => typeof value !== 'string' || !hashPattern.test(value))) {
+        addAllIds();
+        continue;
+      }
+
+      if (acceptedVersionDecisions.has(conflict.resolutionDecision)) {
+        const accepted = conflict.acceptedOriginalDigest;
+        if (typeof accepted !== 'string' || !hashPattern.test(accepted) || !digests.includes(accepted)) {
+          addAllIds();
+          addAllDigests();
+          continue;
+        }
+        for (const originalDigest of digests) {
+          if (originalDigest !== accepted) blockedRecordDigests.add(originalDigest);
+        }
+        continue;
+      }
+
+      if (conflict.resolutionDecision === 'APPROVED_FIELD_MERGE') {
+        addAllDigests();
+        continue;
+      }
+
+      // Missing or unsupported resolution evidence must not reopen originals.
+      addAllIds();
+      addAllDigests();
+      continue;
+    }
+
+    // Unknown lifecycle states are treated as quarantined, never as clear.
+    addAllIds();
+    addAllDigests();
+  }
 
   return records.filter(record => {
     if (!record ||
@@ -683,7 +758,8 @@ function filterTrustedRecords(
         record.lifecycle !== 'ACTIVE' ||
         record.integrity?.status !== 'VERIFIED' ||
         !RETRIEVABLE_TRUST_STATES.has(record.trust?.status) ||
-        blocked.has(record.memoryId)) {
+        blockedMemoryIds.has(record.memoryId) ||
+        blockedRecordDigests.has(digest(record))) {
       return false;
     }
 
@@ -703,7 +779,6 @@ function filterTrustedRecords(
       return authorizeAccess(record, {
         projectId,
         actorId: actorContext.actorId,
-        projectId: actorContext.projectId,
         memoryId: record.memoryId,
         classification,
         purpose: actorContext.purpose,
@@ -714,7 +789,6 @@ function filterTrustedRecords(
     }
   });
 }
-
 module.exports = {
   createConflictQuarantine, readConflict, verifyConflict,
   beginConflictReview, verifyReview, listConflicts,
