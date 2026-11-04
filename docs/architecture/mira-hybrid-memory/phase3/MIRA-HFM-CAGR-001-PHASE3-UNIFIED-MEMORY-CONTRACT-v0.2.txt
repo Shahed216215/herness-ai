@@ -351,3 +351,10 @@ Verified Phase 3 CI run 41826616667: namespace tests PASS; repository baseline p
 The Phase 3 isolated workflow now executes `tests/mira-memory-conflict-assessment.test.js` as part of the P3-D canonical record compatibility gate. The verified suite covers canonical v1.0.0 record shape, record type/schema, provenance fields, RFC3339 timestamps, revision/hash structure, SHA-256(JCS(content)) recomputation, malformed and unknown fields, conflict state classification, access/project mismatch, and UNVERIFIED integrity review requirements.
 
 Phase 3 CI run 41826911511 SUCCESS; `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`. This validates structure and content-hash consistency only; it does not prove source authenticity, host authorization, signature authenticity or whole-record cryptographic attestation.
+
+
+## 29. Route and writer-bypass regression gate (2026-11-04)
+
+The Phase 3 isolated workflow now includes the existing admin backup/restore permission tests, CRM conversation route/store fixtures, direct-dispatch boundary tests, and persistent human-only wrapper guard. The verified run 41827185752 confirms admin permission/confirmation gates, CRM route behavior, Conversation Store fail-closed behavior, zero direct route tool calls, and denial of all seven human-only wrappers without invoking their underlying writers.
+
+This is evidence that current legacy boundaries remain guarded. It is not evidence that runtime retrieval/writer callers are routed through the new unified facade. Production wiring remains disabled pending trusted host identity, authoritative project-owner registry, full caller coverage and independent verification.
