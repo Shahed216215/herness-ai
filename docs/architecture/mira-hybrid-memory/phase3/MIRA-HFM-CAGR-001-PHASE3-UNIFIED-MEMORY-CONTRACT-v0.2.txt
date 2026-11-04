@@ -399,3 +399,45 @@ Synthetic write preparation now binds the previous record digest into the audit 
 - Existing-record update: `APPEND_COMPENSATING_REVISION_FROM_VERIFIED_PRIOR`; preserve the prior immutable revision and never overwrite/delete original evidence.
 - The plan requires human approval, provider atomic conditional write, immutable versions, independent readback, post-rollback verification and an audit event.
 - Status remains `PLAN_ONLY_NOT_EXECUTED`. No provider commit, audit emission, idempotency reservation or rollback is implemented by this facade.
+
+### Addendum — Complete snapshot-bound batch mapping and owner approval (2026-11-04)
+
+The domain payload adapter now provides `adaptLegacyBatch` for the explicitly supported domains: `general_memory`, `knowledge` and `crm_conversation_message`.
+
+The batch adapter requires the complete source snapshot, expected project ID, source snapshot SHA-256, capture time, mapping set and trusted approval verifier. It enforces:
+- exactly one approved mapping for every source entry;
+- no missing or unused mapping entries;
+- unique source locators and mapping identities;
+- source ordinal equality for General Memory and Knowledge;
+- exact source snapshot digest and source-record digest binding;
+- project binding and canonical Memory ID uniqueness;
+- CRM messageId, parent conversation and client binding;
+- rejection of sparse arrays, duplicate/ambiguous source locators, stale snapshots, unapproved mappings and unsupported domains.
+
+Every adapted record remains `READY_FOR_REVIEW_NOT_COMMITTED`, `PENDING_REVIEW` and `UNVERIFIED`. The batch adapter performs no persistence, migration or provider write.
+
+The new `createProjectMappingOwnerApprovalVerifier` composes mapping approval with the validated project-owner registry. Only an active HUMAN OWNER with `APPROVE_MAPPING` authority may approve a mapping. Approval timestamps must fall inside membership validity, registry project/tenant bindings and trusted registry verification must pass, and the short-lived evidence expires no later than membership expiry. The owner-registry operation enum now includes `APPROVE_MAPPING`.
+
+### Production domain disposition — explicit fail-closed status
+
+|Domain|Production status|Current evidence|
+|---|---|---|
+|General Memory|BLOCKED_FOR_PRODUCTION|Snapshot-bound locator and batch adapter only; no approved production owner mappings|
+|Knowledge|BLOCKED_FOR_PRODUCTION|Read-only candidate and batch adapter; no approved production mapping registry|
+|CRM Conversation|BLOCKED_FOR_PRODUCTION|Message/parent/client binding contract only; no approved production project-owner mappings|
+|CRM messages without stable messageId|BLOCKED|No synthetic identity substitution|
+|Work Learning / Experience / Work Knowledge|BLOCKED|No authoritative project mapping or projection lineage|
+|Client Communication / Profile / Follow-up|OUT_OF_SCOPE_SEPARATE_DOMAIN|No automatic HFM adaptation|
+|Task / Opportunity / Deliverable / Work Acceptance|OUT_OF_SCOPE_SEPARATE_DOMAIN|Remain in their own stores and governance|
+|Learning Proposals / Research Governance / Stage 13 Governance|OUT_OF_SCOPE_SEPARATE_DOMAIN|Not canonical Memory namespaces|
+|Facebook Page / Group / Web Search / Google Drive providers|NOT_ENABLED_IN_PHASE3|Connector and backup phases remain separate|
+
+### Phase 3 exit status
+
+`PHASE3=COMPLETE_SYNTHETIC_CONTRACT_ONLY`
+`VERSION=v0.2`
+`PRODUCTION_RUNTIME_INTEGRATION=NOT_APPROVED`
+`PRODUCTION_MIGRATION=NOT_APPROVED`
+`PRODUCTION_READINESS=NOT_CERTIFIED`
+
+This completion means the v0.2 Unified Memory Contract, isolated adapters, fail-closed mapping/authority behavior, retrieval explanation, prepare-only write and rollback plans, caller disposition and independent CI evidence are complete. It does not mean production authentication, persistent registries, provider writes, durable audit emission, rollback execution or migration are implemented.

@@ -215,3 +215,10 @@ The 312 total is the emitted candidate-line count with category overlap. It must
 - Create rollback plan is `NOOP_UNCOMMITTED_CREATE`; update rollback plan is `APPEND_COMPENSATING_REVISION_FROM_VERIFIED_PRIOR`. Both remain `PLAN_ONLY_NOT_EXECUTED`.
 - Phase 3 CI run 41835662189 SUCCESS and Phase 2 regression run 41835662290 SUCCESS on commit 2b3af5b0011ddb432b843c2d32ba1a815888e420; retrieval provenance/non-leaking eligibility, create/update rollback-plan assertions, all existing facade tests and Phase 2 safety regression passed with TESTS_FAILED=0.
 - Actual provider commit, atomic idempotency reservation, audit emission and rollback execution remain NOT_IMPLEMENTED.
+
+22. BATCH MAPPING AND OWNER-APPROVAL AUTHORITY REVIEW
+- `adaptLegacyBatch` requires one-to-one coverage of the full source snapshot. Missing, unused, duplicate/ambiguous source or mapping locators, ordinal mismatch, stale snapshot, unapproved mapping, cross-project mapping, CRM client substitution, sparse source array and unsupported domain all fail closed.
+- Supported domains are limited to General Memory, Knowledge and CRM Conversation messages. Output is pending-review/unverified and never committed.
+- `createProjectMappingOwnerApprovalVerifier` validates the owner registry through a required trusted verifier and requires an active HUMAN OWNER with `APPROVE_MAPPING`. It binds approval evidence to project, mapping digest, approver, registry revision and membership validity, with bounded short-lived expiry.
+- Production domain status is explicit: General Memory, Knowledge and CRM Conversation are BLOCKED_FOR_PRODUCTION pending approved mappings and host authority; Work Learning/Experience/Work Knowledge are BLOCKED; adjacent business/governance stores are separate/out of scope; Facebook/Drive/Web providers are not enabled in Phase 3.
+- Phase 3 run 41836592815 and Phase 2 run 41836592893 SUCCESS on commit 07e7e7707d0d7f3f0d22abbb2ed0972a82b461de; owner-bound mapping approval cases all PASS; TESTS_FAILED=0; no network or persistent writes.

@@ -115,3 +115,17 @@ The complete current emitted candidate set is 312 lines across overlapping categ
 |Write audit plan|Includes previous and incoming digests, actor, project, request, revision and event-before-commit requirement|PASS_CI synthetic|
 |Rollback plan|Create no-op before commit; update uses compensating revision and preserves originals|PASS_CI plan only|
 |Actual provider commit / rollback / audit / idempotency|No runtime operation exists in facade|NOT_IMPLEMENTED / NOT_APPROVED|
+
+13. BATCH MAPPING / OWNER AUTHORITY / DOMAIN EXIT STATUS
+|Requirement|Evidence|Status|
+|---|---|---|
+|Complete source-to-mapping coverage|adaptLegacyBatch enforces no missing or unused mapping|PASS_CI|
+|No ambiguous/duplicate locators|Duplicate source, mapping ID, legacy locator and canonical Memory ID rejection|PASS_CI|
+|Snapshot/ordinal binding|Expected snapshot SHA-256, source digest and ordinal equality|PASS_CI|
+|Project/tenant authority|Project owner registry trusted verifier and expected project/tenant binding|PASS_CI fixture|
+|Mapping approver authority|Active HUMAN OWNER with APPROVE_MAPPING; bounded evidence expiry|PASS_CI fixture|
+|CRM message binding|messageId + parent conversation + client binding; substitution denied|PASS_CI|
+|Production General Memory / Knowledge / CRM mapping|No approved production owner mappings or persistent registry|BLOCKED_FOR_PRODUCTION|
+|Work Learning / Experience / Work Knowledge|No authoritative mapping/lineage|BLOCKED|
+|Adjacent business/governance stores|Separate domains, not automatically migrated|OUT_OF_SCOPE|
+|Provider connectors|Facebook/Drive/Web not part of Phase 3|NOT_ENABLED|

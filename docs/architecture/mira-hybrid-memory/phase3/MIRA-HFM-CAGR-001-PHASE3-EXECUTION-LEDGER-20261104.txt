@@ -493,3 +493,18 @@ CURRENT ADDITIVE STATUS
 - `PHASE3_AUDIT_EMISSION=NOT_IMPLEMENTED`
 - `PHASE3_PROVIDER_ROLLBACK_EXECUTION=NOT_IMPLEMENTED`
 - `PHASE3=IN_PROGRESS`
+
+62. COMPLETE BATCH MAPPING AND OWNER-BOUND APPROVAL
+- Added `adaptLegacyBatch` for General Memory, Knowledge and CRM Conversation messages. It validates full source snapshot mapping coverage, source ordinal, legacy locator, source digest, snapshot digest, project binding, canonical Memory ID, CRM parent/client binding and trusted mapping approval.
+- Missing mapping, unused mapping, duplicate/ambiguous source locator, duplicate mapping, ordinal mismatch, cross-project, stale snapshot, unapproved mapping, CRM client substitution, sparse source array and unsupported domain all fail closed.
+- Added `createProjectMappingOwnerApprovalVerifier`: mapping approval is bound to a verified project-owner registry and requires active HUMAN OWNER membership with `APPROVE_MAPPING`. Registry project/tenant, trusted verifier, approver identity, approval timestamp and short-lived evidence expiry are validated.
+- Added `APPROVE_MAPPING` to the supported owner-registry operation enum.
+- Phase 3 run 41836592815 SUCCESS and Phase 2 run 41836592893 SUCCESS on commit 07e7e7707d0d7f3f0d22abbb2ed0972a82b461de. All owner-bound mapping tests passed; `TESTS_FAILED=0`; `NETWORK_REQUESTS=0`; `PERSISTENT_WRITES=0`.
+- Production mapping disposition is now explicit: General Memory, Knowledge and CRM Conversation BLOCKED_FOR_PRODUCTION; Work Learning/Experience/Work Knowledge BLOCKED; adjacent client/business/governance stores OUT_OF_SCOPE_SEPARATE_DOMAIN; Facebook/Drive/Web providers NOT_ENABLED_IN_PHASE3.
+- `PHASE3_BATCH_MAPPING_ADAPTER=PASS_CI_SYNTHETIC`
+- `PHASE3_OWNER_BOUND_MAPPING_APPROVAL=PASS_CI_FIXTURE`
+- `PHASE3_PRODUCTION_DOMAIN_AUTHORITY=BLOCKED_PENDING_APPROVAL`
+- `PHASE3=COMPLETE_SYNTHETIC_CONTRACT_ONLY`
+- `VERSION=v0.2`
+- `PRODUCTION_RUNTIME_INTEGRATION=NOT_APPROVED`
+- `PRODUCTION_READINESS=NOT_CERTIFIED`
