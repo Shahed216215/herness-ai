@@ -638,6 +638,9 @@ function resolveConflict({
   return {
     status: alreadyResolved ? 'ALREADY_RESOLVED' : 'RESOLVED',
     conflictId,
+    decision,
+    acceptedOriginalIndex: readRegularJson(target).acceptedOriginalIndex,
+    acceptedOriginalDigest: readRegularJson(target).acceptedOriginalDigest,
     resolutionDigest: readRegularJson(target).resolutionDigest
   };
 }
