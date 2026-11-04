@@ -8,7 +8,7 @@ const requestContext = {
  issuedAt:'2026-11-04T11:59:00.000Z',expiresAt:'2026-11-04T12:05:00.000Z'
 };
 function authorize(input) { return {
- decision:'ALLOW',actorId:input.actorId,projectId:input.projectId,purpose:input.purpose,
+ decision:'ALLOW',actorId:input.actorId,actorType:input.actorType,projectId:input.projectId,purpose:input.purpose,
  requestId:input.requestId,operation:input.operation,resourceScope:input.resourceScope,
  authorityRef:input.authorityRef,issuedAt:'2026-11-04T11:59:30.000Z',expiresAt:'2026-11-04T12:04:00.000Z'
 };}
