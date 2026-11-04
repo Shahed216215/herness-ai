@@ -633,7 +633,7 @@ memory.js no longer silently discards older Memory records when the configured e
 
 24. SUPPLEMENTAL VERIFICATION — RUN 692
 
-GitHub Actions run 41805497174 (run 692), job 126487..., completed SUCCESS on code commit b7842afcc247169ca3e9a7c105995cb97ac3cf73. The workflow log verifies:
+GitHub Actions run 41805497174 (run 692), job 126491362948, completed SUCCESS on code commit b7842afcc247169ca3e9a7c105995cb97ac3cf73. The workflow log verifies:
 - Conversation Store missing-primary and marker-tamper tests PASS.
 - Work Knowledge missing-primary and marker-tamper tests PASS.
 - Work Learning missing-primary and marker-tamper tests PASS.
