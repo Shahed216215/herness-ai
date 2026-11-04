@@ -261,3 +261,15 @@ UNIVERSAL_WRITE=NOT_INTEGRATED
 PRODUCTION_READINESS=NOT_CERTIFIED
 MERGE=NOT_APPROVED
 DEPLOYMENT=NOT_APPROVED
+
+
+## 20. CRM Client-to-Project Binding Addendum (2026-11-04)
+
+The CRM mapping contract now includes an explicit `clientId` field. For `crm_conversation_message`, the approved mapping must bind all of:
+- stable persisted `messageId` (legacyId),
+- parent `conversationId`,
+- source `clientId`,
+- canonical `projectId`,
+- source snapshot digest and source record digest.
+
+The trusted approval verifier receives `clientId` as part of the approval evidence. The adapter rejects a source message whose client identity differs from the approved mapping. Non-CRM mappings must set `clientId=null`. This does **not** establish that the CRM client belongs to the canonical project by itself; that relationship must be independently verified by the trusted approval registry. Until such registry evidence exists, CRM production migration remains BLOCKED.
