@@ -1,6 +1,7 @@
 'use strict';
 
 const recovery = require('../services/mira-state-version-recovery');
+const { checkToolSafety } = require('../services/mira-tool-execution-policy');
 
 module.exports = {
   name: 'memory_version_recovery',
@@ -18,7 +19,17 @@ module.exports = {
       required: ['action', 'target']
     }
   },
-  execute: async ({ action, target, versionFile, confirm } = {}) => {
+  execute: async (args = {}) => {
+    const safety = checkToolSafety("memory_version_recovery", args);
+    if (!safety || safety.passed !== true) {
+      return JSON.stringify({
+        success: false,
+        status: "BLOCKED",
+        code: "TOOL_POLICY_DENIED",
+        reason: safety?.reason || "Tool execution policy could not be verified."
+      });
+    }
+    const { action, target, versionFile, confirm } = args;
     try {
       let result;
       if (action === 'list') result = recovery.listVersions(target);
