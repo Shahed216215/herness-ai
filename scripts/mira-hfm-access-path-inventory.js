@@ -6,6 +6,7 @@ const SKIP=new Set(['.git','node_modules','vendor','dist','build','coverage','.n
 const RULES=[
  ['PUBLIC_OR_INTERNAL_RETRIEVAL',/\b(?:getMemory|getKnowledge|getKnowledgeStats|getMemoryStats|searchKnowledge|searchMemory)\s*\(/],
  ['DIRECT_STORE_READ',/\b(?:loadMemory|loadKnowledge|readJsonArray|readJsonObject|readState)\s*\(/],
+ ['DIRECT_MEMORY_FILE_IO',/\b(?:readFileSync|readFile|createReadStream)\s*\([^;\n]{0,500}(?:memory\.json|knowledge\.json|conversations\.json|work-learning-records\.json|work-knowledge-consolidation\.json)/i],
  ['GENERIC_STORE_LOADER',/\bloadStore\s*\(/],
  ['PROVIDER_OR_SNAPSHOT_READ',/\b(?:loadMemoryFromDrive|loadKnowledgeFromDrive|loadDriveState|readSnapshot|verifySnapshot|createSnapshot|restoreSnapshot)\s*\(/],
  ['CRM_CONVERSATION_READ',/\b(?:getConversation|listConversations|getMessage|listMessages|getContext)\s*\(/],
