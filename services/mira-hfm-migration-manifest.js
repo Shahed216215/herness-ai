@@ -168,7 +168,7 @@ function planSnapshot({ domain, sourceText, mappings = [], parentConversations =
   const candidates = entries.map((entry, sourceOrdinal) => {
     const legacyId = domain === 'knowledge' ? entry?.id
       : domain === 'crm_conversation_message' ? entry?.messageId
-      : entry?.messageId;
+      : 'legacy-memory:' + sourceFileDigest + ':' + sourceOrdinal;
     const mapping = nonEmpty(legacyId) ? byLegacyId.get(legacyId) : undefined;
     if (mapping) used.add(legacyId);
     const parentConversation = domain === 'crm_conversation_message' && nonEmpty(entry?.conversationId)
