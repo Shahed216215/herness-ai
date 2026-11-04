@@ -41,7 +41,7 @@ function validateProviderContract(contract) {
     capabilities:Object.freeze({...c})
   });
 }
-function assertProviderOperation({contract,operation,classification='PUBLIC'}) {
+function assertProviderOperation({contract,operation,classification}) {
   const c=validateProviderContract(contract);
   if(!['PUBLIC','PROJECT_PRIVATE','RESTRICTED'].includes(classification)) throw new Error('Data classification is unsupported.');
   if(!OPERATIONS.has(operation)) throw new Error('Unsupported provider operation.');
