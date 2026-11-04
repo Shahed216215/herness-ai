@@ -82,7 +82,13 @@ try {
       access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-b'] } })
   ], listConflicts({ directory, projectId: 'project-a' }), 'project-a');
   assert.deepEqual(visibleBefore.map(item => item.projectId + ':' + item.memoryId),
-    ['project-a:memory-0002', 'project-b:memory-0001']);
+    ['project-a:memory-0002']);
+  assert.deepEqual(filterTrustedRecords([
+    record({ memoryId: 'memory-pending', lifecycle: 'PENDING_REVIEW' }),
+    record({ memoryId: 'memory-unverified', integrity: { status: 'UNVERIFIED', algorithm: 'SHA-256' } }),
+    record({ memoryId: 'memory-quarantined-trust', trust: { status: 'QUARANTINED' } })
+  ], [], 'project-a'), []);
+  console.log('PENDING_UNVERIFIED_AND_CROSS_PROJECT_RECORDS_EXCLUDED=PASS');
   const mainReview = startReview(directory, created.conflictId);
   assert.equal(mainReview.status, 'UNDER_REVIEW');
   assert.equal(verifyReview({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
