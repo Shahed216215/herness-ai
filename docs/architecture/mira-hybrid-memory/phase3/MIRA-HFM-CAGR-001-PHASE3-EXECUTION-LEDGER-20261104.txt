@@ -184,3 +184,8 @@ MERGE=NOT_APPROVED
 - Domain payload adapter candidates are now deeply frozen; tests reject nested mutation.
 - Phase 3 CI run 41815988737 SUCCESS: all contract, adapter, provider and inventory suites PASS; CRM client-binding negative tests PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - Parent Phase 2 regression run 41815988759 SUCCESS; conversation store/route/recovery, work learning/knowledge fail-closed, independent audit verifier all PASS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+
+19. PERSISTENT WRITER REVIEW
+- Reviewed the 16 latest lexical writer call matches across 8 consumer files and 3 API-definition files. Controlled apply paths have snapshots/rollback but lack HFM project scope; admin writes are SYSTEM_ADMIN-gated but target global legacy stores; chat transcript addMemory is a distinct session-persistence path; human-only memory_save/knowledge_save/learning_save and knowledge_cleanup are denied by the shared registry policy before wrapper invocation.
+- services/learning.js learnFromContent and applyKnowledgeImprovement require explicit actor/project/request context before HFM routing. No writer was connected to the unified facade.
+- Existing runtime tool registry guard tests prove memory_save, knowledge_save and learning_save are blocked before their execute wrappers run. This verifies the current autonomous-denial boundary only; no complete human approval workflow is claimed.
