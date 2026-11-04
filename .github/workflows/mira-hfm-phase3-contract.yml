@@ -20,6 +20,8 @@ on:
       - 'services/mira-memory-host-identity-contract.js'
       - 'services/mira-memory-project-owner-registry-contract.js'
       - 'tests/mira-memory-project-owner-registry-contract.test.js'
+      - 'services/mira-memory-project-mapping-owner-approval-adapter.js'
+      - 'tests/mira-memory-project-mapping-owner-approval.test.js'
       - 'tests/mira-memory-host-identity-integration.test.js'
       - 'tests/mira-memory-host-identity-contract.test.js'
       - 'services/mira-memory-host-authorization-adapter.js'
@@ -74,6 +76,7 @@ jobs:
 
           node tests/mira-memory-host-identity-contract.test.js
           node tests/mira-memory-project-owner-registry-contract.test.js
+          node tests/mira-memory-project-mapping-owner-approval.test.js
           node tests/mira-memory-host-identity-integration.test.js
           node tests/mira-memory-host-authorization-adapter.test.js
           node tests/mira-memory-project-authority-contract.test.js
