@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const { digest, buildMigrationCandidate, validateCandidateSet } = require('../services/mira-hfm-migration-manifest');
+const { digest, buildMigrationCandidate, validateCandidateSet, planSnapshot } = require('../services/mira-hfm-migration-manifest');
 
 const sourceFileDigest = 'a'.repeat(64);
 const base = {
@@ -92,5 +92,47 @@ console.log('WRITE_AUTHORIZATION_CANNOT_BE_ENABLED=PASS');
 assert.throws(() => buildMigrationCandidate({ ...base, sourceOrdinal: -1, mapping }));
 console.log('INVALID_SOURCE_ORDINAL_REJECTED=PASS');
 
-console.log('TESTS_FAILED=0');
+
+const rawSnapshot = JSON.stringify([base.entry]);
+const planned = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, mappings: [mapping] });
+assert.equal(planned.status, 'READY_FOR_REVIEW');
+assert.equal(planned.writeAuthorized, false);
+assert.equal(planned.sourceFileDigest, require('node:crypto').createHash('sha256').update(rawSnapshot, 'utf8').digest('hex'));
+console.log('EXACT_SOURCE_SNAPSHOT_DIGEST_BOUND=PASS');
+
+const changedSnapshot = JSON.stringify([{ ...base.entry, content: 'changed' }]);
+const changedPlan = planSnapshot({ domain: 'knowledge', sourceText: changedSnapshot, mappings: [mapping] });
+assert.equal(changedPlan.status, 'BLOCKED');
+assert.ok(changedPlan.blockers.some(x => x.includes('SOURCE_DIGEST_MISMATCH')));
+console.log('SOURCE_SNAPSHOT_CHANGE_INVALIDATES_MAPPING=PASS');
+
+assert.throws(() => planSnapshot({ domain: 'knowledge', sourceText: '{bad json', mappings: [] }), /valid JSON/);
+console.log('INVALID_SOURCE_SNAPSHOT_REJECTED=PASS');
+
+const duplicatedMappings = planSnapshot({
+  domain: 'knowledge', sourceText: rawSnapshot, mappings: [mapping, mapping]
+});
+assert.equal(duplicatedMappings.status, 'BLOCKED');
+assert.ok(duplicatedMappings.blockers.some(x => x.startsWith('DUPLICATE_MAPPING:')));
+console.log('DUPLICATE_SNAPSHOT_MAPPING_REJECTED=PASS');
+
+const generalRaw = JSON.stringify([{ role: 'user', content: 'no id', time: '2026-11-04T00:00:00Z' }]);
+const generalPlan = planSnapshot({ domain: 'general_memory', sourceText: generalRaw, mappings: [] });
+assert.equal(generalPlan.status, 'BLOCKED');
+console.log('GENERAL_MEMORY_SNAPSHOT_WITHOUT_ID_BLOCKED=PASS');
+
+const crmRaw = JSON.stringify([{ messageId: 'crm-msg-001', conversationId: 'conv-001', content: 'hello' }]);
+const crmPlan = planSnapshot({
+  domain: 'crm_conversation_message', sourceText: crmRaw, mappings: [crmMapping],
+  parentConversations: { 'conv-001': { conversationId: 'conv-001' } }
+});
+assert.equal(crmPlan.status, 'READY_FOR_REVIEW');
+console.log('CRM_SNAPSHOT_PARENT_MAPPING_VERIFIED=PASS');
+
+const extraMapping = { ...mapping, legacyId: 'kb_unused_01' };
+const unusedPlan = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, mappings: [mapping, extraMapping] });
+assert.equal(unusedPlan.status, 'BLOCKED');
+assert.ok(unusedPlan.blockers.some(x => x.startsWith('UNUSED_MAPPING:')));
+console.log('UNUSED_MAPPING_REJECTED=PASS');
+\nconsole.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_DRY_RUN_MANIFEST_PLANNER_ISOLATED_PASS');
