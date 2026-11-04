@@ -18,6 +18,9 @@ on:
       - 'tests/mira-hfm-direct-tool-dispatch-boundary.test.js'
       - 'tests/mira-hfm-persistent-wrapper-guard.test.js'
       - 'services/mira-memory-host-identity-contract.js'
+      - 'services/mira-memory-project-owner-registry-contract.js'
+      - 'tests/mira-memory-project-owner-registry-contract.test.js'
+      - 'tests/mira-memory-host-identity-integration.test.js'
       - 'tests/mira-memory-host-identity-contract.test.js'
       - 'services/mira-memory-host-authorization-adapter.js'
       - 'tests/mira-memory-host-authorization-adapter.test.js'
@@ -69,6 +72,8 @@ jobs:
           node tests/mira-hfm-persistent-wrapper-guard.test.js
 
           node tests/mira-memory-host-identity-contract.test.js
+          node tests/mira-memory-project-owner-registry-contract.test.js
+          node tests/mira-memory-host-identity-integration.test.js
           node tests/mira-memory-host-authorization-adapter.test.js
           node tests/mira-memory-project-authority-contract.test.js
           node tests/mira-memory-request-authorization.test.js
