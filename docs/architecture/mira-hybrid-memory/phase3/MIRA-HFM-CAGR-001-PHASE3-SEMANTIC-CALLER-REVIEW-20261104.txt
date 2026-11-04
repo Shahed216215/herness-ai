@@ -81,3 +81,12 @@ Scope distinction
 9. CANDIDATE IMMUTABILITY
 - The domain payload adapter now deeply freezes nested candidate objects, including source/version/access metadata and allowedProjectIds. Tests assert nested mutation attempts throw.
 - This is candidate integrity protection only; it does not make a candidate trusted, approved for use, persisted or committed.
+
+
+10. DOWNSTREAM WORK-LEARNING RETRIEVAL FAN-OUT
+- mira-cross-task-learning-engine.js calls retrieveExperiences(taskText, {limit}) without projectId/actor context, then transfers selected experiences and strategies into cross-task planning.
+- mira-future-strategy-engine.js calls listLessons using taskId/status/qaStatus only; no project scope is passed.
+- mira-repeat-work-detection-engine.js calls getExperiencesForTask/retrieveExperiences using opportunity text and limit only. It catches retrieval exceptions and falls back to an empty result, which can mask future authorization failures unless errors are surfaced distinctly.
+- mira-opportunity-matching-engine.js calls listExperiences() with no filters, then uses prior experiences as evidence for opportunity matching. This is a high-priority cross-project learning-consumption path.
+- routes/learning-history.js exposes global learning-history/lesson reads behind SYSTEM_ADMIN middleware. This is a privileged administrative surface, not ordinary retrieval; it still needs explicit global-admin scope, audit and data-minimization review.
+- These consumers must not be wired to unified Memory until their request context contains an independently authorized project scope and the retrieval facade filters before ranking. Task text, taskId, opportunityId and skill matches are not project authority.
