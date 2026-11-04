@@ -1,0 +1,96 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+const routesDir = path.join(root, 'routes');
+const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+const taskExecutionRoute = fs.readFileSync(path.join(routesDir, 'task-execution.js'), 'utf8');
+const learningRoute = fs.readFileSync(path.join(routesDir, 'autonomous-learning.js'), 'utf8');
+const controlledApply = fs.readFileSync(path.join(root, 'autonomous-learning-controlled-apply.js'), 'utf8');
+const knowledgeImprovementRoute = fs.readFileSync(path.join(routesDir, 'knowledge-improvements.js'), 'utf8');
+const knowledgeControlledApply = fs.readFileSync(path.join(root, 'knowledge-controlled-apply.js'), 'utf8');
+
+const routeFiles = fs.readdirSync(routesDir).filter(file => file.endsWith('.js')).sort();
+const directRouteCalls = [];
+for (const file of routeFiles) {
+  const source = fs.readFileSync(path.join(routesDir, file), 'utf8');
+  const lines = source.split(/\r?\n/);
+  lines.forEach((line, index) => {
+    if (/\b(?:runTool|executeTool)\s*\(|\.execute\s*\(/.test(line)) {
+      directRouteCalls.push(file + ':' + (index + 1) + ':' + line.trim());
+    }
+  });
+}
+assert.deepEqual(directRouteCalls, [], 'route modules must not directly execute tool wrappers');
+assert.match(taskExecutionRoute, /executeWork\s*\(/, 'admin task execution route must use the governed work engine');
+
+function routeBlock(source, routePath) {
+  const marker = source.indexOf('"' + routePath + '"');
+  assert.notEqual(marker, -1, routePath + ' route exists');
+  const start = source.lastIndexOf('app.post(', marker);
+  assert.notEqual(start, -1, routePath + ' route registration exists');
+  const next = source.indexOf('\napp.post(', marker);
+  return source.slice(start, next === -1 ? source.length : next);
+}
+
+const backup = routeBlock(server, '/api/admin/backup');
+assert.match(backup, /requireAdminPermission\s*\(\s*PERMISSIONS\.BACKUP_RESTORE\s*\)/);
+assert.match(backup, /await\s+backupTool\.execute\s*\(/);
+
+const restore = routeBlock(server, '/api/admin/restore');
+assert.match(restore, /requireAdminPermission\s*\(\s*PERMISSIONS\.BACKUP_RESTORE\s*\)/);
+assert.match(restore, /confirm\s*!==\s*true/);
+assert.match(restore, /await\s+restoreTool\.execute\s*\(/);
+
+assert.match(server, /const requiresNamedAdminSession\s*=\s*\[/);
+assert.match(server, /"seo_workflow_history"/);
+assert.match(server, /req\.session\.authenticated\s*===\s*true/);
+assert.match(server, /const rawHistoryResult\s*=\s*await\s+historyTool\.execute\s*\(/);
+assert.match(server, /executeSeoWorkflowReviewDecision\s*\(/);
+assert.match(server, /await\s+executeWork\s*\(/);
+assert.match(server, /app\.delete\s*\(\s*["']\/api\/admin\/knowledge\/:id["']\s*,\s*requireAdminPermission\s*\(\s*PERMISSIONS\.SYSTEM_ADMIN\s*\)/);
+assert.match(server, /await\s+deleteKnowledge\s*\(\s*id\s*\)/);
+assert.match(server, /app\.post\s*\(\s*["']\/api\/admin\/knowledge\/:id\/edit["']\s*,\s*requireAdminPermission\s*\(\s*PERMISSIONS\.SYSTEM_ADMIN\s*\)/);
+assert.match(server, /await\s+updateLearning\s*\(/);
+assert.match(server, /await\s+updateKnowledge\s*\(/);
+
+assert.match(learningRoute, /router\.post\s*\(\s*["']\/proposals\/:id\/apply["']\s*,\s*requireSystemAdmin/);
+assert.match(learningRoute, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(learningRoute, /applyAutonomousLearningControlled\s*\(/);
+assert.match(controlledApply, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(controlledApply, /createVerifiedSnapshot\s*\(/);
+assert.match(controlledApply, /await\s+addLearning\s*\(/);
+assert.match(knowledgeImprovementRoute, /["']\/api\/admin\/knowledge-improvements\/:id\/apply["']\s*,\s*requireAdminPermission\s*\(/);
+assert.match(knowledgeImprovementRoute, /PERMISSIONS\.SYSTEM_ADMIN/);
+assert.match(knowledgeImprovementRoute, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(knowledgeImprovementRoute, /await\s+prepareEvolution\s*\(/);
+assert.match(knowledgeImprovementRoute, /await\s+applyEvolution\s*\(/);
+assert.match(knowledgeImprovementRoute, /await\s+verifyEvolutionState\s*\(/);
+assert.match(knowledgeControlledApply, /proposal\.status\s*!==\s*["']approved["']/);
+assert.match(knowledgeControlledApply, /createSnapshot\s*\(/);
+assert.match(knowledgeControlledApply, /verifySnapshot\s*\(/);
+assert.match(knowledgeControlledApply, /await\s+updateLearning\s*\(/);
+
+for (const wrapper of ['memory-save', 'knowledge-save', 'learning-save']) {
+  assert.equal(
+    server.includes('require("./tools/' + wrapper + '")') ||
+      server.includes("require('./tools/" + wrapper + "')"),
+    false,
+    server + ' must not directly import persistent save wrapper ' + wrapper
+  );
+}
+
+console.log('MIRA_HFM_ROUTE_DIRECT_TOOL_CALLS=0');
+console.log('MIRA_HFM_ADMIN_BACKUP_PERMISSION_GATE=PASS');
+console.log('MIRA_HFM_ADMIN_RESTORE_PERMISSION_AND_CONFIRMATION=PASS');
+console.log('MIRA_HFM_SEO_HISTORY_NAMED_ADMIN_GATE=PASS');
+console.log('MIRA_HFM_SEO_REVIEW_DEDICATED_DISPATCH=PASS');
+console.log('MIRA_HFM_TASK_EXECUTION_USES_GOVERNED_ENGINE=PASS');
+console.log('MIRA_HFM_ADMIN_KNOWLEDGE_EDIT_DELETE_PERMISSION_GATES=PASS');
+console.log('MIRA_HFM_AUTONOMOUS_LEARNING_DIRECT_WRITE_ADMIN_APPROVAL_AND_SNAPSHOT=PASS');
+console.log('MIRA_HFM_KNOWLEDGE_IMPROVEMENT_DIRECT_UPDATE_ADMIN_APPROVAL_AND_SNAPSHOT=PASS');
+console.log('MIRA_HFM_PERSISTENT_SAVE_WRAPPER_DIRECT_SERVER_IMPORTS=0');
+console.log('MIRA_HFM_DIRECT_DISPATCH_BOUNDARY_TESTS_FAILED=0');

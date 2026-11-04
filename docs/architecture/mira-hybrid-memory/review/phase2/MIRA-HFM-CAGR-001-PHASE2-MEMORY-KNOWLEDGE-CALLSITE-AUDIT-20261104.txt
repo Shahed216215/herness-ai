@@ -1,0 +1,105 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 2
+MEMORY / KNOWLEDGE / CONVERSATION CALLSITE AUDIT
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Inspected HEAD: 599fc7a85e4883cff17f3ca31eb98f993b13ab88
+Tree SHA: 704cc601b5ef14dc4cab1111044d5507ae80bc69
+Mode: READ-ONLY GITHUB SOURCE REVIEW
+Status: BOUNDED TARGETED INVENTORY — NOT REPOSITORY-WIDE EXHAUSTIVE
+
+1. SCOPE AND METHOD
+Inspected the current branch tree and source text for the following 18 paths:
+memory.js; knowledge.js; services/mira-local-memory-store.js;
+services/mira-conversation-memory-engine.js; conversation-store.js;
+routes/conversations.js; tools/knowledge-search.js; tools/memory-save.js;
+tools/memory-count.js; tools/memory-restore.js; tools/knowledge-save.js;
+tools/knowledge-count.js; tools/knowledge-backup.js; tools/knowledge-restore.js;
+knowledge-memory-evolution.js; knowledge-controlled-apply.js;
+autonomous-learning-controlled-apply.js; server.js.
+The repository tree was obtained from the branch tree above. Source line references below refer to this exact inspected branch HEAD. This was static inspection only: no production data, local user data, Google Drive, live provider, or external endpoint was accessed. No tests were run for this documentation-only audit.
+
+2. PRIMARY LOCAL MEMORY BOUNDARIES
+A. memory.js
+- loadMemory() delegates to localStore.readMemory() (lines 10–12).
+- saveMemory() capacity-limits then calls localStore.writeMemory() (lines 14–23).
+- addMemory() loads and appends legacy role/content/time message objects (lines 34–72).
+- getMemory() returns loadMemory() (lines 74–76).
+- This legacy general Memory model is distinct from conversation-store messages. No stable messageId/projectId is established by this API.
+
+B. services/mira-local-memory-store.js
+- readMemory() begins at line 145; writeMemory() begins at line 165 and delegates to jsonStateStore.writeArrayState() at line 169.
+- The store also reads backup state and restores through the same local writer (source lines 235–250 and 295–324).
+- The primary read/write functions do not call the canonical conflict registry or a universal quarantine retrieval guard.
+- Backup/restore is a separate read/write route requiring policy-aware filtering and recovery semantics; current audit does not establish conflict exclusion there.
+
+C. tools
+- tools/memory-save.js imports addMemory() at line 1 and invokes it at line 40.
+- tools/memory-count.js imports getMemory() at line 3 and reads it at line 20.
+- tools/memory-restore.js imports restoreMemory() from the local store at line 3; its tool description requires explicit confirmation (lines 11–17).
+- These are additional public tool boundaries over the same legacy store; they do not independently apply the conflict registry.
+
+3. PRIMARY KNOWLEDGE BOUNDARIES
+A. knowledge.js
+- loadKnowledge() reads through jsonStateStore.readJsonArray() (lines 57–64).
+- saveLocalKnowledge() delegates to jsonStateStore.writeArrayState() (lines 67–70).
+- CRUD and learning mutation entry points include addKnowledge() (line 157), addLearning() (line 354), deleteKnowledge() (line 513), updateKnowledge() (line 567), updateLearning() (line 708).
+- Read entry points include searchKnowledge() (line 860), getKnowledge() (line 995), and getKnowledgeStats() (line 999).
+- Normal CRUD paths call syncToDrive(); examples include addKnowledge() around lines 191–223, addLearning() around line 392, deleteKnowledge() around line 546, updateKnowledge() around line 677 and updateLearning() around line 815.
+- The universal conflict registry guard is not shown at these shared load/write boundaries. A fix only at one route would therefore be incomplete.
+
+B. Direct server routes
+- server.js reads getKnowledge() at lines 1120, 1253, 1312 and 2108; searchKnowledge() at line 1209; the agent context reads getMemory() and searchKnowledge() at lines 1521–1527.
+- Knowledge mutation routes call deleteKnowledge() at line 1144, updateLearning() at line 1408 and updateKnowledge() at line 1423.
+- These route callsites rely on the shared module APIs; route authorization does not provide conflict filtering.
+
+C. Knowledge tools
+- tools/knowledge-save.js imports addKnowledge() at line 1 and invokes it at line 36.
+- tools/knowledge-count.js imports getKnowledge() at line 1 and invokes it at line 16.
+- tools/knowledge-search.js imports getKnowledge() and loadKnowledgeFromDrive() (lines 1–2). It loads local Knowledge at line 45, then replaces the search corpus with Drive results when loadKnowledgeFromDrive() returns an array (lines 47–52). This is a distinct retrieval path that bypasses any future local-only retrieval guard unless Drive results are independently normalized and filtered through the same policy.
+- tools/knowledge-backup.js invokes createKnowledgeBackup() (line 3); tools/knowledge-restore.js invokes restoreKnowledge() (line 3) and requires explicit confirmation. Neither tool is proven here to apply canonical conflict filtering to backup/export or restore.
+
+4. CONVERSATION STORE IS A DISTINCT DOMAIN
+- conversation-store.js owns a separate structured store. loadStore() reads the conversation file (line 80); getConversation() begins at line 134; listConversations() at line 149; listMessages() at line 284; createStoredMessage() at line 323.
+- routes/conversations.js imports these APIs (lines 1–11) and registers conversation/message/context endpoints. Relevant reads include list/get conversation around lines 103, 132, 164 and message/context routes later in the file. Incoming message handling invokes updateConversationMemory() (route source around lines 230–260; exact handler is in the same inspected file).
+- services/mira-conversation-memory-engine.js updateConversationMemory() validates conversationId and message consistency, reads conversation/context and saves context (lines 283–361); getConversationMemory() reads conversation/context/history (lines 364–392).
+- This structured CRM Conversation store has messageId and conversationId semantics distinct from legacy memory.js role/content/time objects. It does not automatically establish an authoritative HFM projectId mapping. Do not conflate the two models or infer projectId from clientId/opportunityId without an approved mapping contract.
+
+5. EVOLUTION AND CONTROLLED APPLY BOUNDARIES
+- knowledge-memory-evolution.js reads its configured files and delegates Memory writes to localMemoryStore.writeMemory() or Knowledge writes to jsonStateStore.writeArrayState() (source lines 69–85; read helpers around lines 259–261). This is another mutation path requiring shared guard coverage.
+- knowledge-controlled-apply.js imports getKnowledge()/updateLearning() and Drive load/save APIs (lines 10–18); rollback can restore local snapshot and Drive state (lines 141–185). Its controlled apply entry point begins at line 188. This path requires conflict arbitration before apply and policy-aware rollback/restore.
+- autonomous-learning-controlled-apply.js imports getKnowledge(), addLearning(), replaceKnowledge() and Drive APIs (lines 10–19); local writes delegate to replaceKnowledge() (lines 63–69), while rollback and apply also interact with Drive. The guarded local adapter does not by itself establish Drive retrieval/write filtering.
+
+6. FINDINGS AND REQUIRED ACTION
+F1 — HIGH: Universal Memory retrieval/write guard is not integrated at memory.js/local-store boundaries. Tool, backup and Evolution callers inherit this gap.
+F2 — HIGH: Knowledge shared load/CRUD boundaries do not universally apply the canonical conflict registry.
+F3 — HIGH: tools/knowledge-search.js can replace the local corpus with unfiltered Drive results (lines 45–55); a local-only guard is insufficient.
+F4 — HIGH: Evolution and controlled-apply paths are separate mutation/rollback boundaries and must use the same conflict policy or be explicitly excluded with enforced gates.
+F5 — MEDIUM: Conversation CRM messages are a separate structured identity domain; existing messageId must not be treated as proof that legacy general Memory has immutable message identity or HFM project scope.
+F6 — MEDIUM: Backup/restore, count, search, stats and exports require explicit policy decisions. Hiding quarantined records only from one search endpoint does not prove universal exclusion.
+
+7. SAFE NEXT IMPLEMENTATION ORDER
+1. Freeze the boundary list and assign each path a domain-specific policy contract.
+2. Define authoritative project scope and stable identity separately for legacy general Memory, Knowledge, and structured CRM Conversation messages.
+3. Introduce shared policy-aware read/write adapters at the lowest common safe boundary; do not force dissimilar schemas through one canonical validator.
+4. Ensure Drive search results are filtered under the same trust/quarantine policy before ranking or returning them.
+5. Cover Evolution, controlled apply, tools, counts, backups, restore, exports, caches and indexes; define explicit exceptions where policy requires preserving forensic evidence.
+6. Add synthetic integration tests proving no bypass via direct module, route, tool, Drive, Evolution, backup/restore, and cross-project paths.
+7. Obtain independent review before production runtime activation or data migration.
+
+8. STATUS
+TARGETED_SOURCE_PATHS_REVIEWED=18
+FULL_REPOSITORY_SOURCE_SCAN=NOT_EXECUTED
+PRODUCTION_DATA_ACCESSED=NO
+LIVE_DRIVE_OR_PROVIDER_CALLS=NO
+RUNTIME_SOURCE_CHANGED=NO
+TESTS=NOT_RUN_DOCUMENTATION_ONLY
+UNIVERSAL_MEMORY_GUARD=NOT_INTEGRATED
+UNIVERSAL_KNOWLEDGE_GUARD=NOT_INTEGRATED
+DRIVE_TOOL_RETRIEVAL_GUARD=NOT_ESTABLISHED
+EVOLUTION_CONTROLLED_APPLY_COVERAGE=REVIEW_REQUIRED
+CONVERSATION_PROJECT_MAPPING=NOT_ESTABLISHED
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF AUDIT

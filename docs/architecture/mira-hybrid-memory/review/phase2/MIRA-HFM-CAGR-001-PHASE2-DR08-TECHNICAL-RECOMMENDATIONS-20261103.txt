@@ -1,0 +1,118 @@
+MIRA HYBRID MEMORY — PHASE 2 DR-08 TECHNICAL RECOMMENDATIONS
+Document ID: MIRA-HFM-CAGR-001-PHASE2-DR08-TECHNICAL-RECOMMENDATIONS-20261103
+Parent: DR-08-DECISION-CLOSURE-MATRIX-v0.2
+Version boundary: v0.2
+Date: 2026-11-03
+Status: TECHNICAL REVIEW DRAFT — NO IMPLEMENTATION APPROVAL
+
+PURPOSE
+This document converts unresolved DR-08 items into reviewable technical recommendations and explicit decision points. It does not amend the contract, approve a backend, authorize implementation, or authorize production data access.
+
+A. DR08-U03 — GENESIS
+
+Recommendation for review:
+- Use a dedicated immutable genesis anchor for each project chain, separate from ordinary business events.
+- Genesis binds projectId, chainId, canonical schema/profile versions, initial sequence convention, initial chain-head derivation, creator identity, creation time, and trust-anchor reference.
+- The first ordinary event must reference the exact genesis identifier and derived genesis hash.
+- Duplicate creation with identical canonical genesis payload returns the existing genesis; same identity with different payload is CONFLICT.
+- An uncertain create outcome is UNKNOWN/RECOVERY_REQUIRED until authoritative readback reconciles it.
+- No silent regeneration or replacement of an existing genesis.
+
+Not selected by this draft:
+- Genesis as sequence 0 event versus separately authenticated chain anchor.
+- Signature/key algorithm, key custody, rotation, revocation and recovery.
+- Whether project owner or a separate governance authority signs genesis.
+
+Required evidence before approval:
+1. Machine-readable genesis schema.
+2. Trust-anchor and signer authority definition.
+3. Deterministic canonical test vectors.
+4. Duplicate, tamper, missing-genesis and uncertain-create tests.
+5. Independent verifier reproduces genesis derivation.
+
+Decision: REVIEW_REQUIRED — OWNER APPROVAL REQUIRED.
+
+B. DR08-U04 — BACKEND ATOMICITY AND APPEND ARBITRATION
+
+Recommendation for review:
+- Require exactly one authoritative append-arbitration authority per project chain.
+- Prefer provider-native atomic compare-and-swap/transaction that combines next-sequence claim and durable append.
+- If unavailable, use a separately durable reservation with stable allocationId and an explicit state machine: RESERVED, APPEND_IN_PROGRESS, APPENDED, NOT_APPENDED, UNKNOWN, CONFLICT, RECOVERY_REQUIRED.
+- Never reuse sequence numbers; never blind-retry uncertain outcomes; block later appends while an earlier allocation remains unresolved.
+- If no backend proves these guarantees, keep chain-dependent consequential operations disabled.
+
+Qualification tests:
+- N concurrent writers competing for one next sequence.
+- Duplicate eventId with same payload and with different payload.
+- Crash after reservation, after append-before-ack, and during reconciliation.
+- Stale reads, provider timeout, eventual consistency, replay, fork, and sequence reuse attempts.
+- Independent readback verifies exactly one authoritative event.
+
+No provider is selected by this recommendation. Provider documentation alone is insufficient; runtime qualification is required.
+
+Decision: NOT_ESTABLISHED — OWNER APPROVAL AND BACKEND EVIDENCE REQUIRED.
+
+C. DR08-U05 — CANONICAL TEST REGISTRY
+
+Recommendation for review:
+- Create one canonical registry with immutable testId and exactly one test definition per ID.
+- Keep historical HFM-LOG and HFM-CHAIN IDs as aliases only; aliases must point to a canonical test without changing historical meaning.
+- Registry fields: testId, requirementIds, sourceSections, fixture, setup, action, failureInjection, expectedResult, executionStatus, actualResult, evidenceReference, sourceCommit, runtime, verifier, limitations, approvalState.
+- Use statuses TESTED_PASS, TESTED_FAIL, INCONCLUSIVE, NOT_APPROVED, REVIEW_REQUIRED, NOT_APPLICABLE, NOT_EXECUTED.
+- NOT_EXECUTED and NOT_APPLICABLE never count as PASS; NOT_APPLICABLE requires rationale and review.
+
+Decision: REVIEW_REQUIRED — OWNER APPROVAL REQUIRED.
+
+D. DR08-U06 — CANONICAL TIMESTAMP PROFILE
+
+Recommendation for review:
+- Use a versioned RFC 3339 UTC representation with fixed millisecond precision for canonical event timestamps.
+- Require explicit timezone in input; normalize valid offsets to UTC before canonical serialization.
+- Reject missing timezone, invalid calendar values, excess fractional precision, and unsupported leap-second forms rather than silently coercing.
+- Keep eventCreatedAt separate from providerObservedAt and verifierObservedAt.
+- Canonical timestamp bytes are fixed by profile version; display formatting is not part of the hash input.
+
+Risks/decisions still open:
+- Confirm RFC 3339 profile and exact UTC string form.
+- Define rounding versus rejection for excess precision (recommend rejection).
+- Define leap-second handling (recommend reject unless an approved profile explicitly supports it).
+- Define trusted-time source and clock-skew limitations.
+
+Decision: OPEN — OWNER APPROVAL REQUIRED.
+
+E. E-15 — INDEPENDENT VERIFIER
+
+Recommendation for review:
+- Qualify a verifier that is operationally and logically separate from the event writer, allocator, checkpoint producer, and primary provider response path.
+- Verifier consumes immutable event export plus separately provisioned trust anchors and versioned canonical profiles.
+- Recomputes canonical serialization and event hashes; checks genesis, sequence continuity, previous-hash linkage, project isolation, checkpoint binding, writer authenticity, and gap/fork conditions.
+- Verifier must report evidence source, source commit, tool version, runtime, trust-anchor identifiers, profile versions, result, limitations and custody digest.
+- Disagreement or unavailable evidence returns INCONCLUSIVE/REVIEW_REQUIRED; it must never auto-repair the chain.
+- A second implementation or independent reviewer should validate canonical test vectors before qualification.
+
+Decision: REVIEW_REQUIRED — INDEPENDENCE AND EVIDENCE CUSTODY NOT ESTABLISHED.
+
+F. REQUIRED OWNER DECISIONS
+
+No implementation begins for U03, U04, U05, U06 or E-15 until each decision is recorded with:
+- Exact accepted wording.
+- Alternatives rejected and rationale.
+- Security, compatibility and recovery impact.
+- Authorized implementation scope.
+- Test and evidence requirements.
+- Approving authority and date.
+
+G. OVERALL
+
+These recommendations are proposed technical directions only.
+DR08_U03=REVIEW_REQUIRED
+DR08_U04=NOT_ESTABLISHED
+DR08_U05=REVIEW_REQUIRED
+DR08_U06=OPEN
+E15=REVIEW_REQUIRED
+IMPLEMENTATION_APPROVAL=NOT_GRANTED
+PRODUCTION_ACCESS=NOT_AUTHORIZED
+FULL_PHASE2=REVIEW_REQUIRED
+VERSION=v0.2
+
+END OF DOCUMENT

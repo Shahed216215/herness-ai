@@ -1,0 +1,612 @@
+MIRA HYBRID MEMORY — PHASE 2 CORE MEMORY SAFETY IMPLEMENTATION REPORT
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-IMPLEMENTATION-REPORT-20261103
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Project version boundary: v0.2
+Repository: Shahed216215/herness-ai
+Implementation branch: work/mira-hfm-v02-phase2-core-safety
+Date: 2026-11-03
+Status: CORE_IMPLEMENTATION_COMPLETE_WITH_EXPLICIT_GOVERNANCE_RESIDUALS
+
+1. SCOPE
+
+This report records additive Phase 2 implementation for local Memory and Knowledge state safety. No production migration, provider cutover, Drive removal, Facebook connector, or deployment is included.
+
+2. IMPLEMENTED SOURCE CHANGES
+
+A. Shared JSON state-store primitives
+Path: services/mira-json-state-store.js
+- Strict JSON-array read with explicit first-run missing-file behavior.
+- Rejects empty, malformed, non-array, symlink, and non-regular-file state.
+- Atomic temporary-file write with exclusive creation, restrictive file mode, fsync, rename, and independent SHA-256 readback.
+- Writes an immutable pre-write version snapshot before replacing an existing valid array.
+- Provides a local conflict-quarantine envelope with SHA-256 evidence and source metadata.
+
+B. General Memory
+Path: services/mira-local-memory-store.js
+- Missing primary Memory file falls back to a validated local backup when one exists; the backup is not silently written over the primary during read.
+- Missing primary with no backup remains a first-run empty state.
+- Corrupt, empty, unreadable, non-array, or unsafe primary state fails closed.
+- Normal writes use the shared atomic/versioned state writer.
+- Explicit restore validates the backup first and requires the existing tool confirmation.
+- Before restoring over corrupt primary data, exact original bytes are preserved in a separate quarantine file with SHA-256 evidence.
+- Restore then performs atomic replacement and readback verification.
+
+C. Knowledge
+Path: knowledge.js
+- A missing Knowledge file remains a first-run empty state.
+- Existing malformed, empty, unreadable, non-array, or unsafe Knowledge state now throws instead of silently becoming [].
+- Knowledge CRUD writes use the shared atomic/versioned state writer.
+- Capacity overflow no longer silently drops older entries: displaced records are preserved in a restricted local conflict-quarantine envelope before the bounded Knowledge state is committed.
+- Knowledge backup is local, versioned, SHA-256 verified and offline. A corrupt existing backup is preserved and blocks overwrite.
+- Knowledge restore requires explicit confirmation, validates the backup, creates a safety backup or preserves corrupt primary bytes verbatim, performs atomic restore/readback, and records audit events.
+- The legacy Knowledge restore tool no longer falls back to Google Drive or writes directly with fs.writeFileSync; it is local-only. This is not the encrypted emergency backup required by HFM-005.
+
+D. Evolution integration
+Path: knowledge-memory-evolution.js
+- Memory Evolution reads through the shared Local Memory Store.
+- Memory Evolution writes through the shared Local Memory Store; Knowledge Evolution writes through the shared JSON state store.
+- Split Memory storage roots fail closed.
+- Evolution refuses to snapshot/apply when its target path is outside the Snapshot Manager's safe project-relative boundary.
+- Local/Drive divergence is preserved in a local conflict quarantine record and apply is blocked; reconciliation proposal mismatch is also quarantined.
+- Existing snapshot, approval, preservation, Drive verification, and rollback flows remain in place.
+
+D. Knowledge backup and restore recovery\nPaths: services/mira-knowledge-state-recovery.js, tools/knowledge-backup.js, tools/knowledge-restore.js\n- Version-2 local backup envelope with entry count and SHA-256 validation.\n- Previous valid backup is preserved as an immutable version before replacement; corrupt backup bytes are quarantined and overwrite is blocked.\n- Explicit restore creates a verified safety backup or preserves corrupt primary bytes verbatim before replacing it.\n- Legacy unchecksummed v1 restore requires explicit allowLegacy=true. No Drive fallback or network access.\n\nE. Version listing, verification and recovery\nPaths: services/mira-state-version-recovery.js, tools/memory-version-recovery.js\n- Lists and verifies immutable Memory/Knowledge version snapshots.\n- Restore requires explicit confirmation, validates snapshot SHA-256 and source binding, snapshots the current valid state, writes atomically, and verifies readback.\n- Corrupt current state is not overwritten through version recovery. No automatic retention deletion; all versions are preserved pending an approved retention policy.\n\n3. REGRESSION COVERAGE ADDED / UPDATED
+
+- tests/mira-hfm-phase2-core-safety.test.js
+- tests/mira-knowledge-state-safety-test.js
+- tests/mira-local-memory-safety-test.js
+- tests/mira-memory-local-store-contract-test.js
+- tests/mira-memory-evolution-integration-test.js
+- tests/mira-phase2-recovery-regression.test.js
+- .github/workflows/mira-hfm-phase2-core-safety.yml
+
+The tests cover strict reads, atomic writes, version snapshots, checksum verification, corruption non-overwrite, missing-primary backup fallback, explicit corruption-preserving restore, symlink rejection, conflict quarantine, and Evolution shared-store integration.
+
+Final verification: GitHub Actions run 41660580255 (run number 102), job 126002377286, Ubuntu 24.04.5 / Node v22.23.4, completed SUCCESS on the latest Phase 2 source tree. The isolated suite reported: core state-store 24 assertions PASS; Knowledge state safety 14 assertions PASS; Knowledge backup/restore and corrupt-primary preservation PASS; corrupt-backup overwrite blocked and raw bytes quarantined PASS; version list/verify/restore PASS; tampered backup rejection PASS; Knowledge capacity-eviction quarantine PASS; audit-chain verification PASS; Local Memory safety PASS; Local Store contract 8 tests PASS; Evolution integration 9 tests PASS. All reported TESTS_FAILED=0. Logs confirmed PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, and EXTERNAL_ACTIONS=0. Earlier CI failures exposed and corrected implementation/test-harness issues; this latest run is the authoritative post-fix evidence.
+
+4. PHASE 2 GAP STATUS
+
+HFM-001 — Core Memory Read Failure Safety: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
+HFM-002 — Atomic Memory Write: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
+HFM-003 — Data Integrity Verification: PASS_SCOPED_SOURCE_AND_ISOLATED_TESTS
+HFM-006 — Safe Restore and Recovery: PASS_SCOPED_MEMORY_AND_KNOWLEDGE_LOCAL_RESTORE_WITH_ISOLATED_TESTS; remote/provider restore remains deferred
+HFM-007 — Memory Version Management: PASS_SCOPED_LIST_VERIFY_AND_EXPLICIT_RESTORE_TOOLING; automatic deletion is disabled and all snapshots are preserved pending an approved retention policy
+HFM-008 — Conflict Detection and Quarantine: PASS_SCOPED_EVOLUTION_AND_KNOWLEDGE_CAPACITY_EVICTION_QUARANTINE; provider divergence and other non-Evolution identity/revision/source/access/schema conflict classes remain REVIEW_REQUIRED
+
+Audit integration: PASS_SCOPED using the existing tamper-evident audit stream. State writes record intent and committed events; Memory/Knowledge restore records intent/completion; conflict quarantine and version recovery record audit events. Isolated tests verify the existing audit hash-chain integrity. DR08-U01/U02 have approved v0.2 design directions only; their approval explicitly does not approve implementation. No canonical sequence-numbered event envelope was implemented. DR08-U03 genesis, U04 backend arbitration, U05 test registry, U06 timestamp profile, and E-15 independent verifier qualification remain REVIEW_REQUIRED / NOT_ESTABLISHED. Canonical audit-event implementation remains NOT_APPROVED.
+
+HFM-004 — Routine Google Drive Sync Removal: DEFERRED_TO_PROVIDER_CUTOVER_GATE. Evolution, controlled apply, Knowledge, and learning callers still depend on Drive. Removal without replacement would risk loss of recovery capability.
+HFM-005 — Encrypted Emergency Backup: DEFERRED_TO_BACKUP_SECURITY_GATE. Encryption-key lifecycle, recovery, and compatibility require a separate verified design. Existing plaintext local backup behavior is not represented as encrypted.
+
+5. SAFETY / NON-ACTIONS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_KNOWLEDGE_READ=NONE
+PRODUCTION_KNOWLEDGE_WRITE=NONE
+REAL_GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+PRODUCTION_MIGRATION=NONE
+DRIVE_SYNC_REMOVAL=NONE
+DEPLOYMENT=NONE
+MAIN_BRANCH_MODIFIED=NO
+VERSION=v0.2
+
+6. EXIT DECISION
+
+PHASE2_IMPLEMENTATION=APPROVED_LOCAL_CORE_SCOPE_IMPLEMENTED_AND_ISOLATED_TESTED
+SOURCE_RUNTIME_TESTS=PASS_SCOPED — GITHUB_ACTIONS_RUN_41660580255
+KNOWLEDGE_LOCAL_BACKUP_RESTORE=PASS_SCOPED
+VERSION_LIST_VERIFY_RESTORE=PASS_SCOPED
+CAPACITY_EVICTION_QUARANTINE=PASS_SCOPED
+AUDIT_INTEGRATION=PASS_SCOPED_EXISTING_HASH_CHAIN
+CANONICAL_AUDIT_EVENT_ENVELOPE=NOT_APPROVED_FOR_IMPLEMENTATION
+DR08_U03_U04_U05_U06_AND_E15=REVIEW_REQUIRED
+NON_EVOLUTION_PROVIDER_CONFLICT_CLASSES=REVIEW_REQUIRED
+HFM004=DEFERRED
+HFM005=DEFERRED
+
+The approved local Phase 2 core-safety implementation and isolated acceptance suite are complete at the scoped level described above, including Knowledge restore, version recovery, and capacity-eviction preservation. Full Phase 2 governance closure is not claimed: canonical audit-envelope implementation is not approved by DR-08; genesis, backend arbitration, test registry, timestamp profile, independent verifier qualification, and non-Evolution provider conflict classes remain review gates. HFM-004 and HFM-005 remain separate provider-cutover / encrypted-backup gates. No production migration or provider cutover is authorized by this report.
+
+END OF REPORT
+
+
+9. FOLLOW-UP WORK AFTER THE ORIGINAL PHASE 2 REPORT
+
+A. Evolution audit fail-closed
+Successful Evolution prepare/snapshot/apply/rollback paths now require the expected audit record to be logged. Injected audit-writer failure regression coverage was added. Scoped CI run 109 completed SUCCESS with 10 Evolution integration assertions and TESTS_FAILED=0. This does not qualify the separate DR-08 append-only canonical audit chain.
+
+B. Structural conflict assessment
+A read-only canonical Memory record validator and structural conflict assessor was added for seven categories: IDENTITY_CONFLICT, REVISION_CONFLICT, CONTENT_CONFLICT, SOURCE_CONFLICT, ACCESS_CONFLICT, SCHEMA_CONFLICT and INTEGRITY_CONFLICT. Malformed/unverified records return REVIEW_REQUIRED. It does not write, merge, resolve, quarantine or claim cryptographic content-hash verification. RFC3339 date-time shape regression tests are included.
+
+C. Isolated conflict quarantine lifecycle
+Added:
+- services/mira-conflict-quarantine-registry.js
+- tests/mira-conflict-quarantine-registry.test.js
+
+This additive local-only service covers:
+- immutable multi-original conflict envelopes with stable conflict identity; malformed/schema-invalid or integrity-failed originals with a projectId and memoryId can be preserved for investigation;
+- project-scoped read/list and SHA-256 verification of complete envelope and original records;
+- retrieval-exclusion helper for pending or integrity-failed conflict originals;
+- explicit caller-supplied authorization callback before resolution, after the contract-complete resolution proposal is built;
+- All five v0.2.4 Contract §30 outcomes: ACCEPT_EXISTING_VERSION, ACCEPT_ALTERNATE_VERSION, APPROVED_FIELD_MERGE, REJECT_CONFLICTING_CHANGE and RETAIN_QUARANTINED;
+- APPROVED_FIELD_MERGE requires all originals to share one memory identity and revision exactly max(original revisions)+1;
+- immutable resolution record and separate resolution integrity verification, including a required proposal binding affected versions, source references, original hashes, access classes, trust states, field-level changes, data-loss risks, required authority, recovery point and verification plan;
+- idempotent create/resolve retry behavior;
+- fail-closed audit error semantics and retry recovery;
+- symlink path-component rejection.
+
+GitHub Actions run 41673854536 (run 215), job 126049053444, completed SUCCESS on the current contract-aligned service/test revision. The logs explicitly report:
+IMMUTABLE_CONFLICT_ENVELOPE_AND_ORIGINAL_PRESERVATION=PASS
+ATOMIC_IMMUTABLE_PUBLICATION_AND_TEMP_CLEANUP=PASS
+PROJECT_SCOPED_READ_AND_LIST=PASS
+LOCAL_SHA256_INTEGRITY_VERIFICATION=PASS
+IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS
+PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS
+PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS
+GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+GOVERNED_RETAIN_QUARANTINED=PASS
+ALTERNATE_VERSION_INDEX_BOUNDS=PASS
+MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS
+FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS
+EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
+CONTRACT_RESOLUTION_PROPOSAL_REQUIRED=PASS
+RESOLUTION_PROPOSAL_TRACEABILITY_AND_TAMPER_DETECTION=PASS
+AUDIT_FAILURE_FAIL_CLOSED=PASS
+RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS
+TAMPER_DETECTION=PASS
+FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS
+SYMLINK_PATH_REJECTION=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+The lifecycle service is NOT integrated into every production Memory/Knowledge retrieval path or every provider write boundary. It is an isolated additive module and test suite. Universal retrieval exclusion and all-provider pre-write validation remain REVIEW_REQUIRED.
+
+D. U05 test registry work
+Prepared:
+- canonical registry specification;
+- inventory of eight current isolated Phase 2 CI suites with proposed stable suite IDs;
+- legacy ID ambiguity register.
+
+No live registry was created and no historical aliases were assigned. Blueprint HFM-LOG-001..007 meanings are recorded; Prototype C's reuse of the same range is marked extended/ambiguous; Prototype D HFM-CHAIN-001..012 remains a separate family. Prototype B HFM-LOG-008..010 remains UNMAPPED until its authoritative source is located.
+
+E. U06 timestamp compatibility
+Read-only review found that audit-log.js emits new timestamps with Date.toISOString() (UTC millisecond form) and includes the timestamp string in the integrity hash payload. The Memory structural validator accepts broader RFC3339 forms. No runtime validator was tightened and no historical audit entry was rewritten. The proposed strict chain timestamp profile remains NOT_APPROVED pending owner decision and compatibility plan.
+
+F. Source hash reconciliation
+All six source documents (Contract v0.2.4, Blueprint, Prototype B, Prototype C, Prototype D and Prototype E) were compared across Phase 1 baseline commit 90b48f2816e28686cd499650ff6a5fc6217f0e8a, Phase 1 final reviewed commit 720309923223c4f287ec3ede0fb0c16aff80f213 and the current Phase 2 branch. All six returned identical Git blob SHA and character length across the three refs; SHA-256 was recomputed over UTF-8 content. Prototype B is located at docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-GAP-CLOSURE-PROTOTYPE-B.md and its hash matches the authoritative Phase 1 record. DR-08 source-integrity gate G1 is now PASS_SCOPED_IDENTICAL_6_OF_6. Prototype B's per-ID HFM-LOG definitions remain insufficiently enumerated for U05 semantic alias mapping; this is a separate U05 gap, not a source-integrity gap.
+
+10. CURRENT VERIFICATION AND GOVERNANCE STATUS
+
+Latest full isolated Phase 2 CI:
+- Run 41673854536 (run 215), job 126049053444 — SUCCESS.
+- Run 174 (41672264913) is the prior project-scoped retrieval-filter verification; run 215 supersedes it with the contract-aligned full lifecycle suite.
+- The eight-suite workflow completed successfully, including the project-scoped conflict retrieval-exclusion helper.
+- Logs report PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS, TESTS_FAILED=0, production Memory/Knowledge untouched, real Google Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+- Earlier runs 152/155/166/174 remain historical evidence for their exact commits; run 215 is the latest verification of the current contract-aligned isolated quarantine helper/test code.
+
+Current scoped statuses:
+- Core state safety, Knowledge state safety, recovery, local store contract and Evolution integration: PASS_SCOPED to the recorded CI commits.
+- Structural conflict assessment: PASS_SCOPED to the recorded CI commits.
+- Isolated conflict quarantine lifecycle: PASS_SCOPED to run 249.
+- Isolated audit-chain verifier: PASS_SCOPED to run 267.
+- Universal production retrieval exclusion: REVIEW_REQUIRED.
+- Every-provider write-boundary integration: REVIEW_REQUIRED.
+- Canonical content-hash recomputation under an approved JCS profile: NOT_IMPLEMENTED.
+- DR08-U03 genesis protocol: DESIGN_REFINED; normative schema/authenticity/creation protocol NOT_APPROVED.
+- DR08-U04 backend atomicity: DESIGN_REFINED; provider capability NOT_ESTABLISHED.
+- DR08-U05 registry: SPECIFICATION AND INVENTORY PREPARED; live registry/legacy mapping NOT_APPROVED.
+- DR08-U06 timestamp profile: COMPATIBILITY ASSESSED; canonical profile NOT_APPROVED.
+- E-15 independent verifier: DESIGN_REFINED; qualification NOT_TESTED.
+- DR08 G1 source integrity: PASS_SCOPED_IDENTICAL_6_OF_6 (Contract, Blueprint and Prototypes B/C/D/E reconciled).
+- HFM-004 Drive cutover: DEFERRED / NOT_AUTHORIZED.
+- HFM-005 encrypted emergency backup and key custody: DEFERRED / NOT_AUTHORIZED.
+
+No production Memory/Knowledge access, provider cutover, Drive API call, Facebook/API/model-provider request, migration, deployment or PR merge occurred. Version remains v0.2. PR #4 remains Draft and Unmerged.
+
+FULL_PHASE2=REVIEW_REQUIRED
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+
+11. POST-RUN-155 QUARANTINE HARDENING — VERIFIED BY RUN 166
+
+After run 155, the isolated quarantine writer was changed to publish immutable records by writing and fsyncing a private temporary file, then atomically hard-linking it to the final immutable name without overwrite. Temporary files are cleaned up on handled failures. Regression coverage includes temporary-file cleanup; the earlier REJECT_INCOMING label was superseded by the exact v0.2.4 Contract §30 outcome REJECT_CONFLICTING_CHANGE and is not treated as a current allowed decision.
+
+GitHub Actions run 41671493565 (run 166), job 126040740020, completed SUCCESS on branch head commit 472c83f8c9e47c95060ccb98030a1dbb1d750c15. The job log explicitly reports:
+- ATOMIC_IMMUTABLE_PUBLICATION_AND_TEMP_CLEANUP=PASS
+- Historical pre-alignment label: REJECT_INCOMING; superseded by run 215's GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+- EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
+- RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS
+- FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS
+- SYMLINK_PATH_REJECTION=PASS
+- TESTS_FAILED=0
+- RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+Run 166 logs also confirm PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+This PASS is scoped to the isolated local-only service/test. It does not establish universal production retrieval exclusion, provider write-boundary integration, provider atomicity or production readiness.
+
+
+12. PROJECT-SCOPED RETRIEVAL FILTER HARDENING — VERIFIED BY RUN 174
+
+The isolated filterTrustedRecords() helper now requires an explicit projectId and blocks pending/integrity-failed conflict originals only within that project. Regression coverage verifies that a record in another project with the same memoryId is not incorrectly hidden by the first project's quarantine list.
+
+GitHub Actions run 41672264913 (run 174), job 126043453360, completed SUCCESS and explicitly reported:
+PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS
+PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+This remains a helper-level isolated test, not proof of universal application retrieval interception. Local Memory, Knowledge, Evolution and route entry points remain unintegrated as documented in the callsite matrix.
+
+13. CONTRACT §30 OUTCOME AND PROPOSAL ALIGNMENT — VERIFIED BY RUN 215
+
+The conflict lifecycle implementation was reconciled to the exact five allowed outcomes in Contract v0.2.4 §30:
+ACCEPT_EXISTING_VERSION
+ACCEPT_ALTERNATE_VERSION
+APPROVED_FIELD_MERGE
+REJECT_CONFLICTING_CHANGE
+RETAIN_QUARANTINED
+
+It now supports preservation of two or more competing originals; an alternate version must be selected by an explicit in-range index. Schema-invalid or integrity-failed original records may be quarantined when projectId and memoryId are available; quarantine verification checks the immutable preserved bytes/digests without falsely declaring the source record itself valid.
+
+Each resolution requires a structured proposal binding affected versions, source references, original hashes, access classes, trust states, field-level changes, data-loss risks, required authority, recovery point and verification plan. The explicit authorization callback receives this proposal before resolution is committed.
+
+GitHub Actions run 41673854536 (run 215), job 126049053444, completed SUCCESS and reported:
+GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+GOVERNED_RETAIN_QUARANTINED=PASS
+ALTERNATE_VERSION_INDEX_BOUNDS=PASS
+MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS
+FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS
+CONTRACT_RESOLUTION_PROPOSAL_REQUIRED=PASS
+RESOLUTION_PROPOSAL_TRACEABILITY_AND_TAMPER_DETECTION=PASS
+MALFORMED_ORIGINAL_PRESERVATION=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+This remains an isolated local-only implementation. It does not establish integration into every Memory/Knowledge retrieval/write path or provider boundary.
+
+
+
+14. CONTRACT CONFLICT STATE MACHINE — VERIFIED BY RUN 249
+
+The read-only structural assessor now returns state=DETECTED when a valid pair of records has one or more classified conflict types. The isolated quarantine registry then records QUARANTINED, requires an explicit authorized beginConflictReview() transition to UNDER_REVIEW, and only permits resolution from an integrity-verified UNDER_REVIEW state.
+
+Terminal behavior:
+- ACCEPT_EXISTING_VERSION, ACCEPT_ALTERNATE_VERSION and APPROVED_FIELD_MERGE -> RESOLVED.
+- REJECT_CONFLICTING_CHANGE -> REJECTED.
+- RETAIN_QUARANTINED -> remains QUARANTINED.
+- Originals remain excluded from trusted retrieval while QUARANTINED or UNDER_REVIEW, and also when integrity verification fails.
+
+Review state is immutable and project-scoped. Beginning review requires a separate authorization callback and audit writer; repeated review requests are idempotent only for the same review actor/policy. Resolution cannot bypass the review state.
+
+GitHub Actions run 41676126277 (run 249), job 126057092567, completed SUCCESS and explicitly reported:
+CONFLICT_STATE_DETECTED=PASS
+CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS
+UNDER_REVIEW_RETRIEVAL_EXCLUSION=PASS
+CONTRACT_REJECTED_AND_RETAINED_STATES=PASS
+REVIEW_AUTHORIZATION_AND_IDEMPOTENCY=PASS
+REVIEW_AUDIT_FAILURE_RECOVERY=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+
+The registry remains an isolated additive service. The current Memory/Knowledge/route callsites are not yet wired to this lifecycle.
+
+
+15. U03/E-15 ISOLATED VERIFIER PROTOTYPE — VERIFIED BY RUN 267
+
+Added services/mira-audit-chain-independent-verifier.js and tests/mira-audit-chain-independent-verifier.test.js. The verifier is a separate read-only module from audit-log.js and validates a synthetic exported chain using a bounded RFC 8785/JCS-compatible profile, UTF-8 SHA-256, externally pinned genesis/checkpoint hashes, event sequence/identity/project boundaries, previous-hash linkage, strict UTC millisecond timestamps and checkpoint head binding.
+
+Run 41678192509 (run 267), job 126064407377, SUCCESS. The verifier test reports all named JCS/U03/E15 markers PASS, TESTS_FAILED=0 and RESULT=PHASE2_INDEPENDENT_AUDIT_CHAIN_VERIFIER_ISOLATED_PASS.
+
+Scope limits:
+- U03 genesis hash verification is implemented in the verifier, but no genesis creation/persistence service or signing authority exists.
+- E-15 verifier prototype is separate and read-only, but trust-anchor provisioning/custody, digital signature/writer-authenticity verification and independent third-party review remain open.
+- U04 provider append arbitration and durable acknowledgement remain NOT_ESTABLISHED.
+- The verifier is not integrated with audit-log.js or production audit storage.
+- U06 strict timestamp handling is implemented only within this verifier prototype; the global Memory/audit profile remains unapproved.
+
+
+13. CONTRACT-ALIGNED CONFLICT RESOLUTION AND FAIL-CLOSED HARDENING — VERIFIED BY RUN 270
+
+The isolated conflict quarantine registry now uses the five outcome labels specified by MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.4 Section 30:
+- ACCEPT_EXISTING_VERSION
+- ACCEPT_ALTERNATE_VERSION
+- APPROVED_FIELD_MERGE
+- REJECT_CONFLICTING_CHANGE
+- RETAIN_QUARANTINED
+
+The resolution record captures the selected original index/digest where applicable. Multi-original conflicts are preserved; malformed/failed-integrity originals can be quarantined without pretending they pass the canonical Memory schema. RETAIN_QUARANTINED remains excluded by the isolated trusted-record filter. Conflict IDs are format-validated before path construction. Resolution is blocked unless the conflict envelope verifies. Malformed resolution envelopes and malformed original entries fail closed.
+
+GitHub Actions run 41678434475 (run 270), job 126065246796, completed SUCCESS on PR head commit 71914e7e20bb74e36beaec887f4eea20cf019587. The job log explicitly confirms:
+- GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+- GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+- GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+- GOVERNED_RETAIN_QUARANTINED=PASS
+- GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+- MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS
+- FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS
+- MALFORMED_ORIGINAL_PRESERVATION=PASS
+- INVALID_CONFLICT_ID_PATH_TRAVERSAL_REJECTED=PASS
+- MALFORMED_RESOLUTION_FAIL_CLOSED=PASS
+- TESTS_FAILED=0
+- RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+- RESULT=PHASE2_INDEPENDENT_AUDIT_CHAIN_VERIFIER_ISOLATED_PASS
+- PRODUCTION_MEMORY_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0.
+
+This closes the isolated registry outcome-contract test gap. It does not close application integration: the callsite matrix still shows Local Memory, Knowledge, Evolution and public retrieval/write paths are not universally wired to this registry. Provider-level atomicity, production retrieval exclusion, and the DR08 U03/U04/U05/U06/E-15 implementation approvals remain separate gates.
+
+
+14. EXPLICIT VERSION SELECTION AND ACCESS-CHANGE AUTHORIZATION — VERIFIED BY RUN 303
+
+Further review found two Section 30 governance ambiguities in the isolated resolver:
+- Original array order was being treated as the implicit meaning of "existing" or "rejected change". The resolver now requires an explicit acceptedOriginalIndex for ACCEPT_EXISTING_VERSION and REJECT_CONFLICTING_CHANGE, and verifies the exact selected original digest. ACCEPT_ALTERNATE_VERSION also requires an explicit valid index.
+- Any change to the merged record's access policy is treated conservatively as a policy change. It requires a separate authorizeBroaderAccess callback to return true and a non-empty broaderAccessAuthorization evidence reference. The authorization callback receives the complete original/resulting access policies and their digests. The evidence reference is bound into resolution verification and idempotent/concurrent resolution comparisons. Merge and retain outcomes reject incompatible accepted-version selectors.
+
+GitHub Actions run 41751975605 (run 303), job 126318975408, completed SUCCESS on commit 72ac52abf4cb5152e4a70c6eb06d40e23cdc841e. The log explicitly confirms:
+- GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+- GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+- GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+- BROADER_ACCESS_MERGE_REQUIRES_SEPARATE_AUTHORIZATION=PASS
+- GOVERNED_RETAIN_QUARANTINED=PASS
+- INCOMPATIBLE_RESOLUTION_FIELDS_REJECTED=PASS
+- GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+- EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS
+- TESTS_FAILED=0
+- RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+- PRODUCTION_MEMORY_TOUCHED=NO; PRODUCTION_KNOWLEDGE_TOUCHED=NO; REAL_GOOGLE_DRIVE_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+During this refinement, intermediate CI runs exposed a misplaced fixture declaration, a merge-fixture revision mismatch and a missing return field. These were corrected; runs 300/301 and 302/303 then passed. Historical failed runs remain in GitHub Actions and are not reclassified as passes.
+
+The isolated resolution engine now has stronger deterministic selection and separate access-change authorization. It is still not wired into production Memory/Knowledge retrieval or provider write boundaries; those integration and authorization gates remain open.
+
+
+15. KNOWLEDGE CLEANUP CANONICAL STORAGE BOUNDARY — VERIFIED BY RUN 311
+
+A further read-only source audit found tools/knowledge-cleanup.js writing directly to a project-root knowledge.json path instead of using the configured Mira storage path and canonical state-store write path. This could create a split-brain state when MIRA_STORAGE_DIR is configured.
+
+Correction:
+- knowledge.js now exposes replaceKnowledge(data), which validates the array, applies the existing capacity policy (including quarantine preservation for evicted entries), and commits through saveLocalKnowledge() / mira-json-state-store.writeArrayState().
+- tools/knowledge-cleanup.js now delegates duplicate removal to replaceKnowledge() rather than writing knowledge.json directly.
+- Added tests/mira-knowledge-cleanup-storage-contract.test.js. The test uses an isolated temporary MIRA_STORAGE_DIR, stubs Google Drive sync, verifies the canonical storage location and atomic-store delegation, and checks that no project-root split-brain write occurs.
+- Added the test and path filters to the Phase 2 workflow.
+
+GitHub Actions run 41752515491 (run 311), job 126320777081, completed SUCCESS on commit ee9c18a4b72b02967480af56b8786fbe6619f0c6. Log evidence:
+- KNOWLEDGE_CLEANUP_USES_CANONICAL_STORAGE_PATH=PASS
+- KNOWLEDGE_CLEANUP_DELEGATES_TO_ATOMIC_STATE_STORE=PASS
+- KNOWLEDGE_CLEANUP_DRIVE_SYNC_IS_STUBBED=PASS
+- KNOWLEDGE_CLEANUP_NO_PROJECT_ROOT_SPLIT_BRAIN_WRITE=PASS
+- MIRA_KNOWLEDGE_CLEANUP_STORAGE_CONTRACT_PASS; TESTS_FAILED=0
+- Core safety, Knowledge safety, recovery, local-store contract, Evolution integration, structural conflict assessment, isolated conflict lifecycle, and independent audit-chain verifier steps also completed with TESTS_FAILED=0 / PASS result markers.
+- Production Memory/Knowledge not touched; real Google Drive not touched; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This validates the cleanup adapter in an isolated test environment only. The production duplicate-removal tool still has its pre-existing Google Drive sync behavior after local commit; no Drive cutover or provider behavior was changed here. This isolated PASS is not a claim that every Memory/Knowledge/Evolution read/write path has been audited or integrated with the conflict registry.
+
+
+16. WORK-KNOWLEDGE CONSOLIDATION STORE FAIL-CLOSED AND ATOMICITY — VERIFIED BY RUN 326
+
+A source audit found that services/mira-work-knowledge-consolidation.js treated every read/parse/permission error as an empty store. It also silently truncated records beyond MAX_ITEMS. Either behavior could hide corruption or discard existing consolidation evidence.
+
+Changes:
+- Only ENOENT (a genuinely missing first-run store) returns an empty store. Existing empty, malformed, unreadable, invalid-shape, integrity-mismatched, symlinked and unsupported over-capacity state now fails closed.
+- saveStore() validates the items array and uses mira-json-state-store.atomicWriteJson() for exclusive temporary creation, fsync, atomic rename and readback integrity verification.
+- verifyStoreIntegrity() rejects symlinks/non-regular files and invalid store shape instead of bypassing the path guard.
+- normalizeStore() no longer silently truncates records above MAX_ITEMS; it rejects the oversized state to preserve evidence.
+- Added tests/mira-work-knowledge-store-fail-closed.test.js with an isolated temporary MIRA_STORAGE_DIR and audit path.
+
+GitHub Actions run 41762903930 (run 326), job 126354472903, completed SUCCESS on commit 1c1d1feb888c85572c06893c30fa57b336dac2ca. Explicit log evidence:
+- MISSING_CONSOLIDATION_STORE_IS_EMPTY_FIRST_RUN=PASS
+- CONSOLIDATION_STORE_ATOMIC_WRITE_AND_READBACK=PASS
+- OVERCAPACITY_STORE_REJECTED_WITHOUT_TRUNCATION=PASS
+- CORRUPT_JSON_FAILS_CLOSED=PASS
+- EMPTY_EXISTING_STORE_FAILS_CLOSED=PASS
+- INTEGRITY_MISMATCH_FAILS_CLOSED=PASS
+- INVALID_STORE_SHAPE_FAILS_CLOSED=PASS
+- SYMLINKED_STORE_READ_VERIFY_AND_WRITE_REJECTED=PASS
+- INVALID_SAVE_SHAPE_REJECTED=PASS
+- TESTS_FAILED=0; RESULT=MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS.
+- Core safety, recovery, Evolution integration, structural conflict assessment, isolated conflict lifecycle and independent audit-chain verifier also report PASS markers with TESTS_FAILED=0.
+
+Run 315/316 exposed a test-fixture mistake: a legacy record without an integrityHash was expected to fail integrity verification, but legacy records without that field are intentionally supported. The fixture was corrected to use an explicit mismatched digest. Run 326 is the later passing evidence; the historical failures remain visible and are not reclassified.
+
+All tests use isolated temporary state. Production Memory/Knowledge and real Google Drive remain untouched; network requests and external actions are zero. This hardening applies to the work-knowledge consolidation store and does not establish universal provider/retrieval integration or Phase 2 completion.
+
+
+17. WORK-LEARNING STORE FAIL-CLOSED, ATOMIC WRITE AND CAPACITY QUARANTINE — VERIFIED BY RUN 331
+
+A further caller audit found services/mira-work-learning-engine.js silently treated an existing empty file as an empty store, converted a malformed records field to [], and wrote through a temporary file without the canonical exclusive-create/fsync/readback safeguards. Its capacity limit also discarded oldest learning records without preserving them.
+
+Changes:
+- Missing file remains a valid first-run empty state; existing empty, malformed, unreadable, invalid-shape, symlinked and over-capacity stores now fail closed.
+- saveStore() requires a records array within MAX_RECORDS and uses mira-json-state-store.atomicWriteJson().
+- persistLearningRecord() now writes any capacity-evicted records to local memory-conflicts quarantine before committing the bounded active store. A quarantine failure blocks the commit.
+- Added tests/mira-work-learning-store-fail-closed.test.js using temporary MIRA_LEARNING_FILE and MIRA_AUDIT_FILE paths.
+
+GitHub Actions run 41763135774 (run 331), job 126355219013, completed SUCCESS on commit e69e2026a2bd0a7b87effa61a416e9c8edc4818c. Explicit evidence:
+- MISSING_WORK_LEARNING_STORE_FIRST_RUN=PASS
+- WORK_LEARNING_STORE_ATOMIC_WRITE=PASS
+- WORK_LEARNING_CAPACITY_EVICTION_PRESERVED_BEFORE_COMMIT=PASS
+- WORK_LEARNING_OVERFLOW_REJECTED_WITHOUT_TRUNCATION=PASS
+- WORK_LEARNING_CORRUPT_JSON_FAILS_CLOSED=PASS
+- WORK_LEARNING_EMPTY_EXISTING_STORE_FAILS_CLOSED=PASS
+- WORK_LEARNING_INVALID_SHAPE_FAILS_CLOSED=PASS
+- WORK_LEARNING_SYMLINK_READ_WRITE_REJECTED=PASS
+- TESTS_FAILED=0; RESULT=MIRA_WORK_LEARNING_STORE_FAIL_CLOSED_PASS.
+- Phase 2 core safety, recovery, Evolution integration, structural conflict assessment, conflict lifecycle and independent audit verifier also passed; production Memory/Knowledge and real Drive untouched; network requests and external actions zero.
+
+This covers the Work Learning record store only. It does not prove all application-owned state files or all retrieval/provider boundaries are now covered.
+
+
+18. CANONICAL CONTENT-HASH RECOMPUTATION IN CONFLICT ASSESSMENT — VERIFIED BY RUN 344
+
+Contract v0.2.4 Section 8.4 defines the record content hash as SHA-256(UTF-8(JCS(content))). The prior structural assessor checked only that contentHash was a 64-character hexadecimal string; a changed content string paired with an arbitrary well-shaped hash could pass structural validation.
+
+Correction:
+- services/mira-memory-conflict-assessment.js now recomputes SHA-256 over the RFC 8785 canonical JSON serialization of the content string (JSON.stringify for this string primitive) and rejects mismatches.
+- A mismatch returns REVIEW_REQUIRED with CONTENT_HASH_MISMATCH; it is never treated as a valid conflict record.
+- Valid records report CONTENT_HASH_MATCHED_ONLY, explicitly limiting the claim to content-hash consistency. This does not authenticate the source, verify a signature, validate a whole-record digest or prove trust-anchor custody.
+- Both assessment and conflict-registry test fixtures now generate contract-derived hashes. Tests cover a tampered hash and no-conflict reporting.
+
+GitHub Actions run 41763563166 (run 344), job 126356579621, completed SUCCESS on commit ed9bd539ca5676c5c6cd02050c433490cfb8b58f. Explicit evidence:
+- RFC3339_DATE_TIME_VALIDATION=PASS
+- CONTENT_HASH_JCS_RECOMPUTATION=PASS
+- CONTENT_HASH_MISMATCH_REQUIRES_REVIEW=PASS
+- TESTS_FAILED=0; RESULT=PHASE2_STRUCTURAL_CONFLICT_ASSESSMENT_PASS
+- The isolated conflict-quarantine lifecycle and the other Phase 2 suites also completed with PASS / TESTS_FAILED=0 markers.
+
+Intermediate runs 333–338 failed while the new content-hash behavior and fixture expectations were being aligned. The fixture hashes and verification-status expectations were corrected; run 344 is the later passing evidence. Historical failed runs remain visible.
+
+This is content integrity consistency only. Full cryptographic authenticity, independent trust-anchor provisioning, and production provider/retrieval integration remain unresolved.
+
+
+19. AUTONOMOUS LEARNING CONTROLLED-APPLY STORAGE ADAPTER — VERIFIED BY RUN 350
+
+A caller audit found autonomous-learning-controlled-apply.js reading and writing project knowledge.json directly during its local rollback fallback. This bypassed the canonical configured storage path and the guarded Knowledge state-store writer.
+
+Correction:
+- readLocalKnowledge() now delegates to knowledge.getKnowledge().
+- writeLocalKnowledge() now delegates to knowledge.replaceKnowledge(), retaining capacity/quarantine policy and atomic state-store persistence.
+- The duplicate direct fs/path storage implementation and hard-coded storagePath dependency were removed from this adapter.
+- Added tests/mira-autonomous-learning-canonical-store-adapter.test.js. It injects a Drive read failure, stubs every external boundary, exercises the local rollback fallback and verifies the canonical replacement API restores the prior Knowledge state.
+
+GitHub Actions run 41763816821 (run 350), job 126357390954, completed SUCCESS on commit 9611231da9910783c48af30e41d8183f24dd876b. Evidence from the immediately preceding code-identical run 349 (41763801810, job 126357344945), and run 350's workflow re-run:
+- AUTONOMOUS_LEARNING_ROLLBACK_USES_CANONICAL_REPLACE=PASS
+- AUTONOMOUS_LEARNING_READS_CANONICAL_KNOWLEDGE=PASS
+- DRIVE_FAILURE_AND_ALL_EXTERNAL_ACTIONS_STUBBED=PASS
+- TESTS_FAILED=0; RESULT=MIRA_AUTONOMOUS_LEARNING_CANONICAL_STORE_ADAPTER_PASS.
+- Phase 2 core, recovery, Evolution integration, structural conflict assessment, conflict lifecycle and independent audit verifier also passed. Production Memory/Knowledge and real Drive untouched; network requests and external actions zero.
+
+The autonomous-apply flow still has its existing Google Drive sync behavior when a real approved proposal is applied. No Drive cutover or live Drive behavior was changed or exercised. This change only removes the local storage-path bypass.
+
+
+20. ADJACENT PERSISTENCE SCOPE BOUNDARY — DOCUMENTED
+
+Created MIRA-HFM-CAGR-001-PHASE2-ADJACENT-PERSISTENCE-BOUNDARY-AUDIT-20261104.txt to distinguish HFM Memory/Knowledge and directly connected learning stores from separate approval/governance/workflow ledgers. It records bounded source findings for autonomous-learning-proposals.js, mira-stage13-learning-governance.js, mira-research-governance.js and mira-seo-workflow-store.js. The first three are not modified in this Phase 2 change set because their retention, approval and event-chain semantics need separate review; the SEO workflow store already has its own lock, size limits and atomic write safeguards.
+
+This is an explicit scope boundary, not a claim that the repository-wide persistence inventory is complete.
+
+
+21. LEGACY WORK-LEARNING E2E FIXTURE LIMITATION — EXPLICITLY RECORDED
+
+An attempt to add the legacy tests/stage62-work-learning-e2e-test.js and tests/stage623-work-knowledge-consolidation-e2e-test.js directly to the clean isolated CI workflow failed at the first legacy test because it requires a pre-existing project-local data/work-learning-records.json file. The clean runner intentionally has no production/local project state. Runs 355/356 therefore failed before reaching the relevant E2E assertions; this is not reclassified as PASS.
+
+Those two legacy tests were removed from the isolated workflow. The workflow now uses the new dedicated temporary-directory contract suites for Work Learning and Work Knowledge Consolidation instead. Latest isolated workflow run 41764130114 (run 357), job 126358397328, completed SUCCESS on commit 6ca02e76409471b993cc704d2bab92e0ecba9a98; all focused suites show TESTS_FAILED=0, including both new store suites and the autonomous-learning adapter test.
+
+Legacy Stage 6.2 / 6.2.3 end-to-end compatibility remains INCONCLUSIVE / NOT_EXECUTED in a clean isolated environment because their fixtures assume existing local project files. The isolated persistence contract tests are PASS; they are not a substitute claim for the full legacy E2E flows.
+
+
+15. KNOWLEDGE IMPROVEMENT PROPOSAL STATE HARDENING — VERIFIED BY RUN 362
+
+A repository-wide targeted persistence audit found that knowledge-improvement.js stored proposal records under the configured storage root, but used a permissive reader (empty/malformed/non-array content could become an empty proposal list) and a predictable temporary-file write without the canonical state-store safeguards.
+
+The proposal store now:
+- reads through mira-json-state-store.readJsonArray with missing-only empty semantics (malformed, empty, non-array, symlink and unsafe files fail closed);
+- writes through the verified atomic JSON writer;
+- records a committed-state audit event including the resulting SHA-256 and entry count;
+- marks audit failure after a successful state write with stateCommitted=true so callers cannot mistake it for an uncommitted operation.
+
+The existing Stage 19 knowledge-improvement test was extended to run from an isolated temporary module copy with the required state-store and audit dependencies. It verifies normal proposal approval/apply/reject behavior, malformed-state fail-closed behavior without overwriting corrupt bytes, and symlink rejection without following the external target.
+
+GitHub Actions run 41764593311 (run 362), job 126359878939, completed SUCCESS on commit 03eba09ffe56b5019aa492a8bb5cef48aba9caf4. Explicit log evidence:
+- PASS: malformed proposal state fails closed without overwrite;
+- PASS: symlink proposal state is rejected without following target;
+- STAGE19_KNOWLEDGE_IMPROVEMENT_STATE_GATE=PASS;
+- KNOWLEDGE_PROPOSALS_FAIL_CLOSED=PASS;
+- KNOWLEDGE_PROPOSALS_SYMLINK_PROTECTION=PASS;
+- TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This closes the identified proposal-state read/write hardening gap only. It does not establish universal retrieval exclusion or production integration of the isolated conflict-quarantine lifecycle.
+
+
+16. CONVERSATION STORE PERSISTENCE HARDENING — VERIFIED BY RUN 369
+
+The retrieval-path audit identified conversation-store.js as a separate persistent context subsystem. Its prior implementation initialized state with a direct write, loaded JSON without lstat/symlink validation, and saved through a predictable temporary filename without canonical atomic-write or state-audit evidence.
+
+The implementation now:
+- validates the conversation store as an object containing conversations/messages/contexts arrays;
+- initializes only a genuinely missing file through the verified atomic JSON writer;
+- rejects symlink, non-regular, empty, malformed and structurally invalid store files;
+- revalidates the existing store before a direct save, preventing a caller from overwriting a corrupt or unsafe current state;
+- writes through mira-json-state-store.atomicWriteJson and records a committed-state audit event with SHA-256 and record counts;
+- sets stateCommitted=true if the audit fails after the atomic state commit.
+
+A new isolated regression test uses a temporary MIRA_STORAGE_DIR and verifies atomic initialization/write, audit creation, malformed-state fail-closed behavior, direct overwrite refusal, and symlink rejection without following the external target.
+
+GitHub Actions run 41764989142 (run 369), job 126361148970, completed SUCCESS on commit ef000e938b80d91c8742845750e1f70ead2c4591. Explicit log evidence:
+- CONVERSATION_STORE_CORRUPT_STATE_FAILS_CLOSED=PASS
+- CONVERSATION_STORE_SYMLINK_REJECTED=PASS
+- CONVERSATION_STORE_ATOMIC_INITIALIZATION=PASS
+- CONVERSATION_STORE_ATOMIC_WRITE_AND_AUDIT=PASS
+- TESTS_FAILED=0; PRODUCTION_CONVERSATIONS_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+- A follow-up added an explicit audit event for first-time store initialization and a regression assertion for that event. Final combined workflow run 41765199743 (run 374), job 126361815880, SUCCESS on commit 6e1c7f46e762677096068e746aff5a002f8993ea; all four conversation-store assertions still PASS, TESTS_FAILED=0, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+This hardens conversation-store persistence but does not yet make conversation records conflict-registry-aware or establish universal retrieval exclusion. The existing conversation store's concurrency arbitration is also not qualified by this test; U04 remains an open design/implementation boundary.
+
+
+17. WORK KNOWLEDGE CONSOLIDATION STORE COMMIT GOVERNANCE — VERIFIED BY RUN 379
+
+The separate Work Knowledge Consolidation store already used the verified atomic JSON writer and failed closed on malformed, empty, over-capacity, structurally invalid, integrity-mismatched and symlinked state. Follow-up review found that a direct save call could nevertheless overwrite an existing corrupt regular file, and successful writes did not emit a store-specific committed-state audit event.
+
+The save path now validates the existing store before replacement, so a direct save cannot bypass the fail-closed read boundary. Successful writes record SHA-256 and item count through the audit log; post-commit audit failure is marked with stateCommitted=true.
+
+The existing isolated regression suite now verifies the commit audit and confirms direct save cannot overwrite malformed or empty existing state while preserving the original bytes.
+
+GitHub Actions run 41765344278 (run 379), job 126362291976, completed SUCCESS on commit bf8a23c2c0c30d9ea6575193d0c25e7228428cb3. Explicit log evidence:
+- CONSOLIDATION_STORE_COMMIT_AUDIT=PASS
+- DIRECT_SAVE_CANNOT_OVERWRITE_CORRUPT_STORE=PASS
+- DIRECT_SAVE_CANNOT_OVERWRITE_EMPTY_STORE=PASS
+- RESULT=MIRA_WORK_KNOWLEDGE_STORE_FAIL_CLOSED_PASS
+- TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This closes the scoped direct-overwrite and commit-audit gaps for the Work Knowledge Consolidation store. It does not connect that separate store to conflict-registry status or establish universal trusted retrieval exclusion.
+
+
+18. WORK LEARNING STORE COMMIT GOVERNANCE — VERIFIED BY RUN 386
+
+The Work Learning store already rejected malformed, empty, over-capacity, invalid-shape and symlinked state, and preserved capacity-evicted records in quarantine. Follow-up review found that a direct save call could replace an existing corrupt regular file and that successful writes had no store-specific committed-state audit event.
+
+The save path now validates the existing store before replacement, writes through the verified atomic JSON writer, and records a committed-state audit event with SHA-256 and record count. Audit failure after commit is explicitly marked stateCommitted=true.
+
+The existing isolated test now verifies the commit audit and confirms direct save cannot overwrite corrupt or empty existing state.
+
+GitHub Actions run 41765526400 (run 386), job 126362873618, completed SUCCESS on commit 18f5af9b6d18eda0c79b3df9e29a44ce6ce363f0. The run log explicitly confirms:
+- WORK_LEARNING_STORE_COMMIT_AUDIT=PASS
+- WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_CORRUPT=PASS
+- WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_EMPTY=PASS
+- RESULT=MIRA_WORK_LEARNING_STORE_FAIL_CLOSED_PASS
+- TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This closes scoped direct-overwrite and commit-audit gaps in the Work Learning store. It does not qualify U04 cross-process append arbitration or link Work Learning/Experience records to conflict-registry resolution status.
+
+
+19. EXPLICIT LEGACY MEMORY/KNOWLEDGE MAPPING PROTOTYPE — VERIFIED BY RUN 392
+
+A read-only compatibility adapter was added:
+- services/mira-legacy-memory-knowledge-adapter.js
+- tests/mira-legacy-memory-knowledge-adapter.test.js
+
+It deliberately does not change memory.js or knowledge.js. The adapter accepts only exact, explicit mapping data: domain, projectId, legacyId, canonical memoryId, revision, sourceDigest and a canonical record. It verifies the source digest, canonical record schema/content hash, project scope, revision, provenance and byte-equivalent content semantics before returning an adapted view. It filters adapted records through the project-scoped conflict registry helper.
+
+Run 41768834680 (run 392), job 126373473545, SUCCESS on commit ecba9ca6e809c8f2c538e7d9e2a97a8733d6f540. The adapter suite passed all 11 assertions, including stale digest rejection, absent project rejection, missing legacy conversation messageId fail-closed behavior, duplicate mapping rejection, cross-project isolation, quarantine exclusion and canonical hash tamper rejection. TESTS_FAILED=0.
+
+Interpretation:
+- Knowledge's legacy ID is a usable mapping key only when explicitly bound to an authoritative project and canonical record.
+- Conversation Memory cannot yet be mapped from the existing {role, content, time} shape because it has no immutable messageId. The adapter refuses to invent one.
+- The adapter is a testable compatibility prototype, not a production interception boundary. It is not called by memory.js, knowledge.js or routes; it does not migrate or write any data.
+- No production records were accessed or modified. No network/provider/Drive actions were performed.
+
+CURRENT_LEGACY_ADAPTER=PASS_SCOPED_RUN_392
+LEGACY_CONVERSATION_IDENTITY_BACKFILL=NOT_IMPLEMENTED
+AUTHORITATIVE_PROJECT_ID_MAPPING=NOT_APPROVED
+PRODUCTION_RETRIEVAL_INTEGRATION=NOT_ENABLED
+PRODUCTION_WRITE_INTEGRATION=NOT_ENABLED
+FULL_PHASE2=REVIEW_REQUIRED
+VERSION=v0.2

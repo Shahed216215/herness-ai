@@ -1,0 +1,184 @@
+MIRA HYBRID MEMORY v0.2
+PHASE 2 — TOOL EXECUTION AUTHORITY AND DISPATCH BOUNDARY ADDENDUM
+Date: 2026-11-04
+Status: SCOPED_CI_VERIFIED_WITH_RESIDUAL_DIRECT_CALL_REVIEW
+Tested branch HEAD: 8c3a3f731e9a25752ef201e5c24d84c1f8aa7450
+Related PR: #4 (OPEN / DRAFT / UNMERGED)
+
+1. CENTRALIZED TOOL AUTHORITY POLICY
+
+The tool-level policy table and decision function were extracted from services/mira-work-execution-engine.js into services/mira-tool-execution-policy.js.
+
+The execution engine imports and re-exports TOOL_POLICIES/getToolPolicy, and retains its seven-check execution sequence. The low-level tools/index.js executeTool() entry point now calls the shared checkToolSafety() before invoking a registered wrapper. A denied or unclassifiable decision returns a structured BLOCKED result and the wrapper is not invoked.
+
+This adds a second enforcement point:
+- executeWork() applies the complete seven-check execution gate before runTool().
+- tools/index.js executeTool() independently enforces tool-level policy, so direct callers of executeTool()/services/tool-runner.js cannot bypass human-only or non-autonomous tool policy.
+
+The raw tools object is still exported for capability inspection and dedicated dispatch paths. Direct calls to tools[name].execute() or direct imports of individual tool modules do not automatically pass through executeTool(); these remain subject to the separate callsite review below.
+
+2. STATIC REGISTRY/POLICY PARITY
+
+The runtime registry enumerates tools/*.js, excluding tools/index.js, and registers exports with name, declaration and execute fields.
+
+The dependency-free static parity test found:
+- 24 statically identifiable active tool exports.
+- 0 active tool names missing a TOOL_POLICIES entry.
+- 0 unexpected policy-only entries.
+- One reviewed dormant policy-only entry: memory_backup. No tools/memory-backup.js module exists in the tested branch; the policy is retained as a fail-closed reservation and must be reviewed if a corresponding tool is added.
+
+Evidence is static source parity, not proof that every module can be dynamically loaded under every production environment. The test deliberately avoids importing the full registry because tool modules have unrelated runtime dependencies.
+
+3. ISOLATED RUNTIME REGISTRY GUARD TEST
+
+tests/mira-hfm-tool-registry-execution-guard.test.js evaluates the actual executeTool() function source in an isolated VM with controlled stub wrappers and the shared policy decision function.
+
+Verified in the isolated harness:
+- memory_save is denied before its wrapper is invoked.
+- knowledge_save is denied before its wrapper is invoked.
+- learning_save is denied before its wrapper is invoked.
+- an eligible calculator tool remains executable.
+- an unknown tool remains not-found.
+
+The separate persistent-write policy test executes the actual shared checkToolSafety() decision function for the three save tools and an unknown tool.
+
+4. DISPATCH AND DIRECT-WRITE CALLSITE REVIEW
+
+The reviewed routes directory contains no direct runTool(), executeTool(), or .execute() tool-wrapper calls. The admin task-execution route uses executeWork().
+
+Reviewed server.js direct execution paths:
+- /api/admin/backup directly calls knowledge_backup.execute(); the route is guarded by requireAdminPermission(PERMISSIONS.BACKUP_RESTORE).
+- /api/admin/restore directly calls knowledge_restore.execute(); the same permission gate applies and confirm must equal true before the wrapper is called.
+- seo_workflow_history directly calls its read/history wrapper only after the named authenticated admin browser-session gate.
+- seo_workflow_review_decision is sent through mira-seo-review-dispatch, which independently requires an authenticated named admin browser session.
+These are dedicated server/admin dispatch paths, not ordinary model-generated tool calls. They intentionally do not use executeWork(); their authority boundary is the corresponding admin permission/session and, for restore, explicit confirmation.
+
+Other reviewed paths:
+- services/mira-autonomous-worker.js sends calculator and web_search tasks through executeWork().
+- services/tool-runner.js delegates to tools/index.js executeTool(), now guarded by the shared tool policy.
+- services/mira-verification-engine.js directly invokes tool_health.execute(); this is a read-only inspection tool.
+- autonomous-learning-controlled-apply.js directly calls knowledge.addLearning() only after an approved proposal is found. routes/autonomous-learning.js mounts this under requireSystemAdmin; the route and controlled-apply service both recheck approved status. The service creates and verifies a snapshot before the local apply and retains its rollback/reconciliation path. This is a separately approved controlled-apply workflow, not the learning_save tool wrapper.
+- server.js calls addMemory() to persist ordinary user/assistant conversation transcript records. This is a system conversation-persistence path, distinct from the model-callable memory_save wrapper.
+
+No direct server import of memory-save, knowledge-save, or learning-save was found in the reviewed server/route sources.
+
+5. CI EVIDENCE
+
+Final tested HEAD: 8c3a3f731e9a25752ef201e5c24d84c1f8aa7450
+
+GitHub Actions:
+- Push run 41788028954: SUCCESS.
+- Pull-request run 41788034594: SUCCESS.
+
+Both completed jobs emitted:
+- MIRA_HFM_STATIC_TOOL_POLICY_PARITY=PASS
+- MIRA_HFM_STATIC_TOOL_EXPORT_COUNT=24
+- MIRA_HFM_MISSING_POLICY_COUNT=0
+- MIRA_HFM_POLICY_ONLY_ALLOWLIST=memory_backup
+- MIRA_HFM_TOOL_REGISTRY_GUARD_RUNTIME=PASS
+- MIRA_HFM_ROUTE_DIRECT_TOOL_CALLS=0
+- MIRA_HFM_ADMIN_BACKUP_PERMISSION_GATE=PASS
+- MIRA_HFM_ADMIN_RESTORE_PERMISSION_AND_CONFIRMATION=PASS
+- MIRA_HFM_SEO_HISTORY_NAMED_ADMIN_GATE=PASS
+- MIRA_HFM_SEO_REVIEW_DEDICATED_DISPATCH=PASS
+- MIRA_HFM_TASK_EXECUTION_USES_GOVERNED_ENGINE=PASS
+- MIRA_HFM_AUTONOMOUS_LEARNING_DIRECT_WRITE_ADMIN_APPROVAL_AND_SNAPSHOT=PASS
+- MIRA_HFM_PERSISTENT_SAVE_WRAPPER_DIRECT_SERVER_IMPORTS=0
+- TESTS_FAILED=0
+- REAL_GOOGLE_DRIVE_TOUCHED=NO
+- NETWORK_REQUESTS=0
+- EXTERNAL_ACTIONS=0
+
+Earlier CI attempts failed due test-harness assumptions (policy source moved out of the engine and a history-call assertion expected the wrong local variable). Those test defects were corrected; the final two runs above passed on the stated HEAD.
+
+6. RESIDUAL GAPS — NOT CLOSED
+
+- The raw tools object remains exported and individual tool modules can still be imported and invoked directly. The reviewed direct callsites have separate guards or are read-only, but a repository-wide proof that no other dynamic import/direct execute() path exists has not been established.
+- The dedicated admin backup/restore and SEO dispatch paths are not unified under one authenticated action-scoped approval-token contract. Their current route/session/permission gates were source-reviewed and regression-checked, not certified as a universal approval protocol.
+- The autonomous-learning controlled-apply workflow uses approved proposal status and SYSTEM_ADMIN route permission, but the broader provenance/custody/anti-replay properties of that approval remain separate governance qualification work.
+- The static parity test recognizes the current export patterns; a new export style or dynamic name expression requires manual test/parser review.
+- Production Memory/Knowledge read/write integration, all provider adapters, all workers and every dynamically loaded application module have not been exhaustively runtime-tested.
+
+Required next work:
+1. Continue repository-wide direct execution/import callsite reconciliation, including all service modules and background entry points.
+2. Review whether the raw tools object should be replaced with a guarded facade while preserving dedicated authenticated admin dispatch behavior.
+3. Define a single action-scoped authenticated approval contract for dedicated admin write routes; do not treat generic permissionGranted=true or model arguments as approval.
+4. Add route-level isolated tests for backup/restore authorization and controlled-learning apply, with all storage/provider calls stubbed.
+5. Keep memory_save, knowledge_save and learning_save human-only until approval authority is implemented and independently verified.
+
+7. SAFETY AND RELEASE STATUS
+
+No production Memory/Knowledge data was read or written by this work. CI used isolated tests with provider credentials unset; logs report no real Drive, network or external actions.
+
+Phase 2 remains IN_PROGRESS.
+Production readiness remains NOT_CERTIFIED.
+Mira Hybrid Memory remains v0.2.
+PR #4 remains open/draft/unmerged. No merge or PR state transition was performed.
+
+8. ADMIN BACKUP/RESTORE ROUTE RUNTIME FIXTURE
+
+Added tests/mira-hfm-admin-backup-restore-authority.test.js. It executes the actual requireAdminPermission() helper and the actual /api/admin/backup and /api/admin/restore route handlers in an isolated VM with stubbed tool modules:
+- Admin role without BACKUP_RESTORE permission is denied before backup wrapper invocation.
+- Admin with BACKUP_RESTORE permission reaches the backup wrapper stub.
+- Restore without confirm:true returns 400 and does not invoke the restore wrapper.
+- Restore with BACKUP_RESTORE permission and confirm:true reaches the restore wrapper stub.
+
+CI:
+- Push run 41788329554: SUCCESS.
+- Pull-request run 41788333701: SUCCESS.
+Both logs confirm MIRA_HFM_ADMIN_BACKUP_PERMISSION_RUNTIME=PASS, MIRA_HFM_ADMIN_RESTORE_CONFIRMATION_RUNTIME=PASS, MIRA_HFM_UNAUTHORIZED_ADMIN_WRITE_CALLS=0, TESTS_FAILED=0, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+This verifies the route-level permission/confirmation gate in an isolated harness. It does not execute production backup/restore or certify provider behavior.
+
+9. ADMIN KNOWLEDGE EDIT/DELETE WRITE PATHS
+
+Further source review found two direct server-side Knowledge write routes:
+- DELETE /api/admin/knowledge/:id calls deleteKnowledge(id).
+- POST /api/admin/knowledge/:id/edit calls updateLearning() for an existing learning record or updateKnowledge() for a normal Knowledge record.
+
+Both routes require requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN) and write audit events. They are dedicated authenticated admin endpoints, not model-callable save tools. They do not use a separate confirm:true field or the shared action-scoped approval-token contract; retain this as a governance integration gap rather than claiming a universal approval protocol.
+
+Expanded tests/mira-hfm-admin-backup-restore-authority.test.js executes the actual permission helper and these actual route handlers in an isolated VM with stubbed storage functions. It proves missing SYSTEM_ADMIN permission blocks delete/edit before the write stub, while an authorized admin can invoke the controlled fixture stubs. CI on tested HEAD 2b9234058d5b162c64216236bcc200d1088d57b5:
+- Push run 41788966357: SUCCESS.
+- Pull-request run 41788971765: SUCCESS.
+Logs confirm MIRA_HFM_ADMIN_KNOWLEDGE_EDIT_DELETE_PERMISSION_RUNTIME=PASS and MIRA_HFM_UNAUTHORIZED_ADMIN_WRITE_CALLS=0.
+
+10. KNOWLEDGE IMPROVEMENT APPLY AND LEGACY MODULE REACHABILITY
+
+routes/knowledge-improvements.js uses SYSTEM_ADMIN permission, requires proposal.status === "approved", then calls prepareEvolution(), applyEvolution(), verifyEvolutionState(), and rollbackEvolution() on verification/commit failure. The direct-dispatch source test covers these route-level gates.
+
+The repository also contains knowledge-controlled-apply.js, which exports a direct updateLearning() controlled-apply path with its own approved-proposal check, Local/Drive preflight, snapshot verification and rollback. The reviewed knowledge-improvements route imports applyKnowledgeImprovementControlled but does not invoke it; the route currently uses the Stage 4.12 prepare/apply/verify evolution path instead. This legacy module's effective reachability remains REVIEW_REQUIRED until all import/call sites are reconciled. Do not count the unused import as proof that this direct writer is the active route path.
+
+11. REPOSITORY-WIDE PERSISTENT WRITER API CALLSITE INVENTORY
+
+Added tests/mira-hfm-persistent-writer-callsite-inventory.test.js. It recursively scans runtime JavaScript/TypeScript source (excluding tests, docs, backups, coverage, node_modules and .git) for calls/definitions of addMemory, addKnowledge, addLearning, updateKnowledge, updateLearning, deleteKnowledge, replaceKnowledge and learnFromContent.
+
+The current inventory is 24 matches across exactly 10 reviewed files, with no unexpected or missing writer-callsite files:
+- autonomous-learning-controlled-apply.js: rollback replaceKnowledge and approved-proposal addLearning.
+- knowledge-controlled-apply.js: updateLearning in the legacy controlled-apply module; reachability remains REVIEW_REQUIRED.
+- knowledge.js: writer function definitions.
+- memory.js: addMemory function definition.
+- server.js: admin delete/edit writers and ordinary conversation transcript addMemory writes.
+- services/learning.js: learnFromContent, addLearning and updateLearning implementation.
+- tools/knowledge-cleanup.js: replaceKnowledge.
+- tools/knowledge-save.js: addKnowledge.
+- tools/learning-save.js: learnFromContent.
+- tools/memory-save.js: addMemory.
+
+CI on tested HEAD 4126f156f3d48dd22b66021453f944266fa8c414:
+- Push run 41789396448: SUCCESS.
+- Pull-request run 41789404479: SUCCESS.
+The push job log reports MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS, 10 files, 24 matches, zero unreviewed files and zero missing reviewed files; TESTS_FAILED=0, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+This is a source-level callsite inventory, not a proof of dynamic import reachability or runtime authorization for every writer. It does not scan non-JavaScript native modules or external provider implementations. Keep the previously stated approval and raw-tools-object residual gaps open.
+
+12. RESTRICTED WRAPPER DIRECT-IMPORT CHECK
+
+The repository-wide writer inventory now also scans literal CommonJS imports of memory-save, knowledge-save and learning-save wrappers. The latest test found zero direct imports outside the dynamic registry path.
+
+CI on tested HEAD 1e7f704d7d305d8507c5b2b05c103a4fea5e691b:
+- Push run 41789588358: SUCCESS.
+- Pull-request run 41789593954: SUCCESS.
+The push job confirms MIRA_HFM_RESTRICTED_WRAPPER_DIRECT_IMPORTS=0 and MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS.
+
+This literal-import scan does not prove that no dynamically constructed path or raw tools-object invocation can ever reach a wrapper. The raw tools object remains exported and its full direct-execution call graph remains a residual review item.

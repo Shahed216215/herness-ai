@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('../mira-storage');
 const crypto = require("crypto");
+const jsonStateStore = require("./mira-json-state-store");
 
 const {
   createProposal,
@@ -111,9 +112,13 @@ function emptyStore() {
 function normalizeStore(raw) {
   const source = asObject(raw);
 
-  const items = Array.isArray(source.items)
-    ? source.items.slice(0, MAX_ITEMS)
-    : [];
+  if (!Array.isArray(source.items)) {
+    throw new Error("Work knowledge consolidation store items must be an array.");
+  }
+  if (source.items.length > MAX_ITEMS) {
+    throw new Error("Work knowledge consolidation store exceeds the supported item limit; refusing truncation.");
+  }
+  const items = source.items.slice();
 
   return {
     schemaVersion:
@@ -134,62 +139,69 @@ function normalizeStore(raw) {
 }
 
 function loadStore() {
+  let rawText;
   try {
-    const raw = JSON.parse(
-      fs.readFileSync(STORE_FILE, "utf8")
-    );
-
-    const store = normalizeStore(raw);
-
-    if (
-      raw &&
-      raw.integrityHash &&
-      raw.integrityHash !== calculateIntegrityHash(raw)
-    ) {
-      throw new Error(
-        "Work knowledge consolidation integrity check failed."
-      );
+    const stat = fs.lstatSync(STORE_FILE);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error("Work knowledge consolidation store is not a safe regular file.");
     }
-
-    store.integrityHash =
-      calculateIntegrityHash(store);
-
-    return store;
+    rawText = fs.readFileSync(STORE_FILE, "utf8");
   } catch (error) {
-    if (
-      error &&
-      error.message &&
-      error.message.includes("integrity check failed")
-    ) {
-      throw error;
-    }
-
-    return emptyStore();
+    if (error.code === "ENOENT") return emptyStore();
+    throw new Error(
+      `Work knowledge consolidation store cannot be read: ${error.code || error.message || "IO_ERROR"}`
+    );
   }
+
+  if (!rawText.trim()) {
+    throw new Error("Work knowledge consolidation store is empty and may be corrupted.");
+  }
+
+  let raw;
+  try {
+    raw = JSON.parse(rawText);
+  } catch {
+    throw new Error("Work knowledge consolidation store contains invalid JSON.");
+  }
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.items)) {
+    throw new Error("Work knowledge consolidation store must contain an object with an items array.");
+  }
+
+  if (raw.integrityHash && raw.integrityHash !== calculateIntegrityHash(raw)) {
+    throw new Error("Work knowledge consolidation integrity check failed.");
+  }
+
+  const store = normalizeStore(raw);
+  store.integrityHash = calculateIntegrityHash(store);
+  return store;
 }
 
 function saveStore(store) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-
+  if (!store || typeof store !== "object" || Array.isArray(store) || !Array.isArray(store.items)) {
+    throw new Error("Work knowledge consolidation store must include an items array before saving.");
+  }
+  loadStore();
   const normalized = normalizeStore(store);
-
-  normalized.updatedAt =
-    new Date().toISOString();
-
-  normalized.integrityHash =
-    calculateIntegrityHash(normalized);
-
-  const tempFile =
-    `${STORE_FILE}.tmp-${process.pid}-${Date.now()}`;
-
-  fs.writeFileSync(
-    tempFile,
-    `${JSON.stringify(normalized, null, 2)}\n`,
-    "utf8"
+  normalized.updatedAt = new Date().toISOString();
+  normalized.integrityHash = calculateIntegrityHash(normalized);
+  const result = jsonStateStore.atomicWriteJson(
+    STORE_FILE,
+    normalized,
+    "Work knowledge consolidation"
   );
-
-  fs.renameSync(tempFile, STORE_FILE);
-
+  try {
+    jsonStateStore.recordStateAudit(
+      "work_knowledge_consolidation_write_committed",
+      "success",
+      STORE_FILE,
+      { stateHash: result.sha256, itemCount: normalized.items.length }
+    );
+  } catch (error) {
+    error.code = "WORK_KNOWLEDGE_CONSOLIDATION_COMMITTED_AUDIT_FAILED";
+    error.stateCommitted = true;
+    throw error;
+  }
   return normalized;
 }
 
@@ -884,34 +896,23 @@ async function consolidateLearningRecord(
 }
 
 function verifyStoreIntegrity() {
-  const raw =
-    JSON.parse(
-      fs.readFileSync(
-        STORE_FILE,
-        "utf8"
-      )
-    );
+  const stat = fs.lstatSync(STORE_FILE);
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    throw new Error("Work knowledge consolidation store is not a safe regular file.");
+  }
 
-  const expected =
-    calculateIntegrityHash(raw);
+  const raw = JSON.parse(fs.readFileSync(STORE_FILE, "utf8"));
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.items)) {
+    throw new Error("Work knowledge consolidation store must contain an object with an items array.");
+  }
 
+  const expected = calculateIntegrityHash(raw);
   return {
-    valid:
-      raw.integrityHash === expected,
-
-    schemaVersion:
-      raw.schemaVersion,
-
-    itemCount:
-      Array.isArray(raw.items)
-        ? raw.items.length
-        : 0,
-
-    integrityHash:
-      raw.integrityHash,
-
-    expectedHash:
-      expected
+    valid: typeof raw.integrityHash === "string" && raw.integrityHash === expected,
+    schemaVersion: raw.schemaVersion,
+    itemCount: raw.items.length,
+    integrityHash: raw.integrityHash || null,
+    expectedHash: expected
   };
 }
 

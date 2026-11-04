@@ -1,0 +1,172 @@
+MIRA HYBRID MEMORY — U03 GENESIS AND E-15 VERIFIER IMPLEMENTATION PRESENCE ASSESSMENT
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-U03-E15-IMPLEMENTATION-PRESENCE-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-DR08-TECHNICAL-REFINEMENT-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: READ-ONLY SOURCE ASSESSMENT
+
+1. PURPOSE
+
+Inspect the existing audit-log implementation for an authenticated genesis anchor (U03) and independent verifier (E-15). This is source-only inspection; no audit-log data was read or modified, and no production verification was run.
+
+2. SOURCE INSPECTED
+
+- audit-log.js
+- Current branch Git blob SHA: 224e67fa39b3bc1f516fc3094a7f989691e6dd19
+
+3. OBSERVED LEGACY AUDIT ENTRY
+
+New audit entries contain:
+- id
+- timestamp
+- actorRole
+- action
+- resource
+- resourceId
+- status
+- details
+- previousHash
+- integrityVersion
+- integrityHash
+
+The inspected entry shape does not include projectId, chainId, genesisId, monotonic sequence, canonicalization profile identifier or signer/authenticity evidence.
+
+4. U03 GENESIS GAP
+
+- No dedicated immutable genesis object or genesis hash was identified in audit-log.js.
+- The first retained integrity entry is not bound to an independently trusted genesis anchor.
+- verifyAuditIntegrityBase() treats the first retained entry as the verification boundary and does not compare its previousHash to an authenticated genesis value.
+- The source comment explicitly allows the first retained entry to point to an entry removed by MAX_AUDIT_ENTRIES retention.
+- The writer uses the last retained integrity hash as previousHash; there is no separate create-once genesis identity or uncertain-genesis-create recovery protocol.
+
+Result: the existing previousHash chain is not equivalent to U03's immutable authenticated genesis anchor. Retention can remove the earlier chain prefix while the first retained entry's previousHash is accepted as a boundary.
+
+5. E-15 INDEPENDENCE GAP
+
+- verifyAuditIntegrityBase() is in the same audit-log.js module as the writer.
+- It calls the same calculateIntegrityHash() function used to produce entry integrityHash.
+- The verifier reads the same mutable audit-log storage through loadAuditLog().
+- No separately provisioned trust anchor, independent canonicalization implementation, independent verifier build identity, or immutable verification evidence report was identified in the inspected file.
+- The verifier checks the retained local chain but does not establish completeness before the first retained entry or authenticate a project-specific genesis anchor.
+
+Result: this is an in-module self-check, not an independent E-15 verifier.
+
+6. CANONICALIZATION GAP
+
+The existing legacy hash routine serializes its payload using JSON.stringify before SHA-256. No RFC 8785/JCS canonicalization profile identifier is included in the entry. This is not evidence of a cross-language canonical byte profile.
+
+7. REQUIRED U03/E-15 IMPLEMENTATION ORDER
+
+1. Freeze the canonical event and genesis schema, serialization profile and test vectors.
+2. Define immutable genesis identity, trust anchor and signer authority.
+3. Define retention/checkpoint semantics that preserve verifiable history beyond the first retained entry.
+4. Define the append arbitration authority and uncertain-write recovery.
+5. Implement the writer/allocator separately from the verifier.
+6. Build an independently implemented verifier over immutable exports and separately provisioned trust anchors.
+7. Test tampering, truncation, fork, replay, missing genesis, wrong project scope, checkpoint mismatch and verifier disagreement.
+8. Preserve the current audit-log format as legacy; do not silently reinterpret or rewrite historical hashes.
+
+8. STATUS
+
+LEGACY_PREVIOUS_HASH_CHAIN=EXISTS
+U03_IMMUTABLE_GENESIS_ANCHOR=NOT_IMPLEMENTED
+FIRST_RETAINED_ENTRY_AUTHENTICATED_TO_GENESIS=NO
+PROJECT_CHAIN_SEQUENCE=NOT_OBSERVED
+CANONICAL_JCS_PROFILE=NOT_OBSERVED
+E15_INDEPENDENT_VERIFIER=NOT_IMPLEMENTED
+IN_MODULE_SELF_CHECK=EXISTS
+HISTORICAL_AUDIT_DATA_ACCESSED=NO
+RUNTIME_CHANGED=NO
+VERSION=v0.2
+DR08_U03=REVIEW_REQUIRED
+DR08_E15=REVIEW_REQUIRED
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF ASSESSMENT
+
+
+9. ISOLATED VERIFIER PROTOTYPE ADDED — RUN 267
+
+Added:
+- services/mira-audit-chain-independent-verifier.js
+- tests/mira-audit-chain-independent-verifier.test.js
+
+The new module is separate from audit-log.js and read-only. It implements a bounded RFC 8785/JCS-compatible canonicalization profile for the supported I-JSON subset, UTF-8 SHA-256 hashing, pinned genesis-hash verification, event sequence/identity/project checks, previous-hash linkage, canonical UTC-millisecond timestamp checks, checkpoint-head binding and a verification evidence digest.
+
+GitHub Actions run 41678192509 (run 267), job 126064407377, completed SUCCESS. The verifier suite reports:
+JCS_CANONICAL_OBJECT_KEY_ORDER=PASS
+JCS_UNICODE_AND_NESTED_VALUES=PASS
+JCS_FIXED_SHA256_VECTOR=PASS
+JCS_UNSUPPORTED_VALUES_REJECTED=PASS
+U06_CANONICAL_UTC_MILLISECOND_TIMESTAMP=PASS
+U03_PINNED_GENESIS_ANCHOR=PASS
+E15_VALID_CHAIN_AND_CHECKPOINT=PASS
+E15_TRUST_ANCHORS_REQUIRED=PASS
+E15_EVENT_TAMPER_DETECTION=PASS
+E15_SEQUENCE_GAP_DETECTION=PASS
+E15_FORK_DETECTION=PASS
+E15_DUPLICATE_EVENT_ID_DETECTION=PASS
+E15_PROJECT_ISOLATION=PASS
+E15_CHECKPOINT_HEAD_BINDING=PASS
+E15_NON_CANONICAL_TIMESTAMP_REJECTED=PASS
+VERIFIER_READ_ONLY=PASS
+TESTS_FAILED=0
+RESULT=PHASE2_INDEPENDENT_AUDIT_CHAIN_VERIFIER_ISOLATED_PASS
+
+Run 267 also completed the eight existing Phase 2 suites successfully. Logs confirm Production Memory/Knowledge untouched, real Drive untouched, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+10. LIMITATIONS — NOT CLOSED
+
+- This is a verifier prototype over exported synthetic fixtures; it is not integrated with the legacy audit-log writer or production audit storage.
+- No genesis creation/persistence service or signer/key custody was implemented. The verifier requires an externally provisioned trustedGenesisHash.
+- Genesis/checkpoint authenticity is PINNED_HASH_ONLY. No digital signature or cryptographic writer-identity verification is performed.
+- The trusted checkpoint hash must be provisioned outside the export; trust-anchor custody/rotation/revocation is not implemented.
+- No provider append arbiter or durable append acknowledgement is implemented; U04 remains open.
+- The supported JCS implementation is a bounded I-JSON subset and requires independent RFC 8785 conformance review before production use.
+- No independent third-party review of this verifier has been completed.
+
+UPDATED STATUS
+
+U03_PINNED_GENESIS_HASH_VERIFICATION=PASS_SCOPED_RUN_267
+U03_GENESIS_CREATION_AND_PERSISTENCE=NOT_IMPLEMENTED
+E15_SEPARATE_READ_ONLY_VERIFIER_PROTOTYPE=PASS_SCOPED_RUN_267
+E15_TRUST_ANCHOR_CUSTODY_AND_SIGNATURE_AUTHENTICITY=NOT_IMPLEMENTED
+E15_INDEPENDENT_REVIEW=NOT_COMPLETED
+U06_CANONICAL_TIMESTAMP_PROFILE=IMPLEMENTED_IN_VERIFIER_ONLY; GLOBAL_PROFILE_NOT_APPROVED
+U04_PROVIDER_APPEND_ARBITRATION=NOT_ESTABLISHED
+PRODUCTION_AUDIT_LOG_INTEGRATION=NO
+FULL_PHASE2=REVIEW_REQUIRED
+
+
+
+11. U03 GENESIS ANCHOR STORE PROTOTYPE — RUN 510
+Added services/mira-hfm-genesis-anchor-store.js and tests/mira-hfm-genesis-anchor-store.test.js.
+- Creates a per-project/per-chain immutable anchor file using exclusive create (wx), file fsync and readback digest verification.
+- Requires an externally provisioned trustedGenesisHash, trustAnchorId, authorityReference, authorizedBy and an explicit authorizeCreate callback.
+- Verifies genesis content against the external pinned hash and binds authority metadata with an anchorRecordHash.
+- Detects tampering, rejects duplicate creation and separates projects/chains.
+- Authenticity remains PINNED_HASH_ONLY. No digital signature, signer key custody, trust-anchor rotation/revocation or production audit-log integration is provided.
+GitHub Actions Run 510: https://github.com/Shahed216215/herness-ai/actions/runs/41775214529 — SUCCESS. Markers include GENESIS_CREATION_REQUIRES_EXPLICIT_AUTHORIZATION=PASS, GENESIS_TRUST_PIN_MUST_MATCH=PASS, IMMUTABLE_GENESIS_ANCHOR_CREATED=PASS, GENESIS_AUTHORITY_METADATA_TAMPER_DETECTED=PASS and TESTS_FAILED=0.
+
+12. U04 LOCAL APPEND ARBITER PROTOTYPE — RUN 518
+Added services/mira-hfm-local-append-arbiter.js and synthetic multi-process tests.
+- Uses an exclusive cross-process lock file, expected sequence + expected head hash CAS, immutable event IDs, sequence allocation, previous-hash linking and event hash verification.
+- Persists the event list and chain head in one atomically replaced local state file; verifies authoritative readback.
+- A four-process race produced exactly one APPENDED result and three STALE_HEAD results.
+- A stale lock is not automatically stolen; lock recovery is manual/fail-closed.
+- An injected post-commit acknowledgement failure was recovered by authoritative readback; stateCommitted is reported.
+- This is a local-file arbiter prototype only. It is not wired into audit-log.js and does not qualify Google Drive or another remote provider's atomicity.
+GitHub Actions Run 518: https://github.com/Shahed216215/herness-ai/actions/runs/41775628789 — SUCCESS. Markers include CROSS_PROCESS_CAS_SINGLE_WINNER=PASS, STALE_HEAD_WRITE_REJECTED_WITHOUT_MUTATION=PASS, UNCERTAIN_ACK_RECOVERED_BY_AUTHORITATIVE_READBACK=PASS and TESTS_FAILED=0.
+
+UPDATED STATUS
+U03_IMMUTABLE_PINNED_GENESIS_PERSISTENCE=ISOLATED_PROTOTYPE_PASS
+U03_SIGNATURE_AND_TRUST_ANCHOR_CUSTODY=NOT_IMPLEMENTED
+U04_LOCAL_CROSS_PROCESS_CAS_ARBITER=ISOLATED_PROTOTYPE_PASS
+U04_REMOTE_PROVIDER_ATOMICITY=NOT_QUALIFIED
+E15_SEPARATE_READ_ONLY_VERIFIER=ISOLATED_PROTOTYPE_PASS
+E15_INDEPENDENT_THIRD_PARTY_REVIEW=NOT_COMPLETED
+PRODUCTION_AUDIT_LOG_INTEGRATION=NO
+FULL_PHASE2=REVIEW_REQUIRED

@@ -1,0 +1,89 @@
+MIRA HYBRID MEMORY — PHASE 1 EVIDENCE RECONCILIATION ADDENDUM
+Document: MIRA-HFM-CAGR-001-PHASE1-EVIDENCE-RECONCILIATION-ADDENDUM
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Version boundary: v0.2
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Date: 2026-11-03
+Mode: READ-ONLY EVIDENCE RECONCILIATION + ADDITIVE DOCUMENTATION
+
+1. PURPOSE
+
+This addendum resolves contradictory Phase 1 status statements across earlier additive reports. It does not change application source, tests, production data, provider configuration, or remote services.
+
+2. AUTHORITATIVE PHASE 1 CLOSURE BASIS
+
+Primary closure artifact:
+docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-BASELINE-REPORT-20261103.txt
+
+Status ledger:
+docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER-20261103.txt
+
+Final reviewed source/test commit: 720309923223c4f287ec3ede0fb0c16aff80f213.
+Source baseline commit: 90b48f2816e28686cd499650ff6a5fc6217f0e8a.
+GitHub Actions run: 41638703895.
+Workflow job: 125926369680 — Six isolated fixture tests.
+Runtime: Node v22.23.4 on ubuntu-24.04.
+
+GitHub Actions evidence independently re-read:
+- Job conclusion: success; all workflow steps completed successfully.
+- Exact checkout HEAD was 720309923223c4f287ec3ede0fb0c16aff80f213.
+- Source baseline ancestry guard passed.
+- JS/CJS/MJS/TS diff guard reported SOURCE_DIFF=NONE.
+- Six selected fixture scripts each printed PASS and the workflow ended FIXTURE_TEST_RESULT=PASS.
+- Two scripts additionally reported TESTS_PASSED=8 and TESTS_FAILED=0; the Evolution fixture reported RESULT=ISOLATED_BASELINE_PASS_INTEGRATION_GAP_CONFIRMED. A passing fixture can intentionally confirm a known integration gap; it does not mean the gap is fixed.
+- Logs reported PRODUCTION_MEMORY_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and NETWORK_CALLS=0.
+- The workflow uses disposable runner storage, unsets provider/Google credentials, disables autonomous workers and has contents:read permission only.
+
+3. POST-TEST BRANCH INTEGRITY
+
+The current documentation branch head at reconciliation was 99febe86c8b3fcef255aa02a96ab84818865ce50.
+GitHub compare from tested HEAD 720309923223c4f287ec3ede0fb0c16aff80f213 to that branch head showed six documentation-only commits and four changed Markdown/text documents. No .js, .cjs, .mjs or .ts source/test file changed after the tested HEAD.
+Therefore the six fixture results remain applicable to the unchanged executable source/test tree at the reconciled branch head. They do not certify runtime paths or code not covered by those fixtures.
+
+4. STATUS CONFLICT ADJUDICATION
+
+Earlier documents such as the Persistence Dependency Matrix, Extended Callsite Reconciliation, Compatibility & Caller Semantics Consolidation, and Repository Source Scan & Fixture-Test Safety Review contain earlier statuses such as PHASE1=NOT_CLOSED, PHASE1=INCOMPLETE_REVIEW_REQUIRED, C06=INCONCLUSIVE, or C01-C07=OPEN/PARTIAL.
+
+These reports are historical snapshots written before the later full 540-file lexical scan, expanded caller/Drive/provider reconciliation, final runbook, and successful isolated fixture execution. Their findings and limitations remain useful; their earlier phase-level status is superseded by the later Baseline Report and Current Status Ledger.
+
+Supersession does not erase residual issues. The following remain unresolved and must be carried into Phase 2 design:
+- General Memory missing-primary-file semantics and Knowledge missing/corrupt-state fail-open behavior.
+- Knowledge non-atomic writes and differing local/Drive authority behavior.
+- Drive dual-write and Evolution/controlled-apply dependencies; routine Drive sync removal remains blocked until replacement and migration are verified.
+- Legacy/direct storage roots and runtime-computed path uncertainty.
+- Audit failure-policy inconsistency and incomplete lower-level event coverage.
+- Dynamic runtime reachability and behavior not proven by static lexical scans.
+- Effective Google OAuth scopes, account-specific provider settings, downstream provider terms, and consent/data-minimization enforcement remain unknown.
+- No Facebook/Meta connector implementation or live connector capability has been verified.
+
+5. RECONCILED PHASE 1 EXIT STATUS
+
+C01=PASS_SCOPED — 540 JavaScript-family source/test files lexically scanned.
+C02=PASS_SCOPED_STATIC_BASELINE — 42 persistence-domain entries and 15 environment overrides documented; dynamic runtime paths remain limited.
+C03=PASS_POLICY_BASELINE_RECORDED — data-class authority/conflict policy documented; no cutover performed.
+C04=PASS_SCOPED_SOURCE_MATRIX — 17 direct workflow classes reconciled; runtime semantics and audit failure policy remain residual.
+C05=PASS_SCOPED_STATIC_INVENTORY — Drive callsites inventoried; Drive removal not authorized.
+C06=PASS — six selected fixture scripts passed in isolated GitHub Actions run 41638703895.
+C07=PASS_SCOPED_SOURCE_POLICY_INVENTORY — source/vendor policy inventory documented; effective account configuration remains UNKNOWN.
+
+PHASE1=COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS
+PHASE1_BASELINE=ISSUED
+PHASE1_EVIDENCE_RECONCILIATION=ISSUED
+APPLICATION_SOURCE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PRODUCTION_MEMORY_READ_OR_WRITE=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+PHASE2_IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_AUTHORIZED
+DRIVE_SYNC_REMOVAL=NOT_AUTHORIZED
+FACEBOOK_CONNECTOR=NOT_IMPLEMENTED
+VERSION=v0.2
+
+6. NEXT GATE
+
+Phase 1 is closed only for existing-architecture reconciliation and the stated isolated fixture baseline. The next work item is Phase 2 — Core Memory Safety, beginning with a separately scoped, additive design/test plan and read-only revalidation of the affected source paths. No application-source edit, production data access, restore, Drive behavior change, live API call, or deployment is authorized by this Phase 1 closure.
+
+END OF ADDENDUM

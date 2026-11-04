@@ -1,0 +1,119 @@
+MIRA HYBRID MEMORY — HFM-005 ENCRYPTED EMERGENCY BACKUP SECURITY-GATE ASSESSMENT
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-HFM005-SECURITY-GATE-ASSESSMENT-20261104
+Parent: MIRA-HFM-CAGR-001 Phase 2
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version: v0.2
+Assessment type: READ-ONLY SOURCE AND CONTRACT REVIEW
+Date: 2026-11-04
+
+1. EXECUTIVE RESULT
+
+HFM-005 is NOT IMPLEMENTED and remains NOT_AUTHORIZED. The current local backup mechanisms provide useful integrity and recovery safeguards, but they do not provide encryption or authenticity. A SHA-256 digest detects accidental or unauthorized byte changes only when the expected digest itself is trusted; it does not prove who created the backup or protect confidentiality.
+
+No encryption, key generation, key storage, key export, credential access, production backup, restore, provider access or network action was performed.
+
+2. SOURCE EVIDENCE
+
+A. services/mira-knowledge-state-recovery.js
+- Backup format version 2 stores entries, entryCount, source, createdAt and SHA-256 over canonicalized entry JSON.
+- validateBackup() recomputes the entries digest and verifies entry count.
+- Backup creation is local and offline.
+- Restore requires explicit confirmation, validates the backup, prepares a safety backup or preserves corrupt primary bytes, atomically writes, records audit and performs readback verification.
+- Legacy v1 restore is separately gated by explicit allowLegacy=true.
+- No encryption profile, ciphertext envelope, key identifier, key version, signature, MAC, signer identity or protected trust anchor appears in the inspected v2 envelope/validation path.
+
+B. services/mira-state-version-recovery.js
+- Version snapshots bind source filename, entry count, creation time and SHA-256.
+- Verification recomputes the snapshot hash.
+- Restore requires explicit confirmation, refuses to overwrite unreadable current state, records audit and verifies readback.
+- No encryption/authenticity mechanism or protected signing/MAC key is present in the inspected snapshot format.
+
+C. tools/knowledge-backup.js and tools/knowledge-restore.js
+- Tool descriptions explicitly state local-only/offline behavior and no Google Drive access.
+- Restore exposes explicit confirmation and separate legacy allowance.
+- These tools do not add encryption or authenticity.
+
+3. CONTRACT §31 REQUIREMENTS VS CURRENT EVIDENCE
+
+Requirement | Current status
+- Manifest binds backup ID and format version | PARTIAL: backupVersion exists; unique backup ID not established
+- Project scope | NOT_ESTABLISHED in current Knowledge backup envelope
+- Record count | PASS_SCOPED: entryCount
+- Source revision or snapshot reference | NOT_ESTABLISHED
+- Payload hash and manifest hash | PARTIAL: entries SHA-256 only; no separately bound manifest hash
+- Creation time and process identity | PARTIAL: createdAt; authenticated process identity absent
+- Encryption profile and key version | NOT_IMPLEMENTED
+- Authenticity evidence (signature/MAC) | NOT_IMPLEMENTED
+- Separately protected verification key/trust anchor | NOT_IMPLEMENTED
+- Missing/invalid/revoked authenticity blocks restore | NOT_IMPLEMENTED
+- Project scope/access classification/encryption/key availability checks before restore | NOT_ESTABLISHED
+- Explicit approval, recovery point, independent readback | PARTIAL: explicit confirmation, safety backup, audit and readback exist; full §31 sequence not demonstrated
+
+4. REQUIRED DESIGN DECISIONS BEFORE IMPLEMENTATION
+
+A. Threat model and confidentiality boundary
+- Define whether emergency backups protect against device loss, filesystem theft, app compromise, malicious local user, repository compromise, or provider compromise.
+- Define plaintext-at-rest and temporary-file handling requirements.
+- Define which fields may be included and whether metadata itself is sensitive.
+
+B. Cryptographic construction
+- Select an authenticated encryption construction and approved library/runtime support.
+- Specify nonce generation, uniqueness, associated authenticated data, format versioning and algorithm agility.
+- Define whether manifest authenticity uses a signature or a MAC; do not treat payload SHA-256 as authenticity.
+- Define canonical serialization and exact bytes covered by each digest/tag/signature.
+
+C. Key lifecycle and recovery
+- Define key generation, entropy source, custody, access control, rotation, revocation, backup and recovery.
+- Separate decryption/authentication trust material from the encrypted payload.
+- Define device-loss recovery without plaintext fallback or silent key regeneration.
+- Define what happens when keys are missing, revoked, corrupted or unavailable.
+- Do not store keys beside ciphertext or in repository source/config.
+
+D. Restore gate
+- Verify envelope/manifest authenticity before decrypting or writing.
+- Verify ciphertext integrity/authentication, format, project scope, schema, access classification and key status.
+- Prepare a verified recovery point; require explicit approval; restore only approved scope.
+- Independently read back and verify identities, revisions, counts, hashes and access boundaries.
+- Any failed/uncertain step must block COMPLETED status.
+
+E. Operational and compatibility requirements
+- Define migration behavior for existing plaintext backups without silently converting or deleting originals.
+- Define storage location, file permissions, atomic replacement, crash recovery and retention.
+- Define a reproducible test harness with synthetic keys and fixtures only.
+- Include tamper, wrong-key, missing-key, revoked-key, nonce, rollback, cross-project, truncation, partial-write and restore-interruption tests.
+- Require independent security review before production use.
+
+5. SEPARATE GATES
+
+HFM-005:
+- Design direction: PREPARATION_ONLY
+- Cryptographic implementation: NOT_AUTHORIZED
+- Key custody/recovery: NOT_AUTHORIZED
+- Production backup/restore: NOT_AUTHORIZED
+- Production data access: NOT_AUTHORIZED
+
+HFM-004 Google Drive cutover:
+- Provider selection/cutover: NOT_AUTHORIZED
+- OAuth/credential handling: NOT_AUTHORIZED
+- Live Drive reads/writes: NOT_AUTHORIZED
+- Production synchronization: NOT_AUTHORIZED
+
+6. FINAL STATUS
+
+LOCAL_KNOWLEDGE_BACKUP_INTEGRITY=PASS_SCOPED_SHA256
+LOCAL_VERSION_SNAPSHOT_INTEGRITY=PASS_SCOPED_SHA256
+BACKUP_AUTHENTICITY=NOT_IMPLEMENTED
+BACKUP_ENCRYPTION=NOT_IMPLEMENTED
+KEY_CUSTODY_AND_RECOVERY=NOT_IMPLEMENTED
+CONTRACT_SECTION_31=REVIEW_REQUIRED
+HFM005=NOT_AUTHORIZED
+HFM004=NOT_AUTHORIZED
+PRODUCTION_DATA_ACCESSED=NO
+NETWORK_REQUESTS=0
+EXTERNAL_ACTIONS=0
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF ASSESSMENT

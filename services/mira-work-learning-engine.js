@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('../mira-storage');
 const crypto = require("crypto");
+const jsonStateStore = require("./mira-json-state-store");
 
 const {
   createProposal,
@@ -174,23 +175,12 @@ function safeValue(
 }
 
 function ensureStore() {
-  const directory =
-    path.dirname(
-      LEARNING_FILE
-    );
-
-  fs.mkdirSync(
-    directory,
-    {
-      recursive: true
-    }
-  );
-
-  if (
-    !fs.existsSync(
-      LEARNING_FILE
-    )
-  ) {
+  ensureDirectoryOnly();
+  try {
+    fs.lstatSync(LEARNING_FILE);
+    loadStore();
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
     saveStore({
       version: 1,
       updatedAt: now(),
@@ -201,100 +191,83 @@ function ensureStore() {
 
 function loadStore() {
   ensureDirectoryOnly();
-
-  if (
-    !fs.existsSync(
-      LEARNING_FILE
-    )
-  ) {
-    return {
-      version: 1,
-      updatedAt: now(),
-      records: []
-    };
-  }
-
-  const raw =
-    fs.readFileSync(
-      LEARNING_FILE,
-      "utf8"
+  let raw;
+  try {
+    const stat = fs.lstatSync(LEARNING_FILE);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error("Work learning store is not a safe regular file.");
+    }
+    raw = fs.readFileSync(LEARNING_FILE, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return { version: 1, updatedAt: now(), records: [] };
+    }
+    throw new Error(
+      `Work learning store cannot be read: ${error.code || error.message || "IO_ERROR"}`
     );
+  }
 
   if (!raw.trim()) {
-    return {
-      version: 1,
-      updatedAt: now(),
-      records: []
-    };
+    throw new Error("Work learning store is empty and may be corrupted.");
   }
 
-  const parsed =
-    JSON.parse(raw);
-
-  if (
-    !parsed ||
-    typeof parsed !== "object"
-  ) {
-    throw new Error(
-      "Learning store must contain an object."
-    );
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("Work learning store contains invalid JSON.");
   }
 
-  if (
-    !Array.isArray(
-      parsed.records
-    )
-  ) {
-    parsed.records = [];
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
+      !Array.isArray(parsed.records)) {
+    throw new Error("Work learning store must contain an object with a records array.");
   }
-
+  if (parsed.records.length > MAX_RECORDS) {
+    throw new Error("Work learning store exceeds the supported record limit; refusing truncation.");
+  }
   return parsed;
 }
 
 function ensureDirectoryOnly() {
-  fs.mkdirSync(
-    path.dirname(
-      LEARNING_FILE
-    ),
-    {
-      recursive: true
-    }
-  );
+  fs.mkdirSync(path.dirname(LEARNING_FILE), { recursive: true, mode: 0o700 });
 }
 
 function saveStore(store) {
-  ensureDirectoryOnly();
+  if (!store || typeof store !== "object" || Array.isArray(store) ||
+      !Array.isArray(store.records)) {
+    throw new Error("Work learning store must include a records array before saving.");
+  }
+  if (store.records.length > MAX_RECORDS) {
+    throw new Error("Work learning store exceeds the supported record limit; refusing truncation.");
+  }
 
+  loadStore();
   const normalized = {
     version: 1,
     updatedAt: now(),
-    records:
-      Array.isArray(
-        store.records
-      )
-        ? store.records
-        : []
+    records: store.records
   };
 
-  const temporaryFile =
-    `${LEARNING_FILE}.tmp-${process.pid}-${Date.now()}`;
-
-  fs.writeFileSync(
-    temporaryFile,
-    JSON.stringify(
-      normalized,
-      null,
-      2
-    ) + "\n",
-    {
-      mode: 0o600
-    }
+  const result = jsonStateStore.atomicWriteJson(
+    LEARNING_FILE,
+    normalized,
+    "Mira work learning"
   );
-
-  fs.renameSync(
-    temporaryFile,
-    LEARNING_FILE
-  );
+  try {
+    jsonStateStore.recordStateAudit(
+      "work_learning_store_write_committed",
+      "success",
+      LEARNING_FILE,
+      {
+        stateHash: result.sha256,
+        recordCount: normalized.records.length
+      }
+    );
+  } catch (error) {
+    error.code = "WORK_LEARNING_STORE_COMMITTED_AUDIT_FAILED";
+    error.stateCommitted = true;
+    throw error;
+  }
 
   return normalized;
 }
@@ -1572,38 +1545,33 @@ function calculateRecordHash(
   );
 }
 
-function persistLearningRecord(
-  record
-) {
-  const store =
-    loadStore();
+function persistLearningRecord(record) {
+  const store = loadStore();
+  const records = store.records.slice();
+  records.push(record);
 
-  const records =
-    Array.isArray(
-      store.records
-    )
-      ? store.records
-      : [];
+  const overflow = Math.max(0, records.length - MAX_RECORDS);
+  if (overflow > 0) {
+    const evicted = records.slice(0, overflow);
+    jsonStateStore.quarantineConflict(
+      path.dirname(LEARNING_FILE),
+      "work-learning-capacity",
+      evicted,
+      {
+        reason: "WORK_LEARNING_CAPACITY_EVICTION",
+        source: path.basename(LEARNING_FILE),
+        maxRecords: MAX_RECORDS,
+        evictedCount: evicted.length,
+        preservedRecordIds: evicted.map(item => item && (item.learningId || item.id || null))
+      }
+    );
+  }
 
-  records.push(
-    record
-  );
-
-  const trimmed =
-    records.length >
-    MAX_RECORDS
-      ? records.slice(
-          records.length -
-            MAX_RECORDS
-        )
-      : records;
-
+  const retained = overflow > 0 ? records.slice(overflow) : records;
   saveStore({
     version: 1,
-    updatedAt:
-      now(),
-    records:
-      trimmed
+    updatedAt: now(),
+    records: retained
   });
 
   return record;

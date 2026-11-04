@@ -1,0 +1,116 @@
+MIRA HYBRID MEMORY — PHASE 1 EXTENDED STORAGE-CALLER REVIEW ADDENDUM
+Document: MIRA-HFM-CAGR-001-PHASE1-EXTENDED-STORAGE-CALLER-ADDENDUM-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed base HEAD: ceb23fb8117705fa52de61dd476636a61bca2e5a
+Scope: additive source review only; v0.2
+
+1. REVIEW METHOD AND LIMIT
+The branch tree endpoint returned 613 entries with truncated=false. Additional targeted source retrieval was performed for the storage resolver, Knowledge and Memory APIs, Local Memory Store, Drive adapter callsites, controlled-apply and Evolution modules, Work Learning, Work Knowledge Consolidation, Conversation Store/Memory Engine, Stage13 Learning Governance, proposal stores, audit log, snapshot manager, selected routes, scripts, and tools.
+A bulk all-JavaScript retrieval attempt exceeded the connector's per-execution tool-call ceiling before it completed. Therefore this work is NOT a repository-wide source-text scan. The targeted file list below is evidence of scope, not proof of exhaustive coverage.
+
+2. ADDITIONAL STORAGE ROOT FINDINGS
+
+2.1 Storage-root aligned components (confirmed in inspected source)
+- memory.js delegates to services/mira-local-memory-store.js.
+- services/mira-local-memory-store.js defaults to storagePath('memory.json'), but MIRA_MEMORY_FILE can override it with path.resolve(...). The override is an independent absolute-path configuration and is not automatically constrained to MIRA_STORAGE_DIR by the inspected code.
+- services/mira-work-learning-engine.js uses storagePath('data/work-learning-records.json').
+- services/mira-work-knowledge-consolidation.js uses storagePath('data') then appends work-knowledge-consolidation.json.
+- services/mira-stage13-learning-governance.js uses storagePath('data/stage13-learning-governance.json').
+- conversation-store.js uses storagePath('data/conversations.json').
+- knowledge-improvement.js and autonomous-learning-proposals.js use storagePath for their proposal files.
+- audit-log.js uses MIRA_AUDIT_FILE when configured, otherwise storagePath('audit-log.json'). This is another independent absolute-path override.
+
+2.2 Snapshot storage divergence (confirmed)
+snapshot-manager.js sets SNAPSHOT_ROOT to PROJECT_ROOT/backups/changes and does not import mira-storage in the inspected header. This means snapshots remain project-root scoped even when MIRA_STORAGE_DIR points elsewhere. This may be an intentional project artifact boundary, but it is not a unified storage root. Any migration design must distinguish user Memory/Knowledge persistence from code-change recovery snapshots and explicitly document whether snapshots should remain project-local.
+
+2.3 Independent path overrides
+- MIRA_MEMORY_FILE can override Memory storage independently of MIRA_STORAGE_DIR.
+- MIRA_AUDIT_FILE can override audit storage independently of MIRA_STORAGE_DIR.
+These overrides may be intentional deployment controls; their precedence, allowed roots, permissions, and backup/recovery semantics need a configuration contract. No environment values or live data were read.
+
+2.4 Legacy Knowledge tools (reconfirmed)
+- knowledge-cleanup, knowledge-backup, knowledge-restore construct project-root paths directly and bypass mira-storage.
+- knowledge-backup writes project-root knowledge.json and knowledge-backup.json before Drive operations; it is not a read-only backup.
+- knowledge-restore writes a safety backup and overwrites project-root knowledge.json before attempting Drive sync; it remains destructive and was not invoked.
+- knowledge-search replaces the local candidate array whenever Drive returns any array, including an empty array.
+
+3. CALLER AND DOMAIN MAP EXTENSIONS
+- Conversation API routes call conversation-store and Conversation Memory Engine; the persistent file is data/conversations.json via storagePath, not general memory.json.
+- Conversation Memory Engine itself delegates persistence to conversation-store.
+- Work Learning Engine owns data/work-learning-records.json via storagePath; Experience Memory, Retrieval, Future Strategy, Cross-Task Learning and Learning History are derived/read-oriented layers in the inspected modules and do not establish separate stores in this targeted review.
+- Work Knowledge Consolidation owns data/work-knowledge-consolidation.json under storagePath('data').
+- Stage13 Learning Governance owns data/stage13-learning-governance.json under storagePath.
+- Knowledge improvement proposals and autonomous learning proposals are separate governance stores under storagePath; they are not the approved Knowledge catalog.
+- Audit log has a storagePath default plus MIRA_AUDIT_FILE override.
+- Snapshot Manager uses project-root backups/changes, outside the mira-storage resolver.
+
+4. SELECTED FILES REVIEWED IN THIS ADDENDUM
+mira-storage.js
+knowledge.js
+google-drive.js
+memory.js
+services/mira-local-memory-store.js
+services/mira-work-learning-engine.js
+services/mira-work-knowledge-consolidation.js
+services/mira-conversation-memory-engine.js
+conversation-store.js
+services/mira-stage13-learning-governance.js
+services/mira-learning-history.js
+services/mira-experience-memory.js
+services/mira-future-strategy-engine.js
+services/mira-cross-task-learning-engine.js
+knowledge-improvement.js
+autonomous-learning-proposals.js
+audit-log.js
+snapshot-manager.js
+services/learning.js
+routes/autonomous-learning.js
+routes/conversations.js
+routes/learning-history.js
+routes/knowledge-improvements.js
+autonomous-learning-engine.js
+knowledge-controlled-apply.js
+autonomous-learning-controlled-apply.js
+knowledge-memory-evolution.js
+tools/knowledge-search.js
+tools/knowledge-cleanup.js
+tools/knowledge-backup.js
+tools/knowledge-restore.js
+tools/knowledge-save.js
+tools/learning-save.js
+tools/knowledge-count.js
+tools/knowledge-improve.js
+tools/memory-save.js
+tools/memory-restore.js
+scripts/mira-memory-backup.js
+
+5. CLOSURE CHECK STATUS
+C01 Repository-wide source-text scan: NOT_EXECUTED. Connector call ceiling interrupted the bulk retrieval attempt; targeted review is not a substitute.
+C02 Persistence-root/caller reconciliation: PARTIAL. Additional root overrides and snapshot-root divergence identified; remaining source files and background jobs not exhaustively reviewed.
+C03 Knowledge search authority/conflict policy: OPEN. Existing Drive-array precedence is confirmed; design decision not made.
+C04 Caller compatibility map: PARTIAL. Main Knowledge, Learning, cleanup, backup, restore, controlled apply, autonomous learning, Evolution, and selected route paths reviewed; complete result/error/audit/rollback matrix remains outstanding.
+C05 Drive replacement inventory: PARTIAL. Identified Drive-dependent paths remain blockers; no replacement implemented or approved.
+C06 Isolated fixture test plan/evidence: NOT_EXECUTED. No tests run.
+C07 Provider dependency/permission review: NOT_EXECUTED beyond inspected Google Drive OAuth callsites.
+
+6. SAFETY
+No application source code modified. No production Memory data read, written, migrated, backed up, restored, deleted, or hashed. No Google Drive or Facebook API called. No tests executed. No package installation. No production or provider credentials read. Documentation-only work on the existing feature branch.
+
+7. STATUS
+TREE_ENTRIES=613
+TREE_TRUNCATED=NO
+TARGETED_SOURCE_FILES_LISTED=38
+REPOSITORY_WIDE_SOURCE_TEXT_SCAN=NOT_EXECUTED
+MIRA_STORAGE_ROOT_DIVERGENCE=CONFIRMED
+SNAPSHOT_ROOT_OUTSIDE_MIRA_STORAGE=CONFIRMED
+MIRA_MEMORY_FILE_OVERRIDE=CONFIRMED
+MIRA_AUDIT_FILE_OVERRIDE=CONFIRMED
+KNOWLEDGE_DRIVE_PRECEDENCE=CONFIRMED
+TESTS=NOT_EXECUTED
+PRODUCTION_DATA_ACCESS=NONE
+SOURCE_CODE_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED

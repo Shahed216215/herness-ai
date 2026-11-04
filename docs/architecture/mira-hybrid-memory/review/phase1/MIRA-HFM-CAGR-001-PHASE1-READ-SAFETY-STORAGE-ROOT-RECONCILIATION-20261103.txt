@@ -1,0 +1,219 @@
+MIRA HYBRID MEMORY — PHASE 1 ADDITIVE REVIEW
+Document: MIRA-HFM-CAGR-001-PHASE1-READ-SAFETY-STORAGE-ROOT-RECONCILIATION
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD: 6152148d84f2611f444602900ace4439991ff02f
+Version boundary: v0.2
+
+1. SCOPE
+
+Targeted, read-only inspection of Memory read/write behavior and persistence-root resolution at the exact branch ref. This report supplements prior Phase 1 reports; it does not replace them. No production data or secret values were accessed. No tests were run. No source code was modified.
+
+The latest recursive tree at the reviewed commit contained 621 entries and 603 blob files; truncated=false. This establishes path inventory completeness, not source-text scan completeness.
+
+2. KEY SOURCE EVIDENCE
+
+- memory.js — blob 6765fed022a1e1beadcc035262ac5ad03443e5a6
+- services/mira-local-memory-store.js — blob 4a91e885e084553e618eba294413aceb0e2dd188
+- knowledge.js — blob c259ecda72e0714e49852e591f1deff42bc7e187
+- mira-storage.js — blob 9164bca1cc0b6f9b41000340b4454be2f295aefe
+- tools/knowledge-search.js — blob 4b658f6b10db9ad74c9947268f64a8f2c4e1347d
+- tools/knowledge-cleanup.js — blob 70410a2cdcae2af97a6fc4251a2c19f7b6a621b0
+- tools/knowledge-backup.js — blob 0b17fc4e4a77c255db07ec9c43911620990df882
+- tools/knowledge-restore.js — blob 0d6da23adc59a90f3b8c545d8e728a3d7e567941
+- audit-log.js — blob 224e67fa39b3bc1f516fc3094a7f989691e6dd19
+- snapshot-manager.js — blob 91a5c81aa12333ee32521da695937d8795c4b5a5
+- services/provider-credential-store.js — blob e954462843e674da7407c46527f9b0ace6463565
+- project-store.js — blob 65cb8dc1ee89f4f75ee6508298cb5d6dfc7be52e
+- task-store.js — blob 8b822f3d93c15db34e1fff4845385bb83fa8c69d
+- opportunity-store.js — blob 75b422df568447448265a9bb9d29136b3bb54740
+- conversation-store.js — blob 4c38ab57a51972fb9410d9ba3464292dfd235a06
+- client-profile-store.js — blob 34f23535a8358f76471a56d9f23ae6a57853bb50
+- client-communication-store.js — blob c13a46fdfb597ba3d0a1529c5c208302ffbc910f
+- client-follow-up-store.js — blob 998c34ba3455cb2717aed6ca0875cb9c14fab777
+- deliverable-store.js — blob af2fed183fe06d44de41b39f9ebc457e5f0e6997
+- work-acceptance-store.js — blob 02b3753434d4c29f8c8022a5e3b9610a2151dd51
+- services/mira-client-consent-store.js — blob 3bf5aaf20f002b286fabbb9846e297209ade5de9
+- services/mira-seo-workflow-store.js — blob 3d0b7e31882008b9023c0e3a579eb01e475c28f5
+- services/mira-stage13-learning-governance.js — blob 0840dfcae4d892de03fbb836d7f78811e9644cbe
+- services/mira-work-learning-engine.js — blob 1b69f5e76ef0b62426853a8ee93b44f2c1acaeb6
+- services/mira-work-knowledge-consolidation.js — blob bd953fafa25e106290466c6b8bef6c5d0adbf45d
+- services/mira-research-governance.js — blob 1626dd159a677b8cc5877c570b3fb08c3ee80bdf
+- services/autonomous-orchestrator.js — blob 6120ffe5fd9e302bec3cb3481441d742f53991f6
+- knowledge-improvement.js — blob 4b549a237b9302a8d0795c91363aea74251b62ba
+
+3. READ-FAILURE SAFETY
+
+3.1 General Memory
+
+memory.js delegates read/write to services/mira-local-memory-store.js. The Local Memory Store:
+- Rejects symlinks and non-regular files.
+- Rejects empty, invalid JSON, and non-array contents.
+- Uses temp-file + fsync + rename, attempts directory fsync, and verifies readback SHA-256 for writes.
+- For readMemory(), calls readArray(MEMORY_FILE, ..., missingIsEmpty=true). A missing primary memory.json therefore returns [] rather than a distinct missing/error state.
+- MIRA_MEMORY_FILE can override the path using path.resolve(process.env.MIRA_MEMORY_FILE), independently of MIRA_STORAGE_DIR.
+
+This means corruption/read failures are rejected, but a missing primary Memory file is silently represented as empty Memory. HFM-001 remains IDENTIFIED/PARTIAL, not closed. The write implementation is materially stronger than Knowledge CRUD but does not prove cross-process concurrency/CAS guarantees.
+
+3.2 Knowledge
+
+knowledge.js:
+- loadKnowledge() returns [] when knowledge.json does not exist.
+- JSON parse errors are caught and converted to [].
+- Valid JSON whose root is not an array is also converted to [].
+- saveLocalKnowledge() uses direct fs.writeFileSync to the target, without the same temp/fsync/rename/readback protocol used by the Memory Store.
+- CRUD operations load via loadKnowledge(), then may write the returned array.
+
+Therefore a missing, malformed, or non-array Knowledge file can be treated as an empty database and subsequently overwritten by an add/update/delete workflow. This is direct evidence for HFM-001 and HFM-002 in the Knowledge persistence path, distinct from the stronger General Memory Store.
+
+3.3 Knowledge search and cleanup
+
+tools/knowledge-search.js loads Local Knowledge and then replaces it with any Drive array, including []. A valid empty Drive response can mask non-empty Local Knowledge. A Drive exception retains Local Knowledge. This is a source precedence inconsistency; no canonical authority policy has been approved.
+
+tools/knowledge-cleanup.js writes project-root knowledge.json directly when removing duplicates, then calls saveKnowledgeToDrive(). The operation bypasses mira-storage and uses a non-atomic direct write. The inspect action does not write. The remove action is mutating and was not invoked.
+
+4. STORAGE ROOT AND OVERRIDE RECONCILIATION
+
+4.1 Shared resolver
+
+mira-storage.js:
+- Default root is project root.
+- MIRA_STORAGE_DIR changes the root.
+- storagePath() rejects absolute paths and traversal.
+- When a configured root target is absent, it may seed from a bounded regular non-symlink project-root file; secret/token filename patterns are excluded.
+- Target directory and symlink checks are performed.
+
+4.2 Confirmed storagePath-aligned stores
+
+- General Knowledge primary path: storagePath('knowledge.json').
+- General Memory default path: storagePath('memory.json'), unless MIRA_MEMORY_FILE is set.
+- Project Store: storagePath('data/projects.json').
+- Task Store: MIRA_TASK_FILE override or storagePath('data/tasks.json').
+- Opportunity Store: MIRA_OPPORTUNITY_FILE override or storagePath('data/opportunities.json').
+- Conversation Store: storagePath('data/conversations.json').
+- Client Profile Store: storagePath('client-profiles.json').
+- Client Communication Store: storagePath('data/client-communications.json').
+- Client Follow-up Store: storagePath('data/client-follow-ups.json').
+- Deliverable Store: storagePath('data/deliverables.json').
+- Work Acceptance Store: storagePath('data/work-acceptances.json').
+- Client Consent Store: storagePath('client-consents.json').
+- SEO Workflow Store: storagePath('mira-seo-workflow-records.json').
+- Work Learning Engine: MIRA_LEARNING_FILE override or storagePath('data/work-learning-records.json').
+- Work Knowledge Consolidation: storagePath('data/work-knowledge-consolidation.json').
+- Stage 13 Learning Governance: MIRA_STAGE13_STORE override or storagePath('data/stage13-learning-governance.json').
+- Research Governance: MIRA_RESEARCH_GOVERNANCE_FILE override or storagePath('data/mira-research-governance.json').
+- Autonomous Orchestrator: MIRA_STAGE16_17_WORKFLOWS_FILE override or storagePath('data/stage16-17-workflows.json').
+- Knowledge Improvement Proposals: storagePath('knowledge-improvement-proposals.json').
+
+4.3 Confirmed overrides or roots outside the shared resolver
+
+- MIRA_MEMORY_FILE: path.resolve() absolute/relative override for General Memory, not automatically constrained under MIRA_STORAGE_DIR.
+- MIRA_AUDIT_FILE: direct audit path override; default is storagePath('audit-log.json').
+- MIRA_TASK_FILE: direct override; default aligned.
+- MIRA_OPPORTUNITY_FILE: direct override; default aligned.
+- MIRA_LEARNING_FILE: direct override; default aligned.
+- MIRA_STAGE13_STORE: direct override; default aligned.
+- MIRA_RESEARCH_GOVERNANCE_FILE: direct override; default aligned.
+- MIRA_STAGE16_17_WORKFLOWS_FILE: direct override; default aligned.
+- provider-credential-store.js: default project-root data/provider-credentials.enc.json; not storagePath.
+- snapshot-manager.js: project-root backups/changes; not storagePath. This may be intentional code-artifact recovery rather than application Memory data and must not be blindly moved.
+- tools/knowledge-cleanup.js: direct project-root knowledge.json.
+- tools/knowledge-backup.js: direct project-root knowledge.json and knowledge-backup.json.
+- tools/knowledge-restore.js: direct project-root knowledge.json, knowledge-backup.json, and knowledge-before-restore.json.
+- google-drive.js: credential/token lookup in project root then /etc/secrets; no credential contents accessed.
+
+4.4 Implication
+
+When MIRA_STORAGE_DIR is configured, the primary Knowledge and Memory modules may use the configured root while legacy Knowledge cleanup/backup/restore tools still target project-root files. Provider credentials and snapshots also remain project-root scoped. This can create multiple effective roots and split-brain behavior. Existing seeding logic does not automatically reconcile all legacy callers or independent environment overrides.
+
+5. DOMAIN STORE WRITE-PATTERN NOTES
+
+The targeted store inspection confirms materially different write guarantees:
+- General Memory Store: unique exclusive temp, mode 0600, fsync, rename, directory fsync attempt, readback hash.
+- Knowledge CRUD: direct writeFileSync; no atomic/readback protocol established.
+- Project Store: temp file and rename.
+- Task Store: temp file and rename; explicit override.
+- Opportunity Store: temp file and rename; explicit override.
+- Conversation Store: temp file and rename.
+- Client Profile Store: temp file and rename; no lock/fsync/readback established in inspected path.
+- Client Communication Store: temp file and rename; no lock/fsync/readback established in inspected path.
+- Client Follow-up Store: temp file and rename.
+- Deliverable Store: temp file and rename.
+- Work Acceptance Store: temp file and rename.
+- Client Consent Store: exclusive temp/mode 0600 and rename; audit integration is separate.
+- SEO Workflow Store: lock directory, exclusive temp, fsync, rename.
+- Stage 13 Learning Governance: exclusive temp and rename.
+- Work Learning and Work Knowledge Consolidation: resolver-aligned storage and audit calls; distinct schemas.
+- Research Governance: lock directory, owner marker, temp file and rename; malformed/unreadable state fails closed.
+- Autonomous Orchestrator: lock-protected store wrapper and storagePath default.
+
+This report does not certify all concurrency, crash consistency, or cross-process properties. No runtime tests were run.
+
+6. PHASE 1 DESIGN QUESTIONS — NOT DECIDED
+
+The following decisions require explicit architecture review; source inspection alone cannot decide them:
+- Whether missing General Memory should mean empty-first-run or missing-state error after initialization.
+- Whether Knowledge and Memory should use a shared failure-state contract.
+- Which source is authoritative during the transition period when Local and Drive disagree.
+- How an empty Drive array is distinguished from missing, inaccessible, stale, or intentionally cleared data.
+- Which path overrides remain supported after any future provider abstraction.
+- Whether Snapshot Manager remains a project-artifact recovery store separate from application Memory.
+
+No source change or migration is authorized by this report.
+
+7. ISOLATED TEST DESIGN OUTLINE (NOT EXECUTED)
+
+A future separately authorized test plan should use a temporary isolated directory and injected/mock adapters only; it must never import production paths with real environment variables or invoke real Google/Facebook credentials.
+
+Proposed cases:
+A. General Memory read matrix: missing, empty, invalid JSON, non-array, symlink, unreadable, valid array.
+B. Knowledge read matrix: missing, empty, invalid JSON, non-array, valid array; verify no subsequent write can silently replace a preserved fixture.
+C. Atomic-write fault injection: fail before temp write, during temp write, before rename, after rename, and during readback; preserve prior fixture and report precise outcome.
+D. Path-root matrix: default root, MIRA_STORAGE_DIR, each supported override, path traversal, symlink, and legacy tool target alignment.
+E. Local/Drive adapter contract: mock Drive missing, null, empty array, stale array, malformed response, timeout, permission failure, write success/readback mismatch; assert no silent authority switch.
+F. Backup/restore fixture: schema/version/count/hash mismatch, valid legacy v1, valid v2, safety backup failure, post-restore readback mismatch.
+G. Independent regression: run assertions outside the component under test; do not let the component self-report its own PASS.
+H. Evidence: capture fixture directory identity, exact test command, exit code, report hash, and cleanup result. If any test is skipped or cannot run, status remains INCONCLUSIVE.
+
+This is test design only. No fixture was created and no test was executed.
+
+8. UPDATED PHASE 1 BLOCKERS
+
+C01 repository-wide source-text scan: OPEN.
+C02 persistence root and caller reconciliation: PARTIAL; this report expands the known path/override matrix but does not establish exhaustive coverage of all source files.
+C03 Local/Drive authority and conflict policy: OPEN.
+C04 full caller-by-caller compatibility matrix: PARTIAL.
+C05 exhaustive Drive callsite inventory: OPEN.
+C06 isolated fixture test plan: DRAFTED; execution evidence NOT EXECUTED.
+C07 provider permission/data-egress review: PARTIAL; effective OAuth scopes and complete egress map remain unknown.
+
+HFM-001: IDENTIFIED/PARTIAL — missing General Memory file becomes []; Knowledge missing/invalid/non-array becomes [].
+HFM-002: IDENTIFIED/PARTIAL — General Memory atomic write exists; Knowledge CRUD and cleanup direct writes remain weaker.
+HFM-003: REVIEW_REQUIRED — write readback hash exists in General Memory Store; ordinary Knowledge read integrity manifest not established.
+HFM-004: IDENTIFIED — routine Drive sync remains.
+HFM-006: IDENTIFIED — Knowledge restore is destructive and validation is limited; not invoked.
+HFM-007/HFM-008: REVIEW_REQUIRED — unified version/conflict/quarantine contract not established.
+HFM-025: REVIEW_REQUIRED — audit coverage across all stores and side effects remains incomplete.
+
+9. SAFETY AND STATUS
+
+PRODUCTION_MEMORY_ACCESS=NONE
+CREDENTIAL_OR_TOKEN_ACCESS=NONE
+EXTERNAL_PROVIDER_CALLS=NONE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+RESTORE_OR_MIGRATION=NOT_PERFORMED
+TESTS=NOT_EXECUTED
+ISOLATED_TEST_PLAN=DRAFTED_NOT_EXECUTED
+TREE_ENTRIES=621
+TREE_FILES=603
+TREE_TRUNCATED=NO
+REPOSITORY_WIDE_SOURCE_TEXT_SCAN=NOT_EXECUTED
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+VERSION=v0.2
+
+END OF REPORT

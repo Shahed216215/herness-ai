@@ -1,0 +1,31 @@
+MIRA HFM PHASE 2 — DETAILED CONTRACT VERIFICATION
+UTC=2026-11-01T11:17:26.106Z
+CANDIDATE_BYTES=10378
+CANDIDATE_LINES=288
+CANDIDATE_SHA256=e5b06a5bf0e7d3a1d4a4c89d62075631bc66ba54b3d193dd303bc98ebfccc500
+PASS: JSON Schema parses
+PASS: Schema draft
+PASS: Canonical identity
+PASS: Provenance
+PASS: Integrity
+PASS: Adapter API
+PASS: Independent permissions
+PASS: Fail closed
+PASS: Conflict quarantine
+PASS: Backup recovery states
+PASS: Human restore approval
+PASS: Evolution contract
+PASS: Offline tests
+PASS: Migration contract
+PASS: Security rules
+PASS: Implementation not started
+PASS: Migration unauthorized
+PASS: Restore unauthorized
+CHECKS_TOTAL=18
+CHECKS_PASSED=18
+CHECKS_FAILED=0
+PRODUCTION_MEMORY_TOUCHED=NO
+PRODUCTION_SOURCE_MODIFIED=NO
+NETWORK_REQUESTS=0
+IMPLEMENTATION=NOT_STARTED
+RESULT=STRUCTURAL_CHECKS_PASS_REVIEW_REQUIRED

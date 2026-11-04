@@ -1,0 +1,31 @@
+MIRA HYBRID MEMORY — V0.2.2 RECOVERY REVISION
+SOURCE_SHA256=42db24d0f03d274cb85888a3a56ecac55cd06c543073c56a63cdf25249d94844
+CANDIDATE=docs/architecture/mira-hybrid-memory/MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.2.md
+CANDIDATE_SHA256=8297d43b5d26ac9b9b722114bd7543dff09f2625e98553d76bbbed8c5afe3461
+PASS: Both old version markers updated
+PASS: Backend-neutral core added
+PASS: Provider adapter isolation defined
+PASS: Canonical policy enforcement defined
+PASS: Self-modification governance added
+PASS: Production source modification restricted
+PASS: Self-governance bypass prohibited
+PASS: Human approval required
+PASS: Security-encryption integration added
+PASS: Key custody and recovery covered
+PASS: Plaintext fallback prohibited
+PASS: Audit secret redaction defined
+PASS: Capability expiry preserved
+PASS: Phone-local Memory prohibition preserved
+PASS: Migration remains unauthorized
+PASS: Restore remains unauthorized
+PASS: Self-modification remains unauthorized
+PASS: Production readiness not certified
+CHECKS_TOTAL=18
+CHECKS_PASSED=18
+CHECKS_FAILED=0
+V0.2.1_PRESERVED=YES
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MEMORY_TOUCHED=NO
+PRODUCTION_SOURCE_MODIFIED=NO
+NETWORK_REQUESTS=0
+RESULT=V022_CANDIDATE_CREATED_REVIEW_REQUIRED

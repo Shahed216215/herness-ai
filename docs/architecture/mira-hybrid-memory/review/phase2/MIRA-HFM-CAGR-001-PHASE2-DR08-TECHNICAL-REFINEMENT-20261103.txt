@@ -1,0 +1,192 @@
+MIRA HYBRID MEMORY — DR08-U03/U04/U06 AND E-15 TECHNICAL REFINEMENT
+Document ID: MIRA-HFM-CAGR-001-PHASE2-DR08-TECHNICAL-REFINEMENT-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-DR08-TECHNICAL-RECOMMENDATIONS-20261103
+Version boundary: v0.2
+Date: 2026-11-03
+Status: DESIGN REFINEMENT — OWNER DECISIONS AND IMPLEMENTATION APPROVAL PENDING
+
+PURPOSE
+Refine the accepted DR-08 planning direction into bounded design choices, failure semantics and testable acceptance criteria. This document is not an implementation authorization and does not select a production provider, key custodian or signer.
+
+A. U03 — IMMUTABLE GENESIS ANCHOR
+
+A1. Proposed logical model
+- A chain has one immutable genesis object identified by (projectId, chainId).
+- Genesis is separate from ordinary event sequence allocation.
+- Genesis contains genesisSchemaVersion, canonicalizationProfile, projectId, chainId, initialSequence, createdAt, creatorIdentity, signerIdentity (if applicable), trustAnchorId and genesisPayloadHash.
+- The first ordinary event must reference genesisId and genesisPayloadHash.
+- A genesis object is create-once. No update or delete operation is exposed.
+
+A2. Idempotency and uncertain outcomes
+- Repeating the same create request with the same canonical payload and idempotency key returns the existing genesis after authoritative readback.
+- Same projectId/chainId with a different canonical payload returns CONFLICT; it must never replace the existing genesis.
+- Timeout or lost acknowledgement after create returns UNKNOWN/RECOVERY_REQUIRED until an authoritative read resolves whether creation occurred.
+- A missing genesis, duplicate genesis, invalid trust anchor or hash mismatch blocks all chain-dependent writes.
+
+A3. Acceptance tests proposed
+U03-001 create and read back genesis.
+U03-002 identical idempotent create returns same genesis identity.
+U03-003 same identity/different payload is CONFLICT.
+U03-004 attempted mutation/deletion is rejected.
+U03-005 first event binds exact genesis identifier/hash.
+U03-006 missing/tampered genesis blocks append.
+U03-007 uncertain create is reconciled without duplicate genesis.
+U03-008 independent verifier reproduces genesis derivation.
+
+A4. Decisions still required
+- Genesis as separately authenticated anchor versus sequence-zero event.
+- Signer authority and identity proof.
+- Signature algorithm and trust-anchor format.
+- Key custody, rotation, revocation and recovery.
+- Canonical serialization profile and exact genesis test vectors.
+
+B. U04 — APPEND ARBITRATION AND BACKEND ATOMICITY
+
+B1. Required invariant
+For each (projectId, chainId), exactly one authoritative arbitration authority decides the next append position. Two writers must never both successfully commit different events at the same sequence.
+
+B2. Preferred capability
+A backend-native atomic transaction or compare-and-swap must bind:
+- chain head expected value;
+- next sequence expected value;
+- event identity and canonical payload hash;
+- durable append;
+- resulting chain-head update.
+
+A read followed by an unconditional write is not atomic arbitration and must not be represented as such.
+
+B3. Alternative only if separately qualified
+A durable reservation record may be considered only if it has a unique allocationId, immutable state transitions and an authoritative reconciliation method. Required states:
+RESERVED, APPEND_IN_PROGRESS, APPENDED, NOT_APPENDED, UNKNOWN, CONFLICT, RECOVERY_REQUIRED.
+Sequence numbers are never reused. An unresolved allocation blocks later chain appends. Blind retry is prohibited.
+
+B4. Acceptance tests proposed
+U04-001 N concurrent writers contend for one next sequence; exactly one wins.
+U04-002 same eventId/same payload is idempotent.
+U04-003 same eventId/different payload is rejected.
+U04-004 crash after reservation is reconciled.
+U04-005 crash after durable append/before acknowledgement does not duplicate.
+U04-006 stale head and stale sequence are rejected.
+U04-007 provider timeout produces UNKNOWN pending authoritative readback.
+U04-008 replay, fork and sequence reuse attempts are rejected.
+U04-009 independent readback confirms one authoritative event.
+U04-010 unsupported atomicity disables chain-dependent consequential operations.
+
+B5. Decisions still required
+- Actual provider and documented/runtime atomicity capability.
+- Whether native transaction or reservation authority is used.
+- Reservation lease/expiry and crash recovery policy, if applicable.
+- Consistency model and authoritative read endpoint.
+- Qualification environment and evidence custody.
+
+C. U06 — CANONICAL TIMESTAMP PROFILE
+
+C1. Proposed baseline
+Use a versioned RFC 3339 UTC canonical timestamp profile with exactly three fractional decimal digits and uppercase T/Z in serialized canonical event bytes. Example shape:
+YYYY-MM-DDTHH:mm:ss.sssZ
+
+C2. Input normalization proposal
+- Require a complete date-time and explicit timezone in input.
+- Validate calendar date, time and offset before normalization.
+- Convert valid offset-bearing inputs to UTC.
+- Reject date-only strings, missing timezone, invalid calendar dates, invalid offsets and unsupported leap-second forms.
+- Reject precision beyond milliseconds; do not round or truncate silently.
+- Keep eventCreatedAt, providerObservedAt and verifierObservedAt as separate semantic fields.
+- Canonical bytes are defined by profile version; localized display formatting is excluded from hash input.
+
+C3. Clock semantics
+A timestamp records the claimed event time; it does not prove trusted wall-clock time or causal order. Sequence arbitration determines event order. Record clock source/uncertainty only if the approved schema explicitly includes those fields. Do not infer causality from timestamps alone.
+
+C4. Acceptance tests proposed
+U06-001 valid UTC millisecond timestamp accepted unchanged.
+U06-002 valid offset timestamp normalized deterministically to UTC.
+U06-003 date-only and timezone-free input rejected.
+U06-004 invalid month/day/leap-day rejected.
+U06-005 invalid offset rejected.
+U06-006 excess fractional precision rejected, not rounded.
+U06-007 leap second follows the explicitly approved policy.
+U06-008 same semantic instant produces identical canonical bytes after normalization.
+U06-009 timestamp profile version is bound into hash/canonicalization metadata.
+
+C5. Decisions still required
+- Approve exact canonical spelling and precision.
+- Approve rejection of >3 fractional digits versus a separately specified rounding rule (recommend rejection).
+- Approve leap-second rejection or an explicit supported representation.
+- Define accepted year range and time-source/clock-skew policy.
+- Confirm compatibility with existing v0.2.4 date-time fields before changing any runtime validator.
+
+D. E-15 — INDEPENDENT VERIFIER QUALIFICATION
+
+D1. Independence boundary
+Verifier must be separate in implementation and execution authority from:
+- event writer;
+- sequence allocator/arbitrator;
+- checkpoint producer;
+- primary provider response path.
+
+A verifier that merely calls the writer's own hash or status method is not independent.
+
+D2. Inputs
+- immutable event export;
+- separately provisioned genesis/trust anchors;
+- versioned canonical schema and serialization profile;
+- checkpoint manifest and expected project/chain scope;
+- source commit and verifier build identity.
+
+D3. Required checks
+- canonical schema and serialization;
+- recomputed event content and envelope hashes;
+- genesis identity and binding;
+- sequence continuity and previous-hash linkage;
+- duplicate IDs, gaps, forks and replay;
+- project isolation and access-scope metadata;
+- checkpoint binding and completeness;
+- signer/authenticity evidence where the approved design requires it.
+
+D4. Output
+A signed or otherwise custody-protected verification report containing verificationId, projectId, chainId, sourceCommit, verifierVersion, runtime, trustAnchorIds, profileVersions, checkedRange, result, findings, evidenceDigest, limitations and completion time.
+
+D5. Fail-closed behavior
+- Missing evidence or unavailable trust anchor: INCONCLUSIVE/REVIEW_REQUIRED.
+- Hash, linkage, scope or authenticity mismatch: FAIL/INTEGRITY_FAILED.
+- Verifier never repairs, rewrites, reorders or silently excludes events.
+- Disagreement between independent verifiers is REVIEW_REQUIRED.
+- No PASS if only a partial range was checked; report exact checked range.
+
+D6. Acceptance tests proposed
+E15-001 verifier independently reproduces published canonical test vectors.
+E15-002 detects one-byte event tampering.
+E15-003 detects missing, duplicate and reordered sequence entries.
+E15-004 detects previous-hash mismatch and fork.
+E15-005 detects wrong project/chain scope.
+E15-006 detects missing or substituted genesis.
+E15-007 unavailable trust anchor returns INCONCLUSIVE.
+E15-008 verifier has no write/repair capability.
+E15-009 independent implementation agrees on all approved test vectors.
+E15-010 evidence report binds source commit, verifier version and checked range.
+
+E. SHARED ACCEPTANCE GATES
+Before any implementation:
+1. Owner approves exact alternatives and wording for each item.
+2. Canonical schema and byte-level test vectors are frozen.
+3. Threat model and trust/authority boundaries are reviewed.
+4. Isolated synthetic fixtures and failure-injection tests are prepared.
+5. Implementation scope and rollback plan are explicitly authorized.
+6. Independent verification approach and evidence retention are defined.
+
+F. STATUS / NON-ACTIONS
+U03_DESIGN_REFINED=YES
+U04_DESIGN_REFINED=YES
+U06_DESIGN_REFINED=YES
+E15_DESIGN_REFINED=YES
+PROVIDER_SELECTED=NO
+SIGNER_OR_KEY_CUSTODIAN_SELECTED=NO
+RUNTIME_SCHEMA_CHANGED=NO
+PRODUCTION_DATA_ACCESSED=NO
+PROVIDER_OR_NETWORK_ACCESS=NO
+IMPLEMENTATION_APPROVAL=NOT_GRANTED
+OWNER_DECISIONS=REVIEW_REQUIRED
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF REFINEMENT

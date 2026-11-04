@@ -1,0 +1,961 @@
+
+===== services/mira-work-learning-engine.js =====
+LINE_COUNT=2274
+...
+    1 | "use strict";
+    2 | 
+    3 | const fs = require("fs");
+    4 | const path = require("path");
+    5 | const storagePath = require('../mira-storage');
+    6 | const crypto = require("crypto");
+    7 | 
+    8 | const {
+    9 |   createProposal,
+   10 |   listProposals
+   11 | } = require("../change-management");
+   12 | 
+   13 | const {
+   14 |   recordAudit
+   15 | } = require("../audit-log");
+   16 | 
+   17 | const ENGINE_VERSION = "6.2.1";
+   18 | 
+   19 | const LEARNING_FILE =
+   20 |   process.env.MIRA_LEARNING_FILE ||
+   21 |   storagePath("data/work-learning-records.json");
+   22 | 
+   23 | const MAX_RECORDS = 5000;
+   24 | 
+   25 | const MAX_TEXT = 1000;
+   26 | const MAX_LONG_TEXT = 3000;
+   27 | const MAX_ARRAY = 50;
+   28 | const MAX_RESULTS = 20;
+   29 | const MAX_CHECKS = 50;
+   30 | 
+...
+  174 | }
+  175 | 
+  176 | function ensureStore() {
+  177 |   const directory =
+  178 |     path.dirname(
+  179 |       LEARNING_FILE
+  180 |     );
+  181 | 
+...
+  192 |     )
+  193 |   ) {
+  194 |     saveStore({
+  195 |       version: 1,
+  196 |       updatedAt: now(),
+  197 |       records: []
+  198 |     });
+  199 |   }
+  200 | }
+  201 | 
+  202 | function loadStore() {
+  203 |   ensureDirectoryOnly();
+  204 | 
+  205 |   if (
+  206 |     !fs.existsSync(
+  207 |       LEARNING_FILE
+...
+  263 | }
+  264 | 
+  265 | function saveStore(store) {
+  266 |   ensureDirectoryOnly();
+  267 | 
+  268 |   const normalized = {
+  269 |     version: 1,
+  270 |     updatedAt: now(),
+...
+ 1573 | }
+ 1574 | 
+ 1575 | function persistLearningRecord(
+ 1576 |   record
+ 1577 | ) {
+ 1578 |   const store =
+ 1579 |     loadStore();
+ 1580 | 
+ 1581 |   const records =
+ 1582 |     Array.isArray(
+ 1583 |       store.records
+ 1584 |     )
+...
+ 1599 |       : records;
+ 1600 | 
+ 1601 |   saveStore({
+ 1602 |     version: 1,
+ 1603 |     updatedAt:
+ 1604 |       now(),
+ 1605 |     records:
+ 1606 |       trimmed
+...
+ 1674 | ) {
+ 1675 |   const records =
+ 1676 |     loadStore().records;
+ 1677 | 
+ 1678 |   return (
+ 1679 |     records.find(
+ 1680 |       record =>
+ 1681 |         record.taskId ===
+...
+ 1951 |     );
+ 1952 | 
+ 1953 |   persistLearningRecord(
+ 1954 |     record
+ 1955 |   );
+ 1956 | 
+ 1957 |   recordAudit({
+ 1958 |     actorRole:
+...
+ 2022 | 
+ 2023 |   return (
+...OUTPUT_LIMIT_REACHED...
+
+===== services/mira-experience-memory.js =====
+LINE_COUNT=712
+...
+    1 | "use strict";
+    2 | 
+    3 | const crypto = require("crypto");
+    4 | const fs = require("fs");
+    5 | const path = require("path");
+    6 | 
+    7 | const learningEngine = require("./mira-work-learning-engine");
+    8 | 
+    9 | const ENGINE_VERSION = "6.4.1";
+   10 | const SOURCE_ENGINE_VERSION =
+   11 |   learningEngine.ENGINE_VERSION;
+   12 | 
+   13 | const MAX_EXPERIENCES = 5000;
+   14 | 
+   15 | function cleanText(value, maxLength = 2000) {
+   16 |   if (value === null || value === undefined) {
+   17 |     return "";
+   18 |   }
+   19 | 
+   20 |   return String(value)
+   21 |     .trim()
+   22 |     .slice(0, maxLength);
+   23 | }
+   24 | 
+   25 | function cleanList(
+   26 |   value,
+   27 |   maxItems = 50,
+   28 |   maxLength = 2000
+   29 | ) {
+   30 |   if (!Array.isArray(value)) {
+...
+  295 | }
+  296 | 
+  297 | function getLessons(
+  298 |   learningId
+  299 | ) {
+  300 |   const record =
+  301 |     learningEngine.getLearningRecord(
+  302 |       learningId
+...
+  357 | }
+  358 | 
+  359 | function calculateExperienceHash(
+  360 |   experience
+  361 | ) {
+  362 |   const payload = {
+  363 |     ...experience,
+  364 |     integrity: null
+...
+  556 | 
+  557 |   experience.integrity =
+  558 |     calculateExperienceHash(
+  559 |       experience
+  560 |     );
+  561 | 
+  562 |   return experience;
+  563 | }
+...
+  580 | 
+  581 |   const expected =
+  582 |     calculateExperienceHash(
+  583 |       experience
+  584 |     );
+  585 | 
+  586 |   return (
+  587 |     expected ===
+...
+  590 | }
+  591 | 
+  592 | function getExperience(
+  593 |   learningId
+  594 | ) {
+  595 |   if (!learningId) {
+  596 |     return null;
+  597 |   }
+...
+  611 | }
+  612 | 
+  613 | function listExperiences(
+  614 |   options = {}
+  615 | ) {
+  616 |   const records =
+  617 |     learningEngine.listLearningRecords(
+  618 |       {
+...
+  634 | }
+  635 | 
+  636 | function getExperienceStats() {
+  637 |   const experiences =
+  638 |     listExperiences({
+  639 |       limit:
+  640 |         MAX_EXPERIENCES
+  641 |     });
+  642 | 
+  643 |   return {
+...
+  692 | }
+  693 | 
+  694 | module.exports = {
+  695 |   ENGINE_VERSION,
+  696 |   SOURCE_ENGINE_VERSION,
+  697 |   MAX_EXPERIENCES,
+  698 | 
+  699 |   stableStringify,
+...
+  701 | 
+  702 |   normalizeExperience,
+  703 |   calculateExperienceHash,
+  704 |   verifyExperienceIntegrity,
+...OUTPUT_LIMIT_REACHED...
+
+===== services/mira-experience-retrieval-engine.js =====
+LINE_COUNT=400
+...
+    1 | "use strict";
+    2 | 
+    3 | const experienceMemory =
+    4 |   require("./mira-experience-memory");
+    5 | 
+    6 | const ENGINE_VERSION = "6.4.7";
+    7 | const MAX_RESULTS = 20;
+    8 | 
+    9 | function cleanText(
+   10 |   value,
+   11 |   maxLength = 5000
+   12 | ) {
+   13 |   if (
+   14 |     typeof value !== "string"
+   15 |   ) {
+   16 |     return "";
+   17 |   }
+   18 | 
+   19 |   return value
+   20 |     .trim()
+   21 |     .slice(0, maxLength);
+   22 | }
+   23 | 
+   24 | function cleanList(
+   25 |   value,
+   26 |   maxItems = 50
+   27 | ) {
+   28 |   if (!Array.isArray(value)) {
+   29 |     return [];
+   30 |   }
+...
+  261 | }
+  262 | 
+  263 | function retrieveExperiences(
+  264 |   taskText,
+  265 |   options = {}
+  266 | ) {
+  267 |   const text =
+  268 |     cleanText(
+...
+  276 | 
+  277 |   const experiences =
+  278 |     experienceMemory.listExperiences(
+  279 |       {
+  280 |         taskId:
+  281 |           options.taskId,
+  282 |         status:
+  283 |           options.status,
+...
+  321 | }
+  322 | 
+  323 | function getExperiencesForTask(
+  324 |   task = {},
+  325 |   options = {}
+  326 | ) {
+  327 |   const taskText = [
+  328 |     task.title,
+...
+  341 |     .join(" ");
+  342 | 
+  343 |   return retrieveExperiences(
+  344 |     taskText,
+  345 |     options
+  346 |   );
+  347 | }
+  348 | 
+  349 | function getRetrievalStats() {
+  350 |   const experiences =
+  351 |     experienceMemory.listExperiences(
+  352 |       {
+  353 |         limit:
+  354 |           experienceMemory.MAX_EXPERIENCES
+  355 |       }
+  356 |     );
+...
+  380 | }
+  381 | 
+  382 | module.exports = {
+  383 |   ENGINE_VERSION,
+  384 |   MAX_RESULTS,
+  385 | 
+  386 |   cleanText,
+  387 |   cleanList,
+...
+  393 |   normalizeRetrievedExperience,
+  394 | 
+  395 |   retrieveExperiences,
+  396 |   getExperiencesForTask,
+  397 | 
+  398 |   getRetrievalStats
+  399 | };
+  400 | 
+
+===== services/mira-work-knowledge-consolidation.js =====
+LINE_COUNT=973
+...
+    1 | "use strict";
+    2 | 
+    3 | const fs = require("fs");
+    4 | const path = require("path");
+    5 | const storagePath = require('../mira-storage');
+    6 | const crypto = require("crypto");
+    7 | 
+    8 | const {
+    9 |   createProposal,
+   10 |   listProposals
+   11 | } = require("../change-management");
+   12 | 
+   13 | const {
+   14 |   recordAudit
+   15 | } = require("../audit-log");
+   16 | 
+   17 | const ENGINE_VERSION = "6.2.3";
+   18 | 
+   19 | const DATA_DIR = storagePath("data");
+   20 | const STORE_FILE = path.join(
+   21 |   DATA_DIR,
+   22 |   "work-knowledge-consolidation.json"
+   23 | );
+   24 | 
+   25 | const MAX_ITEMS = 5000;
+   26 | const MAX_SOURCES_PER_ITEM = 100;
+   27 | const MAX_TEXT = 2000;
+   28 | const MAX_LESSONS_PER_RECORD = 50;
+   29 | const MAX_CANDIDATES_PER_RECORD = 50;
+   30 | 
+...
+  134 | }
+  135 | 
+  136 | function loadStore() {
+  137 |   try {
+  138 |     const raw = JSON.parse(
+  139 |       fs.readFileSync(STORE_FILE, "utf8")
+  140 |     );
+  141 | 
+...
+  169 | }
+  170 | 
+  171 | function saveStore(store) {
+  172 |   fs.mkdirSync(DATA_DIR, { recursive: true });
+  173 | 
+  174 |   const normalized = normalizeStore(store);
+  175 | 
+  176 |   normalized.updatedAt =
+...
+  650 | }
+  651 | 
+  652 | async function consolidateLearningRecord(
+  653 |   record,
+  654 |   options = {}
+  655 | ) {
+  656 |   const validation =
+  657 |     validateLearningRecord(record);
+...
+  688 |   }
+  689 | 
+  690 |   const store = loadStore();
+  691 |   const source =
+  692 |     normalizeSource(record);
+  693 | 
+  694 |   const results = [];
+  695 |   let proposalCreated = null;
+...
+  783 | 
+  784 |   const saved =
+  785 |     saveStore(store);
+  786 | 
+  787 |   if (typeof recordAudit === "function") {
+  788 |     recordAudit({
+  789 |       actorRole:
+  790 |         "stage6.2.3-work-knowledge-consolidation",
+...
+  916 | }
+  917 | 
+  918 | function getConsolidatedKnowledge() {
+  919 |   return loadStore().items;
+  920 | }
+  921 | 
+  922 | function getConsolidationStats() {
+  923 |   const items =
+  924 |     getConsolidatedKnowledge();
+  925 | 
+  926 |   let evidence = 0;
+  927 |   let proposals = 0;
+  928 | 
+  929 |   for (const item of items) {
+...
+  951 | }
+  952 | 
+  953 | module.exports = {
+  954 |   ENGINE_VERSION,
+  955 |   STORE_FILE,
+  956 | 
+  957 |   loadStore,
+  958 |   saveStore,
+  959 | 
+  960 |   validateLearningRecord,
+  961 |   deriveCandidates,
+  962 | 
+  963 |   proposalFingerprint,
+...
+  965 |   createKnowledgeProposal,
+  966 | 
+  967 |   consolidateLearningRecord,
+...OUTPUT_LIMIT_REACHED...
+
+===== services/mira-conversation-memory-engine.js =====
+LINE_COUNT=400
+...
+    1 | "use strict";
+    2 | 
+    3 | const {
+    4 |   createConversationContext
+    5 | } = require("../conversation-schema");
+    6 | 
+    7 | const store =
+    8 |   require("../conversation-store");
+    9 | 
+   10 | function cleanText(value) {
+   11 |   return typeof value === "string"
+   12 |     ? value.trim()
+   13 |     : "";
+   14 | }
+   15 | 
+   16 | function unique(list) {
+   17 |   return [
+   18 |     ...new Set(
+   19 |       (Array.isArray(list) ? list : [])
+   20 |         .map(cleanText)
+   21 |         .filter(Boolean)
+   22 |     )
+   23 |   ];
+   24 | }
+   25 | 
+   26 | function addUnique(existing, values) {
+   27 |   return unique([
+   28 |     ...(Array.isArray(existing) ? existing : []),
+   29 |     ...(Array.isArray(values) ? values : [])
+   30 |   ]);
+...
+  155 | }
+  156 | 
+  157 | function getConversationHistory(conversationId) {
+  158 |   return store
+  159 |     .listMessages({ conversationId })
+  160 |     .map(message => ({
+  161 |       messageId: message.messageId,
+  162 |       participant: message.participant,
+...
+  281 | }
+  282 | 
+  283 | function updateConversationMemory(input = {}) {
+  284 |   const conversationId =
+  285 |     cleanText(input.conversationId);
+  286 | 
+  287 |   if (!conversationId) {
+  288 |     throw new Error(
+...
+  356 |     extracted,
+  357 |     history:
+  358 |       getConversationHistory(
+  359 |         conversationId
+  360 |       )
+  361 |   };
+  362 | }
+  363 | 
+  364 | function getConversationMemory(
+  365 |   conversationId
+  366 | ) {
+  367 |   const id =
+  368 |     cleanText(conversationId);
+  369 | 
+...
+  388 |       store.getContext(id),
+  389 |     history:
+  390 |       getConversationHistory(id)
+  391 |   };
+  392 | }
+  393 | 
+  394 | module.exports = {
+  395 |   extractContextFromMessage,
+  396 |   getConversationHistory,
+  397 |   updateConversationMemory,
+  398 |   getConversationMemory
+  399 | };
+  400 | 
+
+===== services/mira-learning-history.js =====
+LINE_COUNT=726
+...
+    1 | "use strict";
+    2 | 
+    3 | const experienceMemory =
+    4 |   require("./mira-experience-memory");
+    5 | 
+    6 | const futureStrategyEngine =
+    7 |   require("./mira-future-strategy-engine");
+    8 | 
+    9 | const ENGINE_VERSION = "6.4.8.1";
+   10 | 
+   11 | const MAX_RESULTS = 100;
+   12 | 
+   13 | function cleanText(
+   14 |   value,
+   15 |   maxLength = 2000
+   16 | ) {
+   17 |   if (
+   18 |     typeof value !== "string"
+   19 |   ) {
+   20 |     return "";
+   21 |   }
+   22 | 
+   23 |   return value
+   24 |     .trim()
+   25 |     .slice(0, maxLength);
+   26 | }
+   27 | 
+   28 | function cleanList(
+   29 |   value,
+   30 |   maxItems = 100
+...
+  292 | }
+  293 | 
+  294 | function listLearningHistory(
+  295 |   options = {}
+  296 | ) {
+  297 |   const experiences =
+  298 |     experienceMemory.listExperiences({
+  299 |       taskId:
+  300 |         options.taskId,
+  301 |       status:
+  302 |         options.status,
+  303 |       qaStatus:
+...
+  369 | }
+  370 | 
+  371 | function getLearningHistory(
+  372 |   historyId
+  373 | ) {
+  374 |   const experience =
+  375 |     experienceMemory.getExperience(
+  376 |       historyId
+  377 |     );
+  378 | 
+  379 |   if (!experience) {
+  380 |     return null;
+...
+  386 | }
+  387 | 
+  388 | function getLearningHistoryTimeline(
+  389 |   historyId
+  390 | ) {
+  391 |   const history =
+  392 |     getLearningHistory(
+  393 |       historyId
+  394 |     );
+  395 | 
+  396 |   if (!history) {
+  397 |     return null;
+...
+  400 |   const timeline = [];
+  401 | 
+  402 |   function addEvent(
+  403 |     type,
+  404 |     timestamp,
+  405 |     data,
+  406 |     order
+  407 |   ) {
+...
+  419 |   }
+  420 | 
+  421 |   addEvent(
+  422 |     "task",
+  423 |     history.timestamps.createdAt,
+  424 |     {
+  425 |       taskId:
+  426 |         history.task.id,
+...
+  433 |   );
+  434 | 
+  435 |   addEvent(
+  436 |     "approach",
+  437 |     history.timestamps.startedAt ||
+  438 |       history.timestamps.createdAt,
+  439 |     {
+  440 |       approach:
+...
+  444 |   );
+  445 | 
+  446 |   addEvent(
+  447 |     "result",
+  448 |     history.timestamps.completedAt ||
+  449 |       history.result.completedAt,
+  450 |     {
+  451 |       success:
+...
+  462 |     history.feedback.requestedChanges.length > 0
+  463 |   ) {
+...OUTPUT_LIMIT_REACHED...
+
+===== services/mira-conversation-response-planner.js =====
+LINE_COUNT=287
+...
+    1 | "use strict";
+    2 | 
+    3 | const store =
+    4 |   require("../conversation-store");
+    5 | 
+    6 | const memoryEngine =
+    7 |   require("./mira-conversation-memory-engine");
+    8 | 
+    9 | const RESPONSE_TYPES = Object.freeze([
+   10 |   "acknowledge",
+   11 |   "answer",
+   12 |   "clarification",
+   13 |   "revision_acknowledgement",
+   14 |   "status_update",
+   15 |   "delivery_response",
+   16 |   "general_response"
+   17 | ]);
+   18 | 
+   19 | const PRIORITIES = Object.freeze([
+   20 |   "low",
+   21 |   "medium",
+   22 |   "high"
+   23 | ]);
+   24 | 
+   25 | function cleanText(value) {
+   26 |   return typeof value === "string"
+   27 |     ? value.trim()
+   28 |     : "";
+   29 | }
+   30 | 
+...
+  184 | 
+  185 |   const memory =
+  186 |     memoryEngine.getConversationMemory(
+  187 |       conversationId
+  188 |     );
+  189 | 
+  190 |   const intent =
+  191 |     detectIntent(message);
+...
+  277 | }
+  278 | 
+  279 | module.exports = {
+  280 |   RESPONSE_TYPES,
+  281 |   PRIORITIES,
+  282 |   detectIntent,
+  283 |   determineResponseType,
+  284 |   determinePriority,
+
+===== conversation-store.js =====
+LINE_COUNT=453
+...
+    1 | "use strict";
+    2 | 
+    3 | const fs = require("fs");
+    4 | const path = require("path");
+    5 | const storagePath = require('./mira-storage');
+    6 | 
+    7 | const {
+    8 |   createConversation,
+    9 |   createConversationMessage,
+   10 |   createConversationContext
+   11 | } = require("./conversation-schema");
+   12 | 
+   13 | const CONVERSATION_FILE =
+   14 |   storagePath("data/conversations.json");
+   15 | 
+   16 | function ensureStore() {
+   17 |   const dataDir =
+   18 |     path.dirname(
+   19 |       CONVERSATION_FILE
+   20 |     );
+   21 | 
+   22 |   fs.mkdirSync(
+   23 |     dataDir,
+   24 |     { recursive: true }
+   25 |   );
+   26 | 
+   27 |   if (
+   28 |     !fs.existsSync(
+   29 |       CONVERSATION_FILE
+   30 |     )
+...
+   49 | }
+   50 | 
+   51 | function loadStore() {
+   52 |   ensureStore();
+   53 | 
+   54 |   const raw =
+   55 |     fs.readFileSync(
+   56 |       CONVERSATION_FILE,
+   57 |       "utf8"
+...
+   82 | }
+   83 | 
+   84 | function saveStore(store) {
+   85 |   ensureStore();
+   86 | 
+   87 |   store.updatedAt =
+   88 |     new Date().toISOString();
+   89 | 
+   90 |   const temporaryFile =
+...
+  113 | ) {
+  114 |   const store =
+  115 |     loadStore();
+  116 | 
+  117 |   return (
+  118 |     store.conversations.find(
+  119 |       item =>
+  120 |         item.conversationId ===
+...
+  128 | ) {
+  129 |   const store =
+  130 |     loadStore();
+  131 | 
+  132 |   let results =
+  133 |     [...store.conversations];
+  134 | 
+  135 |   if (options.clientId) {
+...
+  170 | 
+  171 |   const store =
+  172 |     loadStore();
+  173 | 
+  174 |   if (
+  175 |     store.conversations.some(
+  176 |       item =>
+  177 |         item.conversationId ===
+...
+  190 |   );
+  191 | 
+  192 |   saveStore(store);
+  193 | 
+  194 |   return {
+  195 |     ok: true,
+  196 |     status: "created",
+  197 |     conversation
+...
+  204 | ) {
+  205 |   const store =
+  206 |     loadStore();
+  207 | 
+  208 |   const index =
+  209 |     store.conversations.findIndex(
+  210 |       item =>
+  211 |         item.conversationId ===
+...
+  239 |     updated;
+  240 | 
+  241 |   saveStore(store);
+  242 | 
+  243 |   return updated;
+  244 | }
+  245 | 
+  246 | function getMessage(
+...
+  248 | ) {
+  249 |   const store =
+  250 |     loadStore();
+  251 | 
+...OUTPUT_LIMIT_REACHED...
+
+===== knowledge.js =====
+LINE_COUNT=1248
+...
+    1 | const fs = require("fs");
+    2 | const crypto = require("crypto");
+    3 | const path = require("path");
+    4 | const storagePath = require('./mira-storage');
+    5 | const { saveKnowledgeToDrive } = require("./google-drive");
+    6 | 
+    7 | const {
+    8 |   getCapacity
+    9 | } = require("./capacity-config");
+   10 | 
+   11 | const KNOWLEDGE_FILE = storagePath("knowledge.json");
+   12 | 
+   13 | function createKnowledgeId(entry) {
+   14 |   const title = normalize(entry.title || "");
+   15 |   const topic = normalize(entry.topic || "");
+   16 |   const url = normalize(
+   17 |     entry.url || entry.source || ""
+   18 |   );
+   19 |   const source = normalize(entry.source || "");
+   20 |   const content = normalize(entry.content || "");
+   21 | 
+   22 |   const identity = [
+   23 |     title,
+   24 |     topic,
+   25 |     url,
+   26 |     source,
+   27 |     content
+   28 |   ].join("|");
+   29 | 
+   30 |   const hash = crypto
+...
+   55 | 
+   56 | function loadKnowledge() {
+   57 |   if (!fs.existsSync(KNOWLEDGE_FILE)) {
+   58 |     return [];
+   59 |   }
+   60 | 
+   61 |   try {
+   62 |     const data = JSON.parse(
+   63 |       fs.readFileSync(KNOWLEDGE_FILE, "utf8")
+   64 |     );
+   65 | 
+   66 |     return Array.isArray(data) ? data : [];
+   67 |   } catch (error) {
+   68 |     console.error(
+...
+   77 | function saveLocalKnowledge(data) {
+   78 |   fs.writeFileSync(
+   79 |     KNOWLEDGE_FILE,
+   80 |     JSON.stringify(data, null, 2),
+   81 |     "utf8"
+   82 |   );
+   83 | }
+   84 | 
+...
+ 1235 | }
+ 1236 | 
+ 1237 | module.exports = {
+ 1238 |   addKnowledge,
+ 1239 |   addLearning,
+ 1240 |   updateKnowledge,
+ 1241 |   updateLearning,
+ 1242 |   deleteKnowledge,
+
+===== mira-storage.js =====
+LINE_COUNT=90
+...
+    1 | 'use strict';
+    2 | 
+    3 | const fs = require('node:fs');
+    4 | const path = require('node:path');
+    5 | 
+    6 | const PROJECT_ROOT = path.resolve(__dirname);
+    7 | const configuredRoot = process.env.MIRA_STORAGE_DIR;
+    8 | const STORAGE_ROOT = configuredRoot
+    9 |   ? path.resolve(configuredRoot)
+   10 |   : PROJECT_ROOT;
+   11 | const ENABLED = Boolean(configuredRoot);
+   12 | [REDACTED: POSSIBLE CREDENTIAL-RELATED SOURCE LINE]
+   13 | 
+   14 | function ensureDirectory(dir) {
+   15 |   if (!ENABLED) return;
+   16 |   const relative = path.relative(STORAGE_ROOT, dir);
+   17 |   if (relative.startsWith('..') || path.isAbsolute(relative)) {
+   18 |     throw new Error('MIRA_STORAGE_PATH_OUTSIDE_ROOT');
+   19 |   }
+   20 |   let current = STORAGE_ROOT;
+   21 |   fs.mkdirSync(current, { recursive: true, mode: 0o700 });
+   22 |   const rootStat = fs.lstatSync(current);
+   23 |   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+   24 |     throw new Error('MIRA_STORAGE_ROOT_UNSAFE');
+   25 |   }
+   26 |   for (const part of relative.split(path.sep).filter(Boolean)) {
+   27 |     current = path.join(current, part);
+   28 |     try {
+   29 |       const st = fs.lstatSync(current);
+   30 |       if (!st.isDirectory() || st.isSymbolicLink()) {
+   31 |         throw new Error('MIRA_STORAGE_DIRECTORY_UNSAFE');
+   32 |       }
+   33 |     } catch (error) {
+   34 |       if (error.code !== 'ENOENT') throw error;
+   35 |       fs.mkdirSync(current, { mode: 0o700 });
+   36 |     }
+...
+   38 | }
+   39 | 
+   40 | function storagePath(relativePath) {
+   41 |   if (typeof relativePath !== 'string' || !relativePath.trim() ||
+   42 |       path.isAbsolute(relativePath)) {
+   43 |     throw new Error('MIRA_STORAGE_RELATIVE_PATH_REQUIRED');
+   44 |   }
+   45 |   const normalized = path.normalize(relativePath);
+...
+   85 | }
+   86 | 
+   87 | storagePath.isEnabled = () => ENABLED;
+   88 | storagePath.root = STORAGE_ROOT;
+   89 | module.exports = storagePath;
+   90 | 
+
+===== tools/web-search.js =====
+LINE_COUNT=61
+...
+    1 | "use strict";
+    2 | 
+    3 | const { secureProviderRequest } =
+    4 |   require("../services/security/secure-provider-request");
+    5 | 
+    6 | module.exports = {
+    7 |   name: "web_search",
+    8 | 
+    9 |   declaration: {
+   10 |     name: "web_search",
+   11 |     description: "Search the web.",
+   12 |     parameters: {
+   13 |       type: "object",
+   14 |       properties: {
+   15 |         query: {
+   16 |           type: "string",
+   17 |           description: "Search query"
+   18 |         }
+   19 |       },
+   20 |       required: ["query"]
+   21 |     }
+   22 |   },
+   23 | 
+   24 |   execute: async ({ query }) => {
+   25 |     const key = process.env.TAVILY_API_KEY;
+   26 |     if (!key) return "Tavily API key is missing.";
+   27 | 
+   28 |     if (typeof query !== "string" || !query.trim())
+   29 |       return "Search query is required.";
+   30 | 
+
+===== SAFETY =====
+LIVE_MEMORY_CONTENT_READ=NO
+LIVE_MEMORY_CONTENT_HASHED=NO
+CREDENTIAL_VALUES_PRINTED=NO
+NETWORK_REQUESTS=0
+PRODUCTION_FILES_MODIFIED=NO
+MIGRATION_OR_RESTORE=NO

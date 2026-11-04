@@ -6,6 +6,8 @@ const os = require('node:os');
 const path = require('node:path');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-memory-test-'));
+const originalStorage = process.env.MIRA_STORAGE_DIR;
+process.env.MIRA_STORAGE_DIR = root;
 process.env.MIRA_MEMORY_FILE = path.join(root, 'memory.json');
 
 const store = require('../services/mira-local-memory-store');
@@ -25,6 +27,11 @@ async function main() {
     assert.equal(entries[0].content, 'fixture-one');
     assert.equal(entries[1].content, 'fixture-two');
 
+    // A previous valid state is retained as an immutable version before replacement.
+    const versionsDir = store.MEMORY_FILE + '.versions';
+    assert.equal(fs.existsSync(versionsDir), true);
+    assert.ok(fs.readdirSync(versionsDir).length >= 1);
+
     const backupResult = store.createBackup();
     assert.equal(backupResult.success, true);
     assert.equal(backupResult.backupVersion, 2);
@@ -42,6 +49,13 @@ async function main() {
     assert.equal(memory.getMemory().length, 2);
     assert.equal(fs.existsSync(store.SAFETY_BACKUP_FILE), true);
 
+    // Missing primary with a verified backup must not silently become empty.
+    fs.unlinkSync(store.MEMORY_FILE);
+    const recoveredRead = memory.getMemory();
+    assert.equal(recoveredRead.length, 2);
+    memory.addMemory('user', 'fixture-after-primary-loss');
+    assert.equal(memory.getMemory().length, 3);
+
     // Corrupt JSON must throw and must not be silently converted to [].
     fs.writeFileSync(store.MEMORY_FILE, '{broken', { mode: 0o600 });
     assert.throws(() => memory.getMemory(), /invalid JSON/i);
@@ -50,6 +64,19 @@ async function main() {
       /invalid JSON/i
     );
     assert.equal(fs.readFileSync(store.MEMORY_FILE, 'utf8'), '{broken');
+
+    // Explicit restore must preserve corrupt primary bytes before replacing them.
+    const recovered = JSON.parse(await restoreTool.execute({ confirm: true }));
+    assert.equal(recovered.restored, true);
+    assert.equal(recovered.safetyBackup, path.basename(store.SAFETY_QUARANTINE_FILE));
+    assert.equal(fs.existsSync(store.SAFETY_QUARANTINE_FILE), true);
+    const corruptPreservation = JSON.parse(
+      fs.readFileSync(store.SAFETY_QUARANTINE_FILE, 'utf8')
+    );
+    assert.equal(corruptPreservation.rawContent, '{broken');
+    assert.equal(memory.getMemory().length, 2);
+    const auditLog = require('../audit-log');
+    assert.ok(auditLog.loadAuditLog().some(entry => entry.action === 'memory_restore_committed'));
 
     // Empty files are corruption, not an empty Memory.
     fs.writeFileSync(store.MEMORY_FILE, '');
@@ -86,6 +113,8 @@ async function main() {
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+    if (originalStorage === undefined) delete process.env.MIRA_STORAGE_DIR;
+    else process.env.MIRA_STORAGE_DIR = originalStorage;
   }
 }
 

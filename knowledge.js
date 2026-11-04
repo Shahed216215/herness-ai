@@ -2,6 +2,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
 const storagePath = require('./mira-storage');
+const jsonStateStore = require('./services/mira-json-state-store');
 const { saveKnowledgeToDrive } = require("./google-drive");
 
 const {
@@ -54,32 +55,57 @@ const ALLOWED_DIFFICULTIES = [
 ];
 
 function loadKnowledge() {
-  if (!fs.existsSync(KNOWLEDGE_FILE)) {
-    return [];
-  }
-
-  try {
-    const data = JSON.parse(
-      fs.readFileSync(KNOWLEDGE_FILE, "utf8")
-    );
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error(
-      "KNOWLEDGE_LOAD_ERROR:",
-      error.message
-    );
-
-    return [];
-  }
+  // A missing file is an empty first-run state. Existing unreadable,
+  // malformed, or non-array state is an error and must never become [].
+  return jsonStateStore.readJsonArray(
+    KNOWLEDGE_FILE,
+    "Mira Knowledge",
+    { missing: "empty" }
+  );
 }
 
 function saveLocalKnowledge(data) {
-  fs.writeFileSync(
+  return jsonStateStore.writeArrayState(
     KNOWLEDGE_FILE,
-    JSON.stringify(data, null, 2),
-    "utf8"
+    data,
+    "Mira Knowledge"
   );
+}
+
+function replaceKnowledge(data) {
+  if (!Array.isArray(data)) {
+    throw new Error("Knowledge replacement must be an array.");
+  }
+  const capacityResult = applyKnowledgeCapacity(data.slice(), "replace");
+  return saveLocalKnowledge(capacityResult.entries);
+}
+
+function applyKnowledgeCapacity(entries, operation) {
+  const capacity = getMaxKnowledgeEntries();
+  if (entries.length <= capacity) return { entries, quarantine: null };
+
+  const evicted = entries.slice(0, entries.length - capacity);
+  const retained = entries.slice(-capacity);
+  const quarantine = jsonStateStore.quarantineConflict(
+    path.dirname(KNOWLEDGE_FILE),
+    'knowledge-capacity-' + operation,
+    evicted,
+    {
+      conflictType: 'CAPACITY_EVICTION',
+      reason: 'KNOWLEDGE_CAPACITY_EVICTION_REQUIRES_REVIEW',
+      sourceFile: path.basename(KNOWLEDGE_FILE),
+      entryCount: evicted.length,
+      payloadHash: jsonStateStore.sha256(JSON.stringify(evicted))
+    }
+  );
+  return {
+    entries: retained,
+    quarantine: {
+      file: path.basename(quarantine.file),
+      sha256: quarantine.sha256,
+      preservedEntries: evicted.length
+    }
+  };
 }
 
 function normalize(value) {
@@ -104,12 +130,19 @@ function isDuplicate(a, b) {
 
 async function syncToDrive(knowledge) {
   try {
-    await saveKnowledgeToDrive(knowledge);
+    const result = await saveKnowledgeToDrive(knowledge);
 
-    console.log(
-      "Knowledge Drive sync: updated"
-    );
+    if (result && result.skipped) {
+      console.log("Knowledge Drive sync: skipped");
+      return false;
+    }
 
+    if (result && result.success === false) {
+      console.error("KNOWLEDGE_DRIVE_ERROR:", "Drive save was not successful.");
+      return false;
+    }
+
+    console.log("Knowledge Drive sync: updated");
     return true;
   } catch (error) {
     console.error(
@@ -182,14 +215,10 @@ async function addKnowledge(
 
   knowledge.push(entry);
 
-  const limitedKnowledge =
-    knowledge.slice(
-    -getMaxKnowledgeEntries()
-  );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
-  saveLocalKnowledge(
-    limitedKnowledge
-  );
+  saveLocalKnowledge(limitedKnowledge);
 
   const drive = await syncToDrive(
     limitedKnowledge
@@ -200,6 +229,7 @@ async function addKnowledge(
     added: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
     savedAt: entry.savedAt
   };
 }
@@ -419,14 +449,10 @@ async function addLearning(input) {
 
   knowledge.push(entry);
 
-  const limitedKnowledge =
-    knowledge.slice(
-    -getMaxKnowledgeEntries()
-  );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
-  saveLocalKnowledge(
-    limitedKnowledge
-  );
+  saveLocalKnowledge(limitedKnowledge);
 
   const drive =
     await syncToDrive(
@@ -438,6 +464,7 @@ async function addLearning(input) {
     added: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
 
     entry: {
       type:
@@ -641,14 +668,10 @@ async function updateKnowledge(id, input = {}) {
   knowledge[targetIndex] =
     updatedEntry;
 
-  const limitedKnowledge =
-    knowledge.slice(
-      -getMaxKnowledgeEntries()
-    );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
-  saveLocalKnowledge(
-    limitedKnowledge
-  );
+  saveLocalKnowledge(limitedKnowledge);
 
   const drive =
     await syncToDrive(
@@ -660,6 +683,7 @@ async function updateKnowledge(id, input = {}) {
     updated: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
 
     previous: {
       id: existing.id || "",
@@ -783,9 +807,8 @@ async function updateLearning(idOrMatch, input) {
 
   knowledge[targetIndex] = updatedEntry;
 
-  const limitedKnowledge = knowledge.slice(
-    -getMaxKnowledgeEntries()
-  );
+  const capacityResult = applyKnowledgeCapacity(knowledge, 'mutation');
+  const limitedKnowledge = capacityResult.entries;
 
   saveLocalKnowledge(limitedKnowledge);
 
@@ -798,6 +821,7 @@ async function updateLearning(idOrMatch, input) {
     updated: true,
     duplicate: false,
     drive,
+    capacityQuarantine: capacityResult.quarantine,
 
     previous: {
       title: existing.title,
@@ -1242,6 +1266,7 @@ module.exports = {
   deleteKnowledge,
   searchKnowledge,
   getKnowledge,
+  replaceKnowledge,
   getKnowledgeStats,
   validateLearningInput
 };

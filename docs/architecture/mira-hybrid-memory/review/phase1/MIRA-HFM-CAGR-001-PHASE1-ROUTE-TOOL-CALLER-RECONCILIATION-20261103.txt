@@ -1,0 +1,194 @@
+MIRA HYBRID MEMORY — PHASE 1 ROUTE & TOOL CALLER RECONCILIATION
+Document: MIRA-HFM-CAGR-001-PHASE1-ROUTE-TOOL-CALLER-RECONCILIATION
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this report: e83c76a4279f0fb6d5d379170d7f56ea42c28b4d
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Version boundary: v0.2
+Status: TARGETED ROUTE/TOOL SOURCE RECONCILIATION — NOT A REPOSITORY-WIDE SOURCE SCAN
+
+1. SCOPE AND EVIDENCE
+
+The complete branch tree was checked at HEAD e83c76a4279f0fb6d5d379170d7f56ea42c28b4d:
+- 626 tree entries
+- 608 blob files
+- recursive tree truncated=false
+- 26 route modules
+- 26 tool modules
+- 143 service modules
+
+All 26 route module files and all 26 tool module files were retrieved from this exact feature branch and scanned for imports/delegation, Memory/Knowledge/Learning terms, store usage, filesystem I/O, audit calls, provider/network calls, consent checks, and Drive references. Relevant service files were separately retrieved in targeted batches. This is a route/tool coverage pass, not a full source-text scan of all 608 blobs. Test files and every service module were not exhaustively fetched or executed.
+
+Route modules reviewed:
+routes/autonomous-learning.js
+routes/capability-profile.js
+routes/capacity-changes.js
+routes/client-communication.js
+routes/client-follow-up.js
+routes/client-profiles.js
+routes/conversations.js
+routes/deliverable-integration.js
+routes/deliverables.js
+routes/knowledge-improvements.js
+routes/learning-history.js
+routes/mira-client-consent.js
+routes/mira-evolution.js
+routes/mira-marketing-workflow.js
+routes/mira-provider-evolution.js
+routes/mira-research-governance.js
+routes/mira-seo-research.js
+routes/mira-seo.js
+routes/opportunities.js
+routes/specialists.js
+routes/stage16-17.js
+routes/task-execution.js
+routes/task-planning.js
+routes/task-understanding.js
+routes/work-acceptance.js
+routes/work-economics.js
+
+Tool modules reviewed:
+tools/calculator.js
+tools/capacity-change.js
+tools/firewall-defense.js
+tools/index.js
+tools/knowledge-backup.js
+tools/knowledge-cleanup.js
+tools/knowledge-count.js
+tools/knowledge-improve.js
+tools/knowledge-restore.js
+tools/knowledge-save.js
+tools/knowledge-search.js
+tools/learning-save.js
+tools/marketing-client-context.js
+tools/memory-count.js
+tools/memory-restore.js
+tools/memory-save.js
+tools/mira-manifest-reader-cli.js
+tools/mira-one-run-audit.js
+tools/mira-server-control.js
+tools/project-connection-audit.js
+tools/seo-audit.js
+tools/seo-workflow-history.js
+tools/seo-workflow-review-decision.js
+tools/system-info.js
+tools/tool-health.js
+tools/web-search.js
+
+2. ROUTE-TO-STORE / ROUTE-TO-SERVICE GRAPH
+
+- /api/conversations routes -> conversation-store.js and mira-conversation-memory-engine.js. Conversation Memory is persisted in the Conversation Store; it is not the same file as general Memory memory.json.
+- /api/admin/learning-history routes -> mira-learning-history.js and mira-experience-memory.js. Experience Memory and Learning History are derived/read-oriented layers in the reviewed call path; Work Learning Records are the persistent source.
+- /api/admin/knowledge-improvements -> knowledge-improvement.js, knowledge.js, knowledge-memory-evolution.js, knowledge-controlled-apply.js, audit-log.js. Apply is proposal-approved, pre-state/hash checked, prepared, applied, verified, and may rollback through snapshot/evolution mechanisms.
+- /api/admin/autonomous-learning -> autonomous-learning-engine.js, autonomous-learning-proposals.js, autonomous-learning-controlled-apply.js, audit-log.js. Proposal creation is separated from apply; controlled apply performs the Knowledge mutation and Drive sync.
+- /api/admin/mira-client-consent -> mira-client-consent-service.js, mira-client-consent-store.js, audit-log.js. Consent records have a distinct store and route-level audit integration.
+- /api/admin/mira-research-governance -> mira-research-governance.js, task-store.js, audit-log.js. Route reads governance/task records and exposes administrative governance actions.
+- /api/admin/mira-provider-evolution -> provider-credential-store.js, custom-provider-config.js, provider status and audit services. Route handles privileged provider credential metadata/set/reveal/delete and runtime/staging configuration files. Reveal returns plaintext credential material to the authorized response; credential file/key contents were not read.
+- /api/mira-evolution -> change-management, apply-engine, artifact-apply-engine, staging, verification, snapshot, and audit services. Its prompts preserve current Memory/Drive behavior; it is not evidence that Drive can be removed.
+- Marketing workflow route -> SEO research route and marketing workflow orchestrator; client profile/consent checks are delegated to tools/services. Consent lookup and public research confirmation are distinct.
+- Client communication/follow-up/profile, opportunity, work acceptance, deliverable, task, capability, and work-economics routes delegate to their corresponding stores/services. The reviewed provider-evolution route is an exception to the no-direct-route-I/O pattern: it directly reads/writes runtime and staging configuration files and also calls the provider credential store. No direct fs calls were found in most of the other selected route modules, but indirect service side effects are not ruled out.
+
+3. TOOL-TO-STORE / TOOL-TO-PROVIDER GRAPH
+
+Knowledge:
+- knowledge-save -> knowledge.addKnowledge -> local Knowledge write then Drive sync.
+- learning-save -> services/learning.learnFromContent -> generate provider request, duplicate search, then knowledge.addLearning -> local write then Drive sync.
+- knowledge-search -> local getKnowledge first, then loadKnowledgeFromDrive; any Drive array, including [], replaces local search source.
+- knowledge-count -> local getKnowledge only.
+- knowledge-cleanup inspect is read-only; remove directly writes project-root knowledge.json and then calls saveKnowledgeToDrive.
+- knowledge-backup obtains Knowledge, directly writes project-root knowledge.json and knowledge-backup.json, then performs direct Google OAuth Drive backup operations. This is not a read-only backup.
+- knowledge-restore reads local or Drive backup, creates a safety backup, overwrites project-root knowledge.json, then syncs Drive. It is destructive and was not invoked.
+- knowledge-improve uses improveExistingKnowledge / proposal persistence; its tool description says existing Knowledge is not changed and admin approval is required before apply.
+- capacity-change reads Memory/Knowledge capacity state and creates/inspects proposals; no capacity change was executed.
+
+Memory:
+- memory-save -> memory.addMemory -> mira-local-memory-store.
+- memory-count -> memory.getMemory -> mira-local-memory-store.
+- memory-restore -> restoreMemory, with explicit confirm=true required. Tool was not invoked.
+- scripts/mira-memory-backup.js is a separate backup caller already inventoried in earlier reports.
+
+Provider/network:
+- web-search -> secureProviderRequest to Tavily endpoint; query and configured API key are sent when invoked. Not invoked.
+- services/learning.learnFromContent -> services/ai.generate with source content in prompt/user message. External provider egress occurs if live provider selection is active. Not invoked.
+- marketing-client-context performs read-only profile and persisted consent lookups; it explicitly does not grant/revoke consent or start live research.
+- SEO research/orchestration can use external research/provider paths subject to separate consent controls. No network research was run.
+
+4. NEW CALLER-LEVEL FINDINGS
+
+T01 — LEARNING TOOL DIRECT KNOWLEDGE PERSISTENCE / GOVERNANCE BOUNDARY: CONFIRMED BEHAVIOR; POLICY AMBIGUITY.
+tools/learning-save.js calls learnFromContent. services/learning.js sends source content to generate, validates the result, checks duplicates, then calls addLearning directly; addLearning persists Knowledge locally and attempts Drive sync. The same module's instruction text says the learning workflow must remain proposal/approval controlled and the engine must not change system configuration, permissions, code, or security controls. That text does not unambiguously prohibit educational Knowledge ingestion, so a policy violation is NOT asserted. The architecture must explicitly distinguish ordinary educational Knowledge ingestion from changes to system behavior/configuration and from improvement proposals, and define caller authorization, source consent, audit, and Drive semantics.
+
+T02 — KNOWLEDGE BACKUP SIDE EFFECT: CONFIRMED.
+tools/knowledge-backup.js writes the local primary knowledge.json as well as the backup file before its direct Drive upload/update. The operation is not read-only and can rewrite the current Knowledge file even though its tool description describes backup/synchronization.
+
+T03 — KNOWLEDGE CLEANUP ROOT BYPASS: CONFIRMED.
+tools/knowledge-cleanup.js writes to a project-root knowledge.json path rather than consistently using the shared mira-storage resolver, then syncs Drive. This can diverge from knowledge.js when MIRA_STORAGE_DIR is configured.
+
+T04 — KNOWLEDGE RESTORE DESTRUCTIVE DUAL-WRITE: CONFIRMED.
+tools/knowledge-restore.js may load a Drive backup, create a local safety backup, overwrite project-root knowledge.json, and update Drive knowledge.json. It uses backupVersion=1 and entries-array validation in the reviewed implementation. It was not invoked.
+
+T05 — SEARCH AUTHORITY AMBIGUITY: CONFIRMED.
+tools/knowledge-search.js replaces its local search source with any array returned by Drive, including an empty array. The authoritative-source and empty-remote semantics remain undecided.
+
+T06 — PROVIDER EGRESS VIA LEARNING: CONFIRMED.
+services/learning.js sends source content in the prompt passed to generate. Provider selection, endpoint, retention, and data handling depend on the configured provider. No request was made.
+
+T07 — AUDIT FAILURE SEMANTICS: INCONSISTENT.
+Knowledge Improvement's local writeAudit helper catches/swallow errors and returns a status that some callers ignore. Autonomous Learning's helper propagates recordAudit errors. Knowledge Improvement apply also has handled early-return branches without route-level audit events. Lower-level coverage is not exhaustively proven.
+
+T08 — DISTINCT MEMORY DOMAINS: CONFIRMED.
+General Memory, Conversation Store, Work Learning Records, Work Knowledge Consolidation, Stage13 Learning Governance, proposals, and Audit Log are distinct persistence domains. They must not be collapsed into a single file merely because they contain memory/learning-like records.
+
+5. ISOLATED TEST CANDIDATES AND EXECUTION LIMIT
+
+Existing fixture-oriented tests were located and source-reviewed:
+- tests/mira-local-memory-safety-test.js — creates a temporary directory, sets MIRA_MEMORY_FILE to a fixture path, exercises local Memory CRUD, backup, restore, corrupt/empty file handling, symlink rejection, and backup tamper rejection.
+- tests/mira-memory-local-store-contract-test.js — copies store modules into a temporary directory, uses MIRA_STORAGE_DIR and MIRA_MEMORY_FILE overrides, tests fixture writes, permissions, invalid-input preservation, and source-level Evolution/Store separation.
+- tests/mira-memory-evolution-integration-test.js — creates temporary local/Drive fixture files and a mocked google-drive adapter, then exercises Evolution apply, verification, rollback, injected Drive failure, stale state, preservation, and local-store contract.
+- tests/mira-research-audit-fail-closed.test.js and tests/mira-research-governance.test.js — use temporary governance ledger files and injected audit callbacks.
+
+These tests appear designed for isolated filesystem fixtures and mocked Drive behavior. However, they were NOT EXECUTED in this review. The available execution environment did not contain a checkout of this exact branch, and a direct public git clone attempt failed because DNS/network access was unavailable. A partial manual reconstruction was abandoned after source-transfer integrity errors; no result from that attempt is treated as test evidence. The repository's npm test script is a provider-focused suite and is not the above Hybrid Memory fixture suite. No package installation or npm test was attempted.
+
+6. ROUTE/TOOL COVERAGE RESULT
+
+ROUTE_MODULES_RETRIEVED=26
+ROUTE_MODULES_REVIEWED=26
+TOOL_MODULES_RETRIEVED=26
+TOOL_MODULES_REVIEWED=26
+SERVICE_MODULES_REVIEWED=TARGETED_SUBSET
+TEST_MODULES_REVIEWED=TARGETED_SUBSET
+ALL_608_BLOBS_SOURCE_SCANNED=NO
+ROUTE_DIRECT_FS_CALLS_FOUND_IN_SELECTED_MODULES=NO
+INDIRECT_SERVICE_SIDE_EFFECTS=REVIEWED_TARGETED_ONLY
+DRIVE_CALLSITE_INVENTORY=EXPANDED_NOT_EXHAUSTIVE
+PROVIDER_EGRESS_INVENTORY=EXPANDED_NOT_EXHAUSTIVE
+
+7. PHASE 1 BLOCKER UPDATE
+
+C01 Full repository source-text scan: OPEN. Complete path inventory and all route/tool file retrieval do not equal source scan of every blob; 608-blob exhaustive text scan remains unproven.
+C02 Persistence roots and callers: IMPROVED / PARTIAL. All route and tool modules mapped at direct-delegation level; all 143 services and all indirect calls not exhaustively traced.
+C03 Local/Drive authority and conflict policy: OPEN. Confirmed behavior but no final canonical-source decision.
+C04 Caller compatibility: IMPROVED / PARTIAL. Added route/tool return, side-effect, audit, and rollback details; lower-level branches and all consumers remain incomplete.
+C05 Drive callsite inventory: IMPROVED / OPEN. Direct tool OAuth and addLearning path expanded; complete all-module Drive caller proof remains outstanding.
+C06 Isolated fixture tests: NOT EXECUTED. Candidate tests are identified, but branch checkout/runtime was unavailable. No test PASS claimed.
+C07 Provider permissions/data egress: IMPROVED / PARTIAL. Learning source egress and Tavily path identified; effective OAuth scopes, all provider callers, retention terms, and consent completeness remain unverified.
+
+8. SAFETY AND CHANGE STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+RUNTIME_ROUTES_INVOKED=NONE
+TESTS=NOT_EXECUTED
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF REPORT

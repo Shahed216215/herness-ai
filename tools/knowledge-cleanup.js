@@ -1,62 +1,6 @@
-const fs = require("fs");
-const path = require("path");
-
-const { getKnowledge } = require("../knowledge");
+const { getKnowledge, replaceKnowledge } = require("../knowledge");
 const { saveKnowledgeToDrive } = require("../google-drive");
-
-const KNOWLEDGE_FILE = path.join(
-  __dirname,
-  "..",
-  "knowledge.json"
-);
-
-function normalize(text) {
-  return String(text || "")
-    .toLowerCase()
-    .trim();
-}
-
-function sameEntry(a, b) {
-  return (
-    normalize(a.title) === normalize(b.title) &&
-    normalize(a.url) === normalize(b.url) &&
-    normalize(a.content) === normalize(b.content)
-  );
-}
-
-function findDuplicateGroups(knowledge) {
-  const groups = [];
-
-  for (const item of knowledge) {
-    let group = groups.find(existing =>
-      sameEntry(existing[0], item)
-    );
-
-    if (group) {
-      group.push(item);
-    } else {
-      groups.push([item]);
-    }
-  }
-
-  return groups.filter(group => group.length > 1);
-}
-
-function removeExactDuplicates(knowledge) {
-  const unique = [];
-
-  for (const item of knowledge) {
-    const duplicate = unique.some(existing =>
-      sameEntry(existing, item)
-    );
-
-    if (!duplicate) {
-      unique.push(item);
-    }
-  }
-
-  return unique;
-}
+const { findDuplicateGroups, removeExactDuplicateCopies } = require("../services/mira-knowledge-duplicate-assessment");
 
 async function inspectKnowledge() {
   const knowledge = getKnowledge();
@@ -90,7 +34,7 @@ async function removeDuplicates() {
   const knowledge = getKnowledge();
 
   const cleanedKnowledge =
-    removeExactDuplicates(knowledge);
+    removeExactDuplicateCopies(knowledge);
 
   const removed =
     knowledge.length - cleanedKnowledge.length;
@@ -106,26 +50,34 @@ async function removeDuplicates() {
     };
   }
 
-  fs.writeFileSync(
-    KNOWLEDGE_FILE,
-    JSON.stringify(cleanedKnowledge, null, 2),
-    "utf8"
-  );
+  replaceKnowledge(cleanedKnowledge);
 
-  const driveResult =
-    await saveKnowledgeToDrive(cleanedKnowledge);
+  let driveResult = null;
+  let driveError = null;
+
+  try {
+    driveResult = await saveKnowledgeToDrive(cleanedKnowledge);
+  } catch (error) {
+    driveError = error && error.message
+      ? String(error.message).slice(0, 240)
+      : "Provider sync failed.";
+  }
+
+  const driveSync = driveResult?.success === true;
 
   return {
     success: true,
     action: "remove",
     removed,
     remaining: cleanedKnowledge.length,
-    driveSync: true,
-    driveAction: driveResult.action || "synced",
-    message:
-      `Removed ${removed} exact duplicate ` +
-      `entry and synchronized the cleaned knowledge base ` +
-      `to Google Drive.`
+    localCommit: true,
+    driveSync,
+    driveStatus: driveSync ? "SYNCED" : "FAILED_OR_UNCONFIRMED",
+    driveAction: driveResult?.action || (driveSync ? "synced" : "not_confirmed"),
+    ...(driveError ? { driveError } : {}),
+    message: driveSync
+      ? `Removed ${removed} exact duplicate entr${removed === 1 ? "y" : "ies"} locally and synchronized the cleaned knowledge base to Google Drive.`
+      : `Removed ${removed} exact duplicate entr${removed === 1 ? "y" : "ies"} locally. Google Drive synchronization was not confirmed; the local cleanup remains committed and requires provider reconciliation.`
   };
 }
 

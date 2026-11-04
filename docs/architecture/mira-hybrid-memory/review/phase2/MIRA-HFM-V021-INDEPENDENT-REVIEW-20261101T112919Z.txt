@@ -1,0 +1,90 @@
+MIRA HYBRID MEMORY — INDEPENDENT ARCHITECTURE REVIEW
+UTC=2026-11-01T11:29:20.101Z
+SPEC=docs/architecture/mira-hybrid-memory/MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.1.md
+SPEC_SHA256=42db24d0f03d274cb85888a3a56ecac55cd06c543073c56a63cdf25249d94844
+SPEC_BYTES=20470
+SPEC_LINES=658
+
+PASS: Schema JSON parsing | Valid JSON
+PASS: Draft 2020-12 | 
+PASS: Root object type | 
+PASS: Root rejects unknown properties | 
+PASS: All nested objects closed | None
+PASS: Required properties exist | None
+PASS: Object definitions have properties | None
+PASS: Canonical field memoryId | 
+PASS: Canonical field projectId | 
+PASS: Canonical field content | 
+PASS: Canonical field source | 
+PASS: Canonical field version | 
+PASS: Canonical field integrity | 
+PASS: Concurrency contract section exists | 
+PASS: Concurrency contract: expectedRevision | 
+PASS: Concurrency contract: atomic conditional update | 
+PASS: Concurrency contract: REVISION_CONFLICT | 
+PASS: Concurrency contract: CONCURRENCY_CONTROL_UNSUPPORTED | 
+PASS: Concurrency contract: idempotencyKey | 
+PASS: Adapter error contract section exists | 
+PASS: Adapter error contract: errorCode | 
+PASS: Adapter error contract: retryable | 
+PASS: Adapter error contract: PERMISSION_DENIED | 
+PASS: Adapter error contract: RATE_LIMITED | 
+PASS: Adapter error contract: PARTIAL_WRITE_UNCERTAIN | 
+PASS: Pagination contract section exists | 
+PASS: Pagination contract: pageSize | 
+PASS: Pagination contract: Maximum page size: 100 | 
+PASS: Pagination contract: CURSOR_EXPIRED | 
+PASS: Pagination contract: project scope | 
+PASS: Pagination contract: cancellation | 
+PASS: Encryption contract section exists | 
+PASS: Encryption contract: envelope encryption | 
+PASS: Encryption contract: keyId | 
+PASS: Encryption contract: keyVersion | 
+PASS: Encryption contract: Key rotation procedure | 
+PASS: Encryption contract: Key loss must fail closed | 
+PASS: Encryption contract: plaintext fallback | 
+PASS: Backup compatibility section exists | 
+PASS: Backup compatibility: backupFormatVersion | 
+PASS: Backup compatibility: SUPPORTED | 
+PASS: Backup compatibility: MIGRATION_REQUIRED | 
+PASS: Backup compatibility: UNSUPPORTED | 
+PASS: Backup compatibility: INTEGRITY_FAILED | 
+PASS: Capability revalidation section exists | 
+PASS: Capability revalidation: checkedAt | 
+PASS: Capability revalidation: expiresAt | 
+PASS: Capability revalidation: Expired or UNKNOWN capability state fails closed | 
+PASS: Capability revalidation: Read and Write capabilities remain independent | 
+PASS: Audit contract section exists | 
+PASS: Audit contract: eventId | 
+PASS: Audit contract: actorId | 
+PASS: Audit contract: projectId | 
+PASS: Audit contract: operationId | 
+PASS: Audit contract: previousEventHash | 
+PASS: Audit contract: eventHash | 
+PASS: Audit contract: AUDIT_INTEGRITY_FAILURE | 
+PASS: Concurrency defines atomicity boundary | 
+REVIEW_REQUIRED: Revision conflict cannot silently overwrite | 
+PASS: Retry policy distinguishes failure classes | 
+PASS: Pagination default is within maximum | default=25, maximum=100
+PASS: Encryption has no plaintext fallback | 
+PASS: Key retirement has recovery condition | 
+PASS: Unknown backup versions fail closed | 
+REVIEW_REQUIRED: Expired capability blocks consequential action | 
+PASS: Audit hash-chain integrity is defined | 
+PASS: Audit authorship limitation acknowledged | 
+PASS: Version is 0.2.1 | 
+PASS: Implementation remains unauthorized | 
+PASS: Migration remains unauthorized | 
+PASS: Restore remains unauthorized | 
+
+CHECKS_TOTAL=71
+CHECKS_PASSED=69
+REVIEW_ITEMS=2
+NESTED_OPEN_OBJECTS=0
+INVALID_REQUIRED_REFERENCES=0
+OBJECTS_WITHOUT_PROPERTIES=0
+PRODUCTION_MEMORY_TOUCHED=NO
+PRODUCTION_SOURCE_MODIFIED=NO
+NETWORK_REQUESTS=0
+IMPLEMENTATION=NOT_STARTED
+RESULT=ARCHITECTURE_REVIEW_REQUIRED

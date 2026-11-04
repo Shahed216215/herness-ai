@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const storagePath = require('../mira-storage');
+const jsonStateStore = require('./mira-json-state-store');
 
 const MEMORY_FILE = process.env.MIRA_MEMORY_FILE
   ? path.resolve(process.env.MIRA_MEMORY_FILE)
@@ -14,6 +15,10 @@ const BACKUP_FILE = path.join(MEMORY_DIR, 'memory-backup.json');
 const SAFETY_BACKUP_FILE = path.join(
   MEMORY_DIR,
   'memory-before-restore.json'
+);
+const SAFETY_QUARANTINE_FILE = path.join(
+  MEMORY_DIR,
+  'memory-corrupt-before-restore.json'
 );
 
 function sha256(value) {
@@ -138,14 +143,34 @@ function atomicWriteJson(filePath, value, label = 'Memory') {
 }
 
 function readMemory() {
-  return readArray(MEMORY_FILE, 'Mira Memory', true);
+  try {
+    return readArray(MEMORY_FILE, 'Mira Memory', false);
+  } catch (error) {
+    if (!/Mira Memory is missing\.$/.test(error.message)) throw error;
+
+    // If the primary file disappeared but a verified backup exists, expose
+    // that data read-only. Never turn this condition into an empty write.
+    try {
+      fs.lstatSync(BACKUP_FILE);
+      return readBackupFile().entries;
+    } catch (backupError) {
+      if (backupError.code === 'ENOENT' || /Memory backup not found/.test(backupError.message)) {
+        return [];
+      }
+      throw new Error(`Mira Memory primary is missing and backup recovery failed: ${backupError.message}`);
+    }
+  }
 }
 
 function writeMemory(entries) {
   if (!Array.isArray(entries)) {
     throw new Error('Memory must be an array.');
   }
-  return atomicWriteJson(MEMORY_FILE, entries, 'Mira Memory');
+  const result = jsonStateStore.writeArrayState(MEMORY_FILE, entries, 'Mira Memory');
+  return {
+    ...result,
+    entries: entries.length
+  };
 }
 
 function makeBackup(entries, source) {
@@ -237,24 +262,79 @@ function createBackup() {
 
 function restoreMemory() {
   const backup = readBackupFile();
+  let safetyBackupPath = SAFETY_BACKUP_FILE;
+  let corruptPrimaryPreserved = false;
 
-  // Read and validate current data before writing anything.
-  const currentEntries = readMemory();
+  // Preserve the current primary before restore. Valid state gets a verified
+  // structured backup; corrupt bytes are preserved separately and verbatim.
+  try {
+    const currentEntries = readMemory();
+    const safetyBackup = makeBackup(
+      currentEntries,
+      'Automatic safety backup before Memory restore'
+    );
+    atomicWriteJson(
+      SAFETY_BACKUP_FILE,
+      safetyBackup,
+      'Memory safety backup'
+    );
+  } catch (error) {
+    let stat;
+    try {
+      stat = fs.lstatSync(MEMORY_FILE);
+    } catch (statError) {
+      throw new Error(
+        `Cannot establish a safe pre-restore state: ${statError.message}`
+      );
+    }
 
-  // A verified safety copy must exist before the restore begins.
-  const safetyBackup = makeBackup(
-    currentEntries,
-    'Automatic safety backup before Memory restore'
-  );
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error('Cannot restore over an unsafe Memory primary file.');
+    }
 
-  atomicWriteJson(
-    SAFETY_BACKUP_FILE,
-    safetyBackup,
-    'Memory safety backup'
-  );
+    const raw = fs.readFileSync(MEMORY_FILE, 'utf8');
+    const quarantine = {
+      quarantineVersion: 1,
+      createdAt: new Date().toISOString(),
+      source: path.basename(MEMORY_FILE),
+      reason: 'CORRUPT_PRIMARY_PRESERVED_BEFORE_EXPLICIT_RESTORE',
+      sha256: sha256(raw),
+      rawContent: raw,
+      readError: error.message
+    };
+    atomicWriteJson(
+      SAFETY_QUARANTINE_FILE,
+      quarantine,
+      'Corrupt Memory pre-restore quarantine'
+    );
+    safetyBackupPath = SAFETY_QUARANTINE_FILE;
+    corruptPrimaryPreserved = true;
+  }
 
-  // Atomic replacement followed by independent readback verification.
-  const result = writeMemory(backup.entries);
+  jsonStateStore.recordStateAudit('memory_restore_intent', 'pending', MEMORY_FILE, {
+    backupHash: entriesHash(backup.entries),
+    backupIntegrity: backup.integrity,
+    entryCount: backup.entries.length
+  });
+
+  // Corrupt bytes have been preserved verbatim, so explicit restore may replace
+  // that known-bad regular file using the verified atomic writer.
+  const result = corruptPrimaryPreserved
+    ? atomicWriteJson(MEMORY_FILE, backup.entries, 'Mira Memory restore')
+    : writeMemory(backup.entries);
+
+  try {
+    jsonStateStore.recordStateAudit('memory_restore_committed', 'success', MEMORY_FILE, {
+      stateHash: result.sha256,
+      entryCount: result.entries,
+      backupIntegrity: backup.integrity,
+      corruptPrimaryPreserved
+    });
+  } catch (error) {
+    error.code = 'MEMORY_RESTORE_COMMITTED_AUDIT_FAILED';
+    error.stateCommitted = true;
+    throw error;
+  }
 
   return {
     success: true,
@@ -263,7 +343,7 @@ function restoreMemory() {
     integrity: backup.integrity,
     sha256: result.sha256,
     source: path.basename(BACKUP_FILE),
-    safetyBackup: path.basename(SAFETY_BACKUP_FILE)
+    safetyBackup: path.basename(safetyBackupPath)
   };
 }
 
@@ -271,6 +351,7 @@ module.exports = {
   MEMORY_FILE,
   BACKUP_FILE,
   SAFETY_BACKUP_FILE,
+  SAFETY_QUARANTINE_FILE,
   sha256,
   entriesHash,
   readMemory,

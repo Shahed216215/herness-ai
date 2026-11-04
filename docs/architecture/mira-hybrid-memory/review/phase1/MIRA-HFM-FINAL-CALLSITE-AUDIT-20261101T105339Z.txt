@@ -1,0 +1,112 @@
+MIRA HFM — FINAL CALLSITE AND STORAGE AUDIT
+MODE=READ_ONLY_OFFLINE
+UTC_TIME=2026-11-01T10:53:39Z
+
+===== services/mira-future-strategy-engine.js =====
+4:  require(
+173:function getAllStrategies(
+336:function getStrategiesForTask(
+363:function getStrategyStats() {
+388:module.exports = {
+
+===== services/mira-cross-task-learning-engine.js =====
+4:  require("./mira-experience-retrieval-engine");
+7:  require("./mira-future-strategy-engine");
+124:function getCrossTaskLearning(
+258:function getCrossTaskLearningStats() {
+280:module.exports = {
+
+===== services/mira-learning-history.js =====
+4:  require("./mira-experience-memory");
+7:  require("./mira-future-strategy-engine");
+294:function listLearningHistory(
+371:function getLearningHistory(
+388:function getLearningHistoryTimeline(
+402:  function addEvent(
+601:function getLearningHistoryDetail(
+662:function getLearningHistoryStats() {
+715:module.exports = {
+
+===== services/mira-experience-memory.js =====
+3:const crypto = require("crypto");
+4:const fs = require("fs");
+5:const path = require("path");
+7:const learningEngine = require("./mira-work-learning-engine");
+297:function getLessons(
+320:function listLessons(
+592:function getExperience(
+613:function listExperiences(
+636:function getExperienceStats() {
+694:module.exports = {
+
+===== PRODUCTION CALLSITE INVENTORY =====
+./routes/conversations.js:11
+./routes/conversations.js:16
+./routes/learning-history.js:10
+./routes/learning-history.js:14
+./services/mira-conversation-memory-engine.js:8
+./services/mira-conversation-response-planner.js:4
+./services/mira-conversation-response-planner.js:7
+./services/mira-cross-task-learning-engine.js:4
+./services/mira-cross-task-learning-engine.js:7
+./services/mira-experience-memory.js:7
+./services/mira-experience-retrieval-engine.js:4
+./services/mira-future-strategy-engine.js:5
+./services/mira-learning-history.js:4
+./services/mira-learning-history.js:7
+./services/mira-opportunity-matching-engine.js:18
+./services/mira-repeat-work-detection-engine.js:12
+./services/mira-repeat-work-detection-engine.js:13
+./services/mira-task-planner.js:12
+./services/mira-work-quality-learning-handoff.js:13
+./tests/stage14-self-improvement-loop-e2e-test.js:31
+./tests/stage62-work-learning-e2e-test.js:51
+./tests/stage623-work-knowledge-consolidation-e2e-test.js:23
+./tests/stage641-experience-memory-foundation-e2e-test.js:12
+./tests/stage641-experience-memory-foundation-e2e-test.js:9
+./tests/stage642-task-approach-result-recording-e2e-test.js:18
+./tests/stage643-feedback-performance-memory-e2e-test.js:11
+./tests/stage643-feedback-performance-memory-e2e-test.js:8
+./tests/stage644-error-correction-memory-e2e-test.js:10
+./tests/stage644-error-correction-memory-e2e-test.js:7
+./tests/stage645-lesson-retrieval-e2e-test.js:12
+./tests/stage645-lesson-retrieval-e2e-test.js:7
+./tests/stage646-future-strategy-engine-e2e-test.js:11
+./tests/stage646-future-strategy-engine-e2e-test.js:16
+./tests/stage646-future-strategy-engine-e2e-test.js:21
+./tests/stage646-strategy-aware-planning-e2e-test.js:12
+./tests/stage646-strategy-aware-planning-e2e-test.js:15
+./tests/stage647-experience-retrieval-e2e-test.js:14
+./tests/stage647-experience-retrieval-e2e-test.js:19
+./tests/stage647-experience-retrieval-e2e-test.js:24
+./tests/stage648-learning-history-foundation-e2e-test.js:14
+./tests/stage648-learning-history-foundation-e2e-test.js:19
+./tests/stage648-learning-history-foundation-e2e-test.js:24
+./tests/stage648-learning-history-query-filtering-e2e-test.js:14
+./tests/stage648-learning-history-query-filtering-e2e-test.js:19
+./tests/stage6483-learning-history-detail-timeline-e2e-test.js:6
+./tests/stage6491-learning-history-api-e2e-test.js:11
+./tests/stage6491-learning-history-api-e2e-test.js:8
+./tests/stage83-conversation-store-test.js:11
+./tests/stage83-conversation-store-test.js:472
+./tests/stage83-conversation-store-test.js:478
+./tests/stage832-conversation-memory-engine-test.js:10
+./tests/stage832-conversation-memory-engine-test.js:7
+./tests/stage833-response-planner-test.js:10
+./tests/stage833-response-planner-test.js:7
+./tests/stage834-conversation-policy-test.js:10
+./tests/stage834-conversation-policy-test.js:7
+./tests/stage836-conversation-full-e2e-test.js:11
+./tests/stage836-conversation-full-e2e-test.js:16
+
+===== STORAGE PATH CONFIGURATION =====
+MIRA_STORAGE_DIR=UNSET
+MIRA_MEMORY_FILE=UNSET
+MIRA_LEARNING_FILE=UNSET
+
+===== SAFETY =====
+LIVE_MEMORY_CONTENT_READ=NO
+LIVE_MEMORY_CONTENT_HASHED=NO
+NETWORK_REQUESTS=0
+PRODUCTION_FILES_MODIFIED=NO
+MIGRATION_OR_RESTORE=NO
