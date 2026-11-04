@@ -320,3 +320,9 @@ MERGE=NOT_APPROVED
 - Added `services/mira-memory-host-identity-contract.js`: exact-shape credential-free verified-principal normalization; namespaced stable actorId; bounded identity fields; expiry/future-time checks; immutable output. It rejects unverified, role-only, unsupported-auth-method, expired, extra-field and credential-bearing inputs.
 - Added `tests/mira-memory-host-identity-contract.test.js` for user-session, separately provisioned admin subject and service principal fixtures, plus negative cases.
 - Wired the new test into the Phase 3 CI workflow. This is a pure contract only: it does not authenticate, inspect request bodies, read users.json, modify sessionIdentity, provision admin IDs, or connect to project registry. CI pending.
+
+39. TRUSTED HOST IDENTITY CONTRACT CI VERIFIED
+- Phase 3 run 41823659126 SUCCESS on commit dc1e54e5f30477ab2e8e7f54855da89a9fa3867e.
+- New host identity suite: TRUSTED_USER_SESSION_SUBJECT_NORMALIZED=PASS; unverified/role-only/expired/credential-bearing principals denied; stable admin/service subjects supported; caller role and missing principal rejected; TESTS_FAILED=0.
+- Existing Phase 3 contract suites also TESTS_FAILED=0. PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- Phase 2 regression run 41823659084 SUCCESS. This remains a synthetic identity normalization contract; runtime sessionIdentity propagation and real admin/service principal provisioning are NOT_IMPLEMENTED.
