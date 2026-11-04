@@ -67,8 +67,10 @@ function createGenesisAnchor({
     authenticity: 'PINNED_HASH_ONLY',
     genesisHash,
     genesis,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    anchorRecordHash: ''
   };
+  envelope.anchorRecordHash = anchorRecordDigest(envelope);
   const payload = JSON.stringify(envelope, null, 2) + '\n';
   const envelopeDigest = crypto.createHash('sha256').update(payload, 'utf8').digest('hex');
   auditWriter({ action: 'hfm_genesis_anchor_create_intent', projectId, chainId, genesisHash, envelopeDigest });
