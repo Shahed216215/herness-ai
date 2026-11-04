@@ -1,0 +1,24 @@
+MIRA HFM v0.2 — PHASE 3 DOMAIN SCOPE REVIEW
+Date: 2026-11-04
+Status: READ-ONLY SOURCE SCHEMA REVIEW
+
+WORK LEARNING — services/mira-work-learning-engine.js
+Observed store: {version, updatedAt, records}. Records use learningId, taskId, executionId, task/plan/execution/QA/result/lesson fields and timestamps. learningId is generated from taskId, executionId, time and random UUID; it is a local record identity, not project authority. The normalized task object has no projectId. planId/taskId are correlation identifiers, not project authority. safeValue redacts secret-like keys and truncates nested values, so that normalized view is not a lossless canonical payload.
+Disposition: BLOCKED. No projectId can be inferred. Require an explicit immutable task/work-item -> project registry and a lossless source snapshot contract.
+
+WORK KNOWLEDGE CONSOLIDATION — services/mira-work-knowledge-consolidation.js
+Observed store: {schemaVersion, engineVersion, updatedAt, items, integrityHash}. Items use id, fingerprint, topic, lesson, candidateType, evidenceCount, firstSeenAt, lastSeenAt, sourceRecords, qaStatuses, confidence, reusable, proposalCreated and proposalId. id is content-fingerprint-derived (wk_ prefix), not immutable source identity. sourceRecords point to learningId/taskId/executionId and QA status, not projectId. Items are derived and deduplicated from Work Learning records.
+Disposition: BLOCKED. Do not map item id directly to canonical memoryId or infer project from taskId. Retain as a derived artifact until source records have authoritative project scope and deterministic provenance.
+
+EXPERIENCE MEMORY — services/mira-experience-memory.js and services/mira-experience-retrieval-engine.js
+Experience Memory is a derived projection over Work Learning. experienceId copies learningId; source contains learningId/taskId/executionId/planId/engine version. The normalized experience includes task, approach, result, feedback, performance, error, correction, lesson and quality fields, but no authoritative projectId. Retrieval is read-only; it is not an independent source identity registry.
+Disposition: BLOCKED. Treat it as a rebuildable derived projection, not a separate legacy namespace. First establish Work Learning project authority, then define projection hashes and scope inheritance.
+
+ACCEPTED PHASE 3 RULE
+- Mapping validator supports only General Memory, Knowledge and CRM Conversation.
+- Work Learning, Work Knowledge Consolidation and Experience Memory remain NOT_MAPPED / BLOCKED.
+- Never infer project scope from taskId, planId, opportunityId, client metadata, content fingerprints or titles.
+- Future admission requires explicit project authority, stable source identity, lossless source preservation or documented derived-projection semantics, source/canonical digests, approval evidence, duplicate policy and positive/negative tests.
+- This review authorizes no migration, production read/write, provider access or runtime integration.
+
+END OF REVIEW
