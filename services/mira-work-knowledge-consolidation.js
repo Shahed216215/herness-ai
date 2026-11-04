@@ -112,9 +112,13 @@ function emptyStore() {
 function normalizeStore(raw) {
   const source = asObject(raw);
 
-  const items = Array.isArray(source.items)
-    ? source.items.slice(0, MAX_ITEMS)
-    : [];
+  if (!Array.isArray(source.items)) {
+    throw new Error("Work knowledge consolidation store items must be an array.");
+  }
+  if (source.items.length > MAX_ITEMS) {
+    throw new Error("Work knowledge consolidation store exceeds the supported item limit; refusing truncation.");
+  }
+  const items = source.items.slice();
 
   return {
     schemaVersion:
