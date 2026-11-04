@@ -44,6 +44,11 @@ for(const [domain,sourceEntry] of cases){
  assert.equal(result.record.integrity.status,'UNVERIFIED');
  assert.equal(result.record.trust.status,'SOURCE_RECORDED');
  assert.equal(result.record.lifecycle,'PENDING_REVIEW');
+ assert.equal(Object.isFrozen(result.record.source),true);
+ assert.equal(Object.isFrozen(result.record.version),true);
+ assert.equal(Object.isFrozen(result.record.access.allowedProjectIds),true);
+ assert.throws(()=>{result.record.access.allowedProjectIds.push('project-other');},TypeError);
+ assert.throws(()=>{result.record.source.sourceId='tampered';},TypeError);
  const envelope=JSON.parse(result.record.content);
  assert.equal(envelope.domain,domain);
  assert.deepEqual(envelope.payload,sourceEntry);
