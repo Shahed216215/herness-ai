@@ -210,6 +210,7 @@ jobs:
           node tests/mira-memory-project-mapping-contract.test.js
           node tests/mira-memory-unified-facade.test.js
           node tests/mira-memory-domain-payload-adapter.test.js
+          node tests/mira-memory-provider-contract.test.js
           node tests/mira-hfm-migration-manifest.test.js
           node tests/mira-hfm-test-registry.test.js
           node tests/mira-hfm-timestamp-profile.test.js
