@@ -82,7 +82,7 @@ try {
   });
   assert.equal(duplicate.status, 'ALREADY_QUEUED');
   assert.equal(duplicate.queueId, queued.queueId);
-  assert.equal(events.length, 2);
+  assert.equal(events.length, 3);
   console.log('FACEBOOK_IMPORT_QUEUE_IDEMPOTENCY_AND_AUDIT_PASS=PASS');
 
   assert.throws(() => enqueueFacebookPageImportReview({
