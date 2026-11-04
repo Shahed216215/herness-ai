@@ -134,9 +134,11 @@ function hasMemoryVersionSnapshots() {
   if (stat.isSymbolicLink() || !stat.isDirectory()) {
     throw new Error('Mira Memory version directory is unsafe.');
   }
-  return fs.readdirSync(directory).some(name => /^[a-zA-Z0-9._-]+\\.json$/.test(name));
+  // The directory is created only when a previous valid state is snapshotted.
+  // Its existence is prior-store evidence even if its contents are now empty.
+  fs.readdirSync(directory);
+  return true;
 }
-
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
@@ -269,6 +271,7 @@ function readMemory() {
     if (!/Mira Memory is missing\.$/.test(error.message)) throw error;
 
     const marker = readInitializationMarker();
+    const versionEvidence = hasMemoryVersionSnapshots();
     try {
       const backup = readBackupFile();
       // A valid backup proves that this store existed, even if its primary is gone.
@@ -276,7 +279,8 @@ function readMemory() {
       return backup.entries;
     } catch (backupError) {
       if (backupError.code === 'ENOENT' || /Memory backup not found/.test(backupError.message)) {
-        if (marker) {
+        if (marker || versionEvidence) {
+          if (!marker) ensureInitializationMarker();
           const missing = new Error(
             'Mira Memory was previously initialized, but both the primary and verified backup are missing; explicit recovery is required.'
           );
