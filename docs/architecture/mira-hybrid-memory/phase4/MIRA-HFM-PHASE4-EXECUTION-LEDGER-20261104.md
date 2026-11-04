@@ -49,3 +49,14 @@ Status: IN PROGRESS
 - This is a public-documentation research baseline only. No app, actor, Page, scope grant, token, app review status or Page task was inspected. No live API request was made.
 - Latest code hardening remains awaiting an observable CI result through the currently available repository status interface; no new PASS is claimed for those added tests.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_PERMISSION_VERIFICATION=NOT_RUN; LIVE_API_TEST=NOT_RUN; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 006 — Phase 3 facade bridge and integration CI
+- Added `services/mira-facebook-page-hfm-adapter.js` to bridge Phase 3 `retrieveCanonicalRecordsWithReport` to Phase 4 manual post preparation.
+- Draft preparation requires one exact Memory ID, HFM eligibility `ELIGIBLE/AUTHORIZED_READ`, matching provenance digest/source/revision, ACTIVE + VERIFIED canonical record, and explicit PUBLIC classification.
+- Draft result is `PREPARED_MANUAL_POST_NO_EXTERNAL_ACTION`; no publishing, persistent write or durable audit emission occurs.
+- Added external-import review wrapper. It returns `REVIEW_CANDIDATE_NOT_PERSISTED`, `PENDING_HUMAN_REVIEW`, and `mayEnterTrustedMemory=false`; no quarantine file or canonical record is written.
+- Added synthetic integration tests for authorized PUBLIC record preparation, private-record rejection, unknown Memory ID rejection, provenance tampering, denied eligibility, and untrusted import boundaries.
+- First integration CI run 41839569641 FAILED at a test-only property-path assertion. Connector suite passed in that run; HFM bridge's first three guards also passed before the assertion. Corrected the assertion from nested `candidate.candidate` to `candidate` in commit cb1c30914a68702c9a02bd97ff62fac4a5e5bf92.
+- CI runs 41839650098 (push) and 41839660905 (pull_request) for corrected commit cb1c3091 were observed IN_PROGRESS at ledger update time. Their final result must be read before declaring integration PASS.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_META_API_CALLS=0; FACEBOOK_POSTS_PUBLISHED=0; PERSISTENT_MEMORY_WRITES=0.
