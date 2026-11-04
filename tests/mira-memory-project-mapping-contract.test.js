@@ -16,7 +16,11 @@ function make(overrides = {}) {
  value.mappingDigest=digest(bodyOf(value));
  return value;
 }
-const verifier = evidence => evidence.approvalReference === 'APPROVAL-FIXTURE-001' && evidence.approvedBy === 'human-approver-fixture';
+const verifier = evidence => ({
+ decision:'APPROVED',approvalReference:evidence.approvalReference,mappingDigest:evidence.mappingDigest,
+ projectId:evidence.projectId,approvedBy:evidence.approvedBy,approvedAt:evidence.approvedAt,
+ registryRevision:'fixture-registry-rev-01',revocationStatus:'ACTIVE',verifiedAt:'2026-11-04T11:59:30.000Z'
+});
 const mapping=make();
 assert.equal(validateProjectMapping({mapping,expectedDomain:'knowledge',expectedProjectId:'project-fixture-01',expectedSourceFileDigest:'a'.repeat(64),verifyApproval:verifier,now}).mappingId,mapping.mappingId);
 console.log('APPROVED_MAPPING_VALIDATION_PASS=PASS');
@@ -29,8 +33,14 @@ for(const patch of [
 console.log('UNAPPROVED_AND_INVALID_MAPPING_REJECTED=PASS');
 assert.throws(()=>validateProjectMapping({mapping:make(),verifyApproval:undefined,now}),/Trusted approval verifier/);
 console.log('MISSING_TRUSTED_APPROVAL_VERIFIER_REJECTED=PASS');
-assert.throws(()=>validateProjectMapping({mapping:make(),verifyApproval:()=>false,now}),/could not be independently verified/);
+assert.throws(()=>validateProjectMapping({mapping:make(),verifyApproval:()=>false,now}),/invalid evidence shape/);
 console.log('UNVERIFIED_APPROVAL_REJECTED=PASS');
+assert.throws(()=>validateProjectMapping({mapping,verifyApproval:e=>({...verifier(e),revocationStatus:'REVOKED'}),now}),/denied or revoked/);
+console.log('REVOKED_APPROVAL_REJECTED=PASS');
+assert.throws(()=>validateProjectMapping({mapping,verifyApproval:e=>({...verifier(e),projectId:'project-other'}),now}),/Approval evidence binding mismatch: projectId/);
+console.log('APPROVAL_PROJECT_SUBSTITUTION_REJECTED=PASS');
+assert.throws(()=>validateProjectMapping({mapping,verifyApproval:e=>({...verifier(e),verifiedAt:'2026-11-04T12:01:00.000Z'}),now}),/invalid or future-dated/);
+console.log('FUTURE_APPROVAL_VERIFICATION_REJECTED=PASS');
 const tamperedMapping=make();
 tamperedMapping.mappingDigest='0'.repeat(64);
 assert.throws(()=>validateProjectMapping({mapping:tamperedMapping,verifyApproval:verifier,now}),/digest mismatch/);
