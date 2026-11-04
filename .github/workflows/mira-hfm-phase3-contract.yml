@@ -11,6 +11,8 @@ on:
       - 'tests/mira-memory-project-mapping-contract.test.js'
       - 'services/mira-memory-unified-facade.js'
       - 'services/mira-memory-domain-payload-adapter.js'
+      - 'services/mira-memory-provider-contract.js'
+      - 'tests/mira-memory-provider-contract.test.js'
       - 'tests/mira-memory-domain-payload-adapter.test.js'
       - 'tests/mira-memory-unified-facade.test.js'
       - '.github/workflows/mira-hfm-phase3-contract.yml'
@@ -37,6 +39,7 @@ jobs:
           node tests/mira-memory-project-mapping-contract.test.js
           node tests/mira-memory-unified-facade.test.js
           node tests/mira-memory-domain-payload-adapter.test.js
+          node tests/mira-memory-provider-contract.test.js
       - name: Report isolation boundary
         run: |
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
