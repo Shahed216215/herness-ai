@@ -29,6 +29,7 @@ const restoreTool = require('../tools/memory-restore');
 async function main() {
   try {
     assert.deepEqual(memory.getMemory(), []);
+    assert.equal(fs.existsSync(store.INITIALIZATION_FILE), false);
 
     memory.addMemory({ role: 'user', content: 'fixture-one' });
     memory.addMemory('assistant', 'fixture-two');
@@ -38,6 +39,12 @@ async function main() {
     assert.equal(entries.length, 2);
     assert.equal(entries[0].content, 'fixture-one');
     assert.equal(entries[1].content, 'fixture-two');
+    assert.equal(fs.existsSync(store.INITIALIZATION_FILE), true);
+
+    // A legacy existing primary without a marker is marked only after a valid read.
+    fs.unlinkSync(store.INITIALIZATION_FILE);
+    assert.equal(memory.getMemory().length, 2);
+    assert.equal(fs.existsSync(store.INITIALIZATION_FILE), true);
 
     // A previous valid state is retained as an immutable version before replacement.
     const versionsDir = store.MEMORY_FILE + '.versions';
@@ -65,7 +72,14 @@ async function main() {
     fs.unlinkSync(store.MEMORY_FILE);
     const recoveredRead = memory.getMemory();
     assert.equal(recoveredRead.length, 2);
-    memory.addMemory('user', 'fixture-after-primary-loss');
+    assert.throws(
+      () => memory.addMemory('user', 'must-require-explicit-restore'),
+      /explicit verified restore is required/i
+    );
+    const missingPrimaryRestore = JSON.parse(await restoreTool.execute({ confirm: true }));
+    assert.equal(missingPrimaryRestore.success, true);
+    assert.equal(memory.getMemory().length, 2);
+    memory.addMemory('user', 'fixture-after-primary-recovery');
     assert.equal(memory.getMemory().length, 3);
 
     // Corrupt JSON must throw and must not be silently converted to [].
@@ -108,6 +122,21 @@ async function main() {
     backup.entryCount = backup.entries.length;
     fs.writeFileSync(store.BACKUP_FILE, JSON.stringify(backup));
     assert.throws(() => store.validateBackup(backup), /SHA-256/i);
+    assert.throws(() => memory.getMemory(), /backup SHA-256 integrity/i);
+
+    // A previously initialized store with neither primary nor valid backup
+    // must never degrade into a first-run empty Memory database.
+    fs.unlinkSync(store.BACKUP_FILE);
+    assert.throws(() => memory.getMemory(), /previously initialized/i);
+    assert.throws(
+      () => memory.addMemory('user', 'must-not-reinitialize'),
+      /previously initialized/i
+    );
+
+    const marker = JSON.parse(fs.readFileSync(store.INITIALIZATION_FILE, 'utf8'));
+    marker.sha256 = '0'.repeat(64);
+    fs.writeFileSync(store.INITIALIZATION_FILE, JSON.stringify(marker), { mode: 0o600 });
+    assert.throws(() => memory.getMemory(), /initialization marker integrity/i);
 
     // Legacy v1 is recognized but explicitly not checksum-verified.
     const legacy = {
