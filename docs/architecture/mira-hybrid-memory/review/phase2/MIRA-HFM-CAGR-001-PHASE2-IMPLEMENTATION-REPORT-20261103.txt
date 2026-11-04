@@ -524,3 +524,27 @@ GitHub Actions run 41764593311 (run 362), job 126359878939, completed SUCCESS on
 - TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
 
 This closes the identified proposal-state read/write hardening gap only. It does not establish universal retrieval exclusion or production integration of the isolated conflict-quarantine lifecycle.
+
+
+16. CONVERSATION STORE PERSISTENCE HARDENING — VERIFIED BY RUN 369
+
+The retrieval-path audit identified conversation-store.js as a separate persistent context subsystem. Its prior implementation initialized state with a direct write, loaded JSON without lstat/symlink validation, and saved through a predictable temporary filename without canonical atomic-write or state-audit evidence.
+
+The implementation now:
+- validates the conversation store as an object containing conversations/messages/contexts arrays;
+- initializes only a genuinely missing file through the verified atomic JSON writer;
+- rejects symlink, non-regular, empty, malformed and structurally invalid store files;
+- revalidates the existing store before a direct save, preventing a caller from overwriting a corrupt or unsafe current state;
+- writes through mira-json-state-store.atomicWriteJson and records a committed-state audit event with SHA-256 and record counts;
+- sets stateCommitted=true if the audit fails after the atomic state commit.
+
+A new isolated regression test uses a temporary MIRA_STORAGE_DIR and verifies atomic initialization/write, audit creation, malformed-state fail-closed behavior, direct overwrite refusal, and symlink rejection without following the external target.
+
+GitHub Actions run 41764989142 (run 369), job 126361148970, completed SUCCESS on commit ef000e938b80d91c8742845750e1f70ead2c4591. Explicit log evidence:
+- CONVERSATION_STORE_CORRUPT_STATE_FAILS_CLOSED=PASS
+- CONVERSATION_STORE_SYMLINK_REJECTED=PASS
+- CONVERSATION_STORE_ATOMIC_INITIALIZATION=PASS
+- CONVERSATION_STORE_ATOMIC_WRITE_AND_AUDIT=PASS
+- TESTS_FAILED=0; PRODUCTION_CONVERSATIONS_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This hardens conversation-store persistence but does not yet make conversation records conflict-registry-aware or establish universal retrieval exclusion. The existing conversation store's concurrency arbitration is also not qualified by this test; U04 remains an open design/implementation boundary.
