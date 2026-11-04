@@ -313,3 +313,33 @@ Scope limits:
 - U04 provider append arbitration and durable acknowledgement remain NOT_ESTABLISHED.
 - The verifier is not integrated with audit-log.js or production audit storage.
 - U06 strict timestamp handling is implemented only within this verifier prototype; the global Memory/audit profile remains unapproved.
+
+
+13. CONTRACT-ALIGNED CONFLICT RESOLUTION AND FAIL-CLOSED HARDENING — VERIFIED BY RUN 270
+
+The isolated conflict quarantine registry now uses the five outcome labels specified by MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.4 Section 30:
+- ACCEPT_EXISTING_VERSION
+- ACCEPT_ALTERNATE_VERSION
+- APPROVED_FIELD_MERGE
+- REJECT_CONFLICTING_CHANGE
+- RETAIN_QUARANTINED
+
+The resolution record captures the selected original index/digest where applicable. Multi-original conflicts are preserved; malformed/failed-integrity originals can be quarantined without pretending they pass the canonical Memory schema. RETAIN_QUARANTINED remains excluded by the isolated trusted-record filter. Conflict IDs are format-validated before path construction. Resolution is blocked unless the conflict envelope verifies. Malformed resolution envelopes and malformed original entries fail closed.
+
+GitHub Actions run 41678434475 (run 270), job 126065246796, completed SUCCESS on PR head commit 71914e7e20bb74e36beaec887f4eea20cf019587. The job log explicitly confirms:
+- GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS
+- GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS
+- GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS
+- GOVERNED_RETAIN_QUARANTINED=PASS
+- GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS
+- MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS
+- FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS
+- MALFORMED_ORIGINAL_PRESERVATION=PASS
+- INVALID_CONFLICT_ID_PATH_TRAVERSAL_REJECTED=PASS
+- MALFORMED_RESOLUTION_FAIL_CLOSED=PASS
+- TESTS_FAILED=0
+- RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS
+- RESULT=PHASE2_INDEPENDENT_AUDIT_CHAIN_VERIFIER_ISOLATED_PASS
+- PRODUCTION_MEMORY_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0.
+
+This closes the isolated registry outcome-contract test gap. It does not close application integration: the callsite matrix still shows Local Memory, Knowledge, Evolution and public retrieval/write paths are not universally wired to this registry. Provider-level atomicity, production retrieval exclusion, and the DR08 U03/U04/U05/U06/E-15 implementation approvals remain separate gates.
