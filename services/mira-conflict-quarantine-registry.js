@@ -656,6 +656,7 @@ function filterTrustedRecords(records, pendingConflicts, projectId) {
     .flatMap(item => item.originalMemoryIds || []));
   return records.filter(record =>
     record &&
+    validateCanonicalMemoryRecord(record).length === 0 &&
     record.projectId === projectId &&
     record.lifecycle === 'ACTIVE' &&
     record.integrity?.status === 'VERIFIED' &&
