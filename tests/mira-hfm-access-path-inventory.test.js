@@ -84,11 +84,11 @@ assert.deepEqual(categoryCounts,{
  WORK_LEARNING_OR_EXPERIENCE_READ:28,
  WORK_KNOWLEDGE_READ:6,
  ALIASED_DOMAIN_READ:0,
- NAMESPACE_DOMAIN_READ:54,
+ NAMESPACE_DOMAIN_READ:81,
  CANONICAL_STORE_FILE_BACKED_READ:3
 },'repository access-path inventory drifted; review all new/removed candidates before updating baseline');
-assert.equal(repositoryInventory.length,299,'repository lexical candidate total changed; semantic review required');
+assert.equal(repositoryInventory.length,326,'repository lexical candidate total changed; semantic review required');
 console.log('REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS');
-console.log('REPOSITORY_ACCESS_PATH_CANDIDATE_COUNT=299');
+console.log('REPOSITORY_ACCESS_PATH_CANDIDATE_COUNT=326');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_ACCESS_PATH_INVENTORY_TEST_PASS');
