@@ -30,3 +30,13 @@ Status: IN PROGRESS
 - PERSISTENT_MEMORY_WRITES=0
 - No secrets, credentials or private Page content used.
 - No production migration, PR merge or deployment.
+
+
+## Entry 004 — Offline boundary hardening follow-up
+- Re-reviewed the current connector implementation and CI job log from run 41838001888 (job 126601831195). The log confirms the connector suite and provider capability suite both completed with TESTS_FAILED=0; LIVE_META_API_CALLS=0, FACEBOOK_POSTS_PUBLISHED=0 and PERSISTENT_MEMORY_WRITES=0.
+- Hardened Facebook post URL validation to reject URL userinfo and non-standard HTTPS ports, in addition to existing host allowlisting, HTTPS-only, fragment rejection and Page ID binding.
+- Added regression cases for stale, future-dated and cross-operation permission evidence; each resolves to UNKNOWN. Added explicit RATE_LIMITED / UNAVAILABLE preservation and manual-fallback disable/type validation.
+- Added URL-origin spoofing regression cases for userinfo, non-standard port and lookalike host suffix.
+- Follow-up CI is triggered by the latest branch push. Its result must be recorded from the actual Actions run before these additions are marked PASS.
+- No live Meta/Facebook calls, credentials, publishing, external reads or persistent Memory writes were used.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; PRODUCTION_READINESS=NOT_CERTIFIED.
