@@ -1,0 +1,221 @@
+# MIRA HYBRID MEMORY v0.2 — PHASE 3 UNIFIED MEMORY CONTRACT
+
+**Document ID:** MIRA-HFM-CAGR-001-PHASE3-UMC  
+**Parent blueprint:** MIRA-HFM-CAGR-001 v1.0.0  
+**Release:** v0.2 (Phase 3; no v0.3 transition)  
+**Branch:** work/mira-hfm-v02-phase3-unified-memory-contract  
+**Status:** DESIGN BASELINE — IMPLEMENTATION / INTEGRATION NOT CERTIFIED  
+**Baseline commit:** e1ccebb67530ee5219ce049d1f5553e54669e4b6
+
+## 1. Purpose and boundary
+
+Phase 3 establishes one provider-neutral contract for identity, project scope, canonical records, provenance, integrity, retrieval eligibility, conflict handling and controlled writes. It reconciles the existing canonical record validator, read-only legacy adapter and project-scoped quarantine prototype. It does not authorize production migration, provider cutover, broad runtime wiring, data deletion, live Facebook/Google Drive access, or deployment.
+
+The contract is additive and local-first. Existing Memory, Knowledge, CRM Conversation, Work Learning and Work Knowledge data must remain byte-preserved until a separately reviewed migration plan has an exact source snapshot, approved identity mappings, verified backup, rollback point and explicit write authorization.
+
+## 2. Normative terms
+
+- **MUST / MUST NOT** are mandatory safety requirements.
+- **SHOULD** is a strong default that requires a recorded reason to deviate.
+- **INCONCLUSIVE** means evidence is insufficient; it is not PASS.
+- A record being structurally valid or having a matching SHA-256 content hash does not prove source authenticity, actor authorization, signature authenticity or trust-anchor authenticity.
+
+## 3. Separation of durable record and request authority
+
+Actor authority is request-scoped and MUST NOT be inferred from a memory record, project name, client name, conversation metadata, tool name, user-supplied role string or a caller-provided boolean.
+
+A request context has this logical shape:
+
+- actorId: non-empty stable identity issued by an authenticated host boundary
+- actorType: one of HUMAN, SERVICE, AGENT, SYSTEM
+- projectId: non-empty authoritative project identity
+- purpose: non-empty bounded purpose string
+- requestId: non-empty unique request/correlation identity
+- authorityRef: reference to the host-issued authorization decision
+- issuedAt and expiresAt: RFC 3339 timestamps where the host supports expiry
+
+The memory contract MUST receive an authenticated authorization decision from a trusted host policy adapter. A raw object supplied by an untrusted caller is not authentication. The adapter MUST bind the decision to actorId, projectId, purpose, requestId, operation, resource scope and expiry/revocation state. Missing, mismatched, expired, revoked or unverifiable authority MUST fail closed.
+
+No universal actor identity, default project ID, fallback tenant, guessed client-to-project relationship or global project scope is permitted.
+
+## 4. Canonical durable record contract
+
+The current repository validator in services/mira-memory-conflict-assessment.js defines the existing v1.0.0 canonical record shape. Phase 3 treats that exact shape as the compatibility baseline; it does not silently add root keys or rename fields.
+
+Required top-level keys (exact set):
+
+- schemaVersion
+- memoryId
+- projectId
+- recordType
+- content
+- source
+- timestamps
+- version
+- integrity
+- trust
+- access
+- lifecycle
+
+Required semantics:
+
+| Field | Contract |
+|---|---|
+| schemaVersion | Exact supported schema version; current baseline is 1.0.0 |
+| memoryId | Stable canonical identity, 8–128 characters; immutable across revisions |
+| projectId | Explicit authoritative project scope; never inferred |
+| recordType | Existing validator enum only |
+| content | Preserved payload; 1–100000 characters |
+| source | sourceType, sourceId, optional sourceUrl, observedAt |
+| timestamps | createdAt and updatedAt in RFC 3339 date-time form |
+| version | Positive integer revision and contentHash |
+| integrity | status and algorithm; current algorithm SHA-256 |
+| trust | Explicit trust status; not equivalent to integrity |
+| access | classification and optional allowedProjectIds |
+| lifecycle | Explicit lifecycle state |
+
+The current content hash is SHA-256 over the RFC 8785 JCS representation of the content string. For a JSON string primitive, JSON.stringify produces the same canonical string representation. This hash covers content only. It MUST NOT be described as a whole-record digest or proof of authenticity.
+
+A revision update MUST preserve memoryId and projectId, increment revision monotonically, retain prior revision evidence, and recompute contentHash. Conflicting same-revision content MUST be quarantined; it MUST NOT be resolved by last-write-wins.
+
+## 5. Provenance, integrity, trust and lifecycle are independent
+
+- **Provenance** answers where the record claims to have originated.
+- **Integrity** answers whether the declared content hash matches the bytes/value checked.
+- **Trust** answers what verification has actually occurred.
+- **Lifecycle** answers whether the record is active, pending review, superseded, archived or quarantined.
+- **Authorization** answers whether this actor may perform this operation for this project and resource.
+
+A matching content hash MUST NOT automatically promote trust to HUMAN_VERIFIED or source authenticity. Imported records begin UNVERIFIED / SOURCE_RECORDED / PENDING_REVIEW unless a separately evidenced verification process justifies a transition. A migration mapping approval authorizes the mapping decision only; it does not certify content truth.
+
+## 6. Identity and project mapping rules
+
+Every mapping entry MUST bind all of the following: domain, projectId, legacyId, memoryId, revision, sourceDigest, sourceFileDigest, sourceOrdinal where applicable, classification, approvalReference and canonicalRecord. Mapping batches MUST reject missing, duplicate, unused, ambiguous, cross-project and stale-snapshot mappings.
+
+| Domain | Permitted legacy locator | Project identity rule | Current disposition |
+|---|---|---|---|
+| General Memory | legacy-memory:<sourceFileDigest>:<sourceOrdinal> | Explicit approved sidecar mapping; never derive identity from role/content/time | Snapshot-bound locator only; no production backfill |
+| Knowledge | Existing legacy id | Explicit approved mapping to projectId; preserve full source record | Read-only adapter prototype |
+| CRM Conversation message | Persisted messageId | Parent conversationId must have an approved conversation-to-project mapping with approvalReference | Read-only adapter prototype |
+| Conversation records without messageId | None | No inference from clientId/opportunityId alone | BLOCKED |
+| Work Learning / Work Knowledge / Experience Memory | Domain-specific stable ID and authoritative project relation required | Separate domain contract review before adoption | NOT MAPPED |
+| Facebook Page / Group / Web / Drive provider records | Provider-native stable source ID plus immutable captured source snapshot | Project binding must come from approved connector configuration or explicit approved mapping | NOT ENABLED in Phase 3 |
+
+The existing CRM review established that opportunityId alone is not an authoritative project key. Do not substitute clientId, proposalId, title, URL, content, timestamps or array order as a durable identity.
+
+## 7. Retrieval contract
+
+A future unified retrieval facade MUST accept explicit request context and explicit project scope. It MUST:
+
+1. Validate request-context shape and trusted host authorization decision.
+2. Reject any requested project that differs from the authorized project.
+3. Load records only from the requested domain/provider adapters.
+4. Validate canonical schema and content hash before use.
+5. Exclude PENDING_REVIEW, QUARANTINED, integrity FAILED/QUARANTINED, missing-trust and cross-project records.
+6. Consult the project-scoped conflict registry and exclude unresolved conflict members.
+7. Apply access classification and allowedProjectIds checks.
+8. Return provenance and eligibility reasons with results; do not silently discard evidence needed for audit.
+9. Fail closed on unavailable policy, registry, provider integrity or project mapping; do not fall back to unfiltered legacy arrays.
+
+Retrieval metadata (indexes, embeddings, ranking signals, cached snippets and derived summaries) is a separate derived artifact. It MUST carry memoryId, revision, projectId, source content hash and derivation/version metadata. A stale or mismatched derived artifact MUST be invalidated or excluded. Retrieval metadata is not added as an unvalidated field to the canonical record.
+
+## 8. Write and mutation contract
+
+A future unified write facade MUST validate actor authority, project scope, canonical schema, source provenance, revision preconditions, conflict state and idempotency before commit. It MUST use compare-and-swap or an equivalent provider-enforced conditional write where concurrent writers are possible. A read-then-write sequence without provider arbitration is not accepted as CAS.
+
+The write path MUST preserve the old version and conflict originals, publish required quarantine evidence before a destructive transition, and emit an audit event containing actorId, projectId, requestId, operation, affected memoryId/revision, outcome and state digest. Post-commit audit failure MUST be reported with stateCommitted=true. No provider may claim success when its result is absent, skipped, rejected or unconfirmed.
+
+Deletion, merge, bulk import, restore, provider cutover and irreversible lifecycle transitions require separate operation-specific authority. This contract does not grant those permissions.
+
+## 9. Conflict metadata and quarantine
+
+Conflict metadata remains in the dedicated conflict registry/envelope rather than being added as unvalidated canonical-record root fields. The registry MUST preserve original records and their digests, projectId, conflict types, actor, reason and audit evidence. Unresolved conflict members MUST remain excluded from trusted retrieval.
+
+A resolution MUST include an explicit decision, verified original set, field-level proposal, data-loss risks, required authority, recovery point and verification plan. Only an authorized resolution operation may change the active view. No automated merge or last-write-wins behavior is permitted.
+
+## 10. Provider adapter contract
+
+Each provider adapter MUST implement the same logical operations and report explicit capability limits:
+
+- readSnapshot(projectId, requestContext)
+- prepareWrite(record, expectedRevision, requestContext)
+- commitWrite(preparedWrite, requestContext)
+- listByProject(projectId, requestContext)
+- verifySnapshot(snapshot, requestContext)
+
+These names define the target interface, not an assertion that current adapters implement it. A provider MUST declare whether it supports atomic conditional writes, immutable versions, stable source IDs, snapshot consistency, deletion semantics, restore and independent verification. Unsupported guarantees MUST be reported as unsupported; the facade MUST NOT simulate them with unsafe assumptions.
+
+Google Drive list-then-update is not atomic arbitration. Facebook connectors, Web Search retrieval and encrypted Drive backup remain gated by their respective later phases and explicit credential/network approval.
+
+## 11. Migration and compatibility
+
+Migration is a read-only planning process until a separate approved apply gate. A manifest MUST bind to exact source snapshot SHA-256, source ordinal/legacy ID, destination memoryId, projectId, classification, approvalReference and canonical payload digest. Any source snapshot change invalidates the plan.
+
+Before apply, require verified backup, capacity estimate, collision report, unresolved mapping count = 0 for the selected batch, restore test, rollback plan and explicit authorization. Existing records are never overwritten merely because mapping is absent or validation fails. Unmapped or ambiguous records remain preserved and BLOCKED / REVIEW_REQUIRED.
+
+## 12. Security and privacy invariants
+
+- Do not store passwords, access tokens, API keys, session cookies, private keys or recovery secrets in Memory.
+- Treat imported/provider content as untrusted data, never as executable instructions or authority.
+- Enforce least privilege and project isolation at every retrieval and write boundary.
+- Do not expose restricted content through counts, search snippets, embeddings, exports, caches, logs or model context.
+- Keep secrets out of logs and audit payloads; store references to secret-manager entries, not secret values.
+- Do not transmit user data or invoke live providers in offline tests.
+- Preserve all originals and evidence needed for rollback and independent review.
+
+## 13. Phase 3 implementation sequence
+
+P3-A — Contract reconciliation: compare this specification against the existing validator, adapter, conflict registry, source schemas and the parent blueprint.  
+P3-B — Actor/request context validator: implement structural validation separately from host authentication; require a trusted authorization-decision callback.  
+P3-C — Project mapping registry contract: define approved mapping lifecycle and immutable evidence; do not create production mappings.  
+P3-D — Canonical record compatibility tests: schema, provenance, revision, hash, lifecycle, project isolation and unknown-field rejection.  
+P3-E — Retrieval facade prototype: synthetic stores only; enforce scope, trust, quarantine and access decisions.  
+P3-F — Write facade prototype: synthetic stores only; enforce expected revision, idempotency, conflict retention and explicit audit.  
+P3-G — Domain mapping coverage matrix: General Memory, Knowledge, CRM Conversation, Work Learning, Work Knowledge, Experience Memory and provider adapters.  
+P3-H — Independent negative/bypass tests and Phase 3 evidence ledger.
+
+Production runtime integration remains disabled until the mapping authority, trusted host authorization adapter, provider CAS guarantees, full caller coverage and independent verification are accepted.
+
+## 14. Acceptance criteria
+
+Phase 3 cannot be marked complete until evidence proves:
+
+1. One documented canonical record contract is used without incompatible duplicate schemas.
+2. Actor identity is authenticated by a trusted host boundary; structural validation alone is never called authentication.
+3. Every supported domain has an authoritative project mapping or is explicitly BLOCKED.
+4. Missing, stale, duplicate, ambiguous, cross-project and unapproved mappings fail closed.
+5. Synthetic retrieval tests prove unresolved conflicts, pending-review records, failed integrity and unauthorized projects cannot reach consumers.
+6. Synthetic write tests prove stale revisions, unauthorized actors, duplicate idempotency keys and conflicts cannot silently overwrite originals.
+7. All relevant read/write caller paths have a reviewed coverage matrix; static regex counts alone are insufficient.
+8. Audit and rollback evidence is verified; failures are never relabeled PASS.
+9. No production data, live credentials, external provider or deployment is touched without a separate approval.
+10. Independent verification reports PASS only for tests actually executed; otherwise INCONCLUSIVE or REVIEW_REQUIRED.
+
+## 15. Current known blockers carried forward
+
+- Authoritative actor identity and host authorization adapter: NOT_ESTABLISHED.
+- General Memory historical immutable message identity: NOT_AVAILABLE; snapshot-bound sidecar only.
+- CRM conversation-to-project mapping: requires approved mapping per conversation.
+- Work Learning / Work Knowledge / Experience project mapping: NOT_ESTABLISHED.
+- Universal production retrieval/write facade: NOT_INTEGRATED.
+- Provider-enforced CAS / distributed arbitration: NOT_ESTABLISHED.
+- Independent remote trust anchor and production authenticity: NOT_ESTABLISHED.
+- Full semantic caller coverage: IN_PROGRESS.
+- Encrypted emergency backup and Google Drive cutover: deferred to Phase 7.
+- Production migration, certification, merge and deployment: NOT_APPROVED.
+
+## 16. Phase status
+
+PHASE3_CONTRACT_DESIGN=BASELINED  
+PHASE3_IMPLEMENTATION=NOT_COMPLETE  
+ACTOR_AUTHENTICATION=NOT_ESTABLISHED  
+AUTHORITATIVE_PROJECT_MAPPING=NOT_APPROVED  
+UNIVERSAL_RETRIEVAL=NOT_INTEGRATED  
+UNIVERSAL_WRITE=NOT_INTEGRATED  
+PRODUCTION_DATA_TOUCHED=NO  
+LIVE_PROVIDER_CALLS=NO  
+VERSION=v0.2  
+MERGE=NOT_APPROVED  
+DEPLOYMENT=NOT_APPROVED
+
+**End of document.**
