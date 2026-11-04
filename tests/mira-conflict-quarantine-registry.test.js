@@ -30,7 +30,7 @@ function record(overrides = {}) {
 }
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-conflict-registry-'));
 const authorizeAccess = () => true;
-const actorContext = { actorId: 'fixture-actor', purpose: 'isolated-test', requestId: 'request-fixture-001' };
+const actorContext = { actorId: 'fixture-actor', projectId: 'project-a', purpose: 'isolated-test', requestId: 'request-fixture-001' };
 const auditEvents = [];
 const auditWriter = event => { auditEvents.push(event); };
 const authorizeResolution = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-') && request.resolutionProposal?.requiredAuthority === 'authorized-human-reviewer';
