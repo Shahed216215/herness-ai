@@ -34,7 +34,13 @@ try {
   engine.saveStore({ version: 1, records: initialRecords });
   assert.equal(engine.loadStore().records.length, engine.MAX_RECORDS);
   assert.ok(fs.statSync(learningFile).mode & 0o100000);
+  const auditEntries = JSON.parse(fs.readFileSync(process.env.MIRA_AUDIT_FILE, 'utf8'));
+  assert.ok(auditEntries.some(entry =>
+    entry.action === 'work_learning_store_write_committed' &&
+    entry.status === 'success'
+  ));
   console.log('WORK_LEARNING_STORE_ATOMIC_WRITE=PASS');
+  console.log('WORK_LEARNING_STORE_COMMIT_AUDIT=PASS');
 
   engine.persistLearningRecord({ learningId: 'newest-record' });
   const afterCapacity = engine.loadStore();
@@ -56,12 +62,20 @@ try {
   console.log('WORK_LEARNING_OVERFLOW_REJECTED_WITHOUT_TRUNCATION=PASS');
 
   fs.writeFileSync(learningFile, '{bad json', 'utf8');
+  const corruptBytes = fs.readFileSync(learningFile, 'utf8');
   assert.throws(() => engine.loadStore(), /contains invalid JSON/);
+  assert.throws(() => engine.saveStore({ version: 1, records: [] }), /contains invalid JSON/);
+  assert.equal(fs.readFileSync(learningFile, 'utf8'), corruptBytes);
   console.log('WORK_LEARNING_CORRUPT_JSON_FAILS_CLOSED=PASS');
+  console.log('WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_CORRUPT=PASS');
 
   fs.writeFileSync(learningFile, ' ', 'utf8');
+  const emptyBytes = fs.readFileSync(learningFile, 'utf8');
   assert.throws(() => engine.loadStore(), /empty and may be corrupted/);
+  assert.throws(() => engine.saveStore({ version: 1, records: [] }), /empty and may be corrupted/);
+  assert.equal(fs.readFileSync(learningFile, 'utf8'), emptyBytes);
   console.log('WORK_LEARNING_EMPTY_EXISTING_STORE_FAILS_CLOSED=PASS');
+  console.log('WORK_LEARNING_DIRECT_SAVE_CANNOT_OVERWRITE_EMPTY=PASS');
 
   fs.writeFileSync(learningFile, JSON.stringify({ version: 1, records: {} }), 'utf8');
   assert.throws(() => engine.loadStore(), /object with a records array/);
