@@ -7,6 +7,9 @@ on:
     paths:
       - 'services/mira-memory-conflict-assessment.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
+      - 'tests/mira-hfm-knowledge-drive-retry.test.js'
+      - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - 'tests/mira-hfm-memory-version-recovery-policy.test.js'
       - 'tests/mira-knowledge-cleanup-tool-boundary.test.js'
       - 'tests/mira-hfm-admin-backup-restore-authority.test.js'
       - 'tests/mira-hfm-conversation-route-contract.test.js'
@@ -53,6 +56,9 @@ jobs:
       - name: Run isolated request authorization contract tests
         run: |
           set -euo pipefail
+          node tests/mira-hfm-knowledge-drive-retry.test.js
+          node tests/mira-legacy-memory-knowledge-adapter.test.js
+          node tests/mira-hfm-memory-version-recovery-policy.test.js
           node tests/mira-memory-conflict-assessment.test.js
           node tests/mira-knowledge-cleanup-tool-boundary.test.js
           node tests/mira-hfm-admin-backup-restore-authority.test.js
