@@ -11,6 +11,10 @@ const DOMAIN_SOURCE_SYSTEM = Object.freeze({
 const DOMAINS = new Set(Object.keys(DOMAIN_SOURCE_SYSTEM));
 const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
 const STATUSES = new Set(['PENDING_REVIEW', 'APPROVED', 'REVOKED']);
+const APPROVAL_EVIDENCE_KEYS = [
+  'decision', 'approvalReference', 'mappingDigest', 'projectId', 'approvedBy',
+  'approvedAt', 'registryRevision', 'revocationStatus', 'verifiedAt'
+];
 const KEYS = [
   'schemaVersion', 'mappingId', 'domain', 'sourceSystem', 'sourceFileDigest',
   'sourceOrdinal', 'legacyId', 'memoryId', 'projectId', 'parentConversationId', 'clientId', 'revision',
@@ -123,7 +127,21 @@ function validateProjectMapping({
     approvedBy: mapping.approvedBy, approvedAt: mapping.approvedAt,
     mappingDigest: mapping.mappingDigest
   }));
-  if (approval !== true) throw new Error('Mapping approval could not be independently verified.');
+  if (!object(approval) || Object.keys(approval).length !== APPROVAL_EVIDENCE_KEYS.length ||
+      APPROVAL_EVIDENCE_KEYS.some(key => !Object.prototype.hasOwnProperty.call(approval, key))) {
+    throw new Error('Trusted approval verifier returned an invalid evidence shape.');
+  }
+  if (approval.decision !== 'APPROVED' || approval.revocationStatus !== 'ACTIVE') {
+    throw new Error('Mapping approval is denied or revoked.');
+  }
+  for (const key of ['approvalReference', 'mappingDigest', 'projectId', 'approvedBy', 'approvedAt']) {
+    if (approval[key] !== mapping[key]) throw new Error('Approval evidence binding mismatch: ' + key + '.');
+  }
+  text(approval.registryRevision, 'approval registryRevision');
+  timestamp(approval.verifiedAt, 'approval verifiedAt');
+  if (Date.parse(approval.verifiedAt) < Date.parse(mapping.approvedAt) || Date.parse(approval.verifiedAt) > nowMs) {
+    throw new Error('Approval verification timestamp is invalid or future-dated.');
+  }
   return Object.freeze({ ...mapping });
 }
 function validateProjectMappings({ mappings, expectedDomain, expectedProjectId, expectedSourceFileDigest, verifyApproval, now }) {
@@ -145,4 +163,4 @@ function validateProjectMappings({ mappings, expectedDomain, expectedProjectId, 
   }
   return Object.freeze(validated);
 }
-module.exports = { validateProjectMapping, validateProjectMappings, digest, bodyOf, DOMAINS };
+module.exports = { validateProjectMapping, validateProjectMappings, digest, bodyOf, DOMAINS, APPROVAL_EVIDENCE_KEYS };
