@@ -492,3 +492,12 @@ The autonomous-apply flow still has its existing Google Drive sync behavior when
 Created MIRA-HFM-CAGR-001-PHASE2-ADJACENT-PERSISTENCE-BOUNDARY-AUDIT-20261104.txt to distinguish HFM Memory/Knowledge and directly connected learning stores from separate approval/governance/workflow ledgers. It records bounded source findings for autonomous-learning-proposals.js, mira-stage13-learning-governance.js, mira-research-governance.js and mira-seo-workflow-store.js. The first three are not modified in this Phase 2 change set because their retention, approval and event-chain semantics need separate review; the SEO workflow store already has its own lock, size limits and atomic write safeguards.
 
 This is an explicit scope boundary, not a claim that the repository-wide persistence inventory is complete.
+
+
+21. LEGACY WORK-LEARNING E2E FIXTURE LIMITATION — EXPLICITLY RECORDED
+
+An attempt to add the legacy tests/stage62-work-learning-e2e-test.js and tests/stage623-work-knowledge-consolidation-e2e-test.js directly to the clean isolated CI workflow failed at the first legacy test because it requires a pre-existing project-local data/work-learning-records.json file. The clean runner intentionally has no production/local project state. Runs 355/356 therefore failed before reaching the relevant E2E assertions; this is not reclassified as PASS.
+
+Those two legacy tests were removed from the isolated workflow. The workflow now uses the new dedicated temporary-directory contract suites for Work Learning and Work Knowledge Consolidation instead. Latest isolated workflow run 41764130114 (run 357), job 126358397328, completed SUCCESS on commit 6ca02e76409471b993cc704d2bab92e0ecba9a98; all focused suites show TESTS_FAILED=0, including both new store suites and the autonomous-learning adapter test.
+
+Legacy Stage 6.2 / 6.2.3 end-to-end compatibility remains INCONCLUSIVE / NOT_EXECUTED in a clean isolated environment because their fixtures assume existing local project files. The isolated persistence contract tests are PASS; they are not a substitute claim for the full legacy E2E flows.
