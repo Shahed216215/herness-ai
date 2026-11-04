@@ -6,8 +6,8 @@ const sample=[
  "const knowledge=loadKnowledge();",
  "const crm=listMessages(conversationId);",
  "const lessons=listLessons({});",
- "const experience=retrieveExperiences(text);
- "const workKnowledge=getConsolidatedKnowledge();"",
+ "const experience=retrieveExperiences(text);",
+ "const workKnowledge=getConsolidatedKnowledge();",
  "const state=loadDriveState('knowledge');",
  "const raw=loadStore();",
  "// getKnowledge() is only a comment",
