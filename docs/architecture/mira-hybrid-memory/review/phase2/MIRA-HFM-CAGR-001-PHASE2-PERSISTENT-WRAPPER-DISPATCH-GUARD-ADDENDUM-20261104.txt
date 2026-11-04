@@ -1,0 +1,84 @@
+MIRA HYBRID MEMORY v0.2
+PHASE 2 — PERSISTENT WRAPPER AND DIRECT DISPATCH GUARD ADDENDUM
+Date: 2026-11-04
+Status: ISOLATED_CI_PASS_WITH_EXPLICIT_RESIDUALS
+Branch: work/mira-hfm-v02-phase2-core-safety
+Tested HEAD: 3b05b372487fd373695df6be1bb65b6062f28cad
+GitHub Actions push run: 41791344114 — SUCCESS
+Run URL: https://github.com/Shahed216215/herness-ai/actions/runs/41791344114
+
+1. ADDITIONAL PERSISTENT-WRITER DEFENCE
+
+The shared policy check was already enforced by tools/index.js executeTool(). The exported raw tools map, however, allows trusted application code to call a module's execute() method directly without passing through executeTool().
+
+To close that specific bypass for the three persistent-write wrappers, added a second policy check at the beginning of each wrapper:
+- tools/memory-save.js — memory_save
+- tools/knowledge-save.js — knowledge_save
+- tools/learning-save.js — learning_save
+
+Each wrapper now invokes checkToolSafety() before validating or using persistence dependencies. Under the current human-only policies, the wrapper returns a structured BLOCKED / TOOL_POLICY_DENIED response and does not call addMemory(), addKnowledge(), or learnFromContent().
+
+No generic chat argument, permissionGranted flag, or wrapper argument can turn this denial into approval. These tools remain unavailable for autonomous or generic direct execution until a genuine authenticated action-scoped approval contract is implemented.
+
+2. DIRECT WRAPPER TEST
+
+Added tests/mira-hfm-persistent-wrapper-guard.test.js. It evaluates each actual wrapper source in an isolated Node VM and injects stub persistence dependencies that throw if called. The test asserts:
+- each wrapper returns BLOCKED / TOOL_POLICY_DENIED;
+- the denial reason identifies explicit human approval as required;
+- each persistence dependency invocation count remains zero.
+
+CI log markers on tested HEAD:
+- MIRA_HFM_MEMORY_SAVE_DIRECT_WRAPPER_DENIED=PASS
+- MIRA_HFM_KNOWLEDGE_SAVE_DIRECT_WRAPPER_DENIED=PASS
+- MIRA_HFM_LEARNING_SAVE_DIRECT_WRAPPER_DENIED=PASS
+- MIRA_HFM_PERSISTENT_WRAPPER_INVOCATIONS=0
+- TESTS_FAILED=0
+
+3. DIRECT DISPATCH CALLSITE INVENTORY
+
+A static inventory was added to tests/mira-hfm-direct-dispatch-boundary.test.js. It recursively scans server.js, routes/**/*.js|cjs|mjs and services/**/*.js|cjs|mjs for direct tool-shaped .execute() calls and tools[...].execute() calls. The current reviewed inventory is exactly:
+- server.js: backupTool.execute — /api/admin/backup; protected by requireAdminPermission(PERMISSIONS.BACKUP_RESTORE).
+- server.js: restoreTool.execute — /api/admin/restore; protected by the same admin permission and a confirm === true check before invocation.
+- server.js: historyTool.execute — SEO workflow history; protected by the named-admin browser-session authorization branch.
+- services/mira-seo-review-dispatch.js: tool.execute — SEO review decision; validates requestRole=admin, authenticated admin session and nonempty named username before execution.
+- services/mira-verification-engine.js: health.execute — tool-health inspection; policy is operation=inspect, autonomous=true, humanApprovalRequired=false.
+
+The inventory test fails when a direct tool-shaped callsite is added or removed without a deliberate review and allowlist update. CI markers:
+- MIRA_HFM_ADMIN_BACKUP_PERMISSION_GATE=PASS
+- MIRA_HFM_ADMIN_RESTORE_CONFIRMATION_ORDER=PASS
+- MIRA_HFM_SEO_REVIEW_NAMED_ADMIN_GATE=PASS
+- MIRA_HFM_SEO_HISTORY_NAMED_ADMIN_GATE=PASS
+- MIRA_HFM_HEALTH_DIRECT_CALL_READ_ONLY_POLICY=PASS
+- MIRA_HFM_REVIEWED_DIRECT_DISPATCH_BOUNDARIES=PASS
+- MIRA_HFM_DIRECT_DISPATCH_BOUNDARY_TESTS_FAILED=0
+
+This is a source-level callsite inventory over server.js, routes and services. It is not a proof against arbitrary dynamic property access, eval-like construction, runtime monkey-patching, external consumers of the module, or direct calls from source trees outside those scanned roots.
+
+4. POLICY PARITY AND REGISTRY GUARD EVIDENCE
+
+The dependency-free static registry/policy test reports:
+- 24 statically identifiable active tool exports;
+- zero active exports missing a policy;
+- one reviewed dormant policy-only key: memory_backup;
+- zero unexpected policy-only keys.
+
+The registry execution test confirms the three persistent-write tools are blocked before their registered wrapper is invoked, while an eligible calculator tool remains executable.
+
+5. CI AND SAFETY EVIDENCE
+
+GitHub Actions push run 41791344114 completed SUCCESS on HEAD 3b05b372487fd373695df6be1bb65b6062f28cad. The job log confirms all above test markers, TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0, and REAL_GOOGLE_DRIVE_TOUCHED=NO.
+
+No production Memory/Knowledge data was read or written. No real Drive, provider, network, migration, restore, deployment or external action was performed.
+
+6. REMAINING GAPS — NOT CLOSED BY THIS ADDENDUM
+
+- The raw tools object remains exported for internal application integration. The three persistent save wrappers now independently deny execution, but this does not yet establish a universal capability-secure wrapper for every human-only tool.
+- Admin backup/restore and SEO review/history direct dispatch rely on route-level permission/session gates. Their authorization is source-tested, but no authenticated end-to-end browser/API session test was run.
+- A unified authenticated, action-scoped approval object, replay protection, audit binding and independent verifier are not implemented for Memory/Knowledge write operations.
+- The callsite scanner is static and limited to server.js, routes and services; it does not prove runtime reachability or exclude every possible dynamic dispatch pattern.
+- Production provider arbitration, conflict quarantine integration, canonical project scoping, trust-anchor custody, Drive cutover and encrypted emergency backup remain separate open gates.
+
+Phase 2 remains IN_PROGRESS.
+Production readiness remains NOT_CERTIFIED.
+Mira Hybrid Memory remains v0.2.
+PR #4 remains open/draft/unmerged. No merge or PR state transition was performed.
