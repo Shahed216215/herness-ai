@@ -465,3 +465,35 @@ CI:
 - Run 685 log confirms both new assertions and all invoked isolated Phase 2 suites report TESTS_FAILED=0.
 
 No production Memory was accessed or changed; tests used isolated MIRA_STORAGE_DIR. No Drive/API/network/external action occurred. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+22. CONVERSATION, WORK-LEARNING AND WORK-KNOWLEDGE INITIALIZATION GUARDS — VERIFIED BY RUN 692
+
+Findings:
+- Conversation store ensureStore() recreated an empty conversations.json after the file disappeared, even after prior initialization.
+- Work Learning loadStore() returned a new empty record collection when the primary was missing.
+- Work Knowledge Consolidation loadStore() also returned an empty store on ENOENT; verifyStoreIntegrity() bypassed the new initialization guard and directly lstat'ed the file.
+
+Corrections:
+- conversation-store.js now uses the reusable initialization guard. A missing previously initialized conversation store fails closed; first-run initialization remains atomic and audited.
+- mira-work-learning-engine.js now marks the store after a verified existing read/first write, and blocks load/save/ensureStore from silently recreating a missing initialized primary.
+- mira-work-knowledge-consolidation.js now uses the same marker guard for load/save, and verifyStoreIntegrity() checks the missing-primary decision before reporting integrity.
+- Marker paths are exported for isolated regression verification; no production store was migrated.
+
+Regression evidence:
+- CONVERSATION_STORE_INITIALIZATION_MARKER_CREATED=PASS
+- CONVERSATION_STORE_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- CONVERSATION_STORE_MARKER_TAMPER_FAILS_CLOSED=PASS
+- WORK_KNOWLEDGE_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- WORK_KNOWLEDGE_MARKER_TAMPER_FAILS_CLOSED=PASS
+- WORK_LEARNING_INITIALIZATION_MARKER_CREATED=PASS
+- WORK_LEARNING_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- WORK_LEARNING_MARKER_TAMPER_FAILS_CLOSED=PASS
+- All invoked suites report TESTS_FAILED=0.
+
+CI history:
+- Runs 41805139634, 41805234496, 41805254557, 41805274370, 41805290888 and 41805400645 — FAILURE — intermediate regressions were retained: marker path export omission, then Work Knowledge verifyStoreIntegrity() bypass.
+- Run 41805497174 — SUCCESS — corrected implementation and full isolated suite, commit b7842afcc247169ca3e9a7c105995cb97ac3cf73.
+- Run 692 logs confirm Conversation Store, Work Knowledge Consolidation and Work Learning missing-primary/marker-tamper tests all PASS; no error markers.
+
+No production Conversation, Learning or Knowledge records were accessed or changed. No Google Drive, network or external actions occurred. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
