@@ -47,3 +47,11 @@ END OF REVIEW
 ACCESS-PATH INVENTORY ADDENDUM (2026-11-04)
 A broader static candidate scanner now covers domain accessors, direct loadMemory/loadKnowledge calls, generic loadStore loaders, provider/snapshot reads, CRM Conversation reads, Work Learning/Experience and Work Knowledge APIs.
 Verified CI run 41813748565 reports 242 candidates (overlapping categories): 27 public/internal retrieval, 27 direct domain store reads, 91 generic store loaders, 36 provider/snapshot reads, 27 CRM Conversation reads, 28 Work Learning/Experience reads and 6 Work Knowledge reads. This is candidate inventory only; it does not establish unique semantic call paths or complete coverage. Every candidate still needs classification.
+
+
+7. ADDITIONAL PERSISTENT WRITER API DISCOVERED
+- The persistent-writer definition guard detected services/learning.js:394 learnFromContent({content, sourceTitle, sourceUrl}) as a third writer API definition file, in addition to knowledge.js and memory.js.
+- Source review: learnFromContent obtains AI-generated learning content, performs duplicate lookup with searchKnowledge, then calls addLearning({...learning, source}) at lines 479-482. It is therefore a model-assisted persistent writer path, not merely a retrieval helper.
+- It does not accept authoritative actor/project/request context in its current signature. It must remain blocked from universal autonomous writes until an approved project/actor binding and host authorization path are designed and independently tested.
+- Updated persistent writer inventory's reviewed definition-file baseline to include services/learning.js. This records the existing API; it does not route or modify the writer.
+- This discovery demonstrates why static inventory baselines must be updated only after source-level semantic review, not by suppressing the guard.
