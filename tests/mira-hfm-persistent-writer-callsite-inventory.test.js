@@ -70,6 +70,24 @@ for (const file of walk(ROOT)) {
 }
 assert.deepEqual(restrictedWrapperImports, [], 'non-routed human-only wrappers must not be imported directly outside the registry');
 
+const expectedOperationCounts = {
+  'autonomous-learning-controlled-apply.js': { addLearning: 1, replaceKnowledge: 1 },
+  'knowledge-controlled-apply.js': { updateLearning: 1 },
+  'server.js': { addMemory: 4, deleteKnowledge: 1, updateKnowledge: 1, updateLearning: 1 },
+  'services/learning.js': { addLearning: 1, updateLearning: 1 },
+  'tools/knowledge-cleanup.js': { replaceKnowledge: 1 },
+  'tools/knowledge-save.js': { addKnowledge: 1 },
+  'tools/learning-save.js': { learnFromContent: 1 },
+  'tools/memory-save.js': { addMemory: 1 }
+};
+const actualOperationCounts = {};
+for (const item of findings) {
+  actualOperationCounts[item.file] ||= {};
+  actualOperationCounts[item.file][item.operation] = (actualOperationCounts[item.file][item.operation] || 0) + 1;
+}
+assert.deepEqual(actualOperationCounts, expectedOperationCounts,
+  'persistent writer operation inventory changed; review every changed operation before updating this baseline');
+assert.equal(findings.length, 16, 'persistent writer callsite count changed; semantic review required');
 const unexpected = actualFiles.filter(file => !reviewedFiles.includes(file));
 const missing = reviewedFiles.filter(file => !actualFiles.includes(file));
 assert.deepEqual(unexpected, [], 'new persistent writer callsite file requires review');
