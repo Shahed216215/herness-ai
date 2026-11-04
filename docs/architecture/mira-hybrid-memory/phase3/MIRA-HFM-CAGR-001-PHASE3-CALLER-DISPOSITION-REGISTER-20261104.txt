@@ -1,0 +1,74 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 3 CALLER DISPOSITION REGISTER
+Date: 2026-11-04
+Evidence: CI run 41817748525, tested commit 7d265c126f171b4fdd104b7e146568105a06407b.
+Status: STATIC SOURCE REVIEW; NOT PRODUCTION INTEGRATION APPROVAL.
+
+1. INVENTORY
+242 lexical candidates. Overlapping category counts: public/internal retrieval 27; direct domain store reads 27; generic loadStore 91; provider/snapshot reads 36; CRM Conversation reads 27; Work Learning/Experience reads 28; Work Knowledge reads 6. Categories overlap and are not unique callsite totals. Candidate matches require semantic interpretation.
+
+2. P0 — BLOCKED FROM ORDINARY AUTONOMOUS RETRIEVAL
+- knowledge.js (DIRECT_STORE_READ 10; PUBLIC_OR_INTERNAL_RETRIEVAL 3): global Knowledge loader/get/search APIs lack actor/project context. Central boundary.
+- memory.js (DIRECT_STORE_READ 3; PUBLIC_OR_INTERNAL_RETRIEVAL 1): global General Memory loader/get API lacks actor/project context. Chat append is a separate session-persistence class.
+- server.js (PUBLIC_OR_INTERNAL_RETRIEVAL 9): mixed stats, Knowledge read/search/admin and chat-recall endpoints; classify each route by middleware, scope and response sensitivity before routing.
+- tools/knowledge-search.js (PUBLIC_OR_INTERNAL_RETRIEVAL 1; PROVIDER_OR_SNAPSHOT_READ 1): reads local Knowledge and may substitute whole Google Drive file; returns content. No project filter, provider version precedence or trust/quarantine filter.
+- routes/conversations.js (CRM_CONVERSATION_READ 11): authentication exists, but clientId/conversationId are not independently bound to an authorized project before reads.
+- conversation-store.js (CRM_CONVERSATION_READ 6; GENERIC_STORE_LOADER 11): ID/client filters are not project authorization; enforce ownership at store boundary.
+- services/mira-conversation-memory-engine.js (CRM_CONVERSATION_READ 5): assembles model context using conversation identity without authoritative project scope.
+- services/mira-conversation-response-planner.js (CRM_CONVERSATION_READ 1): must receive only pre-authorized conversation context.
+- services/mira-work-learning-engine.js (WORK_LEARNING_OR_EXPERIENCE_READ 3; GENERIC_STORE_LOADER 8): task/learning IDs are not project authority.
+- services/mira-experience-memory.js (WORK_LEARNING_OR_EXPERIENCE_READ 10): derived projection inherits missing Work Learning project authority.
+- services/mira-experience-retrieval-engine.js (WORK_LEARNING_OR_EXPERIENCE_READ 6): ranks records without project scope; filtering must happen before ranking.
+- services/mira-cross-task-learning-engine.js (WORK_LEARNING_OR_EXPERIENCE_READ 1): cross-task fan-out lacks project scope.
+- services/mira-future-strategy-engine.js (WORK_LEARNING_OR_EXPERIENCE_READ 1): lesson reads use task/status filters, not project authority.
+- services/mira-opportunity-matching-engine.js (WORK_LEARNING_OR_EXPERIENCE_READ 1): cross-opportunity experience matching lacks project scope.
+- services/mira-repeat-work-detection-engine.js (WORK_LEARNING_OR_EXPERIENCE_READ 2): repeat-work reads lack project scope; distinguish authorization errors from ordinary empty retrieval.
+- services/mira-work-knowledge-consolidation.js (WORK_KNOWLEDGE_READ 6; GENERIC_STORE_LOADER 4): derived/fingerprint records have no authoritative project ownership; source lineage must be scoped.
+- google-drive.js (PROVIDER_OR_SNAPSHOT_READ 2): whole-file OAuth Drive reads/writes; no record-level project isolation or immutable HFM revision boundary. No live calls/cutover approved.
+
+3. P1 — PRIVILEGED OR GOVERNED OPERATIONS, NOT ORDINARY RETRIEVAL
+- autonomous-learning-controlled-apply.js (PROVIDER_OR_SNAPSHOT_READ 7; PUBLIC_OR_INTERNAL_RETRIEVAL 2): snapshot-backed controlled apply/rollback; retain dedicated approval and recovery lifecycle.
+- knowledge-controlled-apply.js (PROVIDER_OR_SNAPSHOT_READ 6; PUBLIC_OR_INTERNAL_RETRIEVAL 2): controlled Knowledge apply with snapshot/rollback; require scoped approval and independent verification.
+- knowledge-memory-evolution.js (DIRECT_STORE_READ 1; PROVIDER_OR_SNAPSHOT_READ 12): local/Drive snapshot evolution and restore; require explicit recovery authority, verified snapshot and audit.
+- snapshot-manager.js (PROVIDER_OR_SNAPSHOT_READ 4): backup/restore primitive; project/resource scope and restore authorization required.
+- apply-engine.js (PROVIDER_OR_SNAPSHOT_READ 4): privileged mutation/recovery orchestration; not a general read facade.
+- routes/knowledge-improvements.js (PUBLIC_OR_INTERNAL_RETRIEVAL 1): SYSTEM_ADMIN-gated proposal/apply path, but global Knowledge target; require admin project scope and audit.
+- services/learning.js (PUBLIC_OR_INTERNAL_RETRIEVAL 2): model-assisted duplicate lookup and persistent writer APIs lack actor/project/request context.
+- tools/knowledge-cleanup.js (PUBLIC_OR_INTERNAL_RETRIEVAL 2): human-only duplicate maintenance; preserve originals/quarantine and scope before cleanup.
+- tools/knowledge-improve.js (PUBLIC_OR_INTERNAL_RETRIEVAL 1): proposal path reads global Knowledge; keep approval gate and add project-bound proposal identity.
+- tools/knowledge-count.js (PUBLIC_OR_INTERNAL_RETRIEVAL 1): aggregate-only global count; project-aware scope required before multi-project use.
+- tools/memory-count.js (PUBLIC_OR_INTERNAL_RETRIEVAL 1): aggregate-only global count; project-aware scope required before multi-project use.
+- knowledge-improvement.js (DIRECT_STORE_READ 1): proposal-state store; separate from canonical Memory.
+- services/mira-json-state-store.js (DIRECT_STORE_READ 2): low-level persistence primitive; keep behind domain-specific contracts.
+- services/mira-knowledge-state-recovery.js (DIRECT_STORE_READ 3): privileged recovery; verify snapshot, identity, scope and audit.
+- services/mira-state-version-recovery.js (DIRECT_STORE_READ 2): version recovery; preserve recovery semantics and require explicit authority.
+- services/mira-research-governance.js (DIRECT_STORE_READ 5): research-governance metadata; determine schema ownership before treating as HFM.
+- routes/learning-history.js (WORK_LEARNING_OR_EXPERIENCE_READ 1): SYSTEM_ADMIN history read; explicit admin scope, audit and data minimization required.
+- tools/capacity-change.js (PUBLIC_OR_INTERNAL_RETRIEVAL 1): capacity utility candidate; likely separate from canonical Memory, verify actual data sensitivity.
+
+4. SEPARATE APPLICATION DOMAIN STORES — NOT AUTOMATIC HFM SOURCES
+- autonomous-learning-proposals.js (GENERIC_STORE_LOADER 9): proposal/workflow state.
+- client-communication-store.js (CRM_CONVERSATION_READ 4; GENERIC_STORE_LOADER 12): CRM communication domain; stable parent identity and project/client authority required.
+- client-follow-up-store.js (GENERIC_STORE_LOADER 6): CRM follow-up state; separate domain contract.
+- client-profile-store.js (GENERIC_STORE_LOADER 6): client profile data; separate privacy boundary.
+- deliverable-store.js (GENERIC_STORE_LOADER 6): delivery artifact metadata; separate project ownership contract.
+- opportunity-store.js (GENERIC_STORE_LOADER 7): opportunity state; do not infer project from matching.
+- task-store.js (GENERIC_STORE_LOADER 7): task state; taskId is not project authority.
+- work-acceptance-store.js (GENERIC_STORE_LOADER 7): work acceptance/approval data; separate contract.
+- services/autonomous-orchestrator.js (GENERIC_STORE_LOADER 3): orchestration state; review indirect scope propagation.
+- services/mira-stage13-capability-integration.js (GENERIC_STORE_LOADER 1): capability governance state, not automatically Memory.
+- services/mira-stage13-learning-governance.js (GENERIC_STORE_LOADER 4): learning governance state, distinct from canonical payload.
+
+5. PHASE 3 EXIT REQUIREMENTS
+A. Integrate trusted host authentication and replay protection in a fixture-backed harness.
+B. Establish authoritative owner/project registry for General Memory, Knowledge and CRM; no default project assignment.
+C. Define project/task authority and projection lineage for Work Learning/Experience/Work Knowledge, or explicitly exclude them from migration scope with a governed alternative.
+D. Extend coverage to dynamic/indirect imports, provider callbacks, caches, exports, embeddings, workers and backup/restore.
+E. Add bypass negative tests for every P0 reader and each privileged P1 path.
+F. Complete independent regression, integrity and recovery tests. Production migration/provider cutover requires separate approval.
+
+PHASE3_CALLER_DISPOSITION=PARTIAL_SOURCE_REVIEW_COMPLETED
+PHASE3_PRODUCTION_RETRIEVAL_INTEGRATION=NOT_APPROVED
+PHASE3_PRODUCTION_WRITER_INTEGRATION=NOT_APPROVED
+PHASE3_MIGRATION=NOT_APPROVED
+PHASE3_PROVIDER_CUTOVER=NOT_APPROVED
+PHASE3=IN_PROGRESS
