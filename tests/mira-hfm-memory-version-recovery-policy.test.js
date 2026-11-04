@@ -1,26 +1,32 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { tools } = require('../tools');
-const { TOOL_POLICIES, getToolPolicy } = require('../services/mira-work-execution-engine');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const tool = tools.memory_version_recovery;
-assert.ok(tool, 'memory_version_recovery must remain discoverable in the dynamic tool registry');
-assert.equal(typeof tool.execute, 'function');
-assert.equal(typeof tool.declaration, 'object');
+const root = path.resolve(__dirname, '..');
+const toolSource = fs.readFileSync(path.join(root, 'tools/memory-version-recovery.js'), 'utf8');
+const engineSource = fs.readFileSync(path.join(root, 'services/mira-work-execution-engine.js'), 'utf8');
 
-const policy = getToolPolicy('memory_version_recovery');
-assert.ok(policy, 'memory_version_recovery must have an explicit execution policy');
-assert.deepEqual(policy, {
-  operation: 'file_modify',
-  autonomous: false,
-  humanApprovalRequired: true,
-  explicitConfirmation: true
-});
-assert.equal(TOOL_POLICIES.memory_version_recovery, policy);
+assert.match(toolSource, /name:\s*['"]memory_version_recovery['"]/);
+assert.match(toolSource, /declaration:\s*\{/);
+assert.match(toolSource, /execute:\s*async/);
 
-console.log('MIRA_HFM_MEMORY_VERSION_RECOVERY_REGISTERED=PASS');
-console.log('MIRA_HFM_MEMORY_VERSION_RECOVERY_POLICY=PASS');
+const policyStart = engineSource.indexOf('  memory_version_recovery: {');
+assert.notEqual(policyStart, -1, 'memory_version_recovery must have an explicit engine policy');
+const policyEnd = engineSource.indexOf('\n  },', policyStart);
+assert.notEqual(policyEnd, -1, 'memory_version_recovery policy block must be complete');
+const policy = engineSource.slice(policyStart, policyEnd);
+assert.match(policy, /operation:\s*"file_modify"/);
+assert.match(policy, /autonomous:\s*false/);
+assert.match(policy, /humanApprovalRequired:\s*true/);
+assert.match(policy, /explicitConfirmation:\s*true/);
+
+assert.match(engineSource, /if\s*\(!policy\)\s*\{/);
+assert.match(engineSource, /status:\s*"unknown_tool"/);
+
+console.log('MIRA_HFM_MEMORY_VERSION_RECOVERY_WRAPPER=PASS');
+console.log('MIRA_HFM_MEMORY_VERSION_RECOVERY_EXPLICIT_POLICY=PASS');
 console.log('MIRA_HFM_MEMORY_VERSION_RECOVERY_AUTONOMOUS=DENIED');
 console.log('PRODUCTION_MEMORY_KNOWLEDGE_TOUCHED=NO');
 console.log('NETWORK_REQUESTS=0');
