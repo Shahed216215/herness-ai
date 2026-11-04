@@ -41,7 +41,7 @@ try {
       return {
         saveKnowledgeToDrive: async entries => {
           drivePayload = entries;
-          return { action: 'isolated-stub' };
+          return { success: true, action: 'isolated-stub' };
         }
       };
     }
