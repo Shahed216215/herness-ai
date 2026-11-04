@@ -104,3 +104,25 @@ END OF LEDGER
 - Mapping validator now enforces source-system/domain binding for General Memory, Knowledge and CRM Conversation only.
 - General Memory locator binds source snapshot SHA-256 and ordinal; CRM mapping binds parentConversationId and does not invent an array ordinal.
 - Work Learning, Work Knowledge and Experience Memory are deliberately rejected by the mapping validator until their own authoritative identity/project-scope contracts are reviewed.
+
+10. DOMAIN PAYLOAD ADAPTER AND FOLLOW-UP CI (2026-11-04)
+- Added services/mira-memory-domain-payload-adapter.js and tests/mira-memory-domain-payload-adapter.test.js.
+- Adapter serializes complete General Memory {role, content, time}, Knowledge source records, and persisted CRM message records into deterministic domain-tagged canonical content envelopes. It validates explicit mapping evidence, source digest, canonical candidate digest, domain/source-system binding and parent conversation binding.
+- Candidate records are always integrity=UNVERIFIED, trust=SOURCE_RECORDED, lifecycle=PENDING_REVIEW. Output is READY_FOR_REVIEW_NOT_COMMITTED; no persistence, promotion or source mutation exists.
+- Positive/negative synthetic adapter suite passed in Phase 3 workflow run 41811852566 (commit 16a138efa9afe1d276f1112afd22221c3b461c53): all three domain payload-preservation assertions PASS; TESTS_FAILED=0.
+- Parent Phase 2 regression workflow run 41811910860 (commit 2b5eab5f43dcf2c0ad5c3b5cb0833e08fc7fe01d) completed SUCCESS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+- These are isolated synthetic tests only; not evidence of live migration or production caller integration.
+
+11. CURRENT STATUS UPDATE
+PHASE3_REQUEST_AUTHORIZATION_TESTS=PASS_CI
+PHASE3_PROJECT_MAPPING_TESTS=PASS_CI
+PHASE3_SYNTHETIC_UNIFIED_FACADE_TESTS=PASS_CI
+PHASE3_DOMAIN_PAYLOAD_ADAPTER_TESTS=PASS_CI
+PHASE3_DOMAIN_MAPPING_COVERAGE=GENERAL_MEMORY_KNOWLEDGE_CRM_ONLY
+WORK_LEARNING_MAPPING=BLOCKED_PENDING_DOMAIN_CONTRACT
+WORK_KNOWLEDGE_MAPPING=BLOCKED_PENDING_DOMAIN_CONTRACT
+EXPERIENCE_MEMORY_MAPPING=BLOCKED_PENDING_DOMAIN_CONTRACT
+PHASE3=IN_PROGRESS
+PRODUCTION_INTEGRATION=NOT_ENABLED
+PRODUCTION_READINESS=NOT_CERTIFIED
+MERGE=NOT_APPROVED
