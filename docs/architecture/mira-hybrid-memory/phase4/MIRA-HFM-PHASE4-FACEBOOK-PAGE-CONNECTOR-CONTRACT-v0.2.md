@@ -116,3 +116,7 @@ PRODUCTION_READINESS=NOT_CERTIFIED
 - A successful provider WRITE response remains pending readback. A supplied readback match remains caller-supplied evidence and cannot verify canonical Memory.
 - Conflicting readback requires quarantine; an asserted absence still requires human approval before retry. No recovery branch writes canonical Memory.
 - This is an offline recovery contract and deterministic test harness, not a live Meta transport implementation.
+
+
+## 12. Gated read-only Page metadata probe
+A separately gated runtime probe is provided for one Page metadata request only: `GET /v26.0/{page-id}?fields=id,name`. It uses a Page access token supplied at runtime through a protected GitHub Actions secret, Authorization Bearer header, exact Meta host, rejected redirects, bounded timeout/response size, and exact returned Page ID binding. It does not read posts/feed/comments, paginate, retry, publish, or write Memory. Synthetic tests do not contact Meta. Live execution requires the repository owner to configure `META_PAGE_ACCESS_TOKEN` as an Actions secret and manually dispatch the Phase 4 workflow with `confirm_read_only_meta_get=true`. Missing secret or confirmation fails closed.

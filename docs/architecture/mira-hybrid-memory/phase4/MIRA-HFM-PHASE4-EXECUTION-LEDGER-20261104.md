@@ -203,3 +203,13 @@ Status: IN PROGRESS
 - E2E flow verifies Phase 3 authorized PUBLIC record → manual draft → untrusted import → durable review queue → human approval for independent verification → uncertain WRITE classification → readback reconciliation. It asserts no trust promotion, no canonical Memory write and no external request.
 - Both final CI runs confirm NETWORK_REQUESTS=0, LIVE_META_API_CALLS=0, FACEBOOK_POSTS_PUBLISHED=0 and CANONICAL_MEMORY_WRITES=0.
 - VERSION=v0.2; OFFLINE_E2E=VERIFIED; PHASE4=IN_PROGRESS; LIVE_META_TRANSPORT=NOT_IMPLEMENTED_NOT_APPROVED; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 022 — Explicitly gated Meta READ-only probe scaffold
+- Added a one-request HTTPS GET probe pinned to Graph API v26.0 and the exact `graph.facebook.com` host. Only Page `id,name` fields are requested; returned Page ID must exactly match the numeric requested Page ID.
+- Access token is supplied at runtime only through the `META_PAGE_ACCESS_TOKEN` GitHub Actions secret and Authorization Bearer header. It is never accepted from URL/query parameters, logged, returned, committed or persisted.
+- Redirects are rejected, response caching disabled, response size bounded, timeout bounded, and errors fail closed. No retries, pagination, feed/post/comment reads, publishing or Memory writes.
+- Added synthetic fetch tests; CI tests perform zero real network requests.
+- Added separate manual workflow job, gated by explicit boolean confirmation and a supplied Page ID. It fails before transport if the repository secret is absent. Offline CI remains network-free.
+- This does not yet perform a live test. Repository owner must add `META_PAGE_ACCESS_TOKEN` in GitHub Settings → Secrets and variables → Actions, then manually dispatch this workflow on the Phase 4 branch with the intended Page ID and confirmation enabled.
+- VERSION=v0.2; LIVE_READ_ONLY_PROBE=IMPLEMENTED_PENDING_CI_AND_OWNER_SECRET; LIVE_META_API_CALLS=0; META_WRITE_REQUESTS=0.
