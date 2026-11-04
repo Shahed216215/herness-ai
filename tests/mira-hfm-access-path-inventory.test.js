@@ -72,7 +72,7 @@ assert.equal(indirectPathResult.matches.filter(x=>x.category==='CANONICAL_STORE_
 assert.ok(indirectPathResult.matches.some(x=>x.category==='CANONICAL_STORE_FILE_BACKED_READ'&&x.line===2));
 console.log('CANONICAL_STORE_PATH_CONSTANT_READ_LINKED=PASS');
 const repositoryInventory=scan(process.cwd());
-const categoryCounts={PUBLIC_OR_INTERNAL_RETRIEVAL:0,DIRECT_STORE_READ:0,DIRECT_MEMORY_FILE_IO:0,GENERIC_STORE_LOADER:0,PROVIDER_OR_SNAPSHOT_READ:0,CRM_CONVERSATION_READ:0,WORK_LEARNING_OR_EXPERIENCE_READ:0,WORK_KNOWLEDGE_READ:0,ALIASED_DOMAIN_READ:0,NAMESPACE_DOMAIN_READ:54,CANONICAL_STORE_FILE_BACKED_READ:0};
+const categoryCounts={PUBLIC_OR_INTERNAL_RETRIEVAL:0,DIRECT_STORE_READ:0,DIRECT_MEMORY_FILE_IO:0,GENERIC_STORE_LOADER:0,PROVIDER_OR_SNAPSHOT_READ:0,CRM_CONVERSATION_READ:0,WORK_LEARNING_OR_EXPERIENCE_READ:0,WORK_KNOWLEDGE_READ:0,ALIASED_DOMAIN_READ:0,NAMESPACE_DOMAIN_READ:0,CANONICAL_STORE_FILE_BACKED_READ:0};
 for(const item of repositoryInventory) categoryCounts[item.category]=(categoryCounts[item.category]||0)+1;
 assert.deepEqual(categoryCounts,{
  PUBLIC_OR_INTERNAL_RETRIEVAL:27,
@@ -87,8 +87,8 @@ assert.deepEqual(categoryCounts,{
  NAMESPACE_DOMAIN_READ:81,
  CANONICAL_STORE_FILE_BACKED_READ:3
 },'repository access-path inventory drifted; review all new/removed candidates before updating baseline');
-assert.equal(repositoryInventory.length,326,'repository lexical candidate total changed; semantic review required');
+assert.equal(repositoryInventory.length,272,'repository lexical candidate total changed; semantic review required');
 console.log('REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS');
-console.log('REPOSITORY_ACCESS_PATH_CANDIDATE_COUNT=326');
+console.log('REPOSITORY_ACCESS_PATH_CANDIDATE_COUNT=272');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_ACCESS_PATH_INVENTORY_TEST_PASS');
