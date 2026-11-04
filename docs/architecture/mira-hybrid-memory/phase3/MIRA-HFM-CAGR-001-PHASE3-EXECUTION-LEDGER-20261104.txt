@@ -376,3 +376,9 @@ MERGE=NOT_APPROVED
 - Added the existing `tests/mira-memory-conflict-assessment.test.js` to the Phase 3 workflow triggers and execution sequence so P3-D canonical record checks run alongside request, mapping, facade and provider suites.
 - Verified Phase 3 run 41826911511 SUCCESS: canonical record conflict states, malformed/extra fields, RFC3339 date-time validation and SHA-256(JCS(content)) recomputation all PASS; `TESTS_FAILED=0`; repository access-path baseline pinned; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
 - This verifies the current v1.0.0 canonical record validator's structural/content-hash compatibility, not source authenticity, host authorization or whole-record cryptographic attestation.
+
+48. ISOLATED ROUTE / RECOVERY / WRITER-BYPASS REGRESSION SUITES ADDED
+- Phase 3 CI now also runs seven existing isolated regression suites: Knowledge cleanup semantics; admin backup/restore permission and confirmation; CRM conversation route contract; Conversation Store fail-closed/symlink/marker integrity; direct admin/SEO dispatch boundaries; direct tool dispatch boundaries; and persistent human-only wrapper denial.
+- Verified run 41827185752 SUCCESS. Admin backup/restore and Knowledge edit/delete permission gates PASS; CRM route create/list/detail/context/memory tests PASS; Conversation Store corrupt-state, symlink, missing-primary and marker-tamper tests PASS; direct route tool calls=0; all seven persistent wrappers (memory-save, knowledge-save, learning-save, firewall-defense, memory-restore, memory-version-recovery, knowledge-cleanup) were denied with zero underlying writer invocations.
+- All Phase 3 contract/inventory suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0; EXTERNAL_ACTIONS_FROM_TEST=0.
+- These are isolated regression/bypass checks for the existing route/tool boundaries. They do not prove the HFM facade is wired into production routes.
