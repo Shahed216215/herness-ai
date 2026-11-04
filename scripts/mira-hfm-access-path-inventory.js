@@ -48,7 +48,13 @@ if(require.main===module){
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_INVENTORY=GENERATED');
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_COUNT='+findings.length);
  for(const [category] of RULES) console.log('MIRA_HFM_'+category+'_COUNT='+findings.filter(x=>x.category===category).length);
- for(const item of findings) console.log('MIRA_HFM_ACCESS_CANDIDATE='+item.file+':'+item.line+':'+item.category+':'+item.excerpt);
+ const byFile=new Map();
+ for(const item of findings){
+  const key=item.file+'|'+item.category;
+  byFile.set(key,(byFile.get(key)||0)+1);
+  console.log('MIRA_HFM_ACCESS_CANDIDATE='+item.file+':'+item.line+':'+item.category+':'+item.excerpt);
+ }
+ for(const [key,count] of [...byFile.entries()].sort((a,b)=>a[0].localeCompare(b[0]))) console.log('MIRA_HFM_ACCESS_FILE_SUMMARY='+key+':'+count);
  console.log('STATIC_CANDIDATE_SCAN_ONLY=YES');
  console.log('SEMANTIC_REVIEW_REQUIRED=YES');
  console.log('RUNTIME_DATA_ACCESSED=NO');
