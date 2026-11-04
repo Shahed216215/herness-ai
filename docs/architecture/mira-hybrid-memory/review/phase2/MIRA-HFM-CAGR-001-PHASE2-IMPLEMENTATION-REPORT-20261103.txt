@@ -367,3 +367,25 @@ GitHub Actions run 41751975605 (run 303), job 126318975408, completed SUCCESS on
 During this refinement, intermediate CI runs exposed a misplaced fixture declaration, a merge-fixture revision mismatch and a missing return field. These were corrected; runs 300/301 and 302/303 then passed. Historical failed runs remain in GitHub Actions and are not reclassified as passes.
 
 The isolated resolution engine now has stronger deterministic selection and separate access-change authorization. It is still not wired into production Memory/Knowledge retrieval or provider write boundaries; those integration and authorization gates remain open.
+
+
+15. KNOWLEDGE CLEANUP CANONICAL STORAGE BOUNDARY — VERIFIED BY RUN 311
+
+A further read-only source audit found tools/knowledge-cleanup.js writing directly to a project-root knowledge.json path instead of using the configured Mira storage path and canonical state-store write path. This could create a split-brain state when MIRA_STORAGE_DIR is configured.
+
+Correction:
+- knowledge.js now exposes replaceKnowledge(data), which validates the array, applies the existing capacity policy (including quarantine preservation for evicted entries), and commits through saveLocalKnowledge() / mira-json-state-store.writeArrayState().
+- tools/knowledge-cleanup.js now delegates duplicate removal to replaceKnowledge() rather than writing knowledge.json directly.
+- Added tests/mira-knowledge-cleanup-storage-contract.test.js. The test uses an isolated temporary MIRA_STORAGE_DIR, stubs Google Drive sync, verifies the canonical storage location and atomic-store delegation, and checks that no project-root split-brain write occurs.
+- Added the test and path filters to the Phase 2 workflow.
+
+GitHub Actions run 41752515491 (run 311), job 126320777081, completed SUCCESS on commit ee9c18a4b72b02967480af56b8786fbe6619f0c6. Log evidence:
+- KNOWLEDGE_CLEANUP_USES_CANONICAL_STORAGE_PATH=PASS
+- KNOWLEDGE_CLEANUP_DELEGATES_TO_ATOMIC_STATE_STORE=PASS
+- KNOWLEDGE_CLEANUP_DRIVE_SYNC_IS_STUBBED=PASS
+- KNOWLEDGE_CLEANUP_NO_PROJECT_ROOT_SPLIT_BRAIN_WRITE=PASS
+- MIRA_KNOWLEDGE_CLEANUP_STORAGE_CONTRACT_PASS; TESTS_FAILED=0
+- Core safety, Knowledge safety, recovery, local-store contract, Evolution integration, structural conflict assessment, isolated conflict lifecycle, and independent audit-chain verifier steps also completed with TESTS_FAILED=0 / PASS result markers.
+- Production Memory/Knowledge not touched; real Google Drive not touched; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
+
+This validates the cleanup adapter in an isolated test environment only. The production duplicate-removal tool still has its pre-existing Google Drive sync behavior after local commit; no Drive cutover or provider behavior was changed here. This isolated PASS is not a claim that every Memory/Knowledge/Evolution read/write path has been audited or integrated with the conflict registry.
