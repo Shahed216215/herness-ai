@@ -56,8 +56,13 @@ function adaptLegacyEntry({
   if (digest(entry) !== mapping.sourceDigest) throw new Error('Legacy source digest mismatch.');
   if (domain === 'crm_conversation_message') {
     text(entry.conversationId, 'CRM conversationId');
-    if (!parentConversation || parentConversation.conversationId !== entry.conversationId) {
-      throw new Error('CRM parent conversation identity is not verified.');
+    if (!parentConversation ||
+        parentConversation.conversationId !== entry.conversationId ||
+        parentConversation.mappingStatus !== 'APPROVED' ||
+        parentConversation.projectId !== projectId ||
+        typeof parentConversation.approvalReference !== 'string' ||
+        !parentConversation.approvalReference.trim()) {
+      throw new Error('Approved CRM conversation-to-project mapping is required.');
     }
   }
   const record = mapping.canonicalRecord;
