@@ -91,3 +91,9 @@ PHASE3=IN_PROGRESS
 - `project-schema.js:createProject()` has projectId, acceptanceId, opportunityId and scope metadata, but no ownerActorId, tenantId or clientId. `project-store.js` reads and writes projects without an owner binding; `listProjects()` filters status/acceptance/opportunity only. Acceptance/opportunity linkage is not authenticated project ownership.
 - Therefore the current host cannot safely construct a universal `(actorId, projectId)` authorization context for all routes. Registered-user sessions contain a potential stable subject (`userId`) that is not propagated; admin and legacy bearer paths need explicit stable subject configuration/identity provider. Project ownership needs a trusted registry or governed owner binding. Do not infer actor/project authority from `req.role`, username, bearer token, opportunityId or clientId.
 - No production identity adapter was changed. Required follow-on: design a backward-compatible identity propagation and project-owner registry, with migration for existing project records, before HFM runtime integration.
+
+
+9. ACCEPTANCE / OPPORTUNITY ARE NOT PROJECT OWNER AUTHORITIES
+- `work-acceptance-schema.js` records acceptanceId, opportunityId, acceptance decision, `decidedBy` (defaulting to the literal `system`), scope and payment metadata; it has no authenticated ownerActorId or tenant identity.
+- `opportunity-schema.js` / `opportunity-store.js` records source, opportunityId, content, classification, matching and governance metadata; no ownerActorId or project ownership relation is defined.
+- `project-store.js:createStoredProject()` checks that acceptance is accepted and opportunityId matches, then persists the project; it does not bind the project to an authenticated actor. Therefore acceptanceId/opportunityId linkage is a workflow relationship, not an ownership/authorization proof.
