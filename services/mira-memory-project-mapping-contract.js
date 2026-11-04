@@ -13,7 +13,7 @@ const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
 const STATUSES = new Set(['PENDING_REVIEW', 'APPROVED', 'REVOKED']);
 const APPROVAL_EVIDENCE_KEYS = [
   'decision', 'approvalReference', 'mappingDigest', 'projectId', 'approvedBy',
-  'approvedAt', 'registryRevision', 'revocationStatus', 'verifiedAt'
+  'approvedAt', 'registryRevision', 'revocationStatus', 'verifiedAt', 'expiresAt'
 ];
 const KEYS = [
   'schemaVersion', 'mappingId', 'domain', 'sourceSystem', 'sourceFileDigest',
@@ -139,7 +139,9 @@ function validateProjectMapping({
   }
   text(approval.registryRevision, 'approval registryRevision');
   timestamp(approval.verifiedAt, 'approval verifiedAt');
-  if (Date.parse(approval.verifiedAt) < Date.parse(mapping.approvedAt) || Date.parse(approval.verifiedAt) > nowMs) {
+  timestamp(approval.expiresAt, 'approval expiresAt');
+  if (Date.parse(approval.verifiedAt) < Date.parse(mapping.approvedAt) || Date.parse(approval.verifiedAt) > nowMs ||
+      Date.parse(approval.expiresAt) <= nowMs || Date.parse(approval.expiresAt) <= Date.parse(approval.verifiedAt)) {
     throw new Error('Approval verification timestamp is invalid or future-dated.');
   }
   return Object.freeze({ ...mapping });
