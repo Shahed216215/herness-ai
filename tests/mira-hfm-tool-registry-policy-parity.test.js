@@ -68,8 +68,8 @@ const unexpectedPolicyOnly = policyOnly.filter(name => !reviewedPolicyOnly.inclu
 assert.deepEqual(missingPolicy, [], 'active runtime tools without explicit safety policy');
 assert.deepEqual(policyOnly, reviewedPolicyOnly, 'policy-only keys changed; review before updating allowlist');
 
-console.log('MIRA_HFM_TOOL_REGISTRY_POLICY_PARITY=PASS');
-console.log('MIRA_HFM_ACTIVE_TOOL_COUNT=' + active.length);
+console.log('MIRA_HFM_STATIC_TOOL_POLICY_PARITY=PASS');
+console.log('MIRA_HFM_STATIC_TOOL_EXPORT_COUNT=' + active.length);
 console.log('MIRA_HFM_MISSING_POLICY_COUNT=0');
 console.log('MIRA_HFM_POLICY_ONLY_ALLOWLIST=' + reviewedPolicyOnly.join(','));
 console.log('MIRA_HFM_UNEXPECTED_POLICY_ONLY_COUNT=' + unexpectedPolicyOnly.length);
