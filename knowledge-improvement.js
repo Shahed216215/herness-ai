@@ -2,56 +2,45 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
 const crypto = require("crypto");
+const jsonStateStore = require("./services/mira-json-state-store");
 
 const PROPOSAL_FILE = storagePath("knowledge-improvement-proposals.json");
 
 const MAX_PROPOSALS = 50;
 
 function loadProposals() {
-  try {
-    if (!fs.existsSync(PROPOSAL_FILE)) {
-      return [];
-    }
-
-    const raw = fs.readFileSync(
-      PROPOSAL_FILE,
-      "utf8"
-    );
-
-    if (!raw.trim()) {
-      return [];
-    }
-
-    const data = JSON.parse(raw);
-
-    return Array.isArray(data)
-      ? data
-      : [];
-  } catch (error) {
-    throw new Error(
-      `Failed to load improvement proposals: ${error.message}`
-    );
-  }
+  return jsonStateStore.readJsonArray(
+    PROPOSAL_FILE,
+    "Knowledge improvement proposals",
+    { missing: "empty" }
+  );
 }
 
 function saveProposals(proposals) {
-  const limited =
-    proposals.slice(-MAX_PROPOSALS);
-
-  const tempFile =
-    `${PROPOSAL_FILE}.tmp`;
-
-  fs.writeFileSync(
-    tempFile,
-    JSON.stringify(limited, null, 2),
-    "utf8"
+  if (!Array.isArray(proposals)) {
+    throw new Error("Knowledge improvement proposals must be an array.");
+  }
+  const limited = proposals.slice(-MAX_PROPOSALS);
+  const result = jsonStateStore.atomicWriteJson(
+    PROPOSAL_FILE,
+    limited,
+    "Knowledge improvement proposals"
   );
-
-  fs.renameSync(
-    tempFile,
-    PROPOSAL_FILE
-  );
-
+  try {
+    jsonStateStore.recordStateAudit(
+      "knowledge_improvement_proposals_write_committed",
+      "success",
+      PROPOSAL_FILE,
+      {
+        stateHash: result.sha256,
+        entryCount: limited.length
+      }
+    );
+  } catch (error) {
+    error.code = "KNOWLEDGE_PROPOSALS_COMMITTED_AUDIT_FAILED";
+    error.stateCommitted = true;
+    throw error;
+  }
   return limited;
 }
 
