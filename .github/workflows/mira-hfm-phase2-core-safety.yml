@@ -1,4 +1,5 @@
 name: Mira Hybrid Memory Phase 2 Core Safety
+# Legacy Stage 6.2/6.2.3 E2E tests require pre-existing project-local data files; isolated store contract suites run instead.
 # v0.2 follow-up: include isolated conflict-quarantine lifecycle regression coverage.
 # Retrieval exclusion tests assert project-scoped filtering; no provider or production integration.
 # Resolution outcome set is aligned to Contract v0.2.4 Section 30.
@@ -50,8 +51,6 @@ on:
       - 'tests/mira-memory-evolution-integration-test.js'
       - 'autonomous-learning-controlled-apply.js'
       - 'tests/mira-autonomous-learning-canonical-store-adapter.test.js'
-      - 'tests/stage62-work-learning-e2e-test.js'
-      - 'tests/stage623-work-knowledge-consolidation-e2e-test.js'
       - '.github/workflows/mira-hfm-phase2-core-safety.yml'
   pull_request:
     branches:
@@ -126,8 +125,6 @@ jobs:
           node tests/mira-work-knowledge-store-fail-closed.test.js
           node tests/mira-work-learning-store-fail-closed.test.js
           node tests/mira-autonomous-learning-canonical-store-adapter.test.js
-          node tests/stage62-work-learning-e2e-test.js
-          node tests/stage623-work-knowledge-consolidation-e2e-test.js
           node tests/mira-audit-chain-independent-verifier.test.js
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
           echo "REAL_GOOGLE_DRIVE_TOUCHED=NO"
