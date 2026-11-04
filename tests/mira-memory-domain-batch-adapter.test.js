@@ -79,7 +79,7 @@ const crmResult=adaptLegacyBatch({
  verifyApproval:verifier,now
 });
 assert.equal(crmResult.length,2);
-assert.equal(crmResult.every(x=>x.record.source.sourceId===x.mappingId?false:true),true);
+assert.equal(crmResult.every((x,i)=>x.record.source.sourceId===crm[i].messageId&&x.record.source.sourceId===crmMappings[i].legacyId),true);
 console.log('CRM_COMPLETE_BATCH_PARENT_AND_CLIENT_BINDING=PASS');
 
 assert.throws(()=>adaptLegacyBatch({

@@ -3,7 +3,7 @@
 // Read-only domain serializer. It prepares review candidates and never commits.
 const crypto = require('node:crypto');
 const { validateCanonicalMemoryRecord } = require('./mira-memory-conflict-assessment');
-const { validateProjectMapping, digest } = require('./mira-memory-project-mapping-contract');
+const { validateProjectMapping, validateProjectMappings, digest } = require('./mira-memory-project-mapping-contract');
 
 const SOURCES = Object.freeze({
   general_memory: 'mira_legacy_memory',
@@ -139,7 +139,7 @@ function adaptLegacyBatch({
   if(!Array.isArray(sourceEntries)||!Array.isArray(mappings)) throw new Error('Source entries and mappings must be arrays.');
   if(typeof expectedProjectId!=='string'||!expectedProjectId.trim()) throw new Error('Independent expectedProjectId is required.');
   if(typeof expectedSourceFileDigest!=='string'||! /^[a-f0-9]{64}$/.test(expectedSourceFileDigest)) throw new Error('Expected source snapshot SHA-256 is required.');
-  if(!SOURCES[domain]) throw new Error('Domain adapter is not implemented.');
+  if(!Object.prototype.hasOwnProperty.call(SOURCES,domain)) throw new Error('Domain adapter is not implemented.');
   if(!validDate(capturedAt)) throw new Error('capturedAt must be RFC 3339.');
   const validated=validateProjectMappings({
     mappings,expectedDomain:domain,expectedProjectId,
