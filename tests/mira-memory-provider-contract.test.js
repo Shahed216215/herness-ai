@@ -21,11 +21,11 @@ const driveLike={
  ...strong,providerId:'synthetic-drive-like',
  capabilities:{...strong.capabilities,atomicConditionalWrite:false,immutableVersions:false,snapshotConsistency:'BEST_EFFORT'}
 };
-assert.throws(()=>assertProviderOperation({contract:driveLike,operation:'COMMIT_WRITE'}),/missing: atomicConditionalWrite, immutableVersions/);
+assert.throws(()=>assertProviderOperation({contract:driveLike,operation:'COMMIT_WRITE',classification:'PUBLIC'}),/missing: atomicConditionalWrite, immutableVersions/);
 console.log('NONATOMIC_PROVIDER_COMMIT_REJECTED=PASS');
-assert.throws(()=>assertProviderOperation({contract:driveLike,operation:'READ_SNAPSHOT'}),/STRONG snapshot consistency/);
+assert.throws(()=>assertProviderOperation({contract:driveLike,operation:'READ_SNAPSHOT',classification:'PUBLIC'}),/STRONG snapshot consistency/);
 console.log('WEAK_SNAPSHOT_CONSISTENCY_REJECTED=PASS');
-assert.equal(assertProviderOperation({contract:driveLike,operation:'PREPARE_WRITE'}).supported,true);
+assert.equal(assertProviderOperation({contract:driveLike,operation:'PREPARE_WRITE',classification:'PUBLIC'}).supported,true);
 console.log('PREPARE_ONLY_WITHOUT_COMMIT_CAPABILITY_PASS=PASS');
 const unencrypted={...strong,providerId:'synthetic-unencrypted',capabilities:{...strong.capabilities,encryptedAtRest:false}};
 assert.throws(()=>assertProviderOperation({contract:unencrypted,operation:'READ_SNAPSHOT',classification:'PROJECT_PRIVATE'}),/missing: encryptedAtRest/);
