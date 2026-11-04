@@ -371,3 +371,8 @@ MERGE=NOT_APPROVED
 - Semantic dispositions recorded in the caller review: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13; privileged recovery 5; adjacent Stage 13 governance 1.
 - Verified Phase 3 run 41826616667 SUCCESS: NAMESPACE_DOMAIN_READ_COUNT=27; REPOSITORY_ACCESS_PATH_BASELINE_PINNED=PASS; candidate count=272; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - The scanner is not a full call graph; re-export chains, computed property names, reflection and runtime injection remain REVIEW_REQUIRED.
+
+47. CANONICAL RECORD COMPATIBILITY SUITE WIRED INTO PHASE 3 CI
+- Added the existing `tests/mira-memory-conflict-assessment.test.js` to the Phase 3 workflow triggers and execution sequence so P3-D canonical record checks run alongside request, mapping, facade and provider suites.
+- Verified Phase 3 run 41826911511 SUCCESS: canonical record conflict states, malformed/extra fields, RFC3339 date-time validation and SHA-256(JCS(content)) recomputation all PASS; `TESTS_FAILED=0`; repository access-path baseline pinned; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
+- This verifies the current v1.0.0 canonical record validator's structural/content-hash compatibility, not source authenticity, host authorization or whole-record cryptographic attestation.
