@@ -13,7 +13,7 @@ function requiredText(value,label,max=512){
 }
 function facebookPageId(value,label='pageId'){
  const id=requiredText(value,label,32);
- if(!/^\\d{1,32}$/.test(id)) throw new Error(label+' must be a numeric Facebook Page ID.');
+ if(!/^\d{1,32}$/.test(id)) throw new Error(label+' must be a numeric Facebook Page ID.');
  return id;
 }
 function isoTime(value,label){
