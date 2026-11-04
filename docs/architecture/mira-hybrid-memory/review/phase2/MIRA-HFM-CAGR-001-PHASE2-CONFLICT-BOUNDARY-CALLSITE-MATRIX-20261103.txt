@@ -256,3 +256,49 @@ UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
 PHASE2=IN_PROGRESS
 VERSION=v0.2
 PRODUCTION_READINESS=NOT_CERTIFIED
+
+
+16. EXTENDED CALLER-LEVEL SEMANTIC REVIEW — 2026-11-04
+The following additional direct callers were inspected from the Phase 2 branch. This extends semantic classification beyond the initial store/route files; it is not a claim that all 567 scanned files or all 1125 regex matches have been semantically reviewed.
+
+A. General Memory API and legacy identity
+- memory.js:1-90 imports services/mira-local-memory-store; loadMemory() delegates to readMemory(), saveMemory() truncates to capacity then calls writeMemory(), addMemory() performs role+content duplicate detection and stores {role, content, time}. No immutable per-entry messageId or projectId is added here.
+- services/mira-local-memory-store.js remains the underlying filesystem boundary; its atomicity/integrity controls do not establish canonical HFM project scope, source identity or conflict status.
+- scripts/mira-memory-backup.js:1-12 exposes local Memory backup creation through a tool wrapper.
+- tools/memory-restore.js:1-42 exposes explicit-confirmation restore. Restore is a state-replacement boundary and must be evaluated against conflict quarantine and canonical project scope before HFM runtime integration.
+
+B. Conversation retrieval and planning
+- services/mira-conversation-response-planner.js:150-230 validates conversation/message presence, then calls memoryEngine.getConversationMemory(conversationId) to build priority and clarification decisions. This is a downstream retrieval consumer of the conversation memory path; no separate HFM trust/quarantine filter was observed in this function.
+- routes/conversations.js registers the authenticated client-project routes; authentication is not a substitute for canonical projectId binding or conflict trust checks.
+- server.js:2199 onward registers the conversation routes through requireAgentAuth and CLIENT_PROJECTS permission.
+
+C. Evolution and provider paths
+- knowledge-memory-evolution.js:1-110 imports local Memory store plus Google Drive Memory/Knowledge providers; it routes Memory array writes through localMemoryStore.writeMemory(), while Knowledge array writes use jsonStateStore.writeArrayState(). Its loadLocalState()/loadDriveState()/saveDriveState() functions (around lines 235-550) compare and synchronize local and Drive arrays without canonical HFM project/conflict arbitration.
+- knowledge-controlled-apply.js:70-130 and 220-270 preflight local Knowledge against Drive and compare complete arrays; 400-500 verifies local/provider state and attempts rollback after failed sync. This is a controlled apply boundary, but it is not a provider CAS/atomic append arbiter and has no universal canonical conflict guard in the inspected path.
+- autonomous-learning-controlled-apply.js:50-140 and 240-390 reads local Knowledge, reads Drive, writes/rolls back snapshots and verifies equality. It is another independent write/recovery/provider path; equality checks do not establish atomic provider arbitration or HFM trusted-record filtering.
+- google-drive.js:201-245 implements Knowledge/Memory provider save/load helpers. Provider operations remain separate from local commits and no canonical HFM source-version/CAS token is passed through these helpers.
+
+D. Tools, recovery and admin surfaces
+- services/mira-state-version-recovery.js:1-220 verifies a local snapshot and, after explicit confirm, writes snapshot.entries directly with jsonStateStore.writeArrayState(). This is a direct recovery write boundary requiring conflict/quarantine eligibility policy; SHA-256 snapshot integrity alone is not an HFM trust decision.
+- tools/knowledge-backup.js:1-20 wraps local Knowledge backup.
+- tools/knowledge-restore.js:1-44 wraps explicit-confirmation Knowledge restore; it reports post-commit verification failures but does not itself enforce HFM conflict eligibility.
+- routes/knowledge-improvements.js:320-455 reads Knowledge, checks approved proposal/stale content hash and prepares Evolution. Its preconditions protect proposal freshness/approval but do not replace canonical project scope and conflict trust checks.
+- server.js:1090-1225 exposes admin Knowledge delete/search and additional Knowledge reads/stats; these are privileged but still direct legacy Knowledge API consumers.
+- routes/autonomous-learning.js imports the controlled-apply engine and exposes proposal operations behind SYSTEM_ADMIN permission; its admin authorization does not itself establish canonical memory integrity.
+
+E. Boundary classification update
+GENERAL_MEMORY_ROLE_CONTENT_TIME_IDENTITY=LEGACY_IDENTITY_ONLY
+CONVERSATION_RESPONSE_PLANNER_RETRIEVAL=IDENTIFIED
+EVOLUTION_LOCAL_AND_DRIVE_PROVIDER_PATHS=IDENTIFIED
+KNOWLEDGE_CONTROLLED_APPLY_PROVIDER_PATH=IDENTIFIED
+AUTONOMOUS_LEARNING_CONTROLLED_APPLY_PROVIDER_PATH=IDENTIFIED
+VERSION_RESTORE_DIRECT_WRITE_BOUNDARY=IDENTIFIED
+BACKUP_RESTORE_TOOL_BOUNDARIES=IDENTIFIED
+ADMIN_KNOWLEDGE_ROUTE_CONSUMERS=IDENTIFIED
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+The next required step is to continue source-level caller discovery for background workers, exports, caches/indexes, provider adapters and any additional direct imports, then build a deduplicated callsite-to-guard coverage matrix. No runtime adapter wiring or production data change is implied by this review.
