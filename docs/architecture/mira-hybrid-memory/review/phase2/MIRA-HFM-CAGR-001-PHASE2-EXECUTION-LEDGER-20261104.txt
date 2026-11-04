@@ -181,3 +181,20 @@ Additional caller findings:
 - Autonomous worker was inspected as a candidate; no direct core store call was established in the inspected source, so it is not misclassified as a confirmed HFM caller.
 
 The caller inventory is now broader but still incomplete. Next review targets include all remaining background workers, export/download surfaces, caches/indexes, provider adapters, and dynamic import/reachability edges.
+
+
+11. CONVERSATION ROUTE INTEGRATION FIX — 2026-11-04
+Code commits:
+- routes/conversations.js store API alignment: 98ed9e2cddbdda169d7ff231f79d175977baddf6
+- participant schema-field mapping: 51c963541e13908d4202945754fed31c64d499f9
+- tests/mira-hfm-conversation-route-contract.test.js: 9d51e62a47b3e799e6a7d31d329f1a653b465f7c
+- workflow coverage update: ad4fd7475b1a642112c2ed2acd7951422edfc5fa
+
+Finding: routes/conversations.js imported function names that conversation-store.js did not export. The route was changed to use the store's actual createStored*/list/get/save APIs and handle store result envelopes. The API participant field is mapped to the schema's participant property.
+
+CI evidence:
+- Run 41777990347 — SUCCESS — tested head ad4fd7475b1a642112c2ed2acd7951422edfc5fa — https://github.com/Shahed216215/herness-ai/actions/runs/41777990347
+- Run 41777984461 — SUCCESS — tested head ad4fd7475b1a642112c2ed2acd7951422edfc5fa — https://github.com/Shahed216215/herness-ai/actions/runs/41777984461
+- The isolated route contract passed create, message create/memory update, list/detail, context read/write and memory retrieval. TESTS_FAILED=0.
+
+Scope limitation: route/store name and return-shape mismatch is corrected for the tested handlers. Message and context remain separate durable commits; route-level retry/idempotency is not yet established. No projectId schema migration, HFM guard wiring, production data access or provider cutover occurred.
