@@ -90,3 +90,17 @@ The table is a semantic disposition of reviewed paths, not proof that every dyna
 |Total access-path lexical candidates|312|Heuristic inventory only; not a complete call graph|
 
 False-positive handling: `conversationIndex` is a numeric array position from `findIndex`, `require.cache` is Node module-loader cache, and HTTP `Cache-Control: no-store` is a response policy. These are not Memory data caches. Synthetic regression assertions ensure they are not counted as Memory cache candidates.
+
+10. FULL CURRENT INVENTORY DISPOSITION
+|Area|Observed files/domains|Disposition|
+|---|---|---|
+|Canonical Memory / Knowledge accessors and server consumers|memory.js, knowledge.js, server.js, services/learning.js, knowledge-improvements route, search/count/improve/cleanup/capacity tools|Raw/global or admin/maintenance access; no HFM ordinary retrieval until request/project scope and trust/quarantine filtering are applied|
+|Generic JSON / research / proposal / orchestration stores|mira-json-state-store, mira-research-governance, knowledge-improvement, autonomous-learning-proposals, autonomous-orchestrator|Separate helper/governance/proposal/workflow domains; not canonical Memory|
+|Client / work business stores|client-communication, client-follow-up, client-profile, deliverable, opportunity, task, work-acceptance|Separate business domains; no automatic HFM adaptation; require independent domain/project authority if ever proposed|
+|CRM Conversation|client-communication-store, conversation-store, routes/conversations, conversation-memory-engine, response-planner|BLOCKED pending approved client/conversation-to-project ownership and caller-side scope enforcement|
+|Work Learning / Experience / Work Knowledge|work-learning-engine, experience-memory/retrieval, cross-task/future-strategy/opportunity/repeat-work/learning-history, work-knowledge-consolidation|BLOCKED pending authoritative project mapping and source/projection lineage|
+|Drive / snapshot / recovery|google-drive, knowledge-memory-evolution, controlled apply, snapshot-manager, local memory/knowledge recovery and version tools|PRIVILEGED recovery/provider path; no raw Drive read into ordinary retrieval; no provider cutover|
+|Background worker / queue|autonomous-worker, execution queue, project queue coordinator, autonomous orchestrator|No direct HFM Memory access candidate in current scan; separate task/workflow state|
+|Cache / embedding / vector / export|Refined scanner found 0 explicit candidates|No candidate under current rules; dynamic/runtime-injected paths remain REVIEW_REQUIRED|
+
+The complete current emitted candidate set is 312 lines across overlapping categories. Every candidate group has a file/domain disposition; counts are not unique callsite totals. Static and semantic review does not resolve arbitrary runtime dependency injection, reflection or computed property access.

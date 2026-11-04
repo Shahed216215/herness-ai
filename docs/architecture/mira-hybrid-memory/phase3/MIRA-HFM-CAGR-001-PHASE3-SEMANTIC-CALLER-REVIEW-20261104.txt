@@ -179,3 +179,29 @@ Disposition totals: Knowledge 3; CRM Conversation 5; Work Learning/Experience 13
 - All 8 provider-memory-write candidate lines were reviewed: `google-drive.js` (2 provider function definitions), `knowledge.js` (1 Knowledge save), `autonomous-learning-controlled-apply.js` (1), `knowledge-controlled-apply.js` (1), `knowledge-memory-evolution.js` (2) and `tools/knowledge-cleanup.js` (1). These are existing whole-file Drive writes; they do not pass through the HFM facade and remain blocked from ordinary unified retrieval/writes. No Drive call was executed and no Drive behavior was changed.
 - Zero explicit export/archive or worker/queue Memory-access candidates were found by the targeted rules. This is not proof against dynamic, reflective, indirect or runtime-injected behavior; those limitations remain.
 - `PHASE3_SECONDARY_ACCESS_INVENTORY=PASS_CI_HEURISTIC`; `SEMANTIC_DISPOSITION=REVIEWED_WITH_LIMITATIONS`.
+
+19. COMPLETE CURRENT CANDIDATE-SET DISPOSITION (2026-11-04)
+CI run 41835215735 emitted all 312 candidate lines. Category counts overlap and are not unique callsite totals. The current scanned set has a file/domain disposition as follows:
+
+|Candidate category|Count|Source/domain disposition|
+|---|---:|---|
+|PUBLIC_OR_INTERNAL_RETRIEVAL|27|Raw Memory/Knowledge accessors, server/model-context endpoints, maintenance lookups, admin mutation preconditions and aggregate count/capacity tools; blocked from ordinary unified consumption until request/project policy is enforced|
+|DIRECT_STORE_READ|27|Memory/Knowledge direct access, proposal state, generic JSON helper, research-governance state and privileged version/recovery reads; each classified by owning domain|
+|GENERIC_STORE_LOADER|91|Proposal store, client communication/follow-up/profile, CRM Conversation, deliverable, opportunity, task, autonomous workflow, Stage 13 governance, Work Learning and Work Knowledge stores; not one universal Memory namespace|
+|PROVIDER_OR_SNAPSHOT_READ|36|Google Drive whole-file reads, controlled apply/evolution snapshots, generic code-apply snapshots and knowledge-search Drive fallback; privileged or raw-provider paths, not ordinary retrieval|
+|CRM_CONVERSATION_READ|27|Client communication, conversation store, conversation routes, conversation-memory engine and response planner; BLOCKED pending authoritative project/client/conversation mapping|
+|WORK_LEARNING_OR_EXPERIENCE_READ|28|Cross-task learning, experience projection/retrieval, future strategy, learning history, opportunity matching, repeat-work detection, learning-history route and Work Learning engine; BLOCKED pending project authority and source lineage|
+|WORK_KNOWLEDGE_READ|6|Work Knowledge Consolidation; BLOCKED pending authoritative project mapping|
+|NAMESPACE_DOMAIN_READ|27|Namespace-import matches across 14 files; overlaps direct/domain/retrieval categories and has the file-level dispositions in Section 13|
+|CANONICAL_STORE_FILE_BACKED_READ|3|Knowledge recovery source/readback operations; privileged recovery, not ordinary retrieval|
+|BACKUP_RESTORE_OPERATION|32|Local Memory/Knowledge backup, restore, version recovery and generic apply/snapshot operations; all 32 lines reviewed in Section 18|
+|PROVIDER_MEMORY_WRITE|8|Google Drive Memory/Knowledge writer definitions and callsites; all 8 lines reviewed in Section 18|
+|CACHE_OR_INDEX_ACCESS|0|No candidate under the refined Memory-cache/vector rule; false-positive controls pass|
+|EXPORT_ARCHIVE_OPERATION|0|No candidate under the explicit named Memory/Knowledge/Conversation/Learning export/archive rule|
+|BACKGROUND_WORKER_DOMAIN_ACCESS|0|No direct HFM-domain access candidate in scanned worker/queue/job paths|
+
+Generic loader domain detail (91 lines): `autonomous-learning-proposals.js` (9) is proposal lifecycle state; `client-communication-store.js` (12) is a separate CRM communication store; `client-follow-up-store.js` (6), `client-profile-store.js` (6), `deliverable-store.js` (6), `opportunity-store.js` (7), `task-store.js` (7) and `work-acceptance-store.js` (7) are separate business/work domains; `conversation-store.js` (11) is CRM Conversation and remains BLOCKED; `services/autonomous-orchestrator.js` (3) is Stage 16/17 workflow job state; `services/mira-stage13-capability-integration.js` (1) and `services/mira-stage13-learning-governance.js` (4) are Stage 13 governance state; `services/mira-work-knowledge-consolidation.js` (4) and `services/mira-work-learning-engine.js` (8) are explicitly BLOCKED HFM-adjacent domains.
+
+Other direct-read dispositions: `knowledge-improvement.js` and `autonomous-learning-proposals.js` own proposal state, not canonical Knowledge; `services/mira-research-governance.js` owns research policy/usage state; `services/mira-json-state-store.js` is a generic JSON helper; `services/mira-stage13-capability-integration.js` and `services/mira-stage13-learning-governance.js` are adjacent governance domains; `tools/capacity-change.js` reads Knowledge statistics / Memory capacity configuration, not Memory content; Memory/Knowledge count tools expose global aggregates and need a privacy-safe authorized aggregate contract.
+
+The 312 total is the emitted candidate-line count with category overlap. It must not be interpreted as 312 unique Memory read/write callsites. All current scanner candidates have a documented file/domain disposition; indirect re-export chains, reflection, computed property names, dynamic module paths and runtime-injected dependencies remain outside complete static proof. Status: `CURRENT_STATIC_CANDIDATE_SET=SEMANTICALLY_DISPOSITIONED`; `DYNAMIC_CALL_GRAPH=REVIEW_REQUIRED`.

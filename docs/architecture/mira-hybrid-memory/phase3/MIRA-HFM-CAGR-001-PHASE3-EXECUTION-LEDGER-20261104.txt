@@ -467,3 +467,16 @@ CURRENT ADDITIVE STATUS
 - `PHASE3_SECONDARY_CANDIDATE_SEMANTIC_REVIEW=COMPLETED_FOR_40_LINES`
 - `PHASE3_DYNAMIC_CALL_GRAPH_COVERAGE=REVIEW_REQUIRED`
 - `PHASE3=IN_PROGRESS`
+
+59. FULL CURRENT CANDIDATE-SET SEMANTIC DISPOSITION
+- Phase 3 run 41835215735 SUCCESS on commit e6151e307cea4facc6a5c9732d2e0c12573141d6 emitted all candidate lines from the repository-wide inventory; Phase 2 run 41835215665 SUCCESS on the same commit.
+- Parsed 312 emitted candidate lines and grouped them by file/category. The 312 total includes category overlap and is not a unique callsite count.
+- All current candidate groups now have a documented file/domain disposition in the semantic review and coverage matrix: canonical Memory/Knowledge accessors; server/model consumers; proposal and governance stores; CRM Conversation/communication; Work Learning/Experience/Work Knowledge; generic business/workflow stores; Drive provider/snapshot; backup/restore; provider writes; worker/queue; cache/vector/export.
+- The 91 generic store-loader lines were classified by their owning domain: proposal, client communication/follow-up/profile, CRM Conversation, deliverable, opportunity, task, autonomous workflow, Stage 13 governance, Work Learning and Work Knowledge. Non-HFM business stores are not automatically migrated.
+- The 27 CRM Conversation, 28 Work Learning/Experience and 6 Work Knowledge candidate lines remain BLOCKED until authoritative project/tenant mapping and caller authorization exist.
+- The 36 provider/snapshot reads and 32 backup/restore candidates are privileged provider/recovery paths; the 8 Drive writer candidates remain outside the HFM facade. No provider was called or changed.
+- Refined scan results: cache/vector/index 0; explicit export/archive 0; worker/queue/job HFM access 0. Synthetic false-positive tests pass for conversationIndex, require.cache and HTTP no-store headers.
+- `PHASE3_CURRENT_CANDIDATE_SET=312_LINES_SEMANTICALLY_DISPOSITIONED`
+- `PHASE3_INVENTORY_CATEGORY_COUNTS=PINNED_CI`
+- `PHASE3_DYNAMIC_CALL_GRAPH_COVERAGE=REVIEW_REQUIRED`
+- `PHASE3=IN_PROGRESS`
