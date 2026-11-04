@@ -647,22 +647,68 @@ function resolveConflict({
     resolutionDigest: readRegularJson(target).resolutionDigest
   };
 }
-function filterTrustedRecords(records, pendingConflicts, projectId) {
-  if (!Array.isArray(records) || !Array.isArray(pendingConflicts)) throw new Error('Arrays are required.');
-  if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('projectId is required for trusted retrieval filtering.');
+function filterTrustedRecords(
+  records,
+  pendingConflicts,
+  projectId,
+  authorizeAccess,
+  actorContext
+) {
+  if (!Array.isArray(records) || !Array.isArray(pendingConflicts)) {
+    throw new Error('Arrays are required.');
+  }
+  if (typeof projectId !== 'string' || !projectId.trim()) {
+    throw new Error('projectId is required for trusted retrieval filtering.');
+  }
+  if (typeof authorizeAccess !== 'function') {
+    throw new Error('An authenticated access authorizer is required; retrieval fails closed.');
+  }
+  if (!actorContext || typeof actorContext !== 'object' ||
+      typeof actorContext.actorId !== 'string' || !actorContext.actorId.trim() ||
+      typeof actorContext.purpose !== 'string' || !actorContext.purpose.trim() ||
+      typeof actorContext.requestId !== 'string' || !actorContext.requestId.trim()) {
+    throw new Error('Authenticated actorId, purpose and requestId are required for access evaluation.');
+  }
+
   const blocked = new Set(pendingConflicts
     .filter(item => item.projectId === projectId &&
       ['QUARANTINED', 'UNDER_REVIEW', 'PENDING_REVIEW', 'INTEGRITY_FAILED', 'RETAINED_QUARANTINED'].includes(item.status))
     .flatMap(item => item.originalMemoryIds || []));
-  return records.filter(record =>
-    record &&
-    validateCanonicalMemoryRecord(record).length === 0 &&
-    record.projectId === projectId &&
-    record.lifecycle === 'ACTIVE' &&
-    record.integrity?.status === 'VERIFIED' &&
-    RETRIEVABLE_TRUST_STATES.has(record.trust?.status) &&
-    !blocked.has(record.memoryId)
-  );
+
+  return records.filter(record => {
+    if (!record ||
+        validateCanonicalMemoryRecord(record).length !== 0 ||
+        record.projectId !== projectId ||
+        record.lifecycle !== 'ACTIVE' ||
+        record.integrity?.status !== 'VERIFIED' ||
+        !RETRIEVABLE_TRUST_STATES.has(record.trust?.status) ||
+        blocked.has(record.memoryId)) {
+      return false;
+    }
+
+    const classification = record.access?.classification;
+    const allowedProjectIds = record.access?.allowedProjectIds;
+    if (allowedProjectIds !== undefined &&
+        (!Array.isArray(allowedProjectIds) || !allowedProjectIds.includes(projectId))) {
+      return false;
+    }
+    if (!['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED'].includes(classification)) {
+      return false;
+    }
+
+    // This helper does not authenticate actors. The caller must bind this
+    // callback to the authenticated request/session and the active access policy.
+    try {
+      return authorizeAccess(record, {
+        projectId,
+        actorId: actorContext.actorId,
+        purpose: actorContext.purpose,
+        requestId: actorContext.requestId
+      }) === true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 module.exports = {
