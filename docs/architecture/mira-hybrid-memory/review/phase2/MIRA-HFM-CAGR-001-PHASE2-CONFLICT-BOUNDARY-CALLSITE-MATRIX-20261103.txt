@@ -233,3 +233,26 @@ KNOWLEDGE_LOCAL_PROVIDER_DIVERGENCE=RECONCILIATION_GAP_IDENTIFIED
 HFM_RUNTIME_ADAPTER=NOT_ENABLED
 PHASE2=IN_PROGRESS
 VERSION=v0.2
+
+
+15. ISOLATED FAILURE-INJECTION RESULTS — 2026-11-04
+- Added tests/mira-hfm-conversation-partial-commit.test.js. In a temporary MIRA_STORAGE_DIR fixture, create a conversation and persist one incoming message, inject a one-shot saveContext failure, and assert the message remains committed while context remains absent. A subsequent explicit updateConversationMemory retry creates context without creating a second message.
+- Added tests/mira-hfm-knowledge-drive-retry.test.js. In a temporary storage fixture, intercept the google-drive module with a deterministic stub: first sync throws, second sync succeeds. The test proves local Knowledge remains committed after provider failure and duplicate add retries provider sync without duplicating the local entry.
+- The tests do not establish route-level exactly-once semantics, transactional message+context commits, provider CAS, cross-process retry safety or universal source-of-truth arbitration. They establish only the tested local recovery behavior.
+- Both tests were added to .github/workflows/mira-hfm-phase2-core-safety.yml and executed in GitHub Actions:
+  - Run 41777222583: SUCCESS, head cc0553c14663363144767845a587f0180d15bd39.
+  - Run 41777228555: SUCCESS, head cc0553c14663363144767845a587f0180d15bd39.
+- Both logs explicitly show MESSAGE_COMMITTED_CONTEXT_WRITE_FAILED_PARTIAL_STATE=PASS, EXPLICIT_MEMORY_RETRY_RECOVERS_WITHOUT_DUPLICATE_MESSAGE=PASS, LOCAL_KNOWLEDGE_COMMIT_SURVIVES_DRIVE_SYNC_FAILURE=PASS, DUPLICATE_RETRY_RECONCILES_PROVIDER_WITHOUT_DUPLICATING_LOCAL_ENTRY=PASS, TESTS_FAILED=0, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+- No production Conversation or Knowledge data was touched.
+
+UPDATED BOUNDARY STATUS
+CONVERSATION_PARTIAL_COMMIT_RECOVERY=ISOLATED_RETRY_BEHAVIOR_VERIFIED
+CONVERSATION_MESSAGE_CONTEXT_TRANSACTIONAL_ATOMICITY=NOT_IMPLEMENTED
+KNOWLEDGE_LOCAL_COMMIT_SURVIVAL=ISOLATED_PASS
+KNOWLEDGE_DRIVE_RETRY_RECONCILIATION=ISOLATED_PASS
+KNOWLEDGE_PROVIDER_CAS_AND_VERSION_ARBITRATION=NOT_ESTABLISHED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
