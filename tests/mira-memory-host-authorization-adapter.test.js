@@ -32,7 +32,7 @@ const adapter=createHostAuthorizationAdapter({
  },
  now:()=>now
 });
-const input={...context,operation:'READ',resourceScope:'memory:memory-fixture-01'};
+const input={...context,contextIssuedAt:context.issuedAt,contextExpiresAt:context.expiresAt,operation:'READ',resourceScope:'memory:memory-fixture-01'};
 const decision=adapter(input);
 assert.equal(decision.decision,'ALLOW');
 assert.equal(decision.replayStatus,'FRESH');
