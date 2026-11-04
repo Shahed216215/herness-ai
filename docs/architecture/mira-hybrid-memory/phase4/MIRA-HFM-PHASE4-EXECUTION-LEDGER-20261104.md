@@ -112,3 +112,13 @@ Status: IN PROGRESS
 - Logs confirm LIVE_META_API_CALLS=0, TOKEN_USE=0, AUTHORIZATION_GRANTED=0, persistent writes=0 and publish actions=0.
 - An earlier assertion mismatch in the expected Page ID error message was corrected and then verified by this successful run. Failed attempts remain in CI history; no failed run is relabelled PASS.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; OFFLINE_PERMISSION_EVIDENCE_PREFLIGHT=VERIFIED; LIVE_PERMISSION_VERIFICATION=NOT_RUN.
+
+
+## Entry 012 — Version-pinned request planner verified
+- Added non-executable Meta Graph request planning for Page-owned READ, public Page-content READ, user-content READ and Page-post WRITE operation profiles.
+- Planner requires an explicit Graph API version and numeric Page ID, returns method/path and required permission metadata, and rejects non-PUBLIC write plans.
+- Planner always reports `REQUEST_PLAN_ONLY`, `transportEnabled=false`, `mayCallApi=false`, and `credentialIncluded=false`.
+- CI run 41841144374 SUCCESS on commit fa4e4fd111cb2304b9a25008c6c6b2a988a8d439; job 126612729565 completed successfully. Connector, HFM adapter, Meta permission evidence/request planner, and provider capability suites each reported TESTS_FAILED=0.
+- Job log confirms LIVE_META_API_CALLS=0, token use=0, authorization granted=0, persistent writes=0 and publishing=0.
+- The pull_request event for the same commit was still running at the time of this entry; push CI is verified. Confirm the PR event result separately.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; GRAPH_REQUEST_PLANNER=OFFLINE_PLAN_VERIFIED; LIVE_API_TRANSPORT=NOT_IMPLEMENTED.
