@@ -92,6 +92,8 @@ function authorizeMemoryRequest({
     purpose: context.purpose,
     requestId: context.requestId,
     authorityRef: context.authorityRef,
+    contextIssuedAt: context.issuedAt,
+    contextExpiresAt: context.expiresAt,
     operation,
     resourceScope
   }));
