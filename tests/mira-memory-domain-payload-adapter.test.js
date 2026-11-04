@@ -5,7 +5,11 @@ const {digest,bodyOf}=require('../services/mira-memory-project-mapping-contract'
 const now=new Date('2026-11-04T12:00:00.000Z');
 const capturedAt='2026-11-04T11:59:00.000Z';
 const sourceFileDigest='a'.repeat(64);
-const verifier=e=>e.approvalReference==='APPROVAL-FIXTURE'&&e.approvedBy==='human-fixture';
+const verifier=e=>({
+ decision:'APPROVED',approvalReference:e.approvalReference,mappingDigest:e.mappingDigest,
+ projectId:e.projectId,approvedBy:e.approvedBy,approvedAt:e.approvedAt,
+ registryRevision:'fixture-registry-rev-01',revocationStatus:'ACTIVE',verifiedAt:'2026-11-04T11:59:30.000Z'
+});
 function fixture(domain,sourceEntry,extra={}){
  const parent=domain==='crm_conversation_message'?sourceEntry.conversationId:null;
  const mapping={
