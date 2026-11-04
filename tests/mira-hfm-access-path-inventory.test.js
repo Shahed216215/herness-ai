@@ -8,6 +8,7 @@ const sample=[
  "const lessons=listLessons({});",
  "const experience=retrieveExperiences(text);",
  "const state=loadDriveState('knowledge');",
+ "const raw=loadStore();",
  "// getKnowledge() is only a comment",
  "const unrelated=calculateHash(value);"
 ].join('\n');
@@ -17,6 +18,8 @@ for(const category of ['DIRECT_STORE_READ','CRM_CONVERSATION_READ','WORK_LEARNIN
 }
 assert.equal(result.matches.some(x=>x.excerpt.includes('getKnowledge() is only a comment')),false);
 assert.equal(result.matches.some(x=>x.excerpt.includes('calculateHash')),false);
+assert.ok(result.matches.some(x=>x.category==='DIRECT_STORE_READ'&&x.excerpt.includes('loadStore')));
+assert.equal(result.matches.some(x=>x.category==='CRM_CONVERSATION_READ'&&x.excerpt.includes('loadStore')),false);
 console.log('DIRECT_STORE_AND_DERIVED_DOMAIN_ACCESS_DETECTED=PASS');
 console.log('COMMENT_AND_UNRELATED_CALLS_EXCLUDED=PASS');
 console.log('TESTS_FAILED=0');
