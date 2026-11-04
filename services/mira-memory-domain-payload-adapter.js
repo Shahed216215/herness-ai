@@ -90,7 +90,7 @@ function createCanonicalCandidate({domain,sourceEntry,mapping,capturedAt}) {
     requireText(sourceEntry.messageId,'Persisted CRM messageId',200);
     requireText(sourceEntry.conversationId,'CRM conversationId',200);
     requireText(sourceEntry.content,'CRM content',10000);
-    if(sourceEntry.messageId!==mapping.legacyId||sourceEntry.conversationId!==mapping.parentConversationId) throw new Error('CRM message/parent conversation mapping mismatch.');
+    if(sourceEntry.messageId!==mapping.legacyId||sourceEntry.conversationId!==mapping.parentConversationId||sourceEntry.clientId!==mapping.clientId) throw new Error('CRM message/parent conversation/client mapping mismatch.');
     if(!validDate(sourceEntry.createdAt)||!validDate(sourceEntry.updatedAt)) throw new Error('CRM timestamps must be RFC 3339.');
     observedAt=sourceEntry.createdAt;
   } else throw new Error('Domain adapter is not implemented.');
