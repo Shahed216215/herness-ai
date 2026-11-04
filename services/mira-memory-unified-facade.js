@@ -23,6 +23,9 @@ function cloneAndFreeze(value) {
 function requiredText(value, label, max = 512) {
   if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(label + ' is required and must be bounded text.');
 }
+function memoryResourceScope(record) {
+  return 'memory:' + record.memoryId + ':classification:' + record.access.classification;
+}
 function authorize({ requestContext, operation, resourceScope, authorizeRequest, now }) {
   return authorizeMemoryRequest({ requestContext, operation, resourceScope, authorizeRequest, now });
 }
@@ -50,7 +53,7 @@ function retrieveCanonicalRecords({
     try {
       authorize({
         requestContext, operation: 'READ',
-        resourceScope: 'memory:' + record.memoryId,
+        resourceScope: memoryResourceScope(record),
         authorizeRequest, now
       });
       return true;
@@ -90,7 +93,7 @@ function prepareCanonicalWrite({
   }
   authorize({
     requestContext, operation: 'WRITE',
-    resourceScope: 'memory:' + incomingRecord.memoryId,
+    resourceScope: memoryResourceScope(incomingRecord),
     authorizeRequest, now
   });
   const matches = existingRecords.filter(record =>
@@ -116,7 +119,7 @@ function prepareCanonicalWrite({
     // Updating an existing record exposes its prior digest/revision and therefore requires READ as well as WRITE authority.
     authorize({
       requestContext, operation: 'READ',
-      resourceScope: 'memory:' + current.memoryId,
+      resourceScope: memoryResourceScope(current),
       authorizeRequest, now
     });
     if (current.lifecycle !== 'ACTIVE' || current.integrity.status !== 'VERIFIED') {
@@ -159,4 +162,4 @@ function prepareCanonicalWrite({
     incomingRecord: cloneAndFreeze(incomingRecord)
   });
 }
-module.exports = { retrieveCanonicalRecords, prepareCanonicalWrite, digest };
+module.exports = { retrieveCanonicalRecords, prepareCanonicalWrite, digest, memoryResourceScope };
