@@ -34,6 +34,28 @@ assert.equal(evaluateFacebookPageCapabilities({apiConfigured:true,pageId:'123456
 console.log('UNKNOWN_API_SUPPORT_FAILS_CLOSED=PASS');
 assert.equal(evaluateFacebookPageCapabilities({apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'AVAILABLE',readPermission:'AVAILABLE',permissionEvidence:{read:{...goodEvidence('READ'),pageId:'other'}}}).read.state,'UNKNOWN');
 console.log('MISMATCHED_PAGE_EVIDENCE_NOT_ACCEPTED=PASS');
+assert.equal(evaluateFacebookPageCapabilities({
+ apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'AVAILABLE',
+ readPermission:'AVAILABLE',permissionEvidence:{read:{...goodEvidence('READ'),checkedAt:new Date(Date.now()-16*60*1000).toISOString()}}
+}).read.state,'UNKNOWN');
+assert.equal(evaluateFacebookPageCapabilities({
+ apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'AVAILABLE',
+ readPermission:'AVAILABLE',permissionEvidence:{read:{...goodEvidence('READ'),checkedAt:new Date(Date.now()+60*1000).toISOString()}}
+}).read.state,'UNKNOWN');
+assert.equal(evaluateFacebookPageCapabilities({
+ apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'AVAILABLE',
+ readPermission:'AVAILABLE',permissionEvidence:{read:goodEvidence('WRITE')}
+}).read.state,'UNKNOWN');
+console.log('STALE_FUTURE_AND_CROSS_OPERATION_EVIDENCE_FAIL_CLOSED=PASS');
+const limited=evaluateFacebookPageCapabilities({
+ apiConfigured:true,pageId:'123456789',apiVersion:'v99.0',apiSupported:'AVAILABLE',
+ readPermission:'RATE_LIMITED',writePermission:'UNAVAILABLE'
+});
+assert.equal(limited.read.state,'RATE_LIMITED');
+assert.equal(limited.write.state,'UNAVAILABLE');
+assert.equal(evaluateFacebookPageCapabilities({manualFallbackEnabled:false}).manualFallback.state,'UNAVAILABLE');
+assert.throws(()=>evaluateFacebookPageCapabilities({manualFallbackEnabled:'yes'}),/must be boolean/);
+console.log('RATE_LIMIT_AND_MANUAL_FALLBACK_STATES_PRESERVED=PASS');
 
 const draft=createManualPostDraft({record:baseRecord,pageName:'Mira Memory',generatedAt:now});
 assert.equal(draft.status,'PENDING_MANUAL_POST');
