@@ -100,7 +100,8 @@ const privateRecord = record({ memoryId: 'memory-phase4-private-001', classifica
 const privateReport = retrieve(privateRecord);
 assert.throws(() => preparePublicPageDraftFromHfm({
   retrievalReport: privateReport,
-  memoryId: privateRecord.memoryId
+  memoryId: privateRecord.memoryId,
+  pageId: '123456789'
 }), /explicitly PUBLIC/);
 console.log('HFM_PRIVATE_RECORD_BLOCKED_FROM_PAGE_DRAFT=PASS');
 
