@@ -155,3 +155,8 @@ The separate conversation-store persistence boundary was subsequently hardened a
 ### Work Knowledge Consolidation follow-up
 
 The separate Work Knowledge Consolidation store now validates its existing state before direct replacement and emits a committed-state audit event; its isolated regression suite passes in run 379. This is a persistence-integrity improvement only. Its records are not yet linked to conflict IDs, source-version digests or conflict-resolution status, so conflict-aware retrieval and cross-store reconciliation remain REVIEW_REQUIRED.
+
+
+### Work Learning / Experience follow-up
+
+The Work Learning store now validates existing state before direct replacement and records committed-state audit evidence; run 386 verifies the additional direct-overwrite regressions. The separate Experience retrieval engine reads these learning records through listLearningRecords(). Storage integrity is improved, but neither the Work Learning store nor Experience retrieval is yet bound to conflict IDs, original-version digests, trust decisions or conflict-resolution status. Universal conflict-aware retrieval therefore remains REVIEW_REQUIRED.
