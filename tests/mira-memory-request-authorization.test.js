@@ -18,6 +18,11 @@ const authorized=authorizeMemoryRequest({requestContext:ctx,operation:'READ',res
 assert.equal(authorized.authorized,true);
 assert.equal(authorized.projectId,ctx.projectId);
 console.log('HOST_AUTHORIZATION_BINDING_PASS=PASS');
+const fixtureProjectOwners=new Map([['project-fixture-01','actor-fixture-01']]);
+function ownerAwareHost(input){const owner=fixtureProjectOwners.get(input.projectId);return {...allow(input),decision:owner===input.actorId?'ALLOW':'DENY'};}
+assert.equal(authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:ownerAwareHost,now}).authorized,true);
+assert.throws(()=>authorizeMemoryRequest({requestContext:{...ctx,projectId:'project-other'},operation:'READ',resourceScope:'memory:x',authorizeRequest:ownerAwareHost,now}),/denied by host policy/);
+console.log('SYNTHETIC_PROJECT_OWNER_AUTHORIZATION_ENFORCED=PASS');
 let hostAuthorizationInput;
 authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:project-fixture-01',authorizeRequest:input=>(hostAuthorizationInput=input,allow(input)),now});
 assert.equal(hostAuthorizationInput.contextIssuedAt,ctx.issuedAt);
