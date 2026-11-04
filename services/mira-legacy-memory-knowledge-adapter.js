@@ -8,7 +8,7 @@ const { filterTrustedRecords } = require('./mira-conflict-quarantine-registry');
 const DOMAINS = new Set(['general_memory', 'knowledge', 'crm_conversation_message']);
 const MAPPING_KEYS = [
   'domain', 'projectId', 'legacyId', 'memoryId', 'revision',
-  'sourceDigest', 'sourceFileDigest', 'sourceOrdinal', 'canonicalRecord'
+  'sourceDigest', 'sourceFileDigest', 'sourceOrdinal', 'classification', 'approvalReference', 'canonicalRecord'
 ];
 function digest(value) {
   return crypto.createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
@@ -46,6 +46,10 @@ function adaptLegacyEntry({
   if (mapping.sourceFileDigest !== sourceFileDigest || mapping.sourceOrdinal !== sourceOrdinal) {
     throw new Error('Source snapshot locator mismatch.');
   }
+  if (!['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED'].includes(mapping.classification)) {
+    throw new Error('Explicit data classification is required.');
+  }
+  text(mapping.approvalReference, 'Approved mapping reference');
   const observedId = sourceLocator(domain, entry, sourceFileDigest, sourceOrdinal);
   if (typeof observedId !== 'string' || !observedId) {
     throw new Error(domain === 'knowledge' ? 'Legacy Knowledge id is absent.' :
@@ -71,7 +75,11 @@ function adaptLegacyEntry({
   if (record.projectId !== projectId || record.memoryId !== mapping.memoryId ||
       record.version.revision !== mapping.revision ||
       record.content !== serializeLegacyPayload(domain, entry) ||
-      record.source.sourceId !== mapping.legacyId) {
+      record.source.sourceId !== mapping.legacyId ||
+      record.access.classification !== mapping.classification ||
+      record.integrity.status !== 'UNVERIFIED' ||
+      record.trust.status !== 'SOURCE_RECORDED' ||
+      record.lifecycle !== 'PENDING_REVIEW') {
     throw new Error('Canonical record does not preserve mapped identity, project, revision, full payload and provenance.');
   }
   return {
