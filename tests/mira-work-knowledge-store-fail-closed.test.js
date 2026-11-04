@@ -36,7 +36,13 @@ try {
   assert.equal(engine.loadStore().items[0].id, 'fixture-1');
   assert.equal(engine.verifyStoreIntegrity().valid, true);
   assert.ok(fs.statSync(file).mode & 0o100000);
+  const auditEntries = JSON.parse(fs.readFileSync(process.env.MIRA_AUDIT_FILE, 'utf8'));
+  assert.ok(auditEntries.some(entry =>
+    entry.action === 'work_knowledge_consolidation_write_committed' &&
+    entry.status === 'success'
+  ));
   console.log('CONSOLIDATION_STORE_ATOMIC_WRITE_AND_READBACK=PASS');
+  console.log('CONSOLIDATION_STORE_COMMIT_AUDIT=PASS');
 
   const overflow = Array.from({ length: 5001 }, (_, index) => ({ id: index }));
   assert.throws(() => engine.saveStore({ schemaVersion: 1, items: overflow }), /exceeds the supported item limit/);
@@ -45,12 +51,20 @@ try {
   console.log('OVERCAPACITY_STORE_REJECTED_WITHOUT_TRUNCATION=PASS');
 
   fs.writeFileSync(file, '{broken json', 'utf8');
+  const corruptBytes = fs.readFileSync(file, 'utf8');
   assert.throws(() => engine.loadStore(), /contains invalid JSON/);
+  assert.throws(() => engine.saveStore({ schemaVersion: 1, items: [] }), /contains invalid JSON/);
+  assert.equal(fs.readFileSync(file, 'utf8'), corruptBytes);
   console.log('CORRUPT_JSON_FAILS_CLOSED=PASS');
+  console.log('DIRECT_SAVE_CANNOT_OVERWRITE_CORRUPT_STORE=PASS');
 
   fs.writeFileSync(file, '   ', 'utf8');
+  const emptyBytes = fs.readFileSync(file, 'utf8');
   assert.throws(() => engine.loadStore(), /empty and may be corrupted/);
+  assert.throws(() => engine.saveStore({ schemaVersion: 1, items: [] }), /empty and may be corrupted/);
+  assert.equal(fs.readFileSync(file, 'utf8'), emptyBytes);
   console.log('EMPTY_EXISTING_STORE_FAILS_CLOSED=PASS');
+  console.log('DIRECT_SAVE_CANNOT_OVERWRITE_EMPTY_STORE=PASS');
 
   fs.writeFileSync(file, JSON.stringify({
     schemaVersion: 1, items: [], integrityHash: 'f'.repeat(64)
