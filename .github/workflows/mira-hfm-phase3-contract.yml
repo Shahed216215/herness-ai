@@ -7,6 +7,10 @@ on:
     paths:
       - 'services/mira-memory-request-authorization.js'
       - 'tests/mira-memory-request-authorization.test.js'
+      - 'services/mira-memory-project-mapping-contract.js'
+      - 'tests/mira-memory-project-mapping-contract.test.js'
+      - 'services/mira-memory-unified-facade.js'
+      - 'tests/mira-memory-unified-facade.test.js'
       - '.github/workflows/mira-hfm-phase3-contract.yml'
   workflow_dispatch:
 
@@ -25,11 +29,15 @@ jobs:
         with:
           node-version: '24'
       - name: Run isolated request authorization contract tests
-        run: node tests/mira-memory-request-authorization.test.js
+        run: |
+          set -euo pipefail
+          node tests/mira-memory-request-authorization.test.js
+          node tests/mira-memory-project-mapping-contract.test.js
+          node tests/mira-memory-unified-facade.test.js
       - name: Report isolation boundary
         run: |
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
           echo "LIVE_PROVIDER_CALLS=NO"
           echo "NETWORK_REQUESTS_FROM_TEST=0"
           echo "EXTERNAL_ACTIONS_FROM_TEST=0"
-          echo "RESULT=MIRA_HFM_PHASE3_REQUEST_AUTHORIZATION_CONTRACT_CI_COMPLETE"
+          echo "RESULT=MIRA_HFM_PHASE3_UNIFIED_CONTRACT_CI_COMPLETE"
