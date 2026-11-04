@@ -270,3 +270,8 @@ MERGE=NOT_APPROVED
 - Restored the previously verified CommonJS/ESM named-alias scanner from known-good commit 57924c2a27a3f11c6908b91dad8b60294fcee6a7 in commit d84308e4c9bd713dc7227830bf38ac76c5ff97a1.
 - Follow-up Phase 3 run 41819935933 SUCCESS: all request/mapping/facade/adapter/provider/inventory suites TESTS_FAILED=0; CommonJS/ESM alias tests PASS; ALIASED_DOMAIN_READ_COUNT=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
 - Namespace imports, static dynamic-import namespace tracking and re-export chains remain explicitly NOT_SCANNED. The failed experiment remains visible in Actions history; it is not reported as PASS.
+
+34. HOST IDENTITY / PROJECT OWNERSHIP GAP CONFIRMED
+- Read-only review of session-auth.js/server.js: registered login returns userId and server stores it in the session, but sessionIdentity drops userId from its returned identity. Admin sessions store username only. Legacy bearer auth exposes role/permissions only; it does not expose a stable actorId. Do not treat a role or raw bearer token as actor identity.
+- Read-only review of project-schema.js/project-store.js: project records have projectId/acceptanceId/opportunityId/work scope but no ownerActorId/tenantId/clientId; project listing is not owner-filtered. Acceptance/opportunity links do not prove user ownership.
+- This is a concrete blocker for the trusted host adapter and project mapping authority. No project owner may be inferred. Runtime integration remains BLOCKED until a stable actor subject is propagated and an authoritative project-owner registry/migration is approved.
