@@ -40,3 +40,12 @@ Status: IN PROGRESS
 - Follow-up CI is triggered by the latest branch push. Its result must be recorded from the actual Actions run before these additions are marked PASS.
 - No live Meta/Facebook calls, credentials, publishing, external reads or persistent Memory writes were used.
 - VERSION=v0.2; PHASE4=IN_PROGRESS; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Entry 005 — Public Meta documentation research baseline
+- Added `MIRA-HFM-PHASE4-META-GRAPH-API-PERMISSION-RESEARCH-20261104.md`.
+- Search-indexed Meta developer documentation currently indicates Graph API v26.0; version pinning and a version-upgrade review process are required. The version must not be hard-coded permanently.
+- Permission reference indicates `pages_manage_posts` depends on `pages_read_engagement` and `pages_show_list`. Reading user-generated Page content is a distinct use case and may require `pages_read_user_content`; public Page reads may require Page Public Content Access. Endpoint-specific Page token, Page task, app access and App Review requirements remain to be checked in the actual Meta developer portal.
+- This is a public-documentation research baseline only. No app, actor, Page, scope grant, token, app review status or Page task was inspected. No live API request was made.
+- Latest code hardening remains awaiting an observable CI result through the currently available repository status interface; no new PASS is claimed for those added tests.
+- VERSION=v0.2; PHASE4=IN_PROGRESS; LIVE_PERMISSION_VERIFICATION=NOT_RUN; LIVE_API_TEST=NOT_RUN; PRODUCTION_READINESS=NOT_CERTIFIED.
