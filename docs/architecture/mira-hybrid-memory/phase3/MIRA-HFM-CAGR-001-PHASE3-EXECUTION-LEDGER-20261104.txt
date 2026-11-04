@@ -236,3 +236,9 @@ MERGE=NOT_APPROVED
 26. APPROVAL EVIDENCE EXPIRY HARDENING
 - Project mapping approval evidence now requires expiresAt; validation rejects already-expired evidence and expiry at/before verifiedAt.
 - Added negative tests for expired evidence and expiry preceding verification. CI pending.
+
+27. APPROVAL EXPIRY TEST CORRECTION AND VERIFIED CI
+- First expiry-hardening CI attempt failed because the domain payload adapter's independent synthetic verifier fixture had not yet been extended with the new expiresAt evidence field. This was a fixture-contract mismatch, not a production-data test failure; the failing runs remain visible in Actions.
+- Updated the adapter fixture to provide bounded approval evidence expiry.
+- Phase 3 run 41818761195 SUCCESS at code commit 3b312cef518aebc4d1d01e9d260f46d5c87593b6: expired evidence rejection PASS; expiry-before-verification rejection PASS; project mapping, facade, adapter, provider and inventory suites all TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Phase 2 regression run 41818761331 SUCCESS at the same code commit; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
