@@ -79,6 +79,10 @@ assert.throws(()=>parsePublicPagePostUrl('http://www.facebook.com/123456789/post
 assert.throws(()=>parsePublicPagePostUrl('https://evil.example/123456789/posts/987654321',{expectedPageId:'123456789'}),/HTTPS public Facebook/);
 assert.throws(()=>parsePublicPagePostUrl('https://www.facebook.com/999/posts/987654321',{expectedPageId:'123456789'}),/does not match/);
 assert.throws(()=>parsePublicPagePostUrl('https://www.facebook.com/123456789/profile.php',{expectedPageId:'123456789'}),/supported Facebook Page/);
+assert.throws(()=>parsePublicPagePostUrl('https://user@www.facebook.com/123456789/posts/987654321',{expectedPageId:'123456789'}),/standard-port HTTPS/);
+assert.throws(()=>parsePublicPagePostUrl('https://www.facebook.com:444/123456789/posts/987654321',{expectedPageId:'123456789'}),/standard-port HTTPS/);
+assert.throws(()=>parsePublicPagePostUrl('https://facebook.com.evil.example/123456789/posts/987654321',{expectedPageId:'123456789'}),/standard-port HTTPS/);
+console.log('URL_USERINFO_NONSTANDARD_PORT_AND_HOST_SUFFIX_REJECTED=PASS');
 console.log('UNTRUSTED_OR_MISMATCHED_POST_URLS_REJECTED=PASS');
 const imported=prepareManualPostImport({postUrl:url,expectedPageId:'123456789',content:baseRecord.content,observedAt:now});
 assert.equal(imported.integrity.status,'UNVERIFIED');
