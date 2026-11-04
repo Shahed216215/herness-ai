@@ -339,3 +339,40 @@ Scope limitation:
 - This closes the isolated conflict-registry retrieval-selection defect. The registry remains additive and is not wired to every production retrieval consumer.
 - The 36 retrieval calls / 14 consumer files remain a separate integration backlog. Current auth does not supply a canonical projectId for every user/session; no project identity was synthesized.
 - Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+18. INITIALIZED-MEMORY MISSING-PRIMARY FAIL-CLOSED GUARD — 2026-11-04
+
+Finding:
+- The previous missing-primary behavior returned [] when both the primary and backup were absent. That is valid for a true first-run store, but without a durable initialization indicator it could not distinguish first-run from deletion of a previously populated store.
+- A verified backup could be returned read-only, but a subsequent ordinary save could recreate the primary without an explicit restore decision.
+
+Correction:
+- services/mira-local-memory-store.js now maintains a separate, integrity-checked initialization marker bound to the Memory primary filename and store ID.
+- A first-run empty read remains read-only and does not create the marker.
+- A valid read of an existing legacy primary establishes the marker without changing Memory bytes.
+- Existing backup or version-snapshot evidence also establishes prior-store state.
+- If an initialized primary disappears, a verified backup may be exposed read-only, but ordinary writes are blocked until explicit verified restore.
+- If both primary and verified backup are absent after initialization, reads fail closed instead of returning [].
+- Marker corruption, malformed content, symlink/non-regular marker and digest mismatch fail closed.
+- Explicit restore is the only path that recreates a missing initialized primary; the verified backup is copied to the safety-backup path first.
+
+Regression evidence:
+- FIRST_RUN_EMPTY_ONLY_WITHOUT_INITIALIZATION_MARKER=PASS
+- LEGACY_PRIMARY_READ_ESTABLISHES_INITIALIZATION_MARKER=PASS
+- MISSING_PRIMARY_VERIFIED_BACKUP_READ_ONLY=PASS
+- MISSING_PRIMARY_WRITE_REQUIRES_EXPLICIT_RESTORE=PASS
+- MISSING_PRIMARY_AND_BACKUP_FAIL_CLOSED=PASS
+- INITIALIZATION_MARKER_TAMPER_FAILS_CLOSED=PASS
+
+CI:
+- Runs 41803963553 and 41804015063 — FAILURE — intermediate commits exposed expected compatibility assumptions in the old missing-primary test path; failures were retained and not relabelled.
+- Run 41804033785 — SUCCESS — corrected implementation and updated restore test, commit e253aa9511ec0517aa8a04d221a21c67d9c60610.
+- Run 41804100463 — SUCCESS — explicit regression markers, commit 84b44b822f6962b44daba76b5e04c35265ce8645.
+- Run 673 reports TESTS_FAILED=0 for all invoked suites; no production Memory, Knowledge or Conversation data, real Drive, network or external action was touched.
+
+Residual:
+- A legacy store whose primary, backup, version snapshots and initialization marker were all deleted before the first verified read cannot be distinguished from a genuine first-run store by local evidence alone. This limitation is explicit; no data identity or recovery state is fabricated.
+- The marker is local metadata, not an independent remote trust anchor.
+- Knowledge's separate missing-primary/first-run boundary and the production-wide retrieval integration remain separately REVIEW_REQUIRED.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
