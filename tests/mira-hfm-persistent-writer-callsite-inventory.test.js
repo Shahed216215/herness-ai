@@ -58,7 +58,7 @@ const reviewedFiles = [
   'tools/memory-save.js'
 ].sort();
 const actualDefinitionFiles = [...new Set(definitions.map(item => item.file))].sort();
-const reviewedDefinitionFiles = ['knowledge.js', 'memory.js'].sort();
+const reviewedDefinitionFiles = ['knowledge.js', 'memory.js', 'services/learning.js'].sort();
 assert.deepEqual(actualDefinitionFiles, reviewedDefinitionFiles, 'writer API definition files changed and require review');
 
 const restrictedWrapperImports = [];
