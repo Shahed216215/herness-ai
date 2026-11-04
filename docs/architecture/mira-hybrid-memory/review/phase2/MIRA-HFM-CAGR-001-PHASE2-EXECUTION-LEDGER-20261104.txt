@@ -303,3 +303,39 @@ RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED
 PRODUCTION_READINESS=NOT_CERTIFIED
 PHASE2=IN_PROGRESS
 VERSION=v0.2
+
+
+17. RESOLVED-CONFLICT RETRIEVAL SELECTION HARDENING — 2026-11-04
+
+Finding:
+- filterTrustedRecords() previously blocked originals while a conflict was QUARANTINED or UNDER_REVIEW, but listConflicts() did not expose the selected resolution digest to the retrieval filter.
+- After ACCEPT_EXISTING_VERSION, ACCEPT_ALTERNATE_VERSION or REJECT_CONFLICTING_CHANGE, the conflict status became RESOLVED/REJECTED and the previous filter no longer blocked any original. Multiple conflicting versions could therefore become retrievable again.
+- APPROVED_FIELD_MERGE also needed to keep all source originals excluded after resolution.
+
+Correction:
+- listConflicts() now exposes the original record digests, resolution decision, accepted original digest and resulting merge digest only from a verified resolution record.
+- filterTrustedRecords() now:
+  - blocks every original while quarantined, under review, retained or integrity-failed;
+  - after a selected-version resolution, permits only the exact accepted original digest and excludes every unselected original;
+  - after an approved merge, excludes all original digests so only the separately persisted merged record can be retrieved;
+  - fails closed for malformed, incomplete, unknown or unsupported conflict metadata.
+- No legacy record identity, project mapping or resolution authority was inferred.
+
+Regression tests:
+- Resolved accepted version only retrievable.
+- REJECT_CONFLICTING_CHANGE excludes the unselected original.
+- ACCEPT_ALTERNATE_VERSION selects the exact requested original.
+- APPROVED_FIELD_MERGE excludes all source originals.
+- Incomplete resolution metadata and malformed conflict metadata fail closed.
+
+CI:
+- Run 41803660014 — SUCCESS — source fix commit 6fc7d03a165765f715dcbd1b0992a346dee2d13a.
+- Run 41803664926 — SUCCESS — regression test commit 430910af869a667be7bc74175e71073ae08a4ad8.
+- Run 41803735497 — SUCCESS — explicit regression markers and malformed-metadata test commit 3b4d11b1579bc35fa2f952ec7b760b529bd616cf.
+- All three runs completed the isolated Phase 2 workflow; the conflict lifecycle suite reported TESTS_FAILED=0 and the new retrieval-selection assertions PASS.
+- No production data, Google Drive, network or external actions were touched.
+
+Scope limitation:
+- This closes the isolated conflict-registry retrieval-selection defect. The registry remains additive and is not wired to every production retrieval consumer.
+- The 36 retrieval calls / 14 consumer files remain a separate integration backlog. Current auth does not supply a canonical projectId for every user/session; no project identity was synthesized.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
