@@ -96,6 +96,19 @@ assert.equal(adaptedKnowledge.legacyId, 'kb_legacy_01');
 assert.deepEqual(JSON.parse(adaptedKnowledge.canonicalRecord.content).record, knowledge);
 console.log('EXPLICIT_KNOWLEDGE_IDENTITY_MAPPING=PASS');
 console.log('KNOWLEDGE_FULL_RECORD_PRESERVED=PASS');
+assert.deepEqual(filterAdaptedLegacyEntries({
+  adaptedEntries: [adaptedKnowledge], pendingConflicts: [], projectId: 'project-alpha'
+}), []);
+console.log('MIGRATION_PENDING_REVIEW_NOT_RETRIEVABLE=PASS');
+
+const activeKnowledge = {
+  ...adaptedKnowledge,
+  canonicalRecord: {
+    ...adaptedKnowledge.canonicalRecord,
+    integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
+    lifecycle: 'ACTIVE'
+  }
+};
 
 const crm = {
   messageId: 'crm-msg-001', conversationId: 'conv-001',
@@ -130,7 +143,7 @@ assert.throws(() => adaptLegacyEntry({
 console.log('CROSS_PROJECT_MAPPING_REJECTED=PASS');
 
 assert.deepEqual(filterAdaptedLegacyEntries({
-  adaptedEntries: [adaptedKnowledge],
+  adaptedEntries: [activeKnowledge],
   pendingConflicts: [{
     projectId: 'project-alpha', status: 'QUARANTINED',
     originalMemoryIds: ['memory-0001']
@@ -140,7 +153,7 @@ assert.deepEqual(filterAdaptedLegacyEntries({
 console.log('QUARANTINED_RECORD_EXCLUDED=PASS');
 
 assert.equal(filterAdaptedLegacyEntries({
-  adaptedEntries: [adaptedKnowledge],
+  adaptedEntries: [activeKnowledge],
   pendingConflicts: [{
     projectId: 'project-beta', status: 'QUARANTINED',
     originalMemoryIds: ['memory-0001']
@@ -150,7 +163,7 @@ assert.equal(filterAdaptedLegacyEntries({
 console.log('CROSS_PROJECT_CONFLICT_ISOLATION=PASS');
 
 assert.throws(() => filterAdaptedLegacyEntries({
-  adaptedEntries: [adaptedKnowledge], pendingConflicts: [], projectId: 'project-beta'
+  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-beta'
 }), /Cross-project/);
 console.log('ADAPTER_SCOPE_ENFORCED=PASS');
 
