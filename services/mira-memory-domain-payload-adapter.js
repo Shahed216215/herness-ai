@@ -103,12 +103,17 @@ function createCanonicalCandidate({domain,sourceEntry,mapping,capturedAt}) {
   if(errors.length) throw new Error('Canonical candidate invalid: '+errors.join('; '));
   return Object.freeze(record);
 }
-function adaptLegacyRecord({domain,sourceEntry,mapping,expectedSourceFileDigest,capturedAt,verifyApproval,now=new Date()}) {
+function adaptLegacyRecord({domain,sourceEntry,mapping,expectedProjectId,expectedSourceFileDigest,capturedAt,verifyApproval,now=new Date()}) {
+  if(typeof expectedProjectId!=='string'||!expectedProjectId.trim()) throw new Error('Independent expectedProjectId is required.');
+  if(typeof expectedSourceFileDigest!=='string'||! /^[a-f0-9]{64}$/.test(expectedSourceFileDigest)) throw new Error('Expected source snapshot SHA-256 is required.');
+  if(!mapping||mapping.projectId!==expectedProjectId) throw new Error('Mapping project does not match independently requested project.');
+  const nowMs=now instanceof Date?now.getTime():Date.parse(now);
+  if(!Number.isFinite(nowMs)||!validDate(capturedAt)||Date.parse(capturedAt)>nowMs) throw new Error('Candidate capture time is invalid or future-dated.');
   const parent=domain==='crm_conversation_message'&&mapping?mapping.parentConversationId:null;
   const sourceDigest=sourceDigestFor(domain,sourceEntry,parent);
   if(!mapping||mapping.sourceDigest!==sourceDigest) throw new Error('Source digest mismatch.');
   const approved=validateProjectMapping({
-    mapping,expectedDomain:domain,expectedProjectId:mapping.projectId,
+    mapping,expectedDomain:domain,expectedProjectId,
     expectedSourceFileDigest,verifyApproval,now
   });
   const record=createCanonicalCandidate({domain,sourceEntry,mapping:approved,capturedAt});
