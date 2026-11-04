@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const path = require("path");
 const storagePath = require('./mira-storage');
 const jsonStateStore = require('./services/mira-json-state-store');
+const { createStoreInitializationGuard } = require('./services/mira-store-initialization-guard');
 const { saveKnowledgeToDrive } = require("./google-drive");
 
 const {
@@ -10,6 +11,11 @@ const {
 } = require("./capacity-config");
 
 const KNOWLEDGE_FILE = storagePath("knowledge.json");
+const KNOWLEDGE_GUARD = createStoreInitializationGuard({
+  primaryFile: KNOWLEDGE_FILE,
+  storeId: 'MIRA_KNOWLEDGE',
+  evidenceFiles: [storagePath('knowledge-backup.json')]
+});
 
 function createKnowledgeId(entry) {
   const title = normalize(entry.title || "");
@@ -55,16 +61,30 @@ const ALLOWED_DIFFICULTIES = [
 ];
 
 function loadKnowledge() {
-  // A missing file is an empty first-run state. Existing unreadable,
-  // malformed, or non-array state is an error and must never become [].
-  return jsonStateStore.readJsonArray(
-    KNOWLEDGE_FILE,
-    "Mira Knowledge",
-    { missing: "empty" }
-  );
+  // A missing primary is empty only when there is no durable evidence that
+  // this store has previously existed. Corruption never becomes [].
+  try {
+    const entries = jsonStateStore.readJsonArray(
+      KNOWLEDGE_FILE,
+      "Mira Knowledge"
+    );
+    KNOWLEDGE_GUARD.ensureMarker();
+    return entries;
+  } catch (error) {
+    if (!/Mira Knowledge is missing\\.$/.test(error.message)) throw error;
+    if (KNOWLEDGE_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
+      const missing = new Error(
+        'Mira Knowledge was previously initialized but its primary is missing; explicit verified restore is required.'
+      );
+      missing.code = 'KNOWLEDGE_PRIMARY_MISSING_RESTORE_REQUIRED';
+      throw missing;
+    }
+    return [];
+  }
 }
 
 function saveLocalKnowledge(data) {
+  KNOWLEDGE_GUARD.assertWritable();
   return jsonStateStore.writeArrayState(
     KNOWLEDGE_FILE,
     data,
