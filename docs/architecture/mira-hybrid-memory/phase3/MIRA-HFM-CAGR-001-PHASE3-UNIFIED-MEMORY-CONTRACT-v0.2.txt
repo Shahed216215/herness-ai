@@ -344,3 +344,10 @@ The 27 candidates have been source-classified as Knowledge 3, CRM Conversation 5
 This improves the caller matrix but is not a complete semantic call graph. Re-export chains, computed property names, reflection, dynamic module specifiers, wrapper callbacks, and runtime dependency injection remain outside scanner guarantees. New/removed candidates fail the pinned CI baseline and require manual source review before changing the baseline. Runtime readers/writers remain unmodified.
 
 Verified Phase 3 CI run 41826616667: namespace tests PASS; repository baseline pinned at 272; all tests `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
+
+
+## 28. Canonical record compatibility CI addendum (2026-11-04)
+
+The Phase 3 isolated workflow now executes `tests/mira-memory-conflict-assessment.test.js` as part of the P3-D canonical record compatibility gate. The verified suite covers canonical v1.0.0 record shape, record type/schema, provenance fields, RFC3339 timestamps, revision/hash structure, SHA-256(JCS(content)) recomputation, malformed and unknown fields, conflict state classification, access/project mismatch, and UNVERIFIED integrity review requirements.
+
+Phase 3 CI run 41826911511 SUCCESS; `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`. This validates structure and content-hash consistency only; it does not prove source authenticity, host authorization, signature authenticity or whole-record cryptographic attestation.
