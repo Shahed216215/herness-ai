@@ -118,3 +118,26 @@ Head SHA: cd0e2802f254f96e2fe5f4cb73a0a122c261c819
 Conclusion: SUCCESS. Scanner full-output mode emitted all 1125 matches; counts were independently parsed and committed in the inventory report.
 Current branch HEAD after documentation-only inventory commit: 1f7af5e5f21a773df09a1ad8b18c98c013fb9c75.
 PR #4 remains OPEN / DRAFT / UNMERGED; base main remains 4ca0c7dc06bff3e9be1ffd5977a335f4d48e435f.
+
+
+8. FAILURE-INJECTION FOLLOW-UP — 2026-11-04
+Code and workflow commit: cc0553c14663363144767845a587f0180d15bd39
+New isolated test files:
+- tests/mira-hfm-conversation-partial-commit.test.js
+- tests/mira-hfm-knowledge-drive-retry.test.js
+
+CI evidence:
+- Run 41777222583 — SUCCESS — head cc0553c14663363144767845a587f0180d15bd39 — https://github.com/Shahed216215/herness-ai/actions/runs/41777222583
+- Run 41777228555 — SUCCESS — head cc0553c14663363144767845a587f0180d15bd39 — https://github.com/Shahed216215/herness-ai/actions/runs/41777228555
+
+Verified fault scenarios:
+- Conversation: message commit remains durable when the following context write is fault-injected; explicit retry writes context and does not duplicate the persisted message.
+- Knowledge: local write remains durable when Drive sync is fault-injected; a duplicate add retries sync and does not duplicate the local record.
+- Both are isolated synthetic tests; the Drive implementation is mocked. No production data, real Drive, network, or external action was touched.
+
+Limitations:
+- Conversation retry is not an atomic transaction and route-level exactly-once semantics remain unverified.
+- Knowledge retry does not establish provider CAS, conflict-free concurrent writers, remote version arbitration or a universal authority model.
+- Full semantic classification of all caller boundaries remains IN_PROGRESS.
+- Universal HFM runtime guard remains NOT_INTEGRATED.
+- Production readiness remains NOT_CERTIFIED; PR #4 remains OPEN / DRAFT / UNMERGED; release remains v0.2.
