@@ -107,7 +107,8 @@ console.log('HFM_PRIVATE_RECORD_BLOCKED_FROM_PAGE_DRAFT=PASS');
 
 assert.throws(() => preparePublicPageDraftFromHfm({
   retrievalReport: report,
-  memoryId: 'memory-not-in-report'
+  memoryId: 'memory-not-in-report',
+  pageId: '123456789'
 }), /Exactly one HFM-authorized record/);
 const tampered = {
   ...report,
@@ -115,7 +116,8 @@ const tampered = {
 };
 assert.throws(() => preparePublicPageDraftFromHfm({
   retrievalReport: tampered,
-  memoryId: publicRecord.memoryId
+  memoryId: publicRecord.memoryId,
+  pageId: '123456789'
 }), /provenance does not match/);
 const denied = {
   ...report,
@@ -123,7 +125,8 @@ const denied = {
 };
 assert.throws(() => preparePublicPageDraftFromHfm({
   retrievalReport: denied,
-  memoryId: publicRecord.memoryId
+  memoryId: publicRecord.memoryId,
+  pageId: '123456789'
 }), /did not mark this record as authorized/);
 console.log('HFM_PROVENANCE_ELIGIBILITY_AND_IDENTITY_GUARDS_PASS=PASS');
 
