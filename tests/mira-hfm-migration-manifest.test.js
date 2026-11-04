@@ -93,19 +93,21 @@ console.log('INVALID_SOURCE_ORDINAL_REJECTED=PASS');
 
 
 const rawSnapshot = JSON.stringify([base.entry]);
-const planned = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, mappings: [mapping] });
+const snapshotDigest = require('node:crypto').createHash('sha256').update(rawSnapshot, 'utf8').digest('hex');
+const snapshotMapping = { ...mapping, sourceFileDigest: snapshotDigest, sourceOrdinal: 0 };
+const planned = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, mappings: [snapshotMapping] });
 assert.equal(planned.status, 'READY_FOR_REVIEW');
 assert.equal(planned.writeAuthorized, false);
 assert.equal(planned.sourceFileDigest, require('node:crypto').createHash('sha256').update(rawSnapshot, 'utf8').digest('hex'));
 console.log('EXACT_SOURCE_SNAPSHOT_DIGEST_BOUND=PASS');
 
 const changedSnapshot = JSON.stringify([{ ...base.entry, content: 'changed' }]);
-const changedPlan = planSnapshot({ domain: 'knowledge', sourceText: changedSnapshot, mappings: [mapping] });
+const changedPlan = planSnapshot({ domain: 'knowledge', sourceText: changedSnapshot, mappings: [snapshotMapping] });
 assert.equal(changedPlan.status, 'BLOCKED');
 assert.ok(changedPlan.blockers.some(x => x.includes('SOURCE_DIGEST_MISMATCH')));
 console.log('SOURCE_SNAPSHOT_CHANGE_INVALIDATES_MAPPING=PASS');
 const appendedSnapshot = JSON.stringify([base.entry, { id: 'kb-unrelated', title: 'Unrelated', content: 'other' }]);
-const appendedPlan = planSnapshot({ domain: 'knowledge', sourceText: appendedSnapshot, mappings: [mapping] });
+const appendedPlan = planSnapshot({ domain: 'knowledge', sourceText: appendedSnapshot, mappings: [snapshotMapping] });
 assert.equal(appendedPlan.status, 'BLOCKED');
 assert.ok(appendedPlan.blockers.some(x => x.includes('SOURCE_SNAPSHOT_LOCATOR_MISMATCH')));
 console.log('UNRELATED_SNAPSHOT_CHANGE_INVALIDATES_MANIFEST=PASS');
@@ -114,7 +116,7 @@ assert.throws(() => planSnapshot({ domain: 'knowledge', sourceText: '{bad json',
 console.log('INVALID_SOURCE_SNAPSHOT_REJECTED=PASS');
 
 const duplicatedMappings = planSnapshot({
-  domain: 'knowledge', sourceText: rawSnapshot, mappings: [mapping, mapping]
+  domain: 'knowledge', sourceText: rawSnapshot, mappings: [snapshotMapping, snapshotMapping]
 });
 assert.equal(duplicatedMappings.status, 'BLOCKED');
 assert.ok(duplicatedMappings.blockers.some(x => x.startsWith('DUPLICATE_MAPPING:')));
@@ -141,15 +143,17 @@ assert.equal(generalMissing.status, 'BLOCKED');
 console.log('GENERAL_MEMORY_MISSING_SIDECAR_MAPPING_BLOCKED=PASS');
 
 const crmRaw = JSON.stringify([{ messageId: 'crm-msg-001', conversationId: 'conv-001', content: 'hello' }]);
+const crmSnapshotDigest = require('node:crypto').createHash('sha256').update(crmRaw, 'utf8').digest('hex');
+const crmSnapshotMapping = { ...crmMapping, sourceFileDigest: crmSnapshotDigest, sourceOrdinal: 0 };
 const crmPlan = planSnapshot({
-  domain: 'crm_conversation_message', sourceText: crmRaw, mappings: [crmMapping],
+  domain: 'crm_conversation_message', sourceText: crmRaw, mappings: [crmSnapshotMapping],
   parentConversations: { 'conv-001': { conversationId: 'conv-001', projectId: 'project-approved-01', mappingStatus: 'APPROVED', approvalReference: 'CRM-PROJECT-MAP-001' } }
 });
 assert.equal(crmPlan.status, 'READY_FOR_REVIEW');
 console.log('CRM_SNAPSHOT_PARENT_MAPPING_VERIFIED=PASS');
 
 const extraMapping = { ...mapping, legacyId: 'kb_unused_01' };
-const unusedPlan = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, mappings: [mapping, extraMapping] });
+const unusedPlan = planSnapshot({ domain: 'knowledge', sourceText: rawSnapshot, mappings: [snapshotMapping, { ...extraMapping, sourceFileDigest: snapshotDigest, sourceOrdinal: 0 }] });
 assert.equal(unusedPlan.status, 'BLOCKED');
 assert.ok(unusedPlan.blockers.some(x => x.startsWith('UNUSED_MAPPING:')));
 console.log('UNUSED_MAPPING_REJECTED=PASS');
