@@ -1,13 +1,13 @@
 const {
-  createConversation,
+  createStoredConversation,
   listConversations,
   getConversation,
   updateConversation,
-  createConversationMessage,
-  listConversationMessages,
-  getConversationMessage,
-  getConversationContext,
-  saveConversationContext
+  createStoredMessage,
+  listMessages,
+  getMessage,
+  getContext,
+  saveContext
 } = require("../conversation-store");
 
 const {
@@ -76,13 +76,21 @@ function registerConversationRoutes(
     (req, res) => {
       try {
         const result =
-          createConversation(
+          createStoredConversation(
             req.body || {}
           );
 
+        if (!result.ok || !result.conversation) {
+          return res.status(409).json({
+            ok: false,
+            status: result.status || "not_created",
+            error: "Conversation was not created."
+          });
+        }
+
         return res.status(201).json({
           ok: true,
-          conversation: result
+          conversation: result.conversation
         });
       } catch (error) {
         return res.status(400).json({
@@ -227,8 +235,8 @@ function registerConversationRoutes(
           });
         }
 
-        const message =
-          createConversationMessage({
+        const storedMessage =
+          createStoredMessage({
             conversationId:
               req.params.conversationId,
             clientId:
@@ -252,6 +260,15 @@ function registerConversationRoutes(
               body.externalMessageId
           });
 
+        if (!storedMessage.ok || !storedMessage.message) {
+          return res.status(409).json({
+            ok: false,
+            status: storedMessage.status || "not_created",
+            error: "Conversation message was not created."
+          });
+        }
+
+        const message = storedMessage.message;
         let memory = null;
 
         if (
@@ -300,9 +317,8 @@ function registerConversationRoutes(
         }
 
         const messages =
-          listConversationMessages(
-            req.params.conversationId,
-            {
+          listMessages(
+            { conversationId: req.params.conversationId,
               limit:
                 req.query.limit
             }
@@ -328,7 +344,7 @@ function registerConversationRoutes(
     (req, res) => {
       try {
         const message =
-          getConversationMessage(
+          getMessage(
             req.params.messageId
           );
 
@@ -371,7 +387,7 @@ function registerConversationRoutes(
     (req, res) => {
       try {
         const context =
-          getConversationContext(
+          getContext(
             req.params.conversationId
           );
 
@@ -416,7 +432,7 @@ function registerConversationRoutes(
         }
 
         const context =
-          saveConversationContext({
+          saveContext({
             conversationId:
               req.params.conversationId,
             clientId:
