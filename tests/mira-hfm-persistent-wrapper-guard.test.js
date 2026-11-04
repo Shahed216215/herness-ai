@@ -29,7 +29,7 @@ const cases = [
     file: 'learning-save.js',
     dependencies: { '../services/learning': { learnFromContent: true } },
     args: { content: 'isolated fixture' }
-  }
+  },
   {
     name: 'firewall_defense',
     file: 'firewall-defense.js',
