@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { isCanonicalTimestamp: validCanonicalTimestamp } = require('./mira-hfm-timestamp-profile');
 
 const VERIFIER_VERSION = '1.0.0';
 const CANONICALIZATION_PROFILE = 'RFC8785-JCS-UTF8-v1';
@@ -65,18 +66,6 @@ function sha256Canonical(value, excludedField) {
   }
   const bytes = Buffer.from(canonicalizeJcs(body), 'utf8');
   return crypto.createHash('sha256').update(bytes).digest('hex');
-}
-
-function validCanonicalTimestamp(value) {
-  if (typeof value !== 'string') return false;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z$/.exec(value);
-  if (!match) return false;
-  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
-  const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6]);
-  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) return false;
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return day >= 1 && day <= days[month - 1];
 }
 
 function fail(reason, details = {}) {
