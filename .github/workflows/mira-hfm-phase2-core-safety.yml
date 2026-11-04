@@ -213,7 +213,7 @@ jobs:
           node tests/mira-memory-provider-contract.test.js
           node tests/mira-hfm-access-path-inventory.test.js
           node scripts/mira-hfm-access-path-inventory.js > "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
-          grep -E '^MIRA_HFM_(ACCESS_PATH_CANDIDATE_COUNT|PUBLIC_OR_INTERNAL_RETRIEVAL_COUNT|DIRECT_STORE_READ_COUNT|GENERIC_STORE_LOADER_COUNT|PROVIDER_OR_SNAPSHOT_READ_COUNT|CRM_CONVERSATION_READ_COUNT|WORK_LEARNING_OR_EXPERIENCE_READ_COUNT|WORK_KNOWLEDGE_READ_COUNT)=' "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
+          grep -E '^MIRA_HFM_(ACCESS_PATH_CANDIDATE_COUNT|PUBLIC_OR_INTERNAL_RETRIEVAL_COUNT|DIRECT_STORE_READ_COUNT|GENERIC_STORE_LOADER_COUNT|PROVIDER_OR_SNAPSHOT_READ_COUNT|CRM_CONVERSATION_READ_COUNT|WORK_LEARNING_OR_EXPERIENCE_READ_COUNT|WORK_KNOWLEDGE_READ_COUNT|ACCESS_FILE_SUMMARY)=' "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
           node tests/mira-hfm-migration-manifest.test.js
           node tests/mira-hfm-test-registry.test.js
           node tests/mira-hfm-timestamp-profile.test.js
