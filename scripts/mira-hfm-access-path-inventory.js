@@ -12,7 +12,7 @@ const RULES=[
  ['CRM_CONVERSATION_READ',/\b(?:getConversation|listConversations|getMessage|listMessages|getContext)\s*\(/],
  ['WORK_LEARNING_OR_EXPERIENCE_READ',/\b(?:getLearningRecord|listLearningRecords|getLessons|listLessons|getExperience|listExperiences|getExperienceStats|retrieveExperiences|getExperiencesForTask|getRetrievalStats)\s*\(/],
  ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidatedKnowledge|getConsolidationStats|findExistingProposal|verifyStoreIntegrity|getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/],
- ['CACHE_OR_INDEX_ACCESS',/\b(?:memory|knowledge|conversation|learning|experience)[\w$]*(?:cache|embedding|vector|index)[\w$]*\b|\b(?:cache|embedding|embeddings|vectorStore|vectorIndex|searchIndex)\b/i],
+ ['CACHE_OR_INDEX_ACCESS',/\b(?:memory|knowledge|conversation|learning|experience)[\w$]*(?:cache|embedding|vector)[\w$]*\b|\b(?:embedding|embeddings|vectorStore|vectorIndex|searchIndex)\b/i],
  ['EXPORT_ARCHIVE_OPERATION',/\b(?:export|dump|archive)(?:Memory|Knowledge|Conversation|Learning|Experience|Records?)\b|\b(?:Memory|Knowledge|Conversation|Learning|Experience)(?:Export|Dump|Archive)\b/i],
  ['BACKUP_RESTORE_OPERATION',/\b(?:createBackup|restoreMemory|createKnowledgeBackup|restoreKnowledge|restoreVersion|listVersions|verifyVersion|backupMemory|backupKnowledge|createSnapshot|verifySnapshot|restoreSnapshot)\s*\(/i],
  ['PROVIDER_MEMORY_WRITE',/\b(?:saveMemoryToDrive|saveKnowledgeToDrive)\s*\(/]
@@ -118,6 +118,7 @@ function classifySource(relativePath,source){
  const backgroundPath=/(?:^|[\\/])[^/\\]*(?:worker|queue|job)[^/\\]*\.(?:js|cjs|mjs|ts)$/i.test(relativePath);
  const memoryCategories=new Set(['PUBLIC_OR_INTERNAL_RETRIEVAL','DIRECT_STORE_READ','DIRECT_MEMORY_FILE_IO','GENERIC_STORE_LOADER','PROVIDER_OR_SNAPSHOT_READ','CRM_CONVERSATION_READ','WORK_LEARNING_OR_EXPERIENCE_READ','WORK_KNOWLEDGE_READ',ALIASED_READ_CATEGORY,NAMESPACE_READ_CATEGORY,'CANONICAL_STORE_FILE_BACKED_READ']);
  if(backgroundPath&&matches.some(item=>memoryCategories.has(item.category))) matches.push({line:0,category:'BACKGROUND_WORKER_DOMAIN_ACCESS',excerpt:'Worker/queue/job source contains a Memory/Knowledge/Conversation/Learning access candidate.'});
+ if(relativePath==='scripts/mira-hfm-access-path-inventory.js') { for(let i=matches.length-1;i>=0;i--) if(matches[i].category==='CACHE_OR_INDEX_ACCESS') matches.splice(i,1); }
  return {relativePath,matches};
 }
 function walk(root,relative=''){

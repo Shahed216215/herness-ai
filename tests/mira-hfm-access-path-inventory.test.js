@@ -85,16 +85,24 @@ for(const category of ['CACHE_OR_INDEX_ACCESS','BACKUP_RESTORE_OPERATION','PROVI
 const workerResult=classifySource('services/mira-memory-worker.js',"const records = getMemory();");
 assert.ok(workerResult.matches.some(x=>x.category==='BACKGROUND_WORKER_DOMAIN_ACCESS'));
 console.log('CACHE_EMBEDDING_EXPORT_BACKUP_PROVIDER_WRITE_AND_WORKER_CANDIDATES_DETECTED=PASS');
+const falseCacheSample=[
+ "const conversationIndex = store.conversations.findIndex(item => item.id === id);",
+ "delete require.cache[resolved];",
+ "res.set('Cache-Control','no-store');"
+].join('\\n');
+assert.equal(classifySource('fixture/non-memory-cache.js',falseCacheSample).matches.some(x=>x.category==='CACHE_OR_INDEX_ACCESS'),false);
+console.log('ARRAY_POSITION_MODULE_LOADER_AND_HTTP_NO_STORE_NOT_MISCLASSIFIED_AS_MEMORY_CACHE=PASS');
 const repositoryInventory=scan(process.cwd());
 const categoryCounts={PUBLIC_OR_INTERNAL_RETRIEVAL:0,DIRECT_STORE_READ:0,DIRECT_MEMORY_FILE_IO:0,GENERIC_STORE_LOADER:0,PROVIDER_OR_SNAPSHOT_READ:0,CRM_CONVERSATION_READ:0,WORK_LEARNING_OR_EXPERIENCE_READ:0,WORK_KNOWLEDGE_READ:0,ALIASED_DOMAIN_READ:0,NAMESPACE_DOMAIN_READ:0,CANONICAL_STORE_FILE_BACKED_READ:0};
 for(const item of repositoryInventory) categoryCounts[item.category]=(categoryCounts[item.category]||0)+1;
 const pinnedCounts={
  PUBLIC_OR_INTERNAL_RETRIEVAL:27,DIRECT_STORE_READ:27,DIRECT_MEMORY_FILE_IO:0,GENERIC_STORE_LOADER:91,
  PROVIDER_OR_SNAPSHOT_READ:36,CRM_CONVERSATION_READ:27,WORK_LEARNING_OR_EXPERIENCE_READ:28,WORK_KNOWLEDGE_READ:6,
- ALIASED_DOMAIN_READ:0,NAMESPACE_DOMAIN_READ:27,CANONICAL_STORE_FILE_BACKED_READ:3
+ ALIASED_DOMAIN_READ:0,NAMESPACE_DOMAIN_READ:27,CANONICAL_STORE_FILE_BACKED_READ:3,
+ CACHE_OR_INDEX_ACCESS:0,EXPORT_ARCHIVE_OPERATION:0,BACKUP_RESTORE_OPERATION:32,PROVIDER_MEMORY_WRITE:8,BACKGROUND_WORKER_DOMAIN_ACCESS:0
 };
 for(const [category,count] of Object.entries(pinnedCounts)) assert.equal(categoryCounts[category]||0,count,'repository inventory drifted for '+category);
-assert.ok(repositoryInventory.length>=272,'repository lexical candidate inventory unexpectedly shrank');
+assert.equal(repositoryInventory.length,312,'repository lexical candidate inventory changed; semantic review required');
 for(const category of ['CACHE_OR_INDEX_ACCESS','EXPORT_ARCHIVE_OPERATION','BACKUP_RESTORE_OPERATION','PROVIDER_MEMORY_WRITE','BACKGROUND_WORKER_DOMAIN_ACCESS']) console.log('MIRA_HFM_'+category+'_COUNT='+(categoryCounts[category]||0));
 console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_COUNT='+repositoryInventory.length);
 for(const item of repositoryInventory.filter(x=>x.category==='NAMESPACE_DOMAIN_READ')) console.log('MIRA_HFM_NAMESPACE_CALLSITE='+item.file+':'+item.line+':'+item.excerpt);
