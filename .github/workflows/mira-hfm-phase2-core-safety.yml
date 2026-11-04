@@ -62,6 +62,8 @@ on:
       - 'tests/mira-conflict-quarantine-registry.test.js'
       - 'tests/mira-knowledge-cleanup-storage-contract.test.js'
       - 'tests/mira-conversation-store-safety.test.js'
+      - 'routes/conversations.js'
+      - 'tests/mira-hfm-conversation-route-contract.test.js'
       - 'tests/mira-hfm-conversation-partial-commit.test.js'
       - 'tests/mira-hfm-knowledge-drive-retry.test.js'
       - 'tests/stage19-knowledge-improvement-state-test.js'
@@ -160,6 +162,7 @@ jobs:
           node tests/mira-knowledge-cleanup-storage-contract.test.js
           node tests/stage19-knowledge-improvement-state-test.js
           node tests/mira-conversation-store-safety.test.js
+          node tests/mira-hfm-conversation-route-contract.test.js
           node tests/mira-hfm-conversation-partial-commit.test.js
           node tests/mira-hfm-knowledge-drive-retry.test.js
           node tests/mira-work-knowledge-store-fail-closed.test.js
