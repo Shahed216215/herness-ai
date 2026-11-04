@@ -27,7 +27,8 @@ function createHostAuthorizationAdapter({
   const verified=validateProjectAuthorityEvidence({
    evidence,expectedActorId:input.actorId,expectedActorType:input.actorType,
    expectedProjectId:input.projectId,expectedOperation:input.operation,
-   expectedResourceScope:input.resourceScope,verifyEvidence:verifyProjectAuthorityEvidence,now:current
+   expectedResourceScope:input.resourceScope,expectedPurpose:input.purpose,
+   verifyEvidence:verifyProjectAuthorityEvidence,now:current
   });
   const fresh=consumeReplayRequest(Object.freeze({
    authorityRef:input.authorityRef,requestId:input.requestId,actorId:input.actorId,
