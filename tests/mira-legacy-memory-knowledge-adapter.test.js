@@ -7,7 +7,7 @@ const {
 } = require('../services/mira-legacy-memory-knowledge-adapter');
 
 const sourceFileDigest = 'a'.repeat(64);
-function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projectId = 'project-alpha') {
+function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projectId = 'project-alpha', classification = 'PROJECT_PRIVATE') {
   const content = serializeLegacyPayload(domain, entry);
   return {
     schemaVersion: '1.0.0',
@@ -27,10 +27,10 @@ function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projec
       revision: 1,
       contentHash: crypto.createHash('sha256').update(JSON.stringify(content), 'utf8').digest('hex')
     },
-    integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
+    integrity: { status: 'UNVERIFIED', algorithm: 'SHA-256' },
     trust: { status: 'SOURCE_RECORDED' },
-    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: [projectId] },
-    lifecycle: 'ACTIVE'
+    access: { classification, allowedProjectIds: [projectId] },
+    lifecycle: 'PENDING_REVIEW'
   };
 }
 function mapping(domain, entry, sourceOrdinal = 0, memoryId = 'memory-0001', projectId = 'project-alpha', fileDigest = sourceFileDigest) {
@@ -38,7 +38,8 @@ function mapping(domain, entry, sourceOrdinal = 0, memoryId = 'memory-0001', pro
   return {
     domain, projectId, legacyId, memoryId, revision: 1,
     sourceDigest: digest(entry), sourceFileDigest: fileDigest, sourceOrdinal,
-    canonicalRecord: makeCanonical(domain, legacyId, entry, memoryId, projectId)
+    classification: 'PROJECT_PRIVATE', approvalReference: 'APPROVED-MAP-001',
+    canonicalRecord: makeCanonical(domain, legacyId, entry, memoryId, projectId, 'PROJECT_PRIVATE')
   };
 }
 
