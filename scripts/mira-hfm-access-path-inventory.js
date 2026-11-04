@@ -47,6 +47,7 @@ function importedReadAliases(source){
  return aliases;
 }
 function classifySource(relativePath,source){
+ const sourceLines=String(source).split(/\\r?\\n/);
  const matches=[];
  const lines=String(source).split(/\r?\n/);
  for(let i=0;i<lines.length;i++){
@@ -62,6 +63,17 @@ function classifySource(relativePath,source){
   for(const [alias,original] of aliases){
    const call=new RegExp('\\b'+alias+'\\s*\\(');
    if(call.test(lines[i])) matches.push({line:i+1,category:ALIASED_READ_CATEGORY,excerpt:original+' as '+alias+': '+lines[i].trim().slice(0,180)});
+  }
+ }
+ const canonicalPathMentioned=sourceLines.some(line=>
+  !/^\s*(?:\/\/|\*|\*\/)/.test(line)&&/(?:memory\.json|knowledge\.json|conversations\.json|work-learning-records\.json|work-knowledge-consolidation\.json)/i.test(line)
+ );
+ if(canonicalPathMentioned){
+  for(let i=0;i<sourceLines.length;i++){
+   if(/^\s*(?:\/\/|\*|\*\/)/.test(sourceLines[i])) continue;
+   if(/\b(?:readFileSync|readFile|createReadStream|readJsonArray|readJsonObject|readState)\s*\(/.test(sourceLines[i])){
+    matches.push({line:i+1,category:'CANONICAL_STORE_FILE_BACKED_READ',excerpt:sourceLines[i].trim().slice(0,180)});
+   }
   }
  }
  return {relativePath,matches};
