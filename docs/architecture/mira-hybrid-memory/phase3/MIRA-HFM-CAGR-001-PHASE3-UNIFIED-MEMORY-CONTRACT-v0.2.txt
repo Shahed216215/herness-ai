@@ -219,3 +219,18 @@ MERGE=NOT_APPROVED
 DEPLOYMENT=NOT_APPROVED
 
 **End of document.**
+
+## 17. 2026-11-04 implementation addendum
+
+The Phase 3 branch now contains isolated, read-only/synthetic prototypes:
+- `services/mira-memory-request-authorization.js`: exact request-context shape, timestamp/lifetime validation and mandatory injected host authorization decision bound to actor, project, purpose, request, operation and resource. This does not authenticate the caller; a trusted host adapter remains a prerequisite.
+- `services/mira-memory-project-mapping-contract.js`: explicit snapshot-bound project mapping validator requiring APPROVED status, digests, authority reference and a trusted approval-verifier callback. It does not create, approve, persist or revoke mappings.
+- `services/mira-memory-unified-facade.js`: in-memory retrieval composition over the existing canonical validator/quarantine filter, plus write preparation with revision/idempotency/conflict/access/provenance checks. It intentionally has no persistence/commit operation.
+- Synthetic tests for these prototypes have been added to the isolated workflow definition. Their execution is not yet independently verified; do not report PASS until a successful CI run and log evidence are captured.
+
+Current implementation state:
+`PHASE3_REQUEST_CONTEXT_VALIDATOR=IMPLEMENTED_CI_NOT_VERIFIED`
+`PHASE3_PROJECT_MAPPING_VALIDATOR=IMPLEMENTED_CI_NOT_VERIFIED`
+`PHASE3_SYNTHETIC_RETRIEVAL=IMPLEMENTED_CI_NOT_VERIFIED`
+`PHASE3_SYNTHETIC_WRITE_PREPARE=IMPLEMENTED_NO_COMMIT_CI_NOT_VERIFIED`
+`PRODUCTION_INTEGRATION=NOT_ENABLED`
