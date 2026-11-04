@@ -30,6 +30,7 @@ async function main() {
   try {
     assert.deepEqual(memory.getMemory(), []);
     assert.equal(fs.existsSync(store.INITIALIZATION_FILE), false);
+    console.log('FIRST_RUN_EMPTY_ONLY_WITHOUT_INITIALIZATION_MARKER=PASS');
 
     memory.addMemory({ role: 'user', content: 'fixture-one' });
     memory.addMemory('assistant', 'fixture-two');
@@ -45,6 +46,7 @@ async function main() {
     fs.unlinkSync(store.INITIALIZATION_FILE);
     assert.equal(memory.getMemory().length, 2);
     assert.equal(fs.existsSync(store.INITIALIZATION_FILE), true);
+    console.log('LEGACY_PRIMARY_READ_ESTABLISHES_INITIALIZATION_MARKER=PASS');
 
     // A previous valid state is retained as an immutable version before replacement.
     const versionsDir = store.MEMORY_FILE + '.versions';
@@ -72,10 +74,12 @@ async function main() {
     fs.unlinkSync(store.MEMORY_FILE);
     const recoveredRead = memory.getMemory();
     assert.equal(recoveredRead.length, 2);
+    console.log('MISSING_PRIMARY_VERIFIED_BACKUP_READ_ONLY=PASS');
     assert.throws(
       () => memory.addMemory('user', 'must-require-explicit-restore'),
       /explicit verified restore is required/i
     );
+    console.log('MISSING_PRIMARY_WRITE_REQUIRES_EXPLICIT_RESTORE=PASS');
     const missingPrimaryRestore = JSON.parse(await restoreTool.execute({ confirm: true }));
     assert.equal(missingPrimaryRestore.success, true);
     assert.equal(memory.getMemory().length, 2);
@@ -128,6 +132,7 @@ async function main() {
     // must never degrade into a first-run empty Memory database.
     fs.unlinkSync(store.BACKUP_FILE);
     assert.throws(() => memory.getMemory(), /previously initialized/i);
+    console.log('MISSING_PRIMARY_AND_BACKUP_FAIL_CLOSED=PASS');
     assert.throws(
       () => memory.addMemory('user', 'must-not-reinitialize'),
       /previously initialized/i
@@ -137,6 +142,7 @@ async function main() {
     marker.sha256 = '0'.repeat(64);
     fs.writeFileSync(store.INITIALIZATION_FILE, JSON.stringify(marker), { mode: 0o600 });
     assert.throws(() => memory.getMemory(), /initialization marker integrity/i);
+    console.log('INITIALIZATION_MARKER_TAMPER_FAILS_CLOSED=PASS');
 
     // Legacy v1 is recognized but explicitly not checksum-verified.
     const legacy = {
