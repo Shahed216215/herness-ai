@@ -139,9 +139,9 @@ const TOOL_POLICIES = Object.freeze({
 
   knowledge_save: {
     operation: "file_modify",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
+    autonomous: false,
+    humanApprovalRequired: true,
+    explicitConfirmation: true
   },
 
   knowledge_search: {
@@ -153,9 +153,9 @@ const TOOL_POLICIES = Object.freeze({
 
   learning_save: {
     operation: "file_modify",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
+    autonomous: false,
+    humanApprovalRequired: true,
+    explicitConfirmation: true
   },
 
   memory_backup: {
@@ -195,9 +195,9 @@ const TOOL_POLICIES = Object.freeze({
 
   memory_save: {
     operation: "file_modify",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
+    autonomous: false,
+    humanApprovalRequired: true,
+    explicitConfirmation: true
   },
 
   system_info: {
