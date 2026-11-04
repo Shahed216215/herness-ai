@@ -358,3 +358,12 @@ Phase 3 CI run 41826911511 SUCCESS; `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED
 The Phase 3 isolated workflow now includes the existing admin backup/restore permission tests, CRM conversation route/store fixtures, direct-dispatch boundary tests, and persistent human-only wrapper guard. The verified run 41827185752 confirms admin permission/confirmation gates, CRM route behavior, Conversation Store fail-closed behavior, zero direct route tool calls, and denial of all seven human-only wrappers without invoking their underlying writers.
 
 This is evidence that current legacy boundaries remain guarded. It is not evidence that runtime retrieval/writer callers are routed through the new unified facade. Production wiring remains disabled pending trusted host identity, authoritative project-owner registry, full caller coverage and independent verification.
+
+
+## 30. Prepare-only write audit handoff (2026-11-04)
+
+The synthetic `prepareCanonicalWrite()` result now contains an immutable `auditPlan` binding actorId, actorType, projectId, requestId, CREATE/UPDATE operation, memoryId, prior/next revision, idempotency key, incoming record digest and `PREPARED_NOT_COMMITTED` outcome. It also explicitly reports `auditStatus=NOT_EMITTED_PREPARE_ONLY` and `eventRequiredBeforeCommit=true`.
+
+This makes the future host commit boundary's audit obligation explicit without claiming that an event has been written. The facade still has no persistence, commit or audit-emission function. The real host writer must atomically enforce idempotency/CAS, preserve the prior version, emit the audit event with commit outcome, and report post-commit audit failure accurately.
+
+Verified Phase 3 CI run 41827659135 SUCCESS; all tests `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
