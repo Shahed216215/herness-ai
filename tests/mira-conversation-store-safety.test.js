@@ -26,6 +26,13 @@ try {
   assert.deepEqual(initial.conversations, []);
   assert.deepEqual(initial.messages, []);
   assert.deepEqual(initial.contexts, []);
+  const initializationAudit = JSON.parse(
+    fs.readFileSync(path.join(storageRoot, 'audit-log.json'), 'utf8')
+  );
+  assert.ok(initializationAudit.some(entry =>
+    entry.action === 'conversation_store_initialized' &&
+    entry.status === 'success'
+  ));
 
   const saved = store.saveStore({
     version: 1,
