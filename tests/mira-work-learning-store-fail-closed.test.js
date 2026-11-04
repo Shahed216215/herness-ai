@@ -25,7 +25,9 @@ try {
   assert.deepEqual(engine.loadStore().records, []);
   engine.ensureStore();
   assert.equal(engine.loadStore().records.length, 0);
+  assert.equal(fs.existsSync(engine.INITIALIZATION_FILE), true);
   console.log('MISSING_WORK_LEARNING_STORE_FIRST_RUN=PASS');
+  console.log('WORK_LEARNING_INITIALIZATION_MARKER_CREATED=PASS');
 
   const initialRecords = Array.from(
     { length: engine.MAX_RECORDS },
@@ -89,6 +91,18 @@ try {
   assert.throws(() => engine.saveStore({ records: [] }), /not a safe regular file/);
   assert.throws(() => engine.ensureStore(), /not a safe regular file/);
   console.log('WORK_LEARNING_SYMLINK_READ_WRITE_REJECTED=PASS');
+
+  fs.unlinkSync(learningFile);
+  assert.throws(() => engine.loadStore(), /previously initialized/i);
+  assert.throws(() => engine.saveStore({ version: 1, records: [] }), /previously initialized/i);
+  assert.throws(() => engine.ensureStore(), /previously initialized/i);
+  console.log('WORK_LEARNING_MISSING_PRIMARY_FAILS_CLOSED=PASS');
+
+  const marker = JSON.parse(fs.readFileSync(engine.INITIALIZATION_FILE, 'utf8'));
+  marker.sha256 = '0'.repeat(64);
+  fs.writeFileSync(engine.INITIALIZATION_FILE, JSON.stringify(marker), { mode: 0o600 });
+  assert.throws(() => engine.loadStore(), /initialization marker integrity/i);
+  console.log('WORK_LEARNING_MARKER_TAMPER_FAILS_CLOSED=PASS');
 
   console.log('TESTS_FAILED=0');
   console.log('RESULT=MIRA_WORK_LEARNING_STORE_FAIL_CLOSED_PASS');
