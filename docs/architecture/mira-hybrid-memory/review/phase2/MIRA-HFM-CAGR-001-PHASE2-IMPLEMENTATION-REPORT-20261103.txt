@@ -585,3 +585,28 @@ GitHub Actions run 41765526400 (run 386), job 126362873618, completed SUCCESS on
 - TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0.
 
 This closes scoped direct-overwrite and commit-audit gaps in the Work Learning store. It does not qualify U04 cross-process append arbitration or link Work Learning/Experience records to conflict-registry resolution status.
+
+
+19. EXPLICIT LEGACY MEMORY/KNOWLEDGE MAPPING PROTOTYPE — VERIFIED BY RUN 392
+
+A read-only compatibility adapter was added:
+- services/mira-legacy-memory-knowledge-adapter.js
+- tests/mira-legacy-memory-knowledge-adapter.test.js
+
+It deliberately does not change memory.js or knowledge.js. The adapter accepts only exact, explicit mapping data: domain, projectId, legacyId, canonical memoryId, revision, sourceDigest and a canonical record. It verifies the source digest, canonical record schema/content hash, project scope, revision, provenance and byte-equivalent content semantics before returning an adapted view. It filters adapted records through the project-scoped conflict registry helper.
+
+Run 41768834680 (run 392), job 126373473545, SUCCESS on commit ecba9ca6e809c8f2c538e7d9e2a97a8733d6f540. The adapter suite passed all 11 assertions, including stale digest rejection, absent project rejection, missing legacy conversation messageId fail-closed behavior, duplicate mapping rejection, cross-project isolation, quarantine exclusion and canonical hash tamper rejection. TESTS_FAILED=0.
+
+Interpretation:
+- Knowledge's legacy ID is a usable mapping key only when explicitly bound to an authoritative project and canonical record.
+- Conversation Memory cannot yet be mapped from the existing {role, content, time} shape because it has no immutable messageId. The adapter refuses to invent one.
+- The adapter is a testable compatibility prototype, not a production interception boundary. It is not called by memory.js, knowledge.js or routes; it does not migrate or write any data.
+- No production records were accessed or modified. No network/provider/Drive actions were performed.
+
+CURRENT_LEGACY_ADAPTER=PASS_SCOPED_RUN_392
+LEGACY_CONVERSATION_IDENTITY_BACKFILL=NOT_IMPLEMENTED
+AUTHORITATIVE_PROJECT_ID_MAPPING=NOT_APPROVED
+PRODUCTION_RETRIEVAL_INTEGRATION=NOT_ENABLED
+PRODUCTION_WRITE_INTEGRATION=NOT_ENABLED
+FULL_PHASE2=REVIEW_REQUIRED
+VERSION=v0.2
