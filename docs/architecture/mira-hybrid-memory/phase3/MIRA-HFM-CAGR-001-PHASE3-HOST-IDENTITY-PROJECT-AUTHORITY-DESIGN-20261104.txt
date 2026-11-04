@@ -113,3 +113,7 @@ EXISTING_PROJECT_OWNER_ASSIGNMENT=NOT_APPROVED
 PROJECT_AUTHORITY_CALLBACK=CONTRACT_ONLY
 PRODUCTION_AUTHORIZATION=NOT_APPROVED
 PHASE3=IN_PROGRESS
+
+
+11. PROJECT AUTHORITY EVIDENCE VALIDATOR PROTOTYPE
+The additive `services/mira-memory-project-authority-contract.js` validator formalizes a request-bound host registry evidence envelope. It binds actorId, actorType, projectId, operation, resourceScope, membershipRef, membershipRole, allowedOperations, registryRevision, approval/verification/expiry timestamps, active status, revocation status and evidenceDigest. A mandatory trusted verifier callback must confirm the authoritative registry/signature. The validator is read-only and does not create memberships or connect to project-store. Synthetic tests cover owner/project/resource substitution, denied/revoked membership, unapproved operations, expired evidence, tampering and missing verifier.
