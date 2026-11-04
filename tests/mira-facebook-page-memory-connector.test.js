@@ -7,7 +7,7 @@ const {
 const now=new Date().toISOString();
 const baseRecord={
  memoryId:'memory-fixture-001',projectId:'project-alpha',
- content:'Approved public project note.',integrity:{status:'VERIFIED'},lifecycle:'ACTIVE'
+ content:'Approved public project note.',integrity:{status:'VERIFIED'},access:{classification:'PUBLIC'},lifecycle:'ACTIVE'
 };
 const goodEvidence=(operation)=>({verified:true,pageId:'123456789',operation,evidenceRef:'offline-fixture-'+operation,checkedAt:now});
 const caps=evaluateFacebookPageCapabilities({
@@ -42,6 +42,9 @@ assert.equal(draft.contentHash.length,64);
 console.log('MANUAL_POST_DRAFT_GENERATED_WITH_CONTENT_DIGEST=PASS');
 assert.throws(()=>createManualPostDraft({record:{...baseRecord,integrity:{status:'UNVERIFIED'}}}),/integrity-verified/);
 console.log('UNVERIFIED_MEMORY_CANNOT_CREATE_POST_DRAFT=PASS');
+assert.throws(()=>createManualPostDraft({record:{...baseRecord,access:{classification:'PROJECT_PRIVATE'}}}),/explicitly PUBLIC/);
+assert.throws(()=>createManualPostDraft({record:{...baseRecord,access:undefined}}),/explicitly PUBLIC/);
+console.log('NONPUBLIC_MEMORY_CANNOT_ENTER_FACEBOOK_POST_DRAFT=PASS');
 assert.throws(()=>createManualPostDraft({record:{...baseRecord,content:'  '}}),/record.content/);
 console.log('EMPTY_POST_CONTENT_REJECTED=PASS');
 
