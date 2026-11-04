@@ -13,6 +13,7 @@ const RULES=[
  ['WORK_KNOWLEDGE_READ',/\b(?:getConsolidatedKnowledge|getConsolidationStats|findExistingProposal|verifyStoreIntegrity|getConsolidationItems|listConsolidationItems|searchConsolidatedKnowledge|getWorkKnowledge)\s*\(/]
 ];
 const ALIASED_READ_CATEGORY='ALIASED_DOMAIN_READ';
+const NAMESPACE_READ_CATEGORY='NAMESPACE_DOMAIN_READ';
 const READ_EXPORTS=new Set([
  'getMemory','getKnowledge','getKnowledgeStats','getMemoryStats','searchKnowledge','searchMemory',
  'loadMemory','loadKnowledge','readJsonArray','readJsonObject','readState','loadMemoryFromDrive',
@@ -45,6 +46,25 @@ function importedReadAliases(source){
  }
  return aliases;
 }
+function importedNamespaceAliases(source){
+ const aliases=new Map();
+ const declarations=[
+  /(?:const|let|var)\\s+(\\w+)\\s*=\\s*require\\(\\s*['"]([^'"]+)['"]\\s*\\)/gs,
+  /import\\s+\\*\\s+as\\s+(\\w+)\\s+from\\s+['"]([^'"]+)['"]/gs,
+  /(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:await\\s*)?import\\(\\s*['"]([^'"]+)['"]\\s*\\)/gs
+ ];
+ for(const pattern of declarations){
+  pattern.lastIndex=0;
+  let match;
+  while((match=pattern.exec(String(source)))){
+   const specifier=match[2];
+   if(/(memory|knowledge|conversation|learning|experience|work-knowledge|google-drive|snapshot|state-store|crm)/i.test(specifier)){
+    aliases.set(match[1],specifier);
+   }
+  }
+ }
+ return aliases;
+}
 function classifySource(relativePath,source){
  const matches=[];
  const lines=String(source).split(/\r?\n/);
@@ -61,6 +81,15 @@ function classifySource(relativePath,source){
   for(const [alias,original] of aliases){
    const call=new RegExp('\\b'+alias+'\\s*\\(');
    if(call.test(lines[i])) matches.push({line:i+1,category:ALIASED_READ_CATEGORY,excerpt:original+' as '+alias+': '+lines[i].trim().slice(0,180)});
+  }
+ }
+ const namespaces=importedNamespaceAliases(source);
+ for(let i=0;i<lines.length;i++){
+  if(/^\\s*(?:\\/\\/|\\*|\\*\\/)/.test(lines[i])) continue;
+  for(const [alias,specifier] of namespaces){
+   const member=new RegExp('\\\\b'+alias+'\\\\s*\\.\\\\s*('+[...READ_EXPORTS].join('|')+')\\\\s*\\(');
+   const found=member.exec(lines[i]);
+   if(found) matches.push({line:i+1,category:NAMESPACE_READ_CATEGORY,excerpt:specifier+' namespace '+alias+'.'+found[1]+': '+lines[i].trim().slice(0,160)});
   }
  }
  return {relativePath,matches};
@@ -88,7 +117,7 @@ if(require.main===module){
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_INVENTORY=GENERATED');
  console.log('MIRA_HFM_ACCESS_PATH_CANDIDATE_COUNT='+findings.length);
  for(const [category] of RULES) console.log('MIRA_HFM_'+category+'_COUNT='+findings.filter(x=>x.category===category).length);
- console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);
+ console.log('MIRA_HFM_'+ALIASED_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===ALIASED_READ_CATEGORY).length);\n console.log('MIRA_HFM_'+NAMESPACE_READ_CATEGORY+'_COUNT='+findings.filter(x=>x.category===NAMESPACE_READ_CATEGORY).length);
  const byFile=new Map();
  for(const item of findings){
   const key=item.file+'|'+item.category;
@@ -101,4 +130,4 @@ if(require.main===module){
  console.log('RUNTIME_DATA_ACCESSED=NO');
  console.log('NETWORK_REQUESTS=0');
 }
-module.exports={classifySource,scan,RULES,ALIASED_READ_CATEGORY,importedReadAliases};
+module.exports={classifySource,scan,RULES,ALIASED_READ_CATEGORY,NAMESPACE_READ_CATEGORY,importedReadAliases,importedNamespaceAliases};
