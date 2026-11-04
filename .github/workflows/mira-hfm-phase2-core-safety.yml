@@ -4,6 +4,7 @@ name: Mira Hybrid Memory Phase 2 Core Safety
 # Resolution outcome set is aligned to Contract v0.2.4 Section 30.
 # Explicit accepted-version selection and separate access-change authorization are regression-tested.
 # Nonzero selected existing-version index must verify against the exact preserved original digest.
+# Resolution inputs reject incompatible selected-version fields for merge and retain outcomes.
 # Quarantine preserves malformed/integrity-failed originals and supports multi-version conflicts.
 # Contract Section 30 outcome assertions are individually surfaced in CI logs.
 # Resolution records bind affected versions, sources, hashes, access/trust, loss risks and recovery/verification plan.
