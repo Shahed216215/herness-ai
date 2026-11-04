@@ -70,6 +70,7 @@ on:
       - 'services/mira-work-knowledge-consolidation.js'
       - 'services/mira-work-execution-engine.js'
       - 'tests/mira-hfm-memory-version-recovery-policy.test.js'
+      - 'tests/mira-hfm-persistent-write-policy.test.js'
       - 'tests/mira-work-knowledge-store-fail-closed.test.js'
       - 'services/mira-work-learning-engine.js'
       - 'tests/mira-work-learning-store-fail-closed.test.js'
@@ -145,6 +146,7 @@ jobs:
           export MIRA_TEST_OFFLINE_DRIVE=1
           node tests/mira-hfm-phase2-core-safety.test.js
           node tests/mira-hfm-memory-version-recovery-policy.test.js
+          node tests/mira-hfm-persistent-write-policy.test.js
           node tests/mira-knowledge-state-safety-test.js
           node tests/mira-phase2-recovery-regression.test.js
           node tests/mira-local-memory-safety-test.js
