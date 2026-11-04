@@ -37,7 +37,7 @@ const { readFacebookPageMetadata, validatePageId, GRAPH_API_VERSION } = require(
   }), /did not match/);
   await assert.rejects(() => readFacebookPageMetadata({
     pageId: '123456789', accessToken: 'secret',
-    fetchImpl: async () => ({ status: 200, ok: true, text: async () => '{"id":"123456789","feed":[]}' })
+    fetchImpl: async () => ({ status: 200, ok: true, text: async () => '{"name":"Missing Page ID"}' })
   }), /did not contain a valid Page identity/);
   await assert.rejects(() => readFacebookPageMetadata({
     pageId: '123456789', accessToken: 'secret',
