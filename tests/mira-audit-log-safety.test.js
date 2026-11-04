@@ -71,6 +71,44 @@ function runWorker(label) {
     ).length, 4);
     console.log('AUDIT_LOG_CROSS_PROCESS_APPEND_NO_LOST_EVENTS=PASS');
 
+    const originalRenameSync = fs.renameSync;
+    let anchorFailure;
+    fs.renameSync = function (source, destination) {
+      if (path.resolve(destination) === path.resolve(anchorFile)) {
+        const error = new Error('fixture anchor rename failure');
+        error.code = 'EIO';
+        throw error;
+      }
+      return originalRenameSync.call(fs, source, destination);
+    };
+    try {
+      audit.recordAudit({
+        actorRole: 'fixture',
+        action: 'audit-anchor-failure-fixture',
+        resource: 'mira_audit_log_test',
+        resourceId: 'anchor-failure'
+      });
+    } catch (error) {
+      anchorFailure = error;
+    } finally {
+      fs.renameSync = originalRenameSync;
+    }
+    assert.equal(anchorFailure && anchorFailure.code, 'AUDIT_ANCHOR_WRITE_FAILED');
+    assert.equal(anchorFailure && anchorFailure.stateCommitted, true);
+    const oneAhead = audit.verifyAuditIntegrity();
+    assert.equal(oneAhead.ok, true);
+    assert.equal(oneAhead.anchorState, 'log_one_ahead_of_anchor');
+    console.log('AUDIT_LOG_ANCHOR_FAILURE_REPORTED_AFTER_COMMIT=PASS');
+
+    audit.recordAudit({
+      actorRole: 'fixture',
+      action: 'audit-anchor-recovery-fixture',
+      resource: 'mira_audit_log_test',
+      resourceId: 'anchor-recovery'
+    });
+    assert.equal(audit.verifyAuditIntegrity().ok, true);
+    console.log('AUDIT_LOG_ANCHOR_RECOVERS_ON_NEXT_VERIFIED_APPEND=PASS');
+
     fs.writeFileSync(lockFile, JSON.stringify({ pid: -1, createdAt: new Date().toISOString() }));
     assert.throws(
       () => audit.recordAudit({ action: 'must-not-pass-stale-lock' }),
