@@ -88,7 +88,7 @@ module.exports = {
   declaration: {
     name: "knowledge_cleanup",
     description:
-      "Inspect exact duplicate knowledge entries without modifying data, or remove exact duplicates when explicitly requested.",
+      "Currently blocked at the tool wrapper boundary. Both inspection and cleanup remain unavailable through this tool until its human-only authorization boundary is implemented.",
     parameters: {
       type: "object",
       properties: {
