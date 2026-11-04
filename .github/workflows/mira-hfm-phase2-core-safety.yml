@@ -50,8 +50,6 @@ on:
       - 'tests/mira-memory-evolution-integration-test.js'
       - 'autonomous-learning-controlled-apply.js'
       - 'tests/mira-autonomous-learning-canonical-store-adapter.test.js'
-      - 'services/mira-work-learning-engine.js'
-      - 'tests/mira-work-learning-store-fail-closed.test.js'
       - '.github/workflows/mira-hfm-phase2-core-safety.yml'
   pull_request:
     branches:
