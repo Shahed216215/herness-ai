@@ -102,7 +102,7 @@ function parsePublicPagePostUrl(value,{expectedPageId}={}){
  let url;
  try{url=new URL(value);}catch{throw new Error('Facebook post URL is invalid.');}
  if(url.protocol!=='https:'||!FACEBOOK_HOSTS.has(url.hostname.toLowerCase())||
-    url.username||url.password||url.hash) throw new Error('Only HTTPS public Facebook URLs are accepted.');
+    url.username||url.password||url.hash||(url.port&&url.port!=='443')) throw new Error('Only standard-port HTTPS public Facebook URLs are accepted.');
  let resolvedPageId=null,postId=null;
  const parts=url.pathname.split('/').filter(Boolean);
  if(parts.length===3&&parts[1]==='posts'){
