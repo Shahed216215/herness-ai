@@ -5,6 +5,7 @@ const path = require("path");
 const storagePath = require('../mira-storage');
 const crypto = require("crypto");
 const jsonStateStore = require("./mira-json-state-store");
+const { createStoreInitializationGuard } = require('./mira-store-initialization-guard');
 
 const {
   createProposal,
@@ -22,6 +23,10 @@ const STORE_FILE = path.join(
   DATA_DIR,
   "work-knowledge-consolidation.json"
 );
+const STORE_GUARD = createStoreInitializationGuard({
+  primaryFile: STORE_FILE,
+  storeId: 'MIRA_WORK_KNOWLEDGE_CONSOLIDATION'
+});
 
 const MAX_ITEMS = 5000;
 const MAX_SOURCES_PER_ITEM = 100;
@@ -147,7 +152,16 @@ function loadStore() {
     }
     rawText = fs.readFileSync(STORE_FILE, "utf8");
   } catch (error) {
-    if (error.code === "ENOENT") return emptyStore();
+    if (error.code === "ENOENT") {
+      if (STORE_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
+        const missing = new Error(
+          'Work knowledge consolidation store was previously initialized but its primary is missing; empty reinitialization is blocked.'
+        );
+        missing.code = 'WORK_KNOWLEDGE_CONSOLIDATION_PRIMARY_MISSING_RESTORE_REQUIRED';
+        throw missing;
+      }
+      return emptyStore();
+    }
     throw new Error(
       `Work knowledge consolidation store cannot be read: ${error.code || error.message || "IO_ERROR"}`
     );
@@ -174,6 +188,7 @@ function loadStore() {
 
   const store = normalizeStore(raw);
   store.integrityHash = calculateIntegrityHash(store);
+  STORE_GUARD.ensureMarker();
   return store;
 }
 
@@ -182,6 +197,7 @@ function saveStore(store) {
     throw new Error("Work knowledge consolidation store must include an items array before saving.");
   }
   loadStore();
+  STORE_GUARD.assertWritable();
   const normalized = normalizeStore(store);
   normalized.updatedAt = new Date().toISOString();
   normalized.integrityHash = calculateIntegrityHash(normalized);
