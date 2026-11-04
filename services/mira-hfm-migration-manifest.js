@@ -7,7 +7,8 @@ const crypto = require('node:crypto');
 const DOMAINS = new Set(['general_memory', 'knowledge', 'crm_conversation_message']);
 const MAPPING_KEYS = [
   'domain', 'legacyId', 'canonicalMemoryId', 'projectId',
-  'revision', 'sourceDigest', 'classification', 'approvalReference'
+  'revision', 'sourceDigest', 'sourceFileDigest', 'sourceOrdinal',
+  'classification', 'approvalReference'
 ];
 const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
 
@@ -48,7 +49,7 @@ function digest(value) {
 function nonEmpty(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
-function validateMapping(mapping, domain, legacyId, sourceDigest) {
+function validateMapping(mapping, domain, legacyId, sourceDigest, sourceFileDigest, sourceOrdinal) {
   const errors = [];
   if (!isObject(mapping)) return ['EXPLICIT_MAPPING_MISSING'];
   const keys = Object.keys(mapping);
@@ -61,6 +62,7 @@ function validateMapping(mapping, domain, legacyId, sourceDigest) {
   if (!nonEmpty(mapping.projectId)) errors.push('AUTHORITATIVE_PROJECT_ID_REQUIRED');
   if (!Number.isInteger(mapping.revision) || mapping.revision !== 1) errors.push('INITIAL_REVISION_MUST_BE_1');
   if (mapping.sourceDigest !== sourceDigest || !/^[a-f0-9]{64}$/.test(mapping.sourceDigest || '')) errors.push('SOURCE_DIGEST_MISMATCH');
+  if (mapping.sourceFileDigest !== sourceFileDigest || mapping.sourceOrdinal !== sourceOrdinal) errors.push('SOURCE_SNAPSHOT_LOCATOR_MISMATCH');
   if (!CLASSIFICATIONS.has(mapping.classification)) errors.push('EXPLICIT_CLASSIFICATION_REQUIRED');
   if (!nonEmpty(mapping.approvalReference)) errors.push('APPROVAL_REFERENCE_REQUIRED');
   return errors;
@@ -101,7 +103,7 @@ function buildMigrationCandidate({ domain, entry, sourceFileDigest, sourceOrdina
     blockers.push('SOURCE_RECORD_NOT_CANONICALLY_DIGESTIBLE');
   }
 
-  const mappingErrors = validateMapping(mapping, domain, legacyId, sourceDigest);
+  const mappingErrors = validateMapping(mapping, domain, legacyId, sourceDigest, sourceFileDigest, sourceOrdinal);
   blockers.push(...mappingErrors);
   const uniqueBlockers = [...new Set(blockers)];
   const candidate = {
