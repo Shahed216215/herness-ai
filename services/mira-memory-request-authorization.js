@@ -30,7 +30,7 @@ function validTimestamp(value, label) {
   if (typeof value !== 'string') {
     throw new Error(label + ' must be an RFC 3339 date-time.');
   }
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(value);
   if (!match) throw new Error(label + ' must be an RFC 3339 date-time.');
   const [, y, mo, d, h, mi, s, zone] = match;
   const year = Number(y), month = Number(mo), day = Number(d);
