@@ -465,3 +465,23 @@ GitHub Actions run 41763563166 (run 344), job 126356579621, completed SUCCESS on
 Intermediate runs 333–338 failed while the new content-hash behavior and fixture expectations were being aligned. The fixture hashes and verification-status expectations were corrected; run 344 is the later passing evidence. Historical failed runs remain visible.
 
 This is content integrity consistency only. Full cryptographic authenticity, independent trust-anchor provisioning, and production provider/retrieval integration remain unresolved.
+
+
+19. AUTONOMOUS LEARNING CONTROLLED-APPLY STORAGE ADAPTER — VERIFIED BY RUN 350
+
+A caller audit found autonomous-learning-controlled-apply.js reading and writing project knowledge.json directly during its local rollback fallback. This bypassed the canonical configured storage path and the guarded Knowledge state-store writer.
+
+Correction:
+- readLocalKnowledge() now delegates to knowledge.getKnowledge().
+- writeLocalKnowledge() now delegates to knowledge.replaceKnowledge(), retaining capacity/quarantine policy and atomic state-store persistence.
+- The duplicate direct fs/path storage implementation and hard-coded storagePath dependency were removed from this adapter.
+- Added tests/mira-autonomous-learning-canonical-store-adapter.test.js. It injects a Drive read failure, stubs every external boundary, exercises the local rollback fallback and verifies the canonical replacement API restores the prior Knowledge state.
+
+GitHub Actions run 41763816821 (run 350), job 126357390954, completed SUCCESS on commit 9611231da9910783c48af30e41d8183f24dd876b. Evidence from the immediately preceding code-identical run 349 (41763801810, job 126357344945), and run 350's workflow re-run:
+- AUTONOMOUS_LEARNING_ROLLBACK_USES_CANONICAL_REPLACE=PASS
+- AUTONOMOUS_LEARNING_READS_CANONICAL_KNOWLEDGE=PASS
+- DRIVE_FAILURE_AND_ALL_EXTERNAL_ACTIONS_STUBBED=PASS
+- TESTS_FAILED=0; RESULT=MIRA_AUTONOMOUS_LEARNING_CANONICAL_STORE_ADAPTER_PASS.
+- Phase 2 core, recovery, Evolution integration, structural conflict assessment, conflict lifecycle and independent audit verifier also passed. Production Memory/Knowledge and real Drive untouched; network requests and external actions zero.
+
+The autonomous-apply flow still has its existing Google Drive sync behavior when a real approved proposal is applied. No Drive cutover or live Drive behavior was changed or exercised. This change only removes the local storage-path bypass.
