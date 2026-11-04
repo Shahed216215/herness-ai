@@ -297,3 +297,7 @@ MERGE=NOT_APPROVED
 39. PROJECT AUTHORITY EVIDENCE CONTRACT PROTOTYPE
 - Added `services/mira-memory-project-authority-contract.js` as a read-only validator for trusted host membership/ownership evidence, bound to exact actor, project, operation and resource scope; it checks allowedOperations, ACTIVE/revocation state, registry revision, timestamps, digest and a mandatory trusted verifier callback.
 - Added synthetic negative/positive tests and wired them into Phase 3 CI. No project registry is connected and no owner/membership records are created. CI pending.
+
+40. PROJECT AUTHORITY EVIDENCE CONTRACT CI VERIFIED
+- Initial run 41821258604 failed because the negative-test loop treated actorId/projectId substitutions as invalid without supplying expected actor/project bindings. The validator correctly permits caller-selected expected bindings to be optional for generic evidence inspection; dedicated exact-binding tests already provide expected values. The test was corrected to separate malformed/denied evidence from expected-context substitution checks.
+- Phase 3 run 41821482820 SUCCESS: project authority exact request binding, expiry/future evidence, missing/failed verifier, tamper and unknown-field tests PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
