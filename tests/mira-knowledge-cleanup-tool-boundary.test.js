@@ -13,6 +13,7 @@ const previousTool = require.cache[toolPath];
 let records = [];
 let replaceCalls = 0;
 let driveCalls = 0;
+let driveMode = 'success';
 const knowledgeStub = new Module(knowledgePath);
 knowledgeStub.filename = knowledgePath;
 knowledgeStub.loaded = true;
@@ -24,7 +25,12 @@ const driveStub = new Module(drivePath);
 driveStub.filename = drivePath;
 driveStub.loaded = true;
 driveStub.exports = {
-  saveKnowledgeToDrive: async value => { driveCalls++; return { success: true, action: 'stubbed', count: value.length }; }
+  saveKnowledgeToDrive: async value => {
+    driveCalls++;
+    if (driveMode === 'throw') throw new Error('INJECTED_PROVIDER_FAILURE');
+    if (driveMode === 'false') return { success: false, action: 'provider_rejected' };
+    return { success: true, action: 'stubbed', count: value.length };
+  }
 };
 require.cache[knowledgePath] = knowledgeStub;
 require.cache[drivePath] = driveStub;
@@ -58,6 +64,28 @@ delete require.cache[toolPath];
     assert.equal(result.dataModified, false);
     assert.equal(replaceCalls, 1);
     console.log('CLEANUP_INSPECT_IS_READ_ONLY=PASS');
+
+    driveMode = 'false';
+    records = [a, JSON.parse(JSON.stringify(a))];
+    result = JSON.parse(await tool.execute({ action: 'remove' }));
+    assert.equal(result.success, true);
+    assert.equal(result.localCommit, true);
+    assert.equal(result.driveSync, false);
+    assert.equal(result.driveStatus, 'FAILED_OR_UNCONFIRMED');
+    assert.equal(records.length, 1);
+    assert.match(result.message, /synchronization was not confirmed/i);
+    console.log('CLEANUP_REPORTS_PROVIDER_REJECTION_WITH_LOCAL_COMMIT=PASS');
+
+    driveMode = 'throw';
+    records = [b, JSON.parse(JSON.stringify(b))];
+    result = JSON.parse(await tool.execute({ action: 'remove' }));
+    assert.equal(result.success, true);
+    assert.equal(result.localCommit, true);
+    assert.equal(result.driveSync, false);
+    assert.equal(result.driveStatus, 'FAILED_OR_UNCONFIRMED');
+    assert.equal(result.driveError, 'INJECTED_PROVIDER_FAILURE');
+    assert.equal(records.length, 1);
+    console.log('CLEANUP_REPORTS_PROVIDER_EXCEPTION_WITH_LOCAL_COMMIT=PASS');
 
     console.log('TESTS_FAILED=0');
     console.log('RESULT=MIRA_KNOWLEDGE_CLEANUP_TOOL_BOUNDARY_ISOLATED_PASS');
