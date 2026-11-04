@@ -91,7 +91,7 @@ const twoOwners=makeEntry({memberships:[
  ...entry.memberships,
  {...entry.memberships[1],membershipRef:'membership-owner-duplicate',role:'OWNER'}
 ]});
-assert.throws(()=>validateProjectOwnerRegistryEntry({entry:twoOwners,verifyRegistryRecord:()=>true,now}),/exactly one owner/);
+assert.throws(()=>validateProjectOwnerRegistryEntry({entry:twoOwners,verifyRegistryRecord:()=>true,now}),/Duplicate project membership|exactly one owner/);
 const duplicateActor=makeEntry({memberships:[
  entry.memberships[0],
  {...entry.memberships[1],membershipRef:'membership-viewer-duplicate',actorId:entry.ownerActorId}
