@@ -52,20 +52,32 @@ async function removeDuplicates() {
 
   replaceKnowledge(cleanedKnowledge);
 
-  const driveResult =
-    await saveKnowledgeToDrive(cleanedKnowledge);
+  let driveResult = null;
+  let driveError = null;
+
+  try {
+    driveResult = await saveKnowledgeToDrive(cleanedKnowledge);
+  } catch (error) {
+    driveError = error && error.message
+      ? String(error.message).slice(0, 240)
+      : "Provider sync failed.";
+  }
+
+  const driveSync = driveResult?.success === true;
 
   return {
     success: true,
     action: "remove",
     removed,
     remaining: cleanedKnowledge.length,
-    driveSync: true,
-    driveAction: driveResult.action || "synced",
-    message:
-      `Removed ${removed} exact duplicate ` +
-      `entry and synchronized the cleaned knowledge base ` +
-      `to Google Drive.`
+    localCommit: true,
+    driveSync,
+    driveStatus: driveSync ? "SYNCED" : "FAILED_OR_UNCONFIRMED",
+    driveAction: driveResult?.action || (driveSync ? "synced" : "not_confirmed"),
+    ...(driveError ? { driveError } : {}),
+    message: driveSync
+      ? `Removed ${removed} exact duplicate entr${removed === 1 ? "y" : "ies"} locally and synchronized the cleaned knowledge base to Google Drive.`
+      : `Removed ${removed} exact duplicate entr${removed === 1 ? "y" : "ies"} locally. Google Drive synchronization was not confirmed; the local cleanup remains committed and requires provider reconciliation.`
   };
 }
 
