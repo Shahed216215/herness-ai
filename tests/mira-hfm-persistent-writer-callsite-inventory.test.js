@@ -58,6 +58,15 @@ const reviewedFiles = [
   'tools/memory-save.js'
 ].sort();
 
+const restrictedWrapperImports = [];
+const restrictedImportPattern = /require\s*\(\s*["'][^"']*\/tools\/(?:memory-save|knowledge-save|learning-save)(?:\.js)?["']\s*\)/g;
+for (const file of walk(ROOT)) {
+  const source = fs.readFileSync(file.full, 'utf8');
+  if (restrictedImportPattern.test(source)) restrictedWrapperImports.push(file.relative);
+  restrictedImportPattern.lastIndex = 0;
+}
+assert.deepEqual(restrictedWrapperImports, [], 'restricted persistent-write wrappers must not be imported directly outside the registry');
+
 const unexpected = actualFiles.filter(file => !reviewedFiles.includes(file));
 const missing = reviewedFiles.filter(file => !actualFiles.includes(file));
 
@@ -72,4 +81,5 @@ console.log('MIRA_HFM_MISSING_REVIEWED_WRITER_FILES=0');
 for (const item of findings) {
   console.log('MIRA_HFM_WRITER_CALLSITE=' + item.file + ':' + item.line + ':' + item.operation);
 }
+console.log('MIRA_HFM_RESTRICTED_WRAPPER_DIRECT_IMPORTS=0');
 console.log('MIRA_HFM_PERSISTENT_WRITER_INVENTORY_TESTS_FAILED=0');
