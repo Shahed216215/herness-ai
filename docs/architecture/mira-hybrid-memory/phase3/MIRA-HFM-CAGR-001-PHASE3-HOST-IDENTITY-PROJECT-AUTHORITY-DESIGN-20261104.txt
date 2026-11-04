@@ -117,3 +117,7 @@ PHASE3=IN_PROGRESS
 
 11. PROJECT AUTHORITY EVIDENCE VALIDATOR PROTOTYPE
 The additive `services/mira-memory-project-authority-contract.js` validator formalizes a request-bound host registry evidence envelope. It binds actorId, actorType, projectId, operation, resourceScope, membershipRef, membershipRole, allowedOperations, registryRevision, approval/verification/expiry timestamps, active status, revocation status and evidenceDigest. A mandatory trusted verifier callback must confirm the authoritative registry/signature. The validator is read-only and does not create memberships or connect to project-store. Synthetic tests cover owner/project/resource substitution, denied/revoked membership, unapproved operations, expired evidence, tampering and missing verifier.
+
+
+12. INJECTED HOST AUTHORIZATION ADAPTER PROTOTYPE
+`services/mira-memory-host-authorization-adapter.js` composes the request-bound project authority evidence validator with injected host registry lookup, evidence verification and replay-consumption callbacks. It returns the exact decision envelope expected by the request authorization contract, caps decision expiry at the earlier of registry evidence expiry and request context expiry, and denies replay. The adapter is synchronous and dependency-injected; no live identity provider, registry, replay database or project-store integration exists.
