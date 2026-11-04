@@ -181,14 +181,27 @@ function saveStore(store) {
   if (!store || typeof store !== "object" || Array.isArray(store) || !Array.isArray(store.items)) {
     throw new Error("Work knowledge consolidation store must include an items array before saving.");
   }
+  loadStore();
   const normalized = normalizeStore(store);
   normalized.updatedAt = new Date().toISOString();
   normalized.integrityHash = calculateIntegrityHash(normalized);
-  jsonStateStore.atomicWriteJson(
+  const result = jsonStateStore.atomicWriteJson(
     STORE_FILE,
     normalized,
     "Work knowledge consolidation"
   );
+  try {
+    jsonStateStore.recordStateAudit(
+      "work_knowledge_consolidation_write_committed",
+      "success",
+      STORE_FILE,
+      { stateHash: result.sha256, itemCount: normalized.items.length }
+    );
+  } catch (error) {
+    error.code = "WORK_KNOWLEDGE_CONSOLIDATION_COMMITTED_AUDIT_FAILED";
+    error.stateCommitted = true;
+    throw error;
+  }
   return normalized;
 }
 
