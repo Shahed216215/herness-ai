@@ -316,3 +316,20 @@ Trusted project-mapping approval evidence now includes an explicit `expiresAt` t
 ## 25. Request Replay Decision Addendum (2026-11-04)
 
 The trusted host authorization decision must now include `replayStatus=FRESH`. Any other value, including `REPLAYED`, missing or unverifiable status, is denied. The host adapter is responsible for atomically checking and recording requestId/authorityRef replay state; this structural helper only enforces the returned decision and does not itself maintain a replay store.
+
+
+## 26. Trusted host actor identity normalization addendum (2026-11-04)
+
+`services/mira-memory-host-identity-contract.js` defines a structural normalization boundary for a principal that has already been authenticated by trusted host middleware. It accepts only an exact credential-free envelope containing `verified=true`, issuer, stable subject, actorType, authenticationMethod, non-secret authenticationRef, authenticatedAt and expiresAt. It derives an unambiguous namespaced actorId from percent-encoded issuer and subject and returns a deeply frozen identity.
+
+The validator strictly checks RFC 3339 timestamp structure, calendar validity, leap years, clock bounds, UTC offset bounds, and temporal validity. Role-only, unverified, missing, expired, future-dated, unsupported-method, extra-field and credential-bearing principals are rejected.
+
+**Important boundary:** this module does not authenticate a cookie, session, bearer token, user, admin, service or agent. It does not read `req.body`, headers, session storage or users.json. It is safe only when called with a verified principal supplied by trusted authentication middleware. Runtime session propagation, stable admin/service subject provisioning, registry integration and persistent replay storage remain unimplemented.
+
+Verified CI: Phase 3 run 41824153867 SUCCESS; identity contract and all Phase 3 contract suites `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`. The earlier intermediate assertion failure is retained in Actions history and was corrected before the successful run.
+
+Current status:
+`PHASE3_HOST_IDENTITY_NORMALIZATION=PASS_CI_SYNTHETIC`
+`PHASE3_HOST_AUTHENTICATION_INTEGRATION=NOT_IMPLEMENTED`
+`PHASE3_PROJECT_OWNER_REGISTRY=NOT_IMPLEMENTED`
+`PHASE3_PRODUCTION_INTEGRATION=NOT_APPROVED`
