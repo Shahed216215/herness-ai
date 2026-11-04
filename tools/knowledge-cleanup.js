@@ -1,53 +1,6 @@
 const { getKnowledge, replaceKnowledge } = require("../knowledge");
 const { saveKnowledgeToDrive } = require("../google-drive");
-
-function normalize(text) {
-  return String(text || "")
-    .toLowerCase()
-    .trim();
-}
-
-function sameEntry(a, b) {
-  return (
-    normalize(a.title) === normalize(b.title) &&
-    normalize(a.url) === normalize(b.url) &&
-    normalize(a.content) === normalize(b.content)
-  );
-}
-
-function findDuplicateGroups(knowledge) {
-  const groups = [];
-
-  for (const item of knowledge) {
-    let group = groups.find(existing =>
-      sameEntry(existing[0], item)
-    );
-
-    if (group) {
-      group.push(item);
-    } else {
-      groups.push([item]);
-    }
-  }
-
-  return groups.filter(group => group.length > 1);
-}
-
-function removeExactDuplicates(knowledge) {
-  const unique = [];
-
-  for (const item of knowledge) {
-    const duplicate = unique.some(existing =>
-      sameEntry(existing, item)
-    );
-
-    if (!duplicate) {
-      unique.push(item);
-    }
-  }
-
-  return unique;
-}
+const { findDuplicateGroups, removeExactDuplicateCopies } = require("../services/mira-knowledge-duplicate-assessment");
 
 async function inspectKnowledge() {
   const knowledge = getKnowledge();
@@ -81,7 +34,7 @@ async function removeDuplicates() {
   const knowledge = getKnowledge();
 
   const cleanedKnowledge =
-    removeExactDuplicates(knowledge);
+    removeExactDuplicateCopies(knowledge);
 
   const removed =
     knowledge.length - cleanedKnowledge.length;
