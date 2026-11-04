@@ -331,3 +331,10 @@ MERGE=NOT_APPROVED
 - Writer callsite test now pins exact operation counts per file, not only the set of files. Current reviewed baseline: 16 calls across 8 consumer files; any added, removed or changed operation fails CI pending semantic review.
 - Phase 3 run 41823920720 SUCCESS on commit c700584a423234a202b083b67a206305da26ee79: MIRA_HFM_PERSISTENT_WRITER_CALLSITE_INVENTORY=PASS; MATCH_COUNT=16; INVENTORY_TESTS_FAILED=0; all contract tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - Phase 2 regression run 41823920729 SUCCESS. This is an inventory drift guard, not evidence that the legacy writers are safe or integrated with the HFM facade.
+
+41. IDENTITY CONTRACT STRICTNESS REFINEMENT
+- Actor IDs now use an unambiguous namespaced encoding (`mira:` + percent-encoded issuer + `:` + percent-encoded subject), avoiding delimiter collisions between issuer/subject pairs.
+- Timestamp validation now checks RFC3339 structure, calendar day/leap-year validity, clock bounds and UTC-offset bounds before parsing.
+- First CI attempt on intermediate code commit c10196e58a5c929d5bfcf705c043089be483c118 failed because the prior test still asserted the old actorId format. The assertion was updated to the new canonical format and collision/invalid-timestamp tests were added.
+- Corrected Phase 3 run 41824153867 SUCCESS on commit 2142e9b95960e519943f608e032802da7c111841; identity and all other contract suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- The failed intermediate run remains in Actions history and is not counted as PASS.
