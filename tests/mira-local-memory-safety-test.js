@@ -86,6 +86,39 @@ async function main() {
     memory.addMemory('user', 'fixture-after-primary-recovery');
     assert.equal(memory.getMemory().length, 3);
 
+    const capacityConfig = require('../capacity-config');
+    capacityConfig.setCapacity('memory', 2);
+    const quarantineDirectory = path.join(path.dirname(store.MEMORY_FILE), 'memory-conflicts');
+    memory.addMemory('user', 'fixture-capacity-retained');
+    const retainedAfterEviction = memory.getMemory();
+    assert.deepEqual(retainedAfterEviction.map(item => item.content), [
+      'fixture-after-primary-recovery', 'fixture-capacity-retained'
+    ]);
+    const quarantineFiles = fs.readdirSync(quarantineDirectory).filter(name => name.endsWith('.json'));
+    assert.equal(quarantineFiles.length, 1);
+    const eviction = JSON.parse(fs.readFileSync(path.join(quarantineDirectory, quarantineFiles[0]), 'utf8'));
+    assert.equal(eviction.metadata.reason, 'MEMORY_CAPACITY_EVICTION');
+    assert.equal(eviction.metadata.evictedEntryCount, 2);
+    assert.deepEqual(eviction.payload.records.map(item => item.content), ['fixture-one', 'fixture-two']);
+    console.log('MEMORY_CAPACITY_EVICTION_PRESERVED_BEFORE_COMMIT=PASS');
+
+    const savedQuarantineDirectory = quarantineDirectory + '-saved';
+    const outsideQuarantine = path.join(root, 'outside-quarantine');
+    fs.renameSync(quarantineDirectory, savedQuarantineDirectory);
+    fs.mkdirSync(outsideQuarantine);
+    fs.symlinkSync(outsideQuarantine, quarantineDirectory, 'dir');
+    assert.throws(
+      () => memory.addMemory('user', 'fixture-capacity-must-not-commit'),
+      /Conflict quarantine directory is not safe/i
+    );
+    assert.deepEqual(memory.getMemory().map(item => item.content), [
+      'fixture-after-primary-recovery', 'fixture-capacity-retained'
+    ]);
+    assert.equal(fs.readdirSync(outsideQuarantine).length, 0);
+    fs.unlinkSync(quarantineDirectory);
+    fs.renameSync(savedQuarantineDirectory, quarantineDirectory);
+    console.log('MEMORY_CAPACITY_QUARANTINE_FAILURE_BLOCKS_WRITE=PASS');
+
     // Corrupt JSON must throw and must not be silently converted to [].
     fs.writeFileSync(store.MEMORY_FILE, '{broken', { mode: 0o600 });
     assert.throws(() => memory.getMemory(), /invalid JSON/i);
