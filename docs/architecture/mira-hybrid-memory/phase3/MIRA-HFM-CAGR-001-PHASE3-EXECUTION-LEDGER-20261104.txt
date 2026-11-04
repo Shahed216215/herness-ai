@@ -189,3 +189,9 @@ MERGE=NOT_APPROVED
 - Reviewed the 16 latest lexical writer call matches across 8 consumer files and 3 API-definition files. Controlled apply paths have snapshots/rollback but lack HFM project scope; admin writes are SYSTEM_ADMIN-gated but target global legacy stores; chat transcript addMemory is a distinct session-persistence path; human-only memory_save/knowledge_save/learning_save and knowledge_cleanup are denied by the shared registry policy before wrapper invocation.
 - services/learning.js learnFromContent and applyKnowledgeImprovement require explicit actor/project/request context before HFM routing. No writer was connected to the unified facade.
 - Existing runtime tool registry guard tests prove memory_save, knowledge_save and learning_save are blocked before their execute wrappers run. This verifies the current autonomous-denial boundary only; no complete human approval workflow is claimed.
+
+20. SOURCE OWNERSHIP AUTHORITY GAP
+- General Memory legacy entries have role/content/time but no authenticated actorId, tenantId or projectId; snapshot digest + ordinal proves locator integrity only, not ownership.
+- Knowledge legacy entries have stable IDs and source metadata but no authoritative project/tenant field; record identity does not prove project authorization.
+- CRM now binds clientId, but client-to-project ownership still requires an independently trusted approval registry.
+- The three current adapters are therefore synthetic review-candidate serializers only. They do not infer ownership or auto-assign a default project/user. No migration or production integration is authorized.
