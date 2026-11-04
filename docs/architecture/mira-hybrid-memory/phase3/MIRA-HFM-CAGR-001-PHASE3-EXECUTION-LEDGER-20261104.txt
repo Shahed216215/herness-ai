@@ -480,3 +480,16 @@ CURRENT ADDITIVE STATUS
 - `PHASE3_INVENTORY_CATEGORY_COUNTS=PINNED_CI`
 - `PHASE3_DYNAMIC_CALL_GRAPH_COVERAGE=REVIEW_REQUIRED`
 - `PHASE3=IN_PROGRESS`
+
+60. RETRIEVAL ELIGIBILITY REPORT AND ROLLBACK PLAN
+- Added `retrieveCanonicalRecordsWithReport` while preserving the existing array-returning `retrieveCanonicalRecords` compatibility API.
+- The report carries detached/frozen eligible records, provenance (source, revision, project and digest), per-record authorized-read status and aggregate exclusion reason counts. Excluded IDs/content are not exposed.
+- Added optional decision-sink support to `filterTrustedRecords`; existing callers retain their original array return contract. Malformed conflict metadata continues to fail closed.
+- Added previous-record digest to the write audit plan and a frozen rollback plan. Existing update rollback is compensating-revision-only; originals are preserved and deleteOriginals=false. New uncommitted create has a no-op rollback plan.
+- Explicit status: `NOT_EMITTED_REPORT_ONLY` for retrieval audit, `PLAN_ONLY_NOT_EXECUTED` for rollback. No provider commit, durable audit event, atomic idempotency reservation or rollback execution was added.
+- Phase 3 run 41835662189 SUCCESS and Phase 2 run 41835662290 SUCCESS on commit 2b3af5b0011ddb432b843c2d32ba1a815888e420. Test output includes `RETRIEVAL_PROVENANCE_AND_NONLEAKING_ELIGIBILITY_REPORT_PASS=PASS`, all synthetic write checks, `TESTS_FAILED=0`, and `RESULT=MIRA_HFM_PHASE3_UNIFIED_CONTRACT_CI_COMPLETE`.
+- `PHASE3_RETRIEVAL_PROVENANCE_AND_ELIGIBILITY_REPORT=PASS_CI_SYNTHETIC`
+- `PHASE3_WRITE_AUDIT_AND_ROLLBACK_PLAN=PASS_CI_SYNTHETIC`
+- `PHASE3_AUDIT_EMISSION=NOT_IMPLEMENTED`
+- `PHASE3_PROVIDER_ROLLBACK_EXECUTION=NOT_IMPLEMENTED`
+- `PHASE3=IN_PROGRESS`

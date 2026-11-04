@@ -104,3 +104,14 @@ False-positive handling: `conversationIndex` is a numeric array position from `f
 |Cache / embedding / vector / export|Refined scanner found 0 explicit candidates|No candidate under current rules; dynamic/runtime-injected paths remain REVIEW_REQUIRED|
 
 The complete current emitted candidate set is 312 lines across overlapping categories. Every candidate group has a file/domain disposition; counts are not unique callsite totals. Static and semantic review does not resolve arbitrary runtime dependency injection, reflection or computed property access.
+
+11. RETRIEVAL EXPLANATION / RECOVERY PREPARATION
+|Capability|Evidence|Disposition|
+|---|---|---|
+|Eligible retrieval provenance|memoryId, projectId, revision, record digest and source are returned only for eligible records|PASS_CI synthetic|
+|Eligibility reason reporting|Aggregate exclusion counts distinguish schema, scope, lifecycle, integrity, trust, conflict, access and host-policy reasons|PASS_CI synthetic|
+|Excluded-record privacy|No excluded memoryId/content is exposed by the report|PASS_CI synthetic|
+|Audit status|Report says NOT_EMITTED_REPORT_ONLY|No durable audit claim|
+|Write audit plan|Includes previous and incoming digests, actor, project, request, revision and event-before-commit requirement|PASS_CI synthetic|
+|Rollback plan|Create no-op before commit; update uses compensating revision and preserves originals|PASS_CI plan only|
+|Actual provider commit / rollback / audit / idempotency|No runtime operation exists in facade|NOT_IMPLEMENTED / NOT_APPROVED|

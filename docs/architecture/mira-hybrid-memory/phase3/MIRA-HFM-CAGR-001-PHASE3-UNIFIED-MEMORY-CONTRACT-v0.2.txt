@@ -376,3 +376,26 @@ The prepare-only write result now includes an immutable `idempotencyPlan` bindin
 The caller-supplied `seenIdempotencyKeys` list is a synthetic preflight snapshot only. It is not an atomic reservation, distributed uniqueness guarantee or protection against concurrent writers. A future host commit adapter must perform a durable atomic unique-key claim/CAS and distinguish in-progress, committed, failed and replayed outcomes. No such store or commit function exists in this facade.
 
 Verified Phase 3 CI run 41827923148 SUCCESS; all tests `TESTS_FAILED=0`; `PRODUCTION_MEMORY_TOUCHED=NO`; `NETWORK_REQUESTS_FROM_TEST=0`.
+
+### Addendum — Retrieval provenance and eligibility report (2026-11-04)
+
+The synthetic facade now exposes `retrieveCanonicalRecordsWithReport` alongside the compatibility `retrieveCanonicalRecords` array API.
+
+The report contains:
+- detached, deeply frozen eligible canonical records;
+- provenance for each eligible record: memoryId, projectId, revision, record digest and source metadata;
+- an explicit `AUTHORIZED_READ` eligibility result for each returned record;
+- aggregate excluded count and reason counts for invalid schema, project mismatch, lifecycle, integrity, trust, conflict, access scope and host authorization outcomes.
+
+Excluded record identifiers and content are not returned in the report, preventing cross-project existence leakage. The report explicitly declares `auditStatus=NOT_EMITTED_REPORT_ONLY`; it is not an audit event and does not claim durable audit emission.
+
+The existing `filterTrustedRecords` API retains its original return shape. An optional decision sink provides reason codes to the facade without changing existing callers. Malformed conflict metadata still fails closed.
+
+### Addendum — Write audit and rollback plan (2026-11-04)
+
+Synthetic write preparation now binds the previous record digest into the audit plan and returns a detached, deeply frozen rollback plan.
+
+- New uncommitted create: `NOOP_UNCOMMITTED_CREATE`; no deletion or compensating action is proposed before a commit exists.
+- Existing-record update: `APPEND_COMPENSATING_REVISION_FROM_VERIFIED_PRIOR`; preserve the prior immutable revision and never overwrite/delete original evidence.
+- The plan requires human approval, provider atomic conditional write, immutable versions, independent readback, post-rollback verification and an audit event.
+- Status remains `PLAN_ONLY_NOT_EXECUTED`. No provider commit, audit emission, idempotency reservation or rollback is implemented by this facade.
