@@ -213,3 +213,7 @@ MERGE=NOT_APPROVED
 20. HOST AUTHORIZATION VALIDITY-WINDOW BINDING
 - Code review found the trusted host callback received authorityRef and request identity but not the request context's issuedAt/expiresAt. Added contextIssuedAt/contextExpiresAt to the immutable callback input so the host can verify exact request validity and bind its decision to that window.
 - Added synthetic assertion that the host callback receives the exact request validity timestamps. Production authentication, signature verification and replay protection remain NOT_IMPLEMENTED; no production caller is wired.
+
+21. UPDATE AUTHORIZATION LEAST-PRIVILEGE HARDENING
+- Facade review identified that a WRITE-only caller could prepare an update and receive the prior record digest/revision without READ permission. Existing-record update preparation now requires READ plus WRITE on the same memory resource; new-record creation still requires WRITE.
+- Added negative test: WRITE=ALLOW + READ=DENY rejects update preparation. CI pending for this change.
