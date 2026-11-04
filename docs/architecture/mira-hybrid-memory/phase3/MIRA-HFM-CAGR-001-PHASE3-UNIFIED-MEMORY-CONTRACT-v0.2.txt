@@ -291,3 +291,8 @@ The project-mapping validator no longer accepts a boolean approval callback. The
 The validator checks exact field shape, all mapping-bound values, active/non-revoked status, non-empty registry revision, RFC 3339 verification time, and that verification is not before approval or in the future. A boolean, malformed object, revoked decision, substituted project, or future verification timestamp is rejected.
 
 This is a verifier interface contract, not a live approval registry. Signature verification, identity authentication, revocation lookup and authoritative client-to-project ownership must be performed by the trusted host implementation; none is claimed to be integrated by this phase.
+
+
+## 22. Provider Data-Classification and Encryption Gate (2026-11-04)
+
+Every provider operation must now receive an explicit data classification (`PUBLIC`, `PROJECT_PRIVATE`, or `RESTRICTED`); omission or unknown classification fails closed. For every provider operation that can read, verify, restore or commit persisted data, non-public classifications require `encryptedAtRest=true`. `PREPARE_WRITE` is non-persistent and does not require provider encryption, but it still requires explicit classification. A provider lacking at-rest encryption may serve PUBLIC data only. The provider contract remains a capability validator; no provider is connected.
