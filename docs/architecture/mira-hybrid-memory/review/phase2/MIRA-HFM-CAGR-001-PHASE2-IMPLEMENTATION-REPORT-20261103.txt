@@ -676,3 +676,31 @@ Run 697: https://github.com/Shahed216215/herness-ai/actions/runs/41806461195
 - Full invoked workflow: SUCCESS, TESTS_FAILED=0.
 
 This is local filesystem concurrency control only. Distributed/cloud arbitration, independent remote trust anchor and encrypted backup remain REVIEW_REQUIRED or deferred. The audit archive is local; no production audit history was read or changed.
+
+
+27. PHASE 2 CORE ROADMAP EXIT — 2026-11-04
+
+The Phase 2 scope is the Core Memory Safety roadmap in MIRA-HFM-CAGR-001 §6, not the later Facebook connector, unified provider migration, encrypted Drive backup or production deployment phases.
+
+Phase 2 task acceptance:
+- Read Failure Protection: PASS_SCOPED — initialized missing-primary states fail closed across General Memory, Knowledge, Conversation, Work Learning, Work Knowledge Consolidation and Audit Log.
+- Atomic Memory Write: PASS_SCOPED — existing local JSON state writes use the shared atomic writer; audit log now uses the same atomic writer.
+- Integrity Verification: PASS_SCOPED — state hashes, backup hashes, marker digests, audit HMAC chain and independent tests are present in the scoped stores.
+- Version Management: PASS_SCOPED — General Memory and Knowledge version snapshots and explicit verified restore remain intact; empty version directories count as prior-store evidence.
+- Conflict Quarantine: PASS_SCOPED — capacity-displaced General Memory, Knowledge and Work Learning records are preserved before commit; Work Knowledge overflow is rejected; conflict-registry lifecycle tests pass.
+- Safe Restore: PASS_SCOPED — General Memory and Knowledge restore validate backup integrity and readback; other separate stores fail closed rather than silently reinitialize, with their own restore workflows still REVIEW_REQUIRED.
+- Audit Logging: PASS_SCOPED — strict reads, atomic writes, HMAC verification, local cross-process append lock, explicit archive, no silent retention truncation and anchor-failure reporting.
+
+PHASE2_CORE_ACCEPTANCE=PASS_SCOPED
+PHASE2_CORE_SAFETY=COMPLETED_SCOPED
+FULL_HYBRID_MEMORY_ARCHITECTURE=INCOMPLETE
+PRODUCTION_CERTIFICATION=NOT_APPROVED
+MERGE=NOT_APPROVED
+
+The scoped Phase 2 core implementation is complete on the working branch. This is not a production certification or deployment approval. The broader architecture remains gated:
+- Phase 3: canonical actor/project identity, domain-specific mapping and universal retrieval/write facade require an approved mapping contract. No default/global project ID is inferred.
+- Phase 7: encrypted emergency backup and Google Drive cutover remain unimplemented; existing Drive dependencies must be migrated and verified first.
+- Future governance: independent remote audit trust anchor and distributed/cloud arbitration remain separate review items.
+- Separate Conversation, Work Learning and Work Knowledge recovery workflows remain REVIEW_REQUIRED; current missing-primary behavior is fail-closed.
+
+CI run 697 is the final selected Phase 2 workflow pass. The latest code-tested commit is f9e4c44c227f32ecb0fa1bee10c6a720b80cc6ae; commits after it update documentation only. PR #4 remains draft and reports mergeable=false / mergeable_state=dirty. No merge, production migration or deployment was performed.
