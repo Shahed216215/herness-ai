@@ -114,3 +114,18 @@ Phase 2 remains IN_PROGRESS.
 Production readiness remains NOT_CERTIFIED.
 Mira Hybrid Memory remains v0.2.
 PR #4 remains open/draft/unmerged. No merge or PR state transition was performed.
+
+8. ADMIN BACKUP/RESTORE ROUTE RUNTIME FIXTURE
+
+Added tests/mira-hfm-admin-backup-restore-authority.test.js. It executes the actual requireAdminPermission() helper and the actual /api/admin/backup and /api/admin/restore route handlers in an isolated VM with stubbed tool modules:
+- Admin role without BACKUP_RESTORE permission is denied before backup wrapper invocation.
+- Admin with BACKUP_RESTORE permission reaches the backup wrapper stub.
+- Restore without confirm:true returns 400 and does not invoke the restore wrapper.
+- Restore with BACKUP_RESTORE permission and confirm:true reaches the restore wrapper stub.
+
+CI:
+- Push run 41788329554: SUCCESS.
+- Pull-request run 41788333701: SUCCESS.
+Both logs confirm MIRA_HFM_ADMIN_BACKUP_PERMISSION_RUNTIME=PASS, MIRA_HFM_ADMIN_RESTORE_CONFIRMATION_RUNTIME=PASS, MIRA_HFM_UNAUTHORIZED_ADMIN_WRITE_CALLS=0, TESTS_FAILED=0, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+This verifies the route-level permission/confirmation gate in an isolated harness. It does not execute production backup/restore or certify provider behavior.
