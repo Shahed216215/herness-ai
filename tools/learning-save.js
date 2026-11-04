@@ -7,7 +7,7 @@ module.exports = {
   declaration: {
     name: "learning_save",
     description:
-      "Learn structured cybersecurity knowledge from provided source content and save it to Mira's knowledge base. Learning is restricted to safe, authorized, defensive, and educational content.",
+      "Currently blocked for autonomous execution. Persistent learning writes require an authenticated, action-scoped human-approval workflow, which is not yet available. Do not invoke as a substitute for approval.",
     parameters: {
       type: "object",
       properties: {
