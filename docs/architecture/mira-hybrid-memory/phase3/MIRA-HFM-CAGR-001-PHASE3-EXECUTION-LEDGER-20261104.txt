@@ -195,3 +195,11 @@ MERGE=NOT_APPROVED
 - Knowledge legacy entries have stable IDs and source metadata but no authoritative project/tenant field; record identity does not prove project authorization.
 - CRM now binds clientId, but client-to-project ownership still requires an independently trusted approval registry.
 - The three current adapters are therefore synthetic review-candidate serializers only. They do not infer ownership or auto-assign a default project/user. No migration or production integration is authorized.
+
+21. STRUCTURED APPROVAL EVIDENCE AND RE-VERIFICATION
+- Replaced boolean-only mapping approval callback acceptance with an exact structured verifier evidence contract: APPROVED decision, approvalReference, mappingDigest, projectId, approvedBy, approvedAt, registryRevision, ACTIVE revocationStatus and verifiedAt.
+- Validator binds every approval field to the mapping, rejects revoked/denied decisions, malformed/extra/missing fields, missing registry revision and future/pre-approval verification timestamps.
+- Added negative tests for revoked approval, project substitution and future verification time. Synthetic verifier fixture only; no live signature, identity or revocation service is connected.
+- Phase 3 CI run 41816924159 SUCCESS: structured approval, CRM client binding, adapter, facade, provider and access inventory suites PASS; TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Parent Phase 2 regression run 41816924207 SUCCESS; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
+- Intermediate CI failures from the initial interface change remain visible in Actions history; the subsequent complete run is the accepted evidence.
