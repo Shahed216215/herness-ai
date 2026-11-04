@@ -306,3 +306,8 @@ The trusted host authorization callback input includes both `contextIssuedAt` an
 ## 22. Existing-Record Update Authorization Addendum (2026-11-04)
 
 Preparing a revision of an existing canonical record requires both `READ` and `WRITE` authorization for the same `memory:<memoryId>` resource. The facade obtains READ authorization before exposing the prior revision/digest in a prepared update. Creating a new record continues to require WRITE authorization. A denied READ decision blocks update preparation even when WRITE is allowed.
+
+
+## 24. Approval Evidence Expiry Addendum (2026-11-04)
+
+Trusted project-mapping approval evidence now includes an explicit `expiresAt` timestamp. Validation rejects evidence that is expired at evaluation time, expires at or before its own `verifiedAt`, or has invalid timestamp syntax. The host verifier must still check the authoritative registry's current revocation state and return a short-lived evidence expiry; this local validator does not provide replay protection or independently query the registry.
