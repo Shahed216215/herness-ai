@@ -26,6 +26,8 @@ try {
   assert.deepEqual(initial.conversations, []);
   assert.deepEqual(initial.messages, []);
   assert.deepEqual(initial.contexts, []);
+  assert.equal(fs.existsSync(store.INITIALIZATION_FILE), true);
+  console.log('CONVERSATION_STORE_INITIALIZATION_MARKER_CREATED=PASS');
   const initializationAudit = JSON.parse(
     fs.readFileSync(path.join(storageRoot, 'audit-log.json'), 'utf8')
   );
@@ -67,9 +69,18 @@ try {
   console.log('CONVERSATION_STORE_SYMLINK_REJECTED=PASS');
 
   fs.unlinkSync(store.CONVERSATION_FILE);
-  const final = store.loadStore();
-  assert.deepEqual(final.conversations, []);
-  console.log('CONVERSATION_STORE_ATOMIC_INITIALIZATION=PASS');
+  assert.throws(() => store.loadStore(), /previously initialized/i);
+  assert.throws(() => store.saveStore({
+    version: 1, conversations: [], messages: [], contexts: []
+  }), /previously initialized/i);
+  console.log('CONVERSATION_STORE_MISSING_PRIMARY_FAILS_CLOSED=PASS');
+
+  const marker = JSON.parse(fs.readFileSync(store.INITIALIZATION_FILE, 'utf8'));
+  marker.sha256 = '0'.repeat(64);
+  fs.writeFileSync(store.INITIALIZATION_FILE, JSON.stringify(marker), { mode: 0o600 });
+  assert.throws(() => store.loadStore(), /initialization marker integrity/i);
+  console.log('CONVERSATION_STORE_MARKER_TAMPER_FAILS_CLOSED=PASS');
+  console.log('CONVERSATION_STORE_FIRST_RUN_ATOMIC_INITIALIZATION=PASS');
   console.log('CONVERSATION_STORE_ATOMIC_WRITE_AND_AUDIT=PASS');
   console.log('TESTS_FAILED=0');
   console.log('PRODUCTION_CONVERSATIONS_TOUCHED=NO');
