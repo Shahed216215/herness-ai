@@ -264,3 +264,9 @@ MERGE=NOT_APPROVED
 - Phase 3 run 41819484778 SUCCESS: CommonJS/ESM alias-detection tests PASS; TESTS_FAILED=0; real repository inventory reports ALIASED_DOMAIN_READ_COUNT=0 and total lexical candidates=242; PRODUCTION_MEMORY_TOUCHED=NO.
 - Phase 2 regression run 41819560356 SUCCESS; ALIASED_DOMAIN_READ_COUNT=0; TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - Zero detected aliases is a scanner result for the current patterns, not proof that dynamic/re-export/reflection paths do not exist.
+
+33. SCANNER CHANGE CONTROL / VERIFIED RESTORE
+- A namespace/static-dynamic-import detector experiment (commit 25818fc42004cac633c6eb323b99a47eb09b3e85) produced invalid scanner source and failed CI run 41819773006. The experiment was not retained.
+- Restored the previously verified CommonJS/ESM named-alias scanner from known-good commit 57924c2a27a3f11c6908b91dad8b60294fcee6a7 in commit d84308e4c9bd713dc7227830bf38ac76c5ff97a1.
+- Follow-up Phase 3 run 41819935933 SUCCESS: all request/mapping/facade/adapter/provider/inventory suites TESTS_FAILED=0; CommonJS/ESM alias tests PASS; ALIASED_DOMAIN_READ_COUNT=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_PROVIDER_CALLS=NO.
+- Namespace imports, static dynamic-import namespace tracking and re-export chains remain explicitly NOT_SCANNED. The failed experiment remains visible in Actions history; it is not reported as PASS.
