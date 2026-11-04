@@ -536,7 +536,11 @@ function resolveConflict({
       if (typeof authorizeBroaderAccess !== 'function' || authorizeBroaderAccess({
         conflictId, projectId: envelope.projectId, actor, policyDecision,
         originalAccessClasses: originals.map(record => record.access?.classification || 'MISSING'),
+        originalAccessPolicies: originals.map(record => record.access || null),
         resultingAccessClass: mergedRecord.access?.classification || 'MISSING',
+        resultingAccessPolicy: mergedRecord.access || null,
+        originalAccessPolicyDigests: originals.map(record => digest(record.access || null)),
+        resultingAccessPolicyDigest: digest(mergedRecord.access || null),
         originalDigests: envelope.originals.map(item => item.recordDigest)
       }) !== true || typeof broaderAccessAuthorization !== 'string' || !broaderAccessAuthorization.trim()) {
         throw new Error('Changed access classification or policy requires separate broader-access authorization evidence.');
