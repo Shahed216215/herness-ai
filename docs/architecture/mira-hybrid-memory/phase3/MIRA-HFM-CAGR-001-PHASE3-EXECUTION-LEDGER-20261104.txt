@@ -338,3 +338,10 @@ MERGE=NOT_APPROVED
 - First CI attempt on intermediate code commit c10196e58a5c929d5bfcf705c043089be483c118 failed because the prior test still asserted the old actorId format. The assertion was updated to the new canonical format and collision/invalid-timestamp tests were added.
 - Corrected Phase 3 run 41824153867 SUCCESS on commit 2142e9b95960e519943f608e032802da7c111841; identity and all other contract suites TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
 - The failed intermediate run remains in Actions history and is not counted as PASS.
+
+42. CANONICAL PATH-BACKED READ SCANNER EXTENSION
+- Added `DIRECT_MEMORY_FILE_IO` for same-line literal canonical Memory/Knowledge/Conversation file reads and `CANONICAL_STORE_FILE_BACKED_READ` for reads using a variable declared from a canonical store filename.
+- Synthetic tests verify direct literal reads, storagePath-derived variable reads and unrelated `users.json` exclusion.
+- The scanner initially emitted a malformed newline escape and then over-reported an unrelated read in the same file. Both intermediate CI failures are retained in Actions history; the source was corrected to use real line splitting and argument-linked path-variable matching.
+- Verified Phase 3 run 41824965668 SUCCESS: 245 lexical candidates; `CANONICAL_STORE_FILE_BACKED_READ_COUNT=3`; all tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO; NETWORK_REQUESTS_FROM_TEST=0.
+- The three hits are in `services/mira-knowledge-state-recovery.js`, all recovery/readback paths. They are classified as privileged recovery, not ordinary retrieval. The scanner remains heuristic and does not resolve arbitrary helper parameters, dynamic paths or cross-module call chains.
