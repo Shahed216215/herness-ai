@@ -122,6 +122,21 @@ function memoryPrimaryExists() {
   }
 }
 
+function hasMemoryVersionSnapshots() {
+  const directory = MEMORY_FILE + '.versions';
+  let stat;
+  try {
+    stat = fs.lstatSync(directory);
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    throw new Error('Mira Memory version directory is unsafe.');
+  }
+  return fs.readdirSync(directory).some(name => /^[a-zA-Z0-9._-]+\\.json$/.test(name));
+}
+
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
@@ -251,7 +266,7 @@ function readMemory() {
     ensureInitializationMarker();
     return entries;
   } catch (error) {
-    if (!/Mira Memory is missing\\.$/.test(error.message)) throw error;
+    if (!/Mira Memory is missing\.$/.test(error.message)) throw error;
 
     const marker = readInitializationMarker();
     try {
@@ -287,6 +302,23 @@ function writeMemory(entries) {
     );
     error.code = 'MEMORY_PRIMARY_MISSING_RESTORE_REQUIRED';
     throw error;
+  }
+  if (!primaryExists && !marker) {
+    let backupExists = false;
+    try {
+      readBackupFile();
+      backupExists = true;
+    } catch (error) {
+      if (error.code !== 'ENOENT' && !/Memory backup not found/.test(error.message)) throw error;
+    }
+    if (backupExists || hasMemoryVersionSnapshots()) {
+      ensureInitializationMarker();
+      const error = new Error(
+        'Mira Memory has prior recovery evidence but no primary; explicit verified restore is required before writing.'
+      );
+      error.code = 'MEMORY_PRIMARY_MISSING_RESTORE_REQUIRED';
+      throw error;
+    }
   }
   ensureInitializationMarker();
   const result = jsonStateStore.writeArrayState(MEMORY_FILE, entries, 'Mira Memory');
