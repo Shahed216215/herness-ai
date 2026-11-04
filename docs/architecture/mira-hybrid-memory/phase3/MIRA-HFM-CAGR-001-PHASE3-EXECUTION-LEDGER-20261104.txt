@@ -284,3 +284,8 @@ MERGE=NOT_APPROVED
 - Phase 3 run 41820353336 SUCCESS: SYNTHETIC_PROJECT_OWNER_AUTHORIZATION_ENFORCED=PASS; request/mapping/facade/adapter/provider/inventory tests TESTS_FAILED=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - Phase 2 regression run 41820353269 SUCCESS: TESTS_FAILED=0; NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO.
 - The synthetic owner registry fixture is test evidence only. It does not create ownerActorId on existing project records or authorize a production project.
+
+37. PROJECT OWNERSHIP SOURCE REVIEW EXTENDED
+- Read-only review of work-acceptance-schema.js and opportunity-schema.js confirms neither records authenticated ownerActorId/tenant identity. `acceptanceDecision.decidedBy` defaults to the literal `system`; it is not an authenticated principal.
+- project-store creation verifies accepted status and matching opportunityId but does not bind project to the authenticated creator. These workflow links cannot be treated as project authorization.
+- Project-owner registry remains NOT_ESTABLISHED; no schema/store data was modified.
