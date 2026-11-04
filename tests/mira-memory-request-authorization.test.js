@@ -8,7 +8,7 @@ const ctx = {
  issuedAt:'2026-11-04T11:59:00.000Z',expiresAt:'2026-11-04T12:05:00.000Z'
 };
 function allow(input){return {
- decision:'ALLOW',actorId:input.actorId,projectId:input.projectId,purpose:input.purpose,
+ decision:'ALLOW',actorId:input.actorId,actorType:input.actorType,projectId:input.projectId,purpose:input.purpose,
  requestId:input.requestId,operation:input.operation,resourceScope:input.resourceScope,
  authorityRef:input.authorityRef,issuedAt:'2026-11-04T11:59:30.000Z',expiresAt:'2026-11-04T12:04:00.000Z'
 };}
@@ -36,7 +36,7 @@ console.log('MISSING_HOST_AUTHORIZER_REJECTED=PASS');
 assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:()=>({decision:'ALLOW'}),now}),/invalid shape/);
 console.log('MALFORMED_HOST_DECISION_REJECTED=PASS');
 for(const patch of [
- {actorId:'attacker'},{projectId:'other-project'},{operation:'WRITE'},{resourceScope:'memory:other'}
+ {actorId:'attacker'},{actorType:'SYSTEM'},{projectId:'other-project'},{operation:'WRITE'},{resourceScope:'memory:other'}
 ]) assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),...patch}),now}));
 console.log('ACTOR_PROJECT_OPERATION_RESOURCE_SUBSTITUTION_REJECTED=PASS');
 assert.throws(()=>authorizeMemoryRequest({requestContext:ctx,operation:'READ',resourceScope:'memory:x',authorizeRequest:input=>({...allow(input),expiresAt:'2026-11-04T12:06:00.000Z'}),now}),/outlives request context/);
