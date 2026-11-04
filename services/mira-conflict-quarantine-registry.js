@@ -596,6 +596,7 @@ function resolveConflict({
         existing.decision !== decision || existing.actor !== actor ||
         existing.policyDecision !== policyDecision ||
         existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
+        existing.broaderAccessAuthorization !== resolution.broaderAccessAuthorization ||
         existing.reviewDigest !== resolution.reviewDigest ||
         digest(existing.proposal) !== digest(resolution.proposal) ||
         digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
@@ -615,6 +616,7 @@ function resolveConflict({
       if (existing.conflictId !== conflictId || existing.decision !== decision ||
           existing.actor !== actor || existing.policyDecision !== policyDecision ||
           existing.acceptedOriginalIndex !== resolution.acceptedOriginalIndex ||
+          existing.broaderAccessAuthorization !== resolution.broaderAccessAuthorization ||
           existing.reviewDigest !== resolution.reviewDigest ||
           digest(existing.proposal) !== digest(resolution.proposal) ||
           digest(existing.originalDigests) !== digest(resolution.originalDigests) ||
