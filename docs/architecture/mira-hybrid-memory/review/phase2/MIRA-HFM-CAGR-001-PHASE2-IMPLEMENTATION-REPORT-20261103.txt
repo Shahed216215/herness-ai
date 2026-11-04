@@ -658,3 +658,21 @@ PRODUCTION=NOT_APPROVED
 VERSION=v0.2
 
 The isolated Phase 2 core store-safety subset is substantially hardened and its selected CI suites pass. Full Phase 2 is not declared complete because the production retrieval/write boundaries cannot safely be connected until authoritative actor/project identity and the domain mapping contract are approved. The Phase 2 branch remains a draft PR; no merge or deployment was performed.
+
+
+26. 2026-11-04 AUDIT LOG HARDENING
+
+audit-log.js now uses the reusable initialization guard and fails closed for missing initialized, empty, malformed, non-array, unsafe or marker-tampered state. It verifies the current chain before appending, uses the shared atomic JSON writer, and serializes append/save/clear operations with a local cross-process filesystem lock. Stale locks are never automatically stolen.
+
+The previous automatic 500-entry truncation has been removed. The retention limit now blocks further appends until explicit archive/clear; clearAuditLog() preserves the current entries in a local archive before resetting the active log. Anchor-write failure is surfaced to the caller as AUDIT_ANCHOR_WRITE_FAILED with stateCommitted=true.
+
+Run 697: https://github.com/Shahed216215/herness-ai/actions/runs/41806461195
+- Cross-process append: PASS
+- Anchor failure reporting and next-append recovery: PASS
+- Stale lock fail-closed: PASS
+- Retention never truncates: PASS
+- Clear preserves archive: PASS
+- Empty/invalid/non-array/missing primary/marker tamper: PASS
+- Full invoked workflow: SUCCESS, TESTS_FAILED=0.
+
+This is local filesystem concurrency control only. Distributed/cloud arbitration, independent remote trust anchor and encrypted backup remain REVIEW_REQUIRED or deferred. The audit archive is local; no production audit history was read or changed.
