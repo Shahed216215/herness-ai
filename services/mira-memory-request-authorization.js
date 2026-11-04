@@ -10,7 +10,7 @@ const REQUEST_KEYS = [
 ];
 const DECISION_KEYS = [
   'decision', 'actorId', 'actorType', 'projectId', 'purpose', 'requestId',
-  'operation', 'resourceScope', 'authorityRef', 'issuedAt', 'expiresAt'
+  'operation', 'resourceScope', 'authorityRef', 'issuedAt', 'expiresAt', 'replayStatus'
 ];
 
 function isObject(value) {
@@ -101,6 +101,7 @@ function authorizeMemoryRequest({
     throw new Error('Trusted host authorization decision has an invalid shape.');
   }
   if (decision.decision !== 'ALLOW') throw new Error('Memory operation denied by host policy.');
+  if (decision.replayStatus !== 'FRESH') throw new Error('Request replay detected or replay status is unverifiable.');
   for (const key of ['actorId', 'actorType', 'projectId', 'purpose', 'requestId', 'authorityRef']) {
     if (decision[key] !== context[key]) {
       throw new Error('Authorization decision binding mismatch: ' + key + '.');
