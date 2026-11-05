@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Encrypted Emergency Backup
 
-Status: ENCRYPTED BACKUP, IMMUTABLE LOCAL ARTIFACT, INTEGRITY VERIFICATION, RESTORE PREVIEW/STAGING, CAPACITY/RETENTION CONTRACTS, VERSIONED KEY-PROVIDER WRAPPER, AND OFFLINE INJECTED TRANSPORT ADAPTER PROTOTYPE IMPLEMENTED. GOOGLE DRIVE OAUTH AND PRODUCTION RESTORE NOT CERTIFIED.
+Status: ENCRYPTED BACKUP, IMMUTABLE LOCAL ARTIFACT, RESTORE PREVIEW/STAGING, CAPACITY/RETENTION, KEY-PROVIDER CONTRACT, DURABLE ID JOURNAL, JOURNALED UPLOAD/CLOUD ADAPTER, AND INJECTED GOOGLE DRIVE V3 MAPPER IMPLEMENTED. LATEST INTEGRATION CI PENDING; GOOGLE OAUTH AND PRODUCTION RESTORE NOT CERTIFIED.
 
 ## Scope
 
@@ -34,10 +34,31 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 ## Durable Google Drive generated-ID journal prototype
 
 - `services/mira-hfm-drive-backup-id-journal.js` provides a local-only immutable operation journal for a future pre-generated Drive file ID.
-- It persists account binding, Drive space, project/backup identity, generated file ID, ciphertext digest and byte length before a future provider upload can begin.
+- It persists SHA-256 account fingerprint, Drive space, project/backup identity, authenticated backup schema/version/createdAt, generated file ID, ciphertext digest and byte length before a future provider upload can begin.
 - Publication uses a same-directory temporary file, owner-only permissions, fsync, create-only hard-link publication, directory fsync and exact-byte readback. Existing operation IDs cannot be overwritten.
 - Restart reconciliation returns the persisted ID but explicitly does not assert remote upload success; provider exact-ID retrieval and exact-byte verification remain mandatory.
 - Synthetic offline tests are run in the Phase 7 GitHub Actions workflow. No Google OAuth/API or network calls are performed.
+
+## Journaled generated-ID upload orchestration prototype
+
+- `services/mira-hfm-drive-generated-id-upload.js` composes the local durable ID journal with a provider-injected create/get/download contract.
+- The journal is persisted before upload; retries use the same pre-generated ID only. Every response, including timeout/409, requires exact-ID metadata retrieval and byte-for-byte ciphertext readback.
+- Missing objects remain uncertain; metadata or byte mismatch is a conflict. The implementation makes no OAuth, network, Google SDK or canonical Memory calls.
+- Synthetic offline CI covers pre-upload journal ordering, timeout reconciliation, same-ID retry, remote mismatch and account binding.
+
+## Journaled cloud adapter integration prototype
+
+- `services/mira-hfm-drive-journaled-cloud-adapter.js` connects the journaled generated-ID uploader to the encrypted cloud-backup service interface.
+- Reconciliation is accepted only after metadata and exact ciphertext verification; the cloud service repeats readback and authenticated-envelope checks.
+- Cloud reads resolve by the journaled exact file ID, never by name. If the journal is missing, recoverJournal can rebuild it from a unique project-scoped listing item only after exact-ID metadata, exact ciphertext digest/size, and authenticated envelope verification with the supplied root key. Corrupt journals fail closed. When the provider exposes listPage/getQuota, the adapter surfaces listing and quota; otherwise quota is NOT_REPORTED.
+- End-to-end synthetic tests cover encrypted upload, HTTP 409 retry, authenticated preview, restore staging, project isolation and offline-only behavior.
+
+## Injected Google Drive v3 provider mapper
+
+- `services/mira-hfm-google-drive-generated-id-provider.js` maps an injected Drive v3 client to generated-ID upload, exact-ID metadata read, bounded media download, project-scoped pagination and account quota.
+- It validates account fingerprint, drive space, parent folder, appProperties, encrypted MIME type, envelope digest/timestamp and download size; it also maps project-scoped pagination and account quota through `files.list` and `about.get`. It does not create OAuth clients or make requests during construction.
+- The provider is offline-tested with a fake client only. Real OAuth, live Drive calls, Shared Drives, sharing and destructive methods remain unimplemented or uncertified.
+- Official Google Drive API docs support generated IDs for `drive` and `appDataFolder` and document 409 duplicate prevention on retry; see the integration gates document for source links.
 
 ## Offline injected transport adapter
 
@@ -51,26 +72,38 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest verified code/test CI: run **41994278556 — SUCCESS**, job **127133573967**, code/test commit **e02b32e16c3503479a4bc37f3d9d06f3be0beee6**. Subsequent commits only refresh documentation; no application or test source changed.
-- Combined offline job logs: **49 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
-- Provider read operations now receive the fixed projectId explicitly; the injected transport fixture asserts that binding.
-- New assertions cover bounded pagination cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaving no stage artifact, strict provider quota/timestamp validation, and authenticated project binding across cloud upload, preview, and restore.
+- Latest code/test CI: run **42018583267 — SUCCESS**, job **127215246547**, tested code/test head commit `0f26022d960ab9ed2a5613e65d7e51fa935e1ceb`.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **112 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings. Payload/envelope type and size limits are checked before buffer allocation; arbitrary objects are not coerced to strings. Bounded envelope buffers are snapshotted before verification. Temporary plaintext is also zeroized when timestamp/metadata validation fails before encryption begins. Google Drive media chunks are type- and size-checked before allocation; Drive file sizes, appProperties byte counts and quota values require canonical decimal integer strings. Newly created backup/journal directories now fsync their parent directory entries before proceeding.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
-- This is synthetic offline CI evidence, not a live-provider or production recovery certification.
+- PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
+- This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
+
+
+### Canonical snapshot source blocker — Phase 1–3 evidence
+
+The exporter is not blocked by encryption code; it is blocked by source authority and completeness. Phase 1 identifies separate General Memory, Knowledge, CRM Conversation, Work Learning, Work Knowledge, Conversation, Audit and Evolution stores with different schemas and writers. Phase 3 says General Memory, Knowledge and CRM Conversation are `BLOCKED_FOR_PRODUCTION`; Work Learning/Experience/Work Knowledge are `BLOCKED`. The project-owner registry, host authentication and durable replay store remain contract-only/not implemented. See the live-integration approval plan's Section 7A for the per-domain evidence and prerequisites. No legacy file may be treated as the canonical snapshot by assumption.
 
 ## Explicit exclusions and blockers
 
-- Actual Google Drive adapter/OAuth/live upload/download/Drive quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
+- Injected Google Drive v3 method mapper: IMPLEMENTED and offline CI-verified with a fake client; real OAuth client wiring and live upload/download/list/quota API remain NOT_IMPLEMENTED / NOT_TESTED. Actual OAuth client wiring and live upload/download/list/quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
 - Production key provider/KMS/OS keystore, key custody, rotation execution, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
 - Canonical HFM snapshot exporter: BLOCKED pending production-grade canonical store integration and approved project-owner mappings. Phase 1 static reconciliation is COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS; Phase 2 local-core safety acceptance is PASS_SCOPED; Phase 3 is COMPLETE_SYNTHETIC_CONTRACT_ONLY. These scoped completions do not establish production host authentication, a persistent authoritative project-owner registry, durable replay protection, production record mappings, or a single committed canonical store. No legacy store is safe to export as a canonical HFM snapshot yet.
 - Production restore drill and independent production recovery certification: NOT_TESTED.
 - Existing routine Google Drive synchronization: UNCHANGED.
 
 VERSION=v0.2
-PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
-LATEST_CODE_TEST_CI=41994278556_SUCCESS
-LATEST_CODE_TEST_COMMIT=e02b32e16c3503479a4bc37f3d9d06f3be0beee6
-OFFLINE_PASS_MARKERS=49
+PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
+CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
+CURRENT_HEAD_CI_RUN=42018583267
+CURRENT_HEAD_CI_JOB=127215246547
+CURRENT_HEAD_CODE_TEST_COMMIT=0f26022d960ab9ed2a5613e65d7e51fa935e1ceb
+CURRENT_HEAD_TEST_SUITES=6
+OFFLINE_PASS_MARKERS=112
+OFFLINE_TESTS_FAILED=0
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
+JOURNAL_RECOVERY=AUTHENTICATED_PROVIDER_OBJECT_RECONSTRUCTION_IMPLEMENTED_OFFLINE
+LIVE_GOOGLE_DRIVE=NOT_TESTED
 PROVIDER_CAPABILITY_NEGOTIATION=PASS
 PROVIDER_QUOTA_REPORTING_CONTRACT=PASS
 NEGOTIATED_LIMIT_ENFORCEMENT=PASS
