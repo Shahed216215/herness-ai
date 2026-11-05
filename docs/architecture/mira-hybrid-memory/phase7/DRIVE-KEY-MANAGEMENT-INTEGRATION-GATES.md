@@ -154,7 +154,8 @@ Important limitations and gates:
 - This candidate may satisfy the provider-side create-only requirement only after a dedicated fake-transport regression suite and a separately authorized, narrowly scoped live test verify create, timeout-after-commit, 409 reconciliation, exact download and duplicate prevention.
 
 STATUS=DOCUMENTED_DESIGN_CANDIDATE_ONLY
-GOOGLE_DRIVE_ADAPTER=NOT_IMPLEMENTED
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
+LIVE_GOOGLE_DRIVE=NOT_TESTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
 ## 9.2 Durable generated-ID operation journal (offline prototype)
@@ -180,10 +181,10 @@ LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 The branch now includes `services/mira-hfm-drive-generated-id-upload.js`. This composes the durable journal with an injected provider contract; it is not a Google SDK adapter.
 
 - Requires an injected provider implementing `generateFileId`, `createFile`, `getFile` and `downloadFile`.
-- Validates encrypted MIME type, AES-256-GCM marker, payload size and SHA-256 before provider interaction.
+- Validates the encrypted envelope schema/version/createdAt/project/backup identity, encrypted MIME type, AES-256-GCM marker, payload size and SHA-256 before provider interaction.
 - On a new operation, obtains one provider-generated ID, durably publishes and reads back the local journal, and only then calls `createFile`.
 - On restart, loads the existing journal and never requests a replacement ID. A missing/corrupt/mismatched journal blocks upload.
-- The create request binds generated ID, dedicated parent, project/backup identity, ciphertext digest, byte length and encryption metadata.
+- The create request binds generated ID, dedicated parent, project/backup identity, authenticated envelope schema/version/createdAt, ciphertext digest, byte length and encryption metadata.
 - Regardless of create response or error (including timeout/409), it retrieves the exact ID, validates provider metadata and downloads the complete ciphertext for byte-for-byte and SHA-256 comparison. Missing/unreadable objects remain UNCERTAIN; metadata or byte mismatches are CONFLICT.
 - A successful return means exact remote bytes and metadata were verified through the injected provider contract. It does not prove Google API behavior, OAuth correctness, provider durability or real quota.
 - Offline synthetic tests cover journal-before-upload ordering, timeout after commit, timeout before commit followed by same-ID retry, metadata conflict, ciphertext mismatch, cross-account journal binding, and no network/OAuth/canonical writes.
@@ -201,16 +202,16 @@ The branch now includes `services/mira-hfm-drive-journaled-cloud-adapter.js`, wh
 - `putIfAbsent` derives a deterministic operation ID from project and backup identity, validates the exact object namespace and encrypted bytes, then delegates to journal-before-upload orchestration.
 - It returns a reconciliation result only when the generated-ID uploader has verified remote metadata and exact ciphertext bytes. The cloud service now accepts this narrowly defined `reconciled + verified` result and performs its own readback and authenticated-envelope verification again.
 - `get` resolves the exact generated ID from the journal, verifies account/space/project/backup/schema/version/timestamp/digest/size/encryption/parent metadata, downloads exact bytes and rechecks size/SHA-256. It never searches by file name.
-- `recoverJournal({backupId,key})` scans only the configured project parent with bounded pagination, requires exactly one matching immutable backup ID, fetches by the listed exact file ID, verifies all metadata and exact ciphertext bytes, authenticates/decrypts the envelope in memory, then recreates the local journal atomically. Wrong keys, duplicate matches, incomplete listings, metadata mismatch or digest mismatch fail closed without writing a journal or restore artifact. The adapter intentionally does not provide list/quota/delete/move/permission APIs; the existing capacity/listing adapter remains separate.
+- `recoverJournal({backupId,key})` scans only the configured project parent with bounded pagination, requires exactly one matching immutable backup ID, fetches by the listed exact file ID, verifies all metadata and exact ciphertext bytes, authenticates/decrypts the envelope in memory, then recreates the local journal atomically. Wrong keys, duplicate matches, incomplete listings, metadata mismatch or digest mismatch fail closed without writing a journal or restore artifact. When the injected provider exposes listPage/getQuota, the adapter surfaces project-scoped listing and provider quota for capacity monitoring. It intentionally has no delete/move/permission API; quota-unavailable remains NOT_REPORTED.
 - End-to-end synthetic tests exercise encrypted backup upload, repeated upload with HTTP 409 reconciliation, authenticated cloud preview, restore to staging only, project isolation, and no network/OAuth/canonical writes.
 
-This proves only the injected fake-provider contract. It does not establish Google Drive API field mapping, account identity, remote consistency, OAuth scope, quota or production durability.
+This proves only the injected fake-provider and offline Google Drive v3 method-mapping contracts. It does not establish live Google account identity, remote consistency, OAuth scope approval, production quota behavior or provider durability.
 
 STATUS=OFFLINE_JOURNALED_CLOUD_ADAPTER_AND_AUTHENTICATED_JOURNAL_RECOVERY
-GOOGLE_DRIVE_SDK=NOT_IMPLEMENTED
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
-## 9.5 Injected Google Drive v3 provider mapper (offline-tested SDK boundary)
+## 9.5 Injected Google Drive v3 provider mapper (fake-client CI pending)
 
 The branch now includes `services/mira-hfm-google-drive-generated-id-provider.js`. It maps the injected Google Drive v3 `drive.files` client to the journaled uploader contract; it does not create an OAuth client, load credentials, or perform any request until one of its methods is explicitly called.
 
