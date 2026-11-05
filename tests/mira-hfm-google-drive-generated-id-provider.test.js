@@ -92,9 +92,9 @@ function fakeDrive() {
   drive.about = {
     async get(args) {
       calls.about += 1;
-      assert.ok(args.fields.includes('user(permissionId)'));
+      assert.ok(args.fields.includes('permissionId'));
       return { data: {
-        user: { permissionId },
+        user: { me: true, permissionId },
         storageQuota: { limit: '15000000000', usage: '6000000000',
           usageInDrive: '3000000000', usageInDriveTrash: '1000000' }
       } };
