@@ -313,9 +313,62 @@ async function run() {
       crypto.createHash('sha256').update(fs.readFileSync(baselineSource.memoryFile)).digest('hex'),
       crypto.createHash('sha256').update(fs.readFileSync(baselineSource.knowledgeFile)).digest('hex')
     ];
+    let blockedSourceReads = 0;
+    await assert.rejects(() => runStagingBackupDrill({
+      source: { descriptor: backupSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      baselineSource: { descriptor: baselineSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      request: request('staging-operator-backup', 'unsigned-policy-request-0001', 'unsigned-policy-nonce-0001'),
+      baselineRequest: request('staging-operator-baseline', 'unsigned-policy-baseline-0001', 'unsigned-policy-baseline-nonce-01'),
+      trustedSources: {
+        [backupSource.source.descriptor.sourceId]: backupSource.trusted,
+        [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
+      },
+      keyProvider: testKeyProvider(),
+      provenancePolicy: { contractVersion: '1', policyVersion: 'caller-controlled', sources: {} },
+      backupDirectory,
+      backupFileName: 'mira-hfm-staging-unsigned-policy.mira-hfm.enc.json',
+      supportedSchemaVersions: ['1.0.0']
+    }), error => error.code === 'HFM_STAGING_POLICY_ACCEPTANCE_REQUIRED');
+    assert.equal(blockedSourceReads, 0);
+    process.stdout.write('MIRA_HFM_PHASE7_UNSIGNED_POLICY_BLOCKED_BEFORE_SOURCE_READ_PASS\\n');
+
+    const eventOrder = [];
+    const policyAcceptance = makePolicyAcceptance(backupSource, baselineSource);
+    const baseProvider = policyAcceptance.policyStateProvider;
+    policyAcceptance.policyStateProvider = {
+      async readState(input) {
+        eventOrder.push('policy-state-read');
+        return baseProvider.readState(input);
+      },
+      async compareAndSwap(input) {
+        eventOrder.push('policy-state-commit');
+        return baseProvider.compareAndSwap(input);
+      }
+    };
+    const baseEvidenceProvider = policyAcceptance.evidenceProvider;
+    policyAcceptance.evidenceProvider = {
+      async resolve(input) {
+        eventOrder.push('evidence-resolved');
+        return baseEvidenceProvider.resolve(input);
+      }
+    };
+    const backupSourceAdapter = {
+      descriptor: backupSource.source.descriptor,
+      async readSnapshot(input) {
+        eventOrder.push('backup-source-read');
+        return backupSource.source.readSnapshot(input);
+      }
+    };
+    const baselineSourceAdapter = {
+      descriptor: baselineSource.source.descriptor,
+      async readSnapshot(input) {
+        eventOrder.push('baseline-source-read');
+        return baselineSource.source.readSnapshot(input);
+      }
+    };
     const result = await runStagingBackupDrill({
-      source: backupSource.source,
-      baselineSource: baselineSource.source,
+      source: backupSourceAdapter,
+      baselineSource: baselineSourceAdapter,
       request: request('staging-operator-backup', 'backup-request-0001', 'backup-nonce-00000001'),
       baselineRequest: request('staging-operator-baseline', 'baseline-request-0001', 'baseline-nonce-00000001'),
       trustedSources: {
@@ -323,11 +376,18 @@ async function run() {
         [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
       },
       keyProvider: testKeyProvider(),
-      ...makePolicyAcceptance(backupSource, baselineSource),
+      ...policyAcceptance,
       backupDirectory,
       backupFileName: 'mira-hfm-staging-drill-001.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
     });
+    assert.equal(result.policyAcceptance.stateCommit.committed, true);
+    assert.equal(result.policyAcceptance.evidenceVerification.verifiedCount, 12);
+    assert.equal(eventOrder[0], 'policy-state-read');
+    assert.equal(eventOrder.filter(event => event === 'evidence-resolved').length, 12);
+    assert.ok(eventOrder.indexOf('policy-state-commit') < eventOrder.indexOf('baseline-source-read'));
+    assert.ok(eventOrder.indexOf('policy-state-commit') < eventOrder.indexOf('backup-source-read'));
+    process.stdout.write('MIRA_HFM_PHASE7_SIGNED_POLICY_BEFORE_SOURCE_READ_PASS\\n');
     assert.equal(result.status, 'STAGING_BACKUP_AND_RECOVERY_PREVIEW_VERIFIED');
     assert.equal(result.publicationStatus, 'LOCAL_WRITE_VERIFIED');
     assert.equal(result.recovery.status, 'RECOVERY_VERIFIED_PREVIEW_ONLY');
