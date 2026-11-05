@@ -20,6 +20,17 @@ function validateKeyProviderContract(provider, metadata, operation) {
     throw error;
   }
   const descriptor = provider.descriptor;
+  const forbiddenKeyMaterialFields = [
+    'privateKeyPem', 'privateKey', 'privateKeyBytes',
+    'masterKey', 'masterKeyBytes', 'keyMaterial', 'secretKeyBytes'
+  ];
+  if (forbiddenKeyMaterialFields.some(field =>
+      Object.prototype.hasOwnProperty.call(provider, field) ||
+      Object.prototype.hasOwnProperty.call(descriptor, field))) {
+    const error = new Error('Raw key material is not accepted on the backup key-provider interface.');
+    error.code = 'BACKUP_KEY_PROVIDER_SECRET_BOUNDARY_VIOLATION';
+    throw error;
+  }
   if (descriptor.environment === 'production') {
     const error = new Error('Production key-provider use is not approved by the Phase 7 contract.');
     error.code = 'BACKUP_PRODUCTION_KEY_PROVIDER_NOT_APPROVED';
