@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
-const {openPinnedDirectory}=require('../services/mira-hfm-pinned-directory');
+const {openPinnedDirectory,assertPrivateDirectory}=require('../services/mira-hfm-pinned-directory');
 const {writeBackupAtomicAt}=require('../services/mira-hfm-emergency-backup');
 function run(){
  if(process.platform!=='linux'||!fs.existsSync('/proc/self/fd')||!fs.constants.O_DIRECTORY||!fs.constants.O_NOFOLLOW){process.stdout.write('MIRA_HFM_PINNED_BACKUP_RACE_TEST=SKIPPED_UNSUPPORTED_PLATFORM\n');return;}
