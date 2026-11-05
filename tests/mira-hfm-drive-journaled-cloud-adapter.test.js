@@ -1,0 +1,277 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { createEncryptedBackup } = require('../services/mira-hfm-encrypted-emergency-backup');
+const {
+  uploadEncryptedEmergencyBackup,
+  previewEncryptedEmergencyBackupFromCloud,
+  restoreEncryptedEmergencyBackupFromCloud,
+  inspectEncryptedEmergencyBackupCapacity
+} = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
+const { createJournaledDriveCloudAdapter } = require('../services/mira-hfm-drive-journaled-cloud-adapter');
+const { readBackupIdJournal } = require('../services/mira-hfm-drive-backup-id-journal');
+
+const projectId = 'mira-project-001';
+const accountBinding = 'b'.repeat(64);
+const driveSpace = 'drive';
+const parentId = 'dedicated-folder-123456';
+const backupId = 'backup-hfm-integration-0001';
+const fileId = 'aBcdEF0123456789_-xy';
+const key = Buffer.alloc(32, 7);
+const payload = Buffer.from('synthetic HFM snapshot payload — private test data');
+const envelope = createEncryptedBackup({
+  payload, key, backupId, createdAt: '2026-11-05T00:00:00.000Z',
+  metadata: { projectId, source: 'synthetic-integration-test' }
+});
+const digest = crypto.createHash('sha256').update(envelope).digest('hex');
+const operationId = 'drive-op-' + crypto.createHash('sha256')
+  .update(Buffer.from(projectId + ':' + backupId)).digest('hex').slice(0, 32);
+
+function createProvider(directory) {
+  const objects = new Map();
+  const calls = { generate: 0, create: 0, get: 0, download: 0, list: 0 };
+  return {
+    objects, calls,
+    async generateFileId(args) {
+      calls.generate += 1;
+      assert.equal(args.accountBinding, accountBinding);
+      assert.equal(args.driveSpace, driveSpace);
+      return { id: fileId };
+    },
+    async createFile(args) {
+      calls.create += 1;
+      assert.equal(args.id, fileId);
+      assert.deepEqual(args.parents, [parentId]);
+      assert.equal(args.mimeType, 'application/vnd.mira.hfm-encrypted-backup');
+      assert.deepEqual(args.bytes, envelope);
+      assert.equal(args.bytes.includes(payload), false);
+      const journal = readBackupIdJournal({ directory, operationId,
+        expected: { accountBinding, driveSpace, projectId, backupId,
+          generatedFileId: fileId, backupSchema: 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP',
+          backupVersion: '1.0.0', backupCreatedAt: '2026-11-05T00:00:00.000Z',
+          ciphertextSha256: digest, bytes: envelope.length } });
+      assert.equal(journal.generatedFileId, fileId);
+      if (objects.has(fileId)) {
+        const error = new Error('synthetic Drive 409 duplicate ID');
+        error.code = '409';
+        throw error;
+      }
+      objects.set(fileId, {
+        id: fileId,
+        metadata: {
+          accountBinding, driveSpace, projectId, backupId,
+          backupSchema: args.appProperties.schema, backupVersion: args.appProperties.version,
+          backupCreatedAt: args.appProperties.createdAt,
+          ciphertextSha256: args.appProperties.ciphertextSha256,
+          bytes: Number(args.appProperties.bytes),
+          contentType: args.mimeType, encryption: args.appProperties.encryption,
+          parentId: args.parents[0]
+        },
+        bytes: Buffer.from(args.bytes)
+      });
+      return { id: fileId, created: true };
+    },
+    async getFile({ id, accountBinding: account, driveSpace: space }) {
+      calls.get += 1;
+      assert.equal(account, accountBinding);
+      assert.equal(space, driveSpace);
+      const object = objects.get(id);
+      return object ? { id: object.id, metadata: { ...object.metadata } } : null;
+    },
+    async downloadFile({ id }) {
+      calls.download += 1;
+      const object = objects.get(id);
+      return object ? Buffer.from(object.bytes) : null;
+    },
+    async listPage({ projectId: scope, prefix, cursor, limit }) {
+      calls.list += 1;
+      assert.equal(scope, projectId);
+      assert.equal(prefix, 'mira-hfm-emergency/v1/' + projectId + '/');
+      assert.ok(limit >= 1 && limit <= 500);
+      const values = [...objects.values()];
+      if (cursor === 'next-page') return { items: [], complete: true };
+      return {
+        items: values.map(object => ({ metadata: {
+          fileId: object.id, projectId, backupId: object.metadata.backupId,
+          backupSchema: object.metadata.backupSchema,
+          backupVersion: object.metadata.backupVersion,
+          backupCreatedAt: object.metadata.backupCreatedAt,
+          objectKey: prefix + object.metadata.backupId + '.mhe',
+          createdAt: object.metadata.backupCreatedAt, bytes: object.metadata.bytes,
+          contentType: object.metadata.contentType, encryption: object.metadata.encryption,
+          ciphertextSha256: object.metadata.ciphertextSha256
+        } })),
+        complete: true
+      };
+    },
+    async getQuota({ projectId: scope }) {
+      assert.equal(scope, projectId);
+      return { providerId: 'google-drive-v3', scope: 'account', projectId: null,
+        quotaBytes: 15000000000, usedBytes: 6000000000,
+        measuredAt: '2026-11-05T00:05:00.000Z' };
+    }
+  };
+}
+
+// Synthetic injected-provider integration only; this suite must never create an OAuth or network client.
+async function main() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-journaled-cloud-integration-'));
+  const journalDirectory = path.join(root, 'journal');
+  const stagingDirectory = path.join(root, 'staging');
+  try {
+    const provider = createProvider(journalDirectory);
+    const adapter = createJournaledDriveCloudAdapter({
+      provider, journalDirectory, accountBinding, driveSpace, projectId, parentId
+    });
+    const uploaded = await uploadEncryptedEmergencyBackup({
+      adapter, projectId, envelope, key, expectedBackupId: backupId
+    });
+    assert.equal(uploaded.status, 'ENCRYPTED_CLOUD_BACKUP_VERIFIED');
+    assert.equal(uploaded.rootKeyTransmitted, false);
+    assert.equal(uploaded.plaintextTransmitted, false);
+    assert.equal(provider.calls.generate, 1);
+    assert.equal(provider.calls.create, 1);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_END_TO_END_ENCRYPTED_UPLOAD=PASS');
+
+    const repeated = await uploadEncryptedEmergencyBackup({
+      adapter, projectId, envelope, key, expectedBackupId: backupId
+    });
+    assert.equal(repeated.status, 'ENCRYPTED_CLOUD_BACKUP_VERIFIED');
+    assert.equal(provider.calls.generate, 1);
+    assert.equal(provider.calls.create, 2);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_IDEMPOTENT_409_RETRY=PASS');
+
+    const journalRecord = readBackupIdJournal({
+      directory: journalDirectory, operationId,
+      expected: { accountBinding, driveSpace, projectId, backupId,
+        generatedFileId: fileId, backupSchema: 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP',
+        backupVersion: '1.0.0', backupCreatedAt: '2026-11-05T00:00:00.000Z',
+        ciphertextSha256: digest, bytes: envelope.length }
+    });
+    fs.unlinkSync(journalRecord.journalPath);
+    const listCallsBeforeInvalidKey = provider.calls.list;
+    await assert.rejects(() => adapter.recoverJournal({
+      backupId, key: Buffer.alloc(16, 1)
+    }), error => error.code === 'HFM_DRIVE_JOURNAL_RECOVERY_KEY_INVALID');
+    assert.equal(provider.calls.list, listCallsBeforeInvalidKey);
+    assert.equal(await adapter.get({
+      projectId, objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + backupId + '.mhe'
+    }), null);
+    await assert.rejects(() => adapter.recoverJournal({
+      backupId, key: Buffer.alloc(32, 8)
+    }), error => error.code === 'HFM_DRIVE_JOURNAL_RECOVERY_AUTH_FAILED');
+    assert.equal(fs.existsSync(journalRecord.journalPath), false);
+    const duplicateListingProvider = {
+      ...provider,
+      async listPage(args) {
+        const page = await provider.listPage(args);
+        return { ...page, items: [...page.items, ...page.items] };
+      }
+    };
+    const duplicateListingAdapter = createJournaledDriveCloudAdapter({
+      provider: duplicateListingProvider, journalDirectory, accountBinding,
+      driveSpace, projectId, parentId
+    });
+    await assert.rejects(() => duplicateListingAdapter.recoverJournal({ backupId, key }),
+      error => error.code === 'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
+    assert.equal(fs.existsSync(journalRecord.journalPath), false);
+    const recoveredJournal = await adapter.recoverJournal({ backupId, key });
+    assert.equal(recoveredJournal.status, 'JOURNAL_RECOVERED_FROM_AUTHENTICATED_PROVIDER_OBJECT');
+    assert.equal(recoveredJournal.canonicalMemoryWrites, 0);
+    const recoveredObject = await adapter.get({
+      projectId, objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + backupId + '.mhe'
+    });
+    assert.deepEqual(recoveredObject.bytes, envelope);
+    console.log('HFM_PHASE7_JOURNAL_LOSS_RECOVERED_FROM_AUTHENTICATED_PROVIDER_OBJECT=PASS');
+
+    const capacity = await inspectEncryptedEmergencyBackupCapacity({
+      adapter, projectId, budgetBytes: 5000000000,
+      now: '2026-11-05T00:10:00.000Z',
+      retentionPolicy: { keepLast: 1, maxAgeDays: 30 }
+    });
+    assert.equal(capacity.status, 'WITHIN_BUDGET');
+    assert.equal(capacity.providerQuota.status, 'REPORTED');
+    assert.equal(capacity.providerQuota.availableBytes, 9000000000);
+    assert.equal(capacity.deletionPerformed, false);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_LISTING_AND_QUOTA_CAPACITY=PASS');
+
+    const identityFailureProvider = {
+      ...provider,
+      async getQuota() {
+        const error = new Error('synthetic authenticated account mismatch');
+        error.code = 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE';
+        throw error;
+      }
+    };
+    const identityFailureAdapter = createJournaledDriveCloudAdapter({
+      provider: identityFailureProvider, journalDirectory, accountBinding,
+      driveSpace, projectId, parentId
+    });
+    await assert.rejects(() => identityFailureAdapter.getProviderQuota(),
+      error => error.code === 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_QUOTA_ACCOUNT_MISMATCH_FAILS_CLOSED=PASS');
+
+    const quotaUnavailableAdapter = createJournaledDriveCloudAdapter({
+      provider: { ...provider, async getQuota() {
+        const error = new Error('synthetic quota not exposed');
+        error.code = 'HFM_GOOGLE_DRIVE_QUOTA_UNAVAILABLE';
+        throw error;
+      } },
+      journalDirectory, accountBinding, driveSpace, projectId, parentId
+    });
+    const unavailableQuota = await quotaUnavailableAdapter.getProviderQuota();
+    assert.equal(unavailableQuota.status, 'NOT_REPORTED');
+    assert.equal(unavailableQuota.providerQuotaAvailable, false);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_UNAVAILABLE_QUOTA_EXPLICIT=PASS');
+
+    const preview = await previewEncryptedEmergencyBackupFromCloud({
+      adapter, projectId, backupId, key
+    });
+    assert.equal(preview.status, 'VERIFIED_RESTORE_PREVIEW');
+    assert.equal(preview.restoreApplied, false);
+    assert.equal(preview.canonicalMemoryWrites, 0);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_AUTHENTICATED_PREVIEW=PASS');
+
+    const restored = await restoreEncryptedEmergencyBackupFromCloud({
+      adapter, projectId, backupId, key, stagingDirectory,
+      restoreId: 'hfm-restore-integration-0001'
+    });
+    assert.equal(restored.status, 'VERIFIED_STAGING_ONLY');
+    assert.equal(restored.canonicalMemoryWrites, 0);
+    assert.deepEqual(fs.readFileSync(restored.path), payload);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_RESTORE_STAGING_ONLY=PASS');
+
+    const stageBeforeTamper = fs.readdirSync(stagingDirectory);
+    provider.objects.get(fileId).bytes[0] ^= 0xff;
+    await assert.rejects(() => previewEncryptedEmergencyBackupFromCloud({
+      adapter, projectId, backupId, key
+    }), error => error.code === 'HFM_DRIVE_GENERATED_UPLOAD_CONFLICT');
+    await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
+      adapter, projectId, backupId, key, stagingDirectory,
+      restoreId: 'hfm-restore-tampered-0001'
+    }), error => error.code === 'HFM_DRIVE_GENERATED_UPLOAD_CONFLICT');
+    assert.deepEqual(fs.readdirSync(stagingDirectory), stageBeforeTamper);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_TAMPERED_BYTES_NO_STAGE=PASS');
+
+    await assert.rejects(() => adapter.get({
+      projectId: 'other-project-001',
+      objectKey: 'mira-hfm-emergency/v1/other-project-001/' + backupId + '.mhe'
+    }), error => error.code === 'HFM_DRIVE_PROJECT_SCOPE');
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_PROJECT_ISOLATION=PASS');
+
+    assert.equal(provider.calls.generate, 1);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_NO_NETWORK_OAUTH_OR_CANONICAL_WRITE=PASS');
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_INTEGRATION_TESTS_FAILED=0');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+main().catch(error => {
+  console.error(error.stack || error.message);
+  process.exitCode = 1;
+});
