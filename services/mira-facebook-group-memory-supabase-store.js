@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const { secureProviderRequest } = require('./security/secure-provider-request');
+const { validateCanonicalMemoryRecord } = require('./mira-memory-conflict-assessment');
 
 const TABLE = 'mira_facebook_group_import_batches';
 const AUDIT_TABLE = 'mira_facebook_group_import_audit_events';
@@ -39,6 +40,18 @@ function rows(response) {
   return data;
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map(key =>
+      JSON.stringify(key) + ':' + canonicalJson(value[key])
+    ).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+function digest(value) {
+  return crypto.createHash('sha256').update(canonicalJson(value), 'utf8').digest('hex');
+}
 function validateBatchRow(row, projectId, groupId) {
   if (!row || row.project_id !== projectId || row.group_id !== groupId ||
       typeof row.batch_id !== 'string' || typeof row.batch_digest !== 'string' ||
@@ -50,6 +63,25 @@ function validateBatchRow(row, projectId, groupId) {
       row.payload.groupId !== groupId ||
       row.payload.batchDigest !== row.batch_digest)
     fail('FB_GROUP_STORE_INTEGRITY_FAILED', 'Supabase Group import row failed identity checks.');
+  const withoutDigest = Object.fromEntries(
+    Object.entries(row.payload).filter(([key]) => key !== 'batchDigest')
+  );
+  if (digest(withoutDigest) !== row.batch_digest || !Array.isArray(row.payload.items))
+    fail('FB_GROUP_STORE_INTEGRITY_FAILED', 'Supabase Group import batch digest or item collection is invalid.');
+  for (const item of row.payload.items) {
+    if (!item || !item.record || item.record.projectId !== projectId ||
+        item.record.source?.sourceType !== 'facebook_group' ||
+        item.record.lifecycle !== 'PENDING_REVIEW' ||
+        item.record.integrity?.status !== 'UNVERIFIED' ||
+        item.record.trust?.status !== 'SOURCE_RECORDED' ||
+        item.record.access?.classification !== 'PROJECT_PRIVATE' ||
+        !Array.isArray(item.record.access.allowedProjectIds) ||
+        !item.record.access.allowedProjectIds.includes(projectId) ||
+        digest(item.record) !== item.recordDigest ||
+        validateCanonicalMemoryRecord(item.record, 'storedGroupRecord').length > 0 ||
+        !['PENDING_REVIEW', 'DUPLICATE', 'QUARANTINED'].includes(item.disposition))
+      fail('FB_GROUP_STORE_INTEGRITY_FAILED', 'Supabase Group import item failed digest, schema, trust, or scope validation.');
+  }
   return row.payload;
 }
 
