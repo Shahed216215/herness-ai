@@ -20,7 +20,8 @@ async function archiveResearchEvidenceWithHumanApproval({
   evidence,
   authorize = authorizeAndAuditOperation,
   audit = recordAudit,
-  archiveEvidence = archiveFacebookResearchEvidenceWithProvider
+  archiveEvidence = archiveFacebookResearchEvidenceWithProvider,
+  env = process.env
 } = {}) {
   if (typeof actor !== 'string' || !actor.trim() || actor.trim().length > 100) {
     fail('RESEARCH_ARCHIVE_ACTOR_REQUIRED', 'A named administrator is required.');
@@ -33,6 +34,11 @@ async function archiveResearchEvidenceWithHumanApproval({
   }
   if (!Array.isArray(evidence) || evidence.length < 1 || evidence.length > 10) {
     fail('RESEARCH_ARCHIVE_INVALID_INPUT', 'Between 1 and 10 reviewed evidence items are required.');
+  }
+  const archiveBackend = String(env && env.MIRA_FACEBOOK_RESEARCH_MEMORY_BACKEND || 'local').trim().toLowerCase();
+  if (env && env.NODE_ENV === 'production' && archiveBackend === 'local' &&
+      env.MIRA_FACEBOOK_RESEARCH_MEMORY_DURABLE_STORAGE_CONFIRMED !== 'true') {
+    fail('RESEARCH_ARCHIVE_DURABILITY_NOT_CONFIRMED', 'Production local archive writes require an explicitly confirmed persistent storage mount.');
   }
   if (typeof authorize !== 'function' || typeof audit !== 'function' || typeof archiveEvidence !== 'function') {
     fail('RESEARCH_ARCHIVE_WORKFLOW_UNAVAILABLE', 'The approval workflow dependencies are unavailable.');
