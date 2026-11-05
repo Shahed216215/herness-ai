@@ -3,6 +3,8 @@
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { verifyAuthorizationDecision } = require('../services/mira-hfm-authorization-decision');
+const { createLocalFakeAuthorizationReplayGuard } =
+  require('../services/mira-hfm-local-fake-authorization-replay-guard');
 
 function canonicalize(value) {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
@@ -58,7 +60,7 @@ function fixture() {
       signature: crypto.sign(null, Buffer.from(canonicalize(unsigned)), pair.privateKey).toString('base64')
     };
   }
-  const replayGuard = { async consume() { return true; } };
+  const replayGuard = createLocalFakeAuthorizationReplayGuard({ now });
   return { pair, trustedIssuers, request, decision, sign, replayGuard, now };
 }
 async function rejectsCode(promise, code) {
@@ -74,6 +76,11 @@ async function rejectsCode(promise, code) {
   assert.equal(valid.status, 'SIGNED_AUTHORIZATION_DECISION_AUTHENTICATED');
   assert.equal(valid.replayGuardConsumed, true);
   assert.equal(valid.policyCorrectnessIndependentlyAudited, false);
+  await rejectsCode(verifyAuthorizationDecision({
+    decision: f.sign(), request: f.request,
+    trustedIssuers: f.trustedIssuers, replayGuard: f.replayGuard, now: f.now
+  }), 'HFM_AUTHZ_REPLAY_REJECTED');
+
 
   const mutableDecision = f.sign();
   const mutableTrust = JSON.parse(JSON.stringify(f.trustedIssuers));
