@@ -8,7 +8,7 @@ function prepare(records, overrides={}) { return prepareFacebookGroupImport({ co
 assert.throws(() => prepareFacebookGroupImport({content:JSON.stringify(env([rec()])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',existingRecords:[]}), error => error.code === 'FB_GROUP_IMPORT_AUTHORIZATION_REQUIRED');
 assert.throws(() => prepareFacebookGroupImport({content:JSON.stringify(env([rec({sourceUrl:'https://www.facebook.com/groups/123456789/posts/101/?access_token=secret'})])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}), error => error.code === 'FB_GROUP_IMPORT_INVALID_INPUT');
 const first=prepare([rec()]);
-assert.equal(first.status,'PREPARED_NOT_PERSISTED');
+assert.equal(first.status,'PREPARED');
 assert.equal(first.items[0].disposition,'PENDING_REVIEW');
 assert.equal(first.items[0].record.source.sourceType,'facebook_group');
 assert.equal(first.items[0].record.integrity.status,'UNVERIFIED');
