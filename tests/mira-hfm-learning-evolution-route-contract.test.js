@@ -13,7 +13,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202611051
 const verification = fs.readFileSync(path.join(root, 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'), 'utf8');
 const bridge = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evolution-bridge.js'), 'utf8');
 const adapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evidence-adapter.js'), 'utf8');
-const generationCycleAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle.js'), 'utf8');
+const generationCycleAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle-request.js'), 'utf8');
 
 
 
@@ -74,15 +74,14 @@ assert.match(server, /registerMiraHfmLearningEvolutionRoutes\(/);
 assert.match(server, /learningProposalOptIn === true/);
 assert.match(server, /mira_hfm_public_web_retrieval/);
 assert.match(generationCycleAdapter, /HFM_LEARNING_NAMED_ADMIN_REQUIRED/);
-assert.match(generationCycleAdapter, /HFM_LEARNING_RETRIEVAL_INVALID/);
+assert.match(generationCycleAdapter, /HFM_LEARNING_RETRIEVAL_REPORT_INVALID/);
 assert.match(server, /learningProposalHandoff/);
 assert.match(server, /stageAgentGenerationProposal/);
 assert.match(server, /mira-hfm-learning-generation-cycle-request/);
-assert.match(server, /require\("\.\/services\/mira-hfm-learning-generation-cycle"\)/);
-assert.match(server, /require\("\.\/services\/mira-hfm-learning-generation-cycle"\)/);
-assert.match(generationCycleAdapter, /requestBody\.learningProposalOptIn !== true/);
-assert.match(generationCycleAdapter, /session\.authenticated !== true/);
-assert.match(generationCycleAdapter, /session\.role !== 'admin'/);
+assert.match(server, /require\("\.\/services\/mira-hfm-learning-generation-cycle-request"\)/);
+assert.match(generationCycleAdapter, /req\.body\.learningProposalOptIn !== true/);
+assert.match(generationCycleAdapter, /session\.authenticated === true/);
+assert.match(generationCycleAdapter, /session\.role === 'admin'/);
 assert.match(route, /MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true'/);
 assert.match(route, /app\.locals\.miraHfmLearningGenerationCycle/);
 assert.match(route, /createGenerationCycleProposalOrchestrator/);
