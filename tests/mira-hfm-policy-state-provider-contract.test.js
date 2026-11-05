@@ -381,6 +381,11 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
   process.stdout.write('MIRA_HFM_POLICY_STATE_DURABLE_ATOMIC_CAPABILITY_CLAIMS_PASS\n');
   process.stdout.write('MIRA_HFM_POLICY_STATE_COMPARE_AND_SWAP_PASS\n');
   process.stdout.write('MIRA_HFM_POLICY_STATE_COMMIT_RECEIPT_BINDING_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_IDEMPOTENCY_AND_RECEIPT_BINDING_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_PRECOMMIT_RETRY_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_AMBIGUOUS_COMMIT_RECONCILIATION_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_AMBIGUOUS_UNRESOLVED_FAIL_CLOSED_PASS\n');
+
   process.stdout.write('MIRA_HFM_POLICY_STATE_CONFLICT_FAIL_CLOSED_PASS\n');
   process.stdout.write('MIRA_HFM_POLICY_STATE_NOT_INFRASTRUCTURE_CERTIFIED_PASS\n');
   process.stdout.write('MIRA_HFM_POLICY_STATE_PROVIDER_CONTRACT_COMPLETE\n');
