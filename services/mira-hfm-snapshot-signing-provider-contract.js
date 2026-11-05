@@ -33,7 +33,9 @@ function validateSnapshotSigningProvider(provider, expected) {
       d.environment !== 'staging' ||
       d.keyId !== expected.keyId ||
       typeof provider.sign !== 'function' ||
-      ['privateKeyPem', 'privateKey', 'privateKeyBytes'].some(k =>
+      ['privateKeyPem', 'privateKey', 'privateKeyBytes', 'signingKey', 'signingKeyBytes',
+        'keyMaterial', 'secretKey', 'secretKeyBytes', 'credential', 'credentials',
+        'accessToken', 'refreshToken', 'clientSecret'].some(k =>
         Object.prototype.hasOwnProperty.call(provider, k) ||
         Object.prototype.hasOwnProperty.call(d, k))) {
     fail('Snapshot signing provider descriptor, key scope, or sign-only interface is invalid.',
