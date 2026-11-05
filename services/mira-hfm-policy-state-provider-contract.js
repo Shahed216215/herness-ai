@@ -133,6 +133,9 @@ async function verifyAndAcceptSignedProvenancePolicy({
   trustedPolicyIssuers, trustedPolicyReviewers, evidenceProvider, trustedEvidenceIssuers,
   expectedEnvironment, expectedProjectId, operationalIssuerIds = [], now = Date.now()
 }) {
+  if (!Number.isSafeInteger(now)) {
+    fail('Policy acceptance clock configuration is invalid.', 'HFM_POLICY_STATE_CONFIG_INVALID');
+  }
   if (!isPlainObject(provider) || typeof provider.readState !== 'function' ||
       typeof provider.compareAndSwap !== 'function') {
     fail('An authenticated policy-state provider with read and atomic compare-and-swap is required.',
