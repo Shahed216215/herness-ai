@@ -12,42 +12,39 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - Retention produces a deletion proposal only. It never deletes backup files.
 
 ## CI evidence
-- Latest five-suite run `42028283552` completed SUCCESS on commit `5994c8eb372edcbd46ee1021dd45f3af19afba10`; signed snapshot-source, source-to-encrypted-backup, and recovery verification test markers all passed.
-- Snapshot source now requires an independently pinned Ed25519 public-key trust anchor and fingerprint, verifies signed attestation, binds project/actor/scope/request ID/nonce, enforces an attestation freshness window, and checks source revision/count/payload digest. This authenticates the attestation signer against the configured trust anchor; it does not independently enforce the source's authorization policy or certify the production store.
-- `createEncryptedBackupFromSource` connects the verified snapshot contract to envelope encryption, but returns prepared encrypted bytes only; no local publication, Drive upload, or canonical Memory write occurs.
-- Latest five-suite workflow run `42027867376` completed SUCCESS on commit `1a630e76591acba674073d174fef241a1f39bc73`.
-- All five offline suites passed: encrypted backup contract, mocked Drive adapter, key-provider contract, authoritative snapshot-source contract, and recovery verification.
-- Logs confirm `PRODUCTION_SOURCE_AUTHENTICATED=NO`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `NETWORK_REQUESTS=0`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
-- Latest Phase 7 workflow run `42027268319` completed SUCCESS on commit `b0ccad200e807876993531f87a6fa23a12455925`.
-- Three isolated suites passed: emergency-backup contract, mocked Google Drive adapter, and key-provider contract conformance.
-- Logs explicitly confirm `PRODUCTION_KEY_CUSTODY=NOT_APPROVED`, `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
-- GitHub Actions run 42026737289 completed SUCCESS on commit a58537677d88b137f9af4d296a10f100ae743f62.
-- Both isolated suites report PASS: MIRA_HFM_PHASE7_EMERGENCY_BACKUP_CONTRACT_PASS and MIRA_HFM_PHASE7_GOOGLE_DRIVE_ADAPTER_PASS.
-- Logs confirm NETWORK_REQUESTS=0, PRODUCTION_MEMORY_TOUCHED=NO, LIVE_DRIVE_API_CALLS=0 and BACKUP_DELETION=0.
-- Earlier failed attempts are preserved; run 42026705689 failed on an async assertion mismatch. The assertion was corrected and the later branch-head run above passed.
+- Latest previously observed five-suite workflow run `42028413165` completed SUCCESS on commit `8b8d7127a3c986d906f74edffcfefd1f924929d5`. A later ledger-only documentation commit was not included in that run.
+- Five offline suites passed: encrypted backup contract, mocked Drive adapter, key-provider contract, signed snapshot-source contract, and recovery verification.
+- Logs confirmed `PRODUCTION_SOURCE_AUTHENTICATED=NO`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `NETWORK_REQUESTS=0`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
+- Earlier failed attempts are retained as evidence; run `42026705689` failed on an async assertion mismatch and was corrected in a later run.
 
 ## Key-provider contract update
 - `services/mira-hfm-key-provider-contract.js` validates the declared external-provider interface, backup key purpose, and key ID/version consistency.
 - The validator result is `CONTRACT_SHAPE_VALID_NOT_APPROVAL`; descriptor fields are caller-supplied and do not prove provider identity, key custody, authorization, or production approval.
-- `services/mira-hfm-emergency-backup.js` now enforces this contract before wrapping/unwrapping and zeroizes the temporary DEK copy passed to the wrap callback.
-- `tests/mira-hfm-key-provider-contract.test.js` covers descriptor shape, key-reference mismatch, wrong purpose, missing operations, and unsupported operation.
 - Production KMS/HSM selection, workload identity, least privilege, rotation, escrow/recovery, audit policy, and security approval remain open. See `KEY-PROVIDER-GOVERNANCE.md`.
 
 ## Authoritative snapshot and recovery verification
 - `services/mira-hfm-authoritative-snapshot.js` defines an injected read-only source contract with independent pinned Ed25519 trust anchors, public-key fingerprint checks, signed attestation verification, request nonce/request-ID binding, freshness limits, project/actor/scope checks, source revision, schema, count and payload digest checks.
-- Signature verification authenticates the attestation signer against the configured trust anchor. It does not independently enforce the source's authorization policy or certify that a production Memory/Knowledge store is authoritative. No production store is wired into it.
+- Signature verification authenticates the attestation signer against the configured trust anchor. It does not independently enforce the source's authorization policy or certify that a production Memory/Knowledge store is authoritative.
 - `createEncryptedBackupFromSource` connects the verified snapshot result to envelope encryption and returns prepared bytes only; it does not publish a local file, upload to Drive, or write canonical Memory.
-- `services/mira-hfm-recovery-verification.js` performs a non-mutating recovery drill: decrypt/authenticate, validate project/schema/count, and compare source revision, record count, and payload SHA-256 against an independently supplied baseline. It explicitly reports no canonical Memory/Knowledge write and no restore execution.
-- Synthetic tests cover allow/deny shape, project/scope/revision/digest mismatches, read-only mode, successful recovery preview, and baseline mismatch. They do not establish production source identity or key custody.
+- `services/mira-hfm-recovery-verification.js` performs a non-mutating recovery drill: decrypt/authenticate, validate project/schema/count, and compare source revision, record count, and payload SHA-256 against an independently supplied baseline.
+- Synthetic tests cover signed snapshot validation, trust-anchor mismatch, denied claims, stale attestation, nonce replay mismatch, successful recovery preview, baseline mismatch, and no-canonical-write behavior.
 
+## Local staging snapshot source (new)
+- `services/mira-hfm-local-staging-snapshot-source.js` is a separate staging-only adapter for the existing `memory.json` and `knowledge.json` JSON-array stores.
+- It requires explicit absolute file paths, a non-symlink staging root, `environment: staging`, an injected Ed25519 private signing key, and an explicit authorization callback. It has no default production path and rejects `environment: production`.
+- It reads the two files through bounded regular-file descriptors, checks file identity/size/mtime across the read, parses JSON arrays, flattens records with store identifiers, and signs a request-bound attestation.
+- The adapter does not call `readMemory()` or `createKnowledgeBackup()`. This is intentional: inspection found that the former may create an initialization marker, while the latter writes backup/audit state.
+- The adapter does not write, migrate, restore, publish, upload, or delete anything. Its signing key and authorization callback are injected; their real identity, custody, and policy remain deployment responsibilities.
+- New synthetic tests cover successful signed staging capture, denied authorization, production-environment rejection, path pinning, and source-file immutability. CI execution for this addition is pending until the new workflow run completes.
+- This adapter is not a production integration and must not be pointed at production data.
 
 ## Explicit limitations
-- No production Memory source is read. Caller must provide a snapshot and its independently established project scope/source revision.
+- No production Memory source is read. No production store is wired into the source contract.
 - No Drive folder is created or credentials loaded by the adapter; caller must supply a verified folder ID and authorized client.
 - No production KMS/KEK, key rotation, escrow or recovery-key workflow is implemented. Production use is blocked until key custody is reviewed and approved.
 - No routine Google Drive synchronization is removed or changed.
 - No restore-to-production, migration, deployment or provider cutover is implemented.
-- The current local backup/restore tools remain unchanged.
+- Existing local backup/restore tools remain unchanged.
 - Live Drive quota, upload, download and provider permission behavior remain unverified.
 
 ## Acceptance status
@@ -56,6 +53,7 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - Project/schema/count validation: PASS_CI.
 - Immutable local write/readback: PASS_CI.
 - Mocked Drive quota/upload/no-overwrite/remote-readback contract: PASS_CI.
+- Local staging snapshot adapter: IMPLEMENTED; CI_PENDING.
 - Retention: plan-only; deletion not authorized.
 - Restore: decrypt-and-validate preview only; production restore not authorized.
 - Production readiness: NOT_CERTIFIED.
