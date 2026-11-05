@@ -19,7 +19,7 @@ on:
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
   push:
     branches:
-      - 'work/mira-hfm-v02-phase7-clean-restack-on-phase6-20261105'
+      - 'work/mira-hfm-v02-phase7-clean-restack-on-phase6-v2-20261105'
     paths:
       - 'services/mira-hfm-encrypted-emergency-backup.js'
       - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
