@@ -60,10 +60,10 @@ function createSupabaseFacebookGroupImportStore({
   if (typeof request !== 'function') throw new TypeError('request must be a function');
   const config = validateConfig(env);
 
-  async function call(path, method, data, extraHeaders = {}) {
+  async function callTable(table, path, method, data, extraHeaders = {}) {
     let response;
     try {
-      response = await request(config.baseUrl + '/rest/v1/' + TABLE + path, {
+      response = await request(config.baseUrl + '/rest/v1/' + table + path, {
         method,
         headers: {
           apikey: config.key,
@@ -81,6 +81,8 @@ function createSupabaseFacebookGroupImportStore({
       fail('FB_GROUP_STORE_HTTP_ERROR', 'Supabase Group import storage returned a non-success status.');
     return response;
   }
+  const call = (path, method, data, extraHeaders) =>
+    callTable(TABLE, path, method, data, extraHeaders);
 
   async function readBatch(batchId, projectId, groupId = null) {
     const query = '?select=batch_id,project_id,group_id,batch_digest,payload' +
@@ -141,7 +143,7 @@ function createSupabaseFacebookGroupImportStore({
       recordedAt: new Date().toISOString()
     };
     const canonical = JSON.stringify(Object.fromEntries(Object.keys(payload).sort().map(k => [k, payload[k]])));
-    const eventDigest = require('node:crypto').createHash('sha256').update(canonical, 'utf8').digest('hex');
+    const eventDigest = crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
     const eventId = crypto.randomUUID();
     const row = {
       event_id: eventId,
@@ -151,16 +153,9 @@ function createSupabaseFacebookGroupImportStore({
       event_digest: eventDigest,
       payload
     };
-    const inserted = rows(await request(config.baseUrl + '/rest/v1/' + AUDIT_TABLE, {
-      method: 'POST',
-      headers: {
-        apikey: config.key,
-        Authorization: 'Bearer ' + config.key,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation'
-      },
-      data: [row]
-    }));
+    const inserted = rows(await callTable(
+      AUDIT_TABLE, '', 'POST', [row], { Prefer: 'return=representation' }
+    ));
     if (inserted.length !== 1 || inserted[0].event_id !== eventId ||
         inserted[0].event_digest !== eventDigest ||
         !inserted[0].payload || inserted[0].payload.batchId !== event.batchId) {
