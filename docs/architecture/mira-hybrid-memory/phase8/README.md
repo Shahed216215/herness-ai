@@ -18,8 +18,8 @@ Connect existing Mira Learning and HFM evidence to a controlled learning/evoluti
   - `MIRA_HFM_LEARNING_PROPOSAL_PRODUCTION_READY=true`
   - Valid existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` secrets
   - The migration to be applied and independently verified before setting the production-ready flag
-- The production audit writer records proposal staging in Supabase and performs readback verification. Audit failure after proposal persistence is reported as committed/reconciliation-required.
-- Admin-only API requires a named authenticated administrator browser session. It supports explicit evidence submission, HFM public retrieval evidence intake, legacy Learning Engine evidence intake, immutable review decisions and proposal readback.
+- The production audit writer records both proposal staging and immutable human-review decisions in Supabase with deterministic event identity, duplicate-safe insert semantics and readback verification. Audit failure after proposal/review persistence is reported as committed/reconciliation-required; an identical retry can reconcile the audit event without overwriting the immutable record.
+- Admin-only API requires a named authenticated administrator browser session. It supports explicit evidence submission, HFM public retrieval intake, legacy Learning Engine intake, Experience Retrieval intake, Consolidated Knowledge intake, immutable review decisions and proposal readback.
 - HFM public retrieval adapter validates the provider/mode, successful or degraded-evidence status, zero-canonical-write declarations, exact numeric Page-ID-bound Facebook paths, declared source type, provenance and credential-free HTTPS URL. Imported evidence is forced to UNVERIFIED.
 - Legacy Learning Engine adapter reads one requested record through the existing read/verify interfaces, requires matching successful integrity evidence, screens candidate text for likely secrets, and maps lesson/improvement candidates into UNVERIFIED HFM evidence. It does not modify the legacy record.
 - Read-only compatibility inspector checks Learning Engine, Experience Memory, Experience Retrieval, Knowledge Consolidation and Evolution Snapshot/rollback interfaces without migration, rewrite, deletion, rollback or Drive/network calls.
@@ -41,6 +41,8 @@ Base: `/api/admin/mira-hfm-learning-evolution`
 - `POST /proposals` — stage explicitly supplied evidence.
 - `POST /proposals/from-public-retrieval` — adapt an already-produced HFM public retrieval result. It does not perform a search and cannot cryptographically prove the submitted report came from the provider.
 - `POST /proposals/from-legacy-learning` — read and verify a requested legacy Learning Engine record, then stage its eligible candidates as untrusted evidence.
+- `POST /proposals/from-experience-retrieval` — validate the integrity of explicitly selected legacy Experience records and stage lesson, feedback, QA and recovery signals as untrusted evidence.
+- `POST /proposals/from-consolidated-knowledge` — require a valid Knowledge Consolidation store integrity result and source-record provenance before staging one selected item as untrusted evidence.
 - `POST /proposals/:projectId/:proposalId/review` — record one named-admin `APPROVE_FOR_MANUAL_HANDOFF` or `REJECT` decision with a reason.
 - `GET /proposals/:projectId/:proposalId` — read and re-verify a stored proposal and its optional review.
 
