@@ -111,7 +111,7 @@ function createEncryptedBackup({ payload, key, backupId, createdAt = new Date().
       ciphertext: ciphertext.toString('base64'),
       ciphertextSha256: sha256(ciphertext)
     };
-    return Buffer.from(JSON.stringify(envelope) + '\\n', 'utf8');
+    return Buffer.from(JSON.stringify(envelope) + '\n', 'utf8');
   } finally {
     plain.fill(0);
   }
