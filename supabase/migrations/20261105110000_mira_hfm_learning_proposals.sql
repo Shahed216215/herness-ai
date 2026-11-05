@@ -80,6 +80,11 @@ comment on table public.mira_hfm_learning_proposal_audit_events is
     and payload ->> 'proposalId' = proposal_id
     and payload ->> 'reviewDigest' = review_digest
     and payload ->> 'decision' in ('APPROVE_FOR_MANUAL_HANDOFF', 'REJECT')
+    and ((payload ->> 'decision' = 'APPROVE_FOR_MANUAL_HANDOFF' and payload ->> 'status' = 'APPROVED_FOR_MANUAL_HANDOFF')
+      or (payload ->> 'decision' = 'REJECT' and payload ->> 'status' = 'REJECTED'))
+    and payload ->> 'actorRole' = 'admin'
+    and length(trim(payload ->> 'actorId')) > 0
+    and length(trim(payload ->> 'reason')) > 0
     and payload ->> 'trustState' = 'UNTRUSTED'
     and payload ->> 'canonicalMemoryWrites' = '0'
     and payload ->> 'automaticExecution' = 'false'
