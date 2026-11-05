@@ -75,6 +75,8 @@ function identityKey(r) { return r.projectId + '|' + r.memoryId; }
 function sameImportedVersion(a, b) {
   return a.projectId === b.projectId && a.memoryId === b.memoryId &&
     a.version.revision === b.version.revision && a.version.contentHash === b.version.contentHash &&
+    a.recordType === b.recordType &&
+    JSON.stringify(a.access) === JSON.stringify(b.access) &&
     a.source.sourceType === b.source.sourceType && a.source.sourceId === b.source.sourceId &&
     (a.source.sourceUrl || null) === (b.source.sourceUrl || null);
 }
@@ -113,7 +115,7 @@ function prepareFacebookGroupImport(input = {}) {
     schemaVersion: '1.0.0', kind: 'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT_BATCH',
     batchId: 'mira-fb-group-import-' + sha256(projectId + '|' + groupId + '|' + exportId).slice(0, 48),
     projectId, groupId, exportId, sourceType: 'facebook_group',
-    createdAt: new Date().toISOString(), createdBy: actorId, status: 'PREPARED_NOT_PERSISTED',
+    createdAt: items[0].record.source.observedAt, createdBy: actorId, status: 'PREPARED_NOT_PERSISTED',
     items,
     summary: { total: items.length, pendingReview: items.filter(x => x.disposition === 'PENDING_REVIEW').length, duplicates: items.filter(x => x.disposition === 'DUPLICATE').length, quarantined: items.filter(x => x.disposition === 'QUARANTINED').length },
     trustPolicy: 'UNTRUSTED_USER_SUPPLIED_GROUP_CONTENT', canonicalMemoryWrite: false
@@ -164,6 +166,7 @@ function createFacebookGroupImportService({ store, auditWriter } = {}) {
         for (const item of batch.items || []) {
           if (!object(item) || !object(item.record) || item.record.projectId !== project ||
               item.record.source.sourceType !== 'facebook_group' || item.record.lifecycle !== 'PENDING_REVIEW' ||
+              validateCanonicalMemoryRecord(item.record, 'storedGroupRecord').length > 0 ||
               item.record.integrity.status !== 'UNVERIFIED' || item.record.trust.status !== 'SOURCE_RECORDED' ||
               digest(item.record) !== item.recordDigest) fail('FB_GROUP_IMPORT_INTEGRITY_FAILED', 'Stored Group memory item failed schema/trust/digest checks.');
           if (item.disposition === 'DUPLICATE') continue;
