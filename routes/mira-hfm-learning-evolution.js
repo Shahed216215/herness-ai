@@ -9,6 +9,7 @@ const { createPersistentProposalStore } = require('../services/mira-hfm-learning
 const { createSupabaseLearningProposalStore } = require('../services/mira-hfm-learning-proposal-supabase-store');
 const { recordAudit } = require('../audit-log');
 const { fromPublicRetrieval } = require('../services/mira-hfm-learning-evidence-adapter');
+const { fromLegacyLearningRecord } = require('../services/mira-hfm-legacy-learning-evidence-adapter');
 
 function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PERMISSIONS, options = {}) {
   const router = express.Router();
@@ -125,6 +126,56 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
       return res.status(status).json({ success: false, code,
         committed: error && error.stateCommitted === true,
         reconciliationRequired: error && error.stateCommitted === true });
+    }
+  });
+
+  router.post('/proposals/from-legacy-learning', async (req, res) => {
+    const actorId = requireNamedAdminSession(req, res);
+    if (!actorId) return;
+    if (!requireBridge(res)) return;
+    try {
+      const learningEngine = options.learningEngine ||
+        (isProduction ? null : require('../services/mira-work-learning-engine'));
+      if (!learningEngine ||
+          typeof learningEngine.getLearningRecord !== 'function' ||
+          typeof learningEngine.verifyLearningRecordIntegrity !== 'function') {
+        return res.status(503).json({
+          success: false, status: 'NOT_CERTIFIED',
+          code: 'HFM_LEARNING_LEGACY_ENGINE_UNAVAILABLE'
+        });
+      }
+      const learningId = req.body && req.body.learningId;
+      if (typeof learningId !== 'string' || !learningId.trim()) {
+        return res.status(400).json({
+          success: false, code: 'HFM_LEARNING_LEGACY_ID_REQUIRED'
+        });
+      }
+      const record = learningEngine.getLearningRecord(learningId.trim());
+      if (!record) {
+        return res.status(404).json({
+          success: false, code: 'HFM_LEARNING_LEGACY_RECORD_NOT_FOUND'
+        });
+      }
+      const integrity = learningEngine.verifyLearningRecordIntegrity(record.learningId);
+      const proposalInput = fromLegacyLearningRecord({
+        ...(req.body || {}), record, integrity
+      });
+      const result = await bridge.submit(proposalInput, {
+        actorRole: 'admin', actorId
+      });
+      return res.status(201).json({ success: true, proposal: result });
+    } catch (error) {
+      const code = String(error && error.code || 'HFM_LEARNING_LEGACY_SUBMISSION_FAILED').slice(0, 80);
+      const status = code === 'HFM_LEARNING_PROPOSAL_CONFLICT' ? 409
+        : code === 'HFM_LEARNING_LEGACY_INVALID' ||
+          code === 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED' ||
+          code === 'HFM_LEARNING_LEGACY_SECRET_SUSPECTED' ||
+          code === 'HFM_LEARNING_INVALID' ? 400 : 503;
+      return res.status(status).json({
+        success: false, code,
+        committed: error && error.stateCommitted === true,
+        reconciliationRequired: error && error.stateCommitted === true
+      });
     }
   });
 
