@@ -1,6 +1,13 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const serverSource = fs.readFileSync(require.resolve('../server.js'), 'utf8');
+assert.match(serverSource, /require\(["']\.\/routes\/mira-facebook-group-memory-import["']\)/);
+assert.match(serverSource, /registerFacebookGroupMemoryImportRoutes\(\s*app,\s*requireAdminPermission,\s*PERMISSIONS\s*\);/);
+assert.match(serverSource, /req\.path === ["']\/api\/admin\/facebook-group\/import["']/);
+console.log('GROUP_IMPORT_SERVER_ROUTE_MOUNT=PASS');
+console.log('GROUP_IMPORT_AUTHENTICATED_BODY_PARSER_EXEMPTION=PASS');
 const Module = require('node:module');
 
 const routes = {};
