@@ -143,6 +143,44 @@ BEGIN
   EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
   END;
 
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b - 'schemaVersion', e, op);
+    RAISE EXCEPTION 'missing Batch schemaVersion was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b - 'sourceType', e, op);
+    RAISE EXCEPTION 'missing Batch sourceType was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b - 'sourceAuthorization', e, op);
+    RAISE EXCEPTION 'missing Batch sourceAuthorization was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b - 'trustPolicy', e, op);
+    RAISE EXCEPTION 'missing Batch trustPolicy was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b, e - 'schemaVersion', op);
+    RAISE EXCEPTION 'missing Audit schemaVersion was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b, e - 'outcome', op);
+    RAISE EXCEPTION 'missing Audit outcome was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(
+      b, jsonb_set(e, '{outcome}', to_jsonb('UNSAFE_OUTCOME'::text)), op
+    );
+    RAISE EXCEPTION 'unsupported Audit outcome was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+
   -- Reusing the same operation key for different audit semantics must be rejected.
   retry_event := jsonb_set(e,'{eventId}',to_jsonb('10000000-0000-4000-8000-000000000003'::text));
   retry_event := jsonb_set(retry_event,'{eventDigest}',to_jsonb(repeat('9',64)));
