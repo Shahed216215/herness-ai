@@ -153,13 +153,23 @@ function verifySignedProvenancePolicy({
     fail('Policy source profiles and evidence registers are required.', 'HFM_PROVENANCE_POLICY_CONTENT_INVALID');
   }
   const sourceIds = Object.keys(p.sources);
-  if (sourceIds.length !== 2 || sourceIds[0] === sourceIds[1]) {
-    fail('Policy must define exactly two distinct source profiles.', 'HFM_PROVENANCE_POLICY_SOURCES_INVALID');
+  const evidenceSourceIds = Object.keys(p.evidence);
+  if (sourceIds.length !== 2 || sourceIds[0] === sourceIds[1] ||
+      evidenceSourceIds.length !== sourceIds.length ||
+      sourceIds.some(sourceId => !Object.prototype.hasOwnProperty.call(p.evidence, sourceId))) {
+    fail('Policy must define exactly two distinct source profiles with an exact evidence register for each.',
+      'HFM_PROVENANCE_POLICY_SOURCES_INVALID');
   }
   const profiles = {};
   for (const sourceId of sourceIds) {
     if (!validText(sourceId)) fail('Policy source ID is invalid.', 'HFM_PROVENANCE_POLICY_SOURCES_INVALID');
     profiles[sourceId] = Object.freeze(validateProfile(p.sources[sourceId], sourceId));
+    const evidenceDimensions = Object.keys(p.evidence[sourceId]);
+    if (evidenceDimensions.length !== REQUIRED_FIELDS.length ||
+        evidenceDimensions.some(dimension => !REQUIRED_FIELDS.includes(dimension))) {
+      fail('Policy evidence register must contain exactly the six required provenance dimensions.',
+        'HFM_PROVENANCE_EVIDENCE_INVALID');
+    }
     validateEvidence(p.evidence[sourceId], sourceId, sourceId);
   }
   for (const field of REQUIRED_FIELDS) {
