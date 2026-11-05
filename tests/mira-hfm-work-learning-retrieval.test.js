@@ -100,6 +100,16 @@ const unrelated = record({
   title: 'Python automation fact', lessons: ['Python automation'],
   recordType: 'fact'
 });
+const secretRecord = record({
+  id: 'memory-secret-lesson-001', taskId: 'task-secret',
+  title: 'Python automation secret-bearing lesson',
+  lessons: ['Python automation safe lesson']
+});
+const secretPayload = JSON.parse(secretRecord.content);
+secretPayload.record.metadata = { apiToken: 'fixture-secret-not-for-output' };
+secretRecord.content = JSON.stringify(secretPayload);
+secretRecord.version.contentHash = crypto.createHash('sha256')
+  .update(JSON.stringify(secretRecord.content), 'utf8').digest('hex');
 const conflicts = [{
   projectId: 'project-alpha',
   status: 'QUARANTINED',
@@ -107,7 +117,7 @@ const conflicts = [{
 }];
 
 const result = retrieveProjectScopedWorkLearning({
-  records: [sameTask, activeOtherTask, pending, otherProject, conflicted, unrelated],
+  records: [sameTask, activeOtherTask, pending, otherProject, conflicted, unrelated, secretRecord],
   pendingConflicts: conflicts,
   projectId: 'project-alpha',
   requestContext,
@@ -124,8 +134,8 @@ assert.deepEqual(result.transfers[0].lessons, ['Validate Python automation outpu
 assert.equal(result.transfers[0].governance.executable, false);
 assert.equal(result.transfers[0].governance.modifiesCode, false);
 assert.equal(result.governance.rankedAfterHfmEligibilityFilter, true);
-assert.equal(result.excludedSummary.totalCandidates, 6);
-assert.equal(result.excludedSummary.eligibleCount, 3);
+assert.equal(result.excludedSummary.totalCandidates, 7);
+assert.equal(result.excludedSummary.eligibleCount, 4);
 assert.equal(result.excludedSummary.excludedCount, 3);
 assert.ok(authorizationCalls.some(x => x.operation === 'LIST'));
 assert.ok(authorizationCalls.some(x => x.operation === 'READ'));
@@ -166,6 +176,9 @@ console.log('WORK_LEARNING_HOST_DENY_BLOCKS_RETRIEVAL_PASS');
 assert.equal(result.transfers[0].provenance.source.sourceId, 'memory-active-learning-001');
 assert.equal(Object.isFrozen(result), true);
 assert.equal(Object.isFrozen(result.transfers[0].lessons), true);
+assert.equal(result.malformedLearningPayloads, 1);
+assert.equal(JSON.stringify(result).includes('fixture-secret-not-for-output'), false);
+console.log('WORK_LEARNING_SECRET_BEARING_RECORD_EXCLUDED_PASS');
 console.log('WORK_LEARNING_RETRIEVAL_PROVENANCE_AND_IMMUTABILITY_PASS');
 console.log('NETWORK_REQUESTS=0');
 console.log('CANONICAL_MEMORY_WRITTEN=NO');
