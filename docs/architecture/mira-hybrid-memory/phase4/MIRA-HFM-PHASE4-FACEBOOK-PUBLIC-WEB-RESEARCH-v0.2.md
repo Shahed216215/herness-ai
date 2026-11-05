@@ -14,7 +14,7 @@ Provide a no-Meta-token fallback so Mira can discover publicly indexed informati
 1. Validate the numeric Page ID.
 2. Search for the exact Page ID and, when supplied, the Page name / known public Page URL.
 3. Accept only standard HTTPS results on facebook.com, www.facebook.com or m.facebook.com.
-4. Bind a result to the requested Page only when the exact numeric Page ID appears in the indexed URL, title or snippet.
+4. Bind a result to the requested Page only when the exact numeric Page ID appears in the indexed URL, title or snippet. Supported URL-bound forms include numeric Page roots, profile.php?id=PAGE_ID, /pages/SLUG/PAGE_ID, and Page-ID-bound post permalink forms.
 5. Accept only a Page root profile path or supported Page post permalink shape. Exclude groups, personal profiles and unrelated Facebook URLs.
 6. Deduplicate results, cap result count and snippet length, and preserve source URL and observation time.
 7. Return an evidence context suitable for a downstream answer generator. Every item remains SOURCE_RECORDED / UNVERIFIED / PENDING_REVIEW.
@@ -49,6 +49,7 @@ It must not state that it read the full Facebook profile or all Page posts when 
 | Search-provider injection | Implemented in isolated service and registered Mira tool |
 | Exact Page-ID result binding | Implemented |
 | Facebook HTTPS host allowlist | Implemented |
+| Numeric, profile.php and pages-directory URL formats | Implemented and regression-tested |
 | Page-root and Page-post path filtering | Implemented |
 | Group / personal-profile exclusion | Implemented |
 | Bounded snippets and result count | Implemented |
