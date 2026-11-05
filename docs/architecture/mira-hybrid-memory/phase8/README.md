@@ -13,7 +13,7 @@ Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflo
 - Enforces strict project isolation and rejects duplicate evidence IDs.
 - Computes SHA-256 digests for evidence and the complete proposal.
 - Stores proposals only through an injected adapter declaring project isolation, create-only semantics, immutable versions and read-after-write.
-- Requires a durable audit writer.
+- Requires an audit-writer callback; actual durability and tamper resistance remain the host adapter's responsibility and are not certified here.
 - Marks proposals PENDING_HUMAN_REVIEW and UNTRUSTED.
 - Automatic trust promotion, execution, canonical Memory writes and self-modification are disabled.
 
@@ -27,7 +27,7 @@ Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflo
 
 ## Adapter contract
 
-A production adapter must provide project-scoped atomic create-only writes, immutable proposal versions, read-after-write verification and durable audit emission. Current tests use an in-memory synthetic adapter only. No production database or canonical Memory adapter is connected.
+A production adapter must provide project-scoped atomic create-only writes, immutable proposal versions and read-after-write verification. The host must separately prove durable, tamper-resistant audit emission. Current tests use an in-memory synthetic adapter and an in-memory audit callback only. No production database, durable audit provider or canonical Memory adapter is connected.
 
 ## Explicit exclusions
 
@@ -41,7 +41,7 @@ A production adapter must provide project-scoped atomic create-only writes, immu
 
 Run: node tests/mira-hfm-learning-evolution-bridge.test.js
 
-Tests use synthetic evidence and an in-memory adapter. They do not establish durable persistence, production audit durability, runtime integration, learning quality or production readiness.
+Tests use synthetic evidence, an in-memory adapter and an in-memory audit callback. They do not establish durable persistence, production audit durability, runtime integration, learning quality or production readiness.
 
 VERSION=v0.2
 PHASE8=PROPOSAL_ONLY_BRIDGE_IMPLEMENTED
