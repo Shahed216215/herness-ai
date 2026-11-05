@@ -207,12 +207,16 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       const item = await transport.readObject({ objectKey: input.objectKey });
       if (!item) return null;
       const metadata = item.metadata;
+      const provider = await negotiateCapabilities();
       if (!metadata || metadata.projectId !== project || metadata.backupId !== match[1] ||
           metadata.objectKey !== input.objectKey || !Buffer.isBuffer(item.bytes) ||
-          item.bytes.length !== metadata.bytes ||
+          !Number.isSafeInteger(metadata.bytes) || metadata.bytes < 1 ||
+          metadata.bytes > provider.maxObjectBytes || item.bytes.length !== metadata.bytes ||
+          item.bytes.length > provider.maxObjectBytes ||
           metadata.contentType !== 'application/vnd.mira.hfm-encrypted-backup' ||
           metadata.encryption !== 'AES-256-GCM' ||
           typeof metadata.ciphertextSha256 !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(metadata.ciphertextSha256) ||
           sha256(item.bytes) !== metadata.ciphertextSha256) {
         reject('Transport object metadata, digest, or byte length failed project binding.',
           'HFM_DRIVE_OBJECT_INVALID');
@@ -234,7 +238,8 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
         cursor: input.cursor === undefined ? null : input.cursor,
         limit: effectiveLimit
       });
-      if (!page || !Array.isArray(page.items) || typeof page.complete !== 'boolean' ||
+      if (!page || !Array.isArray(page.items) || page.items.length > effectiveLimit ||
+          typeof page.complete !== 'boolean' ||
           (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor)) ||
           (page.complete && page.nextCursor != null)) {
         reject('Transport returned an invalid explicit pagination envelope.', 'HFM_DRIVE_LIST_INVALID');
@@ -243,8 +248,10 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
         if (!item || !item.metadata) reject('Listed object is missing bound metadata.', 'HFM_DRIVE_OBJECT_INVALID');
         const m = item.metadata;
         const key = expectedKey(m.backupId);
+        const createdAtMs = typeof m.createdAt === 'string' ? Date.parse(m.createdAt) : NaN;
         if (m.projectId !== project || m.objectKey !== key ||
-            typeof m.createdAt !== 'string' || !Number.isSafeInteger(m.bytes) || m.bytes < 1) {
+            !Number.isFinite(createdAtMs) || new Date(createdAtMs).toISOString() !== m.createdAt ||
+            !Number.isSafeInteger(m.bytes) || m.bytes < 1) {
           reject('Listed object metadata is invalid or cross-project.', 'HFM_DRIVE_OBJECT_INVALID');
         }
         return {
