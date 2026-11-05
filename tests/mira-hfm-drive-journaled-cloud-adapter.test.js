@@ -95,7 +95,10 @@ function createProvider(directory) {
       if (cursor === 'next-page') return { items: [], complete: true };
       return {
         items: values.map(object => ({ metadata: {
-          projectId, backupId: object.metadata.backupId,
+          fileId: object.id, projectId, backupId: object.metadata.backupId,
+          backupSchema: object.metadata.backupSchema,
+          backupVersion: object.metadata.backupVersion,
+          backupCreatedAt: object.metadata.backupCreatedAt,
           objectKey: prefix + object.metadata.backupId + '.mhe',
           createdAt: object.metadata.backupCreatedAt, bytes: object.metadata.bytes,
           contentType: object.metadata.contentType, encryption: object.metadata.encryption,
@@ -140,6 +143,30 @@ async function main() {
     assert.equal(provider.calls.generate, 1);
     assert.equal(provider.calls.create, 2);
     console.log('HFM_PHASE7_JOURNALED_CLOUD_IDEMPOTENT_409_RETRY=PASS');
+
+    const journalRecord = readBackupIdJournal({
+      directory: journalDirectory, operationId,
+      expected: { accountBinding, driveSpace, projectId, backupId,
+        generatedFileId: fileId, backupSchema: 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP',
+        backupVersion: '1.0.0', backupCreatedAt: '2026-11-05T00:00:00.000Z',
+        ciphertextSha256: digest, bytes: envelope.length }
+    });
+    fs.unlinkSync(journalRecord.journalPath);
+    assert.equal(await adapter.get({
+      projectId, objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + backupId + '.mhe'
+    }), null);
+    await assert.rejects(() => adapter.recoverJournal({
+      backupId, key: Buffer.alloc(32, 8)
+    }), error => error.code === 'HFM_DRIVE_JOURNAL_RECOVERY_AUTH_FAILED');
+    assert.equal(fs.existsSync(journalRecord.journalPath), false);
+    const recoveredJournal = await adapter.recoverJournal({ backupId, key });
+    assert.equal(recoveredJournal.status, 'JOURNAL_RECOVERED_FROM_AUTHENTICATED_PROVIDER_OBJECT');
+    assert.equal(recoveredJournal.canonicalMemoryWrites, 0);
+    const recoveredObject = await adapter.get({
+      projectId, objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + backupId + '.mhe'
+    });
+    assert.deepEqual(recoveredObject.bytes, envelope);
+    console.log('HFM_PHASE7_JOURNAL_LOSS_RECOVERED_FROM_AUTHENTICATED_PROVIDER_OBJECT=PASS');
 
     const capacity = await inspectEncryptedEmergencyBackupCapacity({
       adapter, projectId, budgetBytes: 5000000000,
