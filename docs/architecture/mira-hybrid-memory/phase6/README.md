@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 6 Public Web Search Retrieval
 
-Status: ISOLATED SEARCH-INDEX RETRIEVAL AND OFFLINE TESTS ADDED; END-TO-END RUNTIME WIRING AND LIVE SEARCH NOT CERTIFIED.
+Status: PUBLIC SEARCH RETRIEVAL TOOL, REGISTRY/POLICY INTEGRATION, OFFLINE DISPATCH CONTRACT TESTS IMPLEMENTED; LIVE SEARCH AND RENDER RUNTIME NOT CERTIFIED.
 Parent: Phase 5 Facebook Group manual import branch.
 Version: v0.2 only.
 
@@ -35,6 +35,21 @@ The tool is auto-discovered through tools/index.js. The dedicated execution poli
 
 ## Verification
 
-Run: node tests/mira-hfm-public-web-retrieval.test.js
+Offline tests:
+- `node tests/mira-hfm-public-web-retrieval.test.js`
+- `node tests/mira-hfm-public-web-retrieval-runtime-integration.test.js`
+- `node tests/mira-facebook-public-web-research.test.js`
+- `node tests/mira-hfm-tool-registry-policy-parity.test.js`
 
-The offline test injects synthetic search results and an in-memory archive writer. It does not establish live search quality, archive durability beyond the existing Phase 4 provider tests, production deployment, or complete E2E answer integration.
+The service test injects synthetic search results and an in-memory archive writer. The runtime integration test exercises the real tool registry and policy dispatch with injected providers and statically verifies the server generation-cycle contract. Neither test makes a live web request or real model call.
+
+Status handling distinguishes:
+- `SEARCH_PROVIDER_UNAVAILABLE`: no query succeeded.
+- `DEGRADED_SEARCH_NO_EVIDENCE`: at least one query failed and no evidence was found by the successful queries.
+- `NOT_FOUND_BY_PUBLIC_SEARCH`: all attempted queries succeeded but returned no matching public result.
+- `DEGRADED_WITH_UNTRUSTED_EVIDENCE`: some queries failed but other queries returned evidence.
+- `PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED`: evidence returned without provider errors.
+
+A search miss or provider failure is never interpreted as deletion or data loss. Query-attempt counts reflect actual executed queries, including early termination when the result limit is reached.
+
+Offline contract verification does not establish live search quality, production archive durability, a real model answer cycle, Render deployment, or independent source authorship.
