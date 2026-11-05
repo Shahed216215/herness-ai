@@ -218,9 +218,11 @@ The branch now includes `services/mira-hfm-google-drive-generated-id-provider.js
 - `createFile` sends the pre-generated ID in the `File` resource, a single configured parent, private `appProperties`, encrypted MIME type and a resumable media upload. It validates the ciphertext digest and canonical envelope timestamp before calling the client.
 - `getFile` retrieves metadata by exact ID and maps Drive `appProperties`, parent, MIME type and size into the journaled provider contract. 404 is returned as absent; other provider failures remain errors.
 - `downloadFile` downloads media by exact ID as a stream and enforces the 64 MiB bound before returning bytes.
-- Every method calls an injected `getAccountFingerprint` callback and requires its SHA-256 fingerprint to match the journal binding. The module does not decide how OAuth identity is established.
-- The mapper intentionally has no list, quota, delete, update, move, sharing, permission-grant, or folder-creation operation. Shared Drive behavior is not certified; use a dedicated My Drive folder or appDataFolder only in a separately configured integration.
-- Offline fake-client tests cover generated ID space binding, resumable create request shape, appProperties mapping, exact media readback, 404 handling, account-scope rejection and digest validation. No real Google API client, OAuth credential or network request is used.
+- `listPage` uses a parent-scoped `files.list` query, bounded page size/cursor, exact project and encrypted appProperties validation; no name-based lookup is used.
+- `getQuota` uses `about.get` with explicit `fields` for the authenticated `permissionId` and `storageQuota`. It hashes the opaque permission ID for account binding and reports total Google account usage conservatively (Gmail/Photos usage can reduce remaining Drive capacity).
+- Every method verifies the SHA-256 account fingerprint. The caller may inject a trusted fingerprint callback; otherwise the mapper derives it from `about.get` `user.permissionId`. It does not create OAuth credentials.
+- The mapper has no delete, update, move, sharing, permission-grant, or folder-creation operation. Shared Drive behavior is not certified; use a dedicated My Drive folder or appDataFolder only in a separately configured integration.
+- Offline fake-client tests cover generated ID space binding, resumable create request shape, appProperties mapping, exact media readback, 404 handling, project-scoped pagination, quota mapping, account-scope rejection and digest validation. No real Google API client, OAuth credential or network request is used.
 
 Official API references reviewed:
 - `files.generateIds`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/generateIds
