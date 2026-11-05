@@ -109,19 +109,18 @@ const lookupTool = require('../tools/facebook-research-lookup');
   const unavailable = await collectPublicFacebookPageEvidence({ pageId, searchWeb: async () => 'Tavily API key is missing.' });
   assert.equal(unavailable.status, 'SEARCH_PROVIDER_UNAVAILABLE');
   assert.equal(unavailable.limits.canonicalMemoryWrite, false);
-  assert.equal(checkToolSafety('facebook_page_public_research', {}).passed, true);
+  assert.equal(checkToolSafety('facebook_page_public_research', {}).passed, false);
   const toolCalls = [];
-  const tool = createTool({ archive: input => archiveFacebookResearchEvidence({ ...input, directory: archiveDir }), searchWeb: async query => {
+  let toolArchiveCalls = 0;
+  const tool = createTool({ archive: async () => { toolArchiveCalls++; }, searchWeb: async query => {
     toolCalls.push(query);
     return JSON.stringify([{ title: 'Online canel ' + pageId, url: 'https://www.facebook.com/' + pageId, snippet: 'Indexed Page ' + pageId }]);
   }});
   const toolResult = JSON.parse(await tool.execute({}));
-  assert.equal(toolResult.page.pageId, pageId);
-  assert.equal(toolResult.status, 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED');
-  assert.equal(toolResult.limits.mayEnterTrustedMemory, false);
-  assert.equal(toolResult.archive.status, 'ARCHIVE_WRITE_VERIFIED');
-  assert.equal(toolResult.archive.canonicalMemoryWrite, false);
-  assert.equal(toolCalls.length, 2);
+  assert.equal(toolResult.status, 'BLOCKED');
+  assert.equal(toolResult.code, 'TOOL_POLICY_DENIED');
+  assert.equal(toolCalls.length, 0);
+  assert.equal(toolArchiveCalls, 0);
   console.log('FACEBOOK_PUBLIC_WEB_SEARCH_ID_BINDING_AND_UNTRUSTED_EVIDENCE_PASS=PASS');
   console.log('DIRECT_FACEBOOK_FETCHES=0');
   console.log('META_GRAPH_API_CALLS=0');
