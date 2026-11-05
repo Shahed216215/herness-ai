@@ -15,6 +15,8 @@ on:
       - 'tests/mira-facebook-group-memory-supabase-store.test.js'
       - 'tests/mira-facebook-group-memory-import-route.test.js'
       - 'tests/mira-facebook-group-memory-migration-structure.test.js'
+      - 'tests/**'
+      - 'package.json'
       - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
       - 'docs/architecture/mira-hybrid-memory/phase5/**'
   pull_request:
@@ -55,6 +57,7 @@ jobs:
           node tests/mira-facebook-group-memory-supabase-store.test.js
           node tests/mira-facebook-group-memory-import-route.test.js
           node tests/mira-facebook-group-memory-migration-structure.test.js
+          npm run test:offline-regression
       - name: Confirm external boundaries
         run: |
           echo "LIVE_FACEBOOK_REQUESTS=0"
