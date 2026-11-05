@@ -177,3 +177,82 @@ Next safe engineering action: reconcile the Phase 9 branch with the latest Phase
 VERSION=v0.2
 PRODUCTION_READINESS=NOT_CERTIFIED
 PRODUCTION_DEPLOYMENT=NOT_APPROVED
+
+## 9. Current branch-head evidence refresh — 2026-11-05
+
+This refresh supersedes older run IDs in §§2–3 where a newer branch-head run is now available. It does not claim a full-system or independent certification and does not change the NO-GO decision.
+
+### 9.1 Phase 5 — Facebook Group import
+
+- Draft PR #9 remains open and unmerged.
+- Latest inspected Phase 5 base commit: 9e820a548b3a1bf44e34287f7eb95b9fa5b17fcc.
+- GitHub Actions run 41977370764 — completed SUCCESS; Phase 5 workflow job completed successfully.
+- Evidence is scoped offline contract testing with mocked Supabase. It does not prove target-project migration, live persistence, Render configuration, or restart recovery.
+- The Phase 5 API route is mounted in server.js on the current base branch; the regression suite includes route-registration and authenticated body-parser exemption assertions.
+
+### 9.2 Phase 6 — Public Web Retrieval
+
+- The original Phase 6 PR #10 remains unchanged for audit/history. Restacked PR #15 remains open, draft, unmerged and mergeable at the time of this refresh.
+- Current Phase 6 head commit: dea29c43f1a9871f9481077a471b1fc0f2327b9f.
+- Compare against Phase 5 base: 14 commits ahead / 0 behind.
+- GitHub Actions run 41984458287 — completed SUCCESS; job phase6-offline-retrieval completed successfully.
+- Source review identified that the first version classified the combined search/archive tool as autonomous read while defaulting archive writes on. The scoped correction makes the autonomous retrieval tool read-only, removes archive-write arguments from its public tool declaration, adds a regression that an injected importResults=true cannot trigger archive writes, and removes a duplicated system trust-boundary instruction.
+- The separate archive service remains available to its own callers, but an archive-write tool with a human-approved action boundary is not implemented in this PR.
+- The corrected Phase 6 README and PR #15 body now record the archive boundary and the current CI evidence.
+- Remaining: independent human review, live search-provider validation, real model dispatch/full deployed server E2E, and a separately governed archive-write workflow.
+
+### 9.3 Phase 7 — Encrypted emergency backup
+
+- Draft PR #11 remains open and unmerged.
+- Latest inspected branch-head commit: a5c092056800734bc3b1bec1989fed6f9c311a05.
+- GitHub Actions run 41981522602 — completed SUCCESS; job offline-encryption-and-restore-staging completed successfully, including synthetic backup and injected transport adapter suites.
+- Real Google Drive adapter/OAuth, KMS or production key custody, canonical snapshot export, live cloud durability, key-loss recovery and production restore drill remain NOT_IMPLEMENTED / NOT_TESTED / NOT_CERTIFIED as applicable.
+
+### 9.4 Phase 8 — Learning and Evolution
+
+- Draft PR #12 remains open and unmerged.
+- Latest inspected CI commit: 1b6cf84ade04521067e2ae07eac6dff965a2be49.
+- GitHub Actions run 41975628588 — completed SUCCESS; job phase8-offline completed successfully.
+- Source-level /api/agent handoff wiring exists behind a disabled-by-default feature flag and explicit request/admin/project gates. The offline workflow does not establish that the flag is enabled in Render or that the deployed handoff works.
+- Supabase migration, live RLS/grant checks, live insert/conflict/audit/restart tests, Render multi-instance validation and deployed E2E remain pending.
+
+### 9.5 Phase 9 — Retrieval and Capacity Optimization
+
+- Draft PR #13 remains open and unmerged.
+- Latest inspected commit: 375da3e65af91c0741b2a7f7289d247e46affd93.
+- GitHub Actions run 41975518333 — completed SUCCESS; job phase9-offline completed successfully.
+- The PR's previous statement that no CI result had been observed for this commit is stale; the exact commit lookup now returns the successful run above.
+- This does not close the Phase 9 branch ancestry divergence, prove runtime integration, configure the deployed tokenizer, or certify production performance/capacity. The optimizer remains an isolated adapter/benchmark capability until those gates are closed.
+
+### 9.6 Refreshed gate matrix
+
+| Gate | Current evidence-based status |
+|---|---|
+| Phase 5 route integration + offline CI | PASS — scoped offline CI |
+| Phase 5 live Supabase migration/persistence/restart | NOT_TESTED |
+| Phase 6 read-only retrieval + offline CI | PASS — scoped offline CI |
+| Phase 6 independent human review | REVIEW_REQUIRED |
+| Phase 6 live search/model E2E | NOT_TESTED |
+| Phase 6 autonomous archive-write boundary | BLOCKED by design; separate human-approved writer not implemented |
+| Phase 7 encryption/transport offline CI | PASS — scoped offline CI |
+| Phase 7 real Drive/KMS/production restore | NOT_TESTED / NOT_CERTIFIED |
+| Phase 8 proposal/handoff offline CI | PASS — scoped offline CI |
+| Phase 8 deployed feature flag/Supabase/Render E2E | NOT_CERTIFIED |
+| Phase 9 optimizer offline CI | PASS — scoped offline CI |
+| Phase 9 branch ancestry/runtime/tokenizer/capacity | REVIEW_REQUIRED / NOT_IMPLEMENTED / NOT_CONFIGURED |
+| Full v0.2 cross-phase verification | INCONCLUSIVE |
+| Independent security/regression review | NOT_TESTED |
+| Production deployment | NOT_APPROVED |
+| Production readiness | NOT_CERTIFIED |
+
+### 9.7 Next safe work order
+
+1. Obtain independent human review of PR #9 and corrected PR #15; keep both draft/unmerged until accepted.
+2. Reconcile Phase 9 branch ancestry in a new reviewable branch and rerun its full workflow against the intended Phase 8 parent without rewriting existing branches.
+3. Close inherited Phase 1–4 design, provider-boundary and runtime blockers using authoritative source evidence.
+4. Implement a separately human-approved archive-write action if archive persistence is still required; do not reclassify a write as autonomous read.
+5. Only after the preceding review gates, prepare a separately approved non-production Supabase/Render verification plan. No production migration/deployment is implied by this report.
+
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+PRODUCTION_DEPLOYMENT=NOT_APPROVED
