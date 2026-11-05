@@ -8,8 +8,10 @@ on:
     paths:
       - 'services/mira-facebook-page-memory-connector.js'
       - 'services/mira-facebook-public-web-research.js'
+      - 'services/mira-facebook-research-memory.js'
       - 'services/mira-tool-execution-policy.js'
       - 'tools/facebook-page-research.js'
+      - 'tools/facebook-research-lookup.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
       - 'tests/mira-facebook-public-web-research.test.js'
       - 'services/mira-facebook-page-hfm-adapter.js'
