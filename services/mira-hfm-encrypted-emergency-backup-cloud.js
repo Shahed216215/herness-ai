@@ -52,6 +52,10 @@ async function uploadEncryptedEmergencyBackup({ adapter, projectId, envelope, ke
   if (expectedBackupId !== undefined && backupId !== expectedBackupId) fail('Backup ID mismatch.');
   // Authenticate before sending. The root key is used locally and is never passed to the adapter.
   const verified = decryptAndVerifyBackup(bytes, key);
+  if (verified.metadata.projectId !== project) {
+    fail('Authenticated backup metadata does not match the requested project.',
+      'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+  }
   const digest = sha256(bytes);
   const keyPath = objectKey(project, backupId);
   const result = await adapter.putIfAbsent({
@@ -89,6 +93,10 @@ async function previewEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
   const { bytes, parsed } = envelopeBytes(object.bytes);
   if (parsed.backupId !== id) fail('Cloud object and encrypted envelope identities do not match.');
   const preview = previewEncryptedBackup({ envelope: bytes, key });
+  if (!preview.metadata || preview.metadata.projectId !== project) {
+    fail('Authenticated backup metadata does not match the requested project.',
+      'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+  }
   return Object.freeze({
     ...preview,
     projectId: project,
@@ -108,7 +116,11 @@ async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
   }
   const { bytes, parsed } = envelopeBytes(object.bytes);
   if (parsed.backupId !== id) fail('Cloud object and encrypted envelope identities do not match.');
-  decryptAndVerifyBackup(bytes, key);
+  const verified = decryptAndVerifyBackup(bytes, key);
+  if (verified.metadata.projectId !== project) {
+    fail('Authenticated backup metadata does not match the requested project.',
+      'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+  }
   return restoreToStaging({ envelope: bytes, key, directory: stagingDirectory,
     restoreId: restoreId || ('restore-' + id) });
 }
