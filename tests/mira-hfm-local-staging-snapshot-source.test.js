@@ -7,7 +7,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { createLocalStagingSnapshotSource } = require('../services/mira-hfm-local-staging-snapshot-source');
 const { captureAuthorizedSnapshot, sha256 } = require('../services/mira-hfm-authoritative-snapshot');
-const { canonicalize, verifyAuthorizationDecision } = require('../services/mira-hfm-authorization-decision');
+const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
+const { verifyAuthorizationDecision } = require('../services/mira-hfm-authorization-decision');
 
 function makeReplayGuard() {
   const seen = new Set();
