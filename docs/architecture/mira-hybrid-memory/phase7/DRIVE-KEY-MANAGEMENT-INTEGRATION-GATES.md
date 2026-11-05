@@ -244,17 +244,18 @@ SHARED_DRIVE=NOT_CERTIFIED
 
 ## 10. Latest code-change CI evidence
 
-The latest Phase 7 workflow completed GitHub Actions run **42007196180 — SUCCESS**, job **127176834532**, against code/test commit `34709f7bc02bfcb04981d56fa1e1ac68436c479a`. The run completed the Node syntax check and all six offline test suites. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+The latest current-head Phase 7 workflow completed GitHub Actions run **42007322532 — SUCCESS**, job **127177255420**, against documentation head commit `7c9d6f2a6af929f087186e87480d28083c889c3d`. The tested application/test source commit is `34709f7bc02bfcb04981d56fa1e1ac68436c479a`; the later head commit changes documentation only. The run completed the Node syntax check and all six offline test suites. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-The Phase 7 branch was restacked on the latest Phase 6 base before this run. Later documentation-only commits do not change the verified application/test source.
+The Phase 7 branch is restacked on the latest Phase 6 base; PR #16 is mergeable, Draft and unmerged.
 
 This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=42007196180_SUCCESS
-OFFLINE_CI_JOB=127176834532
-OFFLINE_CI_COMMIT=34709f7bc02bfcb04981d56fa1e1ac68436c479a
+OFFLINE_CI_RUN=42007322532_SUCCESS
+OFFLINE_CI_JOB=127177255420
+OFFLINE_CI_HEAD_COMMIT=7c9d6f2a6af929f087186e87480d28083c889c3d
+OFFLINE_CI_CODE_TEST_COMMIT=34709f7bc02bfcb04981d56fa1e1ac68436c479a
 OFFLINE_PASS_MARKERS=91
 OFFLINE_TEST_SUITES=6
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
