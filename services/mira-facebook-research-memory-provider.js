@@ -137,6 +137,8 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
       },
       ...(data === undefined ? {} : { data })
     });
+    if (!result || !Number.isInteger(result.status) || result.status < 200 || result.status >= 300)
+      fail('RESEARCH_ARCHIVE_PROVIDER_HTTP_ERROR', 'Supabase archive provider returned a non-success HTTP status.');
     return result;
   }
   async function listPageIds(pageId) {
