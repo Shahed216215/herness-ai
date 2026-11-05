@@ -216,3 +216,14 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - Retrieved logs confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
 - Expanded synthetic cases now include: read state, stale CAS, concurrent writers, idempotent retry, idempotency-key reuse rejection, snapshot restart simulation, outage fail-closed, request loss before commit, response loss after commit with reconciliation, and defensive-copy isolation.
 - Disposition remains LOCAL_FAKE_PROVIDER_CONFORMANCE=PASS_CI (test double only). F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent review and real operational evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
+
+
+## Authorization decision verifier negative-case hardening — 2026-11-05
+
+- Added isolated `tests/mira-hfm-authorization-decision.test.js` with synthetic Ed25519 fixtures. It exercises valid authentication, signature tampering, project/actor/scope/request/nonce binding, trust-anchor fingerprint mismatch, key-ID mismatch, DENY, expiry, excessive validity, future dating, replay duplicate, replay-store outage, and non-Ed25519 trust anchors.
+- The new test exposed a real fail-closed gap: `verifyAuthorizationDecision()` allowed a replay-guard exception to escape as an arbitrary error rather than returning the stable authorization rejection code. Updated `services/mira-hfm-authorization-decision.js` to catch replay-guard failures and reject with `HFM_AUTHZ_REPLAY_REJECTED`.
+- An earlier test attempt failed because the signature-tamper fixture re-signed the modified signature field, making the test data valid. The fixture was corrected to sign first and then tamper with the signature bytes. The next run exposed the replay-guard error-normalization gap; the service was fixed and the same negative test then passed.
+- Phase 7 run #185 (ID `42067455795`) completed SUCCESS on exact commit `b5dc8eb5b16cc1c85c4e0d1435b6ced459523a1c`; job `phase7-offline-contract` SUCCESS. Marker: `MIRA_HFM_AUTHORIZATION_DECISION_NEGATIVE_TESTS=PASS`.
+- Phase 10 independent verification run #59 (ID `42067455619`) completed SUCCESS on the same exact commit.
+- Retrieved logs confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
+- This improves error handling and negative-case coverage only. It does not prove the authorization issuer's policy correctness or a durable/atomic replay guard. F7-SR-01 remains PARTIALLY_REMEDIATED / OPEN pending independent policy governance and real replay-store evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
