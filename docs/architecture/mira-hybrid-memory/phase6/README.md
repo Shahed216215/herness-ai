@@ -68,3 +68,7 @@ A fresh CI run verified the policy correction on commit 4d5eb779173e2f9e80797356
 ## Strict read-only service hardening (2026-11-05)
 
 The retrieval service itself now defaults to importResults=false and rejects importResults=true with HFM_WEB_RETRIEVAL_ARCHIVE_WORKFLOW_NOT_IMPLEMENTED before any provider call. The service no longer accepts an archiveEvidence callback and always reports archive status NOT_REQUESTED. This closes the direct-service bypass that would otherwise remain available even though the autonomous tool was read-only. A separate human-approved archive-write workflow remains NOT_IMPLEMENTED and must not be inferred from the underlying Phase 4 archive storage primitives. The offline CI job passed for this hardening on 2026-11-05 (run 41988078968).
+
+## Page URL binding regression correction (2026-11-05)
+
+The Page URL validator normalizes query parameters away for storage, but the binding check must inspect the originally supplied URL before normalization. A valid profile.php?id=<selected Page ID> URL was previously rejected because the query parameter had already been stripped. The validator now checks the original query value while still returning the normalized URL, and regression coverage verifies both a matching and mismatching Page ID. CI is pending for this additional correction.
