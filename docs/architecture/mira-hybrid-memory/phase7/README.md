@@ -6,7 +6,7 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Per-backup random 256-bit data-encryption key (DEK), AES-256-GCM payload encryption, and external key-provider wrapping/unwrapping of the DEK (KEK boundary).
 - Authenticated manifest includes backup format/schema versions, project scope, record count, source revision, payload digest, key reference/version, wrapped DEK, nonce, algorithm and manifest digest.
 - Key material is injected through wrapDataKey/unwrapDataKey callbacks. This module does not generate, persist, rotate or escrow KEKs.
-- Immutable local file creation uses a retained Linux pinned-directory descriptor, descriptor-relative exclusive temporary files, fsync, atomic hard-link publication, owner-only file permissions and no-follow byte-for-byte readback. Unsupported platforms fail closed.
+- Immutable local file creation uses a retained Linux pinned-directory descriptor, descriptor-relative exclusive temporary files, fsync, atomic hard-link publication, owner-only file permissions and no-follow byte-for-byte readback. Backup directories must be owned by the effective workload UID/GID and have exact POSIX mode `0700`; identity/mode are rechecked before create, publish and readback. Unsupported platforms fail closed.
 - Google Drive adapter accepts an already-authorized Drive client, reads quota, enforces the configured 5 GiB allocation ceiling, refuses filename overwrite, uploads encrypted bytes and performs byte-for-byte remote readback verification.
 - Drive download returns encrypted bytes after envelope and optional digest checks. It does not decrypt or restore canonical Memory.
 - Retention produces a deletion proposal only. It never deletes backup files.
@@ -112,3 +112,13 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Staging drill markers: publication, recovery preview, source immutability, no-overwrite and baseline-mismatch blocking all passed.
 - CI confirmed `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `BACKUP_DELETION=0`, and no canonical Memory/Knowledge writes.
 - This does not certify production key custody, backup-directory ownership/permissions, independent source provenance, live Drive integration, staging approval or production readiness.
+
+
+## Backup directory owner and permission enforcement — F7-SR-04 (2026-11-05)
+- Added descriptor-based owner UID/group GID and POSIX mode enforcement to the pinned-directory helper.
+- Expected identity defaults to the effective process UID/GID; the staging drill also accepts explicit expected UID/GID policy values. The generic local backup writer uses the effective process identity.
+- Backup directory mode must be exactly `0700`; group/other access and missing owner read/write/execute permissions are rejected. Checks are repeated against the retained descriptor at publication boundaries.
+- The code never changes ownership or permissions automatically. Existing directories with a different owner/group or mode must be provisioned by an authorized operator before use.
+- This does not independently inspect Windows DACLs, non-POSIX ACL extensions, mount policy or host/container administrator trust. Production directory provisioning still requires external ACL and infrastructure review.
+- Tests cover permissive mode, insufficient owner mode, expected UID/GID mismatch and fail-closed writer behavior. CI verification is pending.
+- F7-SR-04 remains PARTIALLY_REMEDIATED / OPEN until commit-matched CI and independent security review.
