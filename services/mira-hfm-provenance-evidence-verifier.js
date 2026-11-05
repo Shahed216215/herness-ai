@@ -19,7 +19,8 @@ function sha256(value) {
 }
 function verifyEvidenceEnvelope({
   envelope, reference, sourceId, dimension, expectedValue, trustedEvidenceIssuers,
-  expectedEnvironment, expectedProjectId, operationalIssuerIds = [], now = Date.now()
+  expectedEnvironment, expectedProjectId, operationalIssuerIds = [],
+  excludedKeyFingerprints = [], now = Date.now()
 }) {
   if (!Number.isSafeInteger(now)) {
     fail('Provenance evidence verifier clock configuration is invalid.',
