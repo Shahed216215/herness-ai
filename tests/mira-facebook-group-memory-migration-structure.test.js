@@ -66,7 +66,8 @@ assert.ok(recovery.includes('create or replace function public.mira_stage_facebo
 assert.ok(recovery.includes('security invoker'), 'RPC must use SECURITY INVOKER.');
 assert.ok(recovery.includes('on conflict (batch_id) do nothing'), 'Batch insert must be idempotent.');
 assert.ok(recovery.includes('on conflict (operation_key) do nothing'), 'Audit insert must be idempotent.');
-assert.ok(recovery.includes('for update'), 'RPC must verify existing immutable rows under lock.');
+assert.ok(recovery.includes('pg_advisory_xact_lock') && recovery.includes('hashtextextended'), 'RPC must serialize immutable identity checks with transaction-scoped advisory locks.');
+assert.doesNotMatch(recovery, /for update/i, 'RPC must not require UPDATE privileges for row locks.');
 assert.ok(recovery.includes('grant execute on function public.mira_stage_facebook_group_import_v1(jsonb, jsonb, text) to service_role'), 'RPC execute must be restricted to service_role.');
 assert.doesNotMatch(recovery, /\b(drop table|truncate table|delete from|update public\.)\b/i, 'Recovery migration must remain additive.');
 
