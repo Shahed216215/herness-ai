@@ -193,7 +193,13 @@ function safeDirectory(directory) {
   for (let index = 0; index < segments.length; index += 1) {
     current = path.join(current, segments[index]);
     const isFinal = index === segments.length - 1;
-    try { fs.mkdirSync(current, { mode: 0o700 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+    let created = false;
+    try { fs.mkdirSync(current, { mode: 0o700 }); created = true; }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+    if (created) {
+      const parentFd = fs.openSync(path.dirname(current), 'r');
+      try { fs.fsyncSync(parentFd); } finally { fs.closeSync(parentFd); }
+    }
     const stat = fs.lstatSync(current);
     if (stat.isSymbolicLink() || !stat.isDirectory()) fail('Backup directory path must not contain symlinks or non-directory components.');
     // Parent directories such as /tmp and /home need not be private; only the
