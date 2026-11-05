@@ -147,6 +147,11 @@ async function main() {
     accountBinding, driveSpace,
     appProperties: { ...validProperties, unexpectedPlaintextHint: 'must-not-be-stored' }
   }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
+  await assert.rejects(() => provider.createFile({
+    id: fileId, parents: [parentId], mimeType: CONTENT_TYPE, bytes: envelope,
+    accountBinding, driveSpace,
+    appProperties: { ...validProperties, bytes: String(envelope.length) + '.0' }
+  }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
   assert.equal(fake.calls.create, 1);
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_GENERATE_ID_AND_RESUMABLE_CREATE_MAPPING=PASS');
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_UPLOAD_DIGEST_RECHECK=PASS');
@@ -179,8 +184,12 @@ async function main() {
   fake.files.set(fileId, { ...savedFile, id: 'differentDriveFileId_123' });
   await assert.rejects(() => provider.getFile({ id: fileId, accountBinding, driveSpace }),
     error => error.code === 'HFM_GOOGLE_DRIVE_METADATA_INVALID');
+  fake.files.set(fileId, { ...savedFile,
+    appProperties: { ...savedFile.appProperties, bytes: String(envelope.length) + '.0' } });
+  await assert.rejects(() => provider.getFile({ id: fileId, accountBinding, driveSpace }),
+    error => error.code === 'HFM_GOOGLE_DRIVE_METADATA_INVALID');
   fake.files.set(fileId, savedFile);
-  assert.deepEqual(fake.calls, { generate: 1, create: 1, metadataGet: 3, mediaGet: 1, list: 0, about: 0 });
+  assert.deepEqual(fake.calls, { generate: 1, create: 1, metadataGet: 4, mediaGet: 1, list: 0, about: 0 });
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_METADATA_AND_EXACT_MEDIA_READBACK=PASS');
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_METADATA_ALLOWLIST_AND_EXACT_ID=PASS');
 
@@ -211,6 +220,14 @@ async function main() {
   assert.equal(quota.scope, 'account');
   assert.equal(quota.quotaBytes, 15000000000);
   assert.equal(quota.usedBytes, 6000000000);
+  const originalAboutGet = fake.drive.about.get;
+  fake.drive.about.get = async () => ({ data: {
+    user: { me: true, permissionId },
+    storageQuota: { limit: '1.5e10', usage: '6e9' }
+  } });
+  await assert.rejects(() => provider.getQuota({ projectId }),
+    error => error.code === 'HFM_GOOGLE_DRIVE_QUOTA_UNAVAILABLE');
+  fake.drive.about.get = originalAboutGet;
   assert.equal(await getGoogleDriveAccountFingerprint(fake.drive), accountBinding);
   const defaultVerifierProvider = createGoogleDriveGeneratedIdProvider({
     drive: fake.drive, accountBinding, driveSpace, projectId, parentId
