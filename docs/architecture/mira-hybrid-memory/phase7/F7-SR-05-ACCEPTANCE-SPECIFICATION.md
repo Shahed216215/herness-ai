@@ -258,7 +258,7 @@ F7-SR-05 may be closed only when G1–G8 pass, G9 is approved by an independent 
 - Authenticated and independently governed policy distribution: synthetic signature contract PASS; real out-of-band trust provisioning NOT_VERIFIED.
 - Signed policy-state provider interface and compare-and-swap contract: synthetic CI PASS; no production adapter or independently verified durable/atomic backing store.
 - Independent evidence signature and digest verification: synthetic CI PASS for 12 references; real provider-origin evidence collection/review NOT_VERIFIED.
-- Combined policy/state/evidence acceptance orchestration: synthetic CI PASS; not wired into the staging backup drill.
+- Combined policy/state/evidence acceptance orchestration: wired into the staging backup drill in the offline implementation; latest regression/CI verification remains pending and real provider certification is not established.
 - Real storage/account separation: NOT_VERIFIED.
 - Real workload identity separation: NOT_VERIFIED.
 - Real trust-domain and administrative independence: NOT_VERIFIED.
