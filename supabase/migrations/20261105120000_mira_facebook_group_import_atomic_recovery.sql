@@ -75,15 +75,15 @@ begin
      or v_event_id is null or v_event_digest is null
      or v_event_digest !~ '^[a-f0-9]{64}$'
      or nullif(btrim(p_event ->> 'actorId'), '') is null
-     or p_event ->> 'eventType' <> 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED'
-     or p_event ->> 'projectId' <> v_project_id
-     or p_event ->> 'groupId' <> v_group_id
-     or p_event ->> 'batchId' <> v_batch_id
-     or p_event ->> 'batchDigest' <> v_batch_digest
-     or p_event ->> 'canonicalMemoryWrite' <> 'false'
+     or p_event ->> 'eventType' IS DISTINCT FROM 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED'
+     or p_event ->> 'projectId' IS DISTINCT FROM v_project_id
+     or p_event ->> 'groupId' IS DISTINCT FROM v_group_id
+     or p_event ->> 'batchId' IS DISTINCT FROM v_batch_id
+     or p_event ->> 'batchDigest' IS DISTINCT FROM v_batch_digest
+     or p_event ->> 'canonicalMemoryWrite' IS DISTINCT FROM 'false'
      or p_operation_key <> 'facebook-group-import:staged:v1:' || v_batch_id || ':' || v_batch_digest
-     or p_batch ->> 'kind' <> 'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT_BATCH'
-     or p_batch ->> 'canonicalMemoryWrite' <> 'false' then
+     or p_batch ->> 'kind' IS DISTINCT FROM 'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT_BATCH'
+     or p_batch ->> 'canonicalMemoryWrite' IS DISTINCT FROM 'false' then
     raise exception 'atomic import identity or policy validation failed' using errcode = '22023';
   end if;
 
@@ -104,10 +104,10 @@ begin
   from public.mira_facebook_group_import_batches
   where mira_facebook_group_import_batches.batch_id = v_batch_id;
 
-  if not found or v_batch.project_id <> v_project_id
-     or v_batch.group_id <> v_group_id
-     or v_batch.export_id <> v_export_id
-     or v_batch.batch_digest <> v_batch_digest then
+  if not found or v_batch.project_id IS DISTINCT FROM v_project_id
+     or v_batch.group_id IS DISTINCT FROM v_group_id
+     or v_batch.export_id IS DISTINCT FROM v_export_id
+     or v_batch.batch_digest IS DISTINCT FROM v_batch_digest then
     raise exception 'immutable batch identity conflict' using errcode = '23505';
   end if;
 
@@ -130,12 +130,12 @@ begin
   from public.mira_facebook_group_import_audit_events
   where mira_facebook_group_import_audit_events.operation_key = p_operation_key;
 
-  if not found or v_audit.project_id <> v_project_id
-     or v_audit.group_id <> v_group_id
-     or v_audit.batch_id <> v_batch_id
-     or v_audit.event_digest <> v_event_digest
-     or v_audit.payload ->> 'batchDigest' <> v_batch_digest
-     or v_audit.payload ->> 'actorId' <> p_event ->> 'actorId' then
+  if not found or v_audit.project_id IS DISTINCT FROM v_project_id
+     or v_audit.group_id IS DISTINCT FROM v_group_id
+     or v_audit.batch_id IS DISTINCT FROM v_batch_id
+     or v_audit.event_digest IS DISTINCT FROM v_event_digest
+     or v_audit.payload ->> 'batchDigest' IS DISTINCT FROM v_batch_digest
+     or v_audit.payload ->> 'actorId' IS DISTINCT FROM p_event ->> 'actorId' then
     raise exception 'immutable audit operation conflict' using errcode = '23505';
   end if;
 
