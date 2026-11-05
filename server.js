@@ -1848,14 +1848,9 @@ app.post(
             req.body && req.body.learningProposalOptIn === true &&
             !learningProposalHandoffAttempted
           ) {
-            const {
-              stageAgentGenerationCycleProposal
-            } = require("./services/mira-hfm-learning-generation-cycle");
-            const handoff = await stageAgentGenerationCycleProposal({
+            const handoff = await stageAgentGenerationProposal({
+              req,
               toolName,
-              requestBody: req.body,
-              requestRole: req.role,
-              session: req.session,
               toolResult,
               stage: app.locals && app.locals.miraHfmLearningGenerationCycle &&
                 app.locals.miraHfmLearningGenerationCycle.stage
