@@ -112,3 +112,35 @@ PHASE7_DRIVE_KEY_INTEGRATION=OFFLINE_CONTRACT_PROTOTYPE_ONLY
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
 PRODUCTION_RESTORE=NOT_CERTIFIED
+
+
+## 9. Offline injected transport adapter prototype (v0.2)
+
+The branch adds `services/mira-hfm-drive-emergency-backup-adapter.js` as a provider-neutral boundary around an injected transport. It is not a Google Drive implementation.
+
+- Fixed namespace: `mira-hfm-emergency/v1/{projectId}/{backupId}.mhe`; caller-supplied alternate namespaces are rejected.
+- Required transport methods: `atomicCreate({ objectKey, metadata, bytes })`, `readObject({ objectKey })`, and `listPage({ projectId, prefix, cursor, limit })`.
+- The adapter validates project binding, object key, AES-256-GCM content metadata, SHA-256 format, object metadata/byte length, negotiated read-size and page-item limits, canonical listing timestamps, bounded cursors, encrypted-only listing metadata and explicit bounded pagination. The cloud service additionally binds the authenticated envelope metadata projectId to the requested project on upload, preview and restore.
+- It rejects ambiguous atomic-create results. A future real transport must implement provider-side atomic create-if-absent; a preflight search plus ordinary upload is not acceptable.
+- Fake-transport tests exercise concurrent duplicate create calls (exactly one create result), project/namespace isolation, readback, multi-page listing, malformed create result rejection, and the absence of OAuth/network behavior.
+- The adapter has no delete, overwrite, move, permission-grant, OAuth, or routine-sync method.
+
+This prototype cannot establish real provider atomicity, remote durability, quota behavior, OAuth scope, or consistency. Those remain separate provider-specific review and live-test gates.
+
+## 10. Latest code-change CI evidence
+
+Code/test commit `eaa2871bfa84a7457680ce9e9c49490a7dbce581` completed GitHub Actions run **41992655865** (job **127128310119**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+
+This evidence is for the latest code-change commit; later commits in this branch only refresh documentation.
+
+This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
+
+VERSION=v0.2
+OFFLINE_TRANSPORT_ADAPTER=PASS
+OFFLINE_CI_RUN=41992655865_SUCCESS
+OFFLINE_CI_HEAD=eaa2871bfa84a7457680ce9e9c49490a7dbce581
+OFFLINE_PASS_MARKERS=49
+LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
+LIVE_NETWORK=NOT_AUTHORIZED
+ROUTINE_DRIVE_SYNC=UNCHANGED
+PRODUCTION_RESTORE=NOT_CERTIFIED
