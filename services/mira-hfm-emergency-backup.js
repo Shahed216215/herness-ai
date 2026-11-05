@@ -210,19 +210,25 @@ function writeBackupAtomic(filePath,bytes,directoryPolicy = {}) {
   try{return writeBackupAtomicAt(pinned,path.basename(filePath),bytes,directoryPolicy);}finally{pinned.close();}
 }
 function inspectBackupDirectory(directory) {
-  const stat = fs.lstatSync(directory);
-  if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error('Backup inventory path is unsafe.');
-  return fs.readdirSync(directory).filter(name => name.endsWith('.mira-hfm.enc.json')).map(name => {
-    const filePath = path.join(directory, name);
-    const fileStat = fs.lstatSync(filePath);
-    if (fileStat.isSymbolicLink() || !fileStat.isFile()) return { name, status: 'REVIEW_REQUIRED', sizeBytes: fileStat.size || 0 };
-    try {
-      const raw = fs.readFileSync(filePath);
-      const envelope = parseEnvelope(raw);
-      return { name, status: 'MANIFEST_VALID_ENCRYPTED_CONTENT_NOT_DECRYPTED', projectId: envelope.manifest.projectId,
-        createdAt: envelope.manifest.createdAt, sizeBytes: fileStat.size, sha256: sha256(raw) };
-    } catch { return { name, status: 'REVIEW_REQUIRED', sizeBytes: fileStat.size }; }
-  });
+  const pinned = openPinnedDirectory(directory);
+  try {
+    assertPrivateDirectory(pinned);
+    return fs.readdirSync(pinned.path).filter(name => name.endsWith('.mira-hfm.enc.json')).map(name => {
+      try {
+        const child = readPinnedChildFile(pinned, name, MAX_BACKUP_BYTES);
+        const envelope = parseEnvelope(child.bytes);
+        return { name, status: 'MANIFEST_VALID_ENCRYPTED_CONTENT_NOT_DECRYPTED',
+          projectId: envelope.manifest.projectId, createdAt: envelope.manifest.createdAt,
+          sizeBytes: child.stat.size, sha256: sha256(child.bytes) };
+      } catch {
+        let sizeBytes = 0;
+        try { sizeBytes = fs.lstatSync(pinnedChildPath(pinned, name)).size || 0; } catch {}
+        return { name, status: 'REVIEW_REQUIRED', sizeBytes };
+      }
+    });
+  } finally {
+    pinned.close();
+  }
 }
 function buildRetentionPlan(items, policy = {}) {
   if (!Array.isArray(items)) throw new Error('Retention inventory must be an array.');
