@@ -83,8 +83,8 @@ const registerAutonomousLearningRoutes =
   require("./routes/autonomous-learning");
 const registerMiraHfmLearningEvolutionRoutes =
   require("./routes/mira-hfm-learning-evolution");
-const { stageAgentGenerationCycleProposal } =
-  require("./services/mira-hfm-learning-generation-cycle");
+const { stageAgentGenerationProposal } =
+  require("./services/mira-hfm-learning-generation-cycle-request");
 const registerMiraResearchGovernanceRoutes =
   require("./routes/mira-research-governance");
 const registerFacebookPageConnectorRoutes =
@@ -1850,11 +1850,9 @@ app.post(
             req.body && req.body.learningProposalOptIn === true &&
             !learningProposalHandoffAttempted
           ) {
-            const handoff = await stageAgentGenerationCycleProposal({
+            const handoff = await stageAgentGenerationProposal({
+              req,
               toolName,
-              requestBody: req.body,
-              requestRole: req.role,
-              session: req.session,
               toolResult,
               stage: app.locals && app.locals.miraHfmLearningGenerationCycle &&
                 app.locals.miraHfmLearningGenerationCycle.stage
