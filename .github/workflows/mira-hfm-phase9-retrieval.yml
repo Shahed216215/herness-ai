@@ -13,6 +13,8 @@ on:
     branches:
       - 'work/mira-hfm-v02-phase9-retrieval-capacity'
     paths:
+      - 'services/mira-hfm-retrieval-provider-adapters.js'
+      - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
       - 'services/mira-hfm-retrieval-optimizer.js'
       - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase9/**'
