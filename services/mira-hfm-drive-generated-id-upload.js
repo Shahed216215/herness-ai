@@ -68,11 +68,16 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
     const envelopeKeys = envelope && typeof envelope === 'object' && !Array.isArray(envelope)
       ? Object.keys(envelope).sort() : [];
     const backupTime = new Date(envelope && envelope.createdAt);
-    const ciphertext = typeof (envelope && envelope.ciphertext) === 'string'
-      ? Buffer.from(envelope.ciphertext, 'base64') : null;
-    const canonicalBase64 = (value, decoded, length) => typeof value === 'string' &&
-      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value) &&
-      decoded && decoded.length === length && decoded.toString('base64') === value;
+    const decodeCanonicalBase64 = value => {
+      if (typeof value !== 'string' ||
+          !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) return null;
+      const decoded = Buffer.from(value, 'base64');
+      return decoded.toString('base64') === value ? decoded : null;
+    };
+    const salt = decodeCanonicalBase64(envelope && envelope.salt);
+    const iv = decodeCanonicalBase64(envelope && envelope.iv);
+    const tag = decodeCanonicalBase64(envelope && envelope.tag);
+    const ciphertext = decodeCanonicalBase64(envelope && envelope.ciphertext);
     if (!envelope || envelopeKeys.length !== expectedEnvelopeKeys.length ||
         envelopeKeys.some((field, index) => field !== expectedEnvelopeKeys[index]) ||
         JSON.stringify(envelope) + '\n' !== serializedEnvelope ||
@@ -86,10 +91,10 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
         !/^[a-f0-9]{64}$/.test(envelope.ciphertextSha256 || '') ||
         !Number.isFinite(backupTime.getTime()) || backupTime.toISOString() !== envelope.createdAt ||
         backupTime.getTime() > Date.now() ||
-        !canonicalBase64(envelope.salt, Buffer.from(envelope.salt || '', 'base64'), 16) ||
-        !canonicalBase64(envelope.iv, Buffer.from(envelope.iv || '', 'base64'), 12) ||
-        !canonicalBase64(envelope.tag, Buffer.from(envelope.tag || '', 'base64'), 16) ||
-        !canonicalBase64(envelope.ciphertext, ciphertext, envelope.payloadBytes) ||
+        !salt || salt.length !== 16 || !iv || iv.length !== 12 ||
+        !tag || tag.length !== 16 || !ciphertext ||
+        ciphertext.length !== envelope.payloadBytes ||
+        ciphertext.length > MAX_PAYLOAD_BYTES ||
         sha256(ciphertext) !== envelope.ciphertextSha256) {
       reject('Encrypted HFM envelope identity/schema/timestamp does not match the upload request.');
     }
