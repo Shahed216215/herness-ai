@@ -155,13 +155,12 @@ assert.throws(() => retrieveProjectScopedWorkLearning({
 }), /limit must be/);
 console.log('WORK_LEARNING_RETRIEVAL_LIMIT_BOUND_PASS');
 
-const denied = retrieveProjectScopedWorkLearning({
+assert.throws(() => retrieveProjectScopedWorkLearning({
   records: [activeOtherTask], pendingConflicts: [],
   projectId: 'project-alpha', requestContext,
   authorizeRequest: input => ({ ...authorize(input), decision: 'DENY' }),
   taskText: 'Python automation', currentTaskId: 'task-current', now
-});
-assert.equal(denied.count, 0);
+}), /denied by host policy/);
 console.log('WORK_LEARNING_HOST_DENY_BLOCKS_RETRIEVAL_PASS');
 
 assert.equal(result.transfers[0].provenance.source.sourceId, 'memory-active-learning-001');
