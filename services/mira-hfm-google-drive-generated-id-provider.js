@@ -3,11 +3,13 @@
 // Google Drive v3 method mapper. A pre-authorized drive client and account-fingerprint
 // verifier must be injected; this module never creates OAuth credentials or a client.
 const { Readable } = require('node:stream');
+const crypto = require('node:crypto');
 const { MAX_OBJECT_BYTES, CONTENT_TYPE } = require('./mira-hfm-drive-generated-id-upload');
 
 const FILE_ID_RE = /^[A-Za-z0-9_-]{10,256}$/;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
 const DIGEST_RE = /^[a-f0-9]{64}$/;
+function sha256(bytes) { return crypto.createHash('sha256').update(bytes).digest('hex'); }
 
 function reject(message, code = 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID') {
   const error = new Error(message);
@@ -86,6 +88,9 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
           input.appProperties.schema !== 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' ||
           input.appProperties.version !== '1.0.0' ||
           typeof input.appProperties.createdAt !== 'string' ||
+          !Number.isFinite(Date.parse(input.appProperties.createdAt)) ||
+          new Date(Date.parse(input.appProperties.createdAt)).toISOString() !== input.appProperties.createdAt ||
+          sha256(input.bytes) !== input.appProperties.ciphertextSha256 ||
           !Number.isSafeInteger(Number(input.appProperties.bytes)) ||
           Number(input.appProperties.bytes) !== input.bytes.length) {
         reject('Google Drive create request violates the encrypted backup contract.');
