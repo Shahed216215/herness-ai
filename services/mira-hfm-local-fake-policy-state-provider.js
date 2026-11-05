@@ -32,6 +32,21 @@ function createLocalFakePolicyStateProvider({ snapshot, authorityId = 'fake-stat
       assertAvailable();
       return Object.freeze(clone(state));
     },
+    async getCommitReceipt({ authorityId: requestedAuthorityId, idempotencyKey, requestDigest }) {
+      assertAvailable();
+      if (requestedAuthorityId !== state.authorityId ||
+          typeof idempotencyKey !== 'string' || !idempotencyKey.trim() ||
+          !/^[a-f0-9]{64}$/.test(requestDigest || '')) {
+        throw codedError('Commit receipt lookup scope is invalid.', 'HFM_POLICY_STATE_RECEIPT_LOOKUP_INVALID');
+      }
+      const previous = idempotency.get(idempotencyKey);
+      if (!previous) return null;
+      if (previous.requestDigest !== requestDigest) {
+        throw codedError('Commit receipt lookup digest does not match the original request.',
+          'HFM_POLICY_STATE_IDEMPOTENCY_MISMATCH');
+      }
+      return Object.freeze(clone(previous.receipt));
+    },
     async compareAndSwap(request) {
       assertAvailable();
       if (!request || typeof request.idempotencyKey !== 'string' || !request.idempotencyKey.trim()) {
