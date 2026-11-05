@@ -34,7 +34,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 Run: `node tests/mira-hfm-encrypted-emergency-backup.test.js`
 
-Synthetic offline tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, immutable write/readback, encrypted-only cloud adapter capability gates, create-only cloud upload/readback, project isolation, cloud-download restore-to-staging, independent-process recovery from the exact encrypted artifact, and proof that failed authentication creates no restore-stage file. No live network or cloud calls occur.
+Latest GitHub Actions run 41964875117: SUCCESS; TESTS_FAILED=0. Verified log groups include independent-process recovery and failed-authentication/no-stage-artifact checks. Synthetic offline tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, immutable write/readback, encrypted-only cloud adapter capability gates, create-only cloud upload/readback, project isolation, cloud-download restore-to-staging, independent-process recovery from the exact encrypted artifact, and proof that failed authentication creates no restore-stage file. No live network or cloud calls occur.
 
 VERSION=v0.2
 PHASE7=ENCRYPTED_EMERGENCY_BACKUP_PRIMITIVE_IMPLEMENTED
