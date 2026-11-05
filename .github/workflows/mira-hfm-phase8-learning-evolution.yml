@@ -11,6 +11,7 @@ on:
       - 'routes/mira-hfm-learning-evolution.js'
       - 'server.js'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
   pull_request:
@@ -22,7 +23,6 @@ on:
       - 'routes/mira-hfm-learning-evolution.js'
       - 'server.js'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
-      - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
 
