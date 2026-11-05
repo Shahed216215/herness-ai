@@ -192,3 +192,18 @@ The workflow-run lookup was repeated against the current PR heads rather than re
 | 9 / PR #37 | `3026e22aa1e2ec9d3a61bf89320174828e120999` | [42010854004](https://github.com/Shahed216215/herness-ai/actions/runs/42010854004) | SUCCESS |
 
 This refresh upgrades the evidence for Phase 5 and Phase 7 to the current PR heads, and independently confirms Phase 6, 8 and 9 workflow success on their current PR heads. It does **not** resolve the ancestry defect: Phase 6 remains based on a commit 93 behind current Phase 5; Phase 8 remains based on a commit 28 behind current Phase 7. Passing CI on a stale branch does not prove that the missing upstream changes are integrated. These are workflow-level SUCCESS results only; they do not establish production integration, live-provider behavior, migration application, deployment, restore certification, or Phase 10 readiness.
+
+
+### Restack collision audit (verified 2026-11-06)
+
+Changed-file inventories and exact PR patches were inspected before attempting any source restack. The following shared paths require deliberate reconciliation; a blind cherry-pick or branch retarget is unsafe:
+
+| Shared path | Earlier PR change | Later PR change | Required handling |
+|---|---|---|---|
+| `server.js` (PR #33 / #34) | Phase 5 adds the Facebook Group import route, excludes its endpoint from the global JSON parser, and selects the production bind host. | Phase 6 replaces the direct host constant with `resolveServerBindHost`, adds the Facebook research archive route, and corrects a duplicate Group-route require/registration in its own base. | Manually combine both route registrations, retain the Phase 5 bounded-parser exception, and adopt the Phase 6 bind-host helper only after checking its production semantics and tests. Re-run startup, bind-host, Group import and research-archive route tests. |
+| `.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml` (PR #34 / #35) | Phase 6 introduces the Phase 7 workflow with its original branch filters and four offline test steps. | Phase 7 expands the test/file coverage, adds syntax checks and journaled-adapter/Google Drive fake-provider suites, and changes the Phase 7 branch filter to the v2 branch. | Preserve the expanded Phase 7 suite and ensure pull_request base filters target the actual corrected Phase 6 restack branch. |
+| `.github/workflows/mira-hfm-phase8-learning-evolution.yml` (PR #35 / #36) | Phase 7 introduces the Phase 8 workflow with Phase 7 v2 pull-request filter and Phase 8 v3 push filter. | Phase 8 changes the push branch to the Phase 8 clean-restack-on-Phase-7-v2 branch. | Reconcile both filters to the newly created restacked branch names and verify push/PR triggers on the exact new heads. |
+
+Other Phase 5, 6 and 7 changed paths are disjoint by filename in the current PR inventories, but that fact alone does not prove semantic compatibility or test success after restacking. PR #33 changes 25 paths, PR #34 changes 21, PR #35 changes 19; the overlap findings above are the explicit filename collisions found in these adjacent phase pairs. Phase 8 and 9 inventories add their own downstream paths and require exact-head CI after ancestry is repaired.
+
+**Safe next action:** create a new Phase 6 restack branch from the current Phase 5 head, reconcile the three shared paths with reviewed combined content, bring across the remaining Phase 6 changes, then run Phase 6 plus Phase 5 regression suites. Only after that exact head passes should Phase 7 be restacked and its workflow filters repaired, followed by Phase 8 and Phase 9. Keep all original branches/PRs unchanged. This audit did not change application source, workflows, migrations, or production state.
