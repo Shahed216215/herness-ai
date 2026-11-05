@@ -93,4 +93,72 @@ function createGenerationCycleProposalOrchestrator({ bridge, enabled = false } =
 }
 
 
-module.exports = { createGenerationCycleProposalOrchestrator };
+
+/**
+ * Agent-loop boundary. Only the exact HFM retrieval tool, explicit request
+ * opt-in, and a named authenticated administrator may stage a proposal.
+ */
+async function stageAgentGenerationCycleProposal({
+  toolName, requestBody, requestRole, session, toolResult, stage
+} = {}) {
+  if (toolName !== 'mira_hfm_public_web_retrieval' ||
+      !requestBody || requestBody.learningProposalOptIn !== true) {
+    return Object.freeze({ attempted: false, result: null });
+  }
+  const blockedResult = (status, code) => Object.freeze({
+    success: false, status, code,
+    canonicalMemoryWrites: 0, automaticExecution: false
+  });
+  if (requestRole !== 'admin' || !session || session.authenticated !== true ||
+      session.role !== 'admin' || typeof session.username !== 'string' ||
+      !session.username.trim()) {
+    return Object.freeze({ attempted: true,
+      result: blockedResult('BLOCKED', 'HFM_LEARNING_NAMED_ADMIN_REQUIRED') });
+  }
+  const proposal = requestBody.learningProposal;
+  if (!proposal || typeof proposal !== 'object' || Array.isArray(proposal)) {
+    return Object.freeze({ attempted: true,
+      result: blockedResult('BLOCKED', 'HFM_LEARNING_PROPOSAL_INPUT_REQUIRED') });
+  }
+  if (typeof stage !== 'function') {
+    return Object.freeze({ attempted: true,
+      result: blockedResult('NOT_CERTIFIED', 'HFM_LEARNING_GENERATION_BRIDGE_UNAVAILABLE') });
+  }
+  let retrievalReport;
+  try {
+    retrievalReport = typeof toolResult === 'string' ? JSON.parse(toolResult) : toolResult;
+  } catch {
+    return Object.freeze({ attempted: true,
+      result: blockedResult('BLOCKED', 'HFM_LEARNING_RETRIEVAL_INVALID') });
+  }
+  if (!retrievalReport || typeof retrievalReport !== 'object' || Array.isArray(retrievalReport)) {
+    return Object.freeze({ attempted: true,
+      result: blockedResult('BLOCKED', 'HFM_LEARNING_RETRIEVAL_INVALID') });
+  }
+  try {
+    const result = await stage({
+      explicitOptIn: true,
+      actor: { authenticated: true, role: 'admin', actorId: session.username.trim().slice(0, 128) },
+      projectId: proposal.projectId,
+      proposalId: proposal.proposalId,
+      title: proposal.title,
+      rationale: proposal.rationale,
+      proposedChange: proposal.proposedChange,
+      retrievalResult: retrievalReport
+    });
+    return Object.freeze({
+      attempted: true,
+      result: result && typeof result === 'object'
+        ? result
+        : blockedResult('NOT_CERTIFIED', 'HFM_LEARNING_GENERATION_BRIDGE_RESPONSE_INVALID')
+    });
+  } catch (error) {
+    return Object.freeze({
+      attempted: true,
+      result: blockedResult('NOT_CERTIFIED',
+        String(error && error.code || 'HFM_LEARNING_GENERATION_HANDOFF_FAILED').slice(0, 80))
+    });
+  }
+}
+
+module.exports = { createGenerationCycleProposalOrchestrator, stageAgentGenerationCycleProposal };
