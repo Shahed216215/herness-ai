@@ -79,6 +79,8 @@ async function main() {
   const secondId = 'backup-test-0002';
   const secondKey = 'mira-hfm-emergency/v1/' + projectId + '/' + secondId + '.mhe';
   store.set(secondKey, { metadata: { projectId, backupId: secondId, objectKey: secondKey,
+    contentType: input.contentType, encryption: input.encryption,
+    ciphertextSha256: crypto.createHash('sha256').update(Buffer.alloc(12, 7)).digest('hex'),
     createdAt: '2026-11-05T00:01:00.000Z', bytes: 12 }, bytes: Buffer.alloc(12, 7) });
   const listing1 = await adapter.list({ projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 1 });
   assert.equal(listing1.complete, false);
@@ -219,12 +221,54 @@ async function main() {
     transport: { ...transport, async listPage() {
       return { items: [{ metadata: { projectId, backupId: 'backup-invalid-time-001',
         objectKey: 'mira-hfm-emergency/v1/' + projectId + '/backup-invalid-time-001.mhe',
-        createdAt: 'not-a-date', bytes: 12 } }], complete: true };
+        contentType: input.contentType, encryption: input.encryption,
+        ciphertextSha256: digest, createdAt: 'not-a-date', bytes: 12 } }], complete: true };
     } }
   });
   await assert.rejects(() => malformedTimestamp.list({
     projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 2
   }), e => e.code === 'HFM_DRIVE_OBJECT_INVALID');
+
+  const invalidCursor = createEmergencyBackupTransportAdapter({ projectId, transport });
+  await assert.rejects(() => invalidCursor.list({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/',
+    cursor: 'x'.repeat(1025), limit: 2
+  }), e => e.code === 'HFM_DRIVE_LIST_INVALID');
+
+  const oversizedCursorResponse = createEmergencyBackupTransportAdapter({
+    projectId, transport: { ...transport, async listPage() {
+      return { items: [], complete: false, nextCursor: 'x'.repeat(1025) };
+    } }
+  });
+  await assert.rejects(() => oversizedCursorResponse.list({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 2
+  }), e => e.code === 'HFM_DRIVE_LIST_INVALID');
+
+  const unencryptedListItem = createEmergencyBackupTransportAdapter({
+    projectId, transport: { ...transport, async listPage() {
+      return { items: [{ metadata: { projectId, backupId: 'backup-unencrypted-001',
+        objectKey: 'mira-hfm-emergency/v1/' + projectId + '/backup-unencrypted-001.mhe',
+        createdAt: '2026-11-05T00:00:00.000Z', bytes: 12 } }], complete: true };
+    } }
+  });
+  await assert.rejects(() => unencryptedListItem.list({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 2
+  }), e => e.code === 'HFM_DRIVE_OBJECT_INVALID');
+
+  const oversizedListedObject = createEmergencyBackupTransportAdapter({
+    projectId, transport: { ...transport, async getCapabilities() {
+      return { ...(await transport.getCapabilities()), maxObjectBytes: 8 };
+    }, async listPage() {
+      return { items: [{ metadata: { projectId, backupId: 'backup-too-large-001',
+        objectKey: 'mira-hfm-emergency/v1/' + projectId + '/backup-too-large-001.mhe',
+        contentType: input.contentType, encryption: input.encryption,
+        ciphertextSha256: digest, createdAt: '2026-11-05T00:00:00.000Z', bytes: 12 } }], complete: true };
+    } }
+  });
+  await assert.rejects(() => oversizedListedObject.list({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 2
+  }), e => e.code === 'HFM_DRIVE_OBJECT_INVALID');
+
   const unsupported = createEmergencyBackupTransportAdapter({
     projectId,
     transport: { ...transport, async getCapabilities() {
@@ -250,6 +294,9 @@ async function main() {
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_READ_LIMIT_ENFORCED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PAGE_ITEM_LIMIT_ENFORCED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_LIST_TIMESTAMP_VALIDATED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_CURSOR_BOUNDS_ENFORCED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_ENCRYPTED_LIST_METADATA_REQUIRED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_LISTED_OBJECT_SIZE_BOUNDED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PROVIDER_CAPABILITY_NEGOTIATION=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_UNSUPPORTED_PROVIDER_FAIL_CLOSED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_SCOPED_QUOTA_REPORT=PASS');
