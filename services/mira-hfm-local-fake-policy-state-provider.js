@@ -22,6 +22,7 @@ function createLocalFakePolicyStateProvider({ snapshot, authorityId = 'fake-stat
   let idempotency = new Map(snapshot && Array.isArray(snapshot.idempotency) ? clone(snapshot.idempotency) : []);
   let unavailable = false;
   let loseNextCommitResponse = false;
+  let failNextRequestBeforeCommit = false;
 
   function assertAvailable() {
     if (unavailable) throw codedError('Fake provider unavailable or quorum absent.', 'HFM_POLICY_STATE_UNAVAILABLE');
@@ -61,6 +62,11 @@ function createLocalFakePolicyStateProvider({ snapshot, authorityId = 'fake-stat
         throw codedError('Invalid next state.', 'HFM_POLICY_STATE_NEXT_STATE_INVALID');
       }
 
+      if (failNextRequestBeforeCommit) {
+        failNextRequestBeforeCommit = false;
+        throw codedError('Synthetic request loss before commit; retry the same idempotency key.', 'HFM_POLICY_STATE_REQUEST_NOT_COMMITTED');
+      }
+
       const receipt = Object.freeze({
         authorityId: state.authorityId,
         previousSequence: state.highestAcceptedSequence,
@@ -86,6 +92,7 @@ function createLocalFakePolicyStateProvider({ snapshot, authorityId = 'fake-stat
     },
     setUnavailable(value) { unavailable = value === true; },
     loseNextCommitResponse() { loseNextCommitResponse = true; },
+    failNextRequestBeforeCommit() { failNextRequestBeforeCommit = true; },
     exportSnapshot() {
       return clone({ state, idempotency: Array.from(idempotency.entries()) });
     }
