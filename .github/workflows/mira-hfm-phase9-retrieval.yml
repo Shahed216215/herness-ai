@@ -7,6 +7,7 @@ on:
       - 'services/mira-hfm-retrieval-provider-adapters.js'
       - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
       - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
+      - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase9/**'
       - '.github/workflows/mira-hfm-phase9-retrieval.yml'
   push:
@@ -17,6 +18,7 @@ on:
       - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
       - 'services/mira-hfm-retrieval-optimizer.js'
       - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
+      - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase9/**'
       - '.github/workflows/mira-hfm-phase9-retrieval.yml'
 
@@ -32,6 +34,6 @@ jobs:
         with:
           node-version: 24
       - name: Syntax check
-        run: node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js
+        run: node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js
       - name: Phase 9 isolated offline tests
-        run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js
+        run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node tests/mira-hfm-phase9-prompt-injection-regression.test.js
