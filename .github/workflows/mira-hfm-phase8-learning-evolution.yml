@@ -7,6 +7,7 @@ on:
     paths:
       - 'services/mira-hfm-learning-evolution-bridge.js'
       - 'services/mira-hfm-learning-proposal-store.js'
+      - 'services/mira-hfm-learning-evidence-adapter.js'
       - 'routes/mira-hfm-learning-evolution.js'
       - 'server.js'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
