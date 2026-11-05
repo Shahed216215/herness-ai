@@ -88,6 +88,7 @@ const keyProvider = {
   });
   assert.equal(capturedMethodsUpload.status, 'VERIFIED');
   assert.equal(capturedMethodsUpload.fileId, 'remote-method-capture');
+  process.stdout.write('MIRA_HFM_DRIVE_ADAPTER_METHOD_SNAPSHOT_PASS\n');
 
 
 
