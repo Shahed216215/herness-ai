@@ -81,6 +81,18 @@ A canonical HFM snapshot exporter is intentionally not implemented in this Phase
 
 The exporter must produce a bounded, schema-validated snapshot payload and manifest. It must not mutate canonical data. A successful encryption test cannot certify snapshot completeness.
 
+## 5A. Phase 1–3 source-authority evidence for snapshot exporter
+
+The exporter remains blocked because the current candidate stores do not share an approved canonical authority boundary:
+- General Memory: legacy role/content/time array; no durable actor/project identity or production CAS contract.
+- Knowledge: legacy source metadata without authoritative owner/project relation; Drive remains coupled to routine workflows.
+- CRM Conversation: no trusted client-to-project registry; stable messageId and approved project mapping are required.
+- Work Learning / Experience / Work Knowledge: separate stores/projections without authoritative task-to-project mapping and complete lineage.
+- Conversation, Audit, Research Governance and Learning Governance are separate domains with independent schemas and retention/approval semantics; do not silently include them.
+- Snapshot Manager and Local Memory backup are not complete HFM canonical snapshots.
+
+Phase 3 validators and host adapters are injected contracts only. The project-owner registry is not persisted/administered; host identity, authoritative project mapping, current revocation lookup and atomic replay protection are not connected to production. General Memory, Knowledge and CRM Conversation remain BLOCKED_FOR_PRODUCTION; Work Learning/Experience/Work Knowledge remain BLOCKED. The detailed source inventory, disposition and owner prerequisites are recorded in the Phase 7 Google Drive Live Integration Approval Plan, Section 7A.
+
 ## 6. Required offline test matrix before any live provider test
 
 - Adapter rejects plaintext, malformed envelope, wrong project, wrong backup ID, and invalid digest.
@@ -136,11 +148,11 @@ Relevant official references:
 - https://developers.google.com/workspace/drive/api/guides/manage-uploads#use_a_pre-generated_id_to_upload_files
 - https://developers.google.com/workspace/drive/api/reference/rest/v3/files/generateIds
 
-Candidate provider algorithm (NOT IMPLEMENTED or live-tested):
+Historical provider design candidate; the later sections below document the implemented offline journal/uploader/Drive v3 mapper. Live provider behavior remains untested:
 
 1. Bind the operation to the authenticated Google account and selected Drive space (`drive` or `appDataFolder`). The generated IDs are issued for the requesting user and selected space; never reuse an ID across account/space boundaries.
 2. Request one generated file ID with `files.generateIds`.
-3. Before starting the upload, persist and fsync a local operation-journal entry binding account identity, space, projectId, backupId, generated file ID, ciphertext SHA-256, byte length and operation state. The journal must be durable across process restart and protected as sensitive metadata. If this journal is unavailable, do not start an upload.
+3. Before starting the upload, persist and fsync a local operation-journal entry binding hashed account fingerprint, space, projectId, backupId, generated file ID, authenticated backup schema/version/createdAt, ciphertext SHA-256, byte length and operation state. The journal must be durable across process restart and protected as sensitive metadata. If this journal is unavailable, do not start an upload.
 4. Create an ordinary binary file (never a Google Docs/Sheets/Slides conversion) using the generated ID in the file resource, the dedicated backup parent/folder, encrypted-only MIME type, and project/backup/digest metadata. Use a resumable upload for envelopes above 5 MB or mobile/network-interruption risk.
 5. On timeout or HTTP 409, do not generate a replacement ID. Retrieve the exact file by the journaled ID, verify its project/backup binding, parent, byte length and digest, then download and compare the exact ciphertext bytes. Only exact verified readback can reconcile the operation as successful.
 6. If the ID cannot be retrieved, metadata conflicts, the journal is missing, or the response remains ambiguous, report INCONCLUSIVE/UNCERTAIN and preserve the journal for recovery. Never fall back to search-by-name plus create.
@@ -149,12 +161,13 @@ Candidate provider algorithm (NOT IMPLEMENTED or live-tested):
 Important limitations and gates:
 - Google documents pre-generated IDs for create/copy/upload and duplicate prevention on retry, but this documentation review is not a live proof of our exact OAuth account, folder, upload mode, or quota behavior.
 - Pre-generated IDs are not supported for Google Workspace file creation/conversion (except documented special MIME types); HFM backup objects must remain ordinary binary files.
-- The local durable ID journal becomes a required recovery dependency. Its atomicity, fsync, encryption/permissions, crash recovery, account binding, backup/restore and retention policy require a separate offline design and test before adapter implementation.
+- The local durable ID journal is a required recovery dependency. Its atomicity, fsync, permissions, crash recovery and account binding are implemented as an offline prototype; it is not encrypted or MAC-authenticated. Authenticated provider-listing recovery is implemented later in this document, but cross-device journal replication and recovery when the backup ID/root key/account are lost remain unresolved.
 - The minimum suitable OAuth scope, dedicated-folder ownership, Shared Drive behavior (if any), and `appDataFolder` versus a visible dedicated folder must be decided before OAuth authorization. No OAuth scope is approved by this document.
 - This candidate may satisfy the provider-side create-only requirement only after a dedicated fake-transport regression suite and a separately authorized, narrowly scoped live test verify create, timeout-after-commit, 409 reconciliation, exact download and duplicate prevention.
 
 STATUS=DOCUMENTED_DESIGN_CANDIDATE_ONLY
-GOOGLE_DRIVE_ADAPTER=NOT_IMPLEMENTED
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
+LIVE_GOOGLE_DRIVE=NOT_TESTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
 ## 9.2 Durable generated-ID operation journal (offline prototype)
@@ -162,33 +175,102 @@ LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 The branch now includes `services/mira-hfm-drive-backup-id-journal.js`. It is a local-only prerequisite prototype for a future Google Drive provider; it does not call Google APIs or authorize an upload.
 
 - `createBackupIdJournal` writes a canonical, bounded record using a same-directory temporary file, owner-only file permissions, fsync, create-only hard-link publication, directory fsync and exact-byte readback.
-- The journal binds one immutable operation ID to a non-secret account subject binding, selected Drive space (`drive` or `appDataFolder`), project ID, backup ID, pre-generated Drive file ID, ciphertext SHA-256, byte length and canonical timestamp.
+- The journal binds one immutable operation ID to a SHA-256 fingerprint of a non-secret provider account subject (never a raw email or account identifier), selected Drive space (`drive` or `appDataFolder`), project ID, backup ID, pre-generated Drive file ID, authenticated backup schema/version/createdAt, ciphertext SHA-256, byte length and canonical journal timestamp.
 - Repeating an identical journal creation is idempotent. Reusing an operation ID with different content/file ID is rejected; no journal overwrite or delete operation exists.
-- `readBackupIdJournal` validates schema/canonical encoding, owner-only permissions, regular-file/no-symlink constraints, and optional expected account/space/project/backup/digest/size bindings.
+- `readBackupIdJournal` validates schema/canonical encoding, owner-only permissions, regular-file/no-symlink constraints, and optional expected account/space/project/backup/schema/version/timestamp/digest/size bindings.
 - `reconcileBackupIdJournal` returns only the persisted identity and an explicit `JOURNAL_VERIFIED_PROVIDER_RECONCILIATION_REQUIRED` status. It does NOT claim the remote object exists, that upload succeeded, or that provider bytes were verified. A future provider may retry only with the same persisted file ID, then must retrieve and compare exact ciphertext bytes.
 - Missing/corrupt/mismatched journals fail closed. No credential, access token, root key, plaintext, or payload is stored in the journal.
 - Offline synthetic tests cover create/readback, owner-only permissions, idempotent recovery, immutable collision, account/space binding, missing/corrupt records, symlink rejection, invalid input and no network/OAuth/canonical writes.
 
-Limitations: the journal is not encrypted or MAC-authenticated; it relies on the owner-only local filesystem boundary and detects malformed/canonical/schema/binding failures, not a malicious same-user rewrite. It does not provide multi-device synchronization, backup/restore of the journal, or a provider transaction. Production integration must separately define journal backup/recovery, account identity derivation, retention and device-loss handling before any live upload.
+Limitations: the journal is not encrypted or MAC-authenticated; it relies on the owner-only local filesystem boundary and detects malformed/canonical/schema/binding failures, not a malicious same-user rewrite. It does not provide multi-device synchronization or a provider transaction. The journal can be reconstructed from an intact authenticated provider object only when the correct account, backup ID and root key remain available; cross-device journal replication and device-loss procedures remain a separate production gate.
 
 STATUS=OFFLINE_DURABLE_JOURNAL_PROTOTYPE
-GOOGLE_DRIVE_UPLOAD=NOT_IMPLEMENTED
+GOOGLE_DRIVE_UPLOAD_ORCHESTRATION=IMPLEMENTED_OFFLINE
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
+
+## 9.3 Journaled generated-ID upload orchestration (offline prototype)
+
+The branch now includes `services/mira-hfm-drive-generated-id-upload.js`. This composes the durable journal with an injected provider contract; it is not a Google SDK adapter.
+
+- Requires an injected provider implementing `generateFileId`, `createFile`, `getFile` and `downloadFile`.
+- Validates the encrypted envelope schema/version/createdAt/project/backup identity, encrypted MIME type, AES-256-GCM marker, payload size and SHA-256 before provider interaction.
+- On a new operation, obtains one provider-generated ID, durably publishes and reads back the local journal, and only then calls `createFile`.
+- On restart, loads the existing journal and never requests a replacement ID. A missing/corrupt/mismatched journal blocks upload.
+- The create request binds generated ID, dedicated parent, project/backup identity, authenticated envelope schema/version/createdAt, ciphertext digest, byte length and encryption metadata.
+- Regardless of create response or error (including timeout/409), it retrieves the exact ID, validates provider metadata and downloads the complete ciphertext for byte-for-byte and SHA-256 comparison. Missing/unreadable objects remain UNCERTAIN; metadata or byte mismatches are CONFLICT.
+- A successful return means exact remote bytes and metadata were verified through the injected provider contract. It does not prove Google API behavior, OAuth correctness, provider durability or real quota.
+- Offline synthetic tests cover journal-before-upload ordering, timeout after commit, timeout before commit followed by same-ID retry, metadata conflict, ciphertext mismatch, cross-account journal binding, and no network/OAuth/canonical writes.
+
+This is a provider orchestration prototype only. It has no delete, overwrite, move, permission grant, or routine-sync integration. A real provider mapping must prove that `getFile` binds account/space/parent and maps actual Drive metadata faithfully; only then can a separately approved live test be considered.
+
+STATUS=OFFLINE_JOURNALED_UPLOAD_ORCHESTRATION_PROTOTYPE
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
+LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
+
+## 9.4 Journaled cloud adapter integration (offline prototype)
+
+The branch now includes `services/mira-hfm-drive-journaled-cloud-adapter.js`, which exposes the existing cloud-backup service contract over the generated-ID journal and injected provider.
+
+- `putIfAbsent` derives a deterministic operation ID from project and backup identity, validates the exact object namespace and encrypted bytes, then delegates to journal-before-upload orchestration.
+- It returns a reconciliation result only when the generated-ID uploader has verified remote metadata and exact ciphertext bytes. The cloud service now accepts this narrowly defined `reconciled + verified` result and performs its own readback and authenticated-envelope verification again.
+- `get` resolves the exact generated ID from the journal, verifies account/space/project/backup/schema/version/timestamp/digest/size/encryption/parent metadata, downloads exact bytes and rechecks size/SHA-256. It never searches by file name.
+- `recoverJournal({backupId,key})` scans only the configured project parent with bounded pagination, requires exactly one matching immutable backup ID, fetches by the listed exact file ID, verifies all metadata and exact ciphertext bytes, validates the 32-byte root key before listing, authenticates/decrypts the envelope in memory, zeroizes the recovered plaintext buffer, then recreates the local journal atomically. Wrong keys, duplicate matches, incomplete listings, metadata mismatch or digest mismatch fail closed without writing a journal or restore artifact. When the injected provider exposes listPage/getQuota, the adapter surfaces project-scoped listing and provider quota for capacity monitoring. It intentionally has no delete/move/permission API; quota-unavailable remains NOT_REPORTED.
+- End-to-end synthetic tests exercise encrypted backup upload, repeated upload with HTTP 409 reconciliation, capacity/list/quota reporting, authenticated cloud preview, restore to staging only, local-journal loss recovery from a unique authenticated provider object, wrong-key and duplicate-match rejection, project isolation, and no network/OAuth/canonical writes.
+
+This proves only the injected fake-provider and offline Google Drive v3 method-mapping contracts. It does not establish live Google account identity, remote consistency, OAuth scope approval, production quota behavior or provider durability.
+
+STATUS=OFFLINE_JOURNALED_CLOUD_ADAPTER_AND_AUTHENTICATED_JOURNAL_RECOVERY
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
+LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
+
+## 9.5 Injected Google Drive v3 provider mapper (fake-client CI pending)
+
+The branch now includes `services/mira-hfm-google-drive-generated-id-provider.js`. It maps the injected Google Drive v3 `drive.files` client to the journaled uploader contract; it does not create an OAuth client, load credentials, or perform any request until one of its methods is explicitly called.
+
+- `generateFileId` calls `files.generateIds({count: 1, space, type: 'files'})`, validates the returned space and one generated ID.
+- `createFile` sends the pre-generated ID in the `File` resource, a single configured parent, private `appProperties`, encrypted MIME type and a resumable media upload. It validates the ciphertext digest and canonical envelope timestamp before calling the client.
+- `getFile` retrieves metadata by exact ID and maps Drive `appProperties`, parent, MIME type and size into the journaled provider contract. 404 is returned as absent; other provider failures remain errors.
+- `downloadFile` downloads media by exact ID as a stream and enforces the 64 MiB bound before returning bytes.
+- `listPage` uses a parent-scoped `files.list` query, bounded page size/cursor, exact project and encrypted appProperties validation; no name-based lookup is used.
+- `getQuota` uses `about.get` with explicit `fields` for the authenticated `permissionId` and `storageQuota`. It hashes the opaque permission ID for account binding and reports total Google account usage conservatively (Gmail/Photos usage can reduce remaining Drive capacity).
+- Every method verifies the SHA-256 account fingerprint. The caller may inject a trusted fingerprint callback; otherwise the mapper derives it from `about.get` `user.permissionId`. It does not create OAuth credentials.
+- The mapper has no delete, update, move, sharing, permission-grant, or folder-creation operation. Shared Drive behavior is not certified; use a dedicated My Drive folder or appDataFolder only in a separately configured integration.
+- Offline fake-client tests cover generated ID space binding, resumable create request shape, appProperties mapping, exact media readback, 404 handling, project-scoped pagination, quota mapping, account-scope rejection and digest validation. No real Google API client, OAuth credential or network request is used.
+
+Official API references reviewed:
+- `files.generateIds`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/generateIds
+- `files.create`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/create
+- Pre-generated ID retries and 409 behavior: https://developers.google.com/workspace/drive/api/guides/manage-uploads#use_a_pre-generated_id_to_upload_files
+- App-specific `appProperties`: https://developers.google.com/workspace/drive/api/guides/properties
+- `about.get` identity and storage quota: https://developers.google.com/workspace/drive/api/reference/rest/v3/about/get
+- `files.list` pagination and `incompleteSearch`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list
+- OAuth scope selection and sensitivity: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+- Drive file creation and generated-ID examples: https://developers.google.com/workspace/drive/api/guides/create-file
+
+The documentation supports generated IDs for `drive` and `appDataFolder` spaces and describes duplicate-preventing 409 responses on retry after a successful create. Pre-generated IDs are not supported for ordinary Google Workspace document conversion; HFM must remain an ordinary binary file. This research does not authorize OAuth or certify the injected account-fingerprint callback.
+
+STATUS=INJECTED_GOOGLE_DRIVE_V3_MAPPER_IMPLEMENTED_OFFLINE_CI_VERIFIED
+OAUTH_CLIENT=NOT_CREATED
+LIVE_GOOGLE_DRIVE=NOT_TESTED
+SHARED_DRIVE=NOT_CERTIFIED
 
 ## 10. Latest code-change CI evidence
 
-Restacked code/test commit `e02b32e16c3503479a4bc37f3d9d06f3be0beee6` completed GitHub Actions run **41994278556** (job **127133573967**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+The latest Phase 7 code/test workflow completed GitHub Actions run **42018583267 — SUCCESS**, job **127215246547**, against code/test commit `0f26022d960ab9ed2a5613e65d7e51fa935e1ceb`. The run completed the Node syntax check and all six offline test suites. Logs contain **112 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-This run verifies the restacked code and regression tests. Subsequent commits only refresh documentation and have not changed application or test source.
+The Google Drive v3 fake-client suite additionally verifies exact appProperties allowlisting and 124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota mapping and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings. Payload/envelope type and size limits are checked before buffer allocation; arbitrary objects are not coerced to strings. Bounded envelope buffers are snapshotted before verification. Temporary plaintext is also zeroized when timestamp/metadata validation fails before encryption begins. Google Drive media chunks are type- and size-checked before allocation; Drive file sizes, appProperties byte counts and quota values require canonical decimal integer strings. Newly created backup/journal directories now fsync their parent directory entries before proceeding. Key-provider tests verify ephemeral key-copy zeroization on both successful and throwing operations without mutating provider-owned key material.
 
-This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
+The Phase 7 branch remains restacked on the latest Phase 6 base; PR #16 remains Draft and unmerged. This is synthetic offline CI evidence only. It does not certify OAuth, live Google Drive operations, production key custody, canonical snapshot completeness or production recovery.
 
 VERSION=v0.2
-OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=41994278556_SUCCESS
-OFFLINE_CI_CODE_TEST_COMMIT=e02b32e16c3503479a4bc37f3d9d06f3be0beee6
-OFFLINE_PASS_MARKERS=49
-LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
+OFFLINE_CI_RUN=42018583267_SUCCESS
+OFFLINE_CI_JOB=127215246547
+OFFLINE_CI_CODE_TEST_COMMIT=0f26022d960ab9ed2a5613e65d7e51fa935e1ceb
+OFFLINE_PASS_MARKERS=112
+OFFLINE_TEST_SUITES=6
+CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
+LIVE_GOOGLE_DRIVE=NOT_TESTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
 PRODUCTION_RESTORE=NOT_CERTIFIED
