@@ -50,7 +50,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 - `services/mira-hfm-drive-journaled-cloud-adapter.js` connects the journaled generated-ID uploader to the encrypted cloud-backup service interface.
 - Reconciliation is accepted only after metadata and exact ciphertext verification; the cloud service repeats readback and authenticated-envelope checks.
-- Cloud reads resolve by the journaled exact file ID, never by name. Missing/corrupt journals fail closed. When the injected provider exposes project-scoped listPage/getQuota methods, the adapter surfaces listing and quota; otherwise provider quota is explicitly NOT_REPORTED.
+- Cloud reads resolve by the journaled exact file ID, never by name. If the journal is missing, recoverJournal can rebuild it from a unique project-scoped listing item only after exact-ID metadata, exact ciphertext digest/size, and authenticated envelope verification with the supplied root key. Corrupt journals fail closed. When the provider exposes listPage/getQuota, the adapter surfaces listing and quota; otherwise quota is NOT_REPORTED.
 - End-to-end synthetic tests cover encrypted upload, HTTP 409 retry, authenticated preview, restore staging, project isolation and offline-only behavior.
 
 ## Injected Google Drive v3 provider mapper
