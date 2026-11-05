@@ -91,4 +91,104 @@ async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
   return restoreToStaging({ envelope: bytes, key, directory: stagingDirectory,
     restoreId: restoreId || ('restore-' + id) });
 }
-module.exports = { uploadEncryptedEmergencyBackup, restoreEncryptedEmergencyBackupFromCloud, objectKey };
+const DEFAULT_BACKUP_BUDGET_BYTES = 5000000000;
+const MAX_BACKUP_LIST_ITEMS = 10000;
+
+function planBackupRetention({ backups, keepLast, maxAgeDays, now = new Date().toISOString() } = {}) {
+  if (!Array.isArray(backups) || backups.length > MAX_BACKUP_LIST_ITEMS ||
+      !Number.isInteger(keepLast) || keepLast < 1 || keepLast > MAX_BACKUP_LIST_ITEMS ||
+      !Number.isInteger(maxAgeDays) || maxAgeDays < 1 || maxAgeDays > 3650) {
+    fail('Retention preview requires a bounded backup list, keepLast, and maxAgeDays.');
+  }
+  const nowMs = Date.parse(now);
+  if (!Number.isFinite(nowMs) || new Date(nowMs).toISOString() !== now) fail('Retention preview timestamp must be canonical ISO.');
+  const seen = new Set();
+  const sorted = backups.map(item => {
+    if (!item || typeof item !== 'object' || item.projectId == null ||
+        typeof item.backupId !== 'string' || typeof item.createdAt !== 'string' ||
+        !Number.isSafeInteger(item.bytes) || item.bytes < 1) {
+      fail('Retention backup metadata is invalid.');
+    }
+    validId(item.projectId, 'projectId');
+    validId(item.backupId, 'backupId');
+    const createdMs = Date.parse(item.createdAt);
+    if (!Number.isFinite(createdMs) || new Date(createdMs).toISOString() !== item.createdAt || createdMs > nowMs) {
+      fail('Retention backup timestamp is invalid or in the future.');
+    }
+    if (seen.has(item.backupId)) fail('Retention backup IDs must be unique.');
+    seen.add(item.backupId);
+    return { projectId: item.projectId, backupId: item.backupId, createdAt: item.createdAt, bytes: item.bytes, createdMs };
+  }).sort((a, b) => b.createdMs - a.createdMs || a.backupId.localeCompare(b.backupId));
+  const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
+  const retained = [], candidates = [];
+  sorted.forEach((item, index) => {
+    const keep = index < keepLast || (nowMs - item.createdMs) <= maxAgeMs;
+    (keep ? retained : candidates).push({
+      projectId: item.projectId, backupId: item.backupId,
+      createdAt: item.createdAt, bytes: item.bytes
+    });
+  });
+  return Object.freeze({
+    status: 'RETENTION_PREVIEW_ONLY',
+    keepLast, maxAgeDays,
+    retained: Object.freeze(retained),
+    candidates: Object.freeze(candidates),
+    deletionPerformed: false,
+    deletionRequiresSeparateApproval: true
+  });
+}
+
+async function inspectEncryptedEmergencyBackupCapacity({
+  adapter, projectId, budgetBytes = DEFAULT_BACKUP_BUDGET_BYTES,
+  retentionPolicy, now = new Date().toISOString()
+} = {}) {
+  if (!adapter || !adapter.capabilities || adapter.capabilities.list !== true ||
+      typeof adapter.list !== 'function') {
+    fail('Capacity monitoring requires an adapter with verified project-scoped listing capability.',
+      'HFM_CLOUD_LIST_CAPABILITY_MISSING');
+  }
+  const project = validId(projectId, 'projectId');
+  if (!Number.isSafeInteger(budgetBytes) || budgetBytes < 1 || budgetBytes > 1000000000000) {
+    fail('Backup budget must be a bounded positive byte count.');
+  }
+  const prefix = 'mira-hfm-emergency/v1/' + project + '/';
+  const listing = await adapter.list({ projectId: project, prefix });
+  if (!Array.isArray(listing) || listing.length > MAX_BACKUP_LIST_ITEMS) {
+    fail('Cloud backup listing is invalid or exceeds the item limit.', 'HFM_CLOUD_LIST_INVALID');
+  }
+  const seen = new Set();
+  let usedBytes = 0;
+  const backups = listing.map(item => {
+    if (!item || item.projectId !== project ||
+        typeof item.backupId !== 'string' ||
+        item.objectKey !== objectKey(project, item.backupId) ||
+        !Number.isSafeInteger(item.bytes) || item.bytes < 1 ||
+        typeof item.createdAt !== 'string') {
+      fail('Cloud backup listing contains an invalid or cross-project item.', 'HFM_CLOUD_LIST_SCOPE_INVALID');
+    }
+    if (seen.has(item.backupId)) fail('Cloud backup listing contains duplicate IDs.', 'HFM_CLOUD_LIST_DUPLICATE');
+    seen.add(item.backupId);
+    usedBytes += item.bytes;
+    if (!Number.isSafeInteger(usedBytes)) fail('Cloud backup usage total overflowed.');
+    return { projectId: project, backupId: item.backupId, createdAt: item.createdAt, bytes: item.bytes };
+  });
+  let retention = { status: 'NOT_REQUESTED', deletionPerformed: false };
+  if (retentionPolicy !== undefined) {
+    retention = planBackupRetention({
+      backups, keepLast: retentionPolicy.keepLast,
+      maxAgeDays: retentionPolicy.maxAgeDays, now
+    });
+  }
+  const utilizationPercent = Math.round((usedBytes / budgetBytes) * 10000) / 100;
+  return Object.freeze({
+    status: usedBytes > budgetBytes ? 'OVER_BUDGET' :
+      usedBytes >= budgetBytes * 0.9 ? 'NEAR_BUDGET_LIMIT' : 'WITHIN_BUDGET',
+    projectId: project, backupCount: backups.length,
+    budgetBytes, usedBytes, availableBytes: Math.max(0, budgetBytes - usedBytes),
+    utilizationPercent, retention,
+    deletionPerformed: false,
+    routineDriveSyncChanged: false
+  });
+}
+
+module.exports = { uploadEncryptedEmergencyBackup, restoreEncryptedEmergencyBackupFromCloud, inspectEncryptedEmergencyBackupCapacity, planBackupRetention, DEFAULT_BACKUP_BUDGET_BYTES, objectKey };
