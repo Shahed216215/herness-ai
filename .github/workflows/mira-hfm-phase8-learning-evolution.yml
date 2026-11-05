@@ -32,6 +32,8 @@ on:
   pull_request:
     paths:
       - 'services/mira-hfm-learning-evolution-bridge.js'
+      - 'services/mira-hfm-learning-generation-cycle.js'
+      - 'services/mira-hfm-learning-generation-cycle-request.js'
       - 'services/mira-hfm-learning-proposal-store.js'
       - 'services/mira-hfm-learning-proposal-supabase-store.js'
       - 'services/mira-hfm-learning-evidence-adapter.js'
@@ -42,6 +44,9 @@ on:
       - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
       - 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle-request.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle-server-integration.test.js'
       - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
       - 'tests/mira-hfm-learning-evolution-review-route.test.js'
       - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
@@ -71,7 +76,7 @@ jobs:
           node --check services/mira-hfm-learning-legacy-compatibility.js &&
           node --check services/mira-hfm-legacy-learning-evidence-adapter.js &&
           node --check services/mira-hfm-learning-evolution-bridge.js &&
-          node --check services/mira-hfm-learning-generation-cycle.js
+          node --check services/mira-hfm-learning-generation-cycle.js &&
           node --check services/mira-hfm-learning-generation-cycle-request.js
       - name: Run Phase 8 offline contract tests
         run: >-
