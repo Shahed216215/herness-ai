@@ -23,6 +23,7 @@ on:
     branches:
       - work/mira-hfm-v02-phase2-core-safety
       - work/mira-hfm-v02-phase3-unified-memory-contract-core
+      - work/mira-hfm-v02-phase3-clean-restack-on-phase2-20261105
     paths:
       - 'knowledge.js'
       - 'audit-log.js'
