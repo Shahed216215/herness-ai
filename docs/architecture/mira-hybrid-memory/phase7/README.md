@@ -310,3 +310,15 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - CI disposition: `CI_STATUS=INCONCLUSIVE`. The Phase 7 workflow path filters include the changed services/tests, but the available GitHub connector reports no combined status checks or PR-triggered workflow runs for the latest branch commit. No PASS claim is made for this checkpoint.
 - No live Drive API, KMS/HSM, staging/production integration, upload, deletion, restore, deployment, production Memory/Knowledge write, or real credential use occurred.
 - F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent governance, real key custody, host ACL/mount review, durable provider behavior, and independently sourced infrastructure provenance. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains within v0.2.
+
+
+## Backup key-provider secret boundary and unwrap failure handling — 2026-11-05
+
+- Latest implementation/test commit covered by this checkpoint: `2478f86d3214828b5bdd64bef301d9796654feb6`.
+- Backup key-provider contract rejects raw private/master keys, KEKs, encryption-key bytes, generic key material, credential objects, access/refresh tokens, and client secrets on both the provider object and descriptor.
+- Snapshot signing provider applies a corresponding sign-only secret/credential boundary.
+- External backup `wrapDataKey` and `unwrapDataKey` exceptions are normalized to generic `BACKUP_KEY_WRAP_FAILED` / `BACKUP_KEY_UNWRAP_FAILED` errors; provider-specific exception text and codes are not returned to callers. Existing DEK-copy zeroization on wrap failure remains covered.
+- Added negative tests for all listed secret/credential fields on provider and descriptor, plus unwrap-provider exception-detail suppression.
+- Updated the provider adapter specification with the exact boundary and explicit limitation: this does not prove non-exportable KMS/HSM custody, workload identity, IAM separation, rotation/revocation, or provider auditability.
+- CI remains `INCONCLUSIVE`: matching Phase 7 workflow check/run logs are not exposed by the available GitHub connector for the current branch commits. No PASS claim is made for newly added tests.
+- No live key service, real credential, KMS/HSM, Drive API, staging, or production operation was used. F7-SR-02 remains PARTIALLY_REMEDIATED / OPEN pending independent custody evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains v0.2.
