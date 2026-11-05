@@ -14,7 +14,7 @@ Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflo
 - Computes SHA-256 digests for evidence and the complete proposal.
 - Stores proposals in a project-hash-partitioned local store using create-only file creation, restrictive permissions, fsync and read-after-write.
 - Exposes an admin-only API for staging and reading proposals; the existing global autonomous-learning and Knowledge stores are not modified.
-- Includes an adapter for the existing HFM public Facebook search-retrieval result format. It validates the provider/mode/zero-canonical-write declarations, page binding and HTTPS Facebook source URLs, then forces every imported item to UNVERIFIED.
+- Includes an adapter for the existing HFM public Facebook search-retrieval result format. It validates the provider/mode/zero-canonical-write declarations, page binding and HTTPS Facebook source URLs, then forces every imported item to UNVERIFIED. It also checks the indexed Facebook URL is bound to the reported numeric Page ID.
 - Uses Mira's existing audit-log append/integrity path for proposal-staging events; audit failure after persistence is surfaced as committed/reconciliation-required.
 - Requires an audit-writer callback. The production route uses the existing audit-log integrity chain; an HMAC anchor is conditional on the audit key being configured.
 - Marks proposals PENDING_HUMAN_REVIEW and UNTRUSTED.
