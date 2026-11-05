@@ -36,7 +36,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - `services/mira-hfm-drive-emergency-backup-adapter.js` provides a provider-neutral adapter around an injected `atomicCreate`, `readObject`, and `listPage` transport.
 - It fixes a project-scoped namespace, validates encrypted-envelope content metadata and SHA-256 format, rejects cross-project/path traversal access, enforces explicit bounded pagination, and rejects ambiguous create results.
 - The transport's `atomicCreate` must be a true provider-side atomic create-if-absent operation. The adapter cannot prove that a future real provider implements this correctly.
-- Synthetic fake-transport tests cover concurrent create-only behavior, namespace isolation, metadata binding, readback, multi-page listing, uncertain create rejection, and no OAuth/network use.
+- Synthetic fake-transport tests cover concurrent create-only behavior, namespace isolation, metadata binding, exact-byte readback, multi-page listing, timeout-after-commit reconciliation, timeout-before-commit uncertainty, immutable-ID collision rejection, missing/unreadable readback, and no OAuth/network use.
 - No Google Drive SDK, OAuth, token handling, real Drive calls, delete/overwrite, permission grants, or routine-sync mutation is implemented.
 
 ## Verification
@@ -57,7 +57,9 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 VERSION=v0.2
 PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
-LATEST_CI=41981522602_SUCCESS
+LATEST_CI=41987453707_SUCCESS
+TRANSPORT_TIMEOUT_RECONCILIATION=PASS
+BLIND_RETRY=DISABLED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
 PRODUCTION_RESTORE=NOT_CERTIFIED
