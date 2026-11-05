@@ -170,11 +170,10 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       if (!data) return null;
       const properties = data.appProperties || {};
       const size = Number(data.size);
-      const propertyBytes = Number(properties.bytes);
-      if (!Number.isSafeInteger(size) || size < 1 || size > MAX_OBJECT_BYTES ||
-          propertyBytes !== size || !Array.isArray(data.parents) ||
-          data.parents.length !== 1 || data.parents[0] !== parentId ||
-          data.mimeType !== CONTENT_TYPE) {
+      if (data.id !== fileId || !Number.isSafeInteger(size) || size < 1 ||
+          size > MAX_OBJECT_BYTES || !validateAppProperties(properties, projectId, size) ||
+          !Array.isArray(data.parents) || data.parents.length !== 1 ||
+          data.parents[0] !== parentId || data.mimeType !== CONTENT_TYPE) {
         reject('Google Drive metadata is outside the encrypted backup contract.',
           'HFM_GOOGLE_DRIVE_METADATA_INVALID');
       }
