@@ -210,6 +210,31 @@ STATUS=OFFLINE_JOURNALED_CLOUD_ADAPTER_INTEGRATION
 GOOGLE_DRIVE_SDK=NOT_IMPLEMENTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
+## 9.5 Injected Google Drive v3 provider mapper (offline-tested SDK boundary)
+
+The branch now includes `services/mira-hfm-google-drive-generated-id-provider.js`. It maps the injected Google Drive v3 `drive.files` client to the journaled uploader contract; it does not create an OAuth client, load credentials, or perform any request until one of its methods is explicitly called.
+
+- `generateFileId` calls `files.generateIds({count: 1, space, type: 'files'})`, validates the returned space and one generated ID.
+- `createFile` sends the pre-generated ID in the `File` resource, a single configured parent, private `appProperties`, encrypted MIME type and a resumable media upload. It validates the ciphertext digest and canonical envelope timestamp before calling the client.
+- `getFile` retrieves metadata by exact ID and maps Drive `appProperties`, parent, MIME type and size into the journaled provider contract. 404 is returned as absent; other provider failures remain errors.
+- `downloadFile` downloads media by exact ID as a stream and enforces the 64 MiB bound before returning bytes.
+- Every method calls an injected `getAccountFingerprint` callback and requires its SHA-256 fingerprint to match the journal binding. The module does not decide how OAuth identity is established.
+- The mapper intentionally has no list, quota, delete, update, move, sharing, permission-grant, or folder-creation operation. Shared Drive behavior is not certified; use a dedicated My Drive folder or appDataFolder only in a separately configured integration.
+- Offline fake-client tests cover generated ID space binding, resumable create request shape, appProperties mapping, exact media readback, 404 handling, account-scope rejection and digest validation. No real Google API client, OAuth credential or network request is used.
+
+Official API references reviewed:
+- `files.generateIds`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/generateIds
+- `files.create`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/create
+- Pre-generated ID retries and 409 behavior: https://developers.google.com/workspace/drive/api/guides/manage-uploads#use_a_pre-generated_id_to_upload_files
+- App-specific `appProperties`: https://developers.google.com/workspace/drive/api/guides/properties
+
+The documentation supports generated IDs for `drive` and `appDataFolder` spaces and describes duplicate-preventing 409 responses on retry after a successful create. Pre-generated IDs are not supported for ordinary Google Workspace document conversion; HFM must remain an ordinary binary file. This research does not authorize OAuth or certify the injected account-fingerprint callback.
+
+STATUS=INJECTED_GOOGLE_DRIVE_V3_MAPPER_OFFLINE_TESTED
+OAUTH_CLIENT=NOT_CREATED
+LIVE_GOOGLE_DRIVE=NOT_TESTED
+SHARED_DRIVE=NOT_CERTIFIED
+
 ## 10. Latest code-change CI evidence
 
 The Phase 7 workflow completed GitHub Actions run **42001767982 — SUCCESS**, job **127158482183**, against branch commit `d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf`. The job ran four offline test suites: encrypted backup/key-provider, injected transport adapter, durable generated-ID journal, and journaled generated-ID upload. Logs contain **66 explicit Phase 7 PASS markers**; all four commands report `TESTS_FAILED=0`. The new generated-ID upload suite verifies journal-before-upload ordering, HTTP 409 duplicate reconciliation, timeout-after-commit reconciliation, timeout-before-commit retry with the same ID, remote metadata conflict rejection, exact ciphertext mismatch rejection, and cross-account journal binding. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
