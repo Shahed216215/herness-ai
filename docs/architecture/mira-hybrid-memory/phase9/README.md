@@ -31,8 +31,9 @@ Phase 9 adds an opt-in, dependency-injected, read-only retrieval optimizer. Exis
 - The adapters are read-only wrappers. Invoking an injected Supabase archive lookup may perform a read-only network request; the adapter tests use in-memory mocks and make no live requests. No Facebook API call, storage write, canonical Memory mutation, trust promotion, learning execution or self-modification is performed by the adapters.
 - Source adapters are injected by the caller; no default connector or automatic runtime hook is registered.
 - External snippets remain untrusted evidence. Text found in a Memory record is data, never an instruction to override system, developer, project or user policy.
-- The new prompt-injection regression test feeds hostile instruction-like text and adversarial provider fields through the optimizer. It verifies the content remains unchanged data, trust stays UNVERIFIED, non-schema action fields are not propagated, and no external action/canonical write occurs in the test harness.
-- This regression does NOT prove that a downstream LLM prompt builder, tool router, or generation lifecycle safely isolates retrieved text. Downstream prompt-boundary/E2E testing remains NOT TESTED and must be independently implemented before runtime integration.
+- The optimizer prompt-injection regression feeds hostile instruction-like text and adversarial provider fields through retrieval normalization. It verifies the content remains unchanged data, trust stays UNVERIFIED, non-schema action fields are not propagated, and no external action/canonical write occurs in the test harness.
+- A second regression exercises the existing Phase 8 generation-proposal handoff adapter using a hostile public-retrieval evidence snippet. It verifies evidence is converted to `UNVERIFIED` proposal evidence, hostile text remains content rather than executable instructions, attacker-supplied action fields are dropped, named-admin/explicit-opt-in governance remains in force, and the disabled hook fails closed.
+- These tests do NOT prove that the LLM prompt builder or tool router safely isolates all retrieved text during actual model inference. The full `/api/agent` model/tool loop and live generation E2E remain NOT TESTED.
 - Search failure is not evidence of deletion or data loss.
 - Conflicts are surfaced, not silently merged.
 
@@ -46,6 +47,7 @@ Run:
 - `node tests/mira-hfm-phase9-retrieval-optimizer.test.js`
 - `node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js`
 - `node tests/mira-hfm-phase9-prompt-injection-regression.test.js`
+- `node tests/mira-hfm-phase9-downstream-proposal-injection.test.js`
 
 The tests use mock facade/archive/group services and synthetic in-memory adapters, including 100/1,000/10,000-record scale cases. They do not access local user data, Facebook, Google Drive, Supabase, Render, external APIs or production storage.
 
@@ -54,14 +56,15 @@ The tests use mock facade/archive/group services and synthetic in-memory adapter
 1. Execute the adapters against the actual authorized local/HFM and Supabase provider instances only after explicit live-test authorization; the current tests use mocks.
 2. Supply the exact deployed model tokenizer encoder and reserve prompt/system/tool overhead in the generation layer.
 3. Run representative provider benchmarks at 1x/10x/100x and measure p50/p95 latency, memory, candidate recall, token use, concurrency and failure/recovery behavior.
-4. Independently test the downstream prompt builder and tool router with hostile retrieved content; this test suite covers optimizer data handling only.
+4. Independently test the full `/api/agent` prompt builder, model tool-call loop and tool router with hostile retrieved content; the current downstream test covers only the Phase 8 proposal-handoff boundary.
 5. Integrate into the Mira generation lifecycle only after Phase 8 live Supabase integration and governance gates are completed.
 6. Do not certify 100x end-to-end capacity until provider/runtime measured evidence exists.
 
 VERSION=v0.2
 PHASE9=RETRIEVAL_OPTIMIZER_AND_READ_ONLY_PROVIDER_ADAPTER_CONTRACTS_IMPLEMENTED
 PROMPT_INJECTION_OPTIMIZER_BOUNDARY=REGRESSION_TEST_ADDED
-DOWNSTREAM_PROMPT_ISOLATION=NOT_TESTED
+DOWNSTREAM_PROPOSAL_HANDOFF_BOUNDARY=REGRESSION_TEST_ADDED
+FULL_AGENT_PROMPT_AND_TOOL_ROUTER_ISOLATION=NOT_TESTED
 LIVE_PROVIDER_EXECUTION=NOT_CERTIFIED
 DEPLOYED_MODEL_TOKENIZER=NOT_CONFIGURED
 SYNTHETIC_1X_10X_100X_BENCHMARK=ADDED
