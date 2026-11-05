@@ -157,6 +157,24 @@ STATUS=DOCUMENTED_DESIGN_CANDIDATE_ONLY
 GOOGLE_DRIVE_ADAPTER=NOT_IMPLEMENTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
+## 9.2 Durable generated-ID operation journal (offline prototype)
+
+The branch now includes `services/mira-hfm-drive-backup-id-journal.js`. It is a local-only prerequisite prototype for a future Google Drive provider; it does not call Google APIs or authorize an upload.
+
+- `createBackupIdJournal` writes a canonical, bounded record using a same-directory temporary file, owner-only file permissions, fsync, create-only hard-link publication, directory fsync and exact-byte readback.
+- The journal binds one immutable operation ID to a non-secret account subject binding, selected Drive space (`drive` or `appDataFolder`), project ID, backup ID, pre-generated Drive file ID, ciphertext SHA-256, byte length and canonical timestamp.
+- Repeating an identical journal creation is idempotent. Reusing an operation ID with different content/file ID is rejected; no journal overwrite or delete operation exists.
+- `readBackupIdJournal` validates schema/canonical encoding, owner-only permissions, regular-file/no-symlink constraints, and optional expected account/space/project/backup/digest/size bindings.
+- `reconcileBackupIdJournal` returns only the persisted identity and an explicit `JOURNAL_VERIFIED_PROVIDER_RECONCILIATION_REQUIRED` status. It does NOT claim the remote object exists, that upload succeeded, or that provider bytes were verified. A future provider may retry only with the same persisted file ID, then must retrieve and compare exact ciphertext bytes.
+- Missing/corrupt/mismatched journals fail closed. No credential, access token, root key, plaintext, or payload is stored in the journal.
+- Offline synthetic tests cover create/readback, owner-only permissions, idempotent recovery, immutable collision, account/space binding, missing/corrupt records, symlink rejection, invalid input and no network/OAuth/canonical writes.
+
+Limitations: the journal is not encrypted or MAC-authenticated; it relies on the owner-only local filesystem boundary and detects malformed/canonical/schema/binding failures, not a malicious same-user rewrite. It does not provide multi-device synchronization, backup/restore of the journal, or a provider transaction. Production integration must separately define journal backup/recovery, account identity derivation, retention and device-loss handling before any live upload.
+
+STATUS=OFFLINE_DURABLE_JOURNAL_PROTOTYPE
+GOOGLE_DRIVE_UPLOAD=NOT_IMPLEMENTED
+LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
+
 ## 10. Latest code-change CI evidence
 
 Restacked code/test commit `e02b32e16c3503479a4bc37f3d9d06f3be0beee6` completed GitHub Actions run **41994278556** (job **127133573967**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
