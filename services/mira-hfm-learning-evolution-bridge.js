@@ -49,6 +49,21 @@ function buildProposal(input = {}) {
   p.proposalDigest = digest(p);
   return Object.freeze(p);
 }
+function hasProductionIntegrationCapabilities({ proposalStore, auditWriter, productionIntegrationReady } = {}) {
+  return productionIntegrationReady === true &&
+    obj(proposalStore) &&
+    proposalStore.projectIsolated === true &&
+    proposalStore.createOnly === true &&
+    proposalStore.immutableVersions === true &&
+    proposalStore.readAfterWrite === true &&
+    proposalStore.durable === true &&
+    proposalStore.crossInstanceAtomicCreate === true &&
+    typeof proposalStore.putIfAbsent === 'function' &&
+    typeof proposalStore.get === 'function' &&
+    typeof auditWriter === 'function' &&
+    auditWriter.durable === true;
+}
+
 function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
   if (!obj(proposalStore) || proposalStore.projectIsolated !== true || proposalStore.createOnly !== true ||
       proposalStore.immutableVersions !== true || proposalStore.readAfterWrite !== true ||
@@ -67,7 +82,8 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     try {
       await auditWriter({ event: 'HFM_LEARNING_PROPOSAL_STAGED', projectId: p.projectId,
         proposalId: p.proposalId, proposalDigest: p.proposalDigest, status: p.status, canonicalMemoryWrites: 0,
-        actorRole: typeof context.actorRole === 'string' ? context.actorRole.slice(0, 64) : 'unknown' });
+        actorRole: typeof context.actorRole === 'string' ? context.actorRole.slice(0, 64) : 'unknown',
+        actorId: typeof context.actorId === 'string' && context.actorId.trim() ? context.actorId.trim().slice(0, 128) : 'unknown' });
     } catch (cause) {
       const e = new Error('Proposal staged but audit failed; reconcile before retry.');
       e.code = 'HFM_LEARNING_AUDIT_FAILED'; e.stateCommitted = true; e.cause = cause; throw e;
@@ -89,4 +105,4 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     return stored;
   } });
 }
-module.exports = { buildProposal, createLearningEvolutionBridge, SCHEMA, VERSION, MAX_EVIDENCE };
+module.exports = { buildProposal, createLearningEvolutionBridge, hasProductionIntegrationCapabilities, SCHEMA, VERSION, MAX_EVIDENCE };
