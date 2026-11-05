@@ -33,7 +33,7 @@ const operationId = 'drive-op-' + crypto.createHash('sha256')
 
 function createProvider(directory) {
   const objects = new Map();
-  const calls = { generate: 0, create: 0, get: 0, download: 0 };
+  const calls = { generate: 0, create: 0, get: 0, download: 0, list: 0 };
   return {
     objects, calls,
     async generateFileId(args) {
@@ -88,6 +88,7 @@ function createProvider(directory) {
       return object ? Buffer.from(object.bytes) : null;
     },
     async listPage({ projectId: scope, prefix, cursor, limit }) {
+      calls.list += 1;
       assert.equal(scope, projectId);
       assert.equal(prefix, 'mira-hfm-emergency/v1/' + projectId + '/');
       assert.ok(limit >= 1 && limit <= 500);
@@ -152,6 +153,11 @@ async function main() {
         ciphertextSha256: digest, bytes: envelope.length }
     });
     fs.unlinkSync(journalRecord.journalPath);
+    const listCallsBeforeInvalidKey = provider.calls.list;
+    await assert.rejects(() => adapter.recoverJournal({
+      backupId, key: Buffer.alloc(16, 1)
+    }), error => error.code === 'HFM_DRIVE_JOURNAL_RECOVERY_KEY_INVALID');
+    assert.equal(provider.calls.list, listCallsBeforeInvalidKey);
     assert.equal(await adapter.get({
       projectId, objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + backupId + '.mhe'
     }), null);
