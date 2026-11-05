@@ -31,6 +31,14 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - `services/mira-hfm-backup-key-provider.js` provides an injected `getKey({ keyId })` wrapper, exact 32-byte validation, authenticated key-version metadata, historical version lookup, normalized failure codes, ephemeral key-copy zeroization, and a retirement evidence gate.
 - This is not a production key vault/KMS. JavaScript zeroization is best-effort memory hygiene only; production custody, rotation operations, escrow, and recovery remain NOT_CERTIFIED.
 
+## Durable Google Drive generated-ID journal prototype
+
+- `services/mira-hfm-drive-backup-id-journal.js` provides a local-only immutable operation journal for a future pre-generated Drive file ID.
+- It persists account binding, Drive space, project/backup identity, generated file ID, ciphertext digest and byte length before a future provider upload can begin.
+- Publication uses a same-directory temporary file, owner-only permissions, fsync, create-only hard-link publication, directory fsync and exact-byte readback. Existing operation IDs cannot be overwritten.
+- Restart reconciliation returns the persisted ID but explicitly does not assert remote upload success; provider exact-ID retrieval and exact-byte verification remain mandatory.
+- Synthetic offline tests are run in the Phase 7 GitHub Actions workflow. No Google OAuth/API or network calls are performed.
+
 ## Offline injected transport adapter
 
 - `services/mira-hfm-drive-emergency-backup-adapter.js` provides a provider-neutral adapter around an injected `atomicCreate`, `readObject`, and `listPage` transport.
