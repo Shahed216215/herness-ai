@@ -4,6 +4,7 @@ const { buildProposal, createLearningEvolutionBridge } = require('../services/mi
 const { createSupabaseLearningProposalStore } = require('../services/mira-hfm-learning-proposal-supabase-store');
 const env = { SUPABASE_URL:'https://example-project.supabase.co', SUPABASE_SERVICE_ROLE_KEY:'x'.repeat(48) };
 const proposals = new Map();
+const reviews = new Map();
 const audits = new Map();
 const calls = [];
 async function mockRequest(rawUrl, config) {
@@ -12,13 +13,14 @@ async function mockRequest(rawUrl, config) {
   const url = new URL(rawUrl);
   const table = url.pathname.split('/').pop();
   const map = table === 'mira_hfm_learning_proposals' ? proposals
+    : table === 'mira_hfm_learning_proposal_reviews' ? reviews
     : table === 'mira_hfm_learning_proposal_audit_events' ? audits : null;
-  assert.ok(map, 'only the two Phase 8 tables may be called');
+  assert.ok(map, 'only the three Phase 8 tables may be called');
   if (config.method === 'POST') {
     const row = config.data[0];
-    const key = table === 'mira_hfm_learning_proposals'
+    const key = table === 'mira_hfm_learning_proposals' || table === 'mira_hfm_learning_proposal_reviews'
       ? row.project_id + ':' + row.proposal_id : row.event_id;
-    if (table === 'mira_hfm_learning_proposals') {
+    if (table === 'mira_hfm_learning_proposals' || table === 'mira_hfm_learning_proposal_reviews') {
       const created = !map.has(key);
       if (created) map.set(key, structuredClone(row));
       return { status:201, data:created ? [structuredClone(row)] : [] };
@@ -29,7 +31,7 @@ async function mockRequest(rawUrl, config) {
   }
   if (config.method === 'GET') {
     const rows = [...map.values()].filter(row => {
-      if (table === 'mira_hfm_learning_proposals') {
+      if (table === 'mira_hfm_learning_proposals' || table === 'mira_hfm_learning_proposal_reviews') {
         const project = url.searchParams.get('project_id');
         const proposal = url.searchParams.get('proposal_id');
         return (!project || row.project_id === project.slice(3)) &&
@@ -62,11 +64,20 @@ async function mockRequest(rawUrl, config) {
   assert.equal(result.status,'PENDING_HUMAN_REVIEW');
   assert.equal(proposals.size,1);
   assert.equal(audits.size,1);
-  assert.equal((await bridge.get('project-alpha','proposal-supabase-001')).proposalDigest,result.proposalDigest);
+  const reviewed=await bridge.review('project-alpha','proposal-supabase-001',
+    {decision:'APPROVE_FOR_MANUAL_HANDOFF',reason:'Manual follow-up only.'},
+    {actorRole:'admin',actorId:'test-admin'});
+  assert.equal(reviewed.status,'APPROVED_FOR_MANUAL_HANDOFF');
+  assert.equal(reviews.size,1);
+  assert.equal(audits.size,2);
+  assert.equal((await bridge.get('project-alpha','proposal-supabase-001')).review.decision,'APPROVE_FOR_MANUAL_HANDOFF');
+  await assert.rejects(()=>bridge.review('project-alpha','proposal-supabase-001',
+    {decision:'REJECT',reason:'Immutable second review.'},{actorRole:'admin',actorId:'test-admin'}),
+    error=>error.code==='HFM_LEARNING_REVIEW_CONFLICT');
   const retried=await bridge.submit(input,{actorRole:'admin',actorId:'test-admin'});
   assert.equal(retried.idempotentRetry,true);
   assert.equal(proposals.size,1);
-  assert.equal(audits.size,1);
+  assert.equal(audits.size,2);
   assert.ok(calls.some(call=>call.url.includes('on_conflict=event_id') &&
     call.prefer.includes('resolution=ignore-duplicates')));
   const second=buildProposal({...input,projectId:'project-beta',
@@ -81,6 +92,7 @@ async function mockRequest(rawUrl, config) {
     'HFM_PHASE8_SUPABASE_PROJECT_SCOPED_CREATE_ONLY=PASS',
     'HFM_PHASE8_SUPABASE_READBACK_AND_DIGEST=PASS',
     'HFM_PHASE8_SUPABASE_APPEND_ONLY_AUDIT_READBACK=PASS',
+    'HFM_PHASE8_SUPABASE_IMMUTABLE_REVIEW_READBACK=PASS',
     'HFM_PHASE8_SUPABASE_CROSS_PROJECT_ISOLATION=PASS',
     'HFM_PHASE8_SUPABASE_IDEMPOTENT_AUDIT_RECONCILIATION=PASS',
     'HFM_PHASE8_SUPABASE_MOCKED_REQUESTS_ONLY=PASS',
