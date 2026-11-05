@@ -116,7 +116,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
       bridgeStatus:bridge ? 'AVAILABLE' : 'NOT_CERTIFIED',
       storageMode:proposalStore && proposalStore.storageMode || 'UNAVAILABLE',
       generationCycleHookEnabled:process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true',
-      productionReady:productionReady && !!bridge,
+      productionReady:isProduction && productionReady && !!bridge,
       humanReviewRequired:true,
       importedEvidenceTrust:'UNTRUSTED',
       canonicalMemoryWrites:0,
