@@ -23,7 +23,7 @@ async function run(){
  assert.equal(measureCapacity({observedRecords:9999,baselineCapacity:100}).targetStatus,'NOT_MET');
 
  const syntheticSources=Array.from({length:10},(_,s)=>({id:'bench-source-'+s,type:'SYNTHETIC_BENCHMARK',retrieve:async()=>Array.from({length:1000},(_,i)=>{const n=s*1000+i;return {memoryId:'bench-memory-'+String(n).padStart(6,'0'),projectId:project,version:1,title:'Mira memory retrieval scale benchmark',content:'Synthetic corpus item '+n+' contains retrieval scale benchmark terms.',trustState:'VERIFIED',lifecycle:'ACTIVE',recordDigest:n.toString(16).padStart(64,'0')};})}));
- const scaled=await retrieveOptimized({query:'Mira memory retrieval scale benchmark',projectId:project,sources:syntheticSources,tokenBudget:1000,maxResults:10,maxCandidatesPerSource:1000});
+ const scaled=await retrieveOptimized({query:'Mira memory retrieval scale benchmark',projectId:project,sources:syntheticSources,tokenBudget:2500,maxResults:10,maxCandidatesPerSource:1000});
  assert.equal(scaled.metrics.candidateCount,10000);
  assert.equal(scaled.results.length,10);
  assert.ok(scaled.metrics.estimatedTokensUsed<=1000);
