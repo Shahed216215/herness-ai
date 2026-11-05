@@ -20,8 +20,21 @@ function validId(value, label) {
   return value;
 }
 function envelopeBytes(value) {
-  const bytes = Buffer.isBuffer(value) ? Buffer.from(value) : (typeof value === 'string' ? Buffer.from(value, 'utf8') : null);
-  if (!bytes || bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Encrypted envelope is missing or exceeds the size limit.');
+  let bytes;
+  if (Buffer.isBuffer(value)) {
+    if (value.length < 1 || value.length > MAX_ENVELOPE_BYTES) {
+      fail('Encrypted envelope is missing or exceeds the size limit.');
+    }
+    bytes = Buffer.from(value);
+  } else if (typeof value === 'string') {
+    const length = Buffer.byteLength(value, 'utf8');
+    if (length < 1 || length > MAX_ENVELOPE_BYTES) {
+      fail('Encrypted envelope is missing or exceeds the size limit.');
+    }
+    bytes = Buffer.from(value, 'utf8');
+  } else {
+    fail('Encrypted envelope must be a Buffer or UTF-8 string.');
+  }
   let parsed;
   try { parsed = JSON.parse(bytes.toString('utf8')); } catch { fail('Encrypted envelope is not valid JSON.'); }
   if (!parsed || parsed.schema !== 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' ||
@@ -50,45 +63,61 @@ async function uploadEncryptedEmergencyBackup({ adapter, projectId, envelope, ke
   const { bytes, parsed } = envelopeBytes(envelope);
   const backupId = validId(parsed.backupId, 'backupId');
   if (expectedBackupId !== undefined && backupId !== expectedBackupId) fail('Backup ID mismatch.');
-  // Decrypted payload buffers are short-lived and zeroized on every exit path.
-  let verified;
-  let checked;
-  try {
-    // Authenticate before sending. The root key is used locally and is never passed to the adapter.
-    verified = decryptAndVerifyBackup(bytes, key);
-    if (verified.metadata.projectId !== project) {
-      fail('Authenticated backup metadata does not match the requested project.',
-        'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
-    }
-    const digest = sha256(bytes);
-    const keyPath = objectKey(project, backupId);
-    const result = await adapter.putIfAbsent({
-      objectKey: keyPath,
-      projectId: project,
-      backupId,
-      bytes: Buffer.from(bytes),
-      contentType: 'application/vnd.mira.hfm-encrypted-backup',
-      ciphertextSha256: digest,
-      encryption: 'AES-256-GCM'
-    });
-    if (!result || result.created !== true) fail('Cloud backup object already exists or create-only status is uncertain.', 'HFM_CLOUD_BACKUP_CONFLICT');
-    const readback = await adapter.get({ objectKey: keyPath, projectId: project });
-    const stored = readback && (Buffer.isBuffer(readback.bytes) ? readback.bytes : Buffer.from(readback.bytes || ''));
-    if (!stored || !stored.equals(bytes) || sha256(stored) !== digest) {
-      fail('Cloud backup read-after-write verification failed.', 'HFM_CLOUD_BACKUP_READBACK_FAILED');
-    }
-    // Re-authenticate the exact bytes read back from cloud storage.
-    checked = decryptAndVerifyBackup(stored, key);
-    if (checked.backupId !== backupId || checked.plaintextSha256 !== verified.plaintextSha256) {
-      fail('Cloud backup readback identity verification failed.', 'HFM_CLOUD_BACKUP_IDENTITY_FAILED');
-    }
-    return { projectId: project, backupId, objectKey: keyPath, bytes: stored.length,
-      ciphertextSha256: digest, status: 'ENCRYPTED_CLOUD_BACKUP_VERIFIED',
-      rootKeyTransmitted: false, plaintextTransmitted: false };
-  } finally {
-    if (checked && Buffer.isBuffer(checked.payload)) checked.payload.fill(0);
-    if (verified && Buffer.isBuffer(verified.payload)) verified.payload.fill(0);
+  // Authenticate before sending. The root key is used locally and is never passed to the adapter.
+  const verified = decryptAndVerifyBackup(bytes, key);
+  const authenticatedProjectId = verified.metadata.projectId;
+  const authenticatedPlaintextSha256 = verified.plaintextSha256;
+  verified.payload.fill(0);
+  if (authenticatedProjectId !== project) {
+    fail('Authenticated backup metadata does not match the requested project.',
+      'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
   }
+  const digest = sha256(bytes);
+  const keyPath = objectKey(project, backupId);
+  const result = await adapter.putIfAbsent({
+    objectKey: keyPath,
+    projectId: project,
+    backupId,
+    bytes: Buffer.from(bytes),
+    contentType: 'application/vnd.mira.hfm-encrypted-backup',
+    ciphertextSha256: digest,
+    encryption: 'AES-256-GCM'
+  });
+  if (!result || (result.created !== true && !(result.reconciled === true && result.verified === true))) fail('Cloud backup object already exists or create-only status is uncertain.', 'HFM_CLOUD_BACKUP_CONFLICT');
+  const readback = await adapter.get({ objectKey: keyPath, projectId: project });
+  let stored;
+  if (readback && Buffer.isBuffer(readback.bytes)) {
+    if (readback.bytes.length < 1 || readback.bytes.length > MAX_ENVELOPE_BYTES) {
+      fail('Cloud backup readback is outside the encrypted envelope size limit.',
+        'HFM_CLOUD_BACKUP_READBACK_FAILED');
+    }
+    stored = readback.bytes;
+  } else if (readback && typeof readback.bytes === 'string') {
+    const readbackLength = Buffer.byteLength(readback.bytes, 'utf8');
+    if (readbackLength < 1 || readbackLength > MAX_ENVELOPE_BYTES) {
+      fail('Cloud backup readback is outside the encrypted envelope size limit.',
+        'HFM_CLOUD_BACKUP_READBACK_FAILED');
+    }
+    stored = Buffer.from(readback.bytes, 'utf8');
+  }
+  if (!stored || !stored.equals(bytes) || sha256(stored) !== digest) {
+    fail('Cloud backup read-after-write verification failed.', 'HFM_CLOUD_BACKUP_READBACK_FAILED');
+  }
+  // Re-authenticate the exact bytes read back from cloud storage.
+  const checked = decryptAndVerifyBackup(stored, key);
+  let readbackIdentityMatches;
+  try {
+    readbackIdentityMatches = checked.backupId === backupId &&
+      checked.plaintextSha256 === authenticatedPlaintextSha256;
+  } finally {
+    checked.payload.fill(0);
+  }
+  if (!readbackIdentityMatches) {
+    fail('Cloud backup readback identity verification failed.', 'HFM_CLOUD_BACKUP_IDENTITY_FAILED');
+  }
+  return { projectId: project, backupId, objectKey: keyPath, bytes: stored.length,
+    ciphertextSha256: digest, status: 'ENCRYPTED_CLOUD_BACKUP_VERIFIED',
+    rootKeyTransmitted: false, plaintextTransmitted: false };
 }
 async function previewEncryptedEmergencyBackupFromCloud({ adapter, projectId, backupId, key } = {}) {
   validateAdapter(adapter);
@@ -124,18 +153,15 @@ async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
   }
   const { bytes, parsed } = envelopeBytes(object.bytes);
   if (parsed.backupId !== id) fail('Cloud object and encrypted envelope identities do not match.');
-  let verified;
-  try {
-    verified = decryptAndVerifyBackup(bytes, key);
-    if (verified.metadata.projectId !== project) {
-      fail('Authenticated backup metadata does not match the requested project.',
-        'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
-    }
-    return restoreToStaging({ envelope: bytes, key, directory: stagingDirectory,
-      restoreId: restoreId || ('restore-' + id) });
-  } finally {
-    if (verified && Buffer.isBuffer(verified.payload)) verified.payload.fill(0);
+  const verified = decryptAndVerifyBackup(bytes, key);
+  const authenticatedProjectId = verified.metadata.projectId;
+  verified.payload.fill(0);
+  if (authenticatedProjectId !== project) {
+    fail('Authenticated backup metadata does not match the requested project.',
+      'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
   }
+  return restoreToStaging({ envelope: bytes, key, directory: stagingDirectory,
+    restoreId: restoreId || ('restore-' + id) });
 }
 const DEFAULT_BACKUP_BUDGET_BYTES = 5000000000;
 const MAX_BACKUP_LIST_ITEMS = 10000;
