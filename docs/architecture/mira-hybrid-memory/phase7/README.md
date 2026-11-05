@@ -322,3 +322,15 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Updated the provider adapter specification with the exact boundary and explicit limitation: this does not prove non-exportable KMS/HSM custody, workload identity, IAM separation, rotation/revocation, or provider auditability.
 - CI remains `INCONCLUSIVE`: matching Phase 7 workflow check/run logs are not exposed by the available GitHub connector for the current branch commits. No PASS claim is made for newly added tests.
 - No live key service, real credential, KMS/HSM, Drive API, staging, or production operation was used. F7-SR-02 remains PARTIALLY_REMEDIATED / OPEN pending independent custody evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains v0.2.
+
+
+## Authorization decision snapshot and replay-guard concurrency contract — 2026-11-05
+
+- Latest implementation/test/workflow commit covered by this checkpoint: `19cee10d1a8c40cf7d33056996ad65772883164b`.
+- Authorization verification now snapshots the signed decision, request, and issuer trust map before awaiting replay protection, and captures the replay guard's `consume` method reference. A replay callback cannot mutate the already-authenticated decision reported by the verifier.
+- Added an isolated local fake replay guard. It claims a SHA-256 digest of the exact issuer/decision/request/nonce tuple, returns literal true to only the first claimant, rejects expired/malformed claims, and supports a digest-only snapshot for restart simulation. It is explicitly `LOCAL_FAKE_REPLAY_GUARD_NOT_DURABLE`.
+- Authorization verifier tests now use the fake guard and verify duplicate decision rejection, replay-store outage fail-closed behavior, and post-verification input mutation resistance. A separate test runs 32 concurrent claims and requires exactly one winner, then simulates restart from the fake digest snapshot.
+- Phase 7 workflow push and pull_request path filters now include the new fake service and test, and the CI job executes the test. Workflow path coverage is present; execution result is not yet available.
+- Updated the provider adapter specification with the exact atomic replay-claim semantics and real-store acceptance gates.
+- CI remains `INCONCLUSIVE` until matching workflow logs are inspected. The fake guard does not prove durable storage, cross-process atomicity, replica failover, or production replay protection.
+- F7-SR-01 remains PARTIALLY_REMEDIATED / OPEN pending independent policy governance and real durable atomic replay-store evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; all work remains in v0.2.
