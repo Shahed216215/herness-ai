@@ -36,6 +36,8 @@ on:
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
 
+# The complete offline suite includes the encrypted core, provider contract, durable ID journal,
+# generated-ID upload orchestration, and end-to-end journaled cloud adapter integration.
 permissions:
   contents: read
 
