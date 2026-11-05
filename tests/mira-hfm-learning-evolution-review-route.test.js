@@ -64,8 +64,6 @@ async function main() {
   process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED = 'true';
   registerRoutes(app,()=>((req,res,next)=>next()),{SYSTEM_ADMIN:'system_admin'},
     {proposalStore:{},auditWriter:async()=>{},bridge});
-  if (previousHookFlag === undefined) delete process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED;
-  else process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED = previousHookFlag;
   assert.equal(typeof app.locals.miraHfmLearningGenerationCycle.stage, 'function');
   const statusLayer = registered[0][2].stack.find(item => item.route &&
     item.route.path === '/status' && item.route.methods.get);
@@ -94,6 +92,8 @@ async function main() {
   });
   assert.equal(staged.status, 'STAGED_FOR_HUMAN_REVIEW');
   assert.equal(calls[0].context.actorId, 'named-admin');
+  if (previousHookFlag === undefined) delete process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED;
+  else process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED = previousHookFlag;
   assert.equal(registered.length,1);
   const router=registered[0][2];
   const layer=router.stack.find(item=>item.route &&
