@@ -157,4 +157,4 @@ grant execute on function public.mira_stage_facebook_group_import_v1(jsonb, json
   to service_role;
 
 comment on function public.mira_stage_facebook_group_import_v1(jsonb, jsonb, text) is
-  'Mira HFM v0.2 Phase 5: atomically stage immutable Facebook Group batch and idempotent audit event in one transaction.';
+  'Mira HFM v0.2 Phase 5: atomic Batch and Audit staging. TRUST BOUNDARY: EXECUTE is service_role-only; RPC validates digest shape and identity but does not recompute canonical SHA-256 over JSONB. Trusted service-role application computes event digests and validates stored Batch digests on readback. Never grant this RPC to client roles.';
