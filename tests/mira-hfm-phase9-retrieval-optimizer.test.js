@@ -32,7 +32,7 @@ async function run(){
  await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],minScore:-1}),/finite non-negative/i);
  await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],minScore:Infinity}),/finite non-negative/i);
  await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],includeUnverified:'false'}),/includeUnverified must be boolean/i);
- await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],tokenCounter:()=>0}),/positive safe integer/i);
+ await assert.rejects(()=>retrieveOptimized({query:'Mira retrieval',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],tokenCounter:()=>0}),/positive safe integer/i);
 
  console.log('HFM_PHASE9_TOKEN_AWARE_BUDGET=PASS');
  console.log('HFM_PHASE9_MULTI_SOURCE_DEGRADATION=PASS');
