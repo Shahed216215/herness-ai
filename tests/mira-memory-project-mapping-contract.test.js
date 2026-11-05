@@ -73,7 +73,24 @@ console.log('CRM_MAPPING_WITHOUT_CLIENT_ID_REJECTED=PASS');
 const general=make({domain:'general_memory',sourceSystem:'mira_legacy_memory',legacyId:'legacy-memory:'+'a'.repeat(64)+':0',sourceOrdinal:0});
 assert.equal(validateProjectMapping({mapping:general,expectedDomain:'general_memory',expectedProjectId:'project-fixture-01',expectedSourceFileDigest:'a'.repeat(64),verifyApproval:verifier,now}).legacyId,general.legacyId);
 console.log('GENERAL_MEMORY_SNAPSHOT_ORDINAL_LOCATOR_PASS=PASS');
-assert.throws(()=>validateProjectMapping({mapping:make({domain:'work_learning',sourceSystem:'mira_work_learning'}),verifyApproval:verifier,now}),/Domain contract is not implemented/);
-console.log('UNREVIEWED_DOMAIN_MAPPING_BLOCKED=PASS');
+
+const workLearning=make({
+ domain:'work_learning',sourceSystem:'mira_work_learning',
+ legacyId:'learning-fixture-001',sourceOrdinal:7
+});
+assert.equal(validateProjectMapping({
+ mapping:workLearning,expectedDomain:'work_learning',
+ expectedProjectId:'project-fixture-01',
+ expectedSourceFileDigest:'a'.repeat(64),verifyApproval:verifier,now
+}).legacyId,'learning-fixture-001');
+console.log('WORK_LEARNING_EXPLICIT_OWNER_MAPPING_SHAPE_PASS=PASS');
+assert.throws(()=>validateProjectMapping({
+ mapping:make({...workLearning,projectId:'project-other'}),
+ expectedDomain:'work_learning',expectedProjectId:'project-fixture-01',
+ expectedSourceFileDigest:'a'.repeat(64),verifyApproval:verifier,now
+}),/project scope mismatch/);
+console.log('WORK_LEARNING_CROSS_PROJECT_MAPPING_REJECTED=PASS');
+assert.throws(()=>validateProjectMapping({mapping:make({domain:'work_knowledge_consolidation',sourceSystem:'mira_work_knowledge'}),verifyApproval:verifier,now}),/Domain contract is not implemented/);
+console.log('UNREVIEWED_DERIVED_DOMAIN_MAPPING_BLOCKED=PASS');
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_HFM_PHASE3_PROJECT_MAPPING_CONTRACT_PASS');
