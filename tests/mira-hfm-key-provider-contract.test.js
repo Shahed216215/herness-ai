@@ -65,6 +65,11 @@ assert.throws(() => validateSnapshotSigningProvider({
   ...signingProvider, privateKeyBytes: Buffer.from('secret')
 }, { environment: 'staging', keyId: 'snapshot-key' }),
 error => error.code === 'HFM_SIGNING_PROVIDER_CONTRACT_INVALID');
+assert.throws(() => validateSnapshotSigningProvider({
+  ...signingProvider,
+  descriptor: { ...signingProvider.descriptor, privateKeyPem: 'must-not-enter-descriptor' }
+}, { environment: 'staging', keyId: 'snapshot-key' }),
+error => error.code === 'HFM_SIGNING_PROVIDER_CONTRACT_INVALID');
 process.stdout.write('MIRA_HFM_PHASE7_SNAPSHOT_SIGNING_PROVIDER_CONTRACT_PASS\\n');
 process.stdout.write('PRIVATE_KEY_MATERIAL_EXPOSED_TO_ADAPTER=NO\\n');
 
