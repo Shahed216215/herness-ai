@@ -72,10 +72,11 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest complete offline CI: GitHub Actions run **42007196180 — SUCCESS**, job **127176834532**, code/test commit `34709f7bc02bfcb04981d56fa1e1ac68436c479a`.
-- All six offline test suites and the Node syntax-check step completed successfully. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Latest current-head CI: run **42007322532 — SUCCESS**, job **127177255420**, documentation head commit `7c9d6f2a6af929f087186e87480d28083c889c3d`.
+- Tested application/test source commit: `34709f7bc02bfcb04981d56fa1e1ac68436c479a`; the later head commit changes documentation only.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
-- The current branch was restacked on the latest Phase 6 base before this run. Subsequent documentation-only commits do not alter the tested application/test source.
+- The branch is restacked on the latest Phase 6 base; PR #16 is mergeable, Draft and unmerged.
 - This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
 
 ## Explicit exclusions and blockers
