@@ -151,7 +151,7 @@ function createFacebookGroupImportService({ store } = {}) {
   validateStore(store);
   return Object.freeze({
     async import(input) {
-      const prepared = prepareFacebookGroupImport(input), staged = await store.stageBatch(prepared);
+      const prepared = prepareFacebookGroupImport(input), staged = await store.stageBatchAndAudit(prepared, { eventType: 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED', projectId: prepared.projectId, groupId: prepared.groupId, batchId: prepared.batchId, batchDigest: prepared.batchDigest, actorId: prepared.createdBy, canonicalMemoryWrite: false });
       if (!object(staged) || !['CREATED','ALREADY_EXISTS'].includes(staged.status) || staged.batchId !== prepared.batchId) fail('FB_GROUP_IMPORT_STAGE_FAILED', 'Store did not confirm immutable batch staging.');
       validateStoredBatch(await store.readBatch(prepared.batchId, prepared.projectId), prepared);
       try {
