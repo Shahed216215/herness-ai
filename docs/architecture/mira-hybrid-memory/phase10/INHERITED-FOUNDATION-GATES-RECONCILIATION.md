@@ -68,9 +68,20 @@ The ledger reports a 567-file static inventory scan, 282 domain-relevant files, 
 5. Preserve Drive/Evolution behavior until dependent workflows have verified replacements.
 6. Re-run scoped regression and bypass tests on the exact current Phase 2 head; keep production/live tests unexecuted unless the separately authorized test window begins.
 
-## 4. Branch-lineage caution
+## 4. Branch-lineage reconciliation (verified 2026-11-06)
 
-The Phase 2 clean-restack PR #29 is based on `main`, while the Phase 10 PR #41 is based on the Phase 9 clean-restack branch. The reviewed records do not, by themselves, prove that PR #29's exact clean-restack commit is an ancestor of the Phase 9/10 branch chain. Do not silently combine, cherry-pick, or claim those branches are reconciled. Before any source integration, verify exact commit ancestry and compare trees/patches; preserve historical branches and avoid force-push.
+Exact GitHub compare results establish the following ancestry for the Phase 2–4 chain:
+
+- PR #29 Phase 2 head `90efb03cdf7facc8e908d927244a8019565a6639` is the base of PR #30 Phase 3; PR #30 head is `26a3cccb34115c1f467a72cffb4dbea9cb37aacc`.
+- PR #30 Phase 3 head is the base of PR #31 Phase 4; PR #31 head is `773f8cf551286609690d332ad363142cd74af1d8`.
+- Comparing the Phase 4 head with Phase 9 base `3026e22aa1e2ec9d3a61bf89320174828e120999` returned `ahead`, six commits ahead and zero behind. Therefore the Phase 2→3→4 clean-restack chain is an ancestor of the Phase 9/10 base. The earlier uncertainty about Phase 2–4 ancestry is resolved.
+
+A separate Phase 5 recovery-patch lineage remains unresolved:
+- PR #40's recovery-patch head `6bc5a2c90cf8d3d9ace8248c3a0c154f38199ba0` compared with the Phase 9 base returned `diverged` (4 commits ahead / 57 behind).
+- The Phase 5 clean-restack branch compared with the Phase 9 base also returned `diverged` (4 ahead / 93 behind).
+- PR #40 is closed/merged into its Phase 5 branch, not main; these comparisons do not establish that its recovery patch is present in the Phase 9/10 chain.
+
+Do not silently cherry-pick, merge, or claim Phase 5 recovery-patch integration. Keep this as a branch-lineage blocker pending a deliberate, reviewed reconciliation. Preserve historical branches and avoid force-push.
 
 ## 5. Phase 10 impact
 
