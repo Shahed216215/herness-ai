@@ -24,7 +24,7 @@ Never commit tokens. Store them only in the deployment secret manager.
 
 The module uses the repository's secureProviderRequest transport by default (HTTPS, DNS pinning, no redirects, bounded response). Unit tests inject a mock request and make zero live network calls. Graph API read and publish operations are not run by tests.
 
-## Current limitations
+## Admin API routes\n\nMounted under `/api/admin/facebook-page` and protected by `PERMISSIONS.SYSTEM_ADMIN`:\n\n- `GET /capabilities`\n- `POST /draft`\n- `POST /publish` (requires `confirmPublish: PUBLISH_TO_FACEBOOK_PAGE`)\n- `POST /import-url`\n- `POST /verify`\n\nThe publish route returns `PENDING_READBACK`; it does not claim verification.\n\n## Current limitations
 
 - No Express route is mounted yet.
 - No Meta OAuth/token issuance or permission-grant flow is implemented.
