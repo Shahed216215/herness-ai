@@ -96,3 +96,10 @@ Status: SIGNED STAGING AUTHORIZATION AND SIGN-ONLY SNAPSHOT PROVIDER CONTRACTS I
 - The existing `tests/mira-hfm-key-provider-contract.test.js` suite now includes sign-only snapshot provider contract assertions; the local staging-source and staging-drill fixtures use private keys only inside synthetic provider closures.
 - The Phase 7 workflow already runs the modified key-provider test and staging-source/drill tests on branch pushes. The new contract module is exercised through those tests and the staging source imports it.
 - Latest implementation/test commit: `c0d4a4b682cf8024537b1874e6e4cbd428c12f58`. A matching completed CI run and job logs have not yet been retrieved; verification remains INCONCLUSIVE until commit-matched workflow evidence is inspected.
+
+
+## Filesystem directory-handle hardening checkpoint (2026-11-05)
+- Added `services/mira-hfm-pinned-directory.js`: Linux-only retained directory descriptors through `/proc/self/fd`, no-follow directory open, and inode identity comparison across open.
+- Local staging source now requires Memory and Knowledge files to be direct children of the pinned root and reads them via the retained directory descriptor. Root identity is compared with the initially inspected directory identity. The source exposes `close()` to release the descriptor.
+- The workflow path filter includes the new helper; the existing local staging source suite is the intended integration test path.
+- This is a partial mitigation only. Immutable backup publication and staging-drill readback still use path-based operations; race-oriented runtime tests have not been executed. The HIGH finding F7-SR-03 remains PARTIALLY_REMEDIATED / OPEN. Platforms without Linux procfs/directory flags fail closed for this source adapter.
