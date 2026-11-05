@@ -5,7 +5,10 @@ on:
     paths:
       - 'services/mira-hfm-encrypted-emergency-backup.js'
       - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
+      - 'services/mira-hfm-backup-key-provider.js'
+      - 'services/mira-hfm-drive-emergency-backup-adapter.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
+      - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
   push:
@@ -13,7 +16,11 @@ on:
       - 'work/mira-hfm-v02-phase7-encrypted-emergency-backup'
     paths:
       - 'services/mira-hfm-encrypted-emergency-backup.js'
+      - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
+      - 'services/mira-hfm-backup-key-provider.js'
+      - 'services/mira-hfm-drive-emergency-backup-adapter.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
+      - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
 
@@ -30,3 +37,5 @@ jobs:
           node-version: 24
       - name: Run synthetic offline backup tests
         run: node tests/mira-hfm-encrypted-emergency-backup.test.js
+      - name: Run synthetic offline transport adapter tests
+        run: node tests/mira-hfm-drive-emergency-backup-adapter.test.js
