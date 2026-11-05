@@ -197,6 +197,11 @@ async function verifyAndAcceptSignedProvenancePolicy({
     expectedEnvironment,
     expectedProjectId,
     operationalIssuerIds: evidenceIssuerExclusions,
+    excludedKeyFingerprints: [
+      verified.policyIssuerKeyFingerprint,
+      acceptedPolicyState.trustAnchorSha256,
+      ...verified.reviewerKeyFingerprints
+    ],
     now
   });
   const casRequest = {
