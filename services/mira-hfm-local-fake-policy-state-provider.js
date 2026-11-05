@@ -9,7 +9,7 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function digest(value) {
-  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  return crypto.createHash('sha256').update(canonicalizeProvenancePolicy(value)).digest('hex');
 }
 function codedError(message, code) {
   const error = new Error(message);
