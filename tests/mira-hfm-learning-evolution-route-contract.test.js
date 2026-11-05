@@ -26,9 +26,9 @@ assert.match(supabaseStore, /resolution=ignore-duplicates,return=representation/
 assert.match(migration, /enable row level security/i);
 assert.match(migration, /grant select, insert[\s\S]*to service_role/i);
 assert.doesNotMatch(migration, /grant\s+(all|update|delete)/i);
-assert.match(verification, /has_table_privilege\\('service_role'/);
+assert.match(verification, /has_table_privilege\('service_role'/);
 assert.match(verification, /rls_enabled/);
-assert.doesNotMatch(verification, /^\\s*(insert|update|delete|create|alter|drop)\\s/m);
+assert.doesNotMatch(verification, /^\s*(insert|update|delete|create|alter|drop)\s/m);
 assert.match(route, /hasProductionIntegrationCapabilities\(/);
 assert.match(route, /HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED/);
 assert.match(route, /session\.authenticated !== true/);
