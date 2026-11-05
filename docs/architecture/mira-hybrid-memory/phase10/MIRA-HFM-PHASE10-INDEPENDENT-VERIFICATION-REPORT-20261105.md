@@ -134,3 +134,46 @@ This report is not an independent third-party certification. The review used rep
 
 ---
 This report records evidence and limitations. It does not authorize production migration, deployment, live API access, permission changes, paid services, data deletion, restore, or irreversible actions.
+
+
+## 8. Evidence reconciliation addendum — 2026-11-05
+
+This addendum preserves the original point-in-time report and corrects two branch/evidence discrepancies found during follow-up inspection. It does not change the NO-GO decision.
+
+### 8.1 Phase 6 public retrieval
+
+- Current Phase 6 README and PR #10 describe an auto-discovered, policy-classified read-only retrieval tool. The generation loop exposes tool declarations, dispatches tool calls through the governed work engine, and returns tool output as tool-role context; the Phase 6 test verifies these contracts statically with injected providers.
+- This is source/contract evidence, not a live search-provider request, real model-quality test, or deployed Render E2E. Phase 6 remains live-integration NOT_TESTED / NOT_CERTIFIED.
+- The Phase 8 proposal handoff is a separate, explicit opt-in path that consumes a completed Phase 6 retrieval result; it does not certify retrieval freshness, source authorship, or answer quality.
+
+### 8.2 Phase 8 generation-cycle status — correction to §2.2 and §4 item 8
+
+- The latest Phase 8 branch README and source inspection show that routes/mira-hfm-learning-evolution.js assigns app.locals.miraHfmLearningGenerationCycle, constructs the generation-cycle orchestrator, and gates it with MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED=true. The Phase 8 server.js invokes that handoff after mira_hfm_public_web_retrieval returns, subject to request opt-in, named-admin session, explicit proposal metadata and project binding.
+- Therefore the earlier statement that the Phase 8 adapter is not wired into the live /api/agent source lifecycle is stale for the latest Phase 8 branch. Correct status: source-level route wiring present; offline contract tests reported PASS; deployed runtime/live model/Supabase/Render E2E remains NOT_CERTIFIED.
+- The feature flag is disabled unless explicitly set to true. No evidence in this audit establishes that it is enabled in Render.
+
+### 8.3 Phase 9 branch ancestry and runtime boundary
+
+- A live compare of work/mira-hfm-v02-phase8-learning-evolution-integration against work/mira-hfm-v02-phase9-retrieval-capacity reports status=diverged, Phase 9 ahead by 19 commits and behind by 14 commits, with merge base da4f8015a80d70ef86c660dfd9f791209bb03188.
+- The inspected Phase 9 README explicitly states that its optimizer is dependency-injected, has no automatic runtime hook, and must not be integrated until Phase 8 live gates are complete. The inspected Phase 9 server.js does not contain retrieveOptimized or the optimizer service reference.
+- Accordingly, Phase 9 is isolated optimizer/adapters + synthetic benchmark only. It is not part of the live generation retrieval path. The branch ancestry divergence must be reconciled and the Phase 9 CI rerun against the current Phase 8 head before treating the stacked PR sequence as an integrated candidate. No rebase, merge, force-push or branch mutation was performed in this audit.
+
+### 8.4 Updated gate matrix
+
+| Gate | Corrected evidence-based status |
+|---|---|
+| Phase 6 tool dispatch contract | PASS — static/offline only |
+| Phase 6 live search/model answer E2E | NOT_TESTED |
+| Phase 8 /api/agent handoff source wiring | PASS — source inspection; offline contract only |
+| Phase 8 deployed runtime and live Supabase | NOT_CERTIFIED |
+| Phase 9 optimizer offline tests / synthetic benchmark | PASS — scoped CI only |
+| Phase 9 current-Phase-8 ancestry reconciliation | REVIEW_REQUIRED |
+| Phase 9 optimizer runtime integration / deployed tokenizer | NOT_IMPLEMENTED / NOT_CONFIGURED |
+| Full-system independent verification | INCONCLUSIVE |
+| Production deployment | NOT_APPROVED |
+
+Next safe engineering action: reconcile the Phase 9 branch with the latest Phase 8 head in a new reviewable branch, resolve any conflicts without overwriting either phase's work, then rerun the complete Phase 9 offline workflow. Runtime integration remains a separate gated task after Phase 8 live verification.
+
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+PRODUCTION_DEPLOYMENT=NOT_APPROVED
