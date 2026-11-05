@@ -163,11 +163,11 @@ function verifySignedProvenancePolicy({
     }
   }
   if (!Array.isArray(p.approvals) || p.approvals.length < 2 ||
-
       p.approvals.some(a => !isPlainObject(a) || !validText(a.reviewerId) ||
         !validText(a.keyId) || !validText(a.role) || !validText(a.signature, 2048) ||
         a.reviewerId === p.signer.issuerId || operationalIssuerIds.includes(a.reviewerId)) ||
-      new Set(p.approvals.map(a => a.reviewerId)).size !== p.approvals.length) {
+      new Set(p.approvals.map(a => a.reviewerId)).size !== p.approvals.length ||
+      new Set(p.approvals.map(a => a.role)).size !== p.approvals.length) {
     fail('Policy requires two distinct, separately trusted reviewer signatures.',
       'HFM_PROVENANCE_POLICY_APPROVAL_QUORUM_INVALID');
   }
