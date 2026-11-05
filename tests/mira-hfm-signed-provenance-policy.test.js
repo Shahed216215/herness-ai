@@ -167,6 +167,17 @@ const missingEvidence = basePayload();
 delete missingEvidence.evidence[sourceIds[1]].snapshotIssuerId;
 rejects(() => verify(signed(missingEvidence)), 'HFM_PROVENANCE_EVIDENCE_INVALID');
 
+const extraEvidenceSource = basePayload();
+extraEvidenceSource.evidence['unrelated-source'] = evidence('unrelated-source');
+rejects(() => verify(signed(extraEvidenceSource)), 'HFM_PROVENANCE_POLICY_SOURCES_INVALID');
+
+const extraEvidenceDimension = basePayload();
+extraEvidenceDimension.evidence[sourceIds[0]].unrecognizedDimension = {
+  evidenceId: 'extra-evidence', sha256: 'a'.repeat(64),
+  issuerId: 'independent-evidence-authority', reviewerIds: ['reviewer-a']
+};
+rejects(() => verify(signed(extraEvidenceDimension)), 'HFM_PROVENANCE_EVIDENCE_INVALID');
+
 const selfEvidence = basePayload();
 selfEvidence.evidence[sourceIds[0]].storageSystemId.issuerId = sourceIds[0];
 rejects(() => verify(signed(selfEvidence)), 'HFM_PROVENANCE_EVIDENCE_INVALID');
