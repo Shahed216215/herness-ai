@@ -38,3 +38,39 @@ grant select, insert on table public.mira_facebook_group_import_batches
 -- with a different digest is detected by application readback and quarantined.
 comment on table public.mira_facebook_group_import_batches is
   'Mira HFM v0.2 Phase 5: untrusted, user-supplied Facebook Group import batches; never canonical trusted Memory.';
+
+
+create table if not exists public.mira_facebook_group_import_audit_events (
+  event_id uuid primary key,
+  project_id text not null,
+  group_id text not null,
+  batch_id text not null
+    references public.mira_facebook_group_import_batches(batch_id)
+    on delete restrict,
+  event_digest text not null
+    check (event_digest ~ '^[a-f0-9]{64}$'),
+  payload jsonb not null
+    check (jsonb_typeof(payload) = 'object'),
+  created_at timestamptz not null default now(),
+  constraint mira_fb_group_audit_payload_identity check (
+    payload ->> 'batchId' = batch_id
+    and payload ->> 'projectId' = project_id
+    and payload ->> 'groupId' = group_id
+    and payload ->> 'canonicalMemoryWrite' = 'false'
+  )
+);
+
+create index if not exists mira_fb_group_import_audit_project_group_created_idx
+  on public.mira_facebook_group_import_audit_events
+  (project_id, group_id, created_at);
+
+alter table public.mira_facebook_group_import_audit_events enable row level security;
+
+revoke all on table public.mira_facebook_group_import_audit_events
+  from public, anon, authenticated;
+
+grant select, insert on table public.mira_facebook_group_import_audit_events
+  to service_role;
+
+comment on table public.mira_facebook_group_import_audit_events is
+  'Append-only audit events for Mira HFM v0.2 Phase 5 Facebook Group imports.';
