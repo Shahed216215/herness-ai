@@ -1,11 +1,18 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   CONFIRMATION,
   archiveResearchEvidenceWithHumanApproval
 } = require('../services/mira-facebook-research-archive-approval');
 const registerRoutes = require('../routes/mira-facebook-research-archive');
+
+const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+const routeSource = fs.readFileSync(path.join(__dirname, '..', 'routes', 'mira-facebook-research-archive.js'), 'utf8');
+assert.match(serverSource, /registerMiraFacebookResearchArchiveRoutes\(\s*app,\s*requireAdminPermission,\s*PERMISSIONS\s*\)/);
+assert.match(routeSource, /requireAdminPermission\(PERMISSIONS\.SYSTEM_ADMIN\)/);
 
 const pageId = '118056109579206';
 const evidence = [{
@@ -187,6 +194,7 @@ const evidence = [{
   assert.equal(routeSuccess.code, 200);
   assert.equal(routeSuccess.body.status, 'ARCHIVE_WRITE_VERIFIED');
 
+  console.log('HFM_PHASE6_ARCHIVE_ROUTE_MOUNTED_WITH_SYSTEM_ADMIN=PASS');
   console.log('HFM_PHASE6_ARCHIVE_REQUIRES_NAMED_ADMIN_SESSION=PASS');
   console.log('HFM_PHASE6_ARCHIVE_REQUIRES_EXPLICIT_CONFIRMATION=PASS');
   console.log('HFM_PHASE6_ARCHIVE_REQUIRES_DURABLE_AUDIT_STORAGE=PASS');
