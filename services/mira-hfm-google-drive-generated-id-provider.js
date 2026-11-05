@@ -10,6 +10,31 @@ const FILE_ID_RE = /^[A-Za-z0-9_-]{10,256}$/;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
 const DIGEST_RE = /^[a-f0-9]{64}$/;
 function sha256(bytes) { return crypto.createHash('sha256').update(bytes).digest('hex'); }
+function validateAppProperties(properties, expectedProjectId, expectedBytes) {
+  const required = ['backupId', 'bytes', 'createdAt', 'ciphertextSha256',
+    'encryption', 'projectId', 'schema', 'version'];
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return false;
+  const keys = Object.keys(properties).sort();
+  if (keys.length !== required.length ||
+      keys.some((key, index) => key !== required.slice().sort()[index])) return false;
+  for (const key of required) {
+    if (typeof properties[key] !== 'string' || Buffer.byteLength(key + properties[key], 'utf8') > 124) {
+      return false;
+    }
+  }
+  const timestamp = Date.parse(properties.createdAt);
+  return properties.projectId === expectedProjectId &&
+    ID_RE.test(properties.backupId) &&
+    properties.schema === 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' &&
+    properties.version === '1.0.0' &&
+    properties.encryption === 'AES-256-GCM' &&
+    DIGEST_RE.test(properties.ciphertextSha256) &&
+    Number.isSafeInteger(Number(properties.bytes)) &&
+    Number(properties.bytes) === expectedBytes &&
+    Number.isFinite(timestamp) &&
+    new Date(timestamp).toISOString() === properties.createdAt &&
+    timestamp <= Date.now();
+}
 
 function reject(message, code = 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID') {
   const error = new Error(message);
@@ -99,19 +124,8 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
           !Array.isArray(input.parents) || input.parents.length !== 1 ||
           input.parents[0] !== parentId || !Buffer.isBuffer(input.bytes) ||
           input.bytes.length < 1 || input.bytes.length > MAX_OBJECT_BYTES ||
-          !input.appProperties || input.appProperties.encryption !== 'AES-256-GCM' ||
-          input.appProperties.ciphertextSha256 == null ||
-          !DIGEST_RE.test(input.appProperties.ciphertextSha256) ||
-          input.appProperties.projectId !== projectId ||
-          !ID_RE.test(input.appProperties.backupId || '') ||
-          input.appProperties.schema !== 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' ||
-          input.appProperties.version !== '1.0.0' ||
-          typeof input.appProperties.createdAt !== 'string' ||
-          !Number.isFinite(Date.parse(input.appProperties.createdAt)) ||
-          new Date(Date.parse(input.appProperties.createdAt)).toISOString() !== input.appProperties.createdAt ||
-          sha256(input.bytes) !== input.appProperties.ciphertextSha256 ||
-          !Number.isSafeInteger(Number(input.appProperties.bytes)) ||
-          Number(input.appProperties.bytes) !== input.bytes.length) {
+          !validateAppProperties(input.appProperties, projectId, input.bytes.length) ||
+          sha256(input.bytes) !== input.appProperties.ciphertextSha256) {
         reject('Google Drive create request violates the encrypted backup contract.');
       }
       const backupId = input.appProperties.backupId;
@@ -219,9 +233,8 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
             p.projectId !== projectId || !ID_RE.test(p.backupId || '') ||
             p.schema !== 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' || p.version !== '1.0.0' ||
             !Number.isSafeInteger(size) || size < 1 || size > MAX_OBJECT_BYTES ||
-            propertyBytes !== size || !DIGEST_RE.test(p.ciphertextSha256 || '') ||
-            p.encryption !== 'AES-256-GCM' || !Number.isFinite(created) ||
-            new Date(created).toISOString() !== p.createdAt) {
+            propertyBytes !== size || !validateAppProperties(p, projectId, size) ||
+            !Number.isFinite(created) || new Date(created).toISOString() !== p.createdAt) {
           reject('Google Drive listed item failed encrypted metadata, project, parent, or size validation.',
             'HFM_GOOGLE_DRIVE_LIST_ITEM_INVALID');
         }
