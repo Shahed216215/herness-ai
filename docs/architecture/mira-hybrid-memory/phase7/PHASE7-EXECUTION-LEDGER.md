@@ -1,0 +1,39 @@
+# MIRA HFM v0.2 — Phase 7 Execution Ledger
+
+- Repository: Shahed216215/herness-ai
+- Base branch: work/mira-hfm-v02-phase4-public-web-research
+- Phase 7 branch: work/mira-hfm-v02-phase7-emergency-backup
+- Version boundary: v0.2 (no v0.3 transition)
+- Scope: Emergency Backup; isolated and non-destructive.
+
+## Source reconciliation
+- Existing google-drive.js contains legacy JSON upload/update and download functions for Memory and Knowledge. It is unchanged.
+- Existing tools/knowledge-backup.js and tools/knowledge-restore.js use local Knowledge recovery service.
+- Existing scripts/mira-memory-backup.js delegates to the local Memory store.
+- Existing tools/memory-restore.js is blocked by the action-scoped tool safety boundary.
+- Existing local Memory and Knowledge backup formats are checksummed JSON, not encrypted emergency-backup envelopes.
+- Phase 3 execution ledger states that provider integration, encryption and backup remain open; Phase 3 is not production-integrated/certified.
+- Phase 4 SQL archive is an isolated untrusted Facebook research archive and is not an emergency-backup store.
+
+## Added in this Phase 7 branch
+- services/mira-hfm-emergency-backup.js: isolated AES-256-GCM envelope, authenticated manifest, SHA-256 payload/manifest integrity, project/schema/record-count validation, immutable atomic local publication, backup inventory, plan-only retention and quota snapshot assessment.
+- tests/mira-hfm-emergency-backup.test.js: synthetic positive/negative tests; no production store, external service or network.
+- docs/architecture/mira-hybrid-memory/phase7/README.md: scope and limitations.
+
+## Safety boundary
+- Production Memory read/write: NO
+- Google Drive API/OAuth call: NO
+- Existing Drive routine sync changed: NO
+- Key generation/storage/rotation: NO
+- Production restore/migration: NO
+- Backup deletion: NO
+- Deployment/merge: NO
+
+## Verification
+- Source inspection: COMPLETE for the listed backup/restore paths.
+- Runtime test execution: NOT RUN in this session; CI must provide evidence.
+- Production encryption profile/key custody review: REVIEW_REQUIRED.
+- Google Drive provider upload/download/readback: NOT_IMPLEMENTED.
+- Live Drive quota: NOT_VERIFIED.
+- Production restore: NOT_APPROVED.
+- Phase 7: PARTIAL_IMPLEMENTATION — NOT CERTIFIED.
