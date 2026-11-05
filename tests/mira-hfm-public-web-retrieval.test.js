@@ -8,6 +8,7 @@ const good=[
  {title:'Mira project-mira-v02 memory-alpha-001 Facebook Page '+pageId,url:'https://www.facebook.com/'+pageId+'/posts/555001',snippet:'Evidence mentions project-mira-v02 and memory-alpha-001.'},
  {title:'Mira project-mira-v02 memory-alpha-001 Facebook Page '+pageId,url:'https://www.facebook.com/'+pageId+'/posts/555001',snippet:'Duplicate result.'},
  {title:'Unrelated Facebook Page '+pageId,url:'https://www.facebook.com/'+pageId+'/posts/555002',snippet:'No requested identifiers.'},
+ {title:'Near-match '+pageId+' memory-alpha-001-extra project-mira-v02-extra',url:'https://www.facebook.com/'+pageId+'/posts/555004',snippet:'Identifiers are only partial matches.'},
  {title:'Spoofed Page '+pageId+' memory-alpha-001 project-mira-v02',url:'https://facebook.com.evil.test/'+pageId+'/posts/555003',snippet:'Spoof host.'},
  {title:'Group '+pageId+' memory-alpha-001 project-mira-v02',url:'https://www.facebook.com/groups/123',snippet:'Group is excluded.'}
 ];
@@ -35,6 +36,7 @@ const good=[
  assert.equal(report.limits.canonicalMemoryWrite,false);
  console.log('HFM_PHASE6_PAGE_MEMORY_PROJECT_ID_SEARCH=PASS');
  console.log('HFM_PHASE6_SOURCE_HOST_PATH_AND_EXACT_ID_FILTER=PASS');
+ console.log('HFM_PHASE6_IDENTIFIER_TOKEN_BOUNDARIES=PASS');
  console.log('HFM_PHASE6_DUPLICATE_DEDUPLICATION=PASS');
  console.log('HFM_PHASE6_UNTRUSTED_ARCHIVE_IMPORT=PASS');
 
