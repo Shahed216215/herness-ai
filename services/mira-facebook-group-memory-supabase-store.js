@@ -182,7 +182,7 @@ function createSupabaseFacebookGroupImportStore({
         }
       });
     } catch (_error) {
-      fail('FB_GROUP_STORE_ATOMIC_REQUEST_FAILED', 'Atomic Supabase Group import transaction request failed; retry with the same batch identity.');
+      failCommitted('FB_GROUP_STORE_ATOMIC_REQUEST_FAILED', 'Atomic Supabase Group import transaction request failed; retry with the same batch identity.');
     }
     if (!response || !Number.isInteger(response.status) ||
         response.status < 200 || response.status >= 300) {
