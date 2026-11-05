@@ -70,6 +70,26 @@ const keyProvider = {
     const inventory = backup.inspectBackupDirectory(temp);
     assert.equal(inventory.length, 1);
     assert.equal(inventory[0].status, 'MANIFEST_VALID_ENCRYPTED_CONTENT_NOT_DECRYPTED');
+    const inventoryRaceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-inventory-race-'));
+    const outsideInventoryFile = path.join(os.tmpdir(), 'mira-hfm-inventory-outside-' + crypto.randomBytes(6).toString('hex'));
+    try {
+      const validName = 'valid.mira-hfm.enc.json';
+      const symlinkName = 'symlink.mira-hfm.enc.json';
+      const hardlinkName = 'hardlink.mira-hfm.enc.json';
+      fs.copyFileSync(target, path.join(inventoryRaceDir, validName));
+      fs.writeFileSync(outsideInventoryFile, 'outside-not-a-backup');
+      fs.symlinkSync(outsideInventoryFile, path.join(inventoryRaceDir, symlinkName));
+      fs.linkSync(outsideInventoryFile, path.join(inventoryRaceDir, hardlinkName));
+      const safeInventory = backup.inspectBackupDirectory(inventoryRaceDir);
+      assert.equal(safeInventory.find(item => item.name === validName).status,
+        'MANIFEST_VALID_ENCRYPTED_CONTENT_NOT_DECRYPTED');
+      assert.equal(safeInventory.find(item => item.name === symlinkName).status, 'REVIEW_REQUIRED');
+      assert.equal(safeInventory.find(item => item.name === hardlinkName).status, 'REVIEW_REQUIRED');
+    } finally {
+      fs.rmSync(inventoryRaceDir, { recursive: true, force: true });
+      fs.rmSync(outsideInventoryFile, { force: true });
+    }
+
     const plan = backup.buildRetentionPlan([
       { name: 'new', status: 'MANIFEST_VALID_ENCRYPTED_CONTENT_NOT_DECRYPTED', createdAt: new Date().toISOString(), sizeBytes: 100 },
       { name: 'bad', status: 'REVIEW_REQUIRED', createdAt: new Date().toISOString(), sizeBytes: 1 }
