@@ -74,10 +74,18 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
   return Object.freeze({ async submit(input, context = {}) {
     const p = buildProposal(input);
     const put = await proposalStore.putIfAbsent(p.projectId, p.proposalId, p);
-    if (!put || put.created !== true) fail('Proposal ID conflict; overwrite is forbidden.', 'HFM_LEARNING_PROPOSAL_CONFLICT');
+    if (!put || typeof put.created !== 'boolean') {
+      fail('Proposal store returned an invalid create-only result.', 'HFM_LEARNING_STORE_RESULT_INVALID');
+    }
     const readback = await proposalStore.get(p.projectId, p.proposalId);
     if (!readback || readback.proposalDigest !== p.proposalDigest || readback.evidenceDigest !== p.evidenceDigest) {
-      const e = new Error('Read-after-write verification failed.'); e.code = 'HFM_LEARNING_READBACK_FAILED'; e.stateCommitted = true; throw e;
+      const e = new Error('Read-after-write verification failed or immutable proposal ID conflicts.');
+      e.code = put.created ? 'HFM_LEARNING_READBACK_FAILED' : 'HFM_LEARNING_PROPOSAL_CONFLICT';
+      e.stateCommitted = put.created === true;
+      throw e;
+    }
+    if (!put.created && auditWriter.idempotent !== true) {
+      fail('Proposal ID already exists; idempotent audit reconciliation is not available.', 'HFM_LEARNING_PROPOSAL_CONFLICT');
     }
     try {
       await auditWriter({ event: 'HFM_LEARNING_PROPOSAL_STAGED', projectId: p.projectId,
@@ -90,7 +98,8 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     }
     return { projectId: p.projectId, proposalId: p.proposalId, proposalDigest: p.proposalDigest,
       status: p.status, trustState: p.trustState, approvalRequired: true,
-      automaticExecution: false, canonicalMemoryWrites: 0 };
+      automaticExecution: false, canonicalMemoryWrites: 0,
+      idempotentRetry: put.created === false };
   },
   async get(projectId, proposalId) {
     const safeProjectId = id(projectId, 'projectId');
