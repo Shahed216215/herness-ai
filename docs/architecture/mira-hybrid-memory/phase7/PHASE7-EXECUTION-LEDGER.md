@@ -16,22 +16,23 @@
 - Phase 4 SQL archive is an isolated untrusted Facebook research archive and is not an emergency-backup store.
 
 ## Added in this Phase 7 branch
-- services/mira-hfm-emergency-backup.js: isolated AES-256-GCM envelope, authenticated manifest, SHA-256 payload/manifest integrity, project/schema/record-count validation, immutable atomic local publication, backup inventory, plan-only retention and quota snapshot assessment.
-- tests/mira-hfm-emergency-backup.test.js: synthetic positive/negative tests; no production store, external service or network.
+- services/mira-hfm-emergency-backup.js: per-backup random DEK, AES-256-GCM, externally wrapped DEK, authenticated manifest, SHA-256 payload/manifest integrity, project/schema/record-count validation, immutable atomic local publication, backup inventory, plan-only retention and quota snapshot assessment.
+- tests/mira-hfm-emergency-backup.test.js: synthetic positive/negative tests; test-only KEK wrapper; no production store, external service or network.
 - docs/architecture/mira-hybrid-memory/phase7/README.md: scope and limitations.
+- .github/workflows/mira-hfm-phase7-emergency-backup.yml: isolated Node 24 contract workflow.
 
 ## Safety boundary
 - Production Memory read/write: NO
 - Google Drive API/OAuth call: NO
 - Existing Drive routine sync changed: NO
-- Key generation/storage/rotation: NO
+- Production key generation/storage/rotation: NO
 - Production restore/migration: NO
 - Backup deletion: NO
 - Deployment/merge: NO
 
 ## Verification
 - Source inspection: COMPLETE for the listed backup/restore paths.
-- Runtime test execution: NOT RUN in this session; CI must provide evidence.
+- Runtime test execution: NOT VERIFIED in this session; GitHub Actions run evidence is not yet available.
 - Production encryption profile/key custody review: REVIEW_REQUIRED.
 - Google Drive provider upload/download/readback: NOT_IMPLEMENTED.
 - Live Drive quota: NOT_VERIFIED.
