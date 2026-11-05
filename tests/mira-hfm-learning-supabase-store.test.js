@@ -71,6 +71,12 @@ async function mockRequest(rawUrl, config) {
   assert.equal(reviews.size,1);
   assert.equal(audits.size,2);
   assert.equal((await bridge.get('project-alpha','proposal-supabase-001')).review.decision,'APPROVE_FOR_MANUAL_HANDOFF');
+  const reviewRetry = await bridge.review('project-alpha','proposal-supabase-001',
+    {decision:'APPROVE_FOR_MANUAL_HANDOFF',reason:'Manual follow-up only.'},
+    {actorRole:'admin',actorId:'test-admin'});
+  assert.equal(reviewRetry.idempotentRetry,true);
+  assert.equal(reviews.size,1);
+  assert.equal(audits.size,2);
   await assert.rejects(()=>bridge.review('project-alpha','proposal-supabase-001',
     {decision:'REJECT',reason:'Immutable second review.'},{actorRole:'admin',actorId:'test-admin'}),
     error=>error.code==='HFM_LEARNING_REVIEW_CONFLICT');
