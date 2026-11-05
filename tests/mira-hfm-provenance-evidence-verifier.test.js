@@ -103,6 +103,27 @@ async function rejects(promise, code) {
     ...fixture(), trustedEvidenceIssuers, expectedEnvironment: 'test',
     expectedProjectId: 'mira-hfm-v02', excludedKeyFingerprints: [publicKeySha256], now
   }), 'HFM_PROVENANCE_EVIDENCE_KEY_ROLE_COLLISION');
+  const mutableInputs = fixture();
+  const mutableEvidenceTrust = JSON.parse(JSON.stringify(trustedEvidenceIssuers));
+  let mutateOnce = true;
+  mutableInputs.evidenceProvider = {
+    async resolve({ evidenceId }) {
+      if (mutateOnce) {
+        mutateOnce = false;
+        mutableInputs.policyPayload.sources.baseline.storageSystemId = 'mutated-after-snapshot';
+        mutableEvidenceTrust[issuerId].publicKeySha256 = '0'.repeat(64);
+      }
+      return mutableInputs.records.get(evidenceId);
+    }
+  };
+  const stableResult = await verifyAllPolicyEvidence({
+    ...mutableInputs, trustedEvidenceIssuers: mutableEvidenceTrust,
+    expectedEnvironment: 'test', expectedProjectId: 'mira-hfm-v02', now
+  });
+  assert.equal(stableResult.verifiedCount, 12);
+  assert.equal(mutableInputs.policyPayload.sources.baseline.storageSystemId, 'mutated-after-snapshot');
+
+
 
   await rejects(verifyAllPolicyEvidence({
     ...fixture(), trustedEvidenceIssuers, expectedEnvironment: 'test',
