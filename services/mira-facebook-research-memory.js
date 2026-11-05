@@ -55,10 +55,15 @@ function validateSourceUrl(value, expectedPageId) {
     throw new Error('sourceUrl must be a standard HTTPS Facebook URL.');
   }
   const parts = url.pathname.split('/').filter(Boolean);
-  const profile = parts.length === 1 && parts[0] === expectedPageId;
-  const post = parts.length === 3 && parts[0] === expectedPageId && parts[1] === 'posts';
+  const numericProfile = parts.length === 1 && parts[0] === expectedPageId;
+  const pagesDirectoryProfile = parts.length === 3 && parts[0] === 'pages' && parts[2] === expectedPageId;
+  const profilePhp = url.pathname === '/profile.php' && url.searchParams.get('id') === expectedPageId;
+  const numericPost = parts.length === 3 && parts[0] === expectedPageId && parts[1] === 'posts';
+  const pagesDirectoryPost = parts.length === 5 && parts[0] === 'pages' && parts[2] === expectedPageId && parts[3] === 'posts';
   const permalink = url.pathname === '/permalink.php' && url.searchParams.get('id') === expectedPageId && !!url.searchParams.get('story_fbid');
-  if (!profile && !post && !permalink) throw new Error('sourceUrl does not bind to the selected Facebook Page.');
+  if (!numericProfile && !pagesDirectoryProfile && !profilePhp && !numericPost && !pagesDirectoryPost && !permalink) {
+    throw new Error('sourceUrl does not bind to the selected Facebook Page.');
+  }
   return url.toString();
 }
 function validateEvidence(item, expectedPageId) {
