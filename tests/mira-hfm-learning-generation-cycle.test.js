@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { createGenerationCycleProposalOrchestrator } = require('../services/mira-hfm-learning-generation-cycle');
+const { createGenerationCycleProposalOrchestrator, stageAgentGenerationCycleProposal } = require('../services/mira-hfm-learning-generation-cycle');
 
 const retrievalResult = {
   providerId: 'mira-hfm-public-web-retrieval',
@@ -94,6 +94,59 @@ const input = {
   assert.equal(failed.reconciliationRequired, true);
   assert.equal(failed.canonicalMemoryWrites, 0);
 
+
+
+  let agentStageInput = null;
+  const agentStage = async value => {
+    agentStageInput = value;
+    return { success:true, status:'STAGED_FOR_HUMAN_REVIEW' };
+  };
+  const requestBody = { learningProposalOptIn:true, learningProposal:{
+    projectId:'project-alpha', proposalId:'proposal-agent-001',
+    title:'Agent proposal', rationale:'Evidence review', proposedChange:'Human review only'
+  }};
+  const adminSession = { authenticated:true, role:'admin', username:'named-admin' };
+  const noOptIn = await stageAgentGenerationCycleProposal({
+    toolName:'mira_hfm_public_web_retrieval',
+    requestBody:{ ...requestBody, learningProposalOptIn:false },
+    requestRole:'admin', session:adminSession, toolResult:JSON.stringify(retrievalResult), stage:agentStage
+  });
+  assert.equal(noOptIn.attempted, false);
+  const wrongTool = await stageAgentGenerationCycleProposal({
+    toolName:'other_tool', requestBody, requestRole:'admin', session:adminSession,
+    toolResult:JSON.stringify(retrievalResult), stage:agentStage
+  });
+  assert.equal(wrongTool.attempted, false);
+  const nonAdmin = await stageAgentGenerationCycleProposal({
+    toolName:'mira_hfm_public_web_retrieval', requestBody, requestRole:'user',
+    session:{ authenticated:true, role:'user', username:'ordinary-user' },
+    toolResult:JSON.stringify(retrievalResult), stage:agentStage
+  });
+  assert.equal(nonAdmin.result.code, 'HFM_LEARNING_NAMED_ADMIN_REQUIRED');
+  const noProposal = await stageAgentGenerationCycleProposal({
+    toolName:'mira_hfm_public_web_retrieval', requestBody:{ learningProposalOptIn:true },
+    requestRole:'admin', session:adminSession, toolResult:JSON.stringify(retrievalResult), stage:agentStage
+  });
+  assert.equal(noProposal.result.code, 'HFM_LEARNING_PROPOSAL_INPUT_REQUIRED');
+  const invalidReport = await stageAgentGenerationCycleProposal({
+    toolName:'mira_hfm_public_web_retrieval', requestBody, requestRole:'admin',
+    session:adminSession, toolResult:'not-json', stage:agentStage
+  });
+  assert.equal(invalidReport.result.code, 'HFM_LEARNING_RETRIEVAL_INVALID');
+  const noBridge = await stageAgentGenerationCycleProposal({
+    toolName:'mira_hfm_public_web_retrieval', requestBody, requestRole:'admin',
+    session:adminSession, toolResult:JSON.stringify(retrievalResult)
+  });
+  assert.equal(noBridge.result.code, 'HFM_LEARNING_GENERATION_BRIDGE_UNAVAILABLE');
+  const handoff = await stageAgentGenerationCycleProposal({
+    toolName:'mira_hfm_public_web_retrieval', requestBody, requestRole:'admin',
+    session:adminSession, toolResult:JSON.stringify(retrievalResult), stage:agentStage
+  });
+  assert.equal(handoff.attempted, true);
+  assert.equal(handoff.result.status, 'STAGED_FOR_HUMAN_REVIEW');
+  assert.equal(agentStageInput.projectId, 'project-alpha');
+  assert.equal(agentStageInput.retrievalResult.providerId, 'mira-hfm-public-web-retrieval');
+  assert.deepEqual(agentStageInput.actor, { authenticated:true, role:'admin', actorId:'named-admin' });
 
   console.log('HFM_PHASE8_GENERATION_HOOK_DISABLED_BY_DEFAULT=PASS');
   console.log('HFM_PHASE8_GENERATION_HOOK_EXPLICIT_OPT_IN=PASS');
