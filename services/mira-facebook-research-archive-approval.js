@@ -40,6 +40,10 @@ async function archiveResearchEvidenceWithHumanApproval({
       env.MIRA_FACEBOOK_RESEARCH_MEMORY_DURABLE_STORAGE_CONFIRMED !== 'true') {
     fail('RESEARCH_ARCHIVE_DURABILITY_NOT_CONFIRMED', 'Production local archive writes require an explicitly confirmed persistent storage mount.');
   }
+  if (env && env.NODE_ENV === 'production' &&
+      env.MIRA_AUDIT_DURABLE_STORAGE_CONFIRMED !== 'true') {
+    fail('RESEARCH_ARCHIVE_AUDIT_DURABILITY_NOT_CONFIRMED', 'Production archive writes require an explicitly confirmed durable audit-log mount.');
+  }
   if (typeof authorize !== 'function' || typeof audit !== 'function' || typeof archiveEvidence !== 'function') {
     fail('RESEARCH_ARCHIVE_WORKFLOW_UNAVAILABLE', 'The approval workflow dependencies are unavailable.');
   }
