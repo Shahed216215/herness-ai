@@ -11,25 +11,28 @@ const evidence = [{ evidenceId:'evidence-001', projectId:'project-alpha', source
 const base = { projectId:'project-alpha', proposalId:'proposal-001', title:'Candidate learning improvement',
   rationale:'A bounded hypothesis supported by recorded evidence.', proposedChange:'Prepare a human-reviewable proposal only.',
   evidence, createdAt:'2026-11-05T06:00:00.000Z' };
+const rawRetrieval = {
+  providerId:'mira-hfm-public-web-retrieval', retrievalMode:'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
+  page:{pageId:'123456789'}, limits:{canonicalMemoryWrite:false,trustPromotion:false},
+  evidence:[{evidenceId:'fbweb-evidence-001',pageId:'123456789',
+    sourceUrl:'https://www.facebook.com/123456789/posts/987654321',
+    title:'Public page post',snippet:'Synthetic indexed snippet.'}]
+};
 const retrievalInput = fromPublicRetrieval({
   projectId:'project-alpha', proposalId:'proposal-retrieval-001',
   title:'Public research learning candidate', rationale:'Review public indexed evidence before any learning action.',
-  proposedChange:'Prepare a human-reviewed learning candidate.',
-  retrievalResult:{
-    providerId:'mira-hfm-public-web-retrieval', retrievalMode:'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
-    page:{pageId:'123456789'},
-    limits:{canonicalMemoryWrite:false,trustPromotion:false},
-    evidence:[{evidenceId:'fbweb-evidence-001',pageId:'123456789',
-      sourceUrl:'https://www.facebook.com/123456789/posts/987654321',
-      title:'Public page post',snippet:'Synthetic indexed snippet.'}]
-  }
+  proposedChange:'Prepare a human-reviewed learning candidate.', retrievalResult:rawRetrieval
 });
 assert.equal(retrievalInput.evidenceOrigin,'HFM_PUBLIC_FACEBOOK_SEARCH_RESULT_UNVERIFIED');
 assert.equal(retrievalInput.evidence[0].trustState,'UNVERIFIED');
 assert.equal(buildProposal(retrievalInput).trustState,'UNTRUSTED');
-assert.throws(()=>fromPublicRetrieval({...retrievalInput,retrievalResult:{...retrievalInput.retrievalResult,limits:{canonicalMemoryWrite:true,trustPromotion:false}}}),
+assert.throws(()=>fromPublicRetrieval({projectId:'project-alpha',proposalId:'proposal-retrieval-002',
+  title:'Invalid evidence candidate',rationale:'This must be blocked.',proposedChange:'No changes.',
+  retrievalResult:{...rawRetrieval,limits:{canonicalMemoryWrite:true,trustPromotion:false}}}),
   e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
-assert.throws(()=>fromPublicRetrieval({...retrievalInput,retrievalResult:{...retrievalInput.retrievalResult,evidence:[{...retrievalInput.evidence[0],sourceUrl:'https://evil.example/x'}]}}),
+assert.throws(()=>fromPublicRetrieval({projectId:'project-alpha',proposalId:'proposal-retrieval-003',
+  title:'Invalid source candidate',rationale:'This must be blocked.',proposedChange:'No changes.',
+  retrievalResult:{...rawRetrieval,evidence:[{...rawRetrieval.evidence[0],sourceUrl:'https://evil.example/x'}]}}),
   e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
 
 const p = buildProposal(base);
