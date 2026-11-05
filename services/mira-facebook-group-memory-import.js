@@ -55,7 +55,9 @@ function normalizeInputRecord(raw, context) {
   const revision = raw.revision === undefined ? 1 : raw.revision;
   if (!Number.isSafeInteger(revision) || revision < 1 || revision > 1000000) fail('FB_GROUP_IMPORT_INVALID_INPUT', 'record.revision must be a positive bounded integer.');
   const contentHash = sha256(JSON.stringify(content));
-  const generatedId = 'memory-fb-group-' + sha256(context.groupId + '|' + sourceId + '|' + contentHash).slice(0, 32);
+  // Stable source identity must not change when the source content changes;
+  // otherwise a new revision could evade duplicate/version conflict detection.
+  const generatedId = 'memory-fb-group-' + sha256(context.groupId + '|' + sourceId).slice(0, 32);
   const memoryId = raw.memoryId == null ? generatedId : text(raw.memoryId, 'record.memoryId', 128);
   if (memoryId.length < 8) fail('FB_GROUP_IMPORT_INVALID_INPUT', 'record.memoryId is too short.');
   const record = {
