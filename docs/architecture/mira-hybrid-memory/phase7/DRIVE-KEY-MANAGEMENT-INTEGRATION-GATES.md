@@ -129,7 +129,7 @@ This prototype cannot establish real provider atomicity, remote durability, quot
 
 ## 10. Latest code-change CI evidence
 
-Code commit `616178c346e38637c3d6d24358f81ce3d5909a5d` completed GitHub Actions run **41992481568** (job **127127731565**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+Code/test commit `eaa2871bfa84a7457680ce9e9c49490a7dbce581` completed GitHub Actions run **41992655865** (job **127128310119**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
 This evidence is for the latest code-change commit; later commits in this branch only refresh documentation.
 
@@ -137,8 +137,8 @@ This is synthetic offline CI evidence only. It does not certify a live Google Dr
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=41992481568_SUCCESS
-OFFLINE_CI_HEAD=616178c346e38637c3d6d24358f81ce3d5909a5d
+OFFLINE_CI_RUN=41992655865_SUCCESS
+OFFLINE_CI_HEAD=eaa2871bfa84a7457680ce9e9c49490a7dbce581
 OFFLINE_PASS_MARKERS=49
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
