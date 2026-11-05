@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { spawnSync } = require('node:child_process');
 const {
   createEncryptedBackup, decryptAndVerifyBackup, writeImmutableBackup, restoreToStaging
 } = require('../services/mira-hfm-encrypted-emergency-backup');
@@ -119,6 +120,39 @@ try {
     stagingDirectory: restoreDir, restoreId: 'wrong-project-001'
   }));
   console.log('HFM_PHASE7_CLOUD_CAPABILITY_AND_PROJECT_ISOLATION=PASS');
+
+  const independentVerifier = [
+    "const fs = require('node:fs');",
+    "const { decryptAndVerifyBackup } = require('./services/mira-hfm-encrypted-emergency-backup');",
+    "const input = JSON.parse(fs.readFileSync(0, 'utf8'));",
+    "const result = decryptAndVerifyBackup(Buffer.from(input.envelope, 'base64'), Buffer.from(input.key, 'base64'));",
+    "process.stdout.write(JSON.stringify({ backupId: result.backupId, plaintextSha256: result.plaintextSha256, payloadBytes: result.payload.length }));"
+  ].join("\n");
+  const independent = spawnSync(process.execPath, ['-e', independentVerifier], {
+    cwd: path.resolve(__dirname, '..'),
+    input: JSON.stringify({ envelope: envelope.toString('base64'), key: key.toString('base64') }),
+    encoding: 'utf8',
+    timeout: 10000,
+    maxBuffer: 1024 * 1024
+  });
+  assert.equal(independent.status, 0, independent.stderr);
+  const independentResult = JSON.parse(independent.stdout);
+  assert.equal(independentResult.backupId, backupId);
+  assert.equal(independentResult.plaintextSha256, verified.plaintextSha256);
+  assert.equal(independentResult.payloadBytes, payload.length);
+  const invalidRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-test-'));
+  try {
+    await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
+      adapter, projectId: 'mira-project-001', backupId, key: crypto.randomBytes(32),
+      stagingDirectory: invalidRestoreDir, restoreId: 'wrong-key-restore-001'
+    }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
+    assert.deepEqual(fs.readdirSync(invalidRestoreDir), []);
+  } finally {
+    fs.rmSync(invalidRestoreDir, { recursive: true, force: true });
+  }
+  console.log('HFM_PHASE7_INDEPENDENT_PROCESS_RECOVERY=PASS');
+  console.log('HFM_PHASE7_FAILED_AUTH_NO_RESTORE_ARTIFACT=PASS');
+
 
   console.log('HFM_PHASE7_CANONICAL_WRITES=0');
   console.log('HFM_PHASE7_PRODUCTION_RESTORE=0');
