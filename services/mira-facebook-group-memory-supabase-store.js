@@ -68,8 +68,14 @@ function validateBatchRow(row, projectId, groupId) {
   const withoutDigest = Object.fromEntries(
     Object.entries(row.payload).filter(([key]) => key !== 'batchDigest')
   );
-  if (digest(withoutDigest) !== row.batch_digest || !Array.isArray(row.payload.items))
-    fail('FB_GROUP_STORE_INTEGRITY_FAILED', 'Supabase Group import batch digest or item collection is invalid.');
+  if (digest(withoutDigest) !== row.batch_digest ||
+      !Array.isArray(row.payload.items) ||
+      row.payload.sourceType !== 'facebook_group' ||
+      row.payload.sourceAuthorization !== 'USER_ATTESTED_AUTHORIZED_GROUP_ACCESS' ||
+      row.payload.trustPolicy !== 'UNTRUSTED_USER_SUPPLIED_GROUP_CONTENT' ||
+      row.payload.canonicalMemoryWrite !== false ||
+      typeof row.payload.createdBy !== 'string' || !row.payload.createdBy.trim())
+    fail('FB_GROUP_STORE_INTEGRITY_FAILED', 'Supabase Group import batch digest, authorization, trust, or item collection is invalid.');
   for (const item of row.payload.items) {
     if (!item || !item.record || item.record.projectId !== projectId ||
         item.record.source?.sourceType !== 'facebook_group' ||
@@ -78,7 +84,8 @@ function validateBatchRow(row, projectId, groupId) {
         item.record.trust?.status !== 'SOURCE_RECORDED' ||
         item.record.access?.classification !== 'PROJECT_PRIVATE' ||
         !Array.isArray(item.record.access.allowedProjectIds) ||
-        !item.record.access.allowedProjectIds.includes(projectId) ||
+        item.record.access.allowedProjectIds.length !== 1 ||
+        item.record.access.allowedProjectIds[0] !== projectId ||
         digest(item.record) !== item.recordDigest ||
         validateCanonicalMemoryRecord(item.record, 'storedGroupRecord').length > 0 ||
         !['PENDING_REVIEW', 'DUPLICATE', 'QUARANTINED'].includes(item.disposition))
