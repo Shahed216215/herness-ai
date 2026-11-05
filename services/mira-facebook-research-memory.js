@@ -165,14 +165,26 @@ function archiveFacebookResearchEvidence({ pageId: requestedPageId, pageName = n
   const archived = [];
   for (const body of prepared) {
     const target = recordPath(safeDir, body.archiveId);
-    try {
-      writeImmutable(target, body);
-      storedCount++;
-    } catch (error) {
-      if (error.code !== 'EEXIST') throw error;
+    if (existingIds.has(body.archiveId)) {
       const previous = readRecord(target);
-      if (previous.recordDigest !== body.recordDigest) throw new Error('Research memory duplicate identity conflict; manual review required.');
+      if (previous.contentDigest !== body.contentDigest || previous.pageId !== body.pageId ||
+          previous.sourceUrl !== body.sourceUrl || previous.observedAt !== body.observedAt) {
+        throw new Error('Research memory duplicate identity conflict; manual review required.');
+      }
       duplicateCount++;
+    } else {
+      try {
+        writeImmutable(target, body);
+        storedCount++;
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+        const previous = readRecord(target);
+        if (previous.contentDigest !== body.contentDigest || previous.pageId !== body.pageId ||
+            previous.sourceUrl !== body.sourceUrl || previous.observedAt !== body.observedAt) {
+          throw new Error('Concurrent research memory identity conflict; manual review required.');
+        }
+        duplicateCount++;
+      }
     }
     archived.push({ archiveId: body.archiveId, evidenceId: body.evidenceId, sourceUrl: body.sourceUrl, status: 'ARCHIVED_UNTRUSTED' });
   }
