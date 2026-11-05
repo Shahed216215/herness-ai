@@ -2,7 +2,8 @@
 
 const express = require('express');
 const {
-  createFacebookGroupImportService
+  createFacebookGroupImportService,
+  prepareFacebookGroupImport
 } = require('../services/mira-facebook-group-memory-import');
 const {
   createSupabaseFacebookGroupImportStore
@@ -61,11 +62,34 @@ function registerFacebookGroupMemoryImportRoutes(
         });
       }
       const store = createStore();
+      const baseInput = {
+        format: body.format,
+        content: body.content,
+        groupId: body.groupId,
+        projectId: body.projectId,
+        actorId: actor.id,
+        authorizedAccess: body.authorizedAccess === true,
+        sourceId: body.sourceId,
+        sourceUrl: body.sourceUrl,
+        recordType: body.recordType,
+        memoryId: body.memoryId,
+        observedAt: body.observedAt
+      };
       const existingBatches = await store.listBatches({
         projectId: body.projectId,
         groupId: body.groupId
       });
-      const existingRecords = existingBatches.flatMap(batch =>
+      // Compute stable batch identity first. Exclude that batch from the
+      // existing-record snapshot so identical retries reproduce the same
+      // dispositions/digest, while earlier batches still drive conflict checks.
+      const identityCandidate = prepareFacebookGroupImport({
+        ...baseInput,
+        existingRecords: []
+      });
+      const priorBatches = existingBatches.filter(batch =>
+        batch.batchId !== identityCandidate.batchId
+      );
+      const existingRecords = priorBatches.flatMap(batch =>
         Array.isArray(batch.items)
           ? batch.items.map(item => item && item.record).filter(Boolean)
           : []
@@ -82,17 +106,7 @@ function registerFacebookGroupMemoryImportRoutes(
         auditWriter: event => audit({ ...event, actorId: actor.id }, store)
       });
       const result = await service.import({
-        format: body.format,
-        content: body.content,
-        groupId: body.groupId,
-        projectId: body.projectId,
-        actorId: actor.id,
-        authorizedAccess: body.authorizedAccess === true,
-        sourceId: body.sourceId,
-        sourceUrl: body.sourceUrl,
-        recordType: body.recordType,
-        memoryId: body.memoryId,
-        observedAt: body.observedAt,
+        ...baseInput,
         existingRecords
       });
       return res.status(201).json({ success: true, result });
