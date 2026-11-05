@@ -79,6 +79,11 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
 - This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
 
+
+### Canonical snapshot source blocker — Phase 1–3 evidence
+
+The exporter is not blocked by encryption code; it is blocked by source authority and completeness. Phase 1 identifies separate General Memory, Knowledge, CRM Conversation, Work Learning, Work Knowledge, Conversation, Audit and Evolution stores with different schemas and writers. Phase 3 says General Memory, Knowledge and CRM Conversation are `BLOCKED_FOR_PRODUCTION`; Work Learning/Experience/Work Knowledge are `BLOCKED`. The project-owner registry, host authentication and durable replay store remain contract-only/not implemented. See the live-integration approval plan's Section 7A for the per-domain evidence and prerequisites. No legacy file may be treated as the canonical snapshot by assumption.
+
 ## Explicit exclusions and blockers
 
 - Injected Google Drive v3 method mapper: IMPLEMENTED and offline CI-verified with a fake client; real OAuth client wiring and live upload/download/list/quota API remain NOT_IMPLEMENTED / NOT_TESTED. Actual OAuth client wiring and live upload/download/list/quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
