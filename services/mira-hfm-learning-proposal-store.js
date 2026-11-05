@@ -37,59 +37,60 @@ function createPersistentProposalStore(options = {}) {
     ensureSafeDirectory(directory);
     return directory;
   }
-  function filePath(projectId, proposalId) {
+  function filePath(projectId, proposalId, suffix = '.json') {
     validId(proposalId, 'proposalId');
-    return path.join(projectDirectory(projectId), hash(proposalId) + '.json');
+    return path.join(projectDirectory(projectId), hash(proposalId) + suffix);
+  }
+  function readArtifact(target, projectId, proposalId, kind) {
+    let stat;
+    try { stat = fs.lstatSync(target); }
+    catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 2 * 1024 * 1024)
+      fail('HFM_LEARNING_STORE_ARTIFACT_UNSAFE', kind + ' artifact is not a bounded regular file.');
+    let value;
+    try { value = JSON.parse(fs.readFileSync(target, 'utf8')); }
+    catch { fail('HFM_LEARNING_STORE_CORRUPT', kind + ' artifact is not valid JSON.'); }
+    if (!value || value.projectId !== projectId || value.proposalId !== proposalId)
+      fail('HFM_LEARNING_STORE_IDENTITY_MISMATCH', kind + ' artifact identity is invalid.');
+    return value;
+  }
+  function createOnlyArtifact(target, value, code) {
+    let fd;
+    try { fd = fs.openSync(target, 'wx', 0o600); }
+    catch (error) { if (error.code === 'EEXIST') return { created: false }; throw error; }
+    try { fs.writeFileSync(fd, JSON.stringify(value) + '\\n', 'utf8'); fs.fsyncSync(fd); }
+    catch (error) { try { fs.closeSync(fd); } catch {} throw error; }
+    fs.closeSync(fd);
+    try {
+      const dirFd = fs.openSync(path.dirname(target), 'r');
+      try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
+    } catch (error) { error.code = code; error.stateCommitted = true; throw error; }
+    return { created: true };
   }
   return Object.freeze({
     projectIsolated: true, createOnly: true, immutableVersions: true, readAfterWrite: true,
     durable: false, crossInstanceAtomicCreate: false, storageMode: 'LOCAL_SINGLE_INSTANCE_ONLY',
     async putIfAbsent(projectId, proposalId, proposal) {
-      if (!proposal || proposal.projectId !== projectId || proposal.proposalId !== proposalId) {
+      if (!proposal || proposal.projectId !== projectId || proposal.proposalId !== proposalId)
         fail('HFM_LEARNING_PROJECT_MISMATCH', 'Proposal identity does not match its storage key.');
-      }
-      const target = filePath(projectId, proposalId);
-      let fd;
-      try {
-        fd = fs.openSync(target, 'wx', 0o600);
-      } catch (error) {
-        if (error.code === 'EEXIST') return { created: false };
-        throw error;
-      }
-      try {
-        fs.writeFileSync(fd, JSON.stringify(proposal) + '\n', 'utf8');
-        fs.fsyncSync(fd);
-      } catch (error) {
-        try { fs.closeSync(fd); } catch {}
-        throw error;
-      }
-      fs.closeSync(fd);
-      try {
-        const dirFd = fs.openSync(path.dirname(target), 'r');
-        try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
-      } catch (error) {
-        error.code = 'HFM_LEARNING_DIRECTORY_SYNC_FAILED';
-        error.stateCommitted = true;
-        throw error;
-      }
-      return { created: true };
+      return createOnlyArtifact(filePath(projectId, proposalId), proposal, 'HFM_LEARNING_DIRECTORY_SYNC_FAILED');
     },
     async get(projectId, proposalId) {
-      const target = filePath(projectId, proposalId);
-      let stat;
-      try { stat = fs.lstatSync(target); }
-      catch (error) { if (error.code === 'ENOENT') return null; throw error; }
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 2 * 1024 * 1024) {
-        fail('HFM_LEARNING_STORE_ARTIFACT_UNSAFE', 'Proposal artifact is not a bounded regular file.');
-      }
-      let value;
-      try { value = JSON.parse(fs.readFileSync(target, 'utf8')); }
-      catch { fail('HFM_LEARNING_STORE_CORRUPT', 'Stored proposal is not valid JSON.'); }
-      if (!value || value.projectId !== projectId || value.proposalId !== proposalId ||
-          typeof value.proposalDigest !== 'string' || !/^[a-f0-9]{64}$/.test(value.proposalDigest)) {
-        fail('HFM_LEARNING_STORE_IDENTITY_MISMATCH', 'Stored proposal identity or digest is invalid.');
-      }
+      const value = readArtifact(filePath(projectId, proposalId), projectId, proposalId, 'Proposal');
+      if (value && (typeof value.proposalDigest !== 'string' || !/^[a-f0-9]{64}$/.test(value.proposalDigest)))
+        fail('HFM_LEARNING_STORE_IDENTITY_MISMATCH', 'Proposal digest is invalid.');
       return value;
+    },
+    async putReviewIfAbsent(projectId, proposalId, review) {
+      if (!review || review.projectId !== projectId || review.proposalId !== proposalId)
+        fail('HFM_LEARNING_PROJECT_MISMATCH', 'Review identity does not match its storage key.');
+      return createOnlyArtifact(filePath(projectId, proposalId, '.review.json'), review, 'HFM_LEARNING_REVIEW_DIRECTORY_SYNC_FAILED');
+    },
+    async getReview(projectId, proposalId) {
+      const review = readArtifact(filePath(projectId, proposalId, '.review.json'), projectId, proposalId, 'Review');
+      if (review && (typeof review.reviewDigest !== 'string' || !/^[a-f0-9]{64}$/.test(review.reviewDigest)))
+        fail('HFM_LEARNING_REVIEW_IDENTITY_INVALID', 'Review digest is invalid.');
+      return review;
     }
   });
 }
