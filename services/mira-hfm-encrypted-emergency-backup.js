@@ -129,7 +129,7 @@ function decryptAndVerifyBackup(envelopeBytes, key) {
     if (envelopeBytes.length < 1 || envelopeBytes.length > MAX_ENVELOPE_BYTES) {
       fail('Backup envelope exceeds the size limit.');
     }
-    bytes = envelopeBytes;
+    bytes = Buffer.from(envelopeBytes);
   } else if (typeof envelopeBytes === 'string') {
     const envelopeLength = Buffer.byteLength(envelopeBytes, 'utf8');
     if (envelopeLength < 1 || envelopeLength > MAX_ENVELOPE_BYTES) {
@@ -209,7 +209,7 @@ function writeImmutableBackup({ envelope, key, directory, backupId } = {}) {
     if (envelope.length < 1 || envelope.length > MAX_ENVELOPE_BYTES) {
       fail('Backup envelope exceeds the size limit.');
     }
-    bytes = envelope;
+    bytes = Buffer.from(envelope);
   } else if (typeof envelope === 'string') {
     const envelopeLength = Buffer.byteLength(envelope, 'utf8');
     if (envelopeLength < 1 || envelopeLength > MAX_ENVELOPE_BYTES) {
