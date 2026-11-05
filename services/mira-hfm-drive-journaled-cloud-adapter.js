@@ -59,7 +59,8 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
     const m = remote && remote.metadata;
     if (!remote || remote.id !== journal.generatedFileId || !m ||
         m.accountBinding !== accountBinding || m.driveSpace !== driveSpace ||
-        m.projectId !== project || m.backupId !== backupId ||
+        m.projectId !== project || m.backupId !== backupId || m.backupSchema !== journal.backupSchema ||
+        m.backupVersion !== journal.backupVersion || m.backupCreatedAt !== journal.backupCreatedAt ||
         m.ciphertextSha256 !== journal.ciphertextSha256 ||
         m.bytes !== journal.bytes || m.contentType !== CONTENT_TYPE ||
         m.encryption !== 'AES-256-GCM' || m.parentId !== parentId) {
