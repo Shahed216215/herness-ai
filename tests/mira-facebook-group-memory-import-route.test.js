@@ -79,8 +79,9 @@ assert.equal(permissionRequested, 'SYSTEM_ADMIN');
 assert.equal(mounted[0], '/api/admin/facebook-group');
 assert.equal(typeof mounted[1], 'function');
 assert.equal(mounted[2], router);
-assert.equal(routerUses.length, 1);
+assert.equal(routerUses.length, 2);
 assert.equal(typeof routerUses[0][0], 'function');
+assert.equal(typeof routerUses[1][0], 'function');
 
 function response() {
   return {
