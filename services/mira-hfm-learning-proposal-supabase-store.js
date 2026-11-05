@@ -5,6 +5,7 @@ function secureProviderRequest(...args) {
 }
 const TABLE = 'mira_hfm_learning_proposals';
 const AUDIT_TABLE = 'mira_hfm_learning_proposal_audit_events';
+const REVIEW_TABLE = 'mira_hfm_learning_proposal_reviews';
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 function fail(code, message) { const e = new Error(message); e.code = code; throw e; }
 function canonicalJson(value) {
@@ -76,6 +77,40 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
     if (found.length !== 1) fail('HFM_LEARNING_SUPABASE_IDENTITY_CONFLICT', 'Multiple rows matched one project-scoped proposal ID.');
     return validateProposalRow(found[0], projectId, proposalId);
   }
+  async function getReview(projectId, proposalId) {
+    const query = '?select=project_id,proposal_id,review_digest,payload' +
+      '&project_id=eq.' + encodeURIComponent(projectId) +
+      '&proposal_id=eq.' + encodeURIComponent(proposalId) + '&limit=2';
+    const found = responseRows(await callTable(REVIEW_TABLE, query, 'GET'));
+    if (!found.length) return null;
+    if (found.length !== 1) fail('HFM_LEARNING_SUPABASE_REVIEW_CONFLICT', 'Multiple rows matched one immutable proposal review.');
+    const row = found[0];
+    if (row.project_id !== projectId || row.proposal_id !== proposalId ||
+        typeof row.review_digest !== 'string' || !/^[a-f0-9]{64}$/.test(row.review_digest) ||
+        !row.payload || row.payload.projectId !== projectId || row.payload.proposalId !== proposalId ||
+        row.payload.reviewDigest !== row.review_digest ||
+        digest(Object.fromEntries(Object.entries(row.payload).filter(([k]) => k !== 'reviewDigest'))) !== row.review_digest ||
+        !['APPROVE_FOR_MANUAL_HANDOFF','REJECT'].includes(row.payload.decision) ||
+        row.payload.trustState !== 'UNTRUSTED' || row.payload.canonicalMemoryWrites !== 0 ||
+        row.payload.automaticExecution !== false) {
+      fail('HFM_LEARNING_SUPABASE_REVIEW_INTEGRITY_FAILED', 'Supabase review identity, digest or governance policy failed.');
+    }
+    return row.payload;
+  }
+  async function putReviewIfAbsent(projectId, proposalId, review) {
+    if (!review || review.projectId !== projectId || review.proposalId !== proposalId)
+      fail('HFM_LEARNING_PROJECT_MISMATCH', 'Review identity does not match Supabase key.');
+    const row = { project_id:projectId, proposal_id:proposalId,
+      review_digest:review.reviewDigest, payload:review };
+    const inserted = responseRows(await callTable(REVIEW_TABLE,
+      '?on_conflict=project_id,proposal_id', 'POST', [row],
+      { Prefer:'resolution=ignore-duplicates,return=representation' }));
+    if (inserted.length > 1) fail('HFM_LEARNING_SUPABASE_REVIEW_AMBIGUOUS', 'Supabase returned multiple rows for one immutable review insert.');
+    const readback = await getReview(projectId, proposalId);
+    if (!readback || readback.reviewDigest !== review.reviewDigest)
+      fail('HFM_LEARNING_REVIEW_CONFLICT', 'A review already exists with different immutable content.');
+    return { created:inserted.length === 1 };
+  }
   async function putIfAbsent(projectId, proposalId, proposal) {
     if (!proposal || proposal.projectId !== projectId || proposal.proposalId !== proposalId)
       fail('HFM_LEARNING_PROJECT_MISMATCH', 'Proposal identity does not match Supabase key.');
@@ -91,7 +126,7 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
     return { created: inserted.length === 1 };
   }
   async function writeAuditEvent(event) {
-    if (!event || event.event !== 'HFM_LEARNING_PROPOSAL_STAGED' ||
+    if (!event || !['HFM_LEARNING_PROPOSAL_STAGED','HFM_LEARNING_PROPOSAL_REVIEWED'].includes(event.event) ||
         typeof event.projectId !== 'string' || typeof event.proposalId !== 'string' ||
         typeof event.proposalDigest !== 'string' || typeof event.actorRole !== 'string' ||
         typeof event.createdAt !== 'string' || !Number.isFinite(Date.parse(event.createdAt)) ||
@@ -127,7 +162,7 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
   return Object.freeze({
     projectIsolated:true, createOnly:true, immutableVersions:true, readAfterWrite:true,
     durable:true, crossInstanceAtomicCreate:true, storageMode:'SUPABASE_POSTGREST_IMMUTABLE',
-    putIfAbsent, get, writeAuditEvent
+    putIfAbsent, get, putReviewIfAbsent, getReview, writeAuditEvent
   });
 }
-module.exports = { TABLE, AUDIT_TABLE, createSupabaseLearningProposalStore, validateConfig, canonicalJson };
+module.exports = { TABLE, AUDIT_TABLE, REVIEW_TABLE, createSupabaseLearningProposalStore, validateConfig, canonicalJson };
