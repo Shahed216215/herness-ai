@@ -6,6 +6,7 @@ on:
       - work/mira-hfm-v02-phase6-web-search-retrieval
     paths:
       - 'services/mira-hfm-public-web-retrieval.js'
+      - 'services/ai.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
