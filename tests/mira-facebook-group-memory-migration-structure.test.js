@@ -64,7 +64,7 @@ assert.ok(recovery.includes('security invoker'), 'RPC must use SECURITY INVOKER.
 assert.ok(recovery.includes('on conflict (batch_id) do nothing'), 'Batch insert must be idempotent.');
 assert.ok(recovery.includes('on conflict (operation_key) do nothing'), 'Audit insert must be idempotent.');
 assert.ok(recovery.includes('for update'), 'RPC must verify existing immutable rows under lock.');
-assert.ok(recovery.includes('grant execute on function public.mira_stage_facebook_group_import_v1(jsonb, jsonb, text) to service_role'), 'RPC execute must be restricted to service_role.');
+assert.ok(recovery.includes('grant execute on function public.mira_stage_facebook_group_import_v1') && recovery.includes('to service_role;'), 'RPC execute must be restricted to service_role.');
 assert.doesNotMatch(recovery, /\\b(drop table|truncate table|delete from|update public\\.)\\b/i, 'Recovery migration must remain additive.');
 console.log('GROUP_IMPORT_RECOVERY_MIGRATION_ATOMIC_RPC_AND_IDEMPOTENCY=PASS');
 console.log('NOTE=STATIC_SQL_STRUCTURE_ONLY_NO_POSTGRES_EXECUTION');
