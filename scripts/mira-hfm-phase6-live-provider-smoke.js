@@ -70,7 +70,7 @@ async function runProviderSmoke({
 if (require.main === module) {
   runProviderSmoke({ confirmLive: process.argv.includes('--confirm-live') })
     .then(result => {
-      process.stdout.write(JSON.stringify(result, null, 2) + '\\n');
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n');
       if (result.status === 'LIVE_PROVIDER_FAILED' || result.status === 'BLOCKED') {
         process.exitCode = 1;
       }
@@ -80,7 +80,7 @@ if (require.main === module) {
         status: 'INCONCLUSIVE',
         reason: 'SMOKE_RUNNER_FAILURE',
         networkCalls: 0
-      }) + '\\n');
+      }) + '\n');
       process.exitCode = 1;
     });
 }
