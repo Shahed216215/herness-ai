@@ -33,11 +33,12 @@ function parseResults(response) {
 function validatePageUrlBinding(value, pageId) {
   const normalized = validateFacebookUrl(value);
   const url = new URL(normalized);
+  const supplied = new URL(value);
   const parts = url.pathname.split('/').filter(Boolean);
   const boundProfile =
     (parts.length === 1 && parts[0] === pageId) ||
     (parts.length === 3 && parts[0] === 'pages' && parts[2] === pageId) ||
-    (url.pathname === '/profile.php' && url.searchParams.get('id') === pageId);
+    (url.pathname === '/profile.php' && supplied.searchParams.get('id') === pageId);
   if (!boundProfile) fail('HFM_WEB_RETRIEVAL_PAGE_URL_MISMATCH', 'pageUrl must identify the same numeric Facebook Page ID.');
   return normalized;
 }
@@ -57,7 +58,7 @@ function buildQueries({ pageId, pageName, pageUrl, query, memoryId, projectId })
 }
 async function retrievePublicFacebookMemory({
   pageId, pageName, pageUrl, query = '', memoryId, projectId,
-  searchWeb, archiveEvidence, importResults = true,
+  searchWeb, importResults = false,
   observedAt = new Date().toISOString(), maxResults = 8
 } = {}) {
   const id = validatePageId(pageId);
@@ -69,7 +70,7 @@ async function retrievePublicFacebookMemory({
   const safePageUrl = pageUrl ? validatePageUrlBinding(pageUrl, id) : null;
   if (typeof searchWeb !== 'function') fail('HFM_WEB_RETRIEVAL_PROVIDER_UNAVAILABLE', 'A configured web-search provider is required.');
   if (importResults !== false && importResults !== true) fail('HFM_WEB_RETRIEVAL_INVALID_INPUT', 'importResults must be boolean.');
-  if (importResults && typeof archiveEvidence !== 'function') fail('HFM_WEB_RETRIEVAL_ARCHIVE_UNAVAILABLE', 'An untrusted research archive writer is required when importResults is enabled.');
+  if (importResults === true) fail('HFM_WEB_RETRIEVAL_ARCHIVE_WORKFLOW_NOT_IMPLEMENTED', 'Archive writes are not exposed by the Phase 6 retrieval service; use a separately approved workflow when implemented.');
   const timestamp = new Date(observedAt);
   if (!Number.isFinite(timestamp.getTime()) || timestamp.getTime() > Date.now() + 60000) fail('HFM_WEB_RETRIEVAL_INVALID_INPUT', 'observedAt must be a valid non-future timestamp.');
   if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > MAX_RESULTS) fail('HFM_WEB_RETRIEVAL_INVALID_INPUT', 'maxResults must be between 1 and 10.');
@@ -99,19 +100,7 @@ async function retrievePublicFacebookMemory({
     if (evidence.length >= maxResults) break;
   }
 
-  let archive = { status: 'NOT_REQUESTED', storedCount: 0, duplicateCount: 0, canonicalMemoryWrite: false };
-  if (importResults && evidence.length) {
-    try {
-      archive = await archiveEvidence({ pageId:id, pageName:pageName || null, evidence });
-      if (!archive || archive.status !== 'ARCHIVE_WRITE_VERIFIED') archive = {
-        status: 'ARCHIVE_UNVERIFIED', storedCount: 0, duplicateCount: 0, canonicalMemoryWrite: false
-      };
-    } catch (error) {
-      archive = { status: 'ARCHIVE_UNAVAILABLE', storedCount: 0, duplicateCount: 0,
-        errorCode: typeof error?.code === 'string' ? error.code.slice(0, 80) : 'RESEARCH_ARCHIVE_ERROR',
-        canonicalMemoryWrite: false };
-    }
-  }
+  const archive = { status: 'NOT_REQUESTED', storedCount: 0, duplicateCount: 0, canonicalMemoryWrite: false };
   const status = evidence.length
     ? (errors.length ? 'DEGRADED_WITH_UNTRUSTED_EVIDENCE' : 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED')
     : (successfulQueries === 0

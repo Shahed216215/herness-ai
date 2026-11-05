@@ -19,18 +19,28 @@ const good=[
  assert.ok(queries.some(q=>q.includes('deployment')));
  assert.deepEqual(parseResults(JSON.stringify(good)),good);
  assert.throws(()=>parseResults('provider unavailable'),/non-JSON/);
- const calls=[],archived=[];
+ assert.equal(
+  require('../services/mira-hfm-public-web-retrieval').validatePageUrlBinding(
+   'https://www.facebook.com/profile.php?id='+pageId,pageId
+  ),
+  'https://www.facebook.com/profile.php'
+ );
+ assert.throws(
+  ()=>require('../services/mira-hfm-public-web-retrieval').validatePageUrlBinding(
+   'https://www.facebook.com/profile.php?id=999999999',pageId
+  ),
+  error=>error.code==='HFM_WEB_RETRIEVAL_PAGE_URL_MISMATCH'
+ );
+ const calls=[];
  const report=await retrievePublicFacebookMemory({
-  pageId,memoryId,projectId,observedAt,importResults:true,
-  searchWeb:async q=>{calls.push(q);return good;},
-  archiveEvidence:async x=>{archived.push(x);return {status:'ARCHIVE_WRITE_VERIFIED',storedCount:x.evidence.length,duplicateCount:0,canonicalMemoryWrite:false};}
+  pageId,memoryId,projectId,observedAt,importResults:false,
+  searchWeb:async q=>{calls.push(q);return good;}
  });
  assert.equal(report.status,'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED');
  assert.equal(report.evidence.length,1);
  assert.equal(calls.length,4);
- assert.equal(archived.length,1);
- assert.equal(archived[0].evidence.length,1);
- assert.equal(report.archive.status,'ARCHIVE_WRITE_VERIFIED');
+ assert.equal(report.archive.status,'NOT_REQUESTED');
+ assert.equal(report.archive.storedCount,0);
  assert.equal(report.evidence[0].trustStatus,'SOURCE_RECORDED');
  assert.equal(report.evidence[0].integrityStatus,'UNVERIFIED');
  assert.equal(report.limits.canonicalMemoryWrite,false);
@@ -39,7 +49,7 @@ const good=[
  console.log('HFM_PHASE6_SOURCE_HOST_PATH_AND_EXACT_ID_FILTER=PASS');
  console.log('HFM_PHASE6_IDENTIFIER_TOKEN_BOUNDARIES=PASS');
  console.log('HFM_PHASE6_DUPLICATE_DEDUPLICATION=PASS');
- console.log('HFM_PHASE6_UNTRUSTED_ARCHIVE_IMPORT=PASS');
+ console.log('HFM_PHASE6_RETRIEVAL_SERVICE_READ_ONLY=PASS');
 
  const degraded=await retrievePublicFacebookMemory({
   pageId,memoryId,observedAt,importResults:false,
@@ -84,9 +94,12 @@ const good=[
  await assert.rejects(()=>retrievePublicFacebookMemory({
   pageId,observedAt,importResults:false,searchWeb:async()=>[]
  }),/At least one/);
+ let blockedProviderCalls=0;
  await assert.rejects(()=>retrievePublicFacebookMemory({
-  pageId,projectId,observedAt,importResults:true,searchWeb:async()=>[]
- }),/archive writer is required/);
+  pageId,projectId,observedAt,importResults:true,
+  searchWeb:async()=>{blockedProviderCalls++;return [];}
+ }),error=>error.code==='HFM_WEB_RETRIEVAL_ARCHIVE_WORKFLOW_NOT_IMPLEMENTED');
+ assert.equal(blockedProviderCalls,0);
  console.log('HFM_PHASE6_INPUT_AND_ARCHIVE_GATES_FAIL_CLOSED=PASS');
 
  const tool=createTool({searchWeb:async()=>good,archiveEvidence:async()=>({status:'ARCHIVE_WRITE_VERIFIED',storedCount:1,duplicateCount:0})});
