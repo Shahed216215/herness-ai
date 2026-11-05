@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Encrypted Emergency Backup
 
-Status: ENCRYPTED BACKUP, IMMUTABLE LOCAL ARTIFACT, INTEGRITY VERIFICATION, RESTORE PREVIEW/STAGING, CAPACITY/RETENTION CONTRACTS, VERSIONED KEY-PROVIDER WRAPPER, AND OFFLINE INJECTED TRANSPORT ADAPTER PROTOTYPE IMPLEMENTED. GOOGLE DRIVE OAUTH AND PRODUCTION RESTORE NOT CERTIFIED.
+Status: ENCRYPTED BACKUP, IMMUTABLE LOCAL ARTIFACT, RESTORE PREVIEW/STAGING, CAPACITY/RETENTION, KEY-PROVIDER CONTRACT, DURABLE ID JOURNAL, JOURNALED UPLOAD/CLOUD ADAPTER, AND INJECTED GOOGLE DRIVE V3 MAPPER IMPLEMENTED. LATEST INTEGRATION CI PENDING; GOOGLE OAUTH AND PRODUCTION RESTORE NOT CERTIFIED.
 
 ## Scope
 
@@ -50,12 +50,12 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 - `services/mira-hfm-drive-journaled-cloud-adapter.js` connects the journaled generated-ID uploader to the encrypted cloud-backup service interface.
 - Reconciliation is accepted only after metadata and exact ciphertext verification; the cloud service repeats readback and authenticated-envelope checks.
-- Cloud reads resolve by the journaled exact file ID, never by name. Missing/corrupt journals fail closed. Listing/quota remain separate.
+- Cloud reads resolve by the journaled exact file ID, never by name. Missing/corrupt journals fail closed. When the injected provider exposes project-scoped listPage/getQuota methods, the adapter surfaces listing and quota; otherwise provider quota is explicitly NOT_REPORTED.
 - End-to-end synthetic tests cover encrypted upload, HTTP 409 retry, authenticated preview, restore staging, project isolation and offline-only behavior.
 
 ## Injected Google Drive v3 provider mapper
 
-- `services/mira-hfm-google-drive-generated-id-provider.js` maps an injected Drive v3 client to generated-ID upload, exact-ID metadata read and bounded media download.
+- `services/mira-hfm-google-drive-generated-id-provider.js` maps an injected Drive v3 client to generated-ID upload, exact-ID metadata read, bounded media download, project-scoped pagination and account quota.
 - It validates account fingerprint, drive space, parent folder, appProperties, encrypted MIME type, envelope digest/timestamp and download size; it also maps project-scoped pagination and account quota through `files.list` and `about.get`. It does not create OAuth clients or make requests during construction.
 - The provider is offline-tested with a fake client only. Real OAuth, live Drive calls, Shared Drives, sharing and destructive methods remain unimplemented or uncertified.
 - Official Google Drive API docs support generated IDs for `drive` and `appDataFolder` and document 409 duplicate prevention on retry; see the integration gates document for source links.
@@ -78,9 +78,13 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - The verified run confirms `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - This is synthetic offline CI evidence only, not a live-provider or production recovery certification.
 
+## Live integration approval plan
+
+See [GOOGLE-DRIVE-LIVE-INTEGRATION-APPROVAL-PLAN.md](./GOOGLE-DRIVE-LIVE-INTEGRATION-APPROVAL-PLAN.md). It compares appDataFolder and dedicated My Drive folder options, identifies candidate narrow scopes, and defines the synthetic live-test approval gates. No scope is selected or authorized.
+
 ## Explicit exclusions and blockers
 
-- Actual Google Drive adapter/OAuth/live upload/download/Drive quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
+- Injected Google Drive v3 method mapper: IMPLEMENTED, latest fake-client/integration CI PENDING. Actual OAuth client wiring and live upload/download/list/quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
 - Production key provider/KMS/OS keystore, key custody, rotation execution, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
 - Canonical HFM snapshot exporter: BLOCKED pending production-grade canonical store integration and approved project-owner mappings. Phase 1 static reconciliation is COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS; Phase 2 local-core safety acceptance is PASS_SCOPED; Phase 3 is COMPLETE_SYNTHETIC_CONTRACT_ONLY. These scoped completions do not establish production host authentication, a persistent authoritative project-owner registry, durable replay protection, production record mappings, or a single committed canonical store. No legacy store is safe to export as a canonical HFM snapshot yet.
 - Production restore drill and independent production recovery certification: NOT_TESTED.
@@ -93,6 +97,7 @@ LATEST_VERIFIED_CI_JOB=127158482183
 LATEST_VERIFIED_COMMIT=d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf
 OFFLINE_PASS_MARKERS=66
 CURRENT_HEAD_CI=INCONCLUSIVE_PENDING
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
 PROVIDER_CAPABILITY_NEGOTIATION=PASS
 PROVIDER_QUOTA_REPORTING_CONTRACT=PASS
 NEGOTIATED_LIMIT_ENFORCEMENT=PASS
