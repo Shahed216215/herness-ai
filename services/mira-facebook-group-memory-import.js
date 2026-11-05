@@ -38,7 +38,11 @@ function parsePayload(input) {
   if (format === 'manual') return {
     schemaVersion: '1.0.0', kind: 'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT',
     groupId: input.groupId, projectId: input.projectId,
-    exportId: 'manual-' + sha256(content).slice(0, 24),
+    exportId: 'manual-' + sha256([
+      input.groupId || '', input.projectId || '', input.sourceId || '',
+      input.sourceUrl || '', input.recordType || 'knowledge',
+      input.memoryId || '', input.observedAt || '', content
+    ].join('|')).slice(0, 24),
     records: [{ memoryId: input.memoryId, sourceId: input.sourceId, sourceUrl: input.sourceUrl, recordType: input.recordType || 'knowledge', content, observedAt: input.observedAt, revision: 1 }]
   };
   try { return format === 'json' ? JSON.parse(content) : parseJsonLines(content); }
@@ -121,7 +125,7 @@ function prepareFacebookGroupImport(input = {}) {
     batchId: 'mira-fb-group-import-' + sha256(projectId + '|' + groupId + '|' + exportId).slice(0, 48),
     projectId, groupId, exportId, sourceType: 'facebook_group',
     sourceAuthorization: 'USER_ATTESTED_AUTHORIZED_GROUP_ACCESS',
-    createdAt: items[0].record.source.observedAt, createdBy: actorId, status: 'PREPARED_NOT_PERSISTED',
+    createdAt: items[0].record.source.observedAt, createdBy: actorId, status: 'PREPARED',
     items,
     summary: { total: items.length, pendingReview: items.filter(x => x.disposition === 'PENDING_REVIEW').length, duplicates: items.filter(x => x.disposition === 'DUPLICATE').length, quarantined: items.filter(x => x.disposition === 'QUARANTINED').length },
     trustPolicy: 'UNTRUSTED_USER_SUPPLIED_GROUP_CONTENT', canonicalMemoryWrite: false
