@@ -39,6 +39,13 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - Restart reconciliation returns the persisted ID but explicitly does not assert remote upload success; provider exact-ID retrieval and exact-byte verification remain mandatory.
 - Synthetic offline tests are run in the Phase 7 GitHub Actions workflow. No Google OAuth/API or network calls are performed.
 
+## Journaled generated-ID upload orchestration prototype
+
+- `services/mira-hfm-drive-generated-id-upload.js` composes the local durable ID journal with a provider-injected create/get/download contract.
+- The journal is persisted before upload; retries use the same pre-generated ID only. Every response, including timeout/409, requires exact-ID metadata retrieval and byte-for-byte ciphertext readback.
+- Missing objects remain uncertain; metadata or byte mismatch is a conflict. The implementation makes no OAuth, network, Google SDK or canonical Memory calls.
+- Synthetic offline CI covers pre-upload journal ordering, timeout reconciliation, same-ID retry, remote mismatch and account binding.
+
 ## Offline injected transport adapter
 
 - `services/mira-hfm-drive-emergency-backup-adapter.js` provides a provider-neutral adapter around an injected `atomicCreate`, `readObject`, and `listPage` transport.
