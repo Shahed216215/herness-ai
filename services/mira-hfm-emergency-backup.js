@@ -75,6 +75,10 @@ async function encryptSnapshot({ snapshot, metadata, keyProvider }) {
       wrappedDataKey = await keyProvider.wrapDataKey({
         dataKey: providerKeyCopy, keyId: metadata.keyId, keyVersion: metadata.keyVersion
       });
+    } catch {
+      const error = new Error('External backup key wrapping failed; no encrypted backup was produced.');
+      error.code = 'BACKUP_KEY_WRAP_FAILED';
+      throw error;
     } finally { providerKeyCopy.fill(0); }
     if (typeof wrappedDataKey !== 'string' || !wrappedDataKey || wrappedDataKey.length > 16384) {
       throw new Error('Key provider returned an invalid wrapped data key.');
