@@ -99,6 +99,17 @@ function input(operationId = 'drive-upload-operation-001') {
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-generated-id-upload-'));
   try {
+    const untrustedMetadata = JSON.parse(bytes.toString('utf8'));
+    untrustedMetadata.metadata.untrustedField = 'plaintext-must-not-enter-backup';
+    const untrustedBytes = Buffer.from(JSON.stringify(untrustedMetadata) + '\n');
+    const untrustedDigest = crypto.createHash('sha256').update(untrustedBytes).digest('hex');
+    const rejectedMetadata = fixture(path.join(root, 'untrusted-metadata'));
+    await assert.rejects(() => rejectedMetadata.uploader.upload({
+      ...input(), bytes: untrustedBytes, ciphertextSha256: untrustedDigest
+    }), /Encrypted HFM envelope identity\/schema\/timestamp/);
+    assert.deepEqual(rejectedMetadata.counts, { generate: 0, create: 0, get: 0, download: 0 });
+    console.log('HFM_PHASE7_GENERATED_UPLOAD_ENVELOPE_METADATA_ALLOWLIST=PASS');
+
     const normalDir = path.join(root, 'normal');
     const normal = fixture(normalDir);
     const created = await normal.uploader.upload(input());
