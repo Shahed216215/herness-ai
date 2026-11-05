@@ -67,13 +67,7 @@ function validateUploadInput({ drive, folderId, fileName, bytes, projectId }) {
 async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, projectId,
   allocatedLimitBytes = DEFAULT_ALLOCATED_LIMIT }) {
   validateUploadInput({ drive, folderId, fileName, bytes, projectId });
-  const quota = await getDriveQuotaSnapshot(drive, allocatedLimitBytes);
-  if (quota.status !== 'QUOTA_SNAPSHOT_VERIFIED') throw new Error('Drive quota is not verified.');
-  if (quota.overLimit || bytes.length > quota.remainingBytes) {
-    const error = new Error('Emergency backup would exceed the allocated Google Drive capacity.');
-    error.code = 'DRIVE_BACKUP_QUOTA_EXCEEDED';
-    throw error;
-  }
+  let quota = null;
   const expectedHash = sha256(bytes);
   const uploadKey = sha256(Buffer.from(JSON.stringify({ folderId, fileName, projectId, expectedHash }), 'utf8'));
   const escapedName = fileName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -153,10 +147,19 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
   }
   if (existingFiles.length === 1) {
     if (isExactRemoteObject(existingFiles[0])) {
+      // No new object is created, so current quota does not gate exact reuse.
       return verifyRemoteObject(existingFiles[0], 'VERIFIED_EXISTING_IDEMPOTENT');
     }
     const error = new Error('Immutable emergency backup name is occupied by a different remote object; refusing overwrite.');
     error.code = 'DRIVE_BACKUP_ALREADY_EXISTS';
+    throw error;
+  }
+
+  quota = await getDriveQuotaSnapshot(drive, allocatedLimitBytes);
+  if (quota.status !== 'QUOTA_SNAPSHOT_VERIFIED') throw new Error('Drive quota is not verified.');
+  if (quota.overLimit || bytes.length > quota.remainingBytes) {
+    const error = new Error('Emergency backup would exceed the allocated Google Drive capacity.');
+    error.code = 'DRIVE_BACKUP_QUOTA_EXCEEDED';
     throw error;
   }
 
