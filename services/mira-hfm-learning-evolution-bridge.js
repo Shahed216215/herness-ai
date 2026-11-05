@@ -124,7 +124,7 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     const reviewedAt = input.reviewedAt || (existing && existing.reviewedAt) || new Date().toISOString();
     const reviewDate = new Date(reviewedAt);
     if (!Number.isFinite(reviewDate.getTime()) || reviewDate.toISOString() !== reviewedAt)
-      fail('HFM_LEARNING_REVIEW_INVALID', 'reviewedAt must be a canonical ISO timestamp.');
+      fail('reviewedAt must be a canonical ISO timestamp.', 'HFM_LEARNING_REVIEW_INVALID');
     const review = {
       schema: 'MIRA_HFM_LEARNING_PROPOSAL_REVIEW',
       version: '1.0.0',
@@ -215,7 +215,7 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
           review.reviewDigest !== digest(Object.fromEntries(Object.entries(review).filter(([key]) => key !== 'reviewDigest'))) ||
           review.trustState !== 'UNTRUSTED' || review.canonicalMemoryWrites !== 0 ||
           review.automaticExecution !== false) {
-        fail('HFM_LEARNING_STORED_REVIEW_INTEGRITY_FAILED', 'Stored human review failed integrity or governance checks.');
+        fail('Stored human review failed integrity or governance checks.', 'HFM_LEARNING_STORED_REVIEW_INTEGRITY_FAILED');
       }
     }
     return Object.freeze({ ...stored, review: review || null });
