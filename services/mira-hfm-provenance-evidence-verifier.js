@@ -148,7 +148,7 @@ async function verifyAllPolicyEvidence({
   const sourceIds = Object.keys(stablePayload.sources);
   const evidenceSourceIds = Object.keys(stablePayload.evidence);
   if (evidenceSourceIds.length !== sourceIds.length ||
-      sourceIds.some(sourceId => !Object.prototype.hasOwnProperty.call(policyPayload.evidence, sourceId))) {
+      sourceIds.some(sourceId => !Object.prototype.hasOwnProperty.call(stablePayload.evidence, sourceId))) {
     fail('Evidence register source keys must exactly match the signed source profiles.',
       'HFM_PROVENANCE_EVIDENCE_REFERENCE_MISSING');
   }
