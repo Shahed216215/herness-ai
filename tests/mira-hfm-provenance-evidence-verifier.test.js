@@ -99,12 +99,12 @@ async function rejects(promise, code) {
     expectedProjectId: 'mira-hfm-v02', now
   }), 'HFM_PROVENANCE_EVIDENCE_STALE');
 
-  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_SIGNED_ISSUER_PASS\\n');
-  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_SCOPE_BINDING_PASS\\n');
-  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_DIGEST_BINDING_PASS\\n');
-  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_FRESHNESS_PASS\\n');
-  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_FAIL_CLOSED_PASS\\n');
-  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_CONTRACT_COMPLETE\\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_SIGNED_ISSUER_PASS\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_SCOPE_BINDING_PASS\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_DIGEST_BINDING_PASS\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_FRESHNESS_PASS\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_FAIL_CLOSED_PASS\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_CONTRACT_COMPLETE\n');
 })().catch(error => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
