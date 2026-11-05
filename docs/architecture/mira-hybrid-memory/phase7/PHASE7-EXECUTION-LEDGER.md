@@ -98,3 +98,5 @@
 - The replay-guard interface is not itself a production implementation. Real deployments must provide a durable, atomic, cross-instance consume operation; test Set-based guard is synthetic only. The authorization issuer's policy correctness and governance are not independently certified.
 - CI for this new authorization implementation: PENDING / NOT VERIFIED. Do not claim PASS until actual workflow logs are inspected.
 - F7-SR-01: PARTIALLY_REMEDIATED / OPEN. Real staging remains NOT_APPROVED.
+
+- Added `docs/architecture/mira-hybrid-memory/phase7/AUTHORIZATION-PROVIDER-GOVERNANCE.md` specifying separate issuer trust, exact policy-version pinning, decision claims, and durable atomic replay-store requirements. No production issuer or replay-store provider is selected.
