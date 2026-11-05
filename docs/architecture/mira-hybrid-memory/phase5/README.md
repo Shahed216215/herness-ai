@@ -70,16 +70,18 @@ Included in the repository `npm test` and the dedicated GitHub Actions workflow:
 - `tests/mira-facebook-group-memory-import.test.js` — schema, source binding, explicit authorization, duplicate/version conflict detection, quarantine, JSON/JSONL/manual parsing, and trust boundaries.
 - `tests/mira-facebook-group-memory-supabase-store.test.js` — mocked Supabase atomic create, idempotency, conflict handling, durable audit readback, and retrieval.
 - `tests/mira-facebook-group-memory-import-route.test.js` — admin guard, named actor, bounded parser, authorization attestation, import, audit, and retrieval routes.
+- `tests/mira-facebook-group-memory-migration-structure.test.js` — offline static checks for table/key/digest constraints, RLS, and least-privilege grants; it is not a PostgreSQL parser or live migration test.
 
 The tests use synthetic fixtures and injected mock storage. They make zero live Facebook requests and do not prove that the migration is applied or that the Render environment is configured.
 
 ### Verified exact-head CI evidence (2026-11-05)
 
 - Branch: `work/mira-hfm-v02-phase5-clean-restack-on-phase4-20261105`.
-- Tested commit: `871cf95301c3f39d525b55dcc93019d2f05102c1`.
-- GitHub Actions run: [42008461380](https://github.com/Shahed216215/herness-ai/actions/runs/42008461380).
+- Latest tested commit: `a55bb66fdf980eb86c433b8422956fd6488cacb1`.
+- Latest GitHub Actions run: [42028318307](https://github.com/Shahed216215/herness-ai/actions/runs/42028318307).
 - Job: `facebook-group-import-offline`; Node.js 24.
-- The three focused suites passed: import/schema/conflict, mocked Supabase store, and admin route/authorization.
+- All four focused suites passed: import/schema/conflict, mocked Supabase store, admin route/authorization, and static SQL migration structure.
+- The initial static-check attempt exposed a test-regex syntax error; the test was corrected and the latest exact-head run passed.
 - Recorded boundary checks: `LIVE_FACEBOOK_REQUESTS=0`, `PRIVATE_GROUP_ACCESS=0`, `CANONICAL_MEMORY_WRITES=0`, and `PRODUCTION_MIGRATION=0`.
 - Therefore the focused Phase 5 offline CI result is **PASS**. This does not mean the full repository `npm test` chain passed: that broader chain has not been verified on this exact head in this acceptance check.
 
@@ -101,12 +103,12 @@ The tests use synthetic fixtures and injected mock storage. They make zero live 
 | Focused Phase 5 offline CI suites | PASS | Actions run `42008461380`, exact head SHA above |
 | External-action boundaries in focused CI | PASS | Zero live Facebook requests, private Group access, canonical Memory writes, and production migrations |
 | Full repository `npm test` chain on exact Phase 5 head | NOT_VERIFIED | The Phase 5 workflow runs the three focused suites, not the complete package script |
-| SQL migration source inspection | REVIEWED | RLS and service-role SELECT/INSERT-only grants are present in source; no PostgreSQL parser/database execution was performed |
+| SQL migration static structure checks | PASS | New offline test verifies both tables, keys, digest constraints, RLS, and service-role SELECT/INSERT-only grants; no PostgreSQL parser/database execution was performed |
 | Supabase migration application and real persistence/readback | DEFERRED | Requires explicit deployment-window approval and target-project verification |
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
 | Native Meta export archive compatibility | NOT_IMPLEMENTED | Only documented JSON, JSONL, and manual-text interchange formats are supported |
 
-**Phase 5 closure status:** `OFFLINE_IMPLEMENTATION_AND_FOCUSED_CI_PASS; FULL_REPO_REGRESSION_NOT_VERIFIED; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified. All work remains within Mira HFM v0.2.
+**Phase 5 closure status:** `OFFLINE_IMPLEMENTATION_AND_FOCUSED_CI_AND_STATIC_SQL_CHECKS_PASS; FULL_REPO_REGRESSION_NOT_VERIFIED; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
