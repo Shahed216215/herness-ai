@@ -24,9 +24,18 @@ async function getDriveQuotaSnapshot(drive, allocatedLimitBytes = DEFAULT_ALLOCA
 }
 async function readResponseBytes(response) {
   const data = response && response.data;
-  if (Buffer.isBuffer(data)) return data;
-  if (data instanceof Uint8Array) return Buffer.from(data);
-  if (data instanceof ArrayBuffer) return Buffer.from(data);
+  if (Buffer.isBuffer(data)) {
+    if (data.length > MAX_BACKUP_BYTES) throw new Error('Google Drive backup readback exceeds the size limit.');
+    return data;
+  }
+  if (data instanceof Uint8Array) {
+    if (data.byteLength > MAX_BACKUP_BYTES) throw new Error('Google Drive backup readback exceeds the size limit.');
+    return Buffer.from(data);
+  }
+  if (data instanceof ArrayBuffer) {
+    if (data.byteLength > MAX_BACKUP_BYTES) throw new Error('Google Drive backup readback exceeds the size limit.');
+    return Buffer.from(data);
+  }
   if (data && typeof data[Symbol.asyncIterator] === 'function') {
     const chunks = [];
     let total = 0;
@@ -66,12 +75,24 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
     throw error;
   }
   const escapedName = fileName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  const existing = await drive.files.list({
-    q: "'" + folderId + "' in parents and name='" + escapedName + "' and trashed=false",
-    spaces: 'drive',
-    fields: 'files(id,name,size,appProperties)'
-  });
-  if (existing && existing.data && Array.isArray(existing.data.files) && existing.data.files.length) {
+  let existing;
+  try {
+    existing = await drive.files.list({
+      q: "'" + folderId + "' in parents and name='" + escapedName + "' and trashed=false",
+      spaces: 'drive',
+      fields: 'files(id,name,size,parents,appProperties)'
+    });
+  } catch {
+    const error = new Error('Google Drive could not verify whether the immutable backup name is already occupied.');
+    error.code = 'DRIVE_BACKUP_DUPLICATE_CHECK_FAILED';
+    throw error;
+  }
+  if (!existing || !existing.data || !Array.isArray(existing.data.files)) {
+    const error = new Error('Google Drive duplicate-check response is incomplete; refusing to upload.');
+    error.code = 'DRIVE_BACKUP_DUPLICATE_CHECK_UNVERIFIED';
+    throw error;
+  }
+  if (existing.data.files.length) {
     const error = new Error('Immutable emergency backup already exists in Drive; refusing overwrite.');
     error.code = 'DRIVE_BACKUP_ALREADY_EXISTS';
     throw error;
