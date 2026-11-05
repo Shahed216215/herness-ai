@@ -157,6 +157,15 @@ async function verifyAndAcceptSignedProvenancePolicy({
     operationalIssuerIds,
     now
   });
+  const evidenceVerification = await verifyAllPolicyEvidence({
+    policyPayload: envelope.payload,
+    evidenceProvider,
+    trustedEvidenceIssuers,
+    expectedEnvironment,
+    expectedProjectId,
+    operationalIssuerIds: [...operationalIssuerIds, expectedStateAuthorityId],
+    now
+  });
   let receipt;
   try {
     receipt = await provider.compareAndSwap({
