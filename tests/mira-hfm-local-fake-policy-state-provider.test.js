@@ -22,7 +22,7 @@ function request({ sequence = 0, previousDigest = null, id = 'policy-1', policyD
   };
 }
 function requestDigest(value) {
-  return crypto.createHash('sha256').update(JSON.stringify({
+  return crypto.createHash('sha256').update(canonicalizeProvenancePolicy({
     authorityId: value.authorityId,
     expectedSequence: value.expectedSequence,
     expectedDigest: value.expectedDigest,
