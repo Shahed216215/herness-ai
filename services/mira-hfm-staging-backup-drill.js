@@ -137,6 +137,16 @@ async function runStagingBackupDrill({
   let stableSource, stableBaselineSource, stableTrustedSources, stableKeyProvider;
   let stableRequest, stableBaselineRequest, stableSchemaVersions;
   try {
+    if (typeof source.readSnapshot !== 'function' ||
+        typeof baselineSource.readSnapshot !== 'function' ||
+        typeof keyProvider.wrapDataKey !== 'function' ||
+        typeof keyProvider.unwrapDataKey !== 'function') {
+      throw new Error('staging source/key adapter methods missing');
+    }
+    const sourceReadSnapshot = source.readSnapshot;
+    const baselineReadSnapshot = baselineSource.readSnapshot;
+    const wrapDataKey = keyProvider.wrapDataKey;
+    const unwrapDataKey = keyProvider.unwrapDataKey;
     const sourceDescriptor = JSON.parse(canonicalize(source.descriptor));
     const baselineDescriptor = JSON.parse(canonicalize(baselineSource.descriptor));
     const keyDescriptor = JSON.parse(canonicalize(keyProvider.descriptor));
@@ -150,16 +160,16 @@ async function runStagingBackupDrill({
     stableSchemaVersions = Object.freeze(supportedSchemaVersions.slice());
     stableSource = Object.freeze({
       descriptor: Object.freeze(sourceDescriptor),
-      readSnapshot: input => source.readSnapshot(input)
+      readSnapshot: input => sourceReadSnapshot.call(source, input)
     });
     stableBaselineSource = Object.freeze({
       descriptor: Object.freeze(baselineDescriptor),
-      readSnapshot: input => baselineSource.readSnapshot(input)
+      readSnapshot: input => baselineReadSnapshot.call(baselineSource, input)
     });
     stableKeyProvider = Object.freeze({
       descriptor: Object.freeze(keyDescriptor),
-      wrapDataKey: input => keyProvider.wrapDataKey(input),
-      unwrapDataKey: input => keyProvider.unwrapDataKey(input)
+      wrapDataKey: input => wrapDataKey.call(keyProvider, input),
+      unwrapDataKey: input => unwrapDataKey.call(keyProvider, input)
     });
   } catch {
     fail('Staging source, request, trust, key-provider descriptor, or schema inputs cannot be snapshotted safely.',
