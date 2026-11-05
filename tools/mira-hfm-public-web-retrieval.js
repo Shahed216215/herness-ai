@@ -1,20 +1,16 @@
 'use strict';
 
 const { retrievePublicFacebookMemory } = require('../services/mira-hfm-public-web-retrieval');
-const { archiveFacebookResearchEvidenceWithProvider } = require('../services/mira-facebook-research-memory-provider');
 
-function createTool({ searchWeb, archiveEvidence } = {}) {
+function createTool({ searchWeb } = {}) {
   const search = typeof searchWeb === 'function'
     ? searchWeb
     : query => require('./web-search').execute({ query });
-  const archive = typeof archiveEvidence === 'function'
-    ? archiveEvidence
-    : input => archiveFacebookResearchEvidenceWithProvider(input);
   return {
     name:'mira_hfm_public_web_retrieval',
     declaration:{
       name:'mira_hfm_public_web_retrieval',
-      description:'Search public web-indexed Facebook Page and post results for a selected numeric Page ID, optionally requiring an exact Memory ID, Project ID, and/or query match. Can archive bounded source-linked results in the separate UNTRUSTED research archive. No direct Facebook fetch, Meta API, Group/private access, login, cookies, or canonical Memory write.',
+      description:'Read-only search of public web-indexed Facebook Page and post results for a selected numeric Page ID, optionally requiring an exact Memory ID, Project ID, and/or query match. Results are returned as untrusted evidence only. This tool never writes to any archive or canonical Memory. No direct Facebook fetch, Meta API, Group/private access, login, or cookies.',
       parameters:{type:'object',properties:{
         pageId:{type:'string',description:'Numeric Facebook Page ID.'},
         pageName:{type:'string',description:'Optional Facebook Page name.'},
@@ -22,13 +18,11 @@ function createTool({ searchWeb, archiveEvidence } = {}) {
         query:{type:'string',description:'Optional exact phrase required in the indexed title/snippet.'},
         memoryId:{type:'string',description:'Optional exact Memory ID required in indexed title/snippet/source URL.'},
         projectId:{type:'string',description:'Optional exact Project ID required in indexed title/snippet/source URL.'},
-        importResults:{type:'boolean',description:'Archive accepted results as untrusted research evidence; defaults to true.'},
         maxResults:{type:'integer',minimum:1,maximum:10}
       },required:['pageId']}
     },
     execute:async args=>JSON.stringify(await retrievePublicFacebookMemory({
-      ...args, searchWeb:search, archiveEvidence:archive,
-      importResults:args && args.importResults !== false
+      ...args, searchWeb:search, importResults:false
     }))
   };
 }
