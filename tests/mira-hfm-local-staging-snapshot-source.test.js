@@ -103,6 +103,7 @@ async function run() {
     const denied = fixture();
     try {
       const deniedReq = request('denied-request-0001', 'intruder');
+      fs.writeFileSync(denied.memoryFile, 'INVALID_JSON_MUST_NOT_BE_READ');
       const deniedSource = createLocalStagingSnapshotSource({
         environment: 'staging', sourceId: 'denied-source', signingKeyId: 'denied-key',
         privateKeyPem: crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }),
@@ -112,7 +113,8 @@ async function run() {
       });
       await assert.rejects(() => deniedSource.readSnapshot(deniedReq),
         error => error.code === 'HFM_AUTHZ_DECISION_MISMATCH');
-      assert.equal(fs.readFileSync(denied.memoryFile, 'utf8'), JSON.stringify([{ id: 'm1', text: 'synthetic memory' }]));
+      assert.equal(fs.readFileSync(denied.memoryFile, 'utf8'), 'INVALID_JSON_MUST_NOT_BE_READ');
+      process.stdout.write('MIRA_HFM_PHASE7_AUTH_DENIAL_BEFORE_FILE_READ_PASS\\n');
     } finally { fs.rmSync(denied.rootDir, { recursive: true, force: true }); }
     process.stdout.write('MIRA_HFM_PHASE7_LOCAL_STAGING_AUTH_DENY_PASS\n');
 
