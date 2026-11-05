@@ -237,8 +237,11 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
       try { verified = decryptAndVerifyBackup(bytes, key); }
       catch (_) { reject('Remote backup could not be authenticated with the supplied root key.',
         'HFM_DRIVE_JOURNAL_RECOVERY_AUTH_FAILED'); }
-      if (verified.backupId !== backupId || verified.createdAt !== match.backupCreatedAt ||
-          !verified.metadata || verified.metadata.projectId !== project) {
+      const authenticatedIdentityMatches = verified.backupId === backupId &&
+        verified.createdAt === match.backupCreatedAt && verified.metadata &&
+        verified.metadata.projectId === project;
+      if (Buffer.isBuffer(verified.payload)) verified.payload.fill(0);
+      if (!authenticatedIdentityMatches) {
         reject('Authenticated envelope identity does not match the requested project/backup.',
           'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
       }
