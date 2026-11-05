@@ -10,7 +10,6 @@ on:
       - 'services/mira-hfm-authoritative-snapshot.js'
       - 'services/mira-hfm-local-staging-snapshot-source.js'
       - 'services/mira-hfm-authorization-decision.js'
-      - 'services/mira-hfm-authorization-decision.js'
       - 'services/mira-hfm-staging-backup-drill.js'
       - 'services/mira-hfm-recovery-verification.js'
       - 'services/mira-hfm-key-provider-contract.js'
