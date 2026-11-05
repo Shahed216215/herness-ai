@@ -124,9 +124,9 @@ const registerStage16_17Routes = require("./routes/stage16-17");
 
 const app = express();
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const HOST = IS_PRODUCTION ? "0.0.0.0" : "127.0.0.1";
 const PORT = Number(process.env.PORT) || 3000;
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 if (IS_PRODUCTION) {
   if (typeof process.env.MIRA_SESSION_SECRET !== "string" ||
