@@ -48,9 +48,24 @@ function pinnedChildPath(pinned, name) {
   return path.join(pinned.path,name);
 }
 function readPinnedChildFile(pinned,name,maxBytes=256*1024*1024) {
-  const fd=fs.openSync(pinnedChildPath(pinned,name),fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
-  try { const stat=fs.fstatSync(fd); if(!stat.isFile()||stat.size>maxBytes) fail('Pinned child is not a bounded regular file.','HFM_PINNED_FILE_UNSAFE'); return {bytes:fs.readFileSync(fd),stat}; }
-  finally { fs.closeSync(fd); }
+  let fd;
+  try {
+    fd=fs.openSync(pinnedChildPath(pinned,name),fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+  } catch {
+    fail('Pinned child could not be opened without following links.','HFM_PINNED_FILE_UNSAFE');
+  }
+  try {
+    const before=fs.fstatSync(fd,{bigint:true});
+    if(!before.isFile()||before.size>BigInt(maxBytes)||before.nlink!==1n)
+      fail('Pinned child must be a bounded regular file with exactly one link.','HFM_PINNED_FILE_UNSAFE');
+    const bytes=fs.readFileSync(fd);
+    const after=fs.fstatSync(fd,{bigint:true});
+    if(before.dev!==after.dev||before.ino!==after.ino||before.size!==after.size||
+       before.mtimeNs!==after.mtimeNs||before.ctimeNs!==after.ctimeNs||
+       after.nlink!==1n||BigInt(bytes.length)!==after.size)
+      fail('Pinned child changed while being read.','HFM_PINNED_FILE_CHANGED_DURING_READ');
+    return {bytes,stat:fs.fstatSync(fd)};
+  } finally { fs.closeSync(fd); }
 }
 function assertDirectChild(directory,filePath,label='File') {
   if(typeof filePath!=='string'||!path.isAbsolute(filePath)||path.dirname(path.resolve(filePath))!==path.resolve(directory)||path.basename(filePath)==='.'||path.basename(filePath)==='..')
