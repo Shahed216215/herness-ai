@@ -17,6 +17,8 @@ on:
       - 'tests/mira-hfm-public-web-retrieval.test.js'
       - 'tests/mira-hfm-public-web-retrieval-runtime-integration.test.js'
       - 'tests/mira-facebook-public-web-research.test.js'
+      - 'scripts/mira-hfm-phase6-live-provider-smoke.js'
+      - 'tests/mira-hfm-phase6-live-provider-smoke.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase6/**'
       - '.github/workflows/mira-hfm-phase6-public-web-retrieval.yml'
@@ -60,6 +62,7 @@ jobs:
           node tests/mira-hfm-public-web-retrieval.test.js
           node tests/mira-hfm-public-web-retrieval-runtime-integration.test.js
           node tests/mira-facebook-public-web-research.test.js
+          node tests/mira-hfm-phase6-live-provider-smoke.test.js
           node tests/mira-hfm-tool-registry-policy-parity.test.js
       - name: Confirm external action boundary
         run: |
