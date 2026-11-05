@@ -3,6 +3,8 @@
 const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
+const jsonStateStore = require('./services/mira-json-state-store');
+const { createStoreInitializationGuard } = require('./services/mira-store-initialization-guard');
 
 const {
   createConversation,
@@ -12,100 +14,134 @@ const {
 
 const CONVERSATION_FILE =
   storagePath("data/conversations.json");
+const CONVERSATION_GUARD = createStoreInitializationGuard({
+  primaryFile: CONVERSATION_FILE,
+  storeId: 'MIRA_CONVERSATION_STORE'
+});
 
-function ensureStore() {
-  const dataDir =
-    path.dirname(
-      CONVERSATION_FILE
-    );
-
-  fs.mkdirSync(
-    dataDir,
-    { recursive: true }
-  );
-
-  if (
-    !fs.existsSync(
-      CONVERSATION_FILE
-    )
-  ) {
-    fs.writeFileSync(
-      CONVERSATION_FILE,
-      JSON.stringify(
-        {
-          version: 1,
-          updatedAt:
-            new Date().toISOString(),
-          conversations: [],
-          messages: [],
-          contexts: []
-        },
-        null,
-        2
-      ) + "\n",
-      "utf8"
-    );
-  }
-}
-
-function loadStore() {
-  ensureStore();
-
-  const raw =
-    fs.readFileSync(
-      CONVERSATION_FILE,
-      "utf8"
-    );
-
-  const store =
-    JSON.parse(raw);
-
+function validateStore(store) {
   if (
     !store ||
     typeof store !== "object" ||
-    !Array.isArray(
-      store.conversations
-    ) ||
-    !Array.isArray(
-      store.messages
-    ) ||
-    !Array.isArray(
-      store.contexts
-    )
+    Array.isArray(store) ||
+    !Array.isArray(store.conversations) ||
+    !Array.isArray(store.messages) ||
+    !Array.isArray(store.contexts)
   ) {
-    throw new Error(
-      "Invalid conversation store format."
-    );
+    throw new Error("Invalid conversation store format.");
   }
-
   return store;
 }
 
-function saveStore(store) {
+function ensureStore() {
+  try {
+    const stat = fs.lstatSync(CONVERSATION_FILE);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error("Conversation store is not a safe regular file.");
+    }
+    CONVERSATION_GUARD.ensureMarker();
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    if (CONVERSATION_GUARD.missingPrimaryDecision() === 'PREVIOUSLY_INITIALIZED') {
+      const missing = new Error(
+        'Conversation store was previously initialized but its primary is missing; empty reinitialization is blocked.'
+      );
+      missing.code = 'CONVERSATION_PRIMARY_MISSING_RESTORE_REQUIRED';
+      throw missing;
+    }
+    CONVERSATION_GUARD.ensureMarker();
+    const initial = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      conversations: [],
+      messages: [],
+      contexts: []
+    };
+    const result = jsonStateStore.atomicWriteJson(
+      CONVERSATION_FILE,
+      initial,
+      "Mira conversation store"
+    );
+    try {
+      jsonStateStore.recordStateAudit(
+        "conversation_store_initialized",
+        "success",
+        CONVERSATION_FILE,
+        {
+          stateHash: result.sha256,
+          conversationCount: 0,
+          messageCount: 0,
+          contextCount: 0
+        }
+      );
+    } catch (auditError) {
+      auditError.code = "CONVERSATION_STORE_INITIALIZED_AUDIT_FAILED";
+      auditError.stateCommitted = true;
+      throw auditError;
+    }
+  }
+}
+function loadStore() {
   ensureStore();
 
-  store.updatedAt =
-    new Date().toISOString();
+  let raw;
+  try {
+    const stat = fs.lstatSync(CONVERSATION_FILE);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error("Conversation store is not a safe regular file.");
+    }
+    raw = fs.readFileSync(CONVERSATION_FILE, "utf8");
+  } catch (error) {
+    throw new Error(
+      "Conversation store cannot be read: " +
+      (error.code || error.message || "IO_ERROR")
+    );
+  }
 
-  const temporaryFile =
-    `${CONVERSATION_FILE}.tmp`;
+  if (!raw.trim()) {
+    throw new Error("Conversation store is empty and may be corrupted.");
+  }
 
-  fs.writeFileSync(
-    temporaryFile,
-    JSON.stringify(
-      store,
-      null,
-      2
-    ) + "\n",
-    "utf8"
+  let store;
+  try {
+    store = JSON.parse(raw);
+  } catch {
+    throw new Error("Conversation store contains invalid JSON.");
+  }
+  return validateStore(store);
+}
+
+function saveStore(store) {
+  validateStore(store);
+  // Refuse to replace a corrupt or unsafe existing state through a direct save call.
+  loadStore();
+  const updated = {
+    ...store,
+    updatedAt: new Date().toISOString()
+  };
+  const result = jsonStateStore.atomicWriteJson(
+    CONVERSATION_FILE,
+    updated,
+    "Mira conversation store"
   );
-
-  fs.renameSync(
-    temporaryFile,
-    CONVERSATION_FILE
-  );
-
-  return store;
+  try {
+    jsonStateStore.recordStateAudit(
+      "conversation_store_write_committed",
+      "success",
+      CONVERSATION_FILE,
+      {
+        stateHash: result.sha256,
+        conversationCount: updated.conversations.length,
+        messageCount: updated.messages.length,
+        contextCount: updated.contexts.length
+      }
+    );
+  } catch (error) {
+    error.code = "CONVERSATION_STORE_COMMITTED_AUDIT_FAILED";
+    error.stateCommitted = true;
+    throw error;
+  }
+  return updated;
 }
 
 function getConversation(
@@ -437,6 +473,7 @@ function getStorePath() {
 
 module.exports = {
   CONVERSATION_FILE,
+  INITIALIZATION_FILE: CONVERSATION_GUARD.markerFile,
   loadStore,
   saveStore,
   getConversation,

@@ -1,0 +1,153 @@
+MIRA HYBRID MEMORY — CAGR-001 PHASE 1 PERSISTENCE DEPENDENCY MATRIX
+Document: MIRA-HFM-CAGR-001
+Version: 1.0.0
+Audit date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Basis: GitHub source inspection of the feature branch; additive review artifact
+Mode: READ-ONLY SOURCE REVIEW
+Implementation: NOT_STARTED
+Production Memory content: NOT_READ
+Production Memory: NOT_TOUCHED
+Live provider calls: 0
+Runtime tests: NOT_EXECUTED
+
+1. RESULT
+
+PHASE1_DEPENDENCY_MATRIX=DOCUMENTED_WITH_REVIEW_LIMITS
+DRIVE_DEPENDENCIES=IDENTIFIED
+MIGRATION_ORDER=PROPOSED_NOT_EXECUTED
+SOURCE_CODE_MODIFIED=NO
+PRODUCTION_DATA_MODIFIED=NO
+PHASE1=NOT_CLOSED
+IMPLEMENTATION=NOT_AUTHORIZED
+
+This matrix identifies the persistent stores and persistence-related components evidenced in the inspected source files. It is not a claim that every repository persistence callsite has been exhaustively enumerated. The earlier baseline callsite inventory is retained as supporting evidence; the matrix below consolidates the Memory-related ownership and dependency picture.
+
+2. STORE AND COMPONENT MATRIX
+
+ID | Store / component | Owner and source path | Read behavior | Write behavior | Data contract evidenced | Migration blocker / risk
+P01 | General conversation Memory | memory.js; services/mira-local-memory-store.js; mira-storage.js | memory.js getMemory/loadMemory delegates to Local Memory Store readMemory | addMemory loads, deduplicates role+content, appends timestamped record, then saves | JSON array of {role, content, time}; capacity-limited | Missing primary file is silently interpreted as []; Local Store and Evolution have separate writers; no canonical revision/CAS contract
+P02 | Local Memory persistence | services/mira-local-memory-store.js | JSON parse; rejects invalid JSON, empty file, non-array, symlink and read errors; missing file returns [] | exclusive temp file, fsync, rename, directory fsync attempt, readback hash | JSON array; backupVersion 2 envelope for backups | Initialization-vs-unexpected-missing distinction; primary read lacks persisted integrity manifest; concurrent writer semantics unproven
+P03 | Knowledge store | knowledge.js; mira-storage.js | loadKnowledge returns [] if missing; invalid JSON/non-array also degrades to [] | saveLocalKnowledge writes JSON directly; addKnowledge then attempts Drive sync | JSON array of knowledge entries with title/url/content, metadata, savedAt, generated id | Fail-open empty fallback can hide corruption; direct non-atomic write; Drive sync is coupled to normal add path
+P04 | Evolution target state | knowledge-memory-evolution.js | Reads local memory.json or knowledge.json; reads matching Drive state | private atomic writer writes local target; then saves Drive state; verifies both; rollback restores both | Target selected as memory or knowledge; array validation; proposal proposedState | Separate writer; Drive is part of apply/verify/rollback contract; removing Drive now breaks the existing workflow
+P05 | Google Drive remote copy | google-drive.js | OAuth credentials/token then Drive list/get; JSON media read | JSON.stringify and Drive create/update; folders Mira AI Memory and Mira AI Knowledge | memory.json and knowledge.json JSON payloads | No encryption layer evidenced in adapter; credential custody and provider availability; remote copy is routine workflow, not emergency-only backup
+P06 | Work Learning records | services/mira-work-learning-engine.js | Reads data/work-learning-records.json; missing/empty/missing records may be treated as empty; parses records | writes normalized {version, updatedAt, records} through temporary file + rename; mode 0600 requested | Learning record array with task, execution, QA, lessons, provenance-like identifiers; secret-key filtering | Not on canonical Memory provider; load path normalizes malformed records; atomic durability and concurrent writer guarantees incomplete
+P07 | Experience Memory | services/mira-experience-memory.js | Derived on demand from Work Learning records; get/list calls learning engine | No independent persistent write path in this module | schemaVersion 1 normalized projection; source links learningId/taskId/executionId/planId and engine version; calculated integrity field | Derived projection, not an independent store; preserve source Learning IDs and compatibility when canonical schema is introduced
+P08 | Experience Retrieval | services/mira-experience-retrieval-engine.js | Retrieves Experience Memory projection and performs lexical token matching | No independent persistent write path evidenced | Query-derived ranked results from Experience records | Retrieval depends on Learning store; token-budget-aware retrieval not evidenced; no multi-provider fan-out
+P09 | Work Knowledge Consolidation | services/mira-work-knowledge-consolidation.js | Reads data/work-knowledge-consolidation.json; normalizes items; verifies integrityHash when present | writes normalized schemaVersion/engineVersion/items/integrityHash via temp file + rename | Consolidation item with fingerprint, lesson/topic, evidenceCount, sourceRecords, QA statuses, confidence, proposal references | Separate store and schema; non-integrity read/parse errors can return an empty store; no canonical provider integration
+P10 | Conversation store | conversation-store.js; conversation-schema.js; mira-storage.js | Loads data/conversations.json; creates empty version-1 store when absent; validates conversations/messages/contexts arrays | temp-file write then rename; CRUD for conversations/messages/contexts | {version, updatedAt, conversations[], messages[], contexts[]} with schema constructors | Not integrated into Project Memory contract; write path does not show fsync/readback integrity; schema evolution/migration contract needs review
+P11 | Audit log | audit-log.js; mira-storage.js | Reads audit-log.json; missing/empty returns []; malformed/unreadable throws | appends sanitized event with previousHash/integrityHash; temp-file rename; retains last 500 | Hash-linked audit events with integrityVersion and resource/action/status/details | Not every Memory lifecycle operation is audited; retention truncation defines a chain boundary; write durability and concurrency need review
+P12 | Evolution snapshots | snapshot-manager.js; knowledge-memory-evolution.js | Reads snapshot manifest/files and verifies file hashes | writes project-file snapshots under backups/changes; Evolution separately persists Drive snapshot | Snapshot manifest + copied file bytes + SHA-256 metadata | Snapshot Manager covers project files; Drive snapshot is separate Evolution mechanism; not a unified Memory backup/recovery contract
+P13 | Local Memory backup | services/mira-local-memory-store.js; scripts/mira-memory-backup.js | Reads current Local Memory and validates backup envelope | Writes memory-backup.json as backupVersion 2 with entryCount and SHA-256 | v1 legacy and v2 checksum envelope | No encryption/authenticity; no schema validation of every record; no independent recovery run in this audit
+P14 | Local Memory restore | tools/memory-restore.js; services/mira-local-memory-store.js | Validates backup and reads current Memory before restore | Requires explicit confirm=true; writes safety backup, atomically replaces Memory, verifies readback | Restored array + safety backup metadata | Destructive production operation; never run as part of this phase; isolated recovery tests and approval required
+P15 | Storage path resolver | mira-storage.js | Resolves project root or configured MIRA_STORAGE_DIR; can seed missing target from project file when enabled | Creates directories and may copy seed files to configured storage root | Path policy, root containment and exclusions for client_secret/google-token files | Storage root may default to project root; seed-copy semantics need explicit migration inventory; not a provider-neutral data layer
+
+3. DRIVE-DEPENDENT WORKFLOW MATRIX
+
+D01 | knowledge.js addKnowledge -> syncToDrive -> saveKnowledgeToDrive | Local knowledge is written first; Drive sync is attempted afterward; Drive failure is caught and reported as false | Drive remains coupled to normal knowledge addition and duplicate path | A replacement must preserve local save result, sync status semantics, deduplication, and callers' expectations.
+
+D02 | knowledge-controlled-apply.js | Imports loadKnowledgeFromDrive and saveKnowledgeToDrive; controlled apply uses snapshot/verify/restore around knowledge update | Drive state participates in controlled apply and rollback | Replacement must cover pre-state acquisition, post-state write/readback, integrity comparison, and rollback parity.
+
+D03 | autonomous-learning-controlled-apply.js | Imports loadKnowledgeFromDrive and saveKnowledgeToDrive; operates on local knowledge file and Drive state | Drive state participates in autonomous-learning controlled apply | Replacement must preserve approval boundary, snapshot, local/remote equality checks, and rollback semantics.
+
+D04 | knowledge-memory-evolution.js | Imports Memory and Knowledge Drive read/write functions; loads local+Drive before apply; persists Drive snapshot; writes local and Drive; reads both back; restores both during rollback | This is the strongest direct blocker: Drive is in the apply, verification, and rollback lifecycle for both Memory and Knowledge | Must first replace the entire dual-state contract with a provider-neutral adapter, conflict handling, snapshots and recovery evidence. Do not remove Drive imports or sync before this is independently verified.
+
+D05 | google-drive.js OAuth adapter | Resolves client_secret.json and google-token.json; accesses Google Drive folders/files and serializes JSON | Shared adapter used by D01-D04 | No live calls made; no encryption established; credential scope, ownership and least-privilege review remain open.
+
+4. OTHER PERSISTENCE DEPENDENCIES AND DATA FLOWS
+
+- Work Learning is the source of Experience Memory and Experience Retrieval. Experience Memory is currently a normalized projection, not a separate persistent provider.
+- Work Learning records are also consumed by Work Knowledge Consolidation. Consolidation validates Learning record integrity and stores derived reusable knowledge separately.
+- Work Learning and Work Knowledge Consolidation call the audit subsystem; general Memory and Knowledge operations are not shown to have comprehensive audit coverage.
+- Conversation storage is a separate persistent domain with conversations, messages and contexts. It should not be merged blindly into the same retention or access policy as general Memory.
+- Evolution snapshots and Local Memory backup/restore are different recovery mechanisms. Neither establishes a unified backup strategy for all stores.
+- Storage path resolution is shared by several components, but using a common path resolver does not make their schemas, write guarantees or provider semantics unified.
+- Change proposals and approval records are adjacent governance dependencies; they are not treated here as Memory content stores. Any migration must preserve their references and approval state.
+
+5. SAFE MIGRATION ORDER — PROPOSAL ONLY
+
+M0 — Freeze and inventory
+- Preserve the existing Drive workflows.
+- Freeze the current source baseline and inventory all read/write callsites, file paths, schemas, environment overrides, and tests.
+- No production Memory reads, migrations, or provider calls are part of this design step.
+
+M1 — Define canonical contracts in isolation
+- Define versioned records with stable IDs, schemaVersion, revision, provenance, timestamps, source references, classification, retention, and integrity metadata.
+- Define distinct logical domains for general Memory, Knowledge, Work Learning, derived Experience, Consolidation, Conversation and Audit. Shared provider does not mean shared retention/access policy.
+- Define missing-store initialization, corruption, conflict, duplicate, tombstone and recovery semantics.
+- Define provider-neutral interfaces and capability declarations; no live adapters yet.
+
+M2 — Build isolated fixture adapters
+- Implement and test adapters against temporary fixture directories and in-memory/mock providers only.
+- Establish atomic writes, compare-and-swap or serialized writer guarantees, readback verification, conflict quarantine, audit coverage, and deterministic failure behavior.
+- Verify that a missing store is distinguishable from an intentionally initialized empty store.
+
+M3 — Add compatibility adapters without deleting existing paths
+- Map Local Memory, Knowledge, Learning, Consolidation and Conversation to the new contracts using fixture data.
+- Keep Experience as a derived projection until a separately justified persistence requirement is proven.
+- Preserve all current public API and proposal references; run offline regression/integration tests against isolated fixtures.
+
+M4 — Migrate each Drive-dependent workflow independently
+- D01 Knowledge add/sync semantics.
+- D02 Knowledge controlled apply and rollback.
+- D03 Autonomous-learning controlled apply and rollback.
+- D04 Evolution Memory/Knowledge apply, verification, Drive snapshot and rollback.
+- For each: demonstrate replacement behavior, error handling, conflict preservation, idempotency, readback, audit and rollback using isolated tests. Do not switch off Drive for any workflow until its own evidence is reviewed.
+
+M5 — Provider cutover decision
+- Only after all workflows have replacement evidence, conduct a separate data classification, encryption/key custody, provider permission and migration plan review.
+- Any production dual-read, dual-write, backfill, cutover or Drive decommission requires a new explicit authorization and an independently approved recovery plan.
+- Keep emergency backup separate from routine sync and verify restore capability before considering any retirement.
+
+M6 — Acceptance and close
+- Run isolated unit, integration, crash/recovery, concurrency, security, compatibility and regression suites.
+- Record exact commands, fixture boundaries, outputs, hashes and test status. Unexecuted tests remain NOT_EXECUTED / INCONCLUSIVE.
+- Close Phase 1 only after full callsite inventory, schema/ownership review, migration blockers and test evidence are reviewed. Phase 2 changes require separate approval.
+
+6. BLOCKERS THAT PREVENT DRIVE REMOVAL TODAY
+
+B01 Existing direct dependency in Evolution apply, verification and rollback.
+B02 Knowledge add path still invokes Drive sync.
+B03 Knowledge controlled apply reads/writes Drive and snapshots/restores state.
+B04 Autonomous-learning controlled apply reads/writes Drive and snapshots/restores state.
+B05 No complete provider-neutral replacement contract or integrated adapter was evidenced.
+B06 No durable conflict quarantine/resolution workflow was evidenced.
+B07 No encryption/key custody/recovery design was evidenced for stored copies.
+B08 No independent end-to-end regression or recovery execution evidence was produced in this audit.
+
+Therefore:
+DRIVE_SYNC_REMOVAL=BLOCKED
+DRIVE_DECOMMISSION=NOT_APPROVED
+PRODUCTION_MIGRATION=NOT_APPROVED
+
+7. REVIEW AND TEST STATUS
+
+GitHub source review was performed for the files listed in the matrix and the prior Phase 1 reconciliation report. This is a bounded source review, not proof of exhaustive repository-wide callsite coverage. The previous baseline contains broader callsite pattern results; those must be reconciled with a fresh full-branch inventory before Phase 1 closure.
+
+Tests were not executed. Existing test source files are evidence of test availability only, not PASS:
+- tests/mira-local-memory-safety-test.js
+- tests/mira-memory-local-store-contract-test.js
+- tests/mira-memory-evolution-integration-test.js
+- tests/stage62-work-learning-e2e-test.js
+- tests/stage623-work-knowledge-consolidation-e2e-test.js
+- tests/stage647-experience-retrieval-e2e-test.js
+
+TEST_EXECUTION=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+PHASE1=INCOMPLETE_PENDING_FULL_CALLSITE_RECONCILIATION_AND_REVIEW
+
+8. SAFETY DECLARATION
+
+SOURCE_CODE_MODIFIED=NO
+PRODUCTION_MEMORY_CONTENT_READ=NO
+PRODUCTION_MEMORY_TOUCHED=NO
+LOCAL_OR_DRIVE_DATA_MODIFIED=NO
+FACEBOOK_API_CALLED=NO
+GOOGLE_DRIVE_API_CALLED=NO
+MIGRATION_OR_RESTORE=NO
+LIVE_PROVIDER_TESTS=NO
+IMPLEMENTATION=NOT_STARTED
+RESULT=DEPENDENCY_MATRIX_DOCUMENTED_WITH_REVIEW_LIMITS
+
+This artifact is additive architecture review documentation only. It does not authorize source implementation, production migration, restore, deletion, Drive sync removal, Facebook permissions, paid services, or deployment.

@@ -1,0 +1,37 @@
+MIRA HFM PHASE 2 — V0.2.1 CONTRACT VERIFICATION
+UTC=2026-11-01T11:26:49.860Z
+BASE_SHA256=e5b06a5bf0e7d3a1d4a4c89d62075631bc66ba54b3d193dd303bc98ebfccc500
+CANDIDATE_SHA256=42db24d0f03d274cb85888a3a56ecac55cd06c543073c56a63cdf25249d94844
+CANDIDATE_BYTES=20470
+CANDIDATE_LINES=658
+PASS: Schema parses
+PASS: Version updated
+PASS: Six nested objects closed
+PASS: Concurrent revision control
+PASS: Revision conflict policy
+PASS: Idempotency conflict policy
+PASS: Adapter error taxonomy
+PASS: Retry semantics
+PASS: Pagination bounds
+PASS: Cursor expiry
+PASS: Encryption envelope
+PASS: Key rotation
+PASS: Key recovery
+PASS: Backup format version
+PASS: Backup compatibility outcomes
+PASS: Provider revalidation
+PASS: Capability expiry
+PASS: Audit event schema
+PASS: Audit hash chain
+PASS: New acceptance tests
+PASS: Production implementation prohibited
+PASS: Migration not authorized
+PASS: Restore not authorized
+CHECKS_TOTAL=23
+CHECKS_PASSED=23
+CHECKS_FAILED=0
+PRODUCTION_MEMORY_TOUCHED=NO
+PRODUCTION_SOURCE_MODIFIED=NO
+NETWORK_REQUESTS=0
+IMPLEMENTATION=NOT_STARTED
+RESULT=STRUCTURAL_CHECKS_PASS_REVIEW_REQUIRED

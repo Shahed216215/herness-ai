@@ -1,0 +1,54 @@
+MIRA HYBRID MEMORY — PHASE 2 DR-08 DESIGN-DIRECTION ACCEPTANCE RECORD
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-DR08-DESIGN-DIRECTION-ACCEPTANCE-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-DR08-TECHNICAL-RECOMMENDATIONS-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Project version boundary: v0.2
+Date: 2026-11-03
+Status: ACCEPTED_AS_PLANNING_BASELINE_ONLY
+
+1. ACCEPTANCE
+
+The project owner accepted the DR-08 technical recommendations as the planning/design direction for continued Phase 2 work.
+
+This acceptance applies to the recommendations in the parent document for:
+- U03: dedicated immutable project genesis anchor.
+- U04: one authoritative append-arbitration authority; provider-native atomic compare-and-swap/transaction is preferred, with explicit uncertain-write recovery states if a qualified alternative is necessary.
+- U05: canonical immutable test registry with stable test IDs, historical aliases, and explicit non-PASS statuses.
+- U06: versioned RFC 3339 UTC timestamp profile with fixed millisecond precision; reject unsupported or excessive precision rather than silently coerce.
+- E-15: independent verifier separated from the writer, allocator, checkpoint producer, and primary provider response path; verifier never auto-repairs.
+
+2. INTERPRETATION
+
+This is acceptance of a design direction for planning and further technical specification. It is not final approval of every unresolved parameter or implementation choice. The parent recommendations remain the controlling technical proposal and must be refined into exact schemas, profiles, test vectors, trust/authority definitions, and acceptance criteria before implementation.
+
+3. AUTHORIZATION BOUNDARY
+
+This record does NOT authorize:
+- Implementation of U03, U04, U05, U06, or E-15.
+- Selection, connection, or cutover to any production provider.
+- Production Memory or Knowledge reads, writes, migration, or modification.
+- Google Drive API calls, Drive sync removal, or provider cutover (HFM-004).
+- Encryption/key-management implementation or emergency-backup migration (HFM-005).
+- Live Facebook/API/model-provider requests, deployment, release, or PR merge.
+- Any version change beyond v0.2.
+
+Those actions remain subject to their own explicit scope, security design, evidence, and approval gates.
+
+4. NEXT SAFE WORK
+
+Continue within v0.2 using read-only inspection, isolated fixtures, additive documentation, and offline/isolated tests. Prepare implementation-ready specifications and test plans. Do not modify production adapters or activate external services. Where an implementation depends on a provider guarantee, mark it REVIEW_REQUIRED until runtime qualification evidence exists.
+
+5. STATUS
+
+DR08_DESIGN_DIRECTION_ACCEPTED=YES
+DR08_IMPLEMENTATION_APPROVAL=NOT_GRANTED
+PRODUCTION_ACCESS=NOT_AUTHORIZED
+HFM004_PROVIDER_CUTOVER=NOT_AUTHORIZED
+HFM005_ENCRYPTION_AND_KEY_CUSTODY=NOT_AUTHORIZED
+PR_MERGE=NOT_AUTHORIZED
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF RECORD

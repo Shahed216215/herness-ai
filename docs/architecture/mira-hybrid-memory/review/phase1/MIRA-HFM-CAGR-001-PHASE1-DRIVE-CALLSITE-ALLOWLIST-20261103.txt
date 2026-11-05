@@ -1,0 +1,151 @@
+MIRA HYBRID MEMORY — PHASE 1 DRIVE CALLSITE ALLOWLIST & DATA-FLOW REGISTER
+Document: MIRA-HFM-CAGR-001-PHASE1-DRIVE-CALLSITE-ALLOWLIST
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this report: cb8be5de93215b7eb16cad4b3db6697cc5219f51
+Version boundary: v0.2
+Status: STATIC CALLSITE INVENTORY COMPLETE FOR REVIEWED JS-FAMILY SOURCE — NO DRIVE REMOVAL AUTHORIZED
+
+1. EVIDENCE BASIS
+
+The exact branch contains 540 JavaScript-family files across root modules, services, routes, tools, providers, scripts, and tests. All 540 were retrieved and lexically scanned. The following line-numbered register was then cross-checked against the exact files. The existing tests/stage19-stage20-evidence-closure.js also contains a Google API exception allowlist naming google-drive.js, tools/knowledge-backup.js, tools/knowledge-restore.js, and a historical authorize-drive.js exception. authorize-drive.js is not present in the current branch tree; the three current modules below are the direct googleapis modules found in the branch.
+
+This is a source-level callsite inventory. It does not prove live runtime reachability, token scope, or provider-side behavior. No Google OAuth client, Drive API, token, or credential file was accessed.
+
+2. DIRECT GOOGLE OAUTH / API MODULES
+
+G01 — google-drive.js
+- OAuth adapter constructs google.auth.OAuth2 and google.drive({version:"v3", auth}); no explicit scopes array is passed in the reviewed constructor path.
+- Direct API calls include files.list, files.create, files.update, and files.get.
+- Exports saveKnowledgeToDrive and loadKnowledgeFromDrive; corresponding Memory functions are also defined.
+- saveKnowledgeToDrive(data) calls getDrive(), resolves the Knowledge folder, then writes JSON through saveJsonFileToDrive.
+- loadKnowledgeFromDrive() calls getDrive(), resolves the folder, then reads JSON through loadJsonFileFromDrive.
+- Effective OAuth token scopes remain UNKNOWN; source inspection cannot establish consent grants already present in a token.
+
+G02 — tools/knowledge-backup.js
+- Direct googleapis import and independent OAuth2 client.
+- Direct files.list/create/update calls for folder and backup file.
+- createBackup() obtains Knowledge via getKnowledge(), writes project-root knowledge.json, writes knowledge-backup.json, then uploads/updates the Drive backup.
+- The tool is not read-only and is not merely a backup copy operation; it rewrites the primary project-root Knowledge file before Drive.
+- It was not invoked.
+
+G03 — tools/knowledge-restore.js
+- Direct googleapis import and independent OAuth2 client.
+- Direct files.list/get/update/create calls.
+- restoreFromBackup() reads local backup if present, otherwise Drive backup; validates backupVersion=1 and entries array; creates a local safety backup; overwrites project-root knowledge.json; then syncs Drive knowledge.json.
+- The path is destructive and has no authorization for invocation in this review. It was not invoked.
+
+3. SHARED-ADAPTER CALLERS
+
+G04 — knowledge.js (Knowledge CRUD)
+- Imports saveKnowledgeToDrive and wraps it in syncToDrive().
+- addKnowledge: local write then syncToDrive; duplicate path also syncs current array.
+- addLearning: local write then syncToDrive; duplicate path also syncs current array.
+- deleteKnowledge: local write then syncToDrive.
+- updateKnowledge: local write then syncToDrive.
+- updateLearning: local write then syncToDrive.
+- syncToDrive catches Drive errors and returns false; callers may return a successful local mutation with drive=false. This is a partial dual-write outcome, not an atomic transaction.
+- Multiple line-numbered sync callsites in this module: 158, 194, 362, 432, 519, 654, 792.
+
+G05 — knowledge-memory-evolution.js
+- Imports loadKnowledgeFromDrive and saveKnowledgeToDrive.
+- Reads Drive state during target-state reconciliation and saves target data through the shared adapter.
+- Memory and Knowledge evolution both depend on Drive comparison/snapshot/verification/rollback behavior.
+- Relevant direct adapter references: lines 505 and 524.
+
+G06 — knowledge-controlled-apply.js
+- Imports loadKnowledgeFromDrive and saveKnowledgeToDrive.
+- Reads Drive for preflight/current-state comparisons, apply verification, and rollback paths.
+- Relevant references: lines 100, 113, 247, 485.
+- Drive behavior is a dependency of controlled Knowledge apply.
+
+G07 — autonomous-learning-controlled-apply.js
+- Imports loadKnowledgeFromDrive and saveKnowledgeToDrive and uses addLearning from knowledge.js.
+- Creates/restores Drive state around controlled apply, checks Local/Drive consistency, adds Learning, then verifies the resulting Drive state.
+- Relevant references: lines 110, 156, 305, 362, 401, 508.
+- The addLearning call is indirect Drive sync through knowledge.js, in addition to explicit Drive preflight/verification/restore paths.
+
+G08 — tools/knowledge-cleanup.js
+- Imports saveKnowledgeToDrive.
+- The destructive remove path writes project-root knowledge.json directly, then calls saveKnowledgeToDrive(cleanedKnowledge).
+- Relevant reference: line 116.
+- Inspect mode is read-only; remove mode is not. Neither mode was invoked.
+
+G09 — tools/knowledge-search.js
+- Imports loadKnowledgeFromDrive.
+- Loads Local Knowledge first, then attempts Drive. Any Drive array, including [], replaces the Local search source.
+- Relevant reference: line 48.
+- This is a source-authority/conflict-policy dependency, not a write.
+
+4. INDIRECT CALLERS / GOVERNED ROUTES
+
+G10 — services/learning.js -> knowledge.addLearning
+- learnFromContent() sends source content to generate(), validates structured output, checks duplicates, then calls addLearning().
+- Relevant references: learnFromContent starts at line 394; addLearning call at line 479.
+- Drive sync is indirect through knowledge.js. The caller policy must distinguish ordinary educational Knowledge ingestion from proposal-controlled system changes.
+
+G11 — tools/learning-save.js -> services/learning.learnFromContent
+- Calls learnFromContent(); it does not directly import Google Drive.
+- Relevant call at line 41.
+- It can trigger local Knowledge persistence and Drive sync indirectly.
+
+G12 — routes/autonomous-learning.js -> autonomous-learning-controlled-apply.js
+- Route requires approved proposal and calls controlled apply; controlled apply invokes addLearning and explicit Drive checks.
+- This is an approved-proposal boundary, not a direct Drive API route.
+
+G13 — routes/knowledge-improvements.js -> knowledge-memory-evolution.js / controlled apply
+- Requires approved proposal and calls prepare/apply/verify/rollback evolution operations.
+- Drive behavior is delegated to Evolution and lower-level services.
+
+G14 — tools/knowledge-improve.js
+- Uses improveExistingKnowledge / proposal persistence.
+- Tool description states existing Knowledge is not changed and admin approval is required before apply.
+- No direct Drive API call in this tool module was found; apply path is through the governed route/evolution workflow.
+
+5. DATA FLOW / FAILURE SEMANTICS
+
+- Knowledge CRUD writes Local first, then attempts Drive sync. A Drive failure may leave Local updated and Drive stale.
+- Controlled apply and Evolution perform more extensive preflight, snapshot, verify, and rollback operations, so they have stronger dependencies than ordinary CRUD.
+- Knowledge search allows Drive [] to replace Local source; empty-remote semantics are undefined.
+- Backup and restore tools use independent OAuth code and project-root paths, not a common provider-neutral adapter.
+- Google Drive JSON payloads are not shown to be encrypted by google-drive.js. No encryption layer was established in the reviewed path.
+- OAuth effective scopes and provider retention terms remain unknown.
+- No Facebook Page/Group connector path exists in the current branch tree; this is path-level evidence, not proof about manual external operations.
+
+6. STATIC INVENTORY STATUS
+
+DIRECT_GOOGLEAPIS_MODULES=3
+SHARED_GOOGLE_DRIVE_ADAPTER=google-drive.js
+SHARED_ADAPTER_CALLER_MODULES=7
+INDIRECT_LEARNING_CALLER_MODULES=2
+GOVERNED_ROUTE_CALLER_MODULES=2
+DRIVE_READ_CALLERS=google-drive.js;knowledge-memory-evolution.js;knowledge-controlled-apply.js;autonomous-learning-controlled-apply.js;tools/knowledge-search.js;tools/knowledge-restore.js
+DRIVE_WRITE_CALLERS=google-drive.js;knowledge.js;knowledge-memory-evolution.js;knowledge-controlled-apply.js;autonomous-learning-controlled-apply.js;tools/knowledge-backup.js;tools/knowledge-cleanup.js;tools/knowledge-restore.js
+STATIC_DRIVE_CALLSITE_INVENTORY=PASS_SCOPED
+RUNTIME_CALLSITE_REACHABILITY=NOT_EXECUTED
+EFFECTIVE_OAUTH_SCOPES=UNKNOWN
+
+7. C05 DECISION AND NON-AUTHORIZATION
+
+C05 static source inventory can be marked PASS (scoped): all JS-family source files were scanned and the current direct Google API/shared adapter/indirect learning callers are registered above and in D01-D27.
+This does NOT authorize removal of Drive sync, changing OAuth scopes, invoking Google APIs, or migration. Any future Drive removal requires an approved provider-neutral replacement, compatibility and rollback proof, isolated tests, and a separate implementation authorization.
+
+8. SAFETY / STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+TESTS=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF REPORT

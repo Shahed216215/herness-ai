@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
 const crypto = require("crypto");
+const jsonStateStore = require("./services/mira-json-state-store");
+const localMemoryStore = require("./services/mira-local-memory-store");
 
 const {
   saveKnowledgeToDrive,
@@ -23,6 +25,12 @@ const {
 } = require("./audit-log");
 
 const MEMORY_FILE = storagePath("memory.json");
+
+if (path.resolve(localMemoryStore.MEMORY_FILE) !== path.resolve(MEMORY_FILE)) {
+  throw new Error(
+    "Memory Evolution and Local Memory Store paths differ; refusing split-brain persistence."
+  );
+}
 const KNOWLEDGE_FILE = storagePath("knowledge.json");
 
 const STAGE_NAME =
@@ -70,16 +78,22 @@ function readJsonFile(filePath) {
 }
 
 function atomicWriteJson(filePath, value) {
-  const tempPath =
-    `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  if (Array.isArray(value)) {
+    if (path.resolve(filePath) === path.resolve(MEMORY_FILE)) {
+      return localMemoryStore.writeMemory(value);
+    }
+    return jsonStateStore.writeArrayState(
+      filePath,
+      value,
+      path.basename(filePath)
+    );
+  }
 
-  fs.writeFileSync(
-    tempPath,
-    JSON.stringify(value, null, 2),
-    "utf8"
+  return jsonStateStore.atomicWriteJson(
+    filePath,
+    value,
+    path.basename(filePath)
   );
-
-  fs.renameSync(tempPath, filePath);
 }
 
 
@@ -241,15 +255,14 @@ function getTargetFile(target) {
 
 function loadLocalState(target) {
   const filePath = getTargetFile(target);
-  const data = readJsonFile(filePath);
-
-  if (!Array.isArray(data)) {
-    throw new Error(
-      `${path.basename(filePath)} must contain an array.`
-    );
+  if (target === "memory") {
+    return localMemoryStore.readMemory();
   }
-
-  return data;
+  return jsonStateStore.readJsonArray(
+    filePath,
+    path.basename(filePath),
+    { missing: "empty" }
+  );
 }
 
 function validateMemoryState(data) {
@@ -552,6 +565,23 @@ function audit(
   }
 }
 
+function requireAudit(
+  action,
+  status,
+  resourceId,
+  details = {}
+) {
+  const result = audit(action, status, resourceId, details);
+  if (result && result.logged === false) {
+    const error = new Error(
+      "Required Evolution audit event was not recorded: " + result.error
+    );
+    error.code = "STAGE412_REQUIRED_AUDIT_FAILED";
+    throw error;
+  }
+  return result;
+}
+
 function validateProposal(proposal) {
   const errors = [];
   let target;
@@ -754,16 +784,39 @@ async function prepareEvolution(
         );
 
       if (!reconciliation.valid) {
+        let quarantine;
+        try {
+          quarantine = jsonStateStore.quarantineConflict(
+            path.dirname(getTargetFile(target)),
+            `evolution-${target}`,
+            { local: current, drive: driveState },
+            {
+              target,
+              proposalId,
+              localHash,
+              driveHash,
+              reason: reconciliation.reason,
+              firstDifferenceIndex: reconciliation.firstDifferenceIndex
+            }
+          );
+        } catch (quarantineError) {
+          return {
+            ok: false,
+            status: "conflict_quarantine_failed",
+            localHash,
+            driveHash,
+            error: quarantineError.message
+          };
+        }
+
         return {
           ok: false,
-          status:
-            "local_drive_mismatch",
+          status: "local_drive_mismatch",
           localHash,
           driveHash,
-          reason:
-            reconciliation.reason,
-          firstDifferenceIndex:
-            reconciliation.firstDifferenceIndex
+          reason: reconciliation.reason,
+          firstDifferenceIndex: reconciliation.firstDifferenceIndex,
+          quarantine
         };
       }
 
@@ -773,14 +826,39 @@ async function prepareEvolution(
       if (
         proposedHash !== localHash
       ) {
+        let quarantine;
+        try {
+          quarantine = jsonStateStore.quarantineConflict(
+            path.dirname(getTargetFile(target)),
+            `evolution-${target}-proposal`,
+            { local: current, drive: driveState, proposed },
+            {
+              target,
+              proposalId,
+              localHash,
+              driveHash,
+              proposedHash,
+              reason: "RECONCILIATION_PROPOSAL_DIFFERS_FROM_LOCAL"
+            }
+          );
+        } catch (quarantineError) {
+          return {
+            ok: false,
+            status: "conflict_quarantine_failed",
+            localHash,
+            driveHash,
+            proposedHash,
+            error: quarantineError.message
+          };
+        }
+
         return {
           ok: false,
-          status:
-            "reconciliation_proposal_mismatch",
-          error:
-            "For reconciliation, proposed state must exactly equal the verified Local state.",
+          status: "reconciliation_proposal_mismatch",
+          error: "For reconciliation, proposed state must exactly equal the verified Local state.",
           localHash,
-          proposedHash
+          proposedHash,
+          quarantine
         };
       }
     }
@@ -826,7 +904,7 @@ async function prepareEvolution(
       preparedAt: now()
     };
 
-    audit(
+    requireAudit(
       "stage412_prepare",
       "success",
       proposalId,
@@ -915,6 +993,16 @@ async function applyEvolution(
     driveBefore =
       await loadDriveState(target);
 
+    const snapshotSource = path.resolve(
+      __dirname,
+      path.basename(getTargetFile(target))
+    );
+    if (snapshotSource !== path.resolve(getTargetFile(target))) {
+      throw new Error(
+        "Snapshot Manager cannot safely snapshot an external storage path."
+      );
+    }
+
     const snapshot =
       createSnapshot({
         changeId,
@@ -968,7 +1056,7 @@ async function applyEvolution(
       );
     }
 
-    audit(
+    requireAudit(
       "stage412_snapshot_created",
       "success",
       proposalId,
@@ -1054,7 +1142,7 @@ async function applyEvolution(
       );
     }
 
-    audit(
+    requireAudit(
       "stage412_apply",
       "success",
       proposalId,
@@ -1301,7 +1389,7 @@ async function rollbackEvolution(
       };
     }
 
-    audit(
+    requireAudit(
       "stage412_rollback",
       "success",
       proposalId,

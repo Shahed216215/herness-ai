@@ -1,8 +1,5 @@
 "use strict";
 
-const fs = require("fs");
-const path = require("path");
-const storagePath = require('./mira-storage');
 const crypto = require("crypto");
 
 const {
@@ -12,7 +9,8 @@ const {
 
 const {
   getKnowledge,
-  addLearning
+  addLearning,
+  replaceKnowledge
 } = require("./knowledge");
 
 const {
@@ -25,8 +23,6 @@ const {
   verifySnapshot,
   restoreSnapshot
 } = require("./snapshot-manager");
-
-const KNOWLEDGE_FILE = storagePath("knowledge.json");
 
 function hashData(value) {
   return crypto
@@ -65,42 +61,11 @@ function findMatchingKnowledge(
 }
 
 function readLocalKnowledge() {
-  if (!fs.existsSync(KNOWLEDGE_FILE)) {
-    throw new Error(
-      "knowledge.json not found"
-    );
-  }
-
-  const raw = fs.readFileSync(
-    KNOWLEDGE_FILE,
-    "utf8"
-  );
-
-  const parsed = JSON.parse(raw);
-
-  if (!Array.isArray(parsed)) {
-    throw new Error(
-      "knowledge.json must contain an array"
-    );
-  }
-
-  return parsed;
+  return getKnowledge();
 }
 
 function writeLocalKnowledge(data) {
-  const tempFile =
-    `${KNOWLEDGE_FILE}.${process.pid}.tmp`;
-
-  fs.writeFileSync(
-    tempFile,
-    JSON.stringify(data, null, 2),
-    "utf8"
-  );
-
-  fs.renameSync(
-    tempFile,
-    KNOWLEDGE_FILE
-  );
+  return replaceKnowledge(data);
 }
 
 async function restoreDriveState(

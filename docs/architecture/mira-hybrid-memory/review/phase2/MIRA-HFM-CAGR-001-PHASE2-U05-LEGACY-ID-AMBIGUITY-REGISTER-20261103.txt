@@ -1,0 +1,112 @@
+MIRA HYBRID MEMORY — U05 LEGACY TEST-ID AMBIGUITY REGISTER
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-U05-LEGACY-ID-AMBIGUITY-REGISTER-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-U05-CANONICAL-TEST-REGISTRY-SPEC-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: READ-ONLY CROSSWALK — NO ALIASES ASSIGNED
+
+1. PURPOSE
+
+Record the legacy DR-08 test-ID families and prevent accidental semantic remapping while the canonical registry is being designed. This is a source crosswalk only. It does not approve a canonical registry, create aliases, or claim any of the proposed DR-08 chain tests have executed.
+
+2. SOURCE DOCUMENTS INSPECTED
+
+- docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-DESIGN-REVISION-BLUEPRINT.md
+  Blob SHA: a4ef533db691b403bbc0662d2bd308c8eee9daec
+- docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-DETAILED-GAP-CLOSURE-SPECIFICATION-PROTOTYPE-C.md
+  Blob SHA: 3a947c83db1cda14e8c6b4c8e0246c6d1c291e06
+- docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-TECHNICAL-GAP-CLOSURE-REVISION-PROTOTYPE-D.md
+  Blob SHA: 4b77ccb109a89a0f48f06ac41066e4c7af999e5a
+- docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-FINAL-TECHNICAL-CONSISTENCY-TRACEABILITY-CLOSURE-PROTOTYPE-E.md
+  Blob SHA: 976e5413f0401b83bbe54798684cc0a556947046
+- docs/architecture/mira-hybrid-memory/review/DR-08-DECISION-CLOSURE-MATRIX-v0.2.md
+  Blob SHA: d8ba2fa15165228b95054c7f95d52f4f3b872274
+
+3. LEGACY FAMILIES
+
+A. HFM-LOG-001 through HFM-LOG-007
+
+Blueprint §12 enumerates:
+- HFM-LOG-001: event identity and project scope are mandatory.
+- HFM-LOG-002: sequence ordering is validated.
+- HFM-LOG-003: previous-hash linkage is verified.
+- HFM-LOG-004: event hash uses the declared canonical profile.
+- HFM-LOG-005: duplicate event identity is reconciled.
+- HFM-LOG-006: checkpoint authenticity and chain head are verified.
+- HFM-LOG-007: broken chain fails closed.
+
+Prototype C §11.7 references HFM-LOG-001 through HFM-LOG-007 and says they are extended with concurrent append and crash-injection fixtures. It does not provide a one-to-one revised definition for each reused identifier in that section.
+
+Crosswalk status: REVIEW_REQUIRED. The Blueprint definitions are individually identifiable, but Prototype C's extension semantics cannot be silently folded into the same immutable definitions. Preserve the Blueprint meaning and record C's extended fixture scope as a separate proposed definition or explicit version/supersession only after owner review.
+
+B. Prototype B HFM-LOG-001 through HFM-LOG-010
+
+Authoritative source located:
+docs/architecture/mira-hybrid-memory/MIRA-HFM-V025-GAP-CLOSURE-PROTOTYPE-B.md
+Git blob SHA: 3ec3c1fe18c1554539e3e423bb95d76a921aaaf4
+SHA-256: 61562609ad9e8f590010986b69e60a81f161ef5640baa3713141d504016b0b11
+
+Prototype B §10 references the family "HFM-LOG-001 through HFM-LOG-010" but does not enumerate individual test definitions in that section. Therefore the source identity/hash is now verified, but semantic per-ID mapping remains unresolved. In particular, HFM-LOG-008 through HFM-LOG-010 have no individually stated definitions in the inspected Prototype B §10 excerpt and must remain unmapped until another authoritative section or source supplies them.
+
+Crosswalk status: SOURCE_LOCATED_AND_HASH_RECONCILED; PER_ID_DEFINITIONS_UNMAPPED / REVIEW_REQUIRED. Do not infer definitions from neighbouring IDs or from HFM-CHAIN tests.
+
+C. HFM-CHAIN-001 through HFM-CHAIN-012
+
+Prototype D §12.9 explicitly lists:
+- HFM-CHAIN-001: canonical event bytes.
+- HFM-CHAIN-002: event hash self-reference exclusion.
+- HFM-CHAIN-003: valid append.
+- HFM-CHAIN-004: duplicate identical event.
+- HFM-CHAIN-005: same eventId with changed payload.
+- HFM-CHAIN-006: concurrent sequence allocation.
+- HFM-CHAIN-007: allocation-before-append crash.
+- HFM-CHAIN-008: append-before-acknowledgement crash.
+- HFM-CHAIN-009: missing sequence.
+- HFM-CHAIN-010: fork detection.
+- HFM-CHAIN-011: checkpoint verification.
+- HFM-CHAIN-012: writer authenticity failure.
+
+Crosswalk status: DEFINITION_IDENTIFIED; execution NOT_TESTED. These IDs are not aliases for HFM-LOG IDs. Similar themes (e.g. checkpoint verification or duplicate identity) do not establish identical test definitions, fixtures, expected outcomes or evidence.
+
+D. Prototype E registry rules
+
+Prototype E §9.2–9.4 requires one definition per test ID, explicit requirement mappings, execution status/evidence and distinct coverage classifications. This is the governing registry design principle, not a legacy alias list.
+
+4. PROHIBITED MAPPINGS WITHOUT REVIEW
+
+- Do not map HFM-CHAIN-001 to HFM-LOG-004 merely because both relate to canonical event hashing.
+- Do not map HFM-CHAIN-004 to HFM-LOG-005 merely because both concern duplicate identity.
+- Do not map HFM-CHAIN-011 to HFM-LOG-006 merely because both concern checkpoints.
+- Do not map Prototype C's extended HFM-LOG-001..007 fixtures onto the Blueprint definitions without explicit version/supersession semantics.
+- Do not map the current eight Phase 2 runtime test-suite IDs to DR-08 chain IDs. They cover different scopes and do not execute the chain protocol.
+
+5. PROPOSED MIGRATION RULE
+
+1. Preserve each historical identifier and source-document context.
+2. Create a new immutable canonical testId for each distinct definition.
+3. Use aliases only where one historical ID maps unambiguously to exactly one canonical definition.
+4. Where a legacy ID was reused for materially different behavior, preserve separate source-scoped definitions and mark the legacy mapping AMBIGUOUS/REVIEW_REQUIRED.
+5. Record source commit/blob SHA, source section, fixture scope, expected behavior and evidence status for each mapping.
+6. Never mark a test TESTED_PASS from a source description or ID mapping; execution evidence is required.
+
+6. STATUS
+
+BLUEPRINT_HFM_LOG_001_TO_007=DEFINITION_IDENTIFIED
+PROTOTYPE_C_HFM_LOG_001_TO_007=EXTENDED_SCOPE_AMBIGUOUS
+PROTOTYPE_B_SOURCE=LOCATED_AND_HASH_RECONCILED
+PROTOTYPE_B_HFM_LOG_001_TO_010=RANGE_ONLY_NO_PER_ID_DEFINITIONS
+PROTOTYPE_B_HFM_LOG_008_TO_010=UNMAPPED_PER_ID_DEFINITION_NOT_ENUMERATED
+PROTOTYPE_D_HFM_CHAIN_001_TO_012=DEFINITION_IDENTIFIED_EXECUTION_NOT_TESTED
+PROTOTYPE_E_REGISTRY_RULES=DESIGN_RULES_IDENTIFIED
+LEGACY_ALIASES_ASSIGNED=0
+CANONICAL_REGISTRY_CREATED=NO
+DR08_CHAIN_TEST_EXECUTION=NOT_TESTED
+PRODUCTION_DATA_ACCESSED=NO
+NETWORK_REQUESTS=0
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF REGISTER

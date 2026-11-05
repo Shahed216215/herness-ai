@@ -1,0 +1,49 @@
+MIRA HYBRID MEMORY — PHASE 2 BLUEPRINT HASH RECONCILIATION
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-BLUEPRINT-HASH-RECONCILIATION-20261103
+Related review: docs/architecture/mira-hybrid-memory/review/DR-08-DECISION-CLOSURE-MATRIX-v0.2.md
+Date: 2026-11-03
+Version boundary: v0.2
+Status: CONTENT HASH RECONCILED AGAINST AUTHORITATIVE PHASE 1 SOURCE BASELINE
+
+1. FINDING
+
+The DR-08 Decision Closure Matrix recorded a Blueprint hash mismatch:
+- Previously recorded value: 246b0d43b82af95653a2431158a48bc48088cab9bb41b6efa7303a87a1b31f
+- Later audit value: 246b0d43b82af95653a243115a58e48bc48088cab9bb41b6efa7303a87a1b31f
+
+2. AUTHORITATIVE RE-CHECK
+
+Fetched the exact Blueprint path at:
+- Phase 1 source baseline commit: 90b48f2816e28686cd499650ff6a5fc6217f0e8a
+- Phase 1 final reviewed source/test commit: 720309923223c4f287ec3ede0fb0c16aff80f213
+- Current Phase 2 feature branch head at time of check.
+
+All three versions returned identical Git blob SHA:
+a4ef533db691b403bbc0662d2bd308c8eee9daec
+
+All three versions returned identical SHA-256:
+246b0d43b82af95653a243115a58e48bc48088cab9bb41b6efa7303a87a1b31f
+
+All three versions had identical byte length: 19,936 characters in the fetched UTF-8 text.
+
+3. CONCLUSION
+
+The source content is unchanged between the authoritative Phase 1 source baseline, final reviewed Phase 1 source/test commit, and the Phase 2 feature branch copy.
+
+The mismatch is a transcription error in the previously recorded hash string, not evidence of a changed Blueprint file. The authoritative expected SHA-256 is:
+
+246b0d43b82af95653a243115a58e48bc48088cab9bb41b6efa7303a87a1b31f
+
+The DR-08 source-integrity gate for this specific Blueprint discrepancy can therefore be marked PASS_SCOPED after this addendum is accepted into the review record. This does not close the remaining DR-08 gates or independently verify the other five source files.
+
+4. SCOPE LIMITS
+
+No source document was modified. No production data, provider, network API, or external service was accessed. This is a read-only comparison of GitHub repository content at the stated commits.
+
+BLUEPRINT_HASH_RECONCILIATION=PASS_SCOPED
+SOURCE_CONTENT_CHANGED=NO
+DR08_OVERALL=INCONCLUSIVE
+FULL_PHASE2_CLOSURE=REVIEW_REQUIRED
+
+END OF ADDENDUM

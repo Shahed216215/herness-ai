@@ -1,0 +1,55 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 2 MEMORY VERSION RECOVERY POLICY FIX
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+
+FINDING
+The dynamically registered tool tools/memory-version-recovery.js exposes list, verify and restore actions. Its tool name memory_version_recovery had no explicit entry in services/mira-work-execution-engine.js TOOL_POLICIES. The engine already failed closed for tools with no policy (unknown_tool), so this was not an observed bypass. It was a policy-coverage/documentation gap.
+
+CHANGE
+Added an explicit human-only policy entry:
+- operation=file_modify
+- autonomous=false
+- humanApprovalRequired=true
+- explicitConfirmation=true
+
+The entire wrapper is blocked from autonomous execution for now. This is intentionally conservative because the current engine does not carry an action-scoped authenticated approval token; a single tool-level policy cannot safely distinguish read-only list/verify from destructive restore. Human-only classification preserves the prior fail-closed runtime behavior while making the boundary explicit. No tool action or restore was executed.
+
+TEST
+Added tests/mira-hfm-memory-version-recovery-policy.test.js. It is dependency-free and statically verifies:
+- the wrapper exposes the expected registered tool identity/declaration/executor;
+- an explicit policy exists;
+- autonomous execution is false;
+- human approval and explicit confirmation are required;
+- unknown tools remain rejected by the engine source contract.
+
+CI
+- First attempt: Run 41782015737 failed because the first test version imported the full dynamic tool registry and required unavailable dotenv in the dependency-free CI job. This was a test-harness dependency error; it was not reported as a product regression.
+- Reworked the test to use source-level assertions without importing application modules.
+- Run 41782127307 — SUCCESS — commit 37ba9e3da344076c872c5c6c1c5df46a252b3caa.
+- Run 41782134117 — SUCCESS — same commit.
+- Job 126415856597 logs show:
+  MIRA_HFM_MEMORY_VERSION_RECOVERY_WRAPPER=PASS
+  MIRA_HFM_MEMORY_VERSION_RECOVERY_EXPLICIT_POLICY=PASS
+  MIRA_HFM_MEMORY_VERSION_RECOVERY_AUTONOMOUS=DENIED
+  TESTS_FAILED=0
+  REAL_GOOGLE_DRIVE_TOUCHED=NO
+  NETWORK_REQUESTS=0
+  EXTERNAL_ACTIONS=0
+- The existing Phase 2 isolated core, recovery, Knowledge, conflict, conversation, Work Knowledge/Work Learning, autonomous learning and independent verifier suites also reported PASS in the same job.
+
+LIMITATIONS
+- This test is source-contract coverage, not a runtime integration test of all dynamically registered tools.
+- It intentionally does not enable list/verify through autonomous chat calls. A future action-scoped authorization design may permit authenticated read-only list/verify separately.
+- The full tool registry versus policy registry still needs exhaustive automated coverage; other tool wrappers must be reviewed by function and authority.
+- No production Memory/Knowledge data, backup, restore, real Drive, network, or external action was touched.
+- No PR merge, production activation or version change occurred.
+
+STATUS
+MEMORY_VERSION_RECOVERY_POLICY=EXPLICIT_HUMAN_ONLY
+FOCUSED_REGRESSION=PASS
+FULL_TOOL_POLICY_COVERAGE=IN_PROGRESS
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+PR4=OPEN_DRAFT_UNMERGED
+VERSION=v0.2

@@ -1,0 +1,54 @@
+MIRA HYBRID MEMORY v0.2 — CRM PROJECT-SCOPE RELATIONSHIP VERIFICATION
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Status: READ-ONLY SCHEMA RELATIONSHIP REVIEW
+
+1. QUESTION
+Can the existing CRM Conversation -> Opportunity -> Project relationship safely establish an authoritative HFM projectId for each conversation message without a separate mapping registry?
+
+2. OBSERVED RELATIONSHIPS
+- conversation-schema.js createConversation() stores clientId, opportunityId and proposalId (lines 122–169). It does not store projectId.
+- conversation-store.js persists and retrieves conversations by conversationId; list filtering supports clientId and opportunityId (lines 134–185, 188–221).
+- project-schema.js createProject() requires projectId, acceptanceId and opportunityId (lines 70–105).
+- project-store.js listProjects({ opportunityId }) returns all projects matching opportunityId (lines 88–117).
+- project-store.js createStoredProject() enforces unique projectId, accepted Work Acceptance and matching acceptance.opportunityId (lines 123–177). It does not enforce unique opportunityId across projects.
+- opportunity-schema.js createOpportunity() stores opportunityId, source and descriptive data; the inspected schema does not define clientId (lines 249–325).
+- work-acceptance-schema.js createWorkAcceptance() requires acceptanceId and opportunityId; clientId is not a required or authoritative field in the inspected schema (lines 205–260).
+
+3. CONCLUSION
+The existing shared opportunityId is a relationship key but is not a sufficient project-scope authority:
+- One opportunity may be associated with multiple projects because project-store uniqueness is enforced on projectId, not opportunityId.
+- The inspected Opportunity and Work Acceptance schemas do not provide an authoritative clientId relation to validate conversation.clientId against the project.
+- A current single match would not prove a permanent uniqueness invariant; another project could later be added for the same opportunity.
+Therefore projectId MUST NOT be inferred from conversation.opportunityId, clientId, proposalId or conversationId.
+
+4. ACCEPTED SAFE RULE
+CRM Conversation messages can enter project-scoped HFM only when one of these is true:
+A. The persisted conversation record contains an explicit projectId whose source is validated against an approved project registry; or
+B. An immutable, append-only, approved conversationId -> projectId mapping record exists, is digest-bound, has an authority reference and is verified at read/write time.
+If neither exists, the CRM message remains in the CRM Conversation domain and is blocked from project-scoped HFM migration/retrieval. The source CRM record is not modified.
+
+5. TEST REQUIREMENTS
+- No conversation.projectId => BLOCKED.
+- opportunityId with zero matching projects => BLOCKED.
+- opportunityId with multiple matching projects => BLOCKED.
+- a single current opportunityId match without an enforced uniqueness invariant => BLOCKED.
+- clientId mismatch or absent authoritative client relationship => BLOCKED.
+- explicit approved conversationId->projectId mapping with matching source digest => READY_FOR_REVIEW only.
+- revoked/expired/changed mapping => BLOCKED.
+- cross-project retrieval => excluded.
+
+6. STATUS
+CRM_CONVERSATION_HAS_PROJECT_ID=NO
+OPPORTUNITY_ID_UNIQUE_PROJECT_INVARIANT=NOT_ENFORCED
+OPPORTUNITY_CLIENT_ID_AUTHORITY=NOT_PRESENT_IN_INSPECTED_SCHEMA
+WORK_ACCEPTANCE_CLIENT_ID_AUTHORITY=NOT_PRESENT_IN_INSPECTED_SCHEMA
+PROJECT_SCOPE_FROM_OPPORTUNITY_ID=REJECTED
+EXPLICIT_APPROVED_MAPPING_REQUIRED=YES
+PRODUCTION_DATA_ACCESSED=NO
+RUNTIME_CHANGED=NO
+VERSION=v0.2
+PHASE2=IN_PROGRESS
+
+END OF VERIFICATION

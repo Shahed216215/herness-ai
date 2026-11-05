@@ -1,0 +1,85 @@
+MIRA HFM PHASE 2 — ARCHITECTURE REVIEW
+UTC=2026-11-01T11:19:32.955Z
+SPEC=docs/architecture/mira-hybrid-memory/MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.0.md
+SPEC_SHA256=e5b06a5bf0e7d3a1d4a4c89d62075631bc66ba54b3d193dd303bc98ebfccc500
+SPEC_BYTES=10378
+SPEC_LINES=288
+
+PASS: Schema JSON parses | Valid JSON
+PASS: Schema uses Draft 2020-12 | https://json-schema.org/draft/2020-12/schema
+PASS: Schema root is object | object
+PASS: Canonical field: memoryId | Present
+PASS: Canonical field: projectId | Present
+PASS: Canonical field: content | Present
+PASS: Canonical field: source | Present
+PASS: Canonical field: version | Present
+PASS: Canonical field: integrity | Present
+PASS: Required field: memoryId | Required
+PASS: Required field: projectId | Required
+PASS: Required field: content | Required
+PASS: Required field: source | Required
+PASS: Required field: version | Required
+PASS: Required field: integrity | Required
+PASS: Root rejects unknown fields | false
+PASS: Content has bounded length | 100000
+PASS: Identity fields have constraints | Check minLength
+PASS: Source provenance has object schema | object
+PASS: Version has object schema | object
+PASS: Integrity has object schema | object
+REVIEW_REQUIRED: Nested object closure reviewed | Open nested objects: $.source, $.timestamps, $.version, $.integrity, $.trust, $.access
+PASS: Adapter API section exists | Present
+PASS: Adapter API includes read | Present
+PASS: Adapter API includes write | Present
+PASS: Adapter API includes search | Present
+PASS: Adapter API includes verify | Present
+PASS: Permission model section exists | Present
+PASS: Permission model includes READ | Present
+PASS: Permission model includes WRITE | Present
+PASS: Permission model includes PERMISSION_DENIED | Present
+PASS: Permission model includes UNKNOWN | Present
+PASS: Conflict model section exists | Present
+PASS: Conflict model includes QUARANTINED | Present
+PASS: Conflict model includes CONFLICT | Present
+PASS: Conflict model includes RESOLVED | Present
+PASS: Recovery model section exists | Present
+PASS: Recovery model includes RESTORING | Present
+PASS: Recovery model includes VERIFYING | Present
+PASS: Recovery model includes ROLLBACK_REQUIRED | Present
+PASS: Evolution contract section exists | Present
+PASS: Evolution contract includes pre-state | Present
+PASS: Evolution contract includes recovery point | Present
+PASS: Evolution contract includes read back | Present
+PASS: Offline tests section exists | Present
+PASS: Offline tests includes temporary | Present
+PASS: Offline tests includes isolated | Present
+PASS: Offline tests includes INCONCLUSIVE | Present
+PASS: Migration gates section exists | Present
+PASS: Migration gates includes mapping | Present
+PASS: Migration gates includes approval | Present
+PASS: Migration gates includes independently | Present
+PASS: Security contract section exists | Present
+PASS: Security contract includes credentials | Present
+PASS: Security contract includes prompt injection | Present
+PASS: Security contract includes project scope | Present
+PASS: Technical detail: Idempotency and retry semantics | Found
+REVIEW_REQUIRED: Technical detail: Concurrent write and revision race control | Not explicitly specified
+REVIEW_REQUIRED: Technical detail: Explicit adapter error taxonomy | Not explicitly specified
+PASS: Technical detail: Timeout and cancellation policy | Found
+REVIEW_REQUIRED: Technical detail: Pagination and retrieval limits | Not explicitly specified
+PASS: Technical detail: Tombstone and deletion semantics | Found
+PASS: Technical detail: Record retention and expiry | Found
+REVIEW_REQUIRED: Technical detail: Encryption key rotation and recovery | Not explicitly specified
+REVIEW_REQUIRED: Technical detail: Backup version compatibility | Not explicitly specified
+PASS: Technical detail: Restore partial failure handling | Found
+REVIEW_REQUIRED: Technical detail: Provider capability revalidation | Not explicitly specified
+REVIEW_REQUIRED: Technical detail: Audit event schema | Not explicitly specified
+
+CHECKS_TOTAL=68
+CHECKS_PASSED=60
+REVIEW_ITEMS=8
+NESTED_OPEN_OBJECTS=6
+PRODUCTION_MEMORY_TOUCHED=NO
+PRODUCTION_SOURCE_MODIFIED=NO
+NETWORK_REQUESTS=0
+IMPLEMENTATION=NOT_STARTED
+RESULT=ARCHITECTURE_REVIEW_REQUIRED

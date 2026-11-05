@@ -1,7 +1,9 @@
 'use strict';
 
+const path = require('node:path');
 const { getCapacity } = require('./capacity-config');
 const localStore = require('./services/mira-local-memory-store');
+const jsonStateStore = require('./services/mira-json-state-store');
 
 function getMaxMemory() {
   return getCapacity('memory');
@@ -18,6 +20,31 @@ function saveMemory(memory) {
 
   const maxMemory = getMaxMemory();
   const limitedMemory = memory.slice(-maxMemory);
+  const displaced = memory.slice(0, Math.max(0, memory.length - maxMemory));
+
+  // Capacity pressure is a conflict/data-preservation event, not permission
+  // to silently discard older Memory records. Quarantine must commit first.
+  if (displaced.length > 0) {
+    const sourceDigest = jsonStateStore.sha256(JSON.stringify(memory));
+    jsonStateStore.quarantineConflict(
+      path.dirname(localStore.MEMORY_FILE),
+      'general-memory-capacity-eviction',
+      {
+        domain: 'GENERAL_MEMORY',
+        records: displaced
+      },
+      {
+        reason: 'MEMORY_CAPACITY_EVICTION',
+        storeId: 'MIRA_GENERAL_MEMORY',
+        sourceFile: path.basename(localStore.MEMORY_FILE),
+        sourceDigest,
+        capacity: maxMemory,
+        originalEntryCount: memory.length,
+        retainedEntryCount: limitedMemory.length,
+        evictedEntryCount: displaced.length
+      }
+    );
+  }
 
   localStore.writeMemory(limitedMemory);
   return limitedMemory;

@@ -1,0 +1,87 @@
+MIRA HYBRID MEMORY — PHASE 1 ADDITIVE REVIEW
+Document: MIRA-HFM-CAGR-001-PHASE1-DRIVE-PROVIDER-CALLSITE-RECONCILIATION
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD: 1a927f9f2b2043a98f18b178e7ad74743a8af9ac
+Version: v0.2
+
+SCOPE
+Read-only source inspection at the exact feature-branch ref. Recursive Git tree: 620 entries, 602 files, truncated=false. This is a complete path inventory, not a repository-wide source-text scan.
+
+FILES AND BLOB SHAS
+google-drive.js 530b9fad101042e2e82f76a0e360ead5d092ec3c
+knowledge.js c259ecda72e0714e49852e591f1deff42bc7e187
+knowledge-memory-evolution.js 9bbbebc2ffe0af1a90c4d3aa22664467a770cac2
+knowledge-controlled-apply.js 222a0fa5edee729ed9c33d7367cb757c7a4419bb
+autonomous-learning-controlled-apply.js d7d67669e6b6a8390147f75ee46c647ca15c91fa
+tools/knowledge-backup.js 0b17fc4e4a77c255db07ec9c43911620990df882
+tools/knowledge-cleanup.js 70410a2cdcae2af97a6fc4251a2c19f7b6a621b0
+tools/knowledge-restore.js 0d6da23adc59a90f3b8c545d8e728a3d7e567941
+tools/knowledge-search.js 4b658f6b10db9ad74c9947268f64a8f2c4e1347d
+services/learning.js be66edd9aa46b2ee84317a5f2dbf4e1ac11a2461
+services/provider-credential-store.js e954462843e674da7407c46527f9b0ace6463565
+services/provider-credential-resolver.js fe8be615226628b9090335c1aa67d1e681eb8215
+tools/web-search.js 472f6b7bd5233f6a08c01173acb58436e2f30014
+providers/index.js d9ffef6dfa193ec3c5326ac35a992e21e48815f5
+services/security/secure-provider-request.js 94aa8128f9e8d8495b39b327663947229bccd5de
+
+DRIVE FINDINGS
+1. google-drive.js provides Drive v3 read/write functions for Memory and Knowledge. The reviewed OAuth client construction does not pass an explicit scopes array; effective granted scopes cannot be established from source alone. Credential/token files were not accessed.
+2. knowledge.js ordinary addKnowledge, addLearning, deleteKnowledge, updateKnowledge, and updateLearning persist locally then call syncToDrive. Drive errors are caught and represented as drive=false, so local success can coexist with Local/Drive divergence.
+3. tools/knowledge-search.js reads Local first, then replaces its search source with any Drive array, including an empty array. This can mask non-empty Local Knowledge.
+4. tools/knowledge-backup.js independently initializes Drive OAuth, writes project-root knowledge.json and knowledge-backup.json, then uploads/updates the backup in Drive. This is not a read-only operation and uses a separate Drive implementation.
+5. tools/knowledge-restore.js independently reads Drive backup, validates backupVersion=1 and entries array, writes a safety backup, overwrites project-root knowledge.json, and attempts Drive synchronization. Destructive restore was inspected but not invoked.
+6. tools/knowledge-cleanup.js directly writes project-root knowledge.json before calling saveKnowledgeToDrive.
+7. knowledge-controlled-apply.js and autonomous-learning-controlled-apply.js require Local/Drive preflight agreement and use Drive write/readback verification and rollback.
+8. knowledge-memory-evolution.js uses Drive read/write, persisted Drive snapshots, hash/equality verification, and rollback. This is a confirmed blocker to removing Drive sync before dependent workflows are migrated and verified.
+9. tools/knowledge-save.js and tools/learning-save.js are indirect callers through Knowledge CRUD and services/learning.js.
+10. tools/web-search.js calls Tavily through secureProviderRequest. This is general web search, not Facebook Memory retrieval.
+11. providers/index.js routes configured model-provider requests and can attempt one configured fallback. This is model inference, not a unified Memory provider contract.
+12. Provider credential storage uses AES-256-GCM and scrypt-derived key material. Its default file path is project-root data/provider-credentials.enc.json, not mira-storage. No credential values were read.
+
+ADDITIONAL CALLSITE REGISTER
+D17 tools/knowledge-backup.js — direct Drive OAuth/API, local backup writes, Drive backup create/update.
+D18 tools/knowledge-restore.js — direct Drive OAuth/API, backup read, local overwrite, Drive sync.
+D19 tools/knowledge-cleanup.js — direct project-root write then shared adapter sync.
+D20 tools/knowledge-search.js — shared adapter read; Drive array overrides Local search source.
+D21 tools/knowledge-save.js — indirect addKnowledge caller.
+D22 tools/learning-save.js -> services/learning.js -> addLearning.
+D23 services/learning.js approved update -> updateLearning.
+D24 routes/knowledge-improvements.js -> controlled apply/Evolution.
+D25 routes/autonomous-learning.js -> autonomous controlled apply.
+D26 tools/knowledge-improve.js creates proposals; apply is approval-controlled.
+D27 scripts/mira-memory-backup.js calls local Memory store createBackup; no Drive dependency established by this script.
+
+PROVIDER AND FACEBOOK BOUNDARIES
+The inspected Google OAuth setup does not declare explicit scopes. Existing token grants were not queried. The tree path inventory contains no obvious Facebook/Meta connector-named file or dedicated connector directory; this is path-level evidence only, not proof of source-text absence. No Facebook API call was made. Tavily search is not a Facebook connector. No external provider calls were made.
+
+UPDATED PHASE 1 STATUS
+C01 repository-wide source-text scan: OPEN.
+C02 all path roots/callers: OPEN.
+C03 Local-vs-Drive authority/conflict policy: OPEN.
+C04 caller compatibility matrix: PARTIAL; this review adds CRUD/search/backup/cleanup/restore/controlled-apply evidence.
+C05 exhaustive Drive callsite inventory and verified replacements: OPEN; Drive removal remains blocked.
+C06 isolated fixture-only test plan and execution evidence: OPEN; tests not run.
+C07 provider dependency/scope review: PARTIAL; Google Drive, Tavily, AI routing and credential storage inspected; effective OAuth scopes unverified.
+
+PRODUCTION_MEMORY_ACCESS=NONE
+CREDENTIAL_OR_TOKEN_FILE_ACCESS=NONE
+EXTERNAL_PROVIDER_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+TESTS=NOT_EXECUTED
+TREE_ENTRIES=620
+TREE_FILES=602
+TREE_TRUNCATED=NO
+SOURCE_TEXT_SCAN=NOT_EXECUTED
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+VERSION=v0.2
+
+Next: continue targeted read-only inspection in small batches. Do not begin Phase 2 implementation until Phase 1 closure evidence is complete and implementation is separately authorized.
+
+END OF REPORT

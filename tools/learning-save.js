@@ -1,6 +1,5 @@
-const {
-  learnFromContent
-} = require("../services/learning");
+const { learnFromContent } = require("../services/learning");
+const { checkToolSafety } = require("../services/mira-tool-execution-policy");
 
 module.exports = {
   name: "learning_save",
@@ -8,36 +7,32 @@ module.exports = {
   declaration: {
     name: "learning_save",
     description:
-      "Learn structured cybersecurity knowledge from provided source content and save it to Mira's knowledge base. Learning is restricted to safe, authorized, defensive, and educational content.",
-
+      "Currently blocked for autonomous execution. Persistent learning writes require an authenticated, action-scoped human-approval workflow, which is not yet available. Do not invoke as a substitute for approval.",
     parameters: {
       type: "object",
-
       properties: {
-        sourceTitle: {
-          type: "string"
-        },
-
-        sourceUrl: {
-          type: "string"
-        },
-
-        content: {
-          type: "string"
-        }
+        sourceTitle: { type: "string" },
+        sourceUrl: { type: "string" },
+        content: { type: "string" }
       },
-
-      required: [
-        "content"
-      ]
+      required: ["content"]
     }
   },
 
-  execute: async ({
-    sourceTitle,
-    sourceUrl,
-    content
-  }) => {
+  execute: async (args = {}) => {
+    const safety = checkToolSafety("learning_save", args);
+    if (!safety || safety.passed !== true) {
+      return JSON.stringify({
+        success: false,
+        learned: false,
+        saved: false,
+        status: "BLOCKED",
+        code: "TOOL_POLICY_DENIED",
+        reason: safety?.reason || "Tool execution policy could not be verified."
+      });
+    }
+
+    const { sourceTitle, sourceUrl, content } = args;
     const result = await learnFromContent({
       content,
       sourceTitle,
@@ -49,9 +44,7 @@ module.exports = {
         success: false,
         learned: false,
         saved: false,
-        reason:
-          result?.reason ||
-          "Learning operation failed."
+        reason: result?.reason || "Learning operation failed."
       });
     }
 

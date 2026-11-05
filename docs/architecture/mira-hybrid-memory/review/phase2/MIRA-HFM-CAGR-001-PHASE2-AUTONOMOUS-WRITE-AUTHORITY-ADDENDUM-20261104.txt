@@ -1,0 +1,76 @@
+MIRA HYBRID MEMORY v0.2
+PHASE 2 — AUTONOMOUS WRITE AUTHORITY REVIEW ADDENDUM
+Date: 2026-11-04
+Status: POLICY_PATCH_PRESENT_CI_INCONCLUSIVE
+Supersedes: Section 4 runtime-remediation statement in MIRA-HFM-CAGR-001-PHASE2-AUTONOMOUS-WRITE-AUTHORITY-REVIEW-20261104.txt only.
+Scope: Read-only source verification and isolated policy-function test design; no production execution.
+
+1. VERIFIED POLICY PATCH
+
+The feature branch contains human-only policy for each persistent-write tool:
+- memory_save
+- knowledge_save
+- learning_save
+
+Each policy declares operation=file_modify, autonomous=false, humanApprovalRequired=true, explicitConfirmation=true.
+
+The execution engine's checkToolSafety() denies a tool when humanApprovalRequired is true and also denies when autonomous is false. The three wrappers persist data through addMemory(), addKnowledge(), and learnFromContent(), respectively. No wrapper invocation was performed in this review.
+
+2. REGRESSION TEST AND WORKFLOW
+
+The branch contains tests/mira-hfm-persistent-write-policy.test.js and the Phase 2 workflow invokes it.
+
+The latest test revision extracts the exact TOOL_POLICIES declaration and checkToolSafety() function source from the engine file, evaluates those source fragments in an isolated Node vm harness with a minimal cleanText/getToolPolicy shim, and asserts denial for all three save tools plus an unknown tool. This avoids importing the dynamic tools registry and its unrelated runtime dependencies.
+
+Test scope limitation: it executes the actual policy decision function but does not import the full engine, call executeWork(), invoke tool wrappers, or prove that every dispatch path reaches this policy. The test is committed at 5f304354e39dc9734019b0f7578e7636b46c01be.
+
+The Phase 2 workflow includes the test invocation. The available workflow-run lookup returned no run records for the latest test commit. CI status is therefore INCONCLUSIVE / NOT VERIFIED. The test source has been fetched back from the branch and its contents verified, but no local execution or Actions job log is available. Do not report CI PASS until an actual Actions run and its job log confirm success on the tested head SHA.
+
+3. DISPATCH REVIEW — LIMITED SOURCE FINDING
+
+The inspected model function-call dispatch in server.js routes ordinary tool calls through executeWork() with permissionGranted=true. This generic flag is not action-scoped user consent; the tool-level policy must still deny the three save tools.
+
+The inspected special branches are:
+- seo_workflow_review_decision: named admin browser-session gate followed by a dedicated review dispatcher.
+- seo_workflow_history: named admin browser-session gate followed by direct execution of a read/history tool.
+- marketing_client_context: named admin browser-session gate, then ordinary engine dispatch.
+
+No direct path to any of the three persistent-write wrappers was identified in these inspected branches. This is not a repository-wide proof: every route, worker, scheduled job, import, dynamic loader and other direct execute() call has not yet been exhaustively reconciled.
+
+4. OPEN CONTROL GAPS
+
+- A genuine authenticated, action-scoped approval workflow is not implemented by this policy patch. The tools are denied to autonomous execution; this does not make them user-approvable through generic chat.
+- Registry-versus-policy parity remains unverified. tools/index.js dynamically loads every tools/*.js module that exports name, declaration and execute; no complete branch-pinned active-tool inventory was established in this review.
+- The current test exercises checkToolSafety() but not executeWork() or the full dispatch/wrapper boundary.
+- Alternate dispatch and direct-wrapper invocation coverage remains incomplete.
+
+Required next work:
+1. Build a dependency-free, branch-pinned inventory of active dynamic tools and compare both directions against TOOL_POLICIES.
+2. Add an engine-level test proving executeWork() denies each persistent-write tool before wrapper invocation, without loading production data or external providers.
+3. Search and reconcile all direct tool execute()/runTool()/executeTool() callsites and worker entry points; prove no bypass of the policy.
+4. Keep all three save tools human-only until a separately authenticated, action-scoped approval design is implemented and independently tested.
+5. Retrieve actual GitHub Actions run/job logs before assigning CI PASS.
+
+5. SAFETY AND RELEASE STATUS
+
+No production Memory/Knowledge data was read or written for this review. No real Drive call, network request, provider call, restore, migration, deployment, or external action was performed.
+
+Phase 2 remains IN_PROGRESS.
+Production readiness remains NOT_CERTIFIED.
+Mira Hybrid Memory remains v0.2.
+PR #4 remains open/draft/unmerged. No merge or PR state transition was performed.
+
+6. FOLLOW-UP IMPLEMENTATION AND VERIFIED EVIDENCE (2026-11-04)
+
+This section supersedes the earlier CI-INCONCLUSIVE and registry-parity limitations above, but does not close the residual approval/governance gaps.
+
+- Centralized the tool policy in services/mira-tool-execution-policy.js.
+- Added the shared policy check to tools/index.js executeTool(), preventing direct executeTool()/services/tool-runner.js calls from invoking human-only or non-autonomous wrappers.
+- Added static parity coverage: 24 statically identifiable active tool exports, zero missing policy entries, and one reviewed dormant policy-only key (memory_backup).
+- Added isolated runtime tests proving memory_save, knowledge_save and learning_save are blocked before wrapper invocation at the registry execution boundary; an eligible calculator remains executable.
+- Added direct-dispatch boundary checks for routes, server admin backup/restore, named-admin SEO history/review, governed task execution, and the separately approved autonomous-learning controlled-apply path.
+- Final CI on tested HEAD 8c3a3f731e9a25752ef201e5c24d84c1f8aa7450: push run 41788028954 SUCCESS; pull-request run 41788034594 SUCCESS. Both job logs confirm the tool registry guard, static policy parity, direct-dispatch assertions, TESTS_FAILED=0, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+See MIRA-HFM-CAGR-001-PHASE2-TOOL-EXECUTION-AUTHORITY-DISPATCH-ADDENDUM-20261104.txt for full scope, source boundaries and remaining gaps.
+
+The raw tools object still exposes module execute methods; a complete repository-wide direct-import/direct-execution proof and unified action-scoped approval contract remain open. Production readiness remains NOT_CERTIFIED; Phase 2 remains IN_PROGRESS; version remains v0.2.

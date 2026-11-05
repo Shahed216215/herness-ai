@@ -1,0 +1,130 @@
+name: Mira Hybrid Memory Phase 1 Fixture Tests
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v025-six-documents
+    paths:
+      - ".github/workflows/mira-hfm-phase1-fixtures.yml"
+      - "tests/mira-local-memory-safety-test.js"
+      - "tests/mira-memory-local-store-contract-test.js"
+      - "tests/mira-memory-evolution-integration-test.js"
+      - "tests/mira-research-audit-fail-closed.test.js"
+      - "tests/mira-research-governance.test.js"
+      - "tests/mira-client-consent.test.js"
+      - "services/mira-local-memory-store.js"
+      - "services/mira-research-governance.js"
+      - "services/mira-client-consent-store.js"
+      - "services/mira-client-consent-service.js"
+      - "services/mira-autonomous-worker.js"
+      - "knowledge-memory-evolution.js"
+      - "snapshot-manager.js"
+      - "mira-storage.js"
+      - "memory.js"
+      - "capacity-config.js"
+      - "tools/memory-restore.js"
+      - "audit-log.js"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mira-hfm-phase1-fixtures-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-fixtures:
+    name: Six isolated fixture tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact reviewed commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify source baseline and runtime
+        shell: bash
+        env:
+          BASELINE_HEAD: 90b48f2816e28686cd499650ff6a5fc6217f0e8a
+        run: |
+          set -euo pipefail
+          [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ]
+          git merge-base --is-ancestor "$BASELINE_HEAD" "$GITHUB_SHA"
+          git diff --quiet "$BASELINE_HEAD" "$GITHUB_SHA" -- "*.js" "*.cjs" "*.mjs" "*.ts"
+          [ -z "$(git status --porcelain)" ]
+          command -v node >/dev/null 2>&1
+          NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+          [ "$NODE_MAJOR" -ge 20 ]
+          echo "CHECKOUT_HEAD=$GITHUB_SHA"
+          echo "SOURCE_BASELINE=$BASELINE_HEAD"
+          echo "SOURCE_DIFF=NONE"
+          echo "NODE_VERSION=$(node --version)"
+
+      - name: Run six tests in disposable storage
+        shell: bash
+        run: |
+          set -uo pipefail
+          TMP_ROOT="$(mktemp -d "$RUNNER_TEMP/mira-hfm-phase1.XXXXXX")"
+          trap 'rm -rf "$TMP_ROOT"' EXIT INT TERM
+
+          export MIRA_STORAGE_DIR="$TMP_ROOT/storage"
+          export MIRA_MEMORY_FILE="$TMP_ROOT/memory/memory.json"
+          export MIRA_AUDIT_FILE="$TMP_ROOT/audit/audit-log.json"
+          export MIRA_LEARNING_FILE="$TMP_ROOT/learning/work-learning-records.json"
+          export MIRA_STAGE13_STORE="$TMP_ROOT/stage13/stage13-learning-governance.json"
+          export MIRA_STAGE13_CAPABILITY_INTEGRATION_STORE="$TMP_ROOT/stage13-capability/stage13-capability-integration.json"
+          export MIRA_STAGE16_17_WORKFLOWS_FILE="$TMP_ROOT/workflows/stage16-17-workflows.json"
+          export MIRA_WORKER_RESULTS_FILE="$TMP_ROOT/worker/results.jsonl"
+          export MIRA_TASK_FILE="$TMP_ROOT/tasks/tasks.json"
+          export MIRA_OPPORTUNITY_FILE="$TMP_ROOT/opportunities/opportunities.json"
+          export MIRA_RESEARCH_GOVERNANCE_FILE="$TMP_ROOT/research/research-governance.json"
+          export MIRA_CHANGE_FILE="$TMP_ROOT/changes/change-proposals.json"
+          export MIRA_CAPABILITY_PROFILE_FILE="$TMP_ROOT/capability/capability-profile.json"
+          export MIRA_CUSTOM_PROVIDER_CONFIG_PATH="$TMP_ROOT/providers/custom-provider-slots.json"
+          export MIRA_AUTONOMOUS_WORKER_ENABLED="false"
+          export MIRA_AUTONOMOUS_RESEARCH_ENABLED="false"
+
+          unset OPENAI_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY GOOGLE_API_KEY
+          unset GROQ_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY HF_TOKEN
+          unset HUGGINGFACEHUB_API_TOKEN XAI_API_KEY TAVILY_API_KEY
+          unset MIRA_CREDENTIALS_ENCRYPTION_KEY MIRA_AUDIT_HMAC_KEY
+          unset GOOGLE_APPLICATION_CREDENTIALS GOOGLE_ACCESS_TOKEN GOOGLE_REFRESH_TOKEN
+
+          FAILED=0
+          run_test() {
+            TEST_PATH="$1"
+            TEST_LOG="$TMP_ROOT/$(basename "$TEST_PATH").log"
+            if [ ! -f "$TEST_PATH" ]; then
+              printf 'INCONCLUSIVE  %s  (file missing)\n' "$TEST_PATH"
+              FAILED=1
+              return
+            fi
+            if node "$TEST_PATH" >"$TEST_LOG" 2>&1; then
+              printf 'PASS          %s\n' "$TEST_PATH"
+              grep -E '^(TESTS_PASSED=|TESTS_FAILED=|RESULT=|MIRA_CLIENT_CONSENT_TEST_STATUS=|PRODUCTION_MEMORY_TOUCHED=|REAL_GOOGLE_DRIVE_TOUCHED=|NETWORK_REQUESTS=|NETWORK_CALLS=|EXTERNAL_ACTIONS=)' "$TEST_LOG" || true
+            else
+              CODE=$?
+              printf 'FAIL          %s  (exit=%s)\n' "$TEST_PATH" "$CODE"
+              tail -n 12 "$TEST_LOG"
+              FAILED=1
+            fi
+          }
+
+          echo "=== MIRA HFM PHASE 1 FIXTURE TESTS ==="
+          echo "NODE_VERSION=$(node --version)"
+          run_test tests/mira-local-memory-safety-test.js
+          run_test tests/mira-memory-local-store-contract-test.js
+          run_test tests/mira-memory-evolution-integration-test.js
+          run_test tests/mira-research-audit-fail-closed.test.js
+          run_test tests/mira-research-governance.test.js
+          run_test tests/mira-client-consent.test.js
+
+          if [ "$FAILED" -eq 0 ]; then
+            echo "FIXTURE_TEST_RESULT=PASS"
+          else
+            echo "FIXTURE_TEST_RESULT=FAIL_OR_INCONCLUSIVE"
+            exit 1
+          fi

@@ -1,0 +1,142 @@
+MIRA HYBRID MEMORY
+PHASE 1 — FINAL ARCHITECTURE RECONCILIATION
+DOCUMENT_ID=MIRA-HFM-PHASE1-FINAL
+UTC_TIME=20261101T105626Z
+MODE=OFFLINE_READ_ONLY_REPORT_GENERATION
+
+===== EXECUTIVE STATUS =====
+ARCHITECTURE_INVENTORY=COMPLETE
+STORAGE_OWNERSHIP=STRUCTURALLY_MAPPED
+DEPENDENCY_AUDIT=COMPLETE
+CALLSITE_AUDIT=COMPLETE
+MIGRATION=NOT_STARTED
+PRODUCTION_READINESS=NOT_CERTIFIED
+PHASE1_STATUS=REVIEW_COMPLETE_WITH_GAPS
+
+===== CONFIRMED STORAGE OWNERSHIP =====
+1. General Memory:
+   Existing memory.js and Local Store use phone-local memory.json.
+   This is a legacy dependency, not the approved future Hybrid backend.
+
+2. Work Learning:
+   services/mira-work-learning-engine.js owns work-learning-records.json
+   or the configured MIRA_LEARNING_FILE path.
+
+3. Experience Memory:
+   Derived from Work Learning records.
+
+4. Experience Retrieval:
+   Derived retrieval layer over Experience Memory.
+
+5. Future Strategy:
+   Read-only derived layer over Experience Memory lessons.
+   No direct persistence operations found in inspected source.
+
+6. Cross-Task Learning:
+   Depends on Experience Retrieval and Future Strategy.
+
+7. Learning History:
+   Derived from Experience Memory and Future Strategy.
+
+8. Knowledge Consolidation:
+   Owns data/work-knowledge-consolidation.json.
+
+9. Conversation Memory:
+   Uses Conversation Store, which owns data/conversations.json.
+
+10. Knowledge:
+    Uses knowledge.json and Google Drive integration.
+
+11. Evolution:
+    Has separate local writer, Drive synchronization and Snapshot Manager.
+    It is not integrated with Local Memory Store.
+
+===== CONFIRMED INTEGRATION GAPS =====
+HFM-01 CRITICAL:
+Phone-local General Memory dependency must be replaced through a verified
+migration plan. Existing data must remain untouched until recovery and
+dependency checks are complete.
+
+HFM-02 CRITICAL:
+Evolution and Local Store use different write/read/restore paths.
+Evolution's private writer and Snapshot Manager restore do not use the
+Local Store atomic writer and integrity readback contract.
+
+HFM-03 CRITICAL:
+A backend-neutral canonical Memory contract is not yet implemented.
+
+HFM-04 HIGH:
+Work Learning backend migration adapter is not implemented.
+
+HFM-05 HIGH:
+Knowledge Consolidation backend migration adapter is not implemented.
+
+HFM-06 HIGH:
+Conversation Store backend migration adapter is not implemented.
+
+HFM-07 HIGH:
+Knowledge and Google Drive lifecycle reconciliation remains necessary.
+
+HFM-08 HIGH:
+No Facebook connector was detected by the audited source patterns.
+This is not proof that no integration exists outside the scan scope.
+
+HFM-09 HIGH:
+Tavily Web Search is a search provider, not a durable Memory backend.
+Retrieval provenance and source verification contracts remain undefined.
+
+HFM-10 HIGH:
+Hybrid emergency backup and recovery design remains incomplete.
+
+HFM-11 HIGH:
+Conflict resolution, duplicate detection, versioning and source identity
+policies require a unified contract.
+
+HFM-12 HIGH:
+Learning and Evolution governance integration requires further design.
+
+===== ENVIRONMENT OBSERVATIONS =====
+MIRA_STORAGE_DIR=UNSET_IN_AUDIT
+MIRA_MEMORY_FILE=UNSET_IN_AUDIT
+MIRA_LEARNING_FILE=UNSET_IN_AUDIT
+Existing local memory file metadata was inspected only.
+Live Memory content was not read or hashed.
+
+===== PHASE 2 DESIGN CHECKLIST =====
+[ ] Define canonical Memory Record schema.
+[ ] Define stable Memory ID and Project ID.
+[ ] Define backend-neutral read/write/search interface.
+[ ] Define independent Read and Write capability checks.
+[ ] Define source provenance and verification metadata.
+[ ] Define conflict, duplicate and version policies.
+[ ] Define fail-closed behavior and partial backend failure handling.
+[ ] Define backup, recovery and restore verification.
+[ ] Define Evolution integration without bypassing governance.
+[ ] Define migration dependency order for every persistent subsystem.
+[ ] Define privacy, access control and secret exclusion rules.
+[ ] Define isolated offline test matrix.
+[ ] Define independent verification and deployment gates.
+
+No production implementation is authorized by this report.
+
+===== SOURCE AUDIT REFERENCES =====
+REPORT=reports/mira-hfm-phase1/MIRA-HFM-BASELINE-REPORT-20261101T104256Z.txt
+1792bf4eddeb136edfc00ac8b4d47e5cf6adcdb000886002966de3ffd6d39b94  reports/mira-hfm-phase1/MIRA-HFM-BASELINE-REPORT-20261101T104256Z.txt
+REPORT=reports/mira-hfm-phase1/MIRA-HFM-DEPENDENCY-MAP-20261101T104442Z.txt
+126d02e4a98e53a6a89d87c8bcee4cc93c4fe5aac2b2284a755e708c27b45b51  reports/mira-hfm-phase1/MIRA-HFM-DEPENDENCY-MAP-20261101T104442Z.txt
+REPORT=reports/mira-hfm-phase1/MIRA-HFM-DEEP-DEPENDENCY-AUDIT-20261101T104701Z.txt
+d60f998b8a8b16b0f6bb1f21650e9279a55e0cff61d690e9d126019cde06cde0  reports/mira-hfm-phase1/MIRA-HFM-DEEP-DEPENDENCY-AUDIT-20261101T104701Z.txt
+REPORT=reports/mira-hfm-phase1/MIRA-HFM-PERSISTENCE-OWNERSHIP-20261101T105212Z.txt
+82486983dc43ec38e6d544f2ff5bc5db666607e4f7dc56fb6b13b0048ee510d8  reports/mira-hfm-phase1/MIRA-HFM-PERSISTENCE-OWNERSHIP-20261101T105212Z.txt
+REPORT=reports/mira-hfm-phase1/MIRA-HFM-FINAL-CALLSITE-AUDIT-20261101T105339Z.txt
+d2843917a83f2f6a9bfe0d3eb2e22ae5da65145b1f4590925abc35bea31ba4c6  reports/mira-hfm-phase1/MIRA-HFM-FINAL-CALLSITE-AUDIT-20261101T105339Z.txt
+
+===== SAFETY ASSERTIONS =====
+LIVE_MEMORY_CONTENT_READ=NO
+LIVE_MEMORY_CONTENT_HASHED=NO
+NETWORK_REQUESTS=0
+FACEBOOK_API_CALLED=NO
+GOOGLE_DRIVE_API_CALLED=NO
+PRODUCTION_FILES_MODIFIED=NO
+MIGRATION_OR_RESTORE=NO
+RESULT=PHASE1_REVIEW_COMPLETE_WITH_GAPS

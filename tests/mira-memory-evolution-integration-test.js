@@ -56,7 +56,6 @@ async function main() {
 
   writeJson(path.join(root, "memory.json"), initial);
   writeJson(path.join(root, "drive-memory.json"), initial);
-  writeJson(path.join(storeRoot, "memory.json"), initial);
 
   copy(
     path.join(PROJECT, "knowledge-memory-evolution.js"),
@@ -74,11 +73,15 @@ async function main() {
     path.join(PROJECT, "services/mira-local-memory-store.js"),
     path.join(root, "services/mira-local-memory-store.js")
   );
+  copy(
+    path.join(PROJECT, "services/mira-json-state-store.js"),
+    path.join(root, "services/mira-json-state-store.js")
+  );
 
   writeJson(path.join(root, "audit-log.js"), {});
   fs.writeFileSync(
     path.join(root, "audit-log.js"),
-    '"use strict"; module.exports = { recordAudit: () => ({ logged: true }) };'
+    '"use strict"; let failNext = false; module.exports = { recordAudit: () => { if (failNext) { failNext = false; throw new Error("INJECTED_AUDIT_FAILURE"); } return { logged: true }; }, failNext: () => { failNext = true; } };'
   );
 
   fs.writeFileSync(path.join(root, "google-drive.js"), `
@@ -114,7 +117,7 @@ module.exports = {
 `);
 
   process.env.MIRA_STORAGE_DIR = root;
-  process.env.MIRA_MEMORY_FILE = path.join(storeRoot, "memory.json");
+  process.env.MIRA_MEMORY_FILE = path.join(root, "memory.json");
 
   const engine = require(
     path.join(root, "knowledge-memory-evolution.js")
@@ -166,7 +169,39 @@ module.exports = {
   assert.deepEqual(readJson(driveFile), initial);
   pass("Memory snapshot rollback + local/Drive consistency");
 
-  // 4. Drive failure after local apply must trigger rollback.
+  const auditMock = require(path.join(root, "audit-log.js"));
+  auditMock.failNext();
+  const auditFailurePrepare = await engine.prepareEvolution(
+    proposal(proposed),
+    { changeId: "memory-fixture-audit-failure" }
+  );
+  assert.equal(auditFailurePrepare.ok, false);
+  assert.equal(auditFailurePrepare.status, "prepare_failed");
+  assert.match(auditFailurePrepare.error, /Required Evolution audit event was not recorded/);
+  assert.deepEqual(readJson(localFile), initial);
+  assert.deepEqual(readJson(driveFile), initial);
+  pass("Evolution success blocked when required audit record fails");
+
+  // 4. Divergent Local/Drive state must be preserved in quarantine and block apply.
+  const divergentDrive = [
+    ...initial,
+    { role: "user", content: "fixture-conflicting-remote-entry" }
+  ];
+  writeJson(driveFile, divergentDrive);
+  const conflict = await engine.prepareEvolution(
+    proposal(proposed),
+    { changeId: "memory-fixture-conflict" }
+  );
+  assert.equal(conflict.ok, false);
+  assert.equal(conflict.status, "local_drive_mismatch", JSON.stringify(conflict));
+  assert.equal(fs.existsSync(conflict.quarantine.file), true);
+  const quarantineEnvelope = readJson(conflict.quarantine.file);
+  assert.deepEqual(quarantineEnvelope.payload.local, initial);
+  assert.deepEqual(quarantineEnvelope.payload.drive, divergentDrive);
+  writeJson(driveFile, initial);
+  pass("Local/Drive conflict quarantined without overwriting either source");
+
+  // 5. Drive failure after local apply must trigger rollback.
   drive.failNextMemorySave();
 
   const failedApply = await engine.applyEvolution(
@@ -232,30 +267,24 @@ module.exports = {
   assert.deepEqual(store.readMemory(), storeEntries);
   pass("Local Store rejects invalid input without replacing data");
 
-  // Characterize current production source: Evolution still owns
-  // its separate writer and does not call the Local Store.
+  // Verify Evolution delegates Memory persistence to the shared Local Store.
   const source = fs.readFileSync(
     path.join(PROJECT, "knowledge-memory-evolution.js"),
     "utf8"
   );
 
-  assert.match(source, /function atomicWriteJson/);
-  assert.match(source, /atomicWriteJson\(\s*getTargetFile\(target\)/);
-  assert.doesNotMatch(
-    source,
-    /require\(["']\.\/services\/mira-local-memory-store["']\)/
-  );
+  assert.ok(source.includes("localMemoryStore.readMemory()"));
+  assert.ok(source.includes("localMemoryStore.writeMemory(value)"));
+  assert.ok(source.includes("jsonStateStore.writeArrayState"));
 
-  console.log(
-    "GAP_CONFIRMED: Evolution Memory writer is not integrated with Local Store."
-  );
+  console.log("SHARED_MEMORY_STORE_INTEGRATION=PASS");
 
   console.log("TESTS_PASSED=" + passed);
   console.log("TESTS_FAILED=0");
   console.log("PRODUCTION_MEMORY_TOUCHED=NO");
   console.log("REAL_GOOGLE_DRIVE_TOUCHED=NO");
   console.log("NETWORK_REQUESTS=0");
-  console.log("RESULT=ISOLATED_BASELINE_PASS_INTEGRATION_GAP_CONFIRMED");
+  console.log("RESULT=PHASE2_EVOLUTION_INTEGRATION_PASS");
 }
 
 main()

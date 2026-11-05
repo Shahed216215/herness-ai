@@ -1,0 +1,167 @@
+MIRA HYBRID MEMORY — PHASE 1 REPOSITORY SOURCE SCAN & FIXTURE TEST SAFETY REVIEW
+Document: MIRA-HFM-CAGR-001-PHASE1-REPOSITORY-SOURCE-SCAN-AND-FIXTURE-TEST-SAFETY-REVIEW
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this report: 074eddf14b5cbac195b0e040f557b5dde42723f2
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Version boundary: v0.2
+Status: EXECUTABLE-SOURCE LEXICAL SCAN COMPLETE; FIXTURE TEST EXECUTION NOT PERFORMED
+
+1. COMPLETE BRANCH TREE AND EXECUTABLE SOURCE SET
+
+GitHub recursive tree at the reviewed HEAD:
+- Tree entries: 627
+- Blob files: 609
+- Tree truncated: false
+
+JavaScript-family source/test files in the branch:
+- Root modules: 50
+- services/: 143
+- routes/: 26
+- tools/: 26
+- providers/: 16
+- scripts/: 1
+- tests/: 278
+TOTAL: 540 JS/CJS/MJS/TS files
+
+All 540 files were retrieved from the exact feature branch in bounded batches and scanned line-by-line for relevant source indicators, including:
+Memory, Knowledge, Learning, storagePath, Drive/Google APIs, provider calls, consent, audit, file read/write operations, and environment-based file/path overrides.
+
+This closes C01 for the executable JavaScript-family source and test set. Markdown/text documentation, package metadata/lockfile, and non-executable assets were not counted as source modules. The scan is lexical/structural: it identifies candidate callsites and references, but does not by itself prove runtime reachability or complete dynamic-import behavior.
+
+2. SOURCE SCAN RESULTS
+
+2.1 Memory and persistence roots
+- General Memory is rooted in services/mira-local-memory-store.js, with MIRA_MEMORY_FILE as an independent absolute-path override.
+- Knowledge uses mira-storage through knowledge.js, but legacy Knowledge backup/cleanup/restore tools construct project-root paths directly.
+- Conversation Store is a separate data/conversations.json domain.
+- Work Learning Records use MIRA_LEARNING_FILE or data/work-learning-records.json.
+- Work Knowledge Consolidation uses data/work-knowledge-consolidation.json.
+- Stage13 Learning Governance uses MIRA_STAGE13_STORE or data/stage13-learning-governance.json.
+- Audit Log uses MIRA_AUDIT_FILE or storagePath(audit-log.json).
+- Research Governance uses MIRA_RESEARCH_GOVERNANCE_FILE or its storagePath default.
+- Custom provider config, provider credentials, snapshot artifacts, client stores, opportunity/task/project stores, SEO workflow history, and autonomous orchestration each have separate persistence paths.
+- Several overrides or legacy modules bypass the shared storage resolver; see prior Path Compatibility, Worker/Store, Domain Caller, and Persistence Compatibility reports.
+
+2.2 Drive and Knowledge callsites
+- Shared Google Drive adapter: google-drive.js.
+- Direct OAuth clients: tools/knowledge-backup.js and tools/knowledge-restore.js.
+- Knowledge CRUD callers: knowledge.js addKnowledge/addLearning/deleteKnowledge/updateKnowledge/updateLearning; tools/knowledge-save.js; tools/learning-save.js; controlled apply services; Evolution.
+- Search caller: tools/knowledge-search.js; Drive array including [] replaces the local search source.
+- Cleanup caller: tools/knowledge-cleanup.js; project-root direct write then Drive sync.
+- Backup caller: tools/knowledge-backup.js; rewrites project-root knowledge.json, writes local backup, then direct Drive backup.
+- Restore caller: tools/knowledge-restore.js; can replace project-root Knowledge and sync Drive.
+- Work-derived consolidation and learning records remain separate from Knowledge CRUD and create governance proposals rather than being one canonical store.
+- D01-D27 and all direct route/tool call paths are registered in the preceding reports; all-module lexical scan was used to find additional candidate references. Runtime reachability of every dynamic path remains a separate proof obligation.
+
+2.3 Provider and external egress
+- providers/index.js selects provider modules and may fall back according to runtime policy.
+- Provider adapters include OpenAI, Anthropic, Gemini, Groq, DeepSeek, OpenRouter, Hugging Face, xAI, and custom provider slots 1–5.
+- Shared secure transport is services/security/secure-provider-request.js; SDK wrapper is services/security/secure-sdk-fetch.js.
+- Learning service sends source content to generate().
+- tools/web-search.js sends query material to Tavily.
+- Custom provider endpoints can receive prompts/source content when selected.
+- Google Drive OAuth is a separately reviewed fixed-host exception; effective token scopes remain unknown.
+- No live provider, Drive, or Facebook API call was made.
+
+2.4 Audit and governance
+- audit-log.js is the shared hash-linked audit store, with MIRA_AUDIT_FILE override.
+- Several service/route helpers have different audit failure semantics (swallowed versus propagated).
+- Knowledge Improvement Apply has early-return branches without route-level audit events; lower-level event coverage remains to be traced.
+- Provider credential reveal route is SYSTEM_ADMIN-gated, returns plaintext credential material to the authorized response, and records audit attempts; no credential data was read.
+- Client Consent is a separate persisted store; marketing and public research consent checks are separate.
+- Work Learning, Experience Memory, Future Strategy, Cross-Task Learning, Learning History, and Knowledge Consolidation have distinct roles and provenance boundaries.
+
+3. FIXTURE TEST INVENTORY AND ISOLATION REVIEW
+
+3.1 Strong isolated candidates (source reviewed; not executed)
+A. tests/mira-memory-local-store-contract-test.js
+- Creates a temporary directory.
+- Copies mira-storage.js and mira-local-memory-store.js into the temporary project.
+- Sets MIRA_STORAGE_DIR and MIRA_MEMORY_FILE to fixture paths before requiring the copied store.
+- Exercises write/read, restrictive permissions, invalid-input rejection, and source-level separation between Evolution writer and Local Store.
+- Appears suitable for isolated execution when run from an exact branch checkout.
+
+B. tests/mira-memory-evolution-integration-test.js
+- Creates a temporary project root and separate store root.
+- Copies Evolution, Snapshot Manager, mira-storage, and Local Memory Store into the temporary root.
+- Sets MIRA_STORAGE_DIR and MIRA_MEMORY_FILE to fixture paths.
+- Replaces google-drive.js with a temporary mock adapter that reads/writes a local fixture file and can inject Drive-save failure.
+- Exercises apply, verification, rollback, injected failure, stale state, preservation, and local-store behavior.
+- Appears suitable for isolated execution with network disabled.
+
+C. tests/mira-research-audit-fail-closed.test.js and tests/mira-research-governance.test.js
+- Use temporary governance ledger files and injected audit callbacks.
+- Appears suitable for isolated execution.
+
+D. tests/mira-client-consent.test.js
+- Creates a temporary consent store path and injected audit callback.
+- Appears suitable for isolated execution.
+
+E. tests/mira-marketing-workflow-orchestrator.test.js
+- Creates a temporary consent store and injected consent service.
+- Appears suitable for isolated execution.
+
+3.2 Candidate requiring an isolation wrapper
+tests/mira-local-memory-safety-test.js:
+- Sets MIRA_MEMORY_FILE to a temporary path before requiring Memory modules.
+- It does not set MIRA_STORAGE_DIR itself.
+- memory.js imports capacity-config.js, whose CONFIG_FILE resolves through mira-storage('capacity-config.json'). Without an externally supplied MIRA_STORAGE_DIR, a capacity-config.json in the checkout root could be read.
+- No production Memory file is targeted by the test because MIRA_MEMORY_FILE is overridden, but full storage-root isolation should be enforced by launching it with MIRA_STORAGE_DIR pointing to a separate empty temporary directory. This is a test harness requirement, not a source patch.
+
+3.3 Tests explicitly excluded from the Phase 1 fixture run
+- tests/chat36-37-stage16-17.test.js temporarily writes the default audit and Stage16/17 state files and then restores snapshots; it is not accepted as isolated without further review.
+- tests/stage121-122-earnings-profitability-e2e-test.js and tests/stage121-122-final-hardening-e2e-test.js temporarily replace existing earnings/cost data files and restore prior bytes; they are unrelated to Hybrid Memory and were not selected.
+- Several Stage 6.2/6.2.3/6.4.x learning tests use the default work-learning-records.json path or inspect existing data. They require an explicit temporary MIRA_LEARNING_FILE or a verified read-only fixture setup before execution.
+- Broad npm test is not the Hybrid Memory fixture suite and includes provider and unrelated project tests. It was not run.
+- Stage19 live transport, DNS/socket pinning, local TLS and SSRF tests were not run; they require their own controlled test harness/certificates and are outside this Phase 1 Memory fixture subset.
+
+4. EXECUTION ENVIRONMENT RESULT
+
+An attempt to clone the exact public feature branch into the isolated execution container failed because DNS/network resolution for github.com was unavailable. GitHub source retrieval itself remained available through the connected repository reader. A partial manual file reconstruction was attempted but had source-transfer integrity errors and was discarded. It was not used to run tests and generated no test evidence.
+
+No local repository checkout was available for Node execution. No dependencies were installed. No GitHub Actions workflow was triggered. No production path or credential was accessed.
+
+5. C01–C07 STATUS UPDATE
+
+C01 — EXECUTABLE SOURCE-TEXT SCAN: PASS (SCOPED).
+All 540 JavaScript-family source and test files in root/services/routes/tools/providers/scripts/tests were retrieved and lexically scanned at the exact reviewed HEAD. Non-code documentation/assets excluded. Dynamic runtime reachability is not claimed.
+
+C02 — PERSISTENCE ROOTS AND CALLERS: PARTIAL.
+All application source files and test modules were scanned; route/tool coverage is complete and 143 service modules were scanned. The path/caller inventory is substantially expanded, but a final per-domain indirect/dynamic caller proof and complete override-to-store mapping remain outstanding.
+
+C03 — LOCAL/DRIVE AUTHORITY AND CONFLICT POLICY: OPEN.
+Current Local/Drive behavior is mapped; canonical authority, empty-remote handling, stale-state policy, conflict quarantine, and transition decision are not approved.
+
+C04 — CALLER COMPATIBILITY: PARTIAL.
+All route/tool modules and relevant persistence services were scanned. Full behavioral contract, result/error/audit/rollback semantics for every caller are not fully tabulated.
+
+C05 — DRIVE CALLSITE INVENTORY: PARTIAL / REVIEW REQUIRED.
+All source modules were lexically scanned and direct Google OAuth/shared-adapter candidates are registered. A line-numbered final allowlist with exact caller, read/write mode, data class, authorization/consent, failure behavior, and replacement dependency is still required before Drive behavior can be removed.
+
+C06 — ISOLATED FIXTURE TESTS: PLAN READY / EXECUTION INCONCLUSIVE.
+Safe test candidates and one isolation wrapper requirement are identified. Exact branch runtime could not be obtained in the available execution container; no test was run. This is INCONCLUSIVE, not PASS.
+
+C07 — PROVIDER PERMISSION / DATA EGRESS: PARTIAL.
+Provider adapters, secure transports, learning/web-search egress, custom endpoints, credentials route, and consent callers are scanned. Effective OAuth scopes, provider retention terms, complete data-minimization mapping, and every live-call authorization edge remain unknown.
+
+6. SAFETY AND CHANGE STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+RUNTIME_ROUTES_INVOKED=NONE
+TESTS=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+APPLICATION_SOURCE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF REPORT
