@@ -182,6 +182,21 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
   assert.equal(result.infrastructureIndependentlyCertified, false);
   assert.equal(result.productionApproval, false);
 
+  await rejects(verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(),
+    provider: makeProvider(),
+    trustedStateAuthorities,
+    expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers,
+    trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers,
+    expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02',
+    operationalIssuerIds: [...operationalIssuerIds, evidenceIssuer],
+    now
+  }), 'HFM_PROVENANCE_EVIDENCE_BINDING_MISMATCH');
+
   const forgedState = signed(statePayload(), stateKey);
   forgedState.signature = Buffer.alloc(64, 3).toString('base64');
   assert.throws(() => verifyPolicyStateEnvelope({
