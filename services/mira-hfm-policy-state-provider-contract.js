@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const { verifySignedProvenancePolicy, canonicalizeProvenancePolicy } =
   require('./mira-hfm-signed-provenance-policy');
+const { verifyAllPolicyEvidence } = require('./mira-hfm-provenance-evidence-verifier');
 
 function fail(message, code) {
   const error = new Error(message);
