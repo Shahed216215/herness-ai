@@ -27,6 +27,13 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - `tests/mira-hfm-key-provider-contract.test.js` covers descriptor shape, key-reference mismatch, wrong purpose, missing operations, and unsupported operation.
 - Production KMS/HSM selection, workload identity, least privilege, rotation, escrow/recovery, audit policy, and security approval remain open. See `KEY-PROVIDER-GOVERNANCE.md`.
 
+## Authoritative snapshot and recovery verification
+- `services/mira-hfm-authoritative-snapshot.js` defines an injected read-only source contract. It requires explicit project, actor, and `backup:read` request scope, plus declared source/project/revision/schema/count/digest attestation. It returns source revision-bound backup metadata only after contract checks.
+- Source descriptors and attestations are caller-supplied claims. This contract does not authenticate a production source, independently authorize an actor, or prove a production snapshot is authoritative. No production Memory or Knowledge store is wired into it.
+- `services/mira-hfm-recovery-verification.js` performs a non-mutating recovery drill: decrypt/authenticate, validate project/schema/count, and compare source revision, record count, and payload SHA-256 against an independently supplied baseline. It explicitly reports no canonical Memory/Knowledge write and no restore execution.
+- Synthetic tests cover allow/deny shape, project/scope/revision/digest mismatches, read-only mode, successful recovery preview, and baseline mismatch. They do not establish production source identity or key custody.
+
+
 ## Explicit limitations
 - No production Memory source is read. Caller must provide a snapshot and its independently established project scope/source revision.
 - No Drive folder is created or credentials loaded by the adapter; caller must supply a verified folder ID and authorized client.
