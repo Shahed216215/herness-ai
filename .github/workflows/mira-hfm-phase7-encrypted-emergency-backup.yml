@@ -11,10 +11,14 @@ on:
       - 'services/mira-hfm-drive-emergency-backup-adapter.js'
       - 'services/mira-hfm-drive-backup-id-journal.js'
       - 'services/mira-hfm-drive-generated-id-upload.js'
+      - 'services/mira-hfm-drive-journaled-cloud-adapter.js'
+      - 'services/mira-hfm-google-drive-generated-id-provider.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
+      - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
+      - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
   push:
@@ -26,13 +30,24 @@ on:
       - 'services/mira-hfm-backup-key-provider.js'
       - 'services/mira-hfm-drive-emergency-backup-adapter.js'
       - 'services/mira-hfm-drive-backup-id-journal.js'
+      - 'services/mira-hfm-drive-generated-id-upload.js'
+      - 'services/mira-hfm-drive-journaled-cloud-adapter.js'
+      - 'services/mira-hfm-google-drive-generated-id-provider.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
+      - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
+      - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
 
+# Safety invariant: this workflow remains synthetic/offline; never add OAuth, provider secrets,
+# live Drive requests, canonical Memory writes, or production restore actions here.
+# The complete offline suite includes the encrypted core, provider contract, durable ID journal,
+# generated-ID upload orchestration, and end-to-end journaled cloud adapter integration.
+# Offline integration coverage includes generated-ID journal recovery, Drive v3 metadata/list/quota mapping,
+# exact ciphertext readback, and non-destructive capacity/restore-staging checks.
 permissions:
   contents: read
 
@@ -44,6 +59,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Syntax-check Phase 7 journal and Drive modules
+        run: |
+          for file in \
+            services/mira-hfm-drive-backup-id-journal.js \
+            services/mira-hfm-drive-generated-id-upload.js \
+            services/mira-hfm-drive-journaled-cloud-adapter.js \
+            services/mira-hfm-google-drive-generated-id-provider.js \
+            tests/mira-hfm-drive-backup-id-journal.test.js \
+            tests/mira-hfm-drive-generated-id-upload.test.js \
+            tests/mira-hfm-drive-journaled-cloud-adapter.test.js \
+            tests/mira-hfm-google-drive-generated-id-provider.test.js
+          do
+            node --check "$file"
+          done
       - name: Run synthetic offline backup tests
         run: node tests/mira-hfm-encrypted-emergency-backup.test.js
       - name: Run synthetic offline transport adapter tests
@@ -52,3 +81,7 @@ jobs:
         run: node tests/mira-hfm-drive-backup-id-journal.test.js
       - name: Run journaled generated-ID upload tests
         run: node tests/mira-hfm-drive-generated-id-upload.test.js
+      - name: Run journaled cloud adapter integration tests
+        run: node tests/mira-hfm-drive-journaled-cloud-adapter.test.js
+      - name: Run injected Google Drive v3 provider tests
+        run: node tests/mira-hfm-google-drive-generated-id-provider.test.js
