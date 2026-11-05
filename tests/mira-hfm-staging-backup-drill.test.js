@@ -37,8 +37,8 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   fs.writeFileSync(knowledgeFile, JSON.stringify([{ id: 'k1', text: knowledgeText }]), { mode: 0o600 });
   const pair = crypto.generateKeyPairSync('ed25519');
   const publicKeyPem = pair.publicKey.export({ type: 'spki', format: 'pem' });
-  const signingProvider = makeSnapshotSigningProvider(pair.privateKey, signingKeyId);
   const signingKeyId = sourceId + '-key-v1';
+  const signingProvider = makeSnapshotSigningProvider(pair.privateKey, signingKeyId);
   const policyPair = crypto.generateKeyPairSync('ed25519');
   const policyPublicPem = policyPair.publicKey.export({ type: 'spki', format: 'pem' });
   const policyPublic = crypto.createPublicKey(policyPublicPem);
