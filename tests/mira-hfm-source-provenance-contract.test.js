@@ -7,7 +7,7 @@ const baseline = {
   provenance: {
     storageSystemId: 'storage-a', storageInstanceId: 'instance-a',
     securityPrincipalId: 'principal-a', trustDomainId: 'trust-a',
-    sourceSystemId: 'system-a', authorizationIssuerId: 'issuer-a'
+    sourceSystemId: 'system-a', snapshotIssuerId: 'issuer-a'
   }
 };
 const backup = {
@@ -15,7 +15,7 @@ const backup = {
   provenance: {
     storageSystemId: 'storage-b', storageInstanceId: 'instance-b',
     securityPrincipalId: 'principal-b', trustDomainId: 'trust-b',
-    sourceSystemId: 'system-b', authorizationIssuerId: 'issuer-b'
+    sourceSystemId: 'system-b', snapshotIssuerId: 'issuer-b'
   }
 };
 const policy = () => ({
