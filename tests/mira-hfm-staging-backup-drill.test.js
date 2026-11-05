@@ -390,6 +390,10 @@ async function run() {
       async compareAndSwap(input) {
         eventOrder.push('policy-state-commit');
         return baseProvider.compareAndSwap(input);
+      },
+      async getCommitReceipt(input) {
+        eventOrder.push('policy-state-receipt-lookup');
+        return baseProvider.getCommitReceipt(input);
       }
     };
     const baseEvidenceProvider = policyAcceptance.evidenceProvider;
