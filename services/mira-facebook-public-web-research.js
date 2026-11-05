@@ -21,7 +21,7 @@ function validateFacebookUrl(value, label = 'pageUrl') {
   if (url.protocol !== 'https:' || !FACEBOOK_HOSTS.has(url.hostname.toLowerCase()) ||
       url.username || url.password || url.hash || (url.port && url.port !== '443')) throw new Error(label + ' must be a standard HTTPS Facebook URL.');
   url.search = '';
-  const normalized = url.toString();\n  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+  const normalized = url.toString();   return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
 }
 function buildFacebookPageResearchQueries({ pageId, pageName, pageUrl } = {}) {
   const id = validatePageId(pageId);
