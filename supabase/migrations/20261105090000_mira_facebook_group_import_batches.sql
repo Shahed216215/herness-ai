@@ -28,7 +28,7 @@ create index if not exists mira_fb_group_import_project_group_created_idx
 alter table public.mira_facebook_group_import_batches enable row level security;
 
 revoke all on table public.mira_facebook_group_import_batches
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 
 grant select, insert on table public.mira_facebook_group_import_batches
   to service_role;
@@ -67,7 +67,7 @@ create index if not exists mira_fb_group_import_audit_project_group_created_idx
 alter table public.mira_facebook_group_import_audit_events enable row level security;
 
 revoke all on table public.mira_facebook_group_import_audit_events
-  from public, anon, authenticated;
+  from public, anon, authenticated, service_role;
 
 grant select, insert on table public.mira_facebook_group_import_audit_events
   to service_role;
