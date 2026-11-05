@@ -159,8 +159,19 @@ async function verifyAllPolicyEvidence({
       verified.push(verifyEvidenceEnvelope({
         envelope, reference, sourceId, dimension,
         expectedValue: policyPayload.sources[sourceId][dimension], trustedEvidenceIssuers,
-        expectedEnvironment, expectedProjectId, operationalIssuerIds, now
-      }));
+        expectedEnvironment, expectedProjectId, operationalIssuerIds,
+        excludedKeyFingerprints, now
+      });
+      const priorFingerprint = issuerFingerprintById.get(verifiedEvidence.issuerId);
+      const priorIssuer = issuerIdByFingerprint.get(verifiedEvidence.keyFingerprint);
+      if ((priorFingerprint && priorFingerprint !== verifiedEvidence.keyFingerprint) ||
+          (priorIssuer && priorIssuer !== verifiedEvidence.issuerId)) {
+        fail('Evidence issuer identities must not alias or rotate key material within one policy evidence set.',
+          'HFM_PROVENANCE_EVIDENCE_ISSUER_KEY_COLLISION');
+      }
+      issuerFingerprintById.set(verifiedEvidence.issuerId, verifiedEvidence.keyFingerprint);
+      issuerIdByFingerprint.set(verifiedEvidence.keyFingerprint, verifiedEvidence.issuerId);
+      verified.push(verifiedEvidence);
     }
   }
   return Object.freeze({
