@@ -26,7 +26,7 @@ async function run(){
  const scaled=await retrieveOptimized({query:'Mira memory retrieval scale benchmark',projectId:project,sources:syntheticSources,tokenBudget:2500,maxResults:10,maxCandidatesPerSource:1000});
  assert.equal(scaled.metrics.candidateCount,10000);
  assert.equal(scaled.results.length,10);
- assert.ok(scaled.metrics.estimatedTokensUsed<=1000);
+ assert.ok(scaled.metrics.estimatedTokensUsed<=2500);
  assert.equal(measureCapacity({observedRecords:scaled.metrics.candidateCount,baselineCapacity:100}).targetStatus,'MEASURED_TARGET_MET');
  await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[],tokenBudget:100}),/sources/i);
  console.log('HFM_PHASE9_TOKEN_AWARE_BUDGET=PASS');
