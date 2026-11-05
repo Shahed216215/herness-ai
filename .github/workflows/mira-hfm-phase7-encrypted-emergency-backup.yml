@@ -3,7 +3,7 @@ name: Mira HFM Phase 7 Encrypted Emergency Backup
 on:
   pull_request:
     branches:
-      - 'work/mira-hfm-v02-phase6-clean-restack-on-phase5-20261105'
+      - 'work/mira-hfm-v02-phase6-restack-on-current-phase5-20261106'
     paths:
       - 'services/mira-hfm-encrypted-emergency-backup.js'
       - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
