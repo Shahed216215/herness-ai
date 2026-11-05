@@ -87,6 +87,20 @@ async function archiveResearchEvidenceWithHumanApproval({
   }
 
   if (!result || result.status !== 'ARCHIVE_WRITE_VERIFIED' || result.canonicalMemoryWrite !== false) {
+    try {
+      audit({
+        actorRole: 'admin',
+        action: 'FACEBOOK_RESEARCH_ARCHIVE_RESULT',
+        resource: 'facebook_research_archive',
+        resourceId: pageId,
+        status: 'inconclusive',
+        details: {
+          actor: actor.trim(),
+          archiveStatus: String(result && result.status || 'NO_RESULT').slice(0, 64),
+          canonicalMemoryWrite: false
+        }
+      });
+    } catch (_) {}
     fail('RESEARCH_ARCHIVE_WRITE_UNVERIFIED', 'Archive readback did not verify an untrusted-only write.');
   }
 
