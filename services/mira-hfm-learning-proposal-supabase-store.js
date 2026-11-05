@@ -91,6 +91,13 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
         row.payload.reviewDigest !== row.review_digest ||
         digest(Object.fromEntries(Object.entries(row.payload).filter(([k]) => k !== 'reviewDigest'))) !== row.review_digest ||
         !['APPROVE_FOR_MANUAL_HANDOFF','REJECT'].includes(row.payload.decision) ||
+        !((row.payload.decision === 'APPROVE_FOR_MANUAL_HANDOFF' && row.payload.status === 'APPROVED_FOR_MANUAL_HANDOFF') ||
+          (row.payload.decision === 'REJECT' && row.payload.status === 'REJECTED')) ||
+        row.payload.schema !== 'MIRA_HFM_LEARNING_PROPOSAL_REVIEW' || row.payload.version !== '1.0.0' ||
+        row.payload.actorRole !== 'admin' || typeof row.payload.actorId !== 'string' || !row.payload.actorId.trim() ||
+        typeof row.payload.reason !== 'string' || !row.payload.reason.trim() ||
+        typeof row.payload.reviewedAt !== 'string' || !Number.isFinite(Date.parse(row.payload.reviewedAt)) ||
+        new Date(row.payload.reviewedAt).toISOString() !== row.payload.reviewedAt ||
         row.payload.trustState !== 'UNTRUSTED' || row.payload.canonicalMemoryWrites !== 0 ||
         row.payload.automaticExecution !== false) {
       fail('HFM_LEARNING_SUPABASE_REVIEW_INTEGRITY_FAILED', 'Supabase review identity, digest or governance policy failed.');
