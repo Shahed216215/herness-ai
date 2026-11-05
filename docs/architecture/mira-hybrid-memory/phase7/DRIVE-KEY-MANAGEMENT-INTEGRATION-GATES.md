@@ -200,13 +200,13 @@ The branch now includes `services/mira-hfm-drive-journaled-cloud-adapter.js`, wh
 
 - `putIfAbsent` derives a deterministic operation ID from project and backup identity, validates the exact object namespace and encrypted bytes, then delegates to journal-before-upload orchestration.
 - It returns a reconciliation result only when the generated-ID uploader has verified remote metadata and exact ciphertext bytes. The cloud service now accepts this narrowly defined `reconciled + verified` result and performs its own readback and authenticated-envelope verification again.
-- `get` resolves the exact generated ID from the journal, verifies account/space/project/backup/digest/size/encryption/parent metadata, downloads exact bytes and rechecks size/SHA-256. It never searches by file name.
-- Missing journal returns no object; corrupt or mismatched journal fails closed. The adapter intentionally does not provide list/quota/delete/move/permission APIs; the existing capacity/listing adapter remains separate.
+- `get` resolves the exact generated ID from the journal, verifies account/space/project/backup/schema/version/timestamp/digest/size/encryption/parent metadata, downloads exact bytes and rechecks size/SHA-256. It never searches by file name.
+- `recoverJournal({backupId,key})` scans only the configured project parent with bounded pagination, requires exactly one matching immutable backup ID, fetches by the listed exact file ID, verifies all metadata and exact ciphertext bytes, authenticates/decrypts the envelope in memory, then recreates the local journal atomically. Wrong keys, duplicate matches, incomplete listings, metadata mismatch or digest mismatch fail closed without writing a journal or restore artifact. The adapter intentionally does not provide list/quota/delete/move/permission APIs; the existing capacity/listing adapter remains separate.
 - End-to-end synthetic tests exercise encrypted backup upload, repeated upload with HTTP 409 reconciliation, authenticated cloud preview, restore to staging only, project isolation, and no network/OAuth/canonical writes.
 
 This proves only the injected fake-provider contract. It does not establish Google Drive API field mapping, account identity, remote consistency, OAuth scope, quota or production durability.
 
-STATUS=OFFLINE_JOURNALED_CLOUD_ADAPTER_INTEGRATION
+STATUS=OFFLINE_JOURNALED_CLOUD_ADAPTER_AND_AUTHENTICATED_JOURNAL_RECOVERY
 GOOGLE_DRIVE_SDK=NOT_IMPLEMENTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
