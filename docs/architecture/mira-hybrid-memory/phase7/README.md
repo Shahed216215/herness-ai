@@ -43,7 +43,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest branch-head CI: run **41990607983 — SUCCESS**, job **127121672506**, commit **77cf0f0deaa8101cac0e60bd3e7c0b2520a48435**.
+- Latest code-change CI: run **41990607983 — SUCCESS**, job **127121672506**, code commit **77cf0f0deaa8101cac0e60bd3e7c0b2520a48435**.
 - Combined offline job logs: **40 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - This is synthetic offline CI evidence, not a live-provider or production recovery certification.
