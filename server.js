@@ -1642,6 +1642,9 @@ app.post(
       let finalResult =
         null;
 
+      let learningProposalHandoff = null;
+      let learningProposalHandoffAttempted = false;
+
       let firewallInspectionAssessment =
         null;
 
@@ -1841,6 +1844,59 @@ app.post(
           }
 
           if (
+            toolName === "mira_hfm_public_web_retrieval" &&
+            req.body && req.body.learningProposalOptIn === true &&
+            !learningProposalHandoffAttempted
+          ) {
+            learningProposalHandoffAttempted = true;
+            const proposalInput = req.body.learningProposal;
+            const session = req.session;
+            const namedAdmin = req.role === "admin" && session &&
+              session.authenticated === true && session.role === "admin" &&
+              typeof session.username === "string" && session.username.trim().length > 0;
+            let retrievalReport = null;
+            try {
+              retrievalReport = typeof toolResult === "string"
+                ? JSON.parse(toolResult)
+                : toolResult;
+            } catch {
+              retrievalReport = null;
+            }
+            const stage = app.locals && app.locals.miraHfmLearningGenerationCycle &&
+              app.locals.miraHfmLearningGenerationCycle.stage;
+            if (!namedAdmin) {
+              learningProposalHandoff = {
+                success:false, status:"BLOCKED",
+                code:"HFM_LEARNING_NAMED_ADMIN_REQUIRED",
+                canonicalMemoryWrites:0, automaticExecution:false
+              };
+            } else if (!proposalInput || typeof proposalInput !== "object" || Array.isArray(proposalInput)) {
+              learningProposalHandoff = {
+                success:false, status:"BLOCKED",
+                code:"HFM_LEARNING_PROPOSAL_INPUT_REQUIRED",
+                canonicalMemoryWrites:0, automaticExecution:false
+              };
+            } else if (typeof stage !== "function") {
+              learningProposalHandoff = {
+                success:false, status:"NOT_CERTIFIED",
+                code:"HFM_LEARNING_GENERATION_BRIDGE_UNAVAILABLE",
+                canonicalMemoryWrites:0, automaticExecution:false
+              };
+            } else {
+              learningProposalHandoff = await stage({
+                explicitOptIn:true,
+                actor:{authenticated:true,role:"admin",actorId:session.username.trim()},
+                projectId:proposalInput.projectId,
+                proposalId:proposalInput.proposalId,
+                title:proposalInput.title,
+                rationale:proposalInput.rationale,
+                proposedChange:proposalInput.proposedChange,
+                retrievalResult:retrievalReport
+              });
+            }
+          }
+
+          if (
             toolName ===
               "firewall_defense" &&
             String(
@@ -1908,7 +1964,8 @@ app.post(
             return res.json({
               success: true,
               role: req.role,
-              result: finalResult
+              result: finalResult,
+              learningProposalHandoff
             });
           }
 
@@ -1972,6 +2029,14 @@ app.post(
             "$1"
           );
 
+      if (req.body && req.body.learningProposalOptIn === true && !learningProposalHandoffAttempted) {
+        learningProposalHandoff = {
+          success:false, status:"BLOCKED",
+          code:"HFM_LEARNING_PUBLIC_RETRIEVAL_NOT_EXECUTED",
+          canonicalMemoryWrites:0, automaticExecution:false
+        };
+      }
+
       addMemory({
         role: "user",
         content:
@@ -1989,7 +2054,8 @@ app.post(
         role:
           req.role,
         result:
-          finalResult
+          finalResult,
+        learningProposalHandoff
       });
     } catch (error) {
       next(error);
