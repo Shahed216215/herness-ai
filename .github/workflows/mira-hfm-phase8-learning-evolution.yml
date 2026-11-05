@@ -1,0 +1,32 @@
+name: Mira HFM Phase 8 Learning Evolution Bridge
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase8-learning-evolution-integration
+    paths:
+      - 'services/mira-hfm-learning-evolution-bridge.js'
+      - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase8/**'
+      - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
+  pull_request:
+    paths:
+      - 'services/mira-hfm-learning-evolution-bridge.js'
+      - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase8/**'
+      - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase8-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run proposal-only bridge tests
+        run: node tests/mira-hfm-learning-evolution-bridge.test.js
