@@ -146,3 +146,58 @@ This contract is a design and release-policy artifact only. It becomes operation
 5. the first `herness-ai` deployment passes the post-cutover gate.
 
 Until then: **CUTOVER = NOT_APPROVED; PRODUCTION = NOT_CERTIFIED.**
+
+
+## 11. Current repository and HFM v0.2 evidence refresh — 2026-11-05
+
+This section supersedes the earlier inventory statuses in §4 where newer PR-branch evidence exists. It does not authorize merging or deployment.
+
+### 11.1 CI and test reconciliation
+
+- PR #19 adds the Node 24 GitHub Actions CI workflow on its feature branch and restores the four missing tests referenced by the existing package script.
+- GitHub Actions run 42000927060 completed SUCCESS for PR #19 head 4cc596392211d0886a97e3aa306f17f6b858e362.
+- npm ci and the full declared 23-command npm test suite passed on Node 24.
+- PR #19 remains open and unmerged. Therefore herness-ai/main does not yet inherit this workflow or restored tests. Main-branch CI remains NOT_ACTIVE until an approved merge.
+
+### 11.2 HFM v0.2 clean-restack chain
+
+The current reviewable branch chain is:
+
+- Phase 5: branch work/mira-hfm-v02-phase5-facebook-group-import — manual import implementation; offline CI evidence exists, but no target Supabase migration/persistence/restart verification.
+- Phase 6: PR #15, branch work/mira-hfm-v02-phase6-web-search-retrieval-restacked-20261105, corrected head ca741d3ed8d7f8ae8184cf92180345824599fc07; CI run 42003779726 SUCCESS.
+- Phase 7: PR #23, branch work/mira-hfm-v02-phase7-clean-restack-v3-20261105, head 749df61f64580ff8110389f0d3edca50a7469301; CI run 42003937395 SUCCESS.
+- Phase 8: PR #24, branch work/mira-hfm-v02-phase8-clean-restack-v3-20261105, head 68ff4869125c9a0142a17a8546ed5cf26796e059; CI run 42004325157 SUCCESS.
+- Phase 9: PR #25, branch work/mira-hfm-v02-phase9-clean-restack-v3-20261105, latest head ec3d57826897cbddc6ec862391d509f1e32f5f43; CI run 42005728175 SUCCESS after threshold, trust-filter and tokenizer-cost input validation fixes.
+- Phase 10 evidence report: PR #28, branch work/mira-hfm-v02-phase10-clean-restack-v5-20261105; unified workflow run 42006026788 SUCCESS for the latest report-updated PR merge candidate.
+
+All HFM PRs remain draft/unmerged. The branch chain is cleanly restacked and the unified Phase 5–9 offline workflow passes, but this is not production readiness.
+
+### 11.3 Unified offline verification
+
+- Workflow: .github/workflows/mira-hfm-v02-unified-offline.yml.
+- Latest exact report-head workflow run: 42006026788 — completed SUCCESS.
+- It installs locked dependencies, checks integrated runtime syntax, then runs all configured Phase 5, 6, 7, 8 and 9 offline tests in one merged-tree job.
+- The workflow records zero live Facebook/Tavily/model/Google Drive requests, zero Supabase writes/migrations, and zero canonical Memory writes.
+- This does not prove real Supabase persistence, live provider correctness, Drive durability, production restart/restore, or independent security certification.
+
+### 11.4 Render remains unchanged
+
+The existing Render service mira-ai-agent is still reported as connected to Shahed216215/ai-agent, branch main, commit e4471302d20fdde7a60a26742b4e0a6f6ab87746. No repository/branch switch, environment change, disk change, or deployment has occurred.
+
+The current herness-ai/main branch does not yet contain the integrated HFM v0.2 release chain. The first safe deployment source cannot be selected until the required PRs are reviewed and integrated, persistent storage is verified, and a unified release candidate is approved.
+
+### 11.5 Updated cutover status
+
+| Gate | Current status |
+|---|---|
+| CI/test reconciliation branch | PASS — PR #19 scoped CI; unmerged |
+| Phase 6–9 clean-restack scoped CI | PASS |
+| Unified Phase 5–9 offline workflow | PASS — run 42006026788 |
+| HFM v0.2 integrated into main | NOT_INTEGRATED |
+| Independent security review | NOT_TESTED |
+| Live Supabase/Drive/provider validation | NOT_TESTED |
+| Persistent Render storage verification | INCONCLUSIVE |
+| Render source switch to herness-ai | NOT_APPROVED / NOT_PERFORMED |
+| Production readiness | NOT_CERTIFIED |
+
+Decision remains: continue development and review in herness-ai; do not switch Render or deploy until the owner explicitly approves the one-time cutover after all mandatory gates close.
