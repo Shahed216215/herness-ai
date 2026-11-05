@@ -237,6 +237,19 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
   }), 'HFM_POLICY_STATE_CAS_CONFLICT');
 
   await rejects(verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(),
+    provider: {
+      async readState() { throw new Error('synthetic policy-state read outage'); },
+      async compareAndSwap() { throw new Error('must not commit when state cannot be read'); }
+    },
+    trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers, trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+  }), 'HFM_POLICY_STATE_UNAVAILABLE');
+
+  await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(), provider: makeProvider({ badReceipt: true }),
     trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
     trustedPolicyIssuers, trustedPolicyReviewers,
