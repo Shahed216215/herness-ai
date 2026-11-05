@@ -26,7 +26,7 @@ function makeAuthorizationTrust() {
   return {
     privateKey: pair.privateKey,
     trust: { 'staging-policy-issuer': {
-      keyId: 'staging-policy-key-v1', publicKeyPem,
+      keyId: 'staging-policy-key-v1', policyVersion: 'staging-policy-v1', publicKeyPem,
       publicKeySha256: sha256(publicKey.export({ type: 'spki', format: 'der' }))
     }}
   };
@@ -133,6 +133,13 @@ async function run() {
       decision: wrongActorDecision, request: wrongActorReq, trustedIssuers: f.auth.trust,
       replayGuard: makeReplayGuard()
     }), error => error.code === 'HFM_AUTHZ_DECISION_MISMATCH');
+    const wrongPolicyReq = request('wrong-policy-request-0001');
+    const wrongPolicyDecision = signDecision(wrongPolicyReq, f.auth.privateKey, { policyVersion: 'retired-policy-v0' });
+    await assert.rejects(() => verifyAuthorizationDecision({
+      decision: wrongPolicyDecision, request: wrongPolicyReq, trustedIssuers: f.auth.trust,
+      replayGuard: makeReplayGuard()
+    }), error => error.code === 'HFM_AUTHZ_ISSUER_UNTRUSTED');
+    process.stdout.write('MIRA_HFM_PHASE7_AUTHORIZATION_POLICY_VERSION_PIN_PASS\\n');
     process.stdout.write('MIRA_HFM_PHASE7_AUTHORIZATION_ACTOR_BINDING_PASS\n');
 
     const replayDecision = signDecision(request('replay-check-0001'), f.auth.privateKey);
