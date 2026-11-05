@@ -109,6 +109,13 @@ async function rejects(promise, code) {
     expectedProjectId: 'mira-hfm-v02', operationalIssuerIds: ['reviewer-a'], now
   }), 'HFM_PROVENANCE_EVIDENCE_BINDING_MISMATCH');
 
+  const extraEvidenceSource = fixture();
+  extraEvidenceSource.policyPayload.evidence.unrelated = {};
+  await rejects(verifyAllPolicyEvidence({
+    ...extraEvidenceSource, trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', now
+  }), 'HFM_PROVENANCE_EVIDENCE_REFERENCE_MISSING');
+
   const duplicate = fixture();
   duplicate.policyPayload.evidence.backup.storageInstanceId.evidenceId =
     duplicate.policyPayload.evidence.baseline.storageSystemId.evidenceId;
