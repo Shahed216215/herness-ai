@@ -142,6 +142,10 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
   if (supportsList) {
     adapter.recoverJournal = async ({ backupId: requestedBackupId, key } = {}) => {
       const backupId = validId(requestedBackupId, 'backupId');
+      if (!Buffer.isBuffer(key) || key.length !== 32) {
+        reject('Journal recovery requires the exact 32-byte project root key.',
+          'HFM_DRIVE_JOURNAL_RECOVERY_KEY_INVALID');
+      }
       const operationId = operationIdFor(backupId);
       const existing = readJournal(backupId);
       if (existing) {
