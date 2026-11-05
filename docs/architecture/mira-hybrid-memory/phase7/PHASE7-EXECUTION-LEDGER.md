@@ -227,3 +227,14 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - Phase 10 independent verification run #59 (ID `42067455619`) completed SUCCESS on the same exact commit.
 - Retrieved logs confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
 - This improves error handling and negative-case coverage only. It does not prove the authorization issuer's policy correctness or a durable/atomic replay guard. F7-SR-01 remains PARTIALLY_REMEDIATED / OPEN pending independent policy governance and real replay-store evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
+
+
+## Authorization and signing-provider negative-test expansion — 2026-11-05
+
+- Added dedicated authorization decision negative tests for Ed25519 signature tampering, exact project/actor/scope/request/nonce binding, trust-anchor fingerprint and key-ID mismatch, DENY, expiry, maximum validity, future dating, duplicate replay, replay-store outage, and non-Ed25519 trust anchors.
+- The negative tests exposed and drove remediation of a real F7-SR-01 fail-closed gap: replay-guard exceptions previously escaped as arbitrary errors. The verifier now normalizes replay-guard outages to `HFM_AUTHZ_REPLAY_REJECTED`. The verifier still does not certify policy correctness or real replay-store durability/atomicity.
+- Expanded F7-SR-02 signing-provider tests to reject production environment, wrong algorithm, wrong key purpose, mismatched expected key ID, and private-key bytes in the sign-only provider interface.
+- Phase 7 run #188 (ID `42067671922`) completed SUCCESS on exact commit `bb47439cb5e590e13c0dddeb29cb58bf800fa2c6`; job `phase7-offline-contract` SUCCESS.
+- Phase 10 independent verification run #62 (ID `42067672031`) completed SUCCESS on the same exact commit.
+- The preceding authorization verifier patch was independently verified by Phase 7 run #185 / Phase 10 run #59 on commit `b5dc8eb5b16cc1c85c4e0d1435b6ced459523a1c`; the dedicated marker `MIRA_HFM_AUTHORIZATION_DECISION_NEGATIVE_TESTS=PASS` was present in retrieved logs.
+- All tests use synthetic keys and fixtures. No live key custody, KMS/HSM, independent policy authority, or durable replay-store behavior is certified. F7-SR-01 and F7-SR-02 remain PARTIALLY_REMEDIATED / OPEN pending independent governance and real provider evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
