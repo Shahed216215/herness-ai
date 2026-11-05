@@ -92,6 +92,22 @@ function response() {
   };
 }
 
+const uploadGuard = routerUses[1][0];
+let guardNext = false;
+const guardResponse = response();
+uploadGuard({
+  headers: { 'content-type': 'application/json' },
+  body: { attachment: 'blocked' }
+}, guardResponse, () => { guardNext = true; });
+assert.equal(guardResponse.statusCode, 415);
+assert.equal(guardNext, false);
+const normalGuardResponse = response();
+uploadGuard({
+  headers: { 'content-type': 'application/json' },
+  body: { content: 'plain text supplied by administrator' }
+}, normalGuardResponse, () => { guardNext = true; });
+assert.equal(guardNext, true);
+
 (async () => {
   const base = {
     format: 'manual',
