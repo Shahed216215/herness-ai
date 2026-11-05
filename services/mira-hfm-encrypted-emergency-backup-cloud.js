@@ -172,12 +172,40 @@ async function inspectEncryptedEmergencyBackupCapacity({
       'HFM_CLOUD_LIST_CAPABILITY_MISSING');
   }
   const project = validId(projectId, 'projectId');
+  const nowMs = Date.parse(now);
+  if (typeof now !== 'string' || !Number.isFinite(nowMs) || new Date(nowMs).toISOString() !== now) {
+    fail('Capacity measurement time must be a canonical ISO timestamp.', 'HFM_CLOUD_CAPACITY_TIME_INVALID');
+  }
   const providerQuota = typeof adapter.getProviderQuota === 'function'
     ? await adapter.getProviderQuota()
     : { status: 'NOT_REPORTED', providerQuotaAvailable: false };
   if (!providerQuota || !['REPORTED', 'NOT_REPORTED'].includes(providerQuota.status)) {
     fail('Provider quota report is invalid; capacity status is INCONCLUSIVE.',
       'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+  }
+  if (providerQuota.status === 'NOT_REPORTED') {
+    if (providerQuota.providerQuotaAvailable !== false) {
+      fail('Unavailable provider quota must be explicitly marked NOT_REPORTED.',
+        'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+    }
+  } else {
+    const quotaTime = typeof providerQuota.measuredAt === 'string' ? Date.parse(providerQuota.measuredAt) : NaN;
+    const quotaTimeValid = Number.isFinite(quotaTime) &&
+      new Date(quotaTime).toISOString() === providerQuota.measuredAt && quotaTime <= nowMs;
+    if (providerQuota.providerQuotaAvailable !== true ||
+        typeof providerQuota.providerId !== 'string' ||
+        !/^[A-Za-z0-9._-]{2,80}$/.test(providerQuota.providerId) ||
+        !['account', 'project'].includes(providerQuota.scope) ||
+        (providerQuota.scope === 'project' && providerQuota.projectId !== project) ||
+        (providerQuota.scope === 'account' && providerQuota.projectId !== null) ||
+        !quotaTimeValid ||
+        !Number.isSafeInteger(providerQuota.quotaBytes) || providerQuota.quotaBytes < 1 ||
+        !Number.isSafeInteger(providerQuota.usedBytes) || providerQuota.usedBytes < 0 ||
+        providerQuota.usedBytes > providerQuota.quotaBytes ||
+        providerQuota.availableBytes !== providerQuota.quotaBytes - providerQuota.usedBytes) {
+      fail('Provider quota report is malformed, future-dated, or outside the requested scope.',
+        'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+    }
   }
   if (!Number.isSafeInteger(budgetBytes) || budgetBytes < 1 || budgetBytes > 1000000000000) {
     fail('Backup budget must be a bounded positive byte count.');
@@ -229,6 +257,12 @@ async function inspectEncryptedEmergencyBackupCapacity({
         !Number.isSafeInteger(item.bytes) || item.bytes < 1 ||
         typeof item.createdAt !== 'string') {
       fail('Cloud backup listing contains an invalid or cross-project item.', 'HFM_CLOUD_LIST_SCOPE_INVALID');
+    }
+    const createdMs = Date.parse(item.createdAt);
+    if (!Number.isFinite(createdMs) || new Date(createdMs).toISOString() !== item.createdAt ||
+        createdMs > nowMs) {
+      fail('Cloud backup listing contains a non-canonical or future creation timestamp.',
+        'HFM_CLOUD_LIST_TIMESTAMP_INVALID');
     }
     if (seen.has(item.backupId)) fail('Cloud backup listing contains duplicate IDs.', 'HFM_CLOUD_LIST_DUPLICATE');
     seen.add(item.backupId);
