@@ -101,6 +101,7 @@ async function main() {
   const timeoutAfterCommit = createEmergencyBackupTransportAdapter({
     projectId,
     transport: {
+      async getCapabilities() { return await transport.getCapabilities(); },
       async atomicCreate({ objectKey, metadata, bytes: payload }) {
         timeoutAfterCommitCalls += 1;
         store.set(objectKey, { metadata: { ...metadata, createdAt: '2026-11-05T00:02:00.000Z' }, bytes: Buffer.from(payload) });
