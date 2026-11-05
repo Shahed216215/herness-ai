@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { inspectLegacyLearningCompatibility } = require('../services/mira-hfm-learning-legacy-compatibility');
+const { fromLegacyLearningRecord } = require('../services/mira-hfm-legacy-learning-evidence-adapter');
 
 function fixtures(overrides = {}) {
   const calls = { writes: 0, rollback: 0, drive: 0 };
@@ -40,6 +41,37 @@ function fixtures(overrides = {}) {
 }
 
 (async () => {
+  const legacyRecord = {
+    learningId: 'learning-legacy-001', schemaVersion: 2,
+    lessons: ['Check requirements before marking work complete.'],
+    knowledgeCandidates: [{ lesson: 'Preserve provenance on imported evidence.' }],
+    skillUpdateCandidates: [{ improvement: 'Run independent regression checks.' }]
+  };
+  const legacyInput = fromLegacyLearningRecord({
+    projectId: 'project-mira-v02', proposalId: 'proposal-legacy-001',
+    title: 'Legacy learning review', rationale: 'Review verified historical learning.',
+    proposedChange: 'Create a human-reviewed proposal only.',
+    record: legacyRecord,
+    integrity: { found: true, valid: true, learningId: legacyRecord.learningId, schemaVersion: 2 }
+  });
+  assert.equal(legacyInput.evidenceOrigin, 'LEGACY_LEARNING_ENGINE_INTEGRITY_VERIFIED_UNTRUSTED');
+  assert.equal(legacyInput.evidence.length, 3);
+  assert.ok(legacyInput.evidence.every(item => item.projectId === 'project-mira-v02' && item.trustState === 'UNVERIFIED'));
+  assert.ok(legacyInput.evidence.every(item => item.sourceRef.startsWith('mira://legacy-learning/')));
+  assert.throws(() => fromLegacyLearningRecord({
+    projectId: 'project-mira-v02', proposalId: 'proposal-legacy-002',
+    title: 'Unverified legacy record', rationale: 'Must fail.', proposedChange: 'No changes.',
+    record: legacyRecord,
+    integrity: { found: true, valid: false, learningId: legacyRecord.learningId, schemaVersion: 2 }
+  }), error => error.code === 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED');
+  assert.throws(() => fromLegacyLearningRecord({
+    projectId: 'project-mira-v02', proposalId: 'proposal-legacy-003',
+    title: 'Secret-bearing legacy record', rationale: 'Must fail.', proposedChange: 'No changes.',
+    record: { ...legacyRecord, lessons: ['api_key=sk-very-secret-value'] },
+    integrity: { found: true, valid: true, learningId: legacyRecord.learningId, schemaVersion: 2 }
+  }), error => error.code === 'HFM_LEARNING_LEGACY_SECRET_SUSPECTED');
+  console.log('HFM_PHASE8_LEGACY_LEARNING_TO_UNTRUSTED_PROPOSAL_ADAPTER=PASS');
+
   const { sources, calls } = fixtures();
   const report = await inspectLegacyLearningCompatibility(sources);
   assert.equal(report.status, 'REVIEW_REQUIRED');
