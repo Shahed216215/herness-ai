@@ -17,7 +17,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Storage and restore safety
 
-- Local emergency artifacts use owner-only directory/file permissions, symlink rejection, atomic create-only hard-link publication, fsync, and read-after-write verification.
+- Local emergency artifacts must authenticate/decrypt successfully with the supplied external key before any file is created; they then use owner-only directory/file permissions, symlink rejection, atomic create-only hard-link publication, fsync, and read-after-write verification.
 - Existing backup IDs cannot be overwritten.
 - Restore preview authenticates/decrypts the exact envelope and reports metadata, byte count, and digest without writing a stage file.
 - Cloud restore preview verifies project/object identity and encryption before any restore staging.
@@ -38,7 +38,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 Run: `node tests/mira-hfm-encrypted-emergency-backup.test.js`
 
-Latest GitHub Actions run **41966608276: SUCCESS**; TESTS_FAILED=0. Verified log groups include authenticated local/cloud restore preview without writes, project-scoped 5 GB capacity monitoring, non-destructive retention planning, independent-process recovery, and failed-authentication/no-stage-artifact checks. Synthetic offline tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, authenticated local/cloud restore previews without writes, immutable write/readback, encrypted-only cloud adapter capability gates, create-only cloud upload/readback, project isolation, project-scoped 5 GB capacity accounting, non-destructive retention planning, cloud-download restore-to-staging, independent-process recovery from the exact encrypted artifact, and proof that failed authentication creates no restore-stage file. No live network or cloud calls occur.
+Latest GitHub Actions run **41966608276: SUCCESS**; TESTS_FAILED=0. Verified log groups include authenticated local/cloud restore preview without writes, project-scoped 5 GB capacity monitoring, non-destructive retention planning, independent-process recovery, and failed-authentication/no-stage-artifact checks. Synthetic offline tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, authenticated local/cloud restore previews without writes, authenticated-before-write local storage, immutable write/readback, encrypted-only cloud adapter capability gates, create-only cloud upload/readback, project isolation, project-scoped 5 GB capacity accounting, non-destructive retention planning, cloud-download restore-to-staging, independent-process recovery from the exact encrypted artifact, and proof that failed authentication creates no restore-stage file. No live network or cloud calls occur.
 
 VERSION=v0.2
 PHASE7=ENCRYPTED_EMERGENCY_BACKUP_PRIMITIVE_IMPLEMENTED
