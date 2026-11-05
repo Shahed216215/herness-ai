@@ -75,7 +75,7 @@ async function verifyAuthorizationDecision({
       'HFM_AUTHZ_DECISION_MISMATCH');
   }
   const trusted = stableTrustedIssuers[stableDecision.issuerId];
-  if (!isPlainObject(trusted) || trusted.keyId !== decision.keyId ||
+  if (!isPlainObject(trusted) || trusted.keyId !== stableDecision.keyId ||
       typeof trusted.policyVersion !== 'string' || !trusted.policyVersion.trim() ||
       stableDecision.policyVersion !== trusted.policyVersion ||
       typeof trusted.publicKeyPem !== 'string' || !trusted.publicKeyPem.includes('PUBLIC KEY') ||
