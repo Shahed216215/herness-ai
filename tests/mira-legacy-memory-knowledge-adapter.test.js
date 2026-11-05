@@ -16,7 +16,7 @@ function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projec
     schemaVersion: '1.0.0',
     memoryId,
     projectId,
-    recordType: domain === 'knowledge' ? 'knowledge' : 'conversation_reference',
+    recordType: domain === 'knowledge' ? 'knowledge' : domain === 'work_learning' ? 'lesson' : 'conversation_reference',
     content,
     source: {
       sourceType: 'legacy_import', sourceId: legacyId, sourceUrl: null,
@@ -99,6 +99,45 @@ assert.equal(adaptedKnowledge.legacyId, 'kb_legacy_01');
 assert.deepEqual(JSON.parse(adaptedKnowledge.canonicalRecord.content).record, knowledge);
 console.log('EXPLICIT_KNOWLEDGE_IDENTITY_MAPPING=PASS');
 console.log('KNOWLEDGE_FULL_RECORD_PRESERVED=PASS');
+
+const learning = {
+  learningId: 'learning-fixture-001',
+  taskId: 'task-fixture-001',
+  executionId: 'execution-fixture-001',
+  task: { id: 'task-fixture-001', title: 'Fixture learning' },
+  lessons: ['Check the complete source before proposing a change.'],
+  governance: { approvalRequired: true, autoApplied: false },
+  createdAt: '2026-11-05T00:00:00.000Z'
+};
+const learningMapping = mapping('work_learning', learning, 0, 'memory-learning-001');
+const adaptedLearning = adaptLegacyEntry({
+  domain: 'work_learning', entry: learning, mapping: learningMapping,
+  projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
+});
+assert.equal(adaptedLearning.legacyId, learning.learningId);
+assert.deepEqual(JSON.parse(adaptedLearning.canonicalRecord.content).record, learning);
+assert.equal(adaptedLearning.canonicalRecord.recordType, 'lesson');
+console.log('WORK_LEARNING_STABLE_IDENTITY_AND_FULL_PAYLOAD_PASS=PASS');
+assert.throws(() => adaptLegacyEntry({
+  domain: 'work_learning', entry: { ...learning, learningId: '' },
+  mapping: learningMapping, projectId: 'project-alpha',
+  sourceFileDigest, sourceOrdinal: 0
+}), /Legacy identity\/source locator mismatch|stable source locator/);
+console.log('WORK_LEARNING_MISSING_STABLE_ID_REJECTED=PASS');
+assert.throws(() => adaptLegacyEntry({
+  domain: 'work_learning', entry: learning,
+  mapping: { ...learningMapping, sourceDigest: '0'.repeat(64) },
+  projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
+}), /source digest mismatch/);
+console.log('WORK_LEARNING_SOURCE_DIGEST_DRIFT_REJECTED=PASS');
+assert.throws(() => adaptLegacyEntry({
+  domain: 'work_learning', entry: learning,
+  mapping: { ...learningMapping, canonicalRecord: {
+    ...learningMapping.canonicalRecord, recordType: 'experience'
+  }},
+  projectId: 'project-alpha', sourceFileDigest, sourceOrdinal: 0
+}), /recordType lesson/);
+console.log('WORK_LEARNING_NON_LESSON_RECORD_TYPE_REJECTED=PASS');
 const missingApproval = { ...knowledgeMapping };
 delete missingApproval.approvalReference;
 assert.throws(() => adaptLegacyEntry({
