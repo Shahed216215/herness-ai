@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { createJournaledDriveUpload, CONTENT_TYPE } = require('../services/mira-hfm-drive-generated-id-upload');
 const { readBackupIdJournal } = require('../services/mira-hfm-drive-backup-id-journal');
+const { createJournaledDriveUpload } = require('../services/mira-hfm-drive-generated-id-upload');
 
 const projectId = 'mira-project-001';
 const accountBinding = 'b'.repeat(64);
@@ -65,6 +66,11 @@ function fixture(directory, behavior = {}) {
     },
     async getFile({ id }) {
       counts.get += 1;
+      if (behavior.getOutage) {
+        const error = new Error('synthetic metadata lookup outage');
+        error.code = 'EHOSTUNREACH';
+        throw error;
+      }
       const value = objects.get(id);
       return value ? { id: value.id, metadata: { ...value.metadata } } : null;
     },
@@ -149,6 +155,32 @@ async function main() {
       error => error.code === 'HFM_DRIVE_JOURNAL_BINDING_MISMATCH');
     assert.equal(binding.counts.generate, 1);
     console.log('HFM_PHASE7_GENERATED_ID_CROSS_ACCOUNT_REUSE_REJECTED=PASS');
+
+    const outageId = 'drive-upload-operation-outage-001';
+    const outageDir = path.join(root, 'metadata-outage');
+    const outage = fixture(outageDir, { operationId: outageId, getOutage: true });
+    await assert.rejects(() => outage.uploader.upload(input(outageId)),
+      error => error.code === 'HFM_DRIVE_GENERATED_UPLOAD_UNCERTAIN');
+    assert.equal(readBackupIdJournal({ directory: outageDir, operationId: outageId }).generatedFileId,
+      outage.fileId);
+    assert.equal(outage.counts.generate, 1);
+    assert.equal(outage.counts.create, 1);
+    console.log('HFM_PHASE7_GENERATED_ID_READBACK_OUTAGE_PRESERVES_JOURNAL=PASS');
+
+    const invalidDir = path.join(root, 'invalid-generated-id');
+    const invalid = fixture(invalidDir);
+    invalid.provider.generateFileId = async () => {
+      invalid.counts.generate += 1;
+      return { id: '../not-a-drive-id' };
+    };
+    const invalidUploader = createJournaledDriveUpload({
+      provider: invalid.provider, journalDirectory: invalidDir, accountBinding,
+      driveSpace, projectId, parentId
+    });
+    await assert.rejects(() => invalidUploader.upload(input('drive-upload-invalid-id-001')),
+      error => error.code === 'HFM_DRIVE_GENERATED_ID_INVALID');
+    assert.equal(invalid.counts.create, 0);
+    console.log('HFM_PHASE7_GENERATED_ID_INVALID_ID_BLOCKS_UPLOAD=PASS');
 
     console.log('HFM_PHASE7_GENERATED_ID_NO_NETWORK_OAUTH_OR_CANONICAL_WRITE=PASS');
     console.log('HFM_PHASE7_GENERATED_ID_UPLOAD_TESTS_FAILED=0');
