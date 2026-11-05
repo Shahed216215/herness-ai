@@ -184,8 +184,12 @@ function createSupabaseFacebookGroupImportStore({
     } catch (_error) {
       failCommitted('FB_GROUP_STORE_ATOMIC_REQUEST_FAILED', 'Atomic Supabase Group import transaction request failed; retry with the same batch identity.');
     }
-    if (!response || !Number.isInteger(response.status) ||
-        response.status < 200 || response.status >= 300) {
+    if (!response || !Number.isInteger(response.status)) {
+      failCommitted('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase transaction outcome is uncertain after an invalid response.');
+    }
+    if (response.status < 200 || response.status >= 300) {
+      if (response.data && response.data.code === '23505')
+        fail('FB_GROUP_STORE_ATOMIC_IDENTITY_CONFLICT', 'Atomic Group import encountered an immutable batch or audit identity conflict.');
       failCommitted('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase transaction outcome is uncertain after a non-success response.');
     }
     let result;
