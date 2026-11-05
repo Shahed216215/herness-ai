@@ -140,7 +140,14 @@ async function verifyAndAcceptSignedProvenancePolicy({
     fail('A separately pinned policy-state authority is required.',
       'HFM_POLICY_STATE_AUTHORITY_UNTRUSTED');
   }
-  const stateEnvelope = await provider.readState({ authorityId: expectedStateAuthorityId });
+  let stateEnvelope;
+  try {
+    stateEnvelope = await provider.readState({ authorityId: expectedStateAuthorityId });
+  } catch (error) {
+    if (error && error.code === 'HFM_POLICY_STATE_UNAVAILABLE') throw error;
+    fail('Policy-state authority could not be read; signed policy acceptance is denied.',
+      'HFM_POLICY_STATE_UNAVAILABLE');
+  }
   const acceptedPolicyState = verifyPolicyStateEnvelope({
     envelope: stateEnvelope,
     trustedStateAuthorities,
