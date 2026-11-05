@@ -33,11 +33,12 @@ function parseResults(response) {
 function validatePageUrlBinding(value, pageId) {
   const normalized = validateFacebookUrl(value);
   const url = new URL(normalized);
+  const supplied = new URL(value);
   const parts = url.pathname.split('/').filter(Boolean);
   const boundProfile =
     (parts.length === 1 && parts[0] === pageId) ||
     (parts.length === 3 && parts[0] === 'pages' && parts[2] === pageId) ||
-    (url.pathname === '/profile.php' && url.searchParams.get('id') === pageId);
+    (url.pathname === '/profile.php' && supplied.searchParams.get('id') === pageId);
   if (!boundProfile) fail('HFM_WEB_RETRIEVAL_PAGE_URL_MISMATCH', 'pageUrl must identify the same numeric Facebook Page ID.');
   return normalized;
 }
