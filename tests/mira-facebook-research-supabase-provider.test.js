@@ -66,6 +66,11 @@ function fakeDatabase() {
   assert.throws(() => validateConfig({ ...env, SUPABASE_URL: 'https://fixture-project.supabase.co/#fragment' }), /HTTPS Supabase/);
   assert.throws(() => validateConfig({ ...env, SUPABASE_SERVICE_ROLE_KEY: '' }), /SUPABASE_SERVICE_ROLE_KEY/);
 
+  const redirectStore = createSupabaseResearchArchiveStore({ env, request: async () => ({ status: 302, data: [] }) });
+  await assert.rejects(() => redirectStore.lookup({ pageId, query: '' }), /non-success HTTP status/);
+  const failedStore = createSupabaseResearchArchiveStore({ env, request: async () => { throw new Error('fixture provider unavailable'); } });
+  await assert.rejects(() => failedStore.lookup({ pageId, query: '' }), /fixture provider unavailable/);
+
   const db = fakeDatabase();
   const store = createSupabaseResearchArchiveStore({ env, request: db.request });
   const first = await store.archive({ pageId, pageName: 'Online canel', evidence });
@@ -125,6 +130,7 @@ function fakeDatabase() {
   console.log('SUPABASE_UNTRUSTED_LOOKUP_PASS=PASS');
   console.log('SUPABASE_TAMPERED_READBACK_REJECTED_PASS=PASS');
   console.log('SUPABASE_MISSING_CONFIG_FAIL_CLOSED_PASS=PASS');
+  console.log('SUPABASE_REDIRECT_AND_PROVIDER_FAILURE_REJECTED_PASS=PASS');
   console.log('LOCAL_BACKEND_COMPATIBILITY_PASS=PASS');
   console.log('LIVE_NETWORK_REQUESTS=0');
   console.log('CANONICAL_MEMORY_WRITES=0');
