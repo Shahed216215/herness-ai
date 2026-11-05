@@ -177,7 +177,7 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
     let raw;
     try { raw = await provider.getQuota({ projectId: project }); }
     catch (error) {
-      if (error && error.code === 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE') throw error;
+      if (error && ['HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE', 'HFM_GOOGLE_DRIVE_ACCOUNT_UNVERIFIED'].includes(error.code)) throw error;
       return { status: 'NOT_REPORTED', providerQuotaAvailable: false };
     }
     const timestamp = raw && typeof raw.measuredAt === 'string' ? Date.parse(raw.measuredAt) : NaN;
