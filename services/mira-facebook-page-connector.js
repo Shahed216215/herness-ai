@@ -190,14 +190,4 @@ function createFacebookPageConnector(options = {}) {
   };
 }
 
-module.exports = { createFacebookPageConnector, parsePagePostUrl: (url) => {
-  const connector = createFacebookPageConnector({
-    env: {
-      FACEBOOK_PAGE_ID: "0",
-      FACEBOOK_PAGE_ACCESS_TOKEN: "validation-only",
-      META_GRAPH_API_VERSION: "v1.0"
-    },
-    request: async () => ({ status: 200, data: {} })
-  });
-  return connector.parsePagePostUrl(url);
-} };
+module.exports = { createFacebookPageConnector };
