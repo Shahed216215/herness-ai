@@ -35,5 +35,10 @@ function createTool({ searchWeb, archive } = {}) {
     }
   };
 }
-module.exports = createTool();
-module.exports.createTool = createTool;
+const defaultTool = createTool();
+module.exports = {
+  name: 'facebook_page_public_research',
+  declaration: defaultTool.declaration,
+  execute: defaultTool.execute,
+  createTool
+};
