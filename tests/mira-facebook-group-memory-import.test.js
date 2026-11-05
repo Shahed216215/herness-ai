@@ -53,14 +53,14 @@ assert.throws(() => prepareFacebookGroupImport({content:'Missing observed time',
 console.log('GROUP_IMPORT_JSON_JSONL_AND_MANUAL_TEXT_INPUT=PASS');
 const db=new Map();
 const store={
- capabilities:{atomicCreateOnly:true,immutableVersions:true,projectIsolation:true,readAfterWrite:true,durableQuarantine:true,durableAudit:true},
+ capabilities:{atomicCreateOnly:true,immutableVersions:true,projectIsolation:true,readAfterWrite:true,durableQuarantine:true,durableAudit:true,atomicBatchAndAudit:true,idempotentAudit:true},
  async stageBatch(b){const old=db.get(b.batchId);if(old){if(old.batchDigest!==b.batchDigest)throw Error('immutable conflict');return {status:'ALREADY_EXISTS',batchId:b.batchId};}db.set(b.batchId,JSON.parse(JSON.stringify(b)));return {status:'CREATED',batchId:b.batchId};},
  async readBatch(id,p){const b=db.get(id);if(!b||b.projectId!==p)throw Error('not found');return JSON.parse(JSON.stringify(b));},
  async listBatches({projectId,groupId}){return [...db.values()].filter(b=>b.projectId===projectId&&b.groupId===groupId).map(b=>JSON.parse(JSON.stringify(b)));},
- async writeAuditEvent(e){audits.push(e);return {status:'AUDIT_WRITE_READBACK_VERIFIED'};}
+ async stageBatchAndAudit(b,e){const old=db.get(b.batchId);if(old&&old.batchDigest!==b.batchDigest)throw Error('immutable conflict');if(!old)db.set(b.batchId,JSON.parse(JSON.stringify(b)));const operationKey='facebook-group-import:staged:v1:'+b.batchId+':'+b.batchDigest;let event=audits.find(x=>x.operationKey===operationKey);if(!event){event={...e,operationKey,eventId:'event-fixture-001'};audits.push(event);}return {status:'ATOMIC_BATCH_AUDIT_READBACK_VERIFIED',batchId:b.batchId,batchDigest:b.batchDigest,eventId:event.eventId,operationKey};}
 };
 const audits=[];
-const svc=createFacebookGroupImportService({store,auditWriter:e=>store.writeAuditEvent(e)});
+const svc=createFacebookGroupImportService({store});
 (async()=>{
  const result=await svc.import({content:JSON.stringify(env([rec()])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]});
  assert.equal(result.status,'IMPORT_STAGED_READBACK_VERIFIED');
@@ -68,17 +68,17 @@ const svc=createFacebookGroupImportService({store,auditWriter:e=>store.writeAudi
  assert.equal(repeated.status,'IMPORT_STAGED_READBACK_VERIFIED');
  assert.equal(repeated.batchDigest,result.batchDigest);
  assert.equal(repeated.batchId,result.batchId);
- assert.equal(result.integrityStatus,'UNVERIFIED'); assert.equal(result.canonicalMemoryWrite,false); assert.equal(audits.length,2);
+ assert.equal(result.integrityStatus,'UNVERIFIED'); assert.equal(result.canonicalMemoryWrite,false); assert.equal(audits.length,1);
  const got=await svc.retrieve({projectId:'project-hfm-v02',groupId:'123456789',query:'synthetic project decision'});
  assert.equal(got.resultCount,1); assert.equal(got.results[0].retrievableAsTrustedMemory,false);
  console.log('GROUP_IMPORT_ATOMIC_STORE_READBACK_AUDIT_AND_RETRIEVAL=PASS');
  console.log('GROUP_IMPORT_REPEAT_BATCH_IDEMPOTENCY=PASS');
  const corrupt={...store,async readBatch(id,p){const b=await store.readBatch(id,p);b.items[0].record.content='tampered';return b;}};
- const bad=createFacebookGroupImportService({store:corrupt,auditWriter:async()=>{}});
+ const bad=createFacebookGroupImportService({store:corrupt});
  await assert.rejects(()=>bad.import({content:JSON.stringify(env([rec({sourceId:'tamper-fixture'})],{exportId:'tamper-001'})),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}),/readback identity or digest mismatch/);
  console.log('GROUP_IMPORT_READBACK_TAMPER_DETECTION=PASS');
  assert.throws(()=>createFacebookGroupImportService({store:{...store,capabilities:{...store.capabilities,atomicCreateOnly:false}},auditWriter:async()=>{}}),/immutable atomic-create store/);
- assert.throws(()=>createFacebookGroupImportService({store,auditWriter:null}),/durable auditWriter/);
+ assert.throws(()=>createFacebookGroupImportService({store:{...store,capabilities:{...store.capabilities,atomicBatchAndAudit:false}}}),/transactional batch\/audit commit/);
  console.log('GROUP_IMPORT_PROVIDER_CAPABILITY_AND_AUDIT_GATES=PASS');
  console.log('GROUP_IMPORT_LIVE_FACEBOOK_REQUESTS=0');
  console.log('GROUP_IMPORT_PRIVATE_GROUP_ACCESS=0');
