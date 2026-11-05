@@ -108,6 +108,22 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
     return false;
   }
 
+  router.get('/status', async (req, res) => {
+    const actorId = requireNamedAdminSession(req, res);
+    if (!actorId) return;
+    return res.json({
+      success:true,
+      bridgeStatus:bridge ? 'AVAILABLE' : 'NOT_CERTIFIED',
+      storageMode:proposalStore && proposalStore.storageMode || 'UNAVAILABLE',
+      generationCycleHookEnabled:process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true',
+      productionReady:productionReady && !!bridge,
+      humanReviewRequired:true,
+      importedEvidenceTrust:'UNTRUSTED',
+      canonicalMemoryWrites:0,
+      automaticExecution:false
+    });
+  });
+
   router.post('/proposals', async (req, res) => {
     const actorId = requireNamedAdminSession(req, res);
     if (!actorId) return;
