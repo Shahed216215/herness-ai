@@ -72,16 +72,16 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest current-head CI: run **42007614192 — SUCCESS**, job **127178244541**, workflow head commit `f71b875d906efd7687c62060a4de9ab3962b26f4`.
-- Tested application/test source commit: `34709f7bc02bfcb04981d56fa1e1ac68436c479a`; the later head commit changes documentation only.
-- Node syntax check and all six offline test suites completed successfully. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Latest code/test CI: run **42010270018 — SUCCESS**, job **127187209938**, tested code/test head commit `db3013912fa4f636c539be331d2e45ea70d996c2`.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **94 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
-- The branch is restacked on the latest Phase 6 base; PR #16 is mergeable, Draft and unmerged.
+- PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
 - This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
 
 ## Explicit exclusions and blockers
 
-- Injected Google Drive v3 method mapper: IMPLEMENTED, latest fake-client/integration CI PENDING. Actual OAuth client wiring and live upload/download/list/quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
+- Injected Google Drive v3 method mapper: IMPLEMENTED and offline CI-verified with a fake client; real OAuth client wiring and live upload/download/list/quota API remain NOT_IMPLEMENTED / NOT_TESTED. Actual OAuth client wiring and live upload/download/list/quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
 - Production key provider/KMS/OS keystore, key custody, rotation execution, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
 - Canonical HFM snapshot exporter: BLOCKED pending production-grade canonical store integration and approved project-owner mappings. Phase 1 static reconciliation is COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS; Phase 2 local-core safety acceptance is PASS_SCOPED; Phase 3 is COMPLETE_SYNTHETIC_CONTRACT_ONLY. These scoped completions do not establish production host authentication, a persistent authoritative project-owner registry, durable replay protection, production record mappings, or a single committed canonical store. No legacy store is safe to export as a canonical HFM snapshot yet.
 - Production restore drill and independent production recovery certification: NOT_TESTED.
@@ -89,18 +89,14 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 VERSION=v0.2
 PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
-LATEST_VERIFIED_CI=42001767982_SUCCESS
-LATEST_VERIFIED_CI_JOB=127158482183
-LATEST_VERIFIED_COMMIT=d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf
-OFFLINE_PASS_MARKERS=66
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
-CURRENT_HEAD_CI_RUN=42007196180
-CURRENT_HEAD_CI_JOB=127176834532
-LATEST_VERIFIED_COMMIT=34709f7bc02bfcb04981d56fa1e1ac68436c479a
+CURRENT_HEAD_CI_RUN=42010270018
+CURRENT_HEAD_CI_JOB=127187209938
+CURRENT_HEAD_CODE_TEST_COMMIT=db3013912fa4f636c539be331d2e45ea70d996c2
 CURRENT_HEAD_TEST_SUITES=6
-OFFLINE_PASS_MARKERS=91
+OFFLINE_PASS_MARKERS=94
 OFFLINE_TESTS_FAILED=0
-GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 JOURNAL_RECOVERY=AUTHENTICATED_PROVIDER_OBJECT_RECONSTRUCTION_IMPLEMENTED_OFFLINE
 LIVE_GOOGLE_DRIVE=NOT_TESTED
 PROVIDER_CAPABILITY_NEGOTIATION=PASS
