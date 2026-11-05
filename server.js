@@ -151,12 +151,13 @@ app.use(rejectUnsupportedUploads);
 app.use(
   express.json({
     limit: MAX_BODY_SIZE,
-    // The SEO route has its own larger parser after admin authentication.
+    // SEO audit and Group import routes install bounded parsers after admin authentication.
     // All other endpoints retain the global 50KB request limit.
     type: req => !(
-      req.method === "POST" &&
-      req.path === "/api/admin/mira-seo/audit" ||
-      req.path === "/api/admin/facebook-group/import"
+      req.method === "POST" && (
+        req.path === "/api/admin/mira-seo/audit" ||
+        req.path === "/api/admin/facebook-group/import"
+      )
     )
   })
 );
