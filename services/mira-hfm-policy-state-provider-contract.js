@@ -19,6 +19,9 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 function verifySignedRecord(envelope, trust, expectedAuthorityId, now, codePrefix) {
+  if (!Number.isSafeInteger(now)) {
+    fail('Policy-state verifier clock configuration is invalid.', codePrefix + '_CONFIG_INVALID');
+  }
   if (!isPlainObject(envelope) || !isPlainObject(envelope.payload) ||
       typeof envelope.signature !== 'string' || !isPlainObject(envelope.payload.signer)) {
     fail('Signed policy-state record is missing or malformed.', codePrefix + '_INVALID');
