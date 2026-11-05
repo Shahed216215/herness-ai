@@ -12,7 +12,7 @@ const {
 
 const key = crypto.randomBytes(32);
 const payload = Buffer.from(JSON.stringify({ schemaVersion: '1.0.0', memories: [{ id: 'mem-001', content: 'synthetic test memory' }] }));
-const metadata = { projectId: 'mira-hfm-v02', source: 'synthetic-offline-test' };
+const metadata = { projectId: 'mira-project-001', source: 'synthetic-offline-test' };
 const backupId = 'backup-test-0001';
 const createdAt = '2026-11-05T00:00:00.000Z';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-backup-test-'));
@@ -121,6 +121,34 @@ try {
   assert.equal(uploaded.plaintextTransmitted, false);
   assert.equal(objects.size, 1);
   console.log('HFM_PHASE7_ENCRYPTED_CLOUD_UPLOAD_AND_READBACK=PASS');
+
+  const crossProjectBackupId = 'backup-cross-project-001';
+  const crossProjectEnvelope = createEncryptedBackup({
+    payload, key, backupId: crossProjectBackupId, createdAt,
+    metadata: { projectId: 'other-project-001', source: 'synthetic-cross-project-test' }
+  });
+  await assert.rejects(() => uploadEncryptedEmergencyBackup({
+    adapter, projectId: 'mira-project-001', envelope: crossProjectEnvelope, key
+  }), error => error.code === 'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+  const crossProjectObjectKey = 'mira-hfm-emergency/v1/mira-project-001/' + crossProjectBackupId + '.mhe';
+  objects.set(crossProjectObjectKey, {
+    projectId: 'mira-project-001', backupId: crossProjectBackupId,
+    bytes: Buffer.from(crossProjectEnvelope)
+  });
+  await assert.rejects(() => previewEncryptedEmergencyBackupFromCloud({
+    adapter, projectId: 'mira-project-001', backupId: crossProjectBackupId, key
+  }), error => error.code === 'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+  const crossProjectRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-cross-project-restore-test-'));
+  try {
+    await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
+      adapter, projectId: 'mira-project-001', backupId: crossProjectBackupId, key,
+      stagingDirectory: crossProjectRestoreDir, restoreId: 'cross-project-restore-001'
+    }), error => error.code === 'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+    assert.deepEqual(fs.readdirSync(crossProjectRestoreDir), []);
+  } finally {
+    fs.rmSync(crossProjectRestoreDir, { recursive: true, force: true });
+  }
+  console.log('HFM_PHASE7_AUTHENTICATED_CLOUD_PROJECT_BINDING=PASS');
 
   const capacityAdapter = {
     capabilities: { ...adapter.capabilities, list: true },
