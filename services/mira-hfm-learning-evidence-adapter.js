@@ -11,7 +11,7 @@ function fromPublicRetrieval(input = {}) {
   const report = input.retrievalResult;
   if (!report || report.providerId !== 'mira-hfm-public-web-retrieval' ||
       report.retrievalMode !== 'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY' ||
-      !['PUBLIC_FACEBOOK_EVIDENCE_COLLECTED_UNTRUSTED','DEGRADED_WITH_UNTRUSTED_EVIDENCE'].includes(report.status) ||
+      !['PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED','DEGRADED_WITH_UNTRUSTED_EVIDENCE'].includes(report.status) ||
       !report.limits || report.limits.canonicalMemoryWrite !== false || report.limits.trustPromotion !== false ||
       report.limits.directFacebookFetches !== 0 || report.limits.metaGraphApiCalls !== 0 ||
       report.limits.loginOrCookieUse !== 0 || report.limits.privateOrGroupContentAccess !== 0 || !report.page ||
