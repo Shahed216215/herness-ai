@@ -87,6 +87,10 @@ function createLocalStagingSnapshotSource(config) {
   const rootReal = fs.realpathSync(config.rootDir);
   if (rootReal !== path.resolve(config.rootDir)) fail('Staging root path must not traverse a symbolic link.', 'HFM_STAGING_ROOT_UNSAFE');
   const pinnedRoot = openPinnedDirectory(rootReal);
+  if (pinnedRoot.identity.dev !== String(rootStat.dev) || pinnedRoot.identity.ino !== String(rootStat.ino)) {
+    pinnedRoot.close();
+    fail('Staging root identity changed before its directory descriptor was pinned.', 'HFM_PINNED_DIRECTORY_CHANGED');
+  }
   let memoryFile, knowledgeFile;
   try {
     const memoryName = assertDirectChild(rootReal, config.memoryFile, 'Memory source');
