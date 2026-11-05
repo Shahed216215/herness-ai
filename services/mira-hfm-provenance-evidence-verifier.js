@@ -101,6 +101,10 @@ async function verifyAllPolicyEvidence({
   policyPayload, evidenceProvider, trustedEvidenceIssuers,
   expectedEnvironment, expectedProjectId, operationalIssuerIds = [], now = Date.now()
 }) {
+  if (!Number.isSafeInteger(now)) {
+    fail('Provenance evidence collection clock configuration is invalid.',
+      'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
+  }
   if (!isPlainObject(policyPayload) || !isPlainObject(policyPayload.sources) ||
       !isPlainObject(policyPayload.evidence) || !isPlainObject(evidenceProvider) ||
       typeof evidenceProvider.resolve !== 'function') {
