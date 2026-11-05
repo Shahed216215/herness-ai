@@ -20,6 +20,13 @@ function fail(code, message) {
 function sha256(value) {
   return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
 }
+function canonicalJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonicalJson(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
 function boundedText(value, label, max) {
   if (typeof value !== 'string' || !value.trim() || value.length > max)
     fail('RESEARCH_ARCHIVE_INVALID_INPUT', label + ' must be bounded non-empty text.');
@@ -90,7 +97,7 @@ function prepareRecords({ pageId: requestedPageId, pageName = null, evidence } =
     };
     body.archiveId = sha256(id + '|' + safe.sourceUrl + '|' + safe.observedAt + '|' + sha256(safe.title + '\n' + safe.snippet));
     body.contentDigest = sha256(safe.title + '\n' + safe.snippet);
-    body.recordDigest = sha256(JSON.stringify(body));
+    body.recordDigest = sha256(canonicalJson(body));
     return body;
   });
   return { pageId: id, records: prepared };
@@ -166,7 +173,7 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
       if (row.archive_id !== record.archiveId || row.page_id !== pageId || !row.payload ||
           row.payload.archiveId !== record.archiveId || row.payload.pageId !== pageId ||
           row.record_digest !== row.payload.recordDigest ||
-          sha256(JSON.stringify(Object.fromEntries(Object.entries(row.payload).filter(([k]) => k !== 'recordDigest')))) !== row.payload.recordDigest ||
+          sha256(canonicalJson(Object.fromEntries(Object.entries(row.payload).filter(([k]) => k !== 'recordDigest')))) !== row.payload.recordDigest ||
           row.payload.contentDigest !== record.contentDigest || row.payload.sourceUrl !== record.sourceUrl ||
           row.payload.observedAt !== record.observedAt || row.payload.title !== record.title ||
           row.payload.snippet !== record.snippet) {
@@ -200,7 +207,7 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
       item.canonicalMemoryWrite === false &&
       item.sourceIntegrity === 'NOT_INDEPENDENTLY_VERIFIED' &&
       /^[a-f0-9]{64}$/.test(item.recordDigest || '') &&
-      sha256(JSON.stringify(Object.fromEntries(Object.entries(item).filter(([k]) => k !== 'recordDigest')))) === item.recordDigest
+      sha256(canonicalJson(Object.fromEntries(Object.entries(item).filter(([k]) => k !== 'recordDigest')))) === item.recordDigest
     ).map(item => {
       const title = String(item.title || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
       const snippet = String(item.snippet || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
@@ -251,6 +258,6 @@ async function searchFacebookResearchMemoryWithProvider(input, options = {}) {
   return createSupabaseResearchArchiveStore({ env, request: options.request }).lookup(input);
 }
 module.exports = {
-  TABLE, createSupabaseResearchArchiveStore, validateConfig, prepareRecords,
+  TABLE, createSupabaseResearchArchiveStore, validateConfig, prepareRecords, canonicalJson,
   archiveFacebookResearchEvidenceWithProvider, searchFacebookResearchMemoryWithProvider
 };
