@@ -9,6 +9,7 @@ const { createPersistentProposalStore } = require('../services/mira-hfm-learning
 const { createSupabaseLearningProposalStore } = require('../services/mira-hfm-learning-proposal-supabase-store');
 const { recordAudit } = require('../audit-log');
 const { fromPublicRetrieval } = require('../services/mira-hfm-learning-evidence-adapter');
+const { createGenerationCycleProposalOrchestrator } = require('../services/mira-hfm-learning-generation-cycle');
 const {
   fromLegacyLearningRecord,
   fromLegacyExperiences,
@@ -67,6 +68,20 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   const bridge = productionReady && proposalStore && auditWriter
     ? (options.bridge || createLearningEvolutionBridge({ proposalStore, auditWriter }))
     : null;
+  const generationCycleOrchestrator = bridge
+    ? createGenerationCycleProposalOrchestrator({
+        bridge,
+        enabled: process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true'
+      })
+    : null;
+  if (!app.locals || typeof app.locals !== 'object') app.locals = Object.create(null);
+  app.locals.miraHfmLearningGenerationCycle = Object.freeze({
+    stage: input => generationCycleOrchestrator
+      ? generationCycleOrchestrator.stage(input)
+      : Promise.resolve({ success:false, status:'NOT_CERTIFIED',
+          code:adapterErrorCode || 'HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED',
+          canonicalMemoryWrites:0, automaticExecution:false })
+  });
 
   function requireNamedAdminSession(req, res) {
     const session = req && req.session;
