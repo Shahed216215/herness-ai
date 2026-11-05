@@ -40,7 +40,7 @@ BEGIN
     RAISE EXCEPTION 'RLS is not enabled on both Phase 5 tables';
   END IF;
 END
-$;
+$$;
 \echo 'POSTGRES_RPC_AND_TABLE_ROLE_GRANTS=PASS'
 \echo 'POSTGRES_RLS_ENABLED=PASS'
 
