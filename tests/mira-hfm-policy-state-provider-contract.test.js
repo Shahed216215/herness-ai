@@ -258,6 +258,21 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
   }), 'HFM_POLICY_STATE_COMMIT_MISMATCH');
 
+  let invalidClockProviderReads = 0;
+  await rejects(verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(),
+    provider: {
+      async readState() { invalidClockProviderReads += 1; return signed(statePayload(), stateKey); },
+      async compareAndSwap() { throw new Error('must not commit with invalid clock'); }
+    },
+    trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers, trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now: NaN
+  }), 'HFM_POLICY_STATE_CONFIG_INVALID');
+  assert.equal(invalidClockProviderReads, 0);
+
   await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(), provider: {},
     trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
