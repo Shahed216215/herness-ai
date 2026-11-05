@@ -81,37 +81,40 @@ function createEncryptedBackup({ payload, key, backupId, createdAt = new Date().
   } else {
     fail('payload must be non-empty bytes/string within the size limit.');
   }
-  const timestamp = new Date(createdAt);
-  if (!Number.isFinite(timestamp.getTime()) || timestamp.toISOString() !== createdAt) fail('createdAt must be a canonical ISO timestamp.');
-  const header = {
-    schema: SCHEMA, version: VERSION, algorithm: ALGORITHM, backupId,
-    createdAt, payloadBytes: plain.length, plaintextSha256: sha256(plain),
-    metadata: safeMetadata(metadata)
-  };
-  const salt = crypto.randomBytes(16);
-  const iv = crypto.randomBytes(12);
-  const derivedKey = deriveKey(key, salt);
-  let ciphertext;
-  let authenticationTag;
   try {
-    const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, iv);
-    cipher.setAAD(aadFor(header));
-    ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
-    authenticationTag = cipher.getAuthTag();
+    const timestamp = new Date(createdAt);
+    if (!Number.isFinite(timestamp.getTime()) || timestamp.toISOString() !== createdAt) fail('createdAt must be a canonical ISO timestamp.');
+    const header = {
+      schema: SCHEMA, version: VERSION, algorithm: ALGORITHM, backupId,
+      createdAt, payloadBytes: plain.length, plaintextSha256: sha256(plain),
+      metadata: safeMetadata(metadata)
+    };
+    const salt = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(12);
+    const derivedKey = deriveKey(key, salt);
+    let ciphertext;
+    let authenticationTag;
+    try {
+      const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, iv);
+      cipher.setAAD(aadFor(header));
+      ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+      authenticationTag = cipher.getAuthTag();
+    } finally {
+      derivedKey.fill(0);
+    }
+    const envelope = {
+      ...header,
+      kdf: 'HKDF-SHA256',
+      salt: salt.toString('base64'),
+      iv: iv.toString('base64'),
+      tag: authenticationTag.toString('base64'),
+      ciphertext: ciphertext.toString('base64'),
+      ciphertextSha256: sha256(ciphertext)
+    };
+    return Buffer.from(JSON.stringify(envelope) + '\\n', 'utf8');
   } finally {
-    derivedKey.fill(0);
     plain.fill(0);
   }
-  const envelope = {
-    ...header,
-    kdf: 'HKDF-SHA256',
-    salt: salt.toString('base64'),
-    iv: iv.toString('base64'),
-    tag: authenticationTag.toString('base64'),
-    ciphertext: ciphertext.toString('base64'),
-    ciphertextSha256: sha256(ciphertext)
-  };
-  return Buffer.from(JSON.stringify(envelope) + '\n', 'utf8');
 }
 function decodeBase64(value, length, label) {
   if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) fail(label + ' is invalid base64.');
