@@ -89,3 +89,15 @@ Test missing/forged/expired/revoked authority, cross-project task substitution, 
 - Earlier run #372 (ID `42045571144`) failed only on a case-sensitive test assertion for the expected error text. The assertion was corrected in the next commit and run #373 passed. The earlier failed run remains in history.
 - P8-A mapping contract and P8-B in-memory source adaptation: PASS_CI_SYNTHETIC.
 - Trusted production owner-registry provider, source-file capture/authenticity, task/work-item authority source, and runtime project-scoped retrieval remain REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED.
+
+
+## P8-E implementation checkpoint — project-scoped learning retrieval (2026-11-05)
+
+- Added `services/mira-hfm-work-learning-retrieval.js`, a read-only retrieval bridge over the existing synthetic HFM unified facade.
+- The unified facade performs LIST and per-record READ authorization, project/access checks, ACTIVE lifecycle, VERIFIED integrity, trusted-state and unresolved-conflict filtering before relevance ranking. The new adapter ranks only eligible canonical `lesson` records after those checks.
+- The adapter validates the serialized Work Learning domain, binds payload `learningId` to canonical sourceId, requires a taskId and lesson array, excludes the current task, preserves source provenance/revision/digest, and returns read-only/non-executable results.
+- Cross-project records, pending/unverified records, quarantined records, same-task records, host-denied requests and invalid limits are rejected or excluded. Output is detached and frozen.
+- CI run #377, ID `42046629438`, commit `f5b013f2c03177fb3cd9526f73971880bc194d81`: SUCCESS. Job `phase8-learning-scope-contract` SUCCESS. Logs verified all four earlier suites plus the new retrieval suite; `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- Earlier run #376 failed because the test expected a denied LIST authorization to return an empty array. The HFM request-authorization contract correctly throws on denial; the test was corrected to assert fail-closed behavior. Run #377 passed.
+- P8-E synthetic retrieval contract: PASS_CI. This is not connected to the live Work Learning store or production canonical Memory service.
+- P8-D derived Work Knowledge/Experience projection lineage, authenticated source-file capture, real host identity/project registry, and runtime integration remain OPEN / NOT_APPROVED.
