@@ -36,8 +36,9 @@ assert.equal(valid.productionInfrastructureIndependentlyCertified, false);
 for (const field of Object.keys(baseline.provenance)) {
   const p = policy();
   p.sources[backup.sourceId][field] = p.sources[baseline.sourceId][field];
+  const sharedClaim = { ...backup, provenance: { ...backup.provenance, [field]: baseline.provenance[field] } };
   rejected(() => verifyIndependentSourceProvenancePair({
-    baselineEvidence: baseline, backupEvidence: backup, provenancePolicy: p
+    baselineEvidence: baseline, backupEvidence: sharedClaim, provenancePolicy: p
   }), 'HFM_PROVENANCE_NOT_INDEPENDENT');
 }
 
