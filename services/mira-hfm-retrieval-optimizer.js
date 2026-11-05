@@ -24,7 +24,7 @@ function normalizeCandidate(raw,source,projectId){
 }
 function scoreCandidate(q,c,df,n){
  const title=new Set(tokenize(c.title)),body=new Set(tokenize(c.content+' '+c.snippet));let score=0;const matchedTerms=[];
- for(const term of q){const t=title.has(term),b=body.has(term);if(!t&&!b)continue;matchedTerms.push(term);const d=df.get(term)||0;score+=Math.log(1+(n-d+0.5)/(d+0.5))*((t?2.5:0)+(b?1:0));}
+ for(const term of q){const t=title.has(term),b=body.has(term);if(!t&&!b)continue;matchedTerms.push(term);const d=df.get(term)||0;score+=Math.max(0.25,Math.log(1+(n-d+0.5)/(d+0.5)))*((t?2.5:0)+(b?1:0));}
  return {score:Number((q.length?score/Math.sqrt(q.length):0).toFixed(6)),coverage:Number((q.length?matchedTerms.length/q.length:0).toFixed(4)),matchedTerms};
 }
 function resolveDuplicates(items){
