@@ -206,6 +206,7 @@ function verifySignedProvenancePolicy({
     } catch {
       fail('Policy reviewer signature encoding is invalid.', 'HFM_PROVENANCE_POLICY_REVIEWER_SIGNATURE_INVALID');
     }
+    reviewerKeyFingerprints.push(reviewerFingerprint);
     if (!crypto.verify(null, reviewMessage, reviewerKey, reviewerSignature)) {
       fail('Policy reviewer signature verification failed.', 'HFM_PROVENANCE_POLICY_REVIEWER_SIGNATURE_INVALID');
     }
