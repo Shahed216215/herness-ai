@@ -245,7 +245,7 @@ No production data, live Drive API, production KMS, or deployment is needed to c
 | G5 — Source-system separation | Deployment/runtime/control-plane evidence | NOT_VERIFIED |
 | G6 — Snapshot issuer separation | Independent issuer/key governance and audit evidence | NOT_VERIFIED |
 | G7 — Evidence independence | Independent collection, integrity, reviewer and provenance | SYNTHETIC_SIGNATURE_AND_DIGEST_PASS; REAL_COLLECTION_NOT_VERIFIED |
-| G8 — Offline implementation tests | Commit-matched CI logs for all positive/negative cases | PASS_CI — RUN #149 |
+| G8 — Offline implementation tests | Commit-matched CI logs for all positive/negative cases | PASS_CI — RUN #158 |
 | G9 — Staging operational review | Approved staging evidence and adversarial results | NOT_APPROVED |
 | G10 — Production approval | Explicit security/owner approval after all prior gates | NOT_APPROVED |
 
