@@ -149,7 +149,7 @@ async function main() {
     await binding.uploader.upload(input());
     const wrongAccount = createJournaledDriveUpload({
       provider: binding.provider, journalDirectory: bindingDir,
-      accountBinding: 'different-google-subject-123', driveSpace, projectId, parentId
+      accountBinding: 'c'.repeat(64), driveSpace, projectId, parentId
     });
     await assert.rejects(() => wrongAccount.upload(input()),
       error => error.code === 'HFM_DRIVE_JOURNAL_BINDING_MISMATCH');
