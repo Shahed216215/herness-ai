@@ -175,6 +175,25 @@ STATUS=OFFLINE_DURABLE_JOURNAL_PROTOTYPE
 GOOGLE_DRIVE_UPLOAD=NOT_IMPLEMENTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
+## 9.3 Journaled generated-ID upload orchestration (offline prototype)
+
+The branch now includes `services/mira-hfm-drive-generated-id-upload.js`. This composes the durable journal with an injected provider contract; it is not a Google SDK adapter.
+
+- Requires an injected provider implementing `generateFileId`, `createFile`, `getFile` and `downloadFile`.
+- Validates encrypted MIME type, AES-256-GCM marker, payload size and SHA-256 before provider interaction.
+- On a new operation, obtains one provider-generated ID, durably publishes and reads back the local journal, and only then calls `createFile`.
+- On restart, loads the existing journal and never requests a replacement ID. A missing/corrupt/mismatched journal blocks upload.
+- The create request binds generated ID, dedicated parent, project/backup identity, ciphertext digest, byte length and encryption metadata.
+- Regardless of create response or error (including timeout/409), it retrieves the exact ID, validates provider metadata and downloads the complete ciphertext for byte-for-byte and SHA-256 comparison. Missing/unreadable objects remain UNCERTAIN; metadata or byte mismatches are CONFLICT.
+- A successful return means exact remote bytes and metadata were verified through the injected provider contract. It does not prove Google API behavior, OAuth correctness, provider durability or real quota.
+- Offline synthetic tests cover journal-before-upload ordering, timeout after commit, timeout before commit followed by same-ID retry, metadata conflict, ciphertext mismatch, cross-account journal binding, and no network/OAuth/canonical writes.
+
+This is a provider orchestration prototype only. It has no delete, overwrite, move, permission grant, or routine-sync integration. A real provider mapping must prove that `getFile` binds account/space/parent and maps actual Drive metadata faithfully; only then can a separately approved live test be considered.
+
+STATUS=OFFLINE_JOURNALED_UPLOAD_ORCHESTRATION_PROTOTYPE
+GOOGLE_DRIVE_SDK=NOT_IMPLEMENTED
+LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
+
 ## 10. Latest code-change CI evidence
 
 Restacked code/test commit `e02b32e16c3503479a4bc37f3d9d06f3be0beee6` completed GitHub Actions run **41994278556** (job **127133573967**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
