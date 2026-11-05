@@ -37,7 +37,7 @@ async function mockRequest(rawUrl, config) {
       const event = url.searchParams.get('event_id');
       return !event || row.event_id === event.slice(3);
     });
-    return { status:200, data:rows.slice(0,2).map(structuredClone) };
+    return { status:200, data:rows.slice(0,2).map(row => structuredClone(row)) };
   }
   throw new Error('Unexpected HTTP method');
 }
