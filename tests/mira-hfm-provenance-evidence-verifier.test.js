@@ -55,6 +55,15 @@ async function rejects(promise, code) {
   await assert.rejects(promise, error => error && error.code === code);
 }
 (async () => {
+  let invalidClockResolverCalls = 0;
+  const invalidClock = fixture();
+  invalidClock.evidenceProvider = { async resolve() { invalidClockResolverCalls += 1; return null; } };
+  await rejects(verifyAllPolicyEvidence({
+    ...invalidClock, trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', now: NaN
+  }), 'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
+  assert.equal(invalidClockResolverCalls, 0);
+
   const f = fixture();
   const valid = await verifyAllPolicyEvidence({
     ...f, trustedEvidenceIssuers, expectedEnvironment: 'test',
