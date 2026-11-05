@@ -138,11 +138,16 @@ function safeDirectory(directory) {
   const resolved = path.resolve(directory || path.join(os.homedir(), '.mira', 'hfm-emergency-backups'));
   if (resolved === path.parse(resolved).root) fail('Filesystem root cannot be a backup directory.');
   let current = path.parse(resolved).root;
-  for (const segment of resolved.slice(current.length).split(path.sep).filter(Boolean)) {
-    current = path.join(current, segment);
+  const segments = resolved.slice(current.length).split(path.sep).filter(Boolean);
+  for (let index = 0; index < segments.length; index += 1) {
+    current = path.join(current, segments[index]);
+    const isFinal = index === segments.length - 1;
     try { fs.mkdirSync(current, { mode: 0o700 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
     const stat = fs.lstatSync(current);
-    if (stat.isSymbolicLink() || !stat.isDirectory() || (stat.mode & 0o077) !== 0) fail('Backup directory must be a real owner-only directory (0700).');
+    if (stat.isSymbolicLink() || !stat.isDirectory()) fail('Backup directory path must not contain symlinks or non-directory components.');
+    // Parent directories such as /tmp and /home need not be private; only the
+    // directory that directly contains backup artifacts must be owner-only.
+    if (isFinal && (stat.mode & 0o077) !== 0) fail('Backup directory must be owner-only (0700).');
   }
   return resolved;
 }
