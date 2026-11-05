@@ -1,8 +1,33 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const express = require('express');
+const Module = require('node:module');
+
+// Minimal isolated Express Router contract: this test exercises route handlers,
+// not Express internals, HTTP sockets, middleware packages or network access.
+const originalLoad = Module._load;
+function makeRouter() {
+  const router = { stack: [] };
+  for (const method of ['get', 'post']) {
+    router[method] = (routePath, ...handlers) => {
+      router.stack.push({
+        route: {
+          path: routePath,
+          methods: { [method]: true },
+          stack: handlers.map(handle => ({ handle }))
+        }
+      });
+      return router;
+    };
+  }
+  return router;
+}
+Module._load = function(request, parent, isMain) {
+  if (request === 'express') return { Router: makeRouter };
+  return originalLoad.call(this, request, parent, isMain);
+};
 const registerRoutes = require('../routes/mira-hfm-learning-evolution');
+Module._load = originalLoad;
 
 function responseRecorder() {
   return {
