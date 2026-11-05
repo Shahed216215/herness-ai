@@ -136,10 +136,9 @@ function archiveFacebookResearchEvidence({ pageId: requestedPageId, pageName = n
   if (!Array.isArray(evidence) || evidence.length > 10) throw new Error('evidence must be an array of at most 10 results.');
   const safeDir = safeDirectory(directory);
   const existing = listRecords(safeDir);
-  const pageCount = existing.filter(item => item.pageId === id).length;
-  let storedCount = 0, duplicateCount = 0;
-  const archived = [];
-  for (const item of evidence) {
+  const existingForPage = existing.filter(item => item.pageId === id);
+  const existingIds = new Set(existingForPage.map(item => item.archiveId));
+  const prepared = evidence.map(item => {
     const safe = validateEvidence(item, id);
     const body = {
       schemaVersion: '1.0.0',
@@ -152,11 +151,20 @@ function archiveFacebookResearchEvidence({ pageId: requestedPageId, pageName = n
       sourceIntegrity: 'NOT_INDEPENDENTLY_VERIFIED',
       canonicalMemoryWrite: false
     };
-    const archiveId = sha256(id + '|' + safe.sourceUrl + '|' + safe.observedAt + '|' + sha256(safe.title + '\n' + safe.snippet));
+    const archiveId = sha256(id + '|' + safe.sourceUrl + '|' + safe.observedAt + '|' + sha256(safe.title + '\\n' + safe.snippet));
     body.archiveId = archiveId;
-    body.contentDigest = sha256(safe.title + '\n' + safe.snippet);
+    body.contentDigest = sha256(safe.title + '\\n' + safe.snippet);
     body.recordDigest = sha256(JSON.stringify(body));
-    const target = recordPath(safeDir, archiveId);
+    return body;
+  });
+  const newIds = new Set(prepared.map(item => item.archiveId).filter(archiveId => !existingIds.has(archiveId)));
+  if (existingForPage.length + newIds.size > MAX_ENTRIES_PER_PAGE) {
+    throw new Error('Per-Page research memory capacity reached; no automatic pruning is allowed.');
+  }
+  let storedCount = 0, duplicateCount = 0;
+  const archived = [];
+  for (const body of prepared) {
+    const target = recordPath(safeDir, body.archiveId);
     try {
       writeImmutable(target, body);
       storedCount++;
@@ -166,15 +174,14 @@ function archiveFacebookResearchEvidence({ pageId: requestedPageId, pageName = n
       if (previous.recordDigest !== body.recordDigest) throw new Error('Research memory duplicate identity conflict; manual review required.');
       duplicateCount++;
     }
-    archived.push({ archiveId, evidenceId: body.evidenceId, sourceUrl: body.sourceUrl, status: 'ARCHIVED_UNTRUSTED' });
+    archived.push({ archiveId: body.archiveId, evidenceId: body.evidenceId, sourceUrl: body.sourceUrl, status: 'ARCHIVED_UNTRUSTED' });
   }
-  if (pageCount + storedCount > MAX_ENTRIES_PER_PAGE) throw new Error('Per-Page research memory capacity reached; no automatic pruning is allowed.');
   return Object.freeze({
     status: 'ARCHIVE_WRITE_VERIFIED',
     pageId: id,
     storedCount,
     duplicateCount,
-    totalExistingForPage: pageCount + storedCount,
+    totalExistingForPage: existingForPage.length + newIds.size,
     maxEntriesPerPage: MAX_ENTRIES_PER_PAGE,
     archived: Object.freeze(archived),
     archivePolicy: 'UNTRUSTED_RESEARCH_ONLY',
