@@ -43,6 +43,7 @@ function createPersistentProposalStore(options = {}) {
   }
   return Object.freeze({
     projectIsolated: true, createOnly: true, immutableVersions: true, readAfterWrite: true,
+    durable: false, crossInstanceAtomicCreate: false, storageMode: 'LOCAL_SINGLE_INSTANCE_ONLY',
     async putIfAbsent(projectId, proposalId, proposal) {
       if (!proposal || proposal.projectId !== projectId || proposal.proposalId !== proposalId) {
         fail('HFM_LEARNING_PROJECT_MISMATCH', 'Proposal identity does not match its storage key.');
