@@ -143,7 +143,10 @@ function decryptAndVerifyBackup(envelopeBytes, key) {
   } finally {
     derivedKey.fill(0);
   }
-  if (plain.length !== env.payloadBytes || sha256(plain) !== env.plaintextSha256) fail('Decrypted payload integrity check failed.');
+  if (plain.length !== env.payloadBytes || sha256(plain) !== env.plaintextSha256) {
+    plain.fill(0);
+    fail('Decrypted payload integrity check failed.');
+  }
   return { backupId: env.backupId, createdAt: env.createdAt, metadata, payload: plain, plaintextSha256: env.plaintextSha256 };
 }
 function safeDirectory(directory) {
@@ -168,7 +171,9 @@ function writeImmutableBackup({ envelope, key, directory, backupId } = {}) {
   const bytes = Buffer.isBuffer(envelope) ? envelope : Buffer.from(String(envelope), 'utf8');
   if (bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Backup envelope exceeds the size limit.');
   const verified = decryptAndVerifyBackup(bytes, key);
-  if (verified.backupId !== backupId) fail('Backup ID does not match the authenticated envelope.');
+  const authenticatedBackupId = verified.backupId;
+  verified.payload.fill(0);
+  if (authenticatedBackupId !== backupId) fail('Backup ID does not match the authenticated envelope.');
   const dir = safeDirectory(directory);
   const target = path.join(dir, 'mira-hfm-emergency-' + backupId + '.mhe');
   const temp = path.join(dir, '.mira-hfm-tmp-' + crypto.randomBytes(12).toString('hex'));
@@ -195,47 +200,55 @@ function writeImmutableBackup({ envelope, key, directory, backupId } = {}) {
 }
 function previewEncryptedBackup({ envelope, key } = {}) {
   const verified = decryptAndVerifyBackup(envelope, key);
-  return Object.freeze({
-    status: 'VERIFIED_RESTORE_PREVIEW',
-    backupId: verified.backupId,
-    createdAt: verified.createdAt,
-    metadata: Object.freeze({ ...verified.metadata }),
-    payloadBytes: verified.payload.length,
-    plaintextSha256: verified.plaintextSha256,
-    integrityVerified: true,
-    restoreApplied: false,
-    canonicalMemoryWrites: 0,
-    productionRestore: false
-  });
+  try {
+    return Object.freeze({
+      status: 'VERIFIED_RESTORE_PREVIEW',
+      backupId: verified.backupId,
+      createdAt: verified.createdAt,
+      metadata: Object.freeze({ ...verified.metadata }),
+      payloadBytes: verified.payload.length,
+      plaintextSha256: verified.plaintextSha256,
+      integrityVerified: true,
+      restoreApplied: false,
+      canonicalMemoryWrites: 0,
+      productionRestore: false
+    });
+  } finally {
+    verified.payload.fill(0);
+  }
 }
 function restoreToStaging({ envelope, key, directory, restoreId } = {}) {
   validateId(restoreId, 'restoreId');
   const verified = decryptAndVerifyBackup(envelope, key);
-  const dir = safeDirectory(directory || path.join(os.homedir(), '.mira', 'hfm-restore-staging'));
-  const target = path.join(dir, 'restore-' + restoreId + '.verified-stage');
-  const temp = path.join(dir, '.mira-restore-tmp-' + crypto.randomBytes(12).toString('hex'));
-  let fd;
-  let linked = false;
   try {
-    fd = fs.openSync(temp, 'wx', 0o600);
-    fs.writeFileSync(fd, verified.payload);
-    fs.fsyncSync(fd);
-    fs.closeSync(fd); fd = undefined;
-    fs.linkSync(temp, target); linked = true;
-    fs.unlinkSync(temp);
-    const dirFd = fs.openSync(dir, 'r');
-    try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
-    const staged = fs.readFileSync(target);
-    if (!staged.equals(verified.payload) || sha256(staged) !== verified.plaintextSha256) {
-      fail('Restore staging readback failed.', 'HFM_RESTORE_READBACK_FAILED');
+    const dir = safeDirectory(directory || path.join(os.homedir(), '.mira', 'hfm-restore-staging'));
+    const target = path.join(dir, 'restore-' + restoreId + '.verified-stage');
+    const temp = path.join(dir, '.mira-restore-tmp-' + crypto.randomBytes(12).toString('hex'));
+    let fd;
+    let linked = false;
+    try {
+      fd = fs.openSync(temp, 'wx', 0o600);
+      fs.writeFileSync(fd, verified.payload);
+      fs.fsyncSync(fd);
+      fs.closeSync(fd); fd = undefined;
+      fs.linkSync(temp, target); linked = true;
+      fs.unlinkSync(temp);
+      const dirFd = fs.openSync(dir, 'r');
+      try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
+      const staged = fs.readFileSync(target);
+      if (!staged.equals(verified.payload) || sha256(staged) !== verified.plaintextSha256) {
+        fail('Restore staging readback failed.', 'HFM_RESTORE_READBACK_FAILED');
+      }
+      return { restoreId, path: target, bytes: staged.length, sha256: verified.plaintextSha256,
+        status: 'VERIFIED_STAGING_ONLY', canonicalMemoryWrites: 0, productionRestore: false };
+    } catch (error) {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+      try { fs.unlinkSync(temp); } catch {}
+      if (linked) error.stateCommitted = true;
+      throw error;
     }
-    return { restoreId, path: target, bytes: staged.length, sha256: verified.plaintextSha256,
-      status: 'VERIFIED_STAGING_ONLY', canonicalMemoryWrites: 0, productionRestore: false };
-  } catch (error) {
-    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
-    try { fs.unlinkSync(temp); } catch {}
-    if (linked) error.stateCommitted = true;
-    throw error;
+  } finally {
+    verified.payload.fill(0);
   }
 }
 module.exports = { createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging,
