@@ -47,7 +47,7 @@ function fixture() {
   }
   return {
     policyPayload: { sources, evidence },
-    provider: { async resolve({ evidenceId }) { return records.get(evidenceId); } },
+    evidenceProvider: { async resolve({ evidenceId }) { return records.get(evidenceId); } },
     records
   };
 }
