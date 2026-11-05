@@ -1,0 +1,112 @@
+name: Mira HFM Phase 4 Facebook Page Connector
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase4-facebook-page-connector
+    paths:
+      - 'services/mira-facebook-page-memory-connector.js'
+      - 'tests/mira-facebook-page-memory-connector.test.js'
+      - 'services/mira-facebook-page-hfm-adapter.js'
+      - 'services/mira-facebook-page-import-review-registry.js'
+      - 'services/mira-facebook-page-operation-recovery.js'
+      - 'tests/mira-facebook-page-phase4-offline-e2e.test.js'
+      - 'tests/mira-facebook-page-operation-recovery.test.js'
+      - 'tests/mira-facebook-page-import-review-registry.test.js'
+      - 'tests/mira-facebook-page-hfm-adapter.test.js'
+      - 'services/mira-facebook-page-permission-contract.js'
+      - 'services/mira-facebook-page-read-only-probe.js'
+      - 'tests/mira-facebook-page-read-only-probe.test.js'
+      - 'tests/mira-facebook-page-permission-contract.test.js'
+      - '.github/workflows/mira-hfm-phase4-facebook-page.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase4/**'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase3-unified-memory-contract-core
+    paths:
+      - 'services/mira-facebook-page-memory-connector.js'
+      - 'tests/mira-facebook-page-memory-connector.test.js'
+      - 'services/mira-facebook-page-hfm-adapter.js'
+      - 'services/mira-facebook-page-operation-recovery.js'
+      - 'tests/mira-facebook-page-operation-recovery.test.js'
+      - 'tests/mira-facebook-page-phase4-offline-e2e.test.js'
+      - 'services/mira-facebook-page-import-review-registry.js'
+      - 'tests/mira-facebook-page-import-review-registry.test.js'
+      - 'tests/mira-facebook-page-hfm-adapter.test.js'
+      - 'services/mira-facebook-page-permission-contract.js'
+      - 'services/mira-facebook-page-read-only-probe.js'
+      - 'tests/mira-facebook-page-read-only-probe.test.js'
+      - 'tests/mira-facebook-page-permission-contract.test.js'
+      - '.github/workflows/mira-hfm-phase4-facebook-page.yml'
+  workflow_dispatch:
+    inputs:
+      page_id:
+        description: 'Numeric Facebook Page ID to read (id,name only)'
+        required: true
+        type: string
+      confirm_read_only_meta_get:
+        description: 'Confirm one external HTTPS GET to Meta for this Page metadata only'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  facebook-page-offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run offline Facebook Page connector contract tests
+        run: |
+          set -euo pipefail
+          node tests/mira-facebook-page-memory-connector.test.js
+          node tests/mira-facebook-page-hfm-adapter.test.js
+          node tests/mira-facebook-page-import-review-registry.test.js
+          node tests/mira-facebook-page-operation-recovery.test.js
+          node tests/mira-facebook-page-phase4-offline-e2e.test.js
+          node tests/mira-facebook-page-permission-contract.test.js
+          node tests/mira-facebook-page-read-only-probe.test.js
+          node tests/mira-memory-provider-contract.test.js
+      - name: Report external action boundary
+        run: |
+          echo "LIVE_META_API_CALLS=0"
+          echo "FACEBOOK_POSTS_PUBLISHED=0"
+          echo "PERSISTENT_MEMORY_WRITES=0"
+          echo "RESULT=MIRA_HFM_PHASE4_OFFLINE_CONTRACT_CI_COMPLETE"
+
+  meta-read-only-page-probe:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_read_only_meta_get == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout selected Phase 4 branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Fail closed if the Page token secret is absent
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ inputs.page_id }}
+        run: |
+          set -euo pipefail
+          test -n "$META_PAGE_ACCESS_TOKEN" || {
+            echo "META_PAGE_ACCESS_TOKEN secret is not configured; no Meta request was made."
+            exit 1
+          }
+          test -n "$META_PAGE_ID"
+      - name: Execute exactly one read-only Page metadata GET
+        env:
+          MIRA_META_READ_ONLY_APPROVED: 'true'
+          META_PAGE_ID: ${{ inputs.page_id }}
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+        run: node services/mira-facebook-page-read-only-probe.js
