@@ -64,7 +64,7 @@ function fakeDatabase() {
   assert.throws(() => validateConfig({ ...env, SUPABASE_URL: 'https://evil.test' }), /HTTPS Supabase/);
   assert.throws(() => validateConfig({ ...env, SUPABASE_URL: 'https://user:pass@fixture-project.supabase.co' }), /HTTPS Supabase/);
   assert.throws(() => validateConfig({ ...env, SUPABASE_URL: 'https://fixture-project.supabase.co/#fragment' }), /HTTPS Supabase/);
-  assert.throws(() => validateConfig({ ...env, SUPABASE_SERVICE_ROLE_KEY: '' }), /credential/);
+  assert.throws(() => validateConfig({ ...env, SUPABASE_SERVICE_ROLE_KEY: '' }), /SUPABASE_SERVICE_ROLE_KEY/);
 
   const db = fakeDatabase();
   const store = createSupabaseResearchArchiveStore({ env, request: db.request });
