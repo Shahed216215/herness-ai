@@ -237,7 +237,8 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
       try { verified = decryptAndVerifyBackup(bytes, key); }
       catch (_) { reject('Remote backup could not be authenticated with the supplied root key.',
         'HFM_DRIVE_JOURNAL_RECOVERY_AUTH_FAILED'); }
-      const authenticatedIdentityMatches = verified.backupId === backupId &&
+      const authenticatedIdentityMatches = !!verified && typeof verified === 'object' &&
+        verified.backupId === backupId &&
         verified.createdAt === match.backupCreatedAt && verified.metadata &&
         verified.metadata.projectId === project;
       if (Buffer.isBuffer(verified.payload)) verified.payload.fill(0);
