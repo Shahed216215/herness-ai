@@ -109,6 +109,8 @@ function verifyPolicyStateCommitReceipt({
       p.nextSequence !== expectedNextState.highestAcceptedSequence ||
       p.policyId !== expectedNextState.lastAcceptedPolicyId ||
       p.policyDigest !== expectedNextState.lastAcceptedPolicyDigest ||
+      typeof expectedIdempotencyKey !== 'string' || !expectedIdempotencyKey.trim() ||
+      !/^[a-f0-9]{64}$/.test(expectedRequestDigest || '') ||
       p.idempotencyKey !== expectedIdempotencyKey ||
       p.requestDigest !== expectedRequestDigest ||
       !/^[a-f0-9]{64}$/.test(p.requestDigest || '') ||
@@ -129,9 +131,10 @@ function verifyPolicyStateCommitReceipt({
 }
 
 /**
- * The provider must implement authenticated readState and durable atomic
- * compareAndSwap. A caller-provided capability flag is never sufficient:
- * both the signed state envelope and signed commit receipt are verified.
+ * The provider must implement authenticated readState, durable atomic
+ * compareAndSwap, and authoritative getCommitReceipt for idempotent recovery.
+ * A caller-provided capability flag is never sufficient: signed state and
+ * exact request-bound commit receipts are verified.
  */
 async function verifyAndAcceptSignedProvenancePolicy({
   envelope, provider, trustedStateAuthorities, expectedStateAuthorityId,
