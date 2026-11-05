@@ -6,7 +6,8 @@ const crypto = require('node:crypto');
 const DOMAIN_SOURCE_SYSTEM = Object.freeze({
   general_memory: 'mira_legacy_memory',
   knowledge: 'mira_legacy_knowledge',
-  crm_conversation_message: 'mira_crm_conversation'
+  crm_conversation_message: 'mira_crm_conversation',
+  work_learning: 'mira_work_learning'
 });
 const DOMAINS = new Set(Object.keys(DOMAIN_SOURCE_SYSTEM));
 const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
