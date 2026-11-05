@@ -133,6 +133,18 @@ const keyProvider = {
   });
   assert.equal(idempotentReuse.status, 'VERIFIED_EXISTING_IDEMPOTENT');
   assert.equal(creates, 1);
+  const fullButExistingDrive = {
+    ...drive,
+    about: { get: async () => ({ data: { storageQuota: { usage: '999999', limit: '10000000' } } }) }
+  };
+  const fullQuotaReuse = await driveBackup.uploadEncryptedBackup({
+    drive: fullButExistingDrive, folderId: 'folder_123',
+    fileName: 'mira-hfm-project-1-20261105T120000Z.mira-hfm.enc.json',
+    bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
+  });
+  assert.equal(fullQuotaReuse.status, 'VERIFIED_EXISTING_IDEMPOTENT');
+  assert.equal(fullQuotaReuse.quota, null);
+
   const fullDrive = { ...drive, about: { get: async () => ({ data: { storageQuota: { usage: '999999', limit: '10000000' } } }) } };
   await assert.rejects(() => driveBackup.uploadEncryptedBackup({
     drive: fullDrive, folderId: 'folder_123', fileName: 'mira-hfm-project-1-20261106T120000Z.mira-hfm.enc.json',
