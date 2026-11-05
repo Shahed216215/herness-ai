@@ -37,6 +37,6 @@ jobs:
         with:
           node-version: 24
       - name: Check Phase 8 JavaScript syntax
-        run: node --check server.js && node --check routes/mira-hfm-learning-evolution.js && node --check services/mira-hfm-learning-proposal-store.js && node --check services/mira-hfm-learning-evolution-bridge.js
+        run: node --check server.js && node --check routes/mira-hfm-learning-evolution.js && node --check services/mira-hfm-learning-proposal-store.js && node --check services/mira-hfm-learning-evidence-adapter.js && node --check services/mira-hfm-learning-evolution-bridge.js
       - name: Run proposal-only bridge tests
         run: node tests/mira-hfm-learning-evolution-bridge.test.js
