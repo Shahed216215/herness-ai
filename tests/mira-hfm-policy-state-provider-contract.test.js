@@ -239,6 +239,50 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
   assert.equal(result.infrastructureIndependentlyCertified, false);
   assert.equal(result.productionApproval, false);
 
+  const mutableEnvelope = policyEnvelope();
+  const mutableStateTrust = JSON.parse(JSON.stringify(trustedStateAuthorities));
+  const mutablePolicyTrust = JSON.parse(JSON.stringify(trustedPolicyIssuers));
+  const mutableReviewerTrust = JSON.parse(JSON.stringify(trustedPolicyReviewers));
+  const mutableEvidenceTrust = JSON.parse(JSON.stringify(trustedEvidenceIssuers));
+  const baseProvider = makeProvider();
+  const mutatingProvider = {
+    async readState() {
+      mutableEnvelope.payload.sources[sourceIds[0]].storageSystemId = 'mutated-before-policy-verification';
+      mutableStateTrust[stateAuthority].publicKeySha256 = '0'.repeat(64);
+      mutablePolicyTrust[policyIssuer].publicKeySha256 = '0'.repeat(64);
+      mutableReviewerTrust['reviewer-a'].publicKeySha256 = '0'.repeat(64);
+      mutableEvidenceTrust[evidenceIssuer].publicKeySha256 = '0'.repeat(64);
+      return baseProvider.readState();
+    },
+    async compareAndSwap(request) { return baseProvider.compareAndSwap(request); },
+    async getCommitReceipt(request) { return baseProvider.getCommitReceipt(request); }
+  };
+  const mutatingEvidenceProvider = {
+    async resolve({ evidenceId }) {
+      mutableEnvelope.payload.sources[sourceIds[1]].storageInstanceId = 'mutated-during-evidence-resolution';
+      return evidenceRecords.get(evidenceId);
+    }
+  };
+  const immutableAcceptance = await verifyAndAcceptSignedProvenancePolicy({
+    envelope: mutableEnvelope,
+    provider: mutatingProvider,
+    trustedStateAuthorities: mutableStateTrust,
+    expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers: mutablePolicyTrust,
+    trustedPolicyReviewers: mutableReviewerTrust,
+    evidenceProvider: mutatingEvidenceProvider,
+    trustedEvidenceIssuers: mutableEvidenceTrust,
+    expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02',
+    operationalIssuerIds,
+    now
+  });
+  assert.equal(immutableAcceptance.stateCommit.committed, true);
+  assert.equal(mutableEnvelope.payload.sources[sourceIds[0]].storageSystemId,
+    'mutated-before-policy-verification');
+
+
+
   await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(),
     provider: makeProvider(),
