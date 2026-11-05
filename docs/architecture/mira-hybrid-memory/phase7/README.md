@@ -90,3 +90,9 @@ Status: SIGNED STAGING AUTHORIZATION AND SIGN-ONLY SNAPSHOT PROVIDER CONTRACTS I
 - Snapshot attestation includes signing-key version; independent source trust must pin the matching key ID, key version and public-key fingerprint.
 - Synthetic fixtures keep private key objects inside provider closures and pass only the signing interface to the source adapter.
 - This is not proof of non-exportable keys, provider identity, KMS/HSM custody, workload identity, rotation/revocation or production approval. The HIGH finding F7-SR-02 remains partially remediated/open pending real provider integration and independent review.
+
+
+## Verification checkpoint — snapshot signing provider
+- The existing `tests/mira-hfm-key-provider-contract.test.js` suite now includes sign-only snapshot provider contract assertions; the local staging-source and staging-drill fixtures use private keys only inside synthetic provider closures.
+- The Phase 7 workflow already runs the modified key-provider test and staging-source/drill tests on branch pushes. The new contract module is exercised through those tests and the staging source imports it.
+- Latest implementation commit: `b5ee6b31bb6b313de6cad9732d40fcf88b6a6ee3`. A matching completed CI run and job logs have not yet been retrieved; verification remains INCONCLUSIVE until commit-matched workflow evidence is inspected.
