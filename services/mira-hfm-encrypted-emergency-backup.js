@@ -172,15 +172,25 @@ function decryptAndVerifyBackup(envelopeBytes, key) {
     plaintextSha256: env.plaintextSha256, metadata
   };
   let plain;
+  let updateOutput;
+  let finalOutput;
   const derivedKey = deriveKey(key, salt);
   try {
     const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, iv);
     decipher.setAAD(aadFor(header));
     decipher.setAuthTag(tag);
-    plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    updateOutput = decipher.update(ciphertext);
+    finalOutput = decipher.final();
+    plain = Buffer.concat([updateOutput, finalOutput]);
   } catch {
+    if (Buffer.isBuffer(updateOutput)) updateOutput.fill(0);
+    if (Buffer.isBuffer(finalOutput)) finalOutput.fill(0);
     fail('Backup authentication failed; key or backup data is incorrect.', 'HFM_BACKUP_AUTH_FAILED');
   } finally {
+    // GCM may emit unauthenticated plaintext from update() before final() checks the tag.
+    // Clear both temporary chunks on success, authentication failure, or concat failure.
+    if (Buffer.isBuffer(updateOutput)) updateOutput.fill(0);
+    if (Buffer.isBuffer(finalOutput)) finalOutput.fill(0);
     derivedKey.fill(0);
   }
   if (plain.length !== env.payloadBytes || sha256(plain) !== env.plaintextSha256) {
