@@ -177,6 +177,27 @@ forgedApproval.signature = crypto.sign(null, Buffer.from(canonicalizeProvenanceP
   policyKey.privateKey).toString('base64');
 rejects(() => verify(forgedApproval), 'HFM_PROVENANCE_POLICY_REVIEWER_SIGNATURE_INVALID');
 
+const wrongPinnedRole = signed();
+wrongPinnedRole.payload.approvals[0].role = 'policy-owner';
+wrongPinnedRole.signature = crypto.sign(null,
+  Buffer.from(canonicalizeProvenancePolicy(wrongPinnedRole.payload)), policyKey.privateKey).toString('base64');
+rejects(() => verify(wrongPinnedRole), 'HFM_PROVENANCE_POLICY_REVIEWER_UNTRUSTED');
+
+const duplicateRole = signed();
+duplicateRole.payload.approvals[1].role = 'security-reviewer';
+duplicateRole.signature = crypto.sign(null,
+  Buffer.from(canonicalizeProvenancePolicy(duplicateRole.payload)), policyKey.privateKey).toString('base64');
+rejects(() => verify(duplicateRole), 'HFM_PROVENANCE_POLICY_APPROVAL_QUORUM_INVALID');
+
+const aliasedReviewers = reviewers();
+aliasedReviewers['reviewer-b'] = {
+  ...aliasedReviewers['reviewer-b'],
+  publicKeyPem: reviewerAKey.publicKeyPem,
+  publicKeySha256: reviewerAKey.publicKeySha256
+};
+rejects(() => verify(signed(), { trustedPolicyReviewers: aliasedReviewers }),
+  'HFM_PROVENANCE_POLICY_REVIEWER_INVALID');
+
 const unknownReviewer = signed();
 rejects(() => verify(unknownReviewer, { trustedPolicyReviewers: { 'reviewer-a': reviewers()['reviewer-a'] } }),
   'HFM_PROVENANCE_POLICY_REVIEWER_UNTRUSTED');
