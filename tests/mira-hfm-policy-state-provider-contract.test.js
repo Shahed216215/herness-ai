@@ -252,6 +252,8 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
       mutablePolicyTrust[policyIssuer].publicKeySha256 = '0'.repeat(64);
       mutableReviewerTrust['reviewer-a'].publicKeySha256 = '0'.repeat(64);
       mutableEvidenceTrust[evidenceIssuer].publicKeySha256 = '0'.repeat(64);
+      mutatingProvider.compareAndSwap = async () => { throw new Error('swapped CAS method must not be used'); };
+      mutatingProvider.getCommitReceipt = async () => { throw new Error('swapped receipt method must not be used'); };
       return baseProvider.readState();
     },
     async compareAndSwap(request) { return baseProvider.compareAndSwap(request); },
@@ -260,6 +262,7 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
   const mutatingEvidenceProvider = {
     async resolve({ evidenceId }) {
       mutableEnvelope.payload.sources[sourceIds[1]].storageInstanceId = 'mutated-during-evidence-resolution';
+      mutatingEvidenceProvider.resolve = async () => { throw new Error('swapped resolver method must not be used'); };
       return evidenceRecords.get(evidenceId);
     }
   };
