@@ -86,6 +86,7 @@ function createEncryptedBackup({ payload, key, backupId, createdAt = new Date().
     authenticationTag = cipher.getAuthTag();
   } finally {
     derivedKey.fill(0);
+    plain.fill(0);
   }
   const envelope = {
     ...header,
