@@ -228,3 +228,16 @@ No code changes to existing runtime paths are authorized by this specification. 
 - Production readiness: NOT_CERTIFIED.
 
 This specification is a design artifact only. It does not authorize infrastructure provisioning, credential creation, staging access, production integration, or release advancement beyond Mira HFM v0.2.
+
+
+## 10. Orchestrator idempotency and authoritative receipt lookup
+
+The Phase 7 policy-acceptance orchestrator now requires three provider operations: `readState`, `compareAndSwap`, and `getCommitReceipt`. A provider that lacks authoritative receipt lookup is not conformant.
+
+- The orchestrator derives a deterministic idempotency key from the immutable policy ID and verified policy digest: `mira-hfm-policy-acceptance-v1:<policyId>:<policyDigest>`.
+- The request digest is SHA-256 over the canonical JSON representation of exactly `{ authorityId, expectedSequence, expectedDigest, nextState }`. The idempotency key is a separate request field and is not included in that digest.
+- `compareAndSwap` receives the idempotency key. Its signed receipt must bind the authority, previous/next sequence, policy ID/digest, idempotency key, and exact request digest.
+- `getCommitReceipt({ authorityId, idempotencyKey, requestDigest })` must query the authoritative receipt store. It returns the exact original signed receipt for a committed request, or null only when the exact request is known not to have committed. A different digest for the same key is rejected.
+- If the adapter explicitly reports `HFM_POLICY_STATE_REQUEST_NOT_COMMITTED`, the orchestrator retries once with the identical request and idempotency key. If it reports `HFM_POLICY_STATE_AMBIGUOUS_COMMIT`, the orchestrator retrieves and verifies the exact receipt through `getCommitReceipt`. Missing, unavailable, or mismatched receipt evidence fails closed as unresolved; it must not create a new key or sequence.
+- The in-memory fake provider and synthetic tests cover pre-commit request loss, post-commit response loss, receipt lookup, request-digest binding, and unresolved receipt failure. They do not prove that a real provider stores state and idempotency receipts atomically or durably.
+- A real provider must demonstrate that state mutation and receipt persistence are one atomic durable transaction and that receipt lookup is authoritative across restart, replica failover, and ambiguous network outcomes. Until then, the policy-state provider remains NOT_CERTIFIED and staging remains NOT_APPROVED.
