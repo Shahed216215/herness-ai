@@ -36,7 +36,9 @@ const store = {
     atomicCreateOnly: true,
     immutableVersions: true,
     projectIsolation: true,
-    readAfterWrite: true
+    readAfterWrite: true,
+    durableQuarantine: true,
+    durableAudit: true
   },
   async listBatches({ projectId, groupId }) {
     return [...db.values()].filter(b => b.projectId === projectId && b.groupId === groupId)
