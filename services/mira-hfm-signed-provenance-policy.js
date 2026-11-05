@@ -179,6 +179,7 @@ function verifySignedProvenancePolicy({
   const unsignedForReview = { ...p };
   delete unsignedForReview.approvals;
   const reviewMessage = Buffer.from(canonicalize(unsignedForReview), 'utf8');
+  const reviewerKeyFingerprints = [];
   for (const approval of p.approvals) {
     const reviewer = trustedPolicyReviewers[approval.reviewerId];
     if (!isPlainObject(reviewer) || reviewer.keyId !== approval.keyId ||
