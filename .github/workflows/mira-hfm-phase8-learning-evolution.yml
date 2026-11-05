@@ -6,6 +6,9 @@ on:
       - work/mira-hfm-v02-phase8-learning-evolution-integration
     paths:
       - 'services/mira-hfm-learning-evolution-bridge.js'
+      - 'services/mira-hfm-learning-proposal-store.js'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'server.js'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
@@ -28,5 +31,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Check Phase 8 JavaScript syntax
+        run: node --check server.js && node --check routes/mira-hfm-learning-evolution.js && node --check services/mira-hfm-learning-proposal-store.js && node --check services/mira-hfm-learning-evolution-bridge.js
       - name: Run proposal-only bridge tests
         run: node tests/mira-hfm-learning-evolution-bridge.test.js
