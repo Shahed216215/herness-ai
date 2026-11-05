@@ -139,7 +139,7 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
     const { pageId, records } = prepareRecords(input);
     if (!records.length) return {
       status: 'ARCHIVE_WRITE_VERIFIED', pageId, storedCount: 0, duplicateCount: 0,
-      totalExistingForPage: await countPage(pageId), maxEntriesPerPage: MAX_ENTRIES_PER_PAGE,
+      totalExistingForPage: (await listPageIds(pageId)).length, maxEntriesPerPage: MAX_ENTRIES_PER_PAGE,
       archived: [], archivePolicy: 'UNTRUSTED_RESEARCH_ONLY', canonicalMemoryWrite: false
     };
     const count = await countPage(pageId);
@@ -149,7 +149,7 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
     const archived = [];
     for (const record of records) {
       const payload = { ...record };
-      await call('', 'POST', [{
+      await call('?on_conflict=archive_id', 'POST', [{
         archive_id: record.archiveId,
         page_id: pageId,
         payload,
@@ -176,7 +176,7 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
     }
     return Object.freeze({
       status: 'ARCHIVE_WRITE_VERIFIED', pageId, storedCount, duplicateCount,
-      totalExistingForPage: await countPage(pageId), maxEntriesPerPage: MAX_ENTRIES_PER_PAGE,
+      totalExistingForPage: (await listPageIds(pageId)).length, maxEntriesPerPage: MAX_ENTRIES_PER_PAGE,
       archived: Object.freeze(archived), archivePolicy: 'UNTRUSTED_RESEARCH_ONLY',
       canonicalMemoryWrite: false
     });
