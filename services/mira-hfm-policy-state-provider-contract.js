@@ -203,7 +203,7 @@ async function verifyAndAcceptSignedProvenancePolicy({
     nextState: verified.nextAcceptedState,
     idempotencyKey: 'mira-hfm-policy-acceptance-v1:' + verified.policyId + ':' + verified.policyDigest
   };
-  const requestDigest = sha256(JSON.stringify({
+  const requestDigest = sha256(canonicalizeProvenancePolicy({
     authorityId: casRequest.authorityId,
     expectedSequence: casRequest.expectedSequence,
     expectedDigest: casRequest.expectedDigest,
