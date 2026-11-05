@@ -10,6 +10,7 @@ const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const store = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-proposal-store.js'), 'utf8');
 const supabaseStore = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-proposal-supabase-store.js'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'), 'utf8');
+const verification = fs.readFileSync(path.join(root, 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'), 'utf8');
 const bridge = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evolution-bridge.js'), 'utf8');
 
 assert.match(route, /const isProduction = process\.env\.NODE_ENV === 'production'/);
