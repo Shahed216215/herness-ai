@@ -201,9 +201,39 @@ try {
     projectId: 'mira-project-001'
   }), error => error.code === 'HFM_CLOUD_LIST_INCOMPLETE');
   await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
-    adapter: { capabilities: { list: true }, async list() { return []; } },
-    projectId: 'mira-project-001'
-  }), error => error.code === 'HFM_CLOUD_LIST_INVALID');
+    adapter: { capabilities: { list: true }, async getProviderQuota() {
+      return { status: 'REPORTED', providerQuotaAvailable: true };
+    }, async list() { return { items: [], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async getProviderQuota() {
+      return { status: 'REPORTED', providerQuotaAvailable: true, providerId: 'synthetic-drive',
+        scope: 'account', projectId: null, measuredAt: '2026-11-06T00:00:00.000Z',
+        quotaBytes: 1000, usedBytes: 100, availableBytes: 900 };
+    }, async list() { return { items: [], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() { return { items: [{
+      projectId: 'mira-project-001', backupId: 'backup-invalid-time',
+      objectKey: 'mira-hfm-emergency/v1/mira-project-001/backup-invalid-time.mhe',
+      bytes: 12, createdAt: 'not-a-date'
+    }], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_LIST_TIMESTAMP_INVALID');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() { return { items: [{
+      projectId: 'mira-project-001', backupId: 'backup-future-time',
+      objectKey: 'mira-hfm-emergency/v1/mira-project-001/backup-future-time.mhe',
+      bytes: 12, createdAt: '2026-11-06T00:00:00.000Z'
+    }], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_LIST_TIMESTAMP_INVALID');
+  console.log('HFM_PHASE7_PROVIDER_QUOTA_REPORT_SCHEMA_ENFORCED=PASS');
+  console.log('HFM_PHASE7_FUTURE_PROVIDER_QUOTA_REJECTED=PASS');
+  console.log('HFM_PHASE7_CAPACITY_LIST_TIMESTAMP_VALIDATED=PASS');
+  console.log('HFM_PHASE7_FUTURE_BACKUP_TIMESTAMP_REJECTED=PASS');
   console.log('HFM_PHASE7_PAGINATION_COMPLETE_AND_INCOMPLETE_REJECTED=PASS');
   console.log('HFM_PHASE7_5GB_CAPACITY_MONITOR_AND_PROJECT_SCOPE=PASS');
   console.log('HFM_PHASE7_CONFIGURED_BUDGET_DISTINCT_FROM_PROVIDER_QUOTA=PASS');
