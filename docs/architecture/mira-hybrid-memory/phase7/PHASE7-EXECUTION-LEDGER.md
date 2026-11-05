@@ -382,3 +382,15 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - Updated `STAGING-SECURITY-REVIEW.md` with the latest offline remediation addendum and remaining operational gates.
 - CI disposition remains `INCONCLUSIVE` until matching workflow logs are inspected. No PASS claim is made for the new replay concurrency, TOCTOU, or secret-boundary tests.
 - F7-SR-01 remains OPEN pending independent policy governance and a real durable atomic replay store. F7-SR-02 remains OPEN pending real KMS/HSM custody. F7-SR-03/04 remain OPEN pending independent filesystem/host ACL/mount review. F7-SR-05 remains OPEN pending independently sourced infrastructure evidence and real durable policy-state/provider evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; all work remains within v0.2.
+
+
+## Provider method-reference stability across Phase 7 adapters — 2026-11-05
+
+- Latest implementation/test commit covered by this checkpoint: `659ab36b4deff791721138cc33201a2bba9f3c0a`.
+- Policy-state orchestrator now captures `readState`, `compareAndSwap`, and `getCommitReceipt` method references before the first provider await. A state-read callback that replaces CAS/receipt methods cannot alter the methods used for the in-flight acceptance.
+- Evidence verifier captures `resolve` before the first evidence lookup. A resolver that replaces its own method during the first call cannot switch the resolver used for subsequent evidence references.
+- Staging drill captures source `readSnapshot` and key-provider wrap/unwrap method references before policy-provider interaction. The synthetic staging test mutates the original key-provider descriptor and wrap method from the state-provider callback; the captured method/descriptor snapshot must still complete.
+- Google Drive upload captures `files.list/create/get` and quota `about.get` methods before the first asynchronous list call. A synthetic list callback replaces the original create/quota methods; the operation must use the captured methods and complete readback.
+- Regression markers were added for policy-state/evidence TOCTOU snapshots and Drive method snapshot behavior. Provider specifications and Drive addendum now describe these controls and their limits.
+- CI remains `INCONCLUSIVE` until matching workflow logs are inspected. All method-snapshot tests are synthetic; they do not establish provider truthfulness, real storage guarantees, KMS/HSM custody, durable replay/state stores, host ACL governance, or infrastructure independence.
+- F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent operational evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; version remains v0.2.
