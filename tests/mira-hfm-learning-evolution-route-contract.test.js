@@ -14,7 +14,7 @@ const verification = fs.readFileSync(path.join(root, 'supabase/verification/2026
 const bridge = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evolution-bridge.js'), 'utf8');
 const adapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evidence-adapter.js'), 'utf8');
 const generationCycleAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle.js'), 'utf8');
-const generationRequestAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle-request.js'), 'utf8');
+
 
 assert.match(route, /const isProduction = process\.env\.NODE_ENV === 'production'/);
 assert.match(route, /backend === 'local' && !isProduction/,
@@ -72,13 +72,13 @@ assert.match(bridge, /auditWriter\.idempotent === true/);
 assert.match(server, /registerMiraHfmLearningEvolutionRoutes\(/);
 assert.match(server, /learningProposalOptIn === true/);
 assert.match(server, /mira_hfm_public_web_retrieval/);
-assert.match(generationRequestAdapter, /HFM_LEARNING_NAMED_ADMIN_REQUIRED/);
-assert.match(server, /HFM_LEARNING_PUBLIC_RETRIEVAL_NOT_EXECUTED/);
+assert.match(generationCycleAdapter, /HFM_LEARNING_NAMED_ADMIN_REQUIRED/);
+assert.match(generationCycleAdapter, /HFM_LEARNING_RETRIEVAL_INVALID/);
 assert.match(server, /learningProposalHandoff/);
-assert.match(server, /stageAgentGenerationProposal/);
-assert.match(generationRequestAdapter, /learningProposalOptIn !== true/);
-assert.match(generationRequestAdapter, /session\.authenticated === true/);
-assert.match(generationRequestAdapter, /session\.role === 'admin'/);
+assert.match(server, /stageAgentGenerationCycleProposal/);
+assert.match(generationCycleAdapter, /learningProposalOptIn !== true/);
+assert.match(generationCycleAdapter, /session\.authenticated !== true/);
+assert.match(generationCycleAdapter, /session\.role !== 'admin'/);
 assert.match(route, /MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true'/);
 assert.match(route, /app\.locals\.miraHfmLearningGenerationCycle/);
 assert.match(route, /createGenerationCycleProposalOrchestrator/);
