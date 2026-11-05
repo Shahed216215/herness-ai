@@ -278,3 +278,18 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Provider-adapter and acceptance specifications now describe the exact interface and evidence required. Synthetic tests still do not prove real provider atomicity/durability, receipt retention, restart behavior, or cross-replica consistency.
 - Verification disposition: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. No PASS claim is made until matching Phase 7 push workflow logs are inspected.
 - Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains within v0.2.
+
+
+## Pinned backup inventory, provider failure boundaries, and Drive reconciliation — 2026-11-05
+
+- Latest implementation/test commit covered by this checkpoint: `361a2c94c8e70a65a985862a946c868c13706fe4`.
+- Policy-state provider read/CAS failures are normalized to generic fail-closed errors so upstream provider exception text is not returned to callers. Regression tests cover read and CAS error-detail suppression; receipt-store lookup outage after an ambiguous commit remains `HFM_POLICY_STATE_COMMIT_UNRESOLVED`.
+- Pinned backup inventory now reads through an opened directory descriptor and the no-follow pinned-child reader. Symlinks, hard links, non-regular files/directories, over-limit files, and file mutation during read are rejected as `REVIEW_REQUIRED`; pinned child reads require non-blocking open support and a bounded read limit.
+- Google Drive adapter now fails closed when duplicate-check results are missing or malformed. It binds a deterministic `miraHfmUploadKey` to folder/name/project/ciphertext digest, recognizes an exact pre-existing object only after metadata and byte-for-byte readback verification, and performs one exact metadata reconciliation after an ambiguous create response. It never issues a blind second create. Unresolved or conflicting remote outcomes remain `REVIEW_REQUIRED`.
+- Direct Buffer, Uint8Array, ArrayBuffer, and streamed Drive response bodies are bounded by `MAX_BACKUP_BYTES`. Download remains `DOWNLOADED_UNVERIFIED` until authenticated decryption and independent-baseline recovery verification.
+- Added regression coverage for provider error-detail suppression, receipt lookup outage, pinned inventory symlink/hard-link/directory rejection, bounded pinned-read configuration, incomplete Drive duplicate checks, idempotent existing-object reuse, ambiguous-create reconciliation, and unresolved remote create outcomes.
+- Added `DRIVE-BACKUP-ADAPTER-FAILURE-AND-RECONCILIATION-ADDENDUM.md`. It explicitly records that list-before-create is not an atomic uniqueness guarantee and that concurrent real Drive writers, live identity/ACL, provider consistency, and operational recovery remain unverified.
+- F7-SR-05 acceptance specification corrected: signed policy/state/evidence orchestration is now wired into the staging drill offline; real provider certification and current CI verification remain open.
+- CI disposition: `CI_STATUS=INCONCLUSIVE`. The Phase 7 workflow path filters include all changed services/tests, but the available GitHub connector returned no combined status checks or PR-triggered workflow runs for the latest commit. No test PASS is claimed for this checkpoint.
+- No live Drive API, upload, delete, restore, deployment, production Memory/Knowledge write, or real credential use occurred.
+- F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending their independent governance, KMS/HSM, host ACL/mount, real provider, and provenance evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains in v0.2.
