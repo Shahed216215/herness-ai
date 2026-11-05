@@ -14,6 +14,7 @@ on:
       - 'tools/facebook-research-lookup.js'
       - 'tests/mira-facebook-public-web-research.test.js'
       - 'tests/mira-facebook-research-supabase-provider.test.js'
+      - 'tests/mira-facebook-research-supabase-schema.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase4/**'
       - 'services/mira-facebook-public-web-research.js'
@@ -52,6 +53,7 @@ on:
       - 'tools/facebook-research-lookup.js'
       - 'tests/mira-facebook-public-web-research.test.js'
       - 'tests/mira-facebook-research-supabase-provider.test.js'
+      - 'tests/mira-facebook-research-supabase-schema.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase4/**'
       - 'tests/mira-facebook-page-memory-connector.test.js'
@@ -99,6 +101,7 @@ jobs:
           node tests/mira-facebook-page-memory-connector.test.js
           node tests/mira-facebook-public-web-research.test.js
           node tests/mira-facebook-research-supabase-provider.test.js
+          node tests/mira-facebook-research-supabase-schema.test.js
           node tests/mira-facebook-page-hfm-adapter.test.js
           node tests/mira-facebook-page-import-review-registry.test.js
           node tests/mira-facebook-page-operation-recovery.test.js
