@@ -23,8 +23,9 @@
 - `services/mira-hfm-authoritative-snapshot.js`: injected signed snapshot contract with independent Ed25519 trust anchor, request binding, freshness and payload/revision checks; produces encrypted bytes only.
 - `services/mira-hfm-recovery-verification.js`: non-mutating decrypt/authenticate and independent baseline comparison.
 - `services/mira-hfm-local-staging-snapshot-source.js`: staging-only local JSON source adapter with explicit file paths, staging-root containment, non-symlink file checks, authorization callback, bounded read-only file descriptors, and Ed25519 request-bound attestation.
-- Tests: emergency-backup, mocked Drive adapter, key-provider contract, authoritative snapshot, recovery verification, and local staging snapshot source.
-- `.github/workflows/mira-hfm-phase7-emergency-backup.yml`: isolated Node 24 offline contract workflow; updated to include the staging-source suite.
+- `services/mira-hfm-staging-backup-drill.js`: staging-only orchestrator that compares two separately pinned staging source captures, encrypts and immutably publishes a backup, reads it back from disk, and verifies recovery preview against the baseline.
+- Tests: emergency-backup, mocked Drive adapter, key-provider contract, authoritative snapshot, recovery verification, local staging snapshot source, and staging backup/recovery drill.
+- `.github/workflows/mira-hfm-phase7-emergency-backup.yml`: isolated Node 24 offline contract workflow; updated to include the staging-source and end-to-end staging backup/recovery drill suites.
 
 ## Local staging source design boundary
 - The adapter accepts only `environment: staging`; production environment is rejected.
@@ -40,6 +41,15 @@
 - This run covered encrypted backup, mocked Drive, key-provider contract, signed snapshot source and recovery verification. It did not cover the subsequently added local staging adapter.
 - A later documentation-only ledger commit was recorded after that CI run; no claim is made that the documentation-only commit was tested by that run.
 - Earlier failed run `42026705689` is retained as FAIL evidence (async assertion mismatch); a corrected later run succeeded.
+
+## Staging backup/recovery drill design boundary
+- Requires two distinct, independently pinned source identities; both must explicitly declare staging environment.
+- Captures the independent baseline first, then the backup source. Source revision, record count, and canonical payload digest must match before publication.
+- Requires an existing explicit non-symlink backup directory and a restricted immutable filename; existing backups are never overwritten.
+- Reads the published encrypted file back from disk and verifies decryption, authentication, project/schema/count, source revision, and payload digest against the independent baseline.
+- A recovery-verification failure after publication retains the encrypted backup and reports its path; the drill does not delete or overwrite it.
+- Synthetic fixtures only. Separate source identities and keys in CI do not establish production authority, actual independent infrastructure, or real key custody.
+- New suite has not yet been verified by a completed GitHub Actions run; status remains CI_PENDING until logs are inspected.
 
 ## Safety boundary
 - Production Memory read/write: NO
@@ -65,7 +75,8 @@
 - Offline encryption and local immutable backup contract: PASS_CI (previous workflow evidence).
 - Mocked Drive adapter contract: PASS_CI (previous workflow evidence).
 - Signed snapshot-source and recovery-verification contracts: PASS_CI (previous workflow evidence).
-- Local staging snapshot source: IMPLEMENTED; CI_PENDING.
+- Local staging snapshot source: PASS_CI (verified in six-suite run).
+- Staging backup/recovery drill: IMPLEMENTED; CI_PENDING.
 - Live provider verification: INCONCLUSIVE / NOT_RUN.
 - Production restore: NOT_APPROVED.
 - Production readiness: NOT_CERTIFIED.
