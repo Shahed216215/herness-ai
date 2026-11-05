@@ -14,6 +14,7 @@ const base = { projectId:'project-alpha', proposalId:'proposal-001', title:'Cand
 const rawRetrieval = {
   providerId:'mira-hfm-public-web-retrieval', retrievalMode:'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
   status:'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED', page:{pageId:'123456789'},
+  lookup:{projectId:'project-alpha',memoryId:null,query:''},
   limits:{canonicalMemoryWrite:false,trustPromotion:false,directFacebookFetches:0,metaGraphApiCalls:0,loginOrCookieUse:0,privateOrGroupContentAccess:0},
   evidence:[{evidenceId:'fbweb-evidence-001',pageId:'123456789',
     sourceUrl:'https://www.facebook.com/123456789/posts/987654321', sourceType:'FACEBOOK_PAGE_POST',
