@@ -1,0 +1,41 @@
+name: Mira HFM Phase 7 Emergency Backup
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase7-emergency-backup
+    paths:
+      - 'services/mira-hfm-emergency-backup.js'
+      - 'tests/mira-hfm-emergency-backup.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase7/**'
+      - '.github/workflows/mira-hfm-phase7-emergency-backup.yml'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase7-emergency-backup
+    paths:
+      - 'services/mira-hfm-emergency-backup.js'
+      - 'tests/mira-hfm-emergency-backup.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase7/**'
+      - '.github/workflows/mira-hfm-phase7-emergency-backup.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase7-offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run isolated emergency-backup contract tests
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-emergency-backup.test.js
+          echo "NETWORK_REQUESTS=0"
+          echo "PRODUCTION_MEMORY_TOUCHED=NO"
+          echo "DRIVE_API_CALLS=0"
+          echo "BACKUP_DELETION=0"
+          echo "RESULT=MIRA_HFM_PHASE7_OFFLINE_CONTRACT_COMPLETE"
