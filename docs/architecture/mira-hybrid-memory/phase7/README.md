@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Emergency Backup
 
-Status: SIGNED STAGING AUTHORIZATION AND SIGN-ONLY SNAPSHOT PROVIDER CONTRACTS IMPLEMENTED; LATEST CI PENDING; REAL KEY CUSTODY, FILESYSTEM HARDENING, SOURCE PROVENANCE AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
+Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BACKUP PUBLICATION CONTRACTS IMPLEMENTED; COMMIT-MATCHED OFFLINE CI PASS; REAL KEY CUSTODY, DIRECTORY GOVERNANCE, SOURCE PROVENANCE AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
 
 ## Implemented
 - Per-backup random 256-bit data-encryption key (DEK), AES-256-GCM payload encryption, and external key-provider wrapping/unwrapping of the DEK (KEK boundary).
@@ -62,7 +62,7 @@ Status: SIGNED STAGING AUTHORIZATION AND SIGN-ONLY SNAPSHOT PROVIDER CONTRACTS I
 - Immutable local write/readback: PASS_CI.
 - Mocked Drive quota/upload/no-overwrite/remote-readback contract: PASS_CI.
 - Local staging snapshot adapter: PASS_CI (six-suite workflow evidence).
-- Staging backup publication and recovery drill: IMPLEMENTED; CI_PENDING.
+- Staging backup publication and recovery drill: PASS_CI (commit f4f28b7; run #42038520652).
 - Retention: plan-only; deletion not authorized.
 - Restore: decrypt-and-validate preview only; production restore not authorized.
 - Production readiness: NOT_CERTIFIED.
@@ -101,5 +101,14 @@ Status: SIGNED STAGING AUTHORIZATION AND SIGN-ONLY SNAPSHOT PROVIDER CONTRACTS I
 ## Filesystem directory-handle hardening checkpoint (2026-11-05)
 - Added `services/mira-hfm-pinned-directory.js`: Linux-only retained directory descriptors through `/proc/self/fd`, no-follow directory open, and inode identity comparison across open.
 - Local staging source now requires Memory and Knowledge files to be direct children of the pinned root and reads them via the retained directory descriptor. Root identity is compared with the initially inspected directory identity. The source exposes `close()` to release the descriptor.
-- The workflow path filter includes the new helper; the existing local staging source suite is the intended integration test path.
-- This is a partial mitigation only. Immutable backup publication and staging-drill readback still use path-based operations; race-oriented runtime tests have not been executed. The HIGH finding F7-SR-03 remains PARTIALLY_REMEDIATED / OPEN. Platforms without Linux procfs/directory flags fail closed for this source adapter.
+- The workflow path filters include the helper and the dedicated adversarial backup-directory test; the existing local staging source suite remains the source-read integration test path.
+- Immutable backup publication now uses descriptor-relative temporary creation, fsync, hard-link publication and no-follow readback through the retained directory descriptor. The staging drill pins its backup directory before asynchronous capture and feeds the writer's verified readback bytes to the recovery preview. Adversarial rename/replacement and symlink-substitution tests passed in commit-matched CI run #42038520652. F7-SR-03 remains PARTIALLY_REMEDIATED / OPEN pending independent security review and directory ownership/permission governance. Platforms without Linux procfs/directory flags fail closed.
+
+
+## Verification checkpoint — pinned backup directory (2026-11-05)
+- Commit: `f4f28b7f94bdf1213bc9e79c24b0e696850f65a7`.
+- GitHub Actions run #42038520652: SUCCESS; all seven offline suites completed.
+- Adversarial markers: `MIRA_HFM_PINNED_BACKUP_DIRECTORY_RENAME_RACE_BLOCK_PASS` and `MIRA_HFM_PINNED_BACKUP_SYMLINK_REPLACEMENT_BLOCK_PASS`.
+- Staging drill markers: publication, recovery preview, source immutability, no-overwrite and baseline-mismatch blocking all passed.
+- CI confirmed `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `BACKUP_DELETION=0`, and no canonical Memory/Knowledge writes.
+- This does not certify production key custody, backup-directory ownership/permissions, independent source provenance, live Drive integration, staging approval or production readiness.
