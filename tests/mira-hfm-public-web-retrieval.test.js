@@ -77,6 +77,11 @@ const good=[
   pageId,memoryId:'bad id',observedAt,importResults:false,searchWeb:async()=>[]
  }),/identifier format/);
  await assert.rejects(()=>retrievePublicFacebookMemory({
+  pageId,pageUrl:'https://www.facebook.com/999999999',projectId,observedAt,
+  importResults:false,searchWeb:async()=>[]
+ }),error=>error.code==='HFM_WEB_RETRIEVAL_PAGE_URL_MISMATCH');
+ console.log('HFM_PHASE6_PAGE_URL_MUST_MATCH_SELECTED_PAGE_ID=PASS');
+ await assert.rejects(()=>retrievePublicFacebookMemory({
   pageId,observedAt,importResults:false,searchWeb:async()=>[]
  }),/At least one/);
  await assert.rejects(()=>retrievePublicFacebookMemory({
