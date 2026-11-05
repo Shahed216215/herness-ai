@@ -58,7 +58,7 @@ function createPersistentProposalStore(options = {}) {
     let fd;
     try { fd = fs.openSync(target, 'wx', 0o600); }
     catch (error) { if (error.code === 'EEXIST') return { created: false }; throw error; }
-    try { fs.writeFileSync(fd, JSON.stringify(value) + '\\n', 'utf8'); fs.fsyncSync(fd); }
+    try { fs.writeFileSync(fd, JSON.stringify(value) + '\n', 'utf8'); fs.fsyncSync(fd); }
     catch (error) { try { fs.closeSync(fd); } catch {} throw error; }
     fs.closeSync(fd);
     try {
