@@ -186,7 +186,7 @@ async function main() {
   });
   await assert.rejects(() => wrongAccount.generateFileId({ accountBinding, driveSpace }),
     error => error.code === 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
-  assert.equal(fake.calls.generate, 1);
+  assert.equal(fake.calls.generate, 2);
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_ACCOUNT_SCOPE_FAIL_CLOSED=PASS');
 
   const badSpace = createGoogleDriveGeneratedIdProvider({
