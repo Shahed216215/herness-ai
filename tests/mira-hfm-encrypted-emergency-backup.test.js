@@ -636,6 +636,23 @@ try {
   assert.equal(providerOwnedKey.every(byte => byte === 0x51), true);
   console.log('HFM_PHASE7_EPHEMERAL_KEY_COPY_ZEROIZED=PASS');
 
+  let failedOperationKeyCopy;
+  const providerOwnedFailureKey = Buffer.alloc(32, 0x61);
+  await assert.rejects(() => withBackupKey({
+    provider: { async getKey({ keyId }) {
+      return { keyId, key: providerOwnedFailureKey };
+    } },
+    keyId: 'key-version-E',
+    operation: keyMaterial => {
+      failedOperationKeyCopy = keyMaterial;
+      throw new Error('synthetic operation failure');
+    }
+  }), /synthetic operation failure/);
+  assert.ok(Buffer.isBuffer(failedOperationKeyCopy));
+  assert.equal(failedOperationKeyCopy.every(byte => byte === 0), true);
+  assert.equal(providerOwnedFailureKey.every(byte => byte === 0x61), true);
+  console.log('HFM_PHASE7_EPHEMERAL_KEY_COPY_ZEROIZED_ON_OPERATION_FAILURE=PASS');
+
   const providerFailures = [
     ['KEY_NOT_FOUND', 'HFM_KEY_NOT_FOUND'],
     ['KEY_ACCESS_DENIED', 'HFM_KEY_ACCESS_DENIED'],
