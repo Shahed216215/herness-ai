@@ -5,6 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { canonicalize, sha256 } = require('./mira-hfm-authoritative-snapshot');
 const { verifyAuthorizationDecision } = require('./mira-hfm-authorization-decision');
+const { validateSnapshotSigningProvider } = require('./mira-hfm-snapshot-signing-provider-contract');
 
 const MAX_SOURCE_FILE_BYTES = 25 * 1024 * 1024;
 
@@ -69,7 +70,7 @@ function createLocalStagingSnapshotSource(config) {
   }
   if (typeof config.sourceId !== 'string' || !config.sourceId.trim() ||
       typeof config.signingKeyId !== 'string' || !config.signingKeyId.trim() ||
-      typeof config.privateKeyPem !== 'string' || !config.privateKeyPem.includes('PRIVATE KEY') ||
+      !config.signingProvider ||
       typeof config.authorize !== 'function' || !config.authorizationTrust ||
       !config.replayGuard || typeof config.replayGuard.consume !== 'function') {
     fail('Source identity/key, signed authorization provider, independent authorization trust store and replay guard are required.',
@@ -88,11 +89,15 @@ function createLocalStagingSnapshotSource(config) {
   const knowledgeFile = resolvePinnedFile(rootReal, config.knowledgeFile, 'Knowledge source');
   if (memoryFile === knowledgeFile) fail('Memory and Knowledge source files must be distinct.', 'HFM_STAGING_SOURCE_FILES_COLLIDE');
 
-  const privateKey = crypto.createPrivateKey(config.privateKeyPem);
-  if (privateKey.asymmetricKeyType !== 'ed25519') fail('Staging snapshot signing key must be Ed25519.', 'HFM_STAGING_SIGNING_KEY_INVALID');
+  const signingProvider = config.signingProvider;
+  const signingProviderResult = validateSnapshotSigningProvider(signingProvider, {
+    environment: config.environment, keyId: config.signingKeyId
+  });
+  const signingKeyVersion = signingProvider.descriptor.keyVersion;
 
   const descriptor = Object.freeze({
     contractVersion: '1', sourceId: config.sourceId, signingKeyId: config.signingKeyId,
+    signingKeyVersion, signingProviderId: signingProvider.descriptor.providerId,
     mode: 'read-only', environment: 'staging'
   });
 
@@ -127,6 +132,7 @@ function createLocalStagingSnapshotSource(config) {
       }));
       const attestation = {
         sourceId: descriptor.sourceId, signingKeyId: descriptor.signingKeyId,
+        signingKeyVersion: descriptor.signingKeyVersion,
         projectId: request.projectId, actorId: request.actorId,
         authorizationDecision: 'ALLOW', authorizationScope: request.scope,
         authorizationIssuerId: authorization.issuerId,
@@ -138,7 +144,24 @@ function createLocalStagingSnapshotSource(config) {
         capturedAt: new Date().toISOString(), recordCount: records.length,
         payloadSha256: sha256(Buffer.from(canonicalize(snapshot), 'utf8'))
       };
-      attestation.signature = crypto.sign(null, Buffer.from(canonicalize(attestation), 'utf8'), privateKey).toString('base64');
+      const signingInput = Buffer.from(canonicalize(attestation), 'utf8');
+      let signature;
+      try {
+        signature = await signingProvider.sign({
+          algorithm: 'Ed25519', keyId: descriptor.signingKeyId,
+          keyVersion: descriptor.signingKeyVersion, purpose: 'MIRA_HFM_SNAPSHOT_ATTESTATION',
+          message: signingInput
+        });
+      } catch {
+        fail('Snapshot signing provider failed; no unsigned snapshot may be returned.',
+          'HFM_STAGING_SIGNING_PROVIDER_UNAVAILABLE');
+      }
+      if (Buffer.isBuffer(signature)) signature = signature.toString('base64');
+      if (typeof signature !== 'string' || !/^[A-Za-z0-9+/]+=*$/.test(signature)) {
+        fail('Snapshot signing provider returned an invalid signature encoding.',
+          'HFM_STAGING_SIGNING_PROVIDER_SIGNATURE_INVALID');
+      }
+      attestation.signature = signature;
       return { snapshot, attestation };
     }
   });
