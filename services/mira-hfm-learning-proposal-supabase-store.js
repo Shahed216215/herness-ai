@@ -93,13 +93,15 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
   async function writeAuditEvent(event) {
     if (!event || event.event !== 'HFM_LEARNING_PROPOSAL_STAGED' ||
         typeof event.projectId !== 'string' || typeof event.proposalId !== 'string' ||
-        typeof event.proposalDigest !== 'string' || typeof event.actorRole !== 'string') {
+        typeof event.proposalDigest !== 'string' || typeof event.actorRole !== 'string' ||
+        typeof event.createdAt !== 'string' || !Number.isFinite(Date.parse(event.createdAt)) ||
+        new Date(event.createdAt).toISOString() !== event.createdAt) {
       fail('HFM_LEARNING_SUPABASE_AUDIT_INVALID', 'Learning proposal audit event is incomplete.');
     }
     const payload = { schemaVersion:'1.0.0', eventType:event.event, projectId:event.projectId,
       proposalId:event.proposalId, proposalDigest:event.proposalDigest, status:event.status,
       actorRole:event.actorRole, actorId:event.actorId || 'unknown',
-      canonicalMemoryWrites:0, recordedAt:new Date().toISOString() };
+      canonicalMemoryWrites:0, recordedAt:event.createdAt };
     const eventDigest = digest(payload);
     const identity = crypto.createHash('sha256').update([
       event.event, event.projectId, event.proposalId, event.proposalDigest
