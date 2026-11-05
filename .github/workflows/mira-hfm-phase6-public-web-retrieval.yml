@@ -6,12 +6,15 @@ on:
       - work/mira-hfm-v02-phase6-web-search-retrieval-restacked-20261105
     paths:
       - 'services/mira-hfm-public-web-retrieval.js'
+      - 'services/mira-facebook-research-archive-approval.js'
       - 'services/ai.js'
       - 'server.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
       - 'services/mira-tool-execution-policy.js'
+      - 'routes/mira-facebook-research-archive.js'
+      - 'server.js'
       - 'tools/mira-hfm-public-web-retrieval.js'
       - 'tools/web-search.js'
       - 'tests/mira-hfm-public-web-retrieval.test.js'
@@ -19,6 +22,7 @@ on:
       - 'tests/mira-facebook-public-web-research.test.js'
       - 'scripts/mira-hfm-phase6-live-provider-smoke.js'
       - 'tests/mira-hfm-phase6-live-provider-smoke.test.js'
+      - 'tests/mira-facebook-research-archive-approval.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase6/**'
       - '.github/workflows/mira-hfm-phase6-public-web-retrieval.yml'
@@ -27,12 +31,15 @@ on:
       - work/mira-hfm-v02-phase5-facebook-group-import
     paths:
       - 'services/mira-hfm-public-web-retrieval.js'
+      - 'services/mira-facebook-research-archive-approval.js'
       - 'services/ai.js'
       - 'server.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
       - 'services/mira-tool-execution-policy.js'
+      - 'routes/mira-facebook-research-archive.js'
+      - 'server.js'
       - 'tools/mira-hfm-public-web-retrieval.js'
       - 'tools/web-search.js'
       - 'tests/mira-hfm-public-web-retrieval.test.js'
@@ -63,6 +70,7 @@ jobs:
           node tests/mira-hfm-public-web-retrieval-runtime-integration.test.js
           node tests/mira-facebook-public-web-research.test.js
           node tests/mira-hfm-phase6-live-provider-smoke.test.js
+          node tests/mira-facebook-research-archive-approval.test.js
           node tests/mira-hfm-tool-registry-policy-parity.test.js
       - name: Confirm external action boundary
         run: |
