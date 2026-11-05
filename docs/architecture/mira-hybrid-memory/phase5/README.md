@@ -173,3 +173,7 @@ The integration test verifies:
 - Advisory locks serialize identity checks without granting UPDATE or DELETE on the immutable tables.
 
 The isolated PostgreSQL test is real database execution, but it does not establish Supabase project configuration, production RLS behavior under the actual Supabase roles, live service-role credentials, Render environment correctness, or restart durability. Those remain deferred.
+
+## Skip and deferred work register
+
+The durable skip/deferred ledger is [`SKIP-AND-DEFERRED-REGISTER.md`](./SKIP-AND-DEFERRED-REGISTER.md). It distinguishes user-directed skips, missing-input skips, authorization deferrals and environment deferrals. Every unresolved item has a stable ID, evidence/reason and a concrete resume condition. A skipped or deferred item is never counted as PASS. Update the ledger whenever Phase 5 work is skipped or resumed.
