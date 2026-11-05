@@ -179,3 +179,15 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - The same run confirms the 10 Phase 7 offline suites passed, including encrypted backup, Drive adapter mock, signed snapshot, authorization replay, staging backup drill, provenance independence and recovery verification.
 - Safety markers: `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `BACKUP_DELETION=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
 - Disposition remains: Phase 7 offline contract CI PASS. The policy contract authenticates the supplied signed policy/reviewer evidence but explicitly does not certify real storage/account separation, workload identity, administrative trust domain, KMS/HSM custody, production source truth or live Drive/restore. Production readiness remains NOT_CERTIFIED.
+
+
+## Independent evidence verifier and policy-state provider — final offline CI checkpoint
+
+- Latest Phase 7 run #159, ID `42052640162`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42052640162, exact commit `6ec332d46ea0032a92cd1c077b366f5d3b3e8b2d`: SUCCESS. Job `phase7-offline-contract` SUCCESS.
+- All 12 configured Phase 7 suites passed on the same commit: pinned backup directory, encrypted backup, mocked Drive adapter, key provider, signed snapshot, local staging source, staging backup drill, source provenance independence, signed provenance policy, signed policy-state provider, independent evidence verifier, and recovery verification.
+- Policy-state provider evidence: `MIRA_HFM_POLICY_STATE_SIGNED_AUTHORITY_PASS`, `MIRA_HFM_POLICY_STATE_FRESHNESS_AND_REVOCATION_PASS`, `MIRA_HFM_POLICY_STATE_DURABLE_ATOMIC_CAPABILITY_CLAIMS_PASS`, `MIRA_HFM_POLICY_STATE_COMPARE_AND_SWAP_PASS`, `MIRA_HFM_POLICY_STATE_COMMIT_RECEIPT_BINDING_PASS`, `MIRA_HFM_POLICY_STATE_CONFLICT_FAIL_CLOSED_PASS`, `MIRA_HFM_POLICY_STATE_NOT_INFRASTRUCTURE_CERTIFIED_PASS`.
+- Independent evidence verifier evidence: `MIRA_HFM_PROVENANCE_EVIDENCE_SIGNED_ISSUER_PASS`, `MIRA_HFM_PROVENANCE_EVIDENCE_SCOPE_BINDING_PASS`, `MIRA_HFM_PROVENANCE_EVIDENCE_DIGEST_BINDING_PASS`, `MIRA_HFM_PROVENANCE_EVIDENCE_FRESHNESS_PASS`, `MIRA_HFM_PROVENANCE_EVIDENCE_FAIL_CLOSED_PASS`.
+- Signed provenance policy reviewer/anti-rollback markers also passed on this commit.
+- Safety: `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `BACKUP_DELETION=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- Phase 7 offline contract: PASS. The provider/evidence contracts authenticate synthetic injected provider evidence and signed records; they do not certify actual infrastructure, production storage/account separation, real workload identity, real KMS/HSM custody, durable production replay service or live Drive/restore.
+- Production readiness remains NOT_CERTIFIED. External live-test gates remain reserved for the agreed final Render deployment window.
