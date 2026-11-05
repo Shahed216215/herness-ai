@@ -87,7 +87,7 @@ async function rejectsCode(promise, code) {
   // Returned state and exported snapshots cannot mutate provider-owned state.
   const isolated = createLocalFakePolicyStateProvider({ authorityId });
   const exposedState = await isolated.readState();
-  exposedState.highestAcceptedSequence = 99;
+  assert.throws(() => { exposedState.highestAcceptedSequence = 99; }, TypeError);
   const exported = isolated.exportSnapshot();
   exported.state.highestAcceptedSequence = 88;
   assert.equal((await isolated.readState()).highestAcceptedSequence, 0);
