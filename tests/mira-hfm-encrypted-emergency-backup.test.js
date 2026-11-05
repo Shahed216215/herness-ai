@@ -55,9 +55,19 @@ try {
   assert.throws(() => createEncryptedBackup({ payload: '', key, backupId, createdAt }));
   console.log('HFM_PHASE7_INPUT_AND_KEY_GATES=PASS');
 
-  const stored = writeImmutableBackup({ envelope, directory: dir, backupId });
+  const stored = writeImmutableBackup({ envelope, key, directory: dir, backupId });
   assert.equal(fs.readFileSync(stored.path).toString('utf8'), envelope.toString('utf8'));
-  assert.throws(() => writeImmutableBackup({ envelope, directory: dir, backupId }), error => error.code === 'EEXIST');
+  const invalidLocalDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-local-backup-test-'));
+  try {
+    assert.throws(() => writeImmutableBackup({
+      envelope, key: crypto.randomBytes(32), directory: invalidLocalDir, backupId
+    }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
+    assert.deepEqual(fs.readdirSync(invalidLocalDir), []);
+  } finally {
+    fs.rmSync(invalidLocalDir, { recursive: true, force: true });
+  }
+  console.log('HFM_PHASE7_LOCAL_WRITE_REQUIRES_AUTHENTICATED_ENVELOPE=PASS');
+  assert.throws(() => writeImmutableBackup({ envelope, key, directory: dir, backupId }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_IMMUTABLE_BACKUP_AND_READBACK=PASS');
 
   const staged = restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' });
