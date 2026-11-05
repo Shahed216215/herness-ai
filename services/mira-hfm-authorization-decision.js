@@ -57,6 +57,8 @@ async function verifyAuthorizationDecision({
   }
   const trusted = trustedIssuers[decision.issuerId];
   if (!isPlainObject(trusted) || trusted.keyId !== decision.keyId ||
+      typeof trusted.policyVersion !== 'string' || !trusted.policyVersion.trim() ||
+      decision.policyVersion !== trusted.policyVersion ||
       typeof trusted.publicKeyPem !== 'string' || !trusted.publicKeyPem.includes('PUBLIC KEY') ||
       typeof trusted.publicKeySha256 !== 'string' || !/^[a-f0-9]{64}$/.test(trusted.publicKeySha256)) {
     fail('Authorization decision issuer is not independently trusted.', 'HFM_AUTHZ_ISSUER_UNTRUSTED');
