@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'services/mira-hfm-encrypted-emergency-backup.js'
+      - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
