@@ -10,6 +10,7 @@ const {
 
 const batches = new Map();
 const audits = new Map();
+const auditOperations = new Map();
 const calls = [];
 const env = {
   SUPABASE_URL: 'https://fixture-project.supabase.co',
@@ -23,6 +24,35 @@ async function mockRequest(rawUrl, config) {
   assert.equal(url.hostname, 'fixture-project.supabase.co');
   assert.equal(config.headers.Authorization, 'Bearer fixture-service-role-key-never-real');
 
+  if (url.pathname.endsWith('/rpc/mira_stage_facebook_group_import_v1') && config.method === 'POST') {
+    const { p_batch, p_event, p_operation_key } = config.data;
+    const oldBatch = batches.get(p_batch.batchId);
+    if (oldBatch && oldBatch.batch_digest !== p_batch.batchDigest) throw new Error('batch conflict');
+    if (!oldBatch) batches.set(p_batch.batchId, {
+      batch_id: p_batch.batchId, project_id: p_batch.projectId, group_id: p_batch.groupId,
+      export_id: p_batch.exportId, batch_digest: p_batch.batchDigest, payload: JSON.parse(JSON.stringify(p_batch))
+    });
+    let audit = auditOperations.get(p_operation_key);
+    if (audit && audit.event_digest !== p_event.eventDigest) throw new Error('audit conflict');
+    let auditStatus = 'ALREADY_EXISTS';
+    if (!audit) {
+      auditStatus = 'CREATED';
+      audit = {
+        event_id: p_event.eventId, operation_key: p_operation_key,
+        project_id: p_event.projectId, group_id: p_event.groupId,
+        batch_id: p_event.batchId, event_digest: p_event.eventDigest,
+        payload: { ...p_event, recordedAt: '2026-11-05T12:00:00.000Z' }
+      };
+      audits.set(audit.event_id, JSON.parse(JSON.stringify(audit)));
+      auditOperations.set(p_operation_key, audit);
+    }
+    return { status: 200, data: [{
+      batch_status: oldBatch ? 'ALREADY_EXISTS' : 'CREATED',
+      audit_status: auditStatus, event_id: audit.event_id, event_digest: audit.event_digest,
+      batch_id: p_batch.batchId, batch_digest: p_batch.batchDigest,
+      project_id: p_batch.projectId, group_id: p_batch.groupId
+    }] };
+  }
   const table = url.pathname.split('/').pop();
   const query = url.searchParams;
   if (table === 'mira_facebook_group_import_batches') {
@@ -55,7 +85,7 @@ async function mockRequest(rawUrl, config) {
       return { status: 201, data: inserted };
     }
     if (config.method === 'GET') {
-      const id = query.get('event_id').slice(3);
+      const id = query.has('operation_key') ? auditOperations.get(query.get('operation_key').slice(3))?.event_id : query.get('event_id').slice(3);
       const row = audits.get(id);
       return { status: 200, data: row ? [JSON.parse(JSON.stringify(row))] : [] };
     }
@@ -64,10 +94,7 @@ async function mockRequest(rawUrl, config) {
 }
 
 const store = createSupabaseFacebookGroupImportStore({ env, request: mockRequest });
-const service = createFacebookGroupImportService({
-  store,
-  auditWriter: event => store.writeAuditEvent(event)
-});
+const service = createFacebookGroupImportService({ store });
 const record = {
   memoryId: 'memory-group-supabase-001',
   sourceId: 'group-post-202',
@@ -106,7 +133,7 @@ const input = {
   assert.equal(duplicate.batchId, result.batchId);
   assert.equal(duplicate.batchDigest, result.batchDigest);
   assert.equal(batches.size, 1);
-  assert.equal(audits.size, 2);
+  assert.equal(audits.size, 1);
 
   const conflictEnvelope = {
     ...envelope,
@@ -136,8 +163,8 @@ const input = {
   assert.ok(calls.some(call => call.url.includes('/mira_facebook_group_import_batches')));
   assert.ok(calls.some(call => call.url.includes('/mira_facebook_group_import_audit_events')));
   assert.ok(calls.every(call => !call.url.includes('facebook.com')));
-  console.log('GROUP_IMPORT_SUPABASE_ATOMIC_CREATE_READBACK=PASS');
-  console.log('GROUP_IMPORT_SUPABASE_DURABLE_AUDIT_READBACK=PASS');
+  console.log('GROUP_IMPORT_SUPABASE_ATOMIC_BATCH_AUDIT_TRANSACTION=PASS');
+  console.log('GROUP_IMPORT_SUPABASE_IDEMPOTENT_AUDIT_READBACK=PASS');
   console.log('GROUP_IMPORT_SUPABASE_IDEMPOTENCY_AND_CONFLICT=PASS');
   console.log('GROUP_IMPORT_SUPABASE_RETRIEVAL_ISOLATION=PASS');
   console.log('LIVE_FACEBOOK_REQUESTS=0');
