@@ -133,3 +133,11 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Logs confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
 - No production store, live Drive, deployment or canonical Memory/Knowledge writes were exercised.
 - POSIX mode/UID/GID checks do not certify host-level ACLs, mount policy, container isolation or privileged administrator trust. F7-SR-04 remains PARTIALLY_REMEDIATED / OPEN.
+
+
+## F7-SR-05 — Baseline source provenance independence
+
+- The staging drill requires a versioned, pinned provenance profile for each source and rejects any shared storage system, storage instance, security principal, trust domain, source system, or snapshot-signing trust issuer.
+- The provenance field `snapshotIssuerId` identifies the source-attestation signing trust issuer. It is distinct from `authorizationIssuerId`, which identifies the separately governed issuer of the signed backup:read authorization decision. These two trust purposes must not be conflated.
+- The provenance contract and its negative tests are included in both push and pull-request workflow path filters.
+- Synthetic tests establish only contract behavior. Real infrastructure independence, policy distribution, account ownership, workload identity, and signer/issuer governance remain REVIEW_REQUIRED; F7-SR-05 remains PARTIALLY_REMEDIATED / OPEN.
