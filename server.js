@@ -85,6 +85,8 @@ const registerMiraResearchGovernanceRoutes =
   require("./routes/mira-research-governance");
 const registerFacebookPageConnectorRoutes =
   require("./routes/mira-facebook-page-connector");
+const registerFacebookGroupMemoryImportRoutes =
+  require("./routes/mira-facebook-group-memory-import");
 
 const registerMiraEvolutionRoutes =
   require("./routes/mira-evolution");
@@ -153,7 +155,8 @@ app.use(
     // All other endpoints retain the global 50KB request limit.
     type: req => !(
       req.method === "POST" &&
-      req.path === "/api/admin/mira-seo/audit"
+      req.path === "/api/admin/mira-seo/audit" ||
+      req.path === "/api/admin/facebook-group/import"
     )
   })
 );
@@ -224,6 +227,11 @@ registerMiraResearchGovernanceRoutes(
   PERMISSIONS
 );
 registerFacebookPageConnectorRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+registerFacebookGroupMemoryImportRoutes(
   app,
   requireAdminPermission,
   PERMISSIONS
