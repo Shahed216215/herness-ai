@@ -7,13 +7,18 @@ const { captureAuthorizedSnapshot, canonicalize, sha256 } = require('./mira-hfm-
 const { encryptSnapshot, writeBackupAtomicAt } = require('./mira-hfm-emergency-backup');
 const { verifyRecoveryCandidate } = require('./mira-hfm-recovery-verification');
 const { openPinnedDirectory, assertPrivateDirectory, pinnedChildPath } = require('./mira-hfm-pinned-directory');
-const { verifyIndependentSourceProvenancePair } = require('./mira-hfm-source-provenance-contract');
+const { verifyIndependentSourceProvenancePair, REQUIRED_FIELDS } = require('./mira-hfm-source-provenance-contract');
 const { verifyAndAcceptSignedProvenancePolicy } = require('./mira-hfm-policy-state-provider-contract');
 
 function fail(message, code) {
   const error = new Error(message);
   error.code = code;
   throw error;
+}
+function isPlainObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 function validateStagingDirectory(directory, directoryPolicy = {}) {
@@ -110,9 +115,20 @@ async function runStagingBackupDrill({
   const policySourceIds = policySources && typeof policySources === 'object' && !Array.isArray(policySources)
     ? Object.keys(policySources).sort() : [];
   if (policySourceIds.length !== 2 ||
-      policySourceIds.some((sourceId, index) => sourceId !== expectedSourceIds[index])) {
+      policySourceIds.some((sourceId, index) => sourceId !== expectedSourceIds[index]) ||
+      !isPlainObject(trustedSources)) {
     fail('Signed provenance policy must bind exactly the backup and independent baseline source identities before policy-state acceptance.',
       'HFM_STAGING_POLICY_SOURCE_BINDING_MISMATCH');
+  }
+  for (const sourceId of expectedSourceIds) {
+    const policyProfile = policySources[sourceId];
+    const trustedProfile = trustedSources[sourceId] && trustedSources[sourceId].provenance;
+    if (!isPlainObject(policyProfile) || !isPlainObject(trustedProfile) ||
+        REQUIRED_FIELDS.some(field => typeof trustedProfile[field] !== 'string' ||
+          !trustedProfile[field].trim() || policyProfile[field] !== trustedProfile[field])) {
+      fail('Signed provenance policy does not match the independently pinned source trust profiles.',
+        'HFM_STAGING_POLICY_SOURCE_BINDING_MISMATCH');
+    }
   }
 
   const directoryPolicy = {
