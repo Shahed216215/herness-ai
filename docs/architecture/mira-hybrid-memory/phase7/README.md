@@ -34,8 +34,9 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - Production KMS/HSM selection, workload identity, least privilege, rotation, escrow/recovery, audit policy, and security approval remain open. See `KEY-PROVIDER-GOVERNANCE.md`.
 
 ## Authoritative snapshot and recovery verification
-- `services/mira-hfm-authoritative-snapshot.js` defines an injected read-only source contract. It requires explicit project, actor, and `backup:read` request scope, plus declared source/project/revision/schema/count/digest attestation. It returns source revision-bound backup metadata only after contract checks.
-- Source descriptors and attestations are caller-supplied claims. This contract does not authenticate a production source, independently authorize an actor, or prove a production snapshot is authoritative. No production Memory or Knowledge store is wired into it.
+- `services/mira-hfm-authoritative-snapshot.js` defines an injected read-only source contract with independent pinned Ed25519 trust anchors, public-key fingerprint checks, signed attestation verification, request nonce/request-ID binding, freshness limits, project/actor/scope checks, source revision, schema, count and payload digest checks.
+- Signature verification authenticates the attestation signer against the configured trust anchor. It does not independently enforce the source's authorization policy or certify that a production Memory/Knowledge store is authoritative. No production store is wired into it.
+- `createEncryptedBackupFromSource` connects the verified snapshot result to envelope encryption and returns prepared bytes only; it does not publish a local file, upload to Drive, or write canonical Memory.
 - `services/mira-hfm-recovery-verification.js` performs a non-mutating recovery drill: decrypt/authenticate, validate project/schema/count, and compare source revision, record count, and payload SHA-256 against an independently supplied baseline. It explicitly reports no canonical Memory/Knowledge write and no restore execution.
 - Synthetic tests cover allow/deny shape, project/scope/revision/digest mismatches, read-only mode, successful recovery preview, and baseline mismatch. They do not establish production source identity or key custody.
 
