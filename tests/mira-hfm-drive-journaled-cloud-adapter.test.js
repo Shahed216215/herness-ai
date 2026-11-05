@@ -61,6 +61,8 @@ function createProvider(directory) {
         id: fileId,
         metadata: {
           accountBinding, driveSpace, projectId, backupId,
+          backupSchema: args.appProperties.schema, backupVersion: args.appProperties.version,
+          backupCreatedAt: args.appProperties.createdAt,
           ciphertextSha256: args.appProperties.ciphertextSha256,
           bytes: Number(args.appProperties.bytes),
           contentType: args.mimeType, encryption: args.appProperties.encryption,
