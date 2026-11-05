@@ -102,6 +102,37 @@ Before any live API call, the owner must explicitly approve:
 
 Until all applicable items are approved, status remains NOT_APPROVED and no OAuth/network operation may run.
 
+## 7A. Canonical snapshot source and authority reconciliation gate
+
+The Phase 1–3 repository evidence does not establish one authoritative, production-ready HFM snapshot source. The Phase 7 exporter is therefore intentionally blocked; it must not serialize every file that happens to contain Memory-like records.
+
+| Candidate domain/store | Evidence from Phase 1–3 | Export disposition |
+|---|---|---|
+| General conversation Memory | Legacy `role/content/time` array; no durable authenticated actor or project identity; local Memory and Evolution have separate writers; no production revision/CAS contract | BLOCKED_FOR_PRODUCTION |
+| Knowledge | Legacy ID/source metadata, but no authoritative owner/project relation; historical Drive sync is a routine workflow and must not be silently replaced | BLOCKED_FOR_PRODUCTION |
+| CRM Conversation messages | Parent conversation/message/client relationships exist, but no independently trusted client-to-project ownership registry; stable messageId is mandatory | BLOCKED_FOR_PRODUCTION |
+| Work Learning / Experience / Work Knowledge | Separate stores and derived projections; no authoritative task/work-item-to-project mapping or complete projection lineage | BLOCKED |
+| Conversation store | Separate conversations/messages/contexts schema and lifecycle; not automatically a canonical Memory namespace | OUT_OF_SCOPE_SEPARATE_DOMAIN |
+| Audit / Research / Learning Governance | Separate approval, event-chain and retention semantics | OUT_OF_SCOPE_SEPARATE_DOMAIN |
+| Evolution snapshots / Local Memory backup | Different recovery mechanisms; neither is a complete unified HFM snapshot | NOT_A_CANONICAL_SOURCE |
+
+Existing validators and adapters are contract prototypes only:
+- `mira-memory-project-owner-registry-contract.js` validates an externally supplied registry entry; it does not persist or administer an authoritative registry.
+- `mira-memory-host-identity-contract.js` normalizes a trusted middleware principal; it does not authenticate a session or establish all host identity sources.
+- `mira-memory-host-authorization-adapter.js` requires injected registry lookup, evidence verification and atomic replay-consumption callbacks; no production implementations are connected.
+- `mira-memory-project-mapping-contract.js` and the batch payload adapter validate snapshot-bound mappings; they do not create approved owner assignments or commit canonical records.
+- Phase 3 explicitly records `PROJECT_OWNER_REGISTRY=NOT_IMPLEMENTED`, `AUTHORITATIVE_PROJECT_MAPPING=NOT_APPROVED`, and General Memory / Knowledge / CRM Conversation as `BLOCKED_FOR_PRODUCTION`.
+
+Before exporter implementation, the owner/host must provide or approve:
+1. The authoritative canonical store and exact schema/version for each included domain.
+2. A consistent-read/snapshot boundary and immutable source snapshot digest.
+3. A persistent, authenticated project-owner registry with revocation and atomic replay protection.
+4. Approved per-project mapping evidence for each source family; unresolved projects remain `UNASSIGNED_BLOCKED`.
+5. An explicit domain inclusion/exclusion and retention policy, including how derived projections and audit evidence are represented.
+6. Independent verification of source completeness, record counts, byte counts, tombstones, provenance and deterministic manifest generation.
+
+No store was read from production and no owner assignment is inferred from user profile, project title, clientId, opportunityId, acceptanceId, timestamps or array order. The exporter remains unimplemented until these dependencies are verified.
+
 ## 8. Exit condition
 
 Phase 7 cannot be marked production-complete until:
