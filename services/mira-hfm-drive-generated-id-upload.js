@@ -21,7 +21,7 @@ function sha256(bytes) {
 }
 function validText(value, label, max = 256) {
   if (typeof value !== 'string' || !value.trim() || value.length > max ||
-      /[\\r\\n\\u0000-\\u001f]/.test(value)) reject(label + ' is invalid.');
+      /[\r\n\u0000-\u001f]/.test(value)) reject(label + ' is invalid.');
   return value;
 }
 function validateFileId(value) {
