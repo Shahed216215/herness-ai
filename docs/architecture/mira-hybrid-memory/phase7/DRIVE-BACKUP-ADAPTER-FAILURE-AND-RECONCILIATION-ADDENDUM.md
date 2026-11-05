@@ -43,3 +43,8 @@ A production-grade adapter must either obtain a provider-enforced atomic uniquen
 ## 6. Safety boundary
 
 These changes do not perform a live Drive call, upload, delete, restore, or production Memory/Knowledge write. No real credentials or tokens are stored in the repository. Staging remains NOT_APPROVED and production readiness remains NOT_CERTIFIED.
+
+
+## 7. Exact existing-object reuse and quota boundary
+
+An exact existing object with matching deterministic upload metadata is verified by byte-for-byte readback and returned as `VERIFIED_EXISTING_IDEMPOTENT`. This is a no-new-upload path; a current quota snapshot is not required to reuse the already stored exact object. Quota verification remains mandatory before a new `files.create` operation. A same-name object with different metadata remains a hard conflict.
