@@ -46,6 +46,13 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - Missing objects remain uncertain; metadata or byte mismatch is a conflict. The implementation makes no OAuth, network, Google SDK or canonical Memory calls.
 - Synthetic offline CI covers pre-upload journal ordering, timeout reconciliation, same-ID retry, remote mismatch and account binding.
 
+## Journaled cloud adapter integration prototype
+
+- `services/mira-hfm-drive-journaled-cloud-adapter.js` connects the journaled generated-ID uploader to the encrypted cloud-backup service interface.
+- Reconciliation is accepted only after metadata and exact ciphertext verification; the cloud service repeats readback and authenticated-envelope checks.
+- Cloud reads resolve by the journaled exact file ID, never by name. Missing/corrupt journals fail closed. Listing/quota remain separate.
+- End-to-end synthetic tests cover encrypted upload, HTTP 409 retry, authenticated preview, restore staging, project isolation and offline-only behavior.
+
 ## Offline injected transport adapter
 
 - `services/mira-hfm-drive-emergency-backup-adapter.js` provides a provider-neutral adapter around an injected `atomicCreate`, `readObject`, and `listPage` transport.
