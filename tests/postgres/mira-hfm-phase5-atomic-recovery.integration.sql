@@ -67,6 +67,10 @@ DECLARE
 BEGIN
   b := jsonb_build_object(
     'kind','MIRA_FACEBOOK_GROUP_MEMORY_IMPORT_BATCH',
+    'schemaVersion','1.0.0',
+    'sourceType','facebook_group',
+    'sourceAuthorization','USER_ATTESTED_AUTHORIZED_GROUP_ACCESS',
+    'trustPolicy','UNTRUSTED_USER_SUPPLIED_GROUP_CONTENT',
     'batchId','pg-integration-batch-001',
     'projectId','pg-integration-project',
     'groupId','pg-integration-group',
@@ -209,6 +213,10 @@ BEGIN
   -- must roll back that Batch together with the failed Audit insert.
   rollback_batch := jsonb_build_object(
     'kind','MIRA_FACEBOOK_GROUP_MEMORY_IMPORT_BATCH',
+    'schemaVersion','1.0.0',
+    'sourceType','facebook_group',
+    'sourceAuthorization','USER_ATTESTED_AUTHORIZED_GROUP_ACCESS',
+    'trustPolicy','UNTRUSTED_USER_SUPPLIED_GROUP_CONTENT',
     'batchId','pg-integration-rollback-batch',
     'projectId','pg-integration-project',
     'groupId','pg-integration-group',
