@@ -81,6 +81,9 @@ function testKeyProvider() {
   const stale = createSource({ request, snapshot, privateKey, alter: { capturedAt: new Date(now - 600000).toISOString() } });
   await assert.rejects(() => captureAuthorizedSnapshot({ source: stale, request, trustedSources, now }),
     error => error.code === 'HFM_SNAPSHOT_ATTESTATION_MISMATCH');
+  const wrongKeyVersion = { 'fixture-source': { ...trustedSources['fixture-source'], keyVersion: 'retired-v0' } };
+  await assert.rejects(() => captureAuthorizedSnapshot({ source, request, trustedSources: wrongKeyVersion, now }),
+    error => error.code === 'HFM_SNAPSHOT_SOURCE_UNTRUSTED');
   const untrusted = { 'fixture-source': { ...trustedSources['fixture-source'], publicKeySha256: '0'.repeat(64) } };
   await assert.rejects(() => captureAuthorizedSnapshot({ source, request, trustedSources: untrusted, now }),
     error => error.code === 'HFM_SNAPSHOT_TRUST_ANCHOR_MISMATCH');
