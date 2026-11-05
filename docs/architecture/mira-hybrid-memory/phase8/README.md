@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 8 Learning & Evolution Integration
 
-Status: PROJECT-ISOLATED PROPOSAL BRIDGE, LOCAL DEVELOPMENT STORE, SUPABASE STORE CONTRACT, NAMED-ADMIN IMMUTABLE REVIEW, ADMIN API, PUBLIC-RETRIEVAL AND LEGACY-LEARNING EVIDENCE ADAPTERS, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR AND OFFLINE TESTS IMPLEMENTED. LIVE SUPABASE MIGRATION, DEPLOYMENT, UI AND AUTOMATED GENERATION-CYCLE ORCHESTRATION NOT CERTIFIED.
+Status: PROJECT-ISOLATED PROPOSAL BRIDGE, LOCAL DEVELOPMENT STORE, SUPABASE STORE CONTRACT, NAMED-ADMIN IMMUTABLE REVIEW, ADMIN API, PUBLIC-RETRIEVAL AND LEGACY-LEARNING EVIDENCE ADAPTERS, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR, GATED /api/agent GENERATION-CYCLE HANDOFF AND OFFLINE TESTS IMPLEMENTED. LIVE SUPABASE MIGRATION, DEPLOYMENT, UI AND LIVE END-TO-END ORCHESTRATION NOT CERTIFIED.
 
 ## Objective
 
@@ -23,7 +23,7 @@ Connect existing Mira Learning and HFM evidence to a controlled learning/evoluti
 - HFM public retrieval adapter validates the provider/mode, successful or degraded-evidence status, zero-canonical-write declarations, exact numeric Page-ID-bound Facebook paths, declared source type, provenance and credential-free HTTPS URL. Imported evidence is forced to UNVERIFIED.
 - Legacy Learning Engine adapter reads one requested record through the existing read/verify interfaces, requires matching successful integrity evidence, screens candidate text for likely secrets, and maps lesson/improvement candidates into UNVERIFIED HFM evidence. It does not modify the legacy record.
 - Read-only compatibility inspector checks Learning Engine, Experience Memory, Experience Retrieval, Knowledge Consolidation and Evolution Snapshot/rollback interfaces without migration, rewrite, deletion, rollback or Drive/network calls.
-- Added a fail-closed generation-cycle proposal orchestration adapter. It is disabled by default, requires an explicit opt-in and named authenticated admin context, validates the HFM public-retrieval report, and stages only an UNTRUSTED proposal for human review. It never approves, promotes trust, writes canonical Memory, executes learning or modifies code. The adapter is unit-tested but is not yet invoked by the live `/api/agent` generation/retrieval loop.
+- Added a fail-closed generation-cycle proposal orchestration adapter and connected it to the live `/api/agent` loop after `mira_hfm_public_web_retrieval` returns. It requires the server feature flag `MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED=true`, request-level `learningProposalOptIn: true`, a named authenticated admin session, and explicit `learningProposal` metadata. The proposal Project ID must exactly match the Project ID embedded in the retrieval report. The hook stages only an UNTRUSTED proposal for human review; it never approves, promotes trust, writes canonical Memory, executes learning or modifies code. The hook remains disabled by default.
 - Every proposal remains `PENDING_HUMAN_REVIEW` and `UNTRUSTED`. A named administrator may create one immutable `APPROVE_FOR_MANUAL_HANDOFF` or `REJECT` decision. Approval permits manual follow-up only; it does not promote trust, execute a learning action, change canonical Memory or modify code.
 
 ## Trust and governance
@@ -57,7 +57,7 @@ The migration has been committed to the branch only. It has NOT been applied to 
 
 1. Apply the SQL migration in the approved Supabase project and verify RLS, grants, primary-key uniqueness and foreign-key behavior.
 2. Run an authorized live integration test: insert, duplicate conflict, cross-project isolation, audit readback, restart/reconnect recovery and fail-closed behavior. This has not been done.
-3. Wire the tested generation-cycle adapter into the actual Mira `/api/agent` retrieval lifecycle. The adapter exists but is not yet called by the live request loop; current intake remains an explicit admin API call.
+3. Independently verify the live `/api/agent` hook in a deployed non-production environment with the feature flag disabled and enabled, including non-admin, missing-opt-in, mismatched-project and repeated-retrieval cases. Current verification is offline/contract-level only.
 4. Add UI visibility and independent end-to-end verification for the complete HFM → evidence → proposal → review → human-controlled handoff path.
 5. Verify Render instance/restart behavior and Supabase free-tier capacity without exceeding the $0/month constraint.
 
@@ -65,13 +65,15 @@ The migration has been committed to the branch only. It has NOT been applied to 
 
 - `node tests/mira-hfm-learning-evolution-bridge.test.js`
 - `node tests/mira-hfm-learning-evolution-route-contract.test.js`
+- `node tests/mira-hfm-learning-evolution-review-route.test.js`
+- `node tests/mira-hfm-learning-generation-cycle.test.js`
 - `node tests/mira-hfm-learning-legacy-compatibility.test.js`
 - `node tests/mira-hfm-learning-supabase-store.test.js`
 
 The Supabase adapter test uses an injected mock PostgREST request. It does not contact Supabase. Local filesystem tests use a temporary directory. No production data is accessed.
 
 VERSION=v0.2
-PHASE8=PROPOSAL_BRIDGE_IMMUTABLE_REVIEW_AND_GATED_GENERATION_ADAPTER_IMPLEMENTED
+PHASE8=PROPOSAL_BRIDGE_IMMUTABLE_REVIEW_AND_GATED_AGENT_GENERATION_HANDOFF_IMPLEMENTED
 CANONICAL_MEMORY_WRITES=0
 AUTOMATIC_PROMOTION=0
 AUTOMATIC_EXECUTION=0
@@ -98,3 +100,17 @@ Production configuration selects the backend with `MIRA_HFM_LEARNING_PROPOSAL_BA
 - `POST /proposals/:projectId/:proposalId/review` accepts only `APPROVE_FOR_MANUAL_HANDOFF` or `REJECT`, with a reason.
 - A second different review is rejected. Identical retries can reconcile the audit event when the writer is idempotent.
 - Review status never changes proposal trust state; `trustState=UNTRUSTED`, `canonicalMemoryWrites=0`, and `automaticExecution=false` remain enforced.
+
+
+## Gated generation-cycle handoff
+
+The `/api/agent` route only stages a proposal when all gates are satisfied:
+
+1. Server environment flag: `MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED=true`.
+2. Request JSON explicitly sets `learningProposalOptIn: true`.
+3. Request is authenticated as an administrator and has a named authenticated admin browser session.
+4. Request includes `learningProposal` with `projectId`, `proposalId`, `title`, `rationale`, and `proposedChange`.
+5. The `projectId` in `learningProposal` exactly equals `retrievalResult.lookup.projectId` returned by the HFM public retrieval tool.
+6. The `mira_hfm_public_web_retrieval` tool must have executed and returned a valid untrusted evidence report during the same `/api/agent` request.
+
+The API response includes `learningProposalHandoff` when the caller opted in. Otherwise it remains `null`. The handoff is disabled by default; a disabled/missing bridge, non-admin, missing metadata, missing retrieval result or invalid project binding fails closed. The existing `/api/admin/mira-hfm-learning-evolution/proposals/from-public-retrieval` route remains available as a separate explicit admin workflow. This live route integration has only offline contract tests so far; it has not been deployed or exercised against a live AI provider, Supabase or Render.
