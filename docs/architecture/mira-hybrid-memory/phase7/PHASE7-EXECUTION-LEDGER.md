@@ -81,3 +81,10 @@
 - Production restore: NOT_APPROVED.
 - Production readiness: NOT_CERTIFIED.
 - Phase 7: PARTIAL_IMPLEMENTATION — CONTINUE REQUIRED.
+
+
+## Staging security review — 2026-11-05
+- Added `docs/architecture/mira-hybrid-memory/phase7/STAGING-SECURITY-REVIEW.md` after static source review of authorization, signing-key custody, filesystem confinement, backup-directory permissions, and baseline provenance.
+- Five HIGH findings remain open. Details, evidence paths, impact, and required remediation are recorded in the review document.
+- Static review is COMPLETE; runtime adversarial tests are NOT_RUN; real staging integration is NOT_APPROVED; production remains NOT_CERTIFIED.
+- No application code or runtime behavior was changed. No staging/production data, credentials, KMS, Drive API, or deployment was accessed.
