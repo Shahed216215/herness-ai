@@ -9,7 +9,11 @@ const { createPersistentProposalStore } = require('../services/mira-hfm-learning
 const { createSupabaseLearningProposalStore } = require('../services/mira-hfm-learning-proposal-supabase-store');
 const { recordAudit } = require('../audit-log');
 const { fromPublicRetrieval } = require('../services/mira-hfm-learning-evidence-adapter');
-const { fromLegacyLearningRecord } = require('../services/mira-hfm-legacy-learning-evidence-adapter');
+const {
+  fromLegacyLearningRecord,
+  fromLegacyExperiences,
+  fromLegacyConsolidatedKnowledge
+} = require('../services/mira-hfm-legacy-learning-evidence-adapter');
 
 function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PERMISSIONS, options = {}) {
   const router = express.Router();
@@ -175,6 +179,121 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
           code === 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED' ||
           code === 'HFM_LEARNING_LEGACY_SECRET_SUSPECTED' ||
           code === 'HFM_LEARNING_INVALID' ? 400 : 503;
+      return res.status(status).json({
+        success: false, code,
+        committed: error && error.stateCommitted === true,
+        reconciliationRequired: error && error.stateCommitted === true
+      });
+    }
+  });
+
+  router.post('/proposals/from-experience-retrieval', async (req, res) => {
+    const actorId = requireNamedAdminSession(req, res);
+    if (!actorId) return;
+    if (!requireBridge(res)) return;
+    try {
+      const experienceMemory = options.experienceMemory ||
+        (isProduction ? null : require('../services/mira-experience-memory'));
+      const retrievalEngine = options.experienceRetrievalEngine ||
+        (isProduction ? null : require('../services/mira-experience-retrieval-engine'));
+      if (!experienceMemory || !retrievalEngine ||
+          typeof experienceMemory.getExperience !== 'function' ||
+          typeof experienceMemory.verifyExperienceIntegrity !== 'function' ||
+          typeof retrievalEngine.retrieveExperiences !== 'function') {
+        return res.status(503).json({
+          success: false, status: 'NOT_CERTIFIED',
+          code: 'HFM_LEARNING_EXPERIENCE_SOURCE_UNAVAILABLE'
+        });
+      }
+      const taskText = req.body && req.body.taskText;
+      if (typeof taskText !== 'string' || !taskText.trim() || taskText.length > 10000) {
+        return res.status(400).json({ success: false, code: 'HFM_LEARNING_EXPERIENCE_QUERY_INVALID' });
+      }
+      const matches = retrievalEngine.retrieveExperiences(taskText.trim(), { limit: 10 });
+      if (!Array.isArray(matches) || !matches.length) {
+        return res.status(404).json({ success: false, code: 'HFM_LEARNING_EXPERIENCE_NOT_FOUND' });
+      }
+      const experiences = matches.map(match => {
+        if (!match || typeof match.experienceId !== 'string') {
+          throw Object.assign(new Error('Experience retrieval returned an invalid identity.'), {
+            code: 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED'
+          });
+        }
+        const experience = experienceMemory.getExperience(match.experienceId);
+        if (!experience || experienceMemory.verifyExperienceIntegrity(experience) !== true) {
+          throw Object.assign(new Error('Legacy Experience integrity verification failed.'), {
+            code: 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED'
+          });
+        }
+        return { experience, integrityVerified: true };
+      });
+      const proposalInput = fromLegacyExperiences({
+        ...(req.body || {}), experiences
+      });
+      const result = await bridge.submit(proposalInput, {
+        actorRole: 'admin', actorId
+      });
+      return res.status(201).json({ success: true, proposal: result });
+    } catch (error) {
+      const code = String(error && error.code || 'HFM_LEARNING_EXPERIENCE_SUBMISSION_FAILED').slice(0, 80);
+      const status = code === 'HFM_LEARNING_PROPOSAL_CONFLICT' ? 409
+        : code === 'HFM_LEARNING_EXPERIENCE_QUERY_INVALID' ||
+          code === 'HFM_LEARNING_LEGACY_INVALID' ||
+          code === 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED' ? 400 : 503;
+      return res.status(status).json({
+        success: false, code,
+        committed: error && error.stateCommitted === true,
+        reconciliationRequired: error && error.stateCommitted === true
+      });
+    }
+  });
+
+  router.post('/proposals/from-consolidated-knowledge', async (req, res) => {
+    const actorId = requireNamedAdminSession(req, res);
+    if (!actorId) return;
+    if (!requireBridge(res)) return;
+    try {
+      const knowledgeConsolidation = options.knowledgeConsolidation ||
+        (isProduction ? null : require('../services/mira-work-knowledge-consolidation'));
+      if (!knowledgeConsolidation ||
+          typeof knowledgeConsolidation.verifyStoreIntegrity !== 'function' ||
+          typeof knowledgeConsolidation.getConsolidatedKnowledge !== 'function') {
+        return res.status(503).json({
+          success: false, status: 'NOT_CERTIFIED',
+          code: 'HFM_LEARNING_CONSOLIDATION_SOURCE_UNAVAILABLE'
+        });
+      }
+      const knowledgeItemId = req.body && req.body.knowledgeItemId;
+      if (typeof knowledgeItemId !== 'string' || !knowledgeItemId.trim()) {
+        return res.status(400).json({ success: false, code: 'HFM_LEARNING_KNOWLEDGE_ITEM_ID_REQUIRED' });
+      }
+      const storeIntegrity = knowledgeConsolidation.verifyStoreIntegrity();
+      if (!storeIntegrity || storeIntegrity.valid !== true) {
+        return res.status(503).json({
+          success: false, status: 'REVIEW_REQUIRED',
+          code: 'HFM_LEARNING_CONSOLIDATION_INTEGRITY_FAILED'
+        });
+      }
+      const items = knowledgeConsolidation.getConsolidatedKnowledge();
+      if (!Array.isArray(items)) {
+        return res.status(503).json({ success: false, code: 'HFM_LEARNING_CONSOLIDATION_INVALID' });
+      }
+      const item = items.find(candidate => candidate && candidate.id === knowledgeItemId.trim());
+      if (!item) {
+        return res.status(404).json({ success: false, code: 'HFM_LEARNING_KNOWLEDGE_ITEM_NOT_FOUND' });
+      }
+      const proposalInput = fromLegacyConsolidatedKnowledge({
+        ...(req.body || {}), item, storeIntegrity
+      });
+      const result = await bridge.submit(proposalInput, {
+        actorRole: 'admin', actorId
+      });
+      return res.status(201).json({ success: true, proposal: result });
+    } catch (error) {
+      const code = String(error && error.code || 'HFM_LEARNING_KNOWLEDGE_SUBMISSION_FAILED').slice(0, 80);
+      const status = code === 'HFM_LEARNING_PROPOSAL_CONFLICT' ? 409
+        : code === 'HFM_LEARNING_LEGACY_INVALID' ||
+          code === 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED' ? 400 : 503;
       return res.status(status).json({
         success: false, code,
         committed: error && error.stateCommitted === true,
