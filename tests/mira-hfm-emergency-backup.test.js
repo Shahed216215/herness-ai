@@ -76,15 +76,18 @@ const keyProvider = {
       const validName = 'valid.mira-hfm.enc.json';
       const symlinkName = 'symlink.mira-hfm.enc.json';
       const hardlinkName = 'hardlink.mira-hfm.enc.json';
+      const directoryName = 'directory.mira-hfm.enc.json';
       fs.copyFileSync(target, path.join(inventoryRaceDir, validName));
       fs.writeFileSync(outsideInventoryFile, 'outside-not-a-backup');
       fs.symlinkSync(outsideInventoryFile, path.join(inventoryRaceDir, symlinkName));
       fs.linkSync(outsideInventoryFile, path.join(inventoryRaceDir, hardlinkName));
+      fs.mkdirSync(path.join(inventoryRaceDir, directoryName), { mode: 0o700 });
       const safeInventory = backup.inspectBackupDirectory(inventoryRaceDir);
       assert.equal(safeInventory.find(item => item.name === validName).status,
         'MANIFEST_VALID_ENCRYPTED_CONTENT_NOT_DECRYPTED');
       assert.equal(safeInventory.find(item => item.name === symlinkName).status, 'REVIEW_REQUIRED');
       assert.equal(safeInventory.find(item => item.name === hardlinkName).status, 'REVIEW_REQUIRED');
+      assert.equal(safeInventory.find(item => item.name === directoryName).status, 'REVIEW_REQUIRED');
     } finally {
       fs.rmSync(inventoryRaceDir, { recursive: true, force: true });
       fs.rmSync(outsideInventoryFile, { force: true });
