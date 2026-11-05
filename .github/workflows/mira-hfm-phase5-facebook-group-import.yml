@@ -57,7 +57,7 @@ jobs:
           node tests/mira-facebook-group-memory-supabase-store.test.js
           node tests/mira-facebook-group-memory-import-route.test.js
           node tests/mira-facebook-group-memory-migration-structure.test.js
-          npm run test:offline-regression
+          npm run test:offline-static-regression
       - name: Confirm external boundaries
         run: |
           echo "LIVE_FACEBOOK_REQUESTS=0"
