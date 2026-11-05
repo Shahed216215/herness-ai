@@ -121,42 +121,7 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     if (context.actorRole !== 'admin') fail('HFM_LEARNING_REVIEW_ACTOR_REQUIRED', 'A named system administrator is required.');
     const actorId = txt(context.actorId, 'actorId', 128);
     const reason = txt(input.reason, 'reason', 2000);
-    if (existing) {
-      const existingDigest = digest(Object.fromEntries(
-        Object.entries(existing).filter(([key]) => key !== 'reviewDigest')
-      ));
-      if (existing.reviewDigest !== existingDigest ||
-          existing.projectId !== safeProjectId || existing.proposalId !== safeProposalId ||
-          existing.proposalDigest !== proposal.proposalDigest ||
-          existing.trustState !== 'UNTRUSTED' || existing.canonicalMemoryWrites !== 0 ||
-          existing.automaticExecution !== false || existing.actorRole !== 'admin' ||
-          existing.actorId !== actorId || existing.decision !== input.decision ||
-          existing.reason !== reason || auditWriter.idempotent !== true) {
-        fail('HFM_LEARNING_REVIEW_CONFLICT', 'A different immutable review already exists; overwrite is forbidden.');
-      }
-      try {
-        await auditWriter({
-          event: 'HFM_LEARNING_PROPOSAL_REVIEWED',
-          projectId: safeProjectId, proposalId: safeProposalId,
-          proposalDigest: proposal.proposalDigest, reviewDigest: existing.reviewDigest,
-          decision: existing.decision, status: existing.status, reviewedAt: existing.reviewedAt,
-          actorRole: 'admin', actorId, canonicalMemoryWrites: 0, automaticExecution: false
-        });
-      } catch (cause) {
-        const error = new Error('Review is persisted but audit reconciliation remains required.');
-        error.code = 'HFM_LEARNING_REVIEW_AUDIT_FAILED';
-        error.stateCommitted = true;
-        error.cause = cause;
-        throw error;
-      }
-      return {
-        projectId: safeProjectId, proposalId: safeProposalId,
-        proposalDigest: proposal.proposalDigest, reviewDigest: existing.reviewDigest,
-        decision: existing.decision, status: existing.status, trustState: 'UNTRUSTED',
-        canonicalMemoryWrites: 0, automaticExecution: false, idempotentRetry: true
-      };
-    }
-    const reviewedAt = input.reviewedAt || new Date().toISOString();
+    const reviewedAt = input.reviewedAt || (existing && existing.reviewedAt) || new Date().toISOString();
     const reviewDate = new Date(reviewedAt);
     if (!Number.isFinite(reviewDate.getTime()) || reviewDate.toISOString() !== reviewedAt)
       fail('HFM_LEARNING_REVIEW_INVALID', 'reviewedAt must be a canonical ISO timestamp.');
@@ -177,6 +142,38 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
       automaticExecution: false
     };
     review.reviewDigest = digest(review);
+    const auditEvent = {
+      event: 'HFM_LEARNING_PROPOSAL_REVIEWED',
+      projectId: safeProjectId,
+      proposalId: safeProposalId,
+      proposalDigest: proposal.proposalDigest,
+      reviewDigest: review.reviewDigest,
+      decision: review.decision,
+      status: review.status,
+      reviewedAt,
+      actorRole: 'admin',
+      actorId,
+      canonicalMemoryWrites: 0,
+      automaticExecution: false
+    };
+    if (existing) {
+      if (existing.reviewDigest !== review.reviewDigest)
+        fail('HFM_LEARNING_REVIEW_CONFLICT', 'An immutable, different human review already exists.');
+      if (auditWriter.idempotent !== true)
+        fail('HFM_LEARNING_REVIEW_CONFLICT', 'Existing review cannot be safely reconciled by this audit writer.');
+      try { await auditWriter(auditEvent); }
+      catch (cause) {
+        const error = new Error('Existing review is present but audit reconciliation failed.');
+        error.code = 'HFM_LEARNING_REVIEW_AUDIT_FAILED';
+        error.stateCommitted = true;
+        error.cause = cause;
+        throw error;
+      }
+      return { projectId:safeProjectId, proposalId:safeProposalId,
+        proposalDigest:proposal.proposalDigest, reviewDigest:review.reviewDigest,
+        decision:review.decision, status:review.status, trustState:'UNTRUSTED',
+        canonicalMemoryWrites:0, automaticExecution:false, idempotentRetry:true };
+    }
     const stored = await proposalStore.putReviewIfAbsent(safeProjectId, safeProposalId, review);
     if (!stored || stored.created !== true)
       fail('HFM_LEARNING_REVIEW_CONFLICT', 'A review already exists; review records cannot be overwritten.');
@@ -189,33 +186,18 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
       error.stateCommitted = true;
       throw error;
     }
-    try {
-      await auditWriter({
-        event: 'HFM_LEARNING_PROPOSAL_REVIEWED',
-        projectId: safeProjectId,
-        proposalId: safeProposalId,
-        proposalDigest: proposal.proposalDigest,
-        reviewDigest: review.reviewDigest,
-        decision: review.decision,
-        status: review.status,
-        reviewedAt,
-        actorRole: 'admin',
-        actorId,
-        reviewedAt: review.reviewedAt,
-        canonicalMemoryWrites: 0,
-        automaticExecution: false
-      });
-    } catch (cause) {
+    try { await auditWriter(auditEvent); }
+    catch (cause) {
       const error = new Error('Review persisted but audit emission failed; reconcile before retry.');
       error.code = 'HFM_LEARNING_REVIEW_AUDIT_FAILED';
       error.stateCommitted = true;
       error.cause = cause;
       throw error;
     }
-    return { projectId: safeProjectId, proposalId: safeProposalId,
-      proposalDigest: proposal.proposalDigest, reviewDigest: review.reviewDigest,
-      decision: review.decision, status: review.status, trustState: 'UNTRUSTED',
-      canonicalMemoryWrites: 0, automaticExecution: false };
+    return { projectId:safeProjectId, proposalId:safeProposalId,
+      proposalDigest:proposal.proposalDigest, reviewDigest:review.reviewDigest,
+      decision:review.decision, status:review.status, trustState:'UNTRUSTED',
+      canonicalMemoryWrites:0, automaticExecution:false, idempotentRetry:false };
   },
   async get(projectId, proposalId) {
     const safeProjectId = id(projectId, 'projectId');
