@@ -181,6 +181,21 @@ function writeImmutableBackup({ envelope, directory, backupId } = {}) {
     throw error;
   }
 }
+function previewEncryptedBackup({ envelope, key } = {}) {
+  const verified = decryptAndVerifyBackup(envelope, key);
+  return Object.freeze({
+    status: 'VERIFIED_RESTORE_PREVIEW',
+    backupId: verified.backupId,
+    createdAt: verified.createdAt,
+    metadata: Object.freeze({ ...verified.metadata }),
+    payloadBytes: verified.payload.length,
+    plaintextSha256: verified.plaintextSha256,
+    integrityVerified: true,
+    restoreApplied: false,
+    canonicalMemoryWrites: 0,
+    productionRestore: false
+  });
+}
 function restoreToStaging({ envelope, key, directory, restoreId } = {}) {
   validateId(restoreId, 'restoreId');
   const verified = decryptAndVerifyBackup(envelope, key);
@@ -207,5 +222,5 @@ function restoreToStaging({ envelope, key, directory, restoreId } = {}) {
     throw error;
   }
 }
-module.exports = { createEncryptedBackup, decryptAndVerifyBackup, writeImmutableBackup, restoreToStaging,
+module.exports = { createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging,
   MAX_PAYLOAD_BYTES, MAX_ENVELOPE_BYTES };
