@@ -32,13 +32,19 @@ assert.match(html, /manual handoff only/i);
 assert.match(html, /miraHfmApproveHandoff\.disabled = !reviewable/);
 assert.match(html, /miraHfmRejectProposal\.disabled = !reviewable/);
 
-const start = html.indexOf('    const miraHfmRefreshStatus =');
-const end = html.indexOf('    function renderAutonomousProposal(proposal)', start);
-assert.ok(start >= 0 && end > start, 'HFM review UI script block must exist');
-const uiScript = html.slice(start, end);
-assert.doesNotMatch(uiScript, /appendMiraHfmProposal/);
-assert.doesNotMatch(uiScript, /innerHTML\s*=/, 'HFM review details must use safe DOM text rendering');
-new vm.Script(uiScript, { filename:'public/index.html#hfm-learning-ui' });
+const detailStart = html.indexOf('    function appendMiraHfmDetail(');
+const renderStart = html.indexOf('    function renderMiraHfmProposal(proposal)');
+const renderEnd = html.indexOf('    async function loadMiraHfmProposal()', renderStart);
+assert.ok(detailStart >= 0 && renderStart > detailStart && renderEnd > renderStart,
+  'HFM proposal detail and rendering functions must exist');
+const detailEnd = html.indexOf('    function renderMiraHfmProposal(proposal)', detailStart);
+const detailScript = html.slice(detailStart, detailEnd);
+const renderScript = html.slice(renderStart, renderEnd);
+assert.doesNotMatch(detailScript + renderScript, /innerHTML\\s*=/,
+  'HFM proposal detail rendering must use safe DOM text rendering');
+assert.match(detailScript, /textContent/);
+assert.match(renderScript, /appendMiraHfmDetail/);
+new vm.Script(detailScript + renderScript, { filename:'public/index.html#hfm-learning-ui' });
 
 assert.match(route, /router\.get\('\/status'/);
 assert.match(route, /requireNamedAdminSession\(req, res\)/);
