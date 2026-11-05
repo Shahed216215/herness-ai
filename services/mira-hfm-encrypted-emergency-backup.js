@@ -35,7 +35,7 @@ function validateKey(value) {
 }
 function safeMetadata(value = {}) {
   if (!isObject(value)) fail('metadata must be an object.');
-  const allowed = ['projectId', 'source', 'memorySnapshotId'];
+  const allowed = ['projectId', 'source', 'memorySnapshotId', 'keyVersionId'];
   const result = {};
   for (const key of allowed) {
     if (value[key] === undefined || value[key] === null) continue;
