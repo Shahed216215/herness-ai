@@ -1,0 +1,77 @@
+# Mira Hybrid Memory v0.2 — Phase 8: Learning & Evolution Governance Bridge
+
+Status: PROPOSED EXECUTION BASELINE — SOURCE AUDIT STARTED — IMPLEMENTATION BLOCKED ON AUTHORITATIVE PROJECT SCOPE.
+
+This phase is a working execution breakdown aligned to the v0.2 Phase 2 contract's Learning/Evolution integration requirements and the Phase 3 domain-scope review. It does not advance the release beyond v0.2. No production data, canonical writes, migration, live provider calls, deployment or autonomous code application are authorized.
+
+## Objective
+
+Bring Work Learning, Work Knowledge Consolidation, Experience Memory/Retrieval and Evolution under the HFM trust, identity, project-scope, provenance, conflict, approval and recovery boundaries without silently changing their existing stores or bypassing existing governance.
+
+## Source-audit findings (current branch)
+
+1. `services/mira-work-learning-engine.js` stores records with `learningId`, `taskId`, `executionId`, task/plan/execution/QA/lesson data and timestamps. The normalized task schema has no authoritative `projectId`. `learningId` is a local record identity, not proof of project ownership. The `safeValue` normalization redacts secret-like keys and truncates nested values, so it is not a lossless canonical source payload.
+2. `services/mira-work-knowledge-consolidation.js` creates derived items whose IDs are content-fingerprint based; source records refer to learning/task/execution identifiers and do not independently establish project scope.
+3. `services/mira-experience-memory.js` and `services/mira-experience-retrieval-engine.js` implement a derived projection over Work Learning. The experience ID follows the learning ID. Retrieval ranks records by relevance and task/QA filters; the inspected retrieval path does not enforce HFM project scope, trust eligibility or conflict quarantine.
+4. `services/mira-cross-task-learning-engine.js` consumes Experience Retrieval and returns read-only/non-executable transfers, but its inspected request context is task-based rather than an HFM-authorized project-scoped request.
+5. `knowledge-memory-evolution.js` has prepare/apply/rollback logic over local and Drive-backed state. The inspected entry points do not require the HFM project request context, canonical Memory facade, HFM idempotency reservation or HFM recovery point.
+6. `services/mira-evolution-staging.js` stages an already approved proposal as an inactive artifact; it does not by itself prove that the source proposal was created from an HFM-authorized, project-scoped canonical record.
+
+The Phase 3 domain-scope review explicitly marks Work Learning, Work Knowledge Consolidation and Experience Memory as BLOCKED / NOT_MAPPED. It prohibits inferring project scope from taskId, planId, opportunityId, client metadata, content fingerprints or titles.
+
+## Non-negotiable boundaries
+
+- Never infer or default a projectId. Require an explicit, immutable task/work-item-to-project authority mapping from a separately trusted host registry.
+- Do not treat taskId, planId, learningId, experienceId or content fingerprints as project authorization.
+- Preserve raw source records and source snapshots. A redacted/truncated projection must not be used as the lossless migration source.
+- Work Knowledge and Experience Memory remain derived projections with explicit source lineage; they are not independent canonical namespaces.
+- Filter project scope, access classification, lifecycle, integrity, trust and unresolved conflicts before relevance ranking or model-context delivery.
+- Evolution remains proposal/prepare-only unless a separate authorized human approval, atomic idempotency claim, verified recovery point, audit and rollback contract is proven.
+- No autonomous code activation, direct canonical write, provider cutover, deletion or migration in this phase's synthetic track.
+
+## Execution gates
+
+### P8-A — Authority and identity contract
+Define a signed, short-lived, replay-protected mapping from exact task/work-item identity to projectId and tenantId, with source system, issuer, policy version, approver authority, validity and revocation evidence. The host must authenticate the actor and provide authoritative project ownership. A caller-supplied mapping alone is not trusted.
+
+### P8-B — Lossless Work Learning source adapter
+Read an exact immutable snapshot; bind each record to snapshot digest, stable learningId and source ordinal; preserve the full original record; reject duplicates, malformed records, digest drift and ambiguous identities. Do not call the existing normalized `safeValue` view as the source of canonical migration data.
+
+### P8-C — Canonical mapping and review candidates
+Map only records with explicit approved project authority into canonical v1.0.0 review candidates. Bind source digest, canonical digest, mapping digest, classification, provenance and approval evidence. Unmapped records remain preserved and BLOCKED.
+
+### P8-D — Derived projection lineage
+Bind Work Knowledge and Experience projections to source learning IDs, source digests, derivation version and inherited project scope. Any source or scope change invalidates the projection. Do not create a second canonical identity for a projection.
+
+### P8-E — Project-scoped learning retrieval
+Require HFM request authorization and apply project/access/trust/integrity/conflict filters before ranking. Cross-task transfer is allowed only within the authorized project unless a separately governed cross-project policy explicitly permits it. Default is deny.
+
+### P8-F — Evolution governance bridge
+Require proposal provenance, project scope, expected revision, idempotency identity, human approval, verified recovery point, audit and rollback evidence. First deliver a prepare-only bridge; do not call existing apply/Drive writers from the HFM path.
+
+### P8-G — Independent negative/bypass tests
+Test missing/forged/expired/revoked authority, cross-project task substitution, duplicate learning IDs, source snapshot drift, lossy normalization, projection staleness, quarantine bypass, unauthorized cross-task transfer, stale revision, duplicate idempotency, failed audit and failed recovery. Tests must use isolated synthetic fixtures and prove zero canonical writes/network calls.
+
+## Entry criteria and blockers
+
+- Phase 3 currently reports `PHASE3=COMPLETE_SYNTHETIC_CONTRACT_ONLY`, not production integration.
+- The current mapping contract supports General Memory, Knowledge and CRM Conversation only; Work Learning is explicitly rejected as an unreviewed domain.
+- The authoritative project-owner registry, host authentication/replay protection and production persistence/CAS are not established.
+- Therefore P8-A must be designed and tested synthetically first. Runtime integration is blocked until a trusted host authority provider and independent policy review exist.
+
+## Exit criteria
+
+- All P8-A through P8-G contracts have exact schemas, threat boundaries and traceability.
+- Synthetic tests prove every deny-by-default case and no canonical writes/network calls.
+- Independent source review confirms no raw Work Learning/Experience bypass path was introduced.
+- The phase ledger records commit-matched CI logs, exact test markers and unresolved limitations.
+- No claim of production readiness; live provider/host authority remains a separate approved deployment gate.
+
+## Current disposition
+
+- Source audit: COMPLETE for the listed modules only; repository-wide semantic caller coverage remains REVIEW_REQUIRED.
+- Authoritative project scope for Work Learning: NOT_ESTABLISHED.
+- Canonical Work Learning mapping: NOT_IMPLEMENTED.
+- HFM project-scoped Experience Retrieval: NOT_INTEGRATED.
+- HFM Evolution prepare-only bridge: NOT_INTEGRATED.
+- Production integration: NOT_APPROVED.
