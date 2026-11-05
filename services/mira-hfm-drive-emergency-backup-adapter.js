@@ -4,6 +4,7 @@
 // This module performs no network or OAuth work. The injected transport owns atomicity.
 const crypto = require('node:crypto');
 const MAX_PAGE_SIZE = 500;
+const MAX_ENVELOPE_BYTES = 64 * 1024 * 1024;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
 function reject(message, code = 'HFM_DRIVE_ADAPTER_REJECTED') {
   const error = new Error(message); error.code = code; throw error;
@@ -39,8 +40,38 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
     reject('Only the dedicated emergency-backup namespace is permitted.');
   }
   if (!transport || typeof transport.atomicCreate !== 'function' ||
-      typeof transport.readObject !== 'function' || typeof transport.listPage !== 'function') {
-    reject('Transport must implement atomicCreate, readObject, and listPage.');
+      typeof transport.readObject !== 'function' || typeof transport.listPage !== 'function' ||
+      typeof transport.getCapabilities !== 'function') {
+    reject('Transport must implement getCapabilities, atomicCreate, readObject, and listPage.');
+  }
+  let negotiated;
+  let negotiationPromise;
+  async function negotiateCapabilities() {
+    if (negotiated) return negotiated;
+    if (!negotiationPromise) negotiationPromise = (async () => {
+      let raw;
+      try { raw = await transport.getCapabilities({ projectId: project, namespace }); }
+      catch (_) { reject('Provider capability negotiation failed.', 'HFM_DRIVE_CAPABILITY_NEGOTIATION_FAILED'); }
+      const required = ['atomicCreateIfAbsent', 'readAfterWrite', 'projectIsolation',
+        'encryptedObjectStorage', 'paginatedList'];
+      if (!raw || required.some(name => raw[name] !== true) ||
+          raw.consistency !== 'read-after-write' ||
+          !Number.isSafeInteger(raw.maxObjectBytes) || raw.maxObjectBytes < 1 ||
+          raw.maxObjectBytes > MAX_ENVELOPE_BYTES ||
+          !Number.isInteger(raw.maxPageSize) || raw.maxPageSize < 1 ||
+          raw.maxPageSize > MAX_PAGE_SIZE) {
+        reject('Provider capabilities do not satisfy the bounded HFM consistency contract.',
+          'HFM_DRIVE_CAPABILITY_UNSUPPORTED');
+      }
+      negotiated = Object.freeze({
+        atomicCreateIfAbsent: true, readAfterWrite: true, projectIsolation: true,
+        encryptedObjectStorage: true, paginatedList: true,
+        consistency: raw.consistency, maxObjectBytes: raw.maxObjectBytes,
+        maxPageSize: raw.maxPageSize
+      });
+      return negotiated;
+    })();
+    return negotiationPromise;
   }
   const prefix = namespace + '/' + project + '/';
   function expectedKey(backupId) {
@@ -68,6 +99,7 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       const key = expectedKey(backupId);
       if (input.objectKey !== key) reject('Object key is outside the dedicated project namespace.', 'HFM_DRIVE_NAMESPACE_REJECTED');
       const bytes = bytesCopy(input.bytes);
+      if (bytes.length > provider.maxObjectBytes) reject('Encrypted object exceeds the negotiated provider limit.', 'HFM_DRIVE_OBJECT_TOO_LARGE');
       if (input.contentType !== 'application/vnd.mira.hfm-encrypted-backup' ||
           input.encryption !== 'AES-256-GCM' ||
           typeof input.ciphertextSha256 !== 'string' ||
@@ -103,6 +135,7 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       return { created: false, reconciled: false, alreadyPresent: true };
     },
     async get(input = {}) {
+      await negotiateCapabilities();
       if (input.projectId !== project) reject('Cross-project read rejected.', 'HFM_DRIVE_PROJECT_SCOPE');
       const match = typeof input.objectKey === 'string' &&
         input.objectKey.match(new RegExp('^' + namespace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/' + project + '/([A-Za-z0-9][A-Za-z0-9._-]{7,95})\\.mhe$'));
@@ -122,10 +155,11 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       return { projectId: project, backupId: match[1], bytes: Buffer.from(item.bytes) };
     },
     async list(input = {}) {
+      const provider = await negotiateCapabilities();
       if (input.projectId !== project || input.prefix !== prefix) {
         reject('Listing is restricted to the configured project prefix.', 'HFM_DRIVE_PROJECT_SCOPE');
       }
-      if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > MAX_PAGE_SIZE) {
+      if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > Math.min(MAX_PAGE_SIZE, provider.maxPageSize)) {
         reject('Listing page size is outside the bounded limit.');
       }
       const page = await transport.listPage({
