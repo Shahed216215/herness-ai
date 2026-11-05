@@ -1,0 +1,135 @@
+name: Mira HFM v0.2 Unified Offline Verification
+
+on:
+  pull_request:
+    branches:
+      - 'work/mira-hfm-v02-phase9-clean-restack-v3-20261105'
+    paths:
+      - 'server.js'
+      - 'public/index.html'
+      - 'routes/mira-facebook-group-memory-import.js'
+      - 'routes/mira-facebook-research-archive.js'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-facebook-group-memory-supabase-store.js'
+      - 'services/mira-facebook-research-archive-approval.js'
+      - 'services/mira-hfm-*.js'
+      - 'services/mira-server-bind-host.js'
+      - 'services/mira-tool-execution-policy.js'
+      - 'tools/mira-hfm-public-web-retrieval.js'
+      - 'tests/mira-facebook-group-memory-*.test.js'
+      - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-facebook-research-archive-approval.test.js'
+      - 'tests/mira-hfm-*.test.js'
+      - 'tests/mira-server-bind-host.test.js'
+      - 'supabase/migrations/**'
+      - 'supabase/verification/**'
+      - 'docs/architecture/mira-hybrid-memory/phase*/**'
+      - 'docs/architecture/mira-hybrid-memory/phase10/**'
+      - '.github/workflows/mira-hfm-v02-unified-offline.yml'
+  push:
+    branches:
+      - 'work/mira-hfm-v02-phase9-clean-restack-v3-20261105'
+    paths:
+      - 'server.js'
+      - 'public/index.html'
+      - 'services/mira-hfm-*.js'
+      - 'routes/mira-facebook-group-memory-import.js'
+      - 'routes/mira-facebook-research-archive.js'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'tests/mira-facebook-group-memory-*.test.js'
+      - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-facebook-research-archive-approval.test.js'
+      - 'tests/mira-hfm-*.test.js'
+      - 'supabase/migrations/**'
+      - 'supabase/verification/**'
+      - '.github/workflows/mira-hfm-v02-unified-offline.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  unified-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Syntax check integrated runtime
+        run: |
+          set -euo pipefail
+          node --check server.js
+          node --check routes/mira-facebook-group-memory-import.js
+          node --check routes/mira-facebook-research-archive.js
+          node --check routes/mira-hfm-learning-evolution.js
+          node --check services/mira-facebook-group-memory-import.js
+          node --check services/mira-facebook-group-memory-supabase-store.js
+          node --check services/mira-facebook-research-archive-approval.js
+          node --check services/mira-hfm-learning-generation-cycle.js
+          node --check services/mira-hfm-learning-generation-cycle-request.js
+          node --check services/mira-hfm-learning-evolution-bridge.js
+          node --check services/mira-hfm-learning-proposal-store.js
+          node --check services/mira-hfm-learning-proposal-supabase-store.js
+          node --check services/mira-hfm-public-web-retrieval.js
+          node --check services/mira-hfm-encrypted-emergency-backup.js
+          node --check services/mira-hfm-encrypted-emergency-backup-cloud.js
+          node --check services/mira-hfm-retrieval-optimizer.js
+          node --check services/mira-hfm-retrieval-provider-adapters.js
+      - name: Phase 5 — Facebook Group manual import
+        run: |
+          set -euo pipefail
+          node tests/mira-facebook-group-memory-import.test.js
+          node tests/mira-facebook-group-memory-supabase-store.test.js
+          node tests/mira-facebook-group-memory-import-route.test.js
+      - name: Phase 6 — public retrieval and archive boundary
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-public-web-retrieval.test.js
+          node tests/mira-hfm-public-web-retrieval-runtime-integration.test.js
+          node tests/mira-facebook-public-web-research.test.js
+          node tests/mira-hfm-phase6-live-provider-smoke.test.js
+          node tests/mira-facebook-research-archive-approval.test.js
+          node tests/mira-server-bind-host.test.js
+          node tests/mira-hfm-phase6-deployment-preflight.test.js
+          node tests/mira-hfm-tool-registry-policy-parity.test.js
+      - name: Phase 7 — encrypted backup and restore staging
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-encrypted-emergency-backup.test.js
+          node tests/mira-hfm-drive-emergency-backup-adapter.test.js
+          node tests/mira-hfm-drive-backup-id-journal.test.js
+          node tests/mira-hfm-drive-generated-id-upload.test.js
+      - name: Phase 8 — learning and evolution
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-learning-evolution-bridge.test.js
+          node tests/mira-hfm-learning-evolution-route-contract.test.js
+          node tests/mira-hfm-learning-evolution-review-route.test.js
+          node tests/mira-hfm-learning-legacy-compatibility.test.js
+          node tests/mira-hfm-learning-supabase-store.test.js
+          node tests/mira-hfm-learning-generation-cycle.test.js
+          node tests/mira-hfm-learning-generation-cycle-request.test.js
+          node tests/mira-hfm-learning-generation-cycle-server-integration.test.js
+          node tests/mira-hfm-learning-ui-contract.test.js
+      - name: Phase 9 — retrieval optimizer
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-phase9-retrieval-optimizer.test.js
+          node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js
+          node tests/mira-hfm-phase9-prompt-injection-regression.test.js
+          node tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+      - name: Record external boundaries
+        run: |
+          echo "LIVE_FACEBOOK_REQUESTS=0"
+          echo "LIVE_TAVILY_REQUESTS=0"
+          echo "LIVE_MODEL_REQUESTS=0"
+          echo "LIVE_GOOGLE_DRIVE_REQUESTS=0"
+          echo "SUPABASE_WRITES=0"
+          echo "PRODUCTION_MIGRATIONS=0"
+          echo "CANONICAL_MEMORY_WRITES=0"
+          echo "RESULT=UNIFIED_OFFLINE_TESTS_COMPLETED"
