@@ -115,11 +115,24 @@ try {
     async list(input) {
       assert.equal(input.projectId, 'mira-project-001');
       assert.equal(input.prefix, 'mira-hfm-emergency/v1/mira-project-001/');
-      return [{
-        projectId: 'mira-project-001', backupId,
-        objectKey: 'mira-hfm-emergency/v1/mira-project-001/' + backupId + '.mhe',
-        bytes: envelope.length, createdAt
-      }];
+      assert.equal(input.limit, 500);
+      if (input.cursor === null) return {
+        items: [{
+          projectId: 'mira-project-001', backupId: 'backup-page-0001',
+          objectKey: 'mira-hfm-emergency/v1/mira-project-001/backup-page-0001.mhe',
+          bytes: 100, createdAt
+        }],
+        complete: false, nextCursor: 'page-2'
+      };
+      assert.equal(input.cursor, 'page-2');
+      return {
+        items: [{
+          projectId: 'mira-project-001', backupId,
+          objectKey: 'mira-hfm-emergency/v1/mira-project-001/' + backupId + '.mhe',
+          bytes: envelope.length, createdAt
+        }],
+        complete: true
+      };
     }
   };
   const capacity = await inspectEncryptedEmergencyBackupCapacity({
@@ -128,7 +141,8 @@ try {
   });
   assert.equal(capacity.status, 'WITHIN_BUDGET');
   assert.equal(capacity.budgetBytes, 5000000000);
-  assert.equal(capacity.usedBytes, envelope.length);
+  assert.equal(capacity.usedBytes, envelope.length + 100);
+  assert.equal(capacity.backupCount, 2);
   assert.equal(capacity.deletionPerformed, false);
   assert.equal(capacity.routineDriveSyncChanged, false);
   assert.equal(capacity.retention.status, 'RETENTION_PREVIEW_ONLY');
@@ -147,12 +161,29 @@ try {
   assert.equal(retention.candidates[0].backupId, 'backup-old-0001');
   assert.equal(retention.deletionPerformed, false);
   await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
-    adapter: { capabilities: { list: true }, async list() { return [{
+    adapter: { capabilities: { list: true }, async list() { return { items: [{
       projectId: 'other-project', backupId, objectKey: 'mira-hfm-emergency/v1/other-project/' + backupId + '.mhe',
       bytes: envelope.length, createdAt
-    }]; } },
+    }], complete: true }; } },
     projectId: 'mira-project-001'
   }), error => error.code === 'HFM_CLOUD_LIST_SCOPE_INVALID');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() {
+      return { items: [], complete: false, nextCursor: 'same-cursor' };
+    } },
+    projectId: 'mira-project-001'
+  }), error => error.code === 'HFM_CLOUD_LIST_INCOMPLETE');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() {
+      return { items: [], complete: false, nextCursor: 'repeat-me' };
+    } },
+    projectId: 'mira-project-001'
+  }), error => error.code === 'HFM_CLOUD_LIST_INCOMPLETE');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() { return []; } },
+    projectId: 'mira-project-001'
+  }), error => error.code === 'HFM_CLOUD_LIST_INVALID');
+  console.log('HFM_PHASE7_PAGINATION_COMPLETE_AND_INCOMPLETE_REJECTED=PASS');
   console.log('HFM_PHASE7_5GB_CAPACITY_MONITOR_AND_PROJECT_SCOPE=PASS');
   console.log('HFM_PHASE7_RETENTION_PREVIEW_NO_AUTOMATIC_DELETION=PASS');
 
