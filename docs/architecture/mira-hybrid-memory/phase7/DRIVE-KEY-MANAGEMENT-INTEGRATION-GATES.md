@@ -120,7 +120,7 @@ The branch adds `services/mira-hfm-drive-emergency-backup-adapter.js` as a provi
 
 - Fixed namespace: `mira-hfm-emergency/v1/{projectId}/{backupId}.mhe`; caller-supplied alternate namespaces are rejected.
 - Required transport methods: `atomicCreate({ objectKey, metadata, bytes })`, `readObject({ objectKey })`, and `listPage({ projectId, prefix, cursor, limit })`.
-- The adapter validates project binding, object key, AES-256-GCM content metadata, SHA-256 format, object metadata/byte length, negotiated read-size and page-item limits, canonical listing timestamps, and explicit bounded pagination. The cloud service additionally binds the authenticated envelope metadata projectId to the requested project on upload, preview and restore.
+- The adapter validates project binding, object key, AES-256-GCM content metadata, SHA-256 format, object metadata/byte length, negotiated read-size and page-item limits, canonical listing timestamps, bounded cursors, encrypted-only listing metadata and explicit bounded pagination. The cloud service additionally binds the authenticated envelope metadata projectId to the requested project on upload, preview and restore.
 - It rejects ambiguous atomic-create results. A future real transport must implement provider-side atomic create-if-absent; a preflight search plus ordinary upload is not acceptable.
 - Fake-transport tests exercise concurrent duplicate create calls (exactly one create result), project/namespace isolation, readback, multi-page listing, malformed create result rejection, and the absence of OAuth/network behavior.
 - The adapter has no delete, overwrite, move, permission-grant, OAuth, or routine-sync method.
@@ -129,7 +129,7 @@ This prototype cannot establish real provider atomicity, remote durability, quot
 
 ## 10. Latest code-change CI evidence
 
-Code commit `b426ac0f7cb88655312bbc1abb82254cf2137436` completed GitHub Actions run **41992225019** (job **127126894375**) successfully. The combined offline job logs contain **46 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. New assertions verify that failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+Code commit `616178c346e38637c3d6d24358f81ce3d5909a5d` completed GitHub Actions run **41992481568** (job **127127731565**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
 This evidence is for the latest code-change commit; later commits in this branch only refresh documentation.
 
@@ -137,9 +137,9 @@ This is synthetic offline CI evidence only. It does not certify a live Google Dr
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=41992225019_SUCCESS
-OFFLINE_CI_HEAD=b426ac0f7cb88655312bbc1abb82254cf2137436
-OFFLINE_PASS_MARKERS=46
+OFFLINE_CI_RUN=41992481568_SUCCESS
+OFFLINE_CI_HEAD=616178c346e38637c3d6d24358f81ce3d5909a5d
+OFFLINE_PASS_MARKERS=49
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
