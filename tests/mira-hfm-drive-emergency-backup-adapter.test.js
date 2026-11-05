@@ -17,7 +17,8 @@ async function main() {
       return { providerId: 'fake-provider', scope: 'project', projectId,
         quotaBytes: 1000000, usedBytes: 1234, measuredAt: '2026-11-05T00:00:00.000Z' };
     },
-    async atomicCreate({ objectKey, metadata, bytes }) {
+    async atomicCreate({ projectId: scope, objectKey, metadata, bytes }) {
+      assert.equal(scope, projectId);
       createCalls += 1;
       if (store.has(objectKey)) return { created: false };
       store.set(objectKey, { metadata: { ...metadata, createdAt: '2026-11-05T00:00:00.000Z' }, bytes: Buffer.from(bytes) });
