@@ -1607,6 +1607,61 @@
             </div>
           </div>
 
+          <div id="miraHfmProposalReviewPanel" class="card" style="margin-top:14px;">
+            <div class="section-header" style="margin-bottom:12px;">
+              <div>
+                <h3>Mira HFM Learning Proposals</h3>
+                <p>Read an immutable HFM proposal and record one human review. Approval is manual handoff only; it never applies learning or changes Canonical Memory.</p>
+              </div>
+              <button id="miraHfmRefreshStatus" class="secondary-button" type="button">Refresh status</button>
+            </div>
+            <p id="miraHfmBridgeStatus" class="muted" role="status">Status not loaded. Press Refresh status.</p>
+            <p id="miraHfmBridgeError" class="error-box hidden" role="alert"></p>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
+              <input id="miraHfmAgentProposalOptIn" type="checkbox">
+              <span>Explicitly opt in to stage one HFM proposal during the next Run Agent request only. Requires the server feature flag and a named Admin session.</span>
+            </label>
+            <div class="grid-2" style="margin-top:10px;">
+              <div>
+                <label for="miraHfmStageTitle">Proposal title</label>
+                <input id="miraHfmStageTitle" type="text" maxlength="240" style="width:100%;" placeholder="Human-reviewable learning candidate">
+              </div>
+              <div>
+                <label for="miraHfmStageRationale">Proposal rationale</label>
+                <input id="miraHfmStageRationale" type="text" maxlength="4000" style="width:100%;" placeholder="Why should this evidence be reviewed?">
+              </div>
+            </div>
+            <div style="margin-top:10px;">
+              <label for="miraHfmStageChange">Proposed change (review only)</label>
+              <textarea id="miraHfmStageChange" rows="2" maxlength="8000" style="width:100%;resize:vertical;" placeholder="Describe a candidate change; it will not be applied automatically."></textarea>
+            </div>
+            <div class="grid-2" style="margin-top:12px;">
+              <div>
+                <label for="miraHfmProjectId">Project ID</label>
+                <input id="miraHfmProjectId" type="text" maxlength="128" autocomplete="off" style="width:100%;" placeholder="Exact HFM Project ID">
+              </div>
+              <div>
+                <label for="miraHfmProposalId">Proposal ID</label>
+                <input id="miraHfmProposalId" type="text" maxlength="128" autocomplete="off" style="width:100%;" placeholder="Exact proposal ID">
+              </div>
+            </div>
+            <div class="button-row" style="margin-top:10px;">
+              <button id="miraHfmLoadProposal" class="secondary-button" type="button">Load proposal</button>
+            </div>
+            <div id="miraHfmProposalDetails" style="margin-top:12px;" aria-live="polite">
+              <p class="muted">Enter both IDs to load one proposal.</p>
+            </div>
+            <div style="margin-top:12px;">
+              <label for="miraHfmReviewReason">Human review reason</label>
+              <textarea id="miraHfmReviewReason" rows="3" maxlength="2000" style="width:100%;resize:vertical;" placeholder="Explain why this proposal is accepted for manual handoff or rejected."></textarea>
+            </div>
+            <div class="button-row" style="margin-top:10px;">
+              <button id="miraHfmApproveHandoff" class="primary-button" type="button" disabled>Approve for manual handoff</button>
+              <button id="miraHfmRejectProposal" class="secondary-button" type="button" disabled>Reject proposal</button>
+            </div>
+            <p class="card-description" style="margin-top:10px;">This panel does not list or discover proposals. Use the exact Project ID and Proposal ID returned by a governed workflow. A review is immutable; a different second decision is rejected.</p>
+          </div>
+
           <div
             id="adminLearningProposalPanel"
             class="card"
@@ -3883,6 +3938,22 @@ CUSTOM_PROVIDER selects the active custom slot (defaults to provider1).</pre>
 
     const autonomousLearningProposals =
       document.getElementById("autonomousLearningProposals");
+
+    const miraHfmRefreshStatus = document.getElementById("miraHfmRefreshStatus");
+    const miraHfmBridgeStatus = document.getElementById("miraHfmBridgeStatus");
+    const miraHfmBridgeError = document.getElementById("miraHfmBridgeError");
+    const miraHfmProjectId = document.getElementById("miraHfmProjectId");
+    const miraHfmProposalId = document.getElementById("miraHfmProposalId");
+    const miraHfmLoadProposal = document.getElementById("miraHfmLoadProposal");
+    const miraHfmProposalDetails = document.getElementById("miraHfmProposalDetails");
+    const miraHfmReviewReason = document.getElementById("miraHfmReviewReason");
+    const miraHfmApproveHandoff = document.getElementById("miraHfmApproveHandoff");
+    const miraHfmRejectProposal = document.getElementById("miraHfmRejectProposal");
+    const miraHfmAgentProposalOptIn = document.getElementById("miraHfmAgentProposalOptIn");
+    const miraHfmStageTitle = document.getElementById("miraHfmStageTitle");
+    const miraHfmStageRationale = document.getElementById("miraHfmStageRationale");
+    const miraHfmStageChange = document.getElementById("miraHfmStageChange");
+    let currentMiraHfmProposal = null;
 
     const autonomousTotal =
       document.getElementById("autonomousTotal");
@@ -9160,6 +9231,150 @@ document.querySelectorAll(
       }
     }
 
+    async function loadMiraHfmStatus() {
+      if (!miraHfmBridgeStatus) return;
+      miraHfmBridgeError.classList.add("hidden");
+      miraHfmBridgeStatus.textContent = "Loading HFM proposal bridge status...";
+      try {
+        const data = await api("/api/admin/mira-hfm-learning-evolution/status");
+        miraHfmBridgeStatus.textContent =
+          "Bridge: " + String(data.bridgeStatus || "unknown") +
+          " · Store: " + String(data.storageMode || "unknown") +
+          " · Generation hook: " + (data.generationCycleHookEnabled === true ? "ENABLED" : "DISABLED") +
+          " · Production ready: " + (data.productionReady === true ? "YES" : "NO") +
+          " · Evidence trust: " + String(data.importedEvidenceTrust || "unknown") +
+          " · Canonical writes: " + String(data.canonicalMemoryWrites ?? "unknown") +
+          " · Automatic execution: " + String(data.automaticExecution ?? "unknown");
+      } catch (error) {
+        miraHfmBridgeStatus.textContent = "HFM status could not be loaded.";
+        miraHfmBridgeError.textContent = error.message || "HFM status request failed.";
+        miraHfmBridgeError.classList.remove("hidden");
+      }
+    }
+
+    function appendMiraHfmDetail(parent, label, value) {
+      const row = document.createElement("p");
+      row.style.whiteSpace = "pre-wrap";
+      row.style.overflowWrap = "anywhere";
+      const strong = document.createElement("strong");
+      strong.textContent = label + ": ";
+      const span = document.createElement("span");
+      span.textContent = value === undefined || value === null || value === ""
+        ? "—"
+        : String(value);
+      row.append(strong, span);
+      parent.appendChild(row);
+    }
+
+    function renderMiraHfmProposal(proposal) {
+      currentMiraHfmProposal = proposal;
+      miraHfmProposalDetails.replaceChildren();
+      appendMiraHfmDetail(miraHfmProposalDetails, "Title", proposal.title);
+      appendMiraHfmDetail(miraHfmProposalDetails, "Status", proposal.status);
+      appendMiraHfmDetail(miraHfmProposalDetails, "Trust state", proposal.trustState);
+      appendMiraHfmDetail(miraHfmProposalDetails, "Rationale", proposal.rationale);
+      appendMiraHfmDetail(miraHfmProposalDetails, "Proposed change", proposal.proposedChange);
+      appendMiraHfmDetail(miraHfmProposalDetails, "Evidence items",
+        Array.isArray(proposal.evidence) ? proposal.evidence.length : 0);
+      appendMiraHfmDetail(miraHfmProposalDetails, "Proposal digest", proposal.proposalDigest);
+      if (proposal.review) {
+        appendMiraHfmDetail(miraHfmProposalDetails, "Review decision", proposal.review.decision);
+        appendMiraHfmDetail(miraHfmProposalDetails, "Review status", proposal.review.status);
+        appendMiraHfmDetail(miraHfmProposalDetails, "Reviewed by", proposal.review.actorId);
+        appendMiraHfmDetail(miraHfmProposalDetails, "Review reason", proposal.review.reason);
+      }
+      const reviewable = proposal.status === "PENDING_HUMAN_REVIEW" &&
+        proposal.trustState === "UNTRUSTED" && !proposal.review;
+      miraHfmApproveHandoff.disabled = !reviewable;
+      miraHfmRejectProposal.disabled = !reviewable;
+      if (reviewable) {
+        const note = document.createElement("p");
+        note.className = "card-description";
+        note.textContent = "This proposal is eligible for one immutable human review. Approval records manual handoff only.";
+        miraHfmProposalDetails.appendChild(note);
+      }
+    }
+
+    async function loadMiraHfmProposal() {
+      const projectId = miraHfmProjectId.value.trim();
+      const proposalId = miraHfmProposalId.value.trim();
+      if (!projectId || !proposalId) {
+        miraHfmBridgeError.textContent = "Enter both Project ID and Proposal ID.";
+        miraHfmBridgeError.classList.remove("hidden");
+        return;
+      }
+      miraHfmBridgeError.classList.add("hidden");
+      miraHfmProposalDetails.textContent = "Loading proposal and verifying its integrity...";
+      miraHfmApproveHandoff.disabled = true;
+      miraHfmRejectProposal.disabled = true;
+      try {
+        const data = await api(
+          "/api/admin/mira-hfm-learning-evolution/proposals/" +
+          encodeURIComponent(projectId) + "/" + encodeURIComponent(proposalId)
+        );
+        if (!data || data.success !== true || !data.proposal) {
+          throw new Error("Proposal response was incomplete.");
+        }
+        renderMiraHfmProposal(data.proposal);
+      } catch (error) {
+        currentMiraHfmProposal = null;
+        miraHfmProposalDetails.textContent = "No verified proposal is loaded.";
+        miraHfmBridgeError.textContent = error.message || "Proposal could not be loaded.";
+        miraHfmBridgeError.classList.remove("hidden");
+      }
+    }
+
+    async function submitMiraHfmReview(decision) {
+      if (!currentMiraHfmProposal) return;
+      const reason = miraHfmReviewReason.value.trim();
+      if (!reason) {
+        miraHfmBridgeError.textContent = "A review reason is required.";
+        miraHfmBridgeError.classList.remove("hidden");
+        return;
+      }
+      const isApproval = decision === "APPROVE_FOR_MANUAL_HANDOFF";
+      const confirmation = isApproval
+        ? "Record approval for manual handoff only? This will not apply learning or write Canonical Memory."
+        : "Record an immutable rejection for this proposal?";
+      if (!window.confirm(confirmation)) return;
+      miraHfmApproveHandoff.disabled = true;
+      miraHfmRejectProposal.disabled = true;
+      miraHfmBridgeError.classList.add("hidden");
+      try {
+        await api(
+          "/api/admin/mira-hfm-learning-evolution/proposals/" +
+          encodeURIComponent(miraHfmProjectId.value.trim()) + "/" +
+          encodeURIComponent(miraHfmProposalId.value.trim()) + "/review",
+          {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({decision,reason})
+          }
+        );
+        await loadMiraHfmProposal();
+        await loadMiraHfmStatus();
+      } catch (error) {
+        miraHfmBridgeError.textContent = error.message || "Human review could not be recorded.";
+        miraHfmBridgeError.classList.remove("hidden");
+        await loadMiraHfmProposal();
+      }
+    }
+
+    if (miraHfmRefreshStatus) {
+      miraHfmRefreshStatus.addEventListener("click", loadMiraHfmStatus);
+    }
+    if (miraHfmLoadProposal) {
+      miraHfmLoadProposal.addEventListener("click", loadMiraHfmProposal);
+    }
+    if (miraHfmApproveHandoff) {
+      miraHfmApproveHandoff.addEventListener("click", () =>
+        submitMiraHfmReview("APPROVE_FOR_MANUAL_HANDOFF"));
+    }
+    if (miraHfmRejectProposal) {
+      miraHfmRejectProposal.addEventListener("click", () =>
+        submitMiraHfmReview("REJECT"));
+    }
+
     function renderAutonomousProposal(proposal) {
       const wrapper = document.createElement("div");
       wrapper.className = "learning-item";
@@ -10700,9 +10915,20 @@ document.querySelectorAll(
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-              command: value
-            })
+            body: JSON.stringify((() => {
+              const payload = { command: value };
+              if (miraHfmAgentProposalOptIn && miraHfmAgentProposalOptIn.checked) {
+                payload.learningProposalOptIn = true;
+                payload.learningProposal = {
+                  projectId: miraHfmProjectId.value.trim(),
+                  proposalId: miraHfmProposalId.value.trim(),
+                  title: miraHfmStageTitle.value.trim(),
+                  rationale: miraHfmStageRationale.value.trim(),
+                  proposedChange: miraHfmStageChange.value.trim()
+                };
+              }
+              return payload;
+            })())
           });
 
         agentOutput.textContent =
@@ -10713,6 +10939,14 @@ document.querySelectorAll(
                 null,
                 2
               );
+
+        if (miraHfmAgentProposalOptIn) miraHfmAgentProposalOptIn.checked = false;
+        if (data && data.learningProposalHandoff && data.learningProposalHandoff.success === true &&
+            data.learningProposalHandoff.proposal) {
+          miraHfmProjectId.value = data.learningProposalHandoff.proposal.projectId || "";
+          miraHfmProposalId.value = data.learningProposalHandoff.proposal.proposalId || "";
+          await loadMiraHfmProposal();
+        }
 
         await loadAdminDashboard();
 
