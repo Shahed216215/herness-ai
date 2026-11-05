@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 8 Learning & Evolution Integration
 
-Status: PROJECT-ISOLATED LOCAL PROPOSAL STORE, ADMIN API AND OFFLINE TESTS ADDED; AUTOMATED HFM RETRIEVAL-TO-LEARNING ORCHESTRATION NOT CERTIFIED.
+Status: PROJECT-ISOLATED PROPOSAL BRIDGE, ADMIN API, PUBLIC-RETRIEVAL EVIDENCE GATE, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR AND OFFLINE TESTS IMPLEMENTED; DURABLE PRODUCTION INTEGRATION AND AUTOMATED ORCHESTRATION NOT CERTIFIED.
 
 ## Objective
 
@@ -14,9 +14,11 @@ Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflo
 - Computes SHA-256 digests for evidence and the complete proposal.
 - Stores proposals in a project-hash-partitioned local store using create-only file creation, restrictive permissions, fsync and read-after-write.
 - Exposes an admin-only API for staging and reading proposals; the existing global autonomous-learning and Knowledge stores are not modified.
-- Includes an adapter for the existing HFM public Facebook search-retrieval result format. It validates the provider/mode/zero-canonical-write declarations, page binding and HTTPS Facebook source URLs, then forces every imported item to UNVERIFIED. It also checks the indexed Facebook URL is bound to the reported numeric Page ID.
-- Uses Mira's existing audit-log append/integrity path for proposal-staging events; audit failure after persistence is surfaced as committed/reconciliation-required.
-- Requires an audit-writer callback. The production route uses the existing audit-log integrity chain; an HMAC anchor is conditional on the audit key being configured.
+- Includes an adapter for the existing HFM public Facebook search-retrieval result format. It validates successful/degraded-evidence status, provider/mode/zero-canonical-write declarations, exact Page-ID-bound Facebook profile/post paths, source type, provenance state and credential-free HTTPS URLs, then forces every imported item to UNVERIFIED.
+- Adds a read-only compatibility inspector for the existing Learning Engine, Experience Memory, Experience Retrieval, Knowledge Consolidation, and Evolution Snapshot/rollback interfaces. It checks legacy record integrity and snapshot verification without migrating, rewriting, deleting, rolling back, or calling Drive/network services. It also checks the indexed Facebook URL is bound to the reported numeric Page ID.
+- Uses Mira's existing audit-log append/integrity path for non-production proposal-staging events; audit failure after persistence is surfaced as committed/reconciliation-required.
+- Requires a named authenticated administrator browser session and records the actor ID in the audit event.
+- Production mode fails closed: the local single-instance proposal store and local audit callback are never used as production fallbacks. Production requires an explicitly marked durable, cross-instance, project-isolated create-only store and a durable audit writer.
 - Marks proposals PENDING_HUMAN_REVIEW and UNTRUSTED.
 - Automatic trust promotion, execution, canonical Memory writes and self-modification are disabled.
 
@@ -38,6 +40,7 @@ The local adapter provides project-scoped create-only files and immutable propos
 - No canonical Memory writes or changes to existing Memory records.
 - The admin route is registered in server.js. The `/proposals/from-public-retrieval` endpoint accepts an already-produced HFM public retrieval result; it does not execute a search itself and does not cryptographically attest that the supplied result came from the provider.
 - No existing AI generation-cycle, retrieval tool, autonomous-learning queue, Knowledge store, or UI is wired to submit automatically.
+- The legacy compatibility inspector is an explicit read-only audit utility; it is not a live route and does not automatically import legacy records into HFM proposals.
 - Evidence must be supplied to the admin API by a trusted caller; the API does not independently prove that a claimed public-web retrieval occurred.
 - No live provider, model, network, deployment, migration or secret access.
 - No change to Phase 7 emergency backup or routine Google Drive synchronization.
@@ -51,11 +54,20 @@ Admin API base: `/api/admin/mira-hfm-learning-evolution`
 - `POST /proposals/from-public-retrieval` adapts an existing HFM public retrieval result.
 - `GET /proposals/:projectId/:proposalId` reads and re-verifies a stored proposal.
 
-Tests use synthetic evidence and a temporary local filesystem adapter, including process-level reopen, immutable create-only behavior and stored-tamper detection. They do not establish Render multi-instance durability, Supabase persistence, automated retrieval orchestration, learning quality or production readiness.
+Tests use synthetic evidence and a temporary local filesystem adapter, including process-level reopen, immutable create-only behavior and stored-tamper detection. Additional offline tests verify the production fail-closed gate, named-admin attribution, public source/Page-ID binding, and read-only compatibility/integrity inspection of Learning, Experience, Knowledge Consolidation and Evolution snapshots.
+
+Latest GitHub Actions run **41967451926: SUCCESS** (Node.js 24). The syntax gate and all three test suites passed. Logs report TESTS_FAILED=0, LIVE_NETWORK_CALLS=0, PRODUCTION_DATABASE_ADAPTER=0, no migration, no rollback, and zero canonical Memory writes. These are synthetic contract tests, not production data verification.
 
 VERSION=v0.2
-PHASE8=LOCAL_PROJECT_ISOLATED_PROPOSAL_API_IMPLEMENTED
+PHASE8=PROPOSAL_BRIDGE_AND_READ_ONLY_LEGACY_COMPATIBILITY_IMPLEMENTED
 CANONICAL_MEMORY_WRITES=0
 AUTOMATIC_PROMOTION=0
 AUTOMATIC_EXECUTION=0
 PRODUCTION_INTEGRATION=NOT_CERTIFIED
+
+
+## Production readiness gate
+
+The local proposal store explicitly advertises `durable=false` and `crossInstanceAtomicCreate=false`. In `NODE_ENV=production`, routes return `HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED` unless an injected provider is explicitly marked production-ready and satisfies project isolation, create-only, immutable-version, read-after-write, durable, cross-instance atomic-create and durable-audit capabilities. The production fallback to ephemeral local files is prohibited.
+
+The current branch contains no production HFM proposal database adapter or durable audit provider. Therefore the production route remains intentionally unavailable until those adapters are independently implemented and verified.
