@@ -64,6 +64,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   const authorizationTrust = {
     ['synthetic-policy-mira-staging']: {
       keyId: 'synthetic-policy-key-v1',
+      policyVersion: 'synthetic-policy-v1',
       publicKeyPem: policyPublicPem,
       publicKeySha256: crypto.createHash('sha256').update(policyPublic.export({ type: 'spki', format: 'der' })).digest('hex')
     }
