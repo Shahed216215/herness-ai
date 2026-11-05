@@ -77,7 +77,7 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
         const value = envelope.metadata[field];
         if (value === undefined) continue;
         if (typeof value !== 'string' || !value.trim() || value.length > 128 ||
-            /[\\r\\n\\u0000-\\u001f]/.test(value)) break;
+            /[\r\n\u0000-\u001f]/.test(value)) break;
         normalizedMetadata[field] = value.trim();
       }
       const metadataKeys = Object.keys(envelope.metadata);
