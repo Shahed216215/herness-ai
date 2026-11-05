@@ -6,6 +6,21 @@ const os = require('node:os');
 const path = require('node:path');
 const { createWorkLearningStagingSnapshotSource } = require('../services/mira-hfm-work-learning-staging-source');
 const { captureAuthorizedSnapshot, canonicalize, sha256 } = require('../services/mira-hfm-authoritative-snapshot');
+const {
+  adaptApprovedWorkLearningEntries,
+  buildWorkLearningCanonicalCandidate
+} = require('../services/mira-hfm-work-learning-adapter');
+const {
+  digest: mappingDigest,
+  bodyOf: mappingBodyOf
+} = require('../services/mira-memory-project-mapping-contract');
+const {
+  createProjectMappingOwnerApprovalVerifier
+} = require('../services/mira-memory-project-mapping-owner-approval-adapter');
+const {
+  digest: ownerRegistryDigest
+} = require('../services/mira-memory-project-owner-registry-contract');
+const { digest: rawRecordDigest } = require('../services/mira-legacy-memory-knowledge-adapter');
 
 function signingProvider(privateKey, keyId) {
   return {
@@ -153,6 +168,94 @@ async function run() {
     assert.equal(before, sha256(fs.readFileSync(f.learningFile)));
     console.log('WORK_LEARNING_SIGNED_STAGING_SNAPSHOT_CAPTURE_PASS');
     console.log('WORK_LEARNING_SOURCE_SNAPSHOT_DOES_NOT_INFER_PROJECT_PASS');
+
+    const ownerNow = new Date();
+    const createdAt = new Date(ownerNow.getTime() - 30000).toISOString();
+    const approvedAt = new Date(ownerNow.getTime() - 10000).toISOString();
+    const ownerActor = req.actorId;
+    const ownerRegistry = {
+      schemaVersion: '1.0.0',
+      authorityRecordId: 'work-learning-e2e-owner-registry',
+      projectId: 'project-alpha',
+      tenantId: 'tenant-alpha',
+      ownerActorId: ownerActor,
+      memberships: [{
+        membershipRef: 'work-learning-e2e-owner-membership',
+        actorId: ownerActor,
+        actorType: 'HUMAN',
+        role: 'OWNER',
+        allowedOperations: ['READ', 'WRITE', 'LIST', 'VERIFY', 'PLAN_MIGRATION', 'APPROVE_MAPPING'],
+        status: 'ACTIVE',
+        validFrom: createdAt,
+        validUntil: new Date(ownerNow.getTime() + 60000).toISOString()
+      }],
+      sourceProjectSnapshotDigest: 'c'.repeat(64),
+      approvalReference: 'work-learning-e2e-registry-approval',
+      approvedBy: 'mira:fixture:admin',
+      approvedAt,
+      registryRevision: 'work-learning-e2e-r1',
+      status: 'ACTIVE',
+      createdAt,
+      updatedAt: approvedAt
+    };
+    ownerRegistry.recordDigest = ownerRegistryDigest(ownerRegistry);
+    const verifyApproval = createProjectMappingOwnerApprovalVerifier({
+      ownerRegistry,
+      expectedTenantId: 'tenant-alpha',
+      verifyRegistryRecord: proof =>
+        proof.recordDigest === ownerRegistry.recordDigest &&
+        proof.projectId === ownerRegistry.projectId &&
+        proof.tenantId === ownerRegistry.tenantId,
+      now: () => ownerNow
+    });
+    const learningEntry = captured.snapshot.records[0];
+    const candidate = buildWorkLearningCanonicalCandidate({
+      entry: learningEntry,
+      mapping: {
+        memoryId: 'canonical-work-learning-e2e-001',
+        projectId: 'project-alpha',
+        classification: 'PROJECT_PRIVATE'
+      },
+      observedAt: captured.evidence.capturedAt
+    });
+    const mapping = {
+      schemaVersion: '1.0.0',
+      mappingId: 'work-learning-e2e-mapping-001',
+      domain: 'work_learning',
+      sourceSystem: 'mira_work_learning',
+      sourceFileDigest: captured.snapshot.sourceFileDigest,
+      sourceOrdinal: 0,
+      legacyId: learningEntry.learningId,
+      memoryId: 'canonical-work-learning-e2e-001',
+      projectId: 'project-alpha',
+      parentConversationId: null,
+      clientId: null,
+      revision: 1,
+      sourceDigest: rawRecordDigest(learningEntry),
+      canonicalRecordDigest: rawRecordDigest(candidate),
+      classification: 'PROJECT_PRIVATE',
+      status: 'APPROVED',
+      approvalReference: 'work-learning-e2e-mapping-approval',
+      approvedBy: ownerActor,
+      approvedAt,
+      createdAt
+    };
+    mapping.mappingDigest = mappingDigest(mappingBodyOf(mapping));
+    const adapted = adaptApprovedWorkLearningEntries({
+      entries: captured.snapshot.records,
+      mappings: [mapping],
+      projectId: 'project-alpha',
+      sourceFileDigest: captured.snapshot.sourceFileDigest,
+      observedAt: captured.evidence.capturedAt,
+      verifyApproval,
+      now: ownerNow
+    });
+    assert.equal(adapted.length, 1);
+    assert.equal(adapted[0].canonicalRecord.projectId, 'project-alpha');
+    assert.equal(adapted[0].canonicalRecord.lifecycle, 'PENDING_REVIEW');
+    assert.equal(adapted[0].canonicalRecord.integrity.status, 'UNVERIFIED');
+    assert.deepEqual(JSON.parse(adapted[0].canonicalRecord.content).record, learningEntry);
+    console.log('WORK_LEARNING_SIGNED_SNAPSHOT_TO_OWNER_APPROVED_CANDIDATE_E2E_PASS');
 
     await assert.rejects(() => f.source.readSnapshot(req),
       error => error.code === 'HFM_AUTHZ_REPLAY_REJECTED');
