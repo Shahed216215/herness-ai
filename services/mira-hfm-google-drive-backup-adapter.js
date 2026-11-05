@@ -98,24 +98,40 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
     throw error;
   }
   const expectedHash = sha256(bytes);
-  const created = await drive.files.create({
-    requestBody: {
-      name: fileName,
-      parents: [folderId],
-      mimeType: MIME_TYPE,
-      appProperties: {
-        miraHfmBackupFormat: '1',
-        miraHfmProjectId: projectId,
-        miraHfmSha256: expectedHash
-      }
-    },
-    media: { mimeType: MIME_TYPE, body: Readable.from([bytes]) },
-    fields: 'id,name,size,appProperties'
-  });
-  const file = created && created.data;
-  if (!file || typeof file.id !== 'string' || !file.id) {
-    const error = new Error('Google Drive did not return a created file ID.');
+  let created;
+  try {
+    created = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [folderId],
+        mimeType: MIME_TYPE,
+        appProperties: {
+          miraHfmBackupFormat: '1',
+          miraHfmProjectId: projectId,
+          miraHfmSha256: expectedHash
+        }
+      },
+      media: { mimeType: MIME_TYPE, body: Readable.from([bytes]) },
+      fields: 'id,name,size,parents,appProperties'
+    });
+  } catch {
+    const error = new Error('Google Drive upload outcome is unknown; the remote object may have committed and must be reconciled before retry.');
+    error.code = 'DRIVE_BACKUP_CREATE_OUTCOME_UNKNOWN';
     error.stateCommitted = true;
+    error.outcome = 'REVIEW_REQUIRED';
+    throw error;
+  }
+  const file = created && created.data;
+  if (!file || typeof file.id !== 'string' || !file.id ||
+      file.name !== fileName || !Array.isArray(file.parents) || !file.parents.includes(folderId) ||
+      !file.appProperties || file.appProperties.miraHfmBackupFormat !== '1' ||
+      file.appProperties.miraHfmProjectId !== projectId ||
+      file.appProperties.miraHfmSha256 !== expectedHash) {
+    const error = new Error('Google Drive create response did not prove the exact immutable backup object and scope; remote commit requires review.');
+    error.code = 'DRIVE_BACKUP_CREATE_RESPONSE_UNVERIFIED';
+    error.stateCommitted = true;
+    error.remoteFileId = file && typeof file.id === 'string' ? file.id : undefined;
+    error.outcome = 'REVIEW_REQUIRED';
     throw error;
   }
   try {
@@ -136,9 +152,15 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
       quota
     };
   } catch (error) {
-    error.stateCommitted = true;
-    error.remoteFileId = file.id;
-    throw error;
+    const failure = new Error(error && error.code === 'DRIVE_BACKUP_READBACK_INTEGRITY_FAILED'
+      ? 'Google Drive emergency backup readback integrity verification failed; remote object was retained for review.'
+      : 'Google Drive emergency backup readback could not be verified; remote object was retained for review.');
+    failure.code = error && error.code === 'DRIVE_BACKUP_READBACK_INTEGRITY_FAILED'
+      ? error.code : 'DRIVE_BACKUP_READBACK_UNVERIFIED';
+    failure.stateCommitted = true;
+    failure.remoteFileId = file.id;
+    failure.outcome = 'REVIEW_REQUIRED';
+    throw failure;
   }
 }
 async function downloadEncryptedBackup({ drive, fileId, expectedSha256 }) {
