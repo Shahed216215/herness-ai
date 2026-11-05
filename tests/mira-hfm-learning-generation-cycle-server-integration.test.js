@@ -8,8 +8,9 @@ const root = path.join(__dirname, '..');
 const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const route = fs.readFileSync(path.join(root, 'routes/mira-hfm-learning-evolution.js'), 'utf8');
 const adapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle.js'), 'utf8');
-const requestAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle-request.js'), 'utf8');
-const requestAdapterTest = fs.readFileSync(path.join(root, 'tests/mira-hfm-learning-generation-cycle-request.test.js'), 'utf8');
+const requestAdapterPath = path.join(root, 'services/mira-hfm-learning-generation-cycle-request.js');
+const requestAdapter = fs.existsSync(requestAdapterPath)
+  ? fs.readFileSync(requestAdapterPath, 'utf8') : '';
 const unitTest = fs.readFileSync(path.join(root, 'tests/mira-hfm-learning-generation-cycle.test.js'), 'utf8');
 
 const agentStart = server.indexOf('app.post(\n  "/api/agent"');
@@ -20,7 +21,7 @@ const agent = server.slice(agentStart, agentEnd);
 
 const retrievalExecution = agent.indexOf('await executeWork(');
 const handoffGate = agent.indexOf('toolName === "mira_hfm_public_web_retrieval"');
-const handoffCall = agent.indexOf('await stageAgentGenerationProposal({');
+const handoffCall = Math.max(agent.indexOf('await stageAgentGenerationCycleProposal({'), agent.indexOf('await stageAgentGenerationProposal({'));
 assert.ok(retrievalExecution >= 0 && handoffGate > retrievalExecution,
   'HFM proposal handoff must occur only after tool execution returns');
 assert.ok(handoffCall > handoffGate,
@@ -30,7 +31,8 @@ assert.ok(agent.includes('learningProposalHandoffAttempted'));
 assert.ok(agent.includes('toolResult,'));
 assert.ok(agent.includes('requestRole: req.role'));
 assert.ok(agent.includes('session: req.session'));
-assert.ok(server.includes('stageAgentGenerationProposal'));
+assert.ok(server.includes('stageAgentGenerationCycleProposal') || server.includes('stageAgentGenerationProposal'));
+assert.ok(adapter.includes('stageAgentGenerationCycleProposal') || requestAdapter.includes('stageAgentGenerationProposal'));
 assert.ok(server.includes('mira-hfm-learning-generation-cycle-request'));
 
 assert.ok(route.includes("MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true'"));
