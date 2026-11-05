@@ -18,7 +18,7 @@ const agent = server.slice(agentStart, agentEnd);
 
 const retrievalExecution = agent.indexOf('await executeWork(');
 const handoffGate = agent.indexOf('toolName === "mira_hfm_public_web_retrieval"');
-const handoffCall = agent.indexOf('await stageAgentGenerationProposal({');
+const handoffCall = agent.indexOf('await stageAgentGenerationCycleProposal({');
 assert.ok(retrievalExecution >= 0 && handoffGate > retrievalExecution,
   'HFM proposal handoff must occur only after tool execution returns');
 assert.ok(handoffCall > handoffGate,
@@ -28,7 +28,7 @@ assert.ok(agent.includes('learningProposalHandoffAttempted'));
 assert.ok(agent.includes('toolResult,'));
 assert.ok(agent.includes('requestRole: req.role'));
 assert.ok(agent.includes('session: req.session'));
-assert.ok(server.includes('stageAgentGenerationProposal'));
+assert.ok(server.includes('stageAgentGenerationCycleProposal'));
 
 assert.ok(route.includes("MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true'"));
 assert.ok(route.includes('createGenerationCycleProposalOrchestrator('));
