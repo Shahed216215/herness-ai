@@ -23,9 +23,10 @@ function normalizeEvidence(r, projectId) {
   if (id(r.projectId, 'evidence.projectId') !== projectId) fail('Cross-project evidence is forbidden.', 'HFM_LEARNING_PROJECT_MISMATCH');
   const trustState = txt(r.trustState, 'trustState', 64).toUpperCase();
   if (!['UNVERIFIED','PENDING_REVIEW','SOURCE_RECORDED','TRUSTED'].includes(trustState)) fail('Unsupported trustState.');
+  const content = txt(r.content, 'evidence.content');
   return { evidenceId, projectId, sourceType: txt(r.sourceType, 'sourceType', 64), trustState,
-    sourceRef: txt(r.sourceRef, 'sourceRef', 512), content: txt(r.content, 'evidence.content'),
-    contentSha256: crypto.createHash('sha256').update(r.content, 'utf8').digest('hex') };
+    sourceRef: txt(r.sourceRef, 'sourceRef', 512), content,
+    contentSha256: crypto.createHash('sha256').update(content, 'utf8').digest('hex') };
 }
 function buildProposal(input = {}) {
   if (!obj(input)) fail('input must be an object.');
