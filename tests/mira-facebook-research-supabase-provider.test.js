@@ -92,6 +92,10 @@ function fakeDatabase() {
   assert.equal(otherPage.status, 'NO_RESEARCH_MEMORY_MATCH');
   assert.equal(otherPage.resultCount, 0);
 
+  const storedRow = db.rows.values().next().value;
+  storedRow.payload.snippet = 'tampered after verified write';
+  await assert.rejects(() => store.archive({ pageId, pageName: 'Online canel', evidence }), /identity or digest mismatch/);
+
   let remoteCalls = 0;
   await assert.rejects(
     () => archiveFacebookResearchEvidenceWithProvider(
@@ -104,6 +108,7 @@ function fakeDatabase() {
 
   const localDir = require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'mira-supa-local-'));
   require('node:fs').chmodSync(localDir, 0o700);
+  assert.equal(require('node:fs').existsSync(localDir), true);
   const localEnv = { MIRA_FACEBOOK_RESEARCH_MEMORY_BACKEND: 'local', MIRA_FACEBOOK_RESEARCH_MEMORY_DIR: localDir };
   const local = await archiveFacebookResearchEvidenceWithProvider({ pageId, pageName: 'Online canel', evidence }, { env: localEnv });
   assert.equal(local.status, 'ARCHIVE_WRITE_VERIFIED');
@@ -117,6 +122,7 @@ function fakeDatabase() {
   console.log('SUPABASE_IDEMPOTENT_DUPLICATE_PASS=PASS');
   console.log('SUPABASE_PAGE_ISOLATION_PASS=PASS');
   console.log('SUPABASE_UNTRUSTED_LOOKUP_PASS=PASS');
+  console.log('SUPABASE_TAMPERED_READBACK_REJECTED_PASS=PASS');
   console.log('SUPABASE_MISSING_CONFIG_FAIL_CLOSED_PASS=PASS');
   console.log('LOCAL_BACKEND_COMPATIBILITY_PASS=PASS');
   console.log('LIVE_NETWORK_REQUESTS=0');
