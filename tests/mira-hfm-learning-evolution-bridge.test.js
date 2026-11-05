@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { buildProposal, createLearningEvolutionBridge } = require('../services/mira-hfm-learning-evolution-bridge');
+const { buildProposal, createLearningEvolutionBridge, hasProductionIntegrationCapabilities } = require('../services/mira-hfm-learning-evolution-bridge');
 const { createPersistentProposalStore } = require('../services/mira-hfm-learning-proposal-store');
 const { fromPublicRetrieval } = require('../services/mira-hfm-learning-evidence-adapter');
 const evidence = [{ evidenceId:'evidence-001', projectId:'project-alpha', sourceType:'web_research',
@@ -65,6 +65,23 @@ const memoryStore = { projectIsolated:true, createOnly:true, immutableVersions:t
   async get(project,id) { return structuredClone(records.get(project+':'+id)||null); } };
 const audit=[];
 const bridge=createLearningEvolutionBridge({proposalStore:memoryStore,auditWriter:async e=>audit.push(e)});
+const localAudit = async () => {};
+const productionStore = {
+  ...memoryStore,
+  durable: true,
+  crossInstanceAtomicCreate: true
+};
+const productionAudit = async () => {};
+productionAudit.durable = true;
+assert.equal(hasProductionIntegrationCapabilities({
+  proposalStore: memoryStore, auditWriter: localAudit, productionIntegrationReady: true
+}), false);
+assert.equal(hasProductionIntegrationCapabilities({
+  proposalStore: productionStore, auditWriter: productionAudit, productionIntegrationReady: false
+}), false);
+assert.equal(hasProductionIntegrationCapabilities({
+  proposalStore: productionStore, auditWriter: productionAudit, productionIntegrationReady: true
+}), true);
 (async()=>{
  const result=await bridge.submit(base,{actorRole:'admin'});
  assert.equal(result.status,'PENDING_HUMAN_REVIEW');
@@ -86,6 +103,9 @@ const bridge=createLearningEvolutionBridge({proposalStore:memoryStore,auditWrite
  const tempRoot=fs.mkdtempSync(path.join(os.tmpdir(),'mira-hfm-phase8-'));
  try {
    const persistent=createPersistentProposalStore({baseDirectory:tempRoot});
+   assert.equal(persistent.durable, false);
+   assert.equal(persistent.crossInstanceAtomicCreate, false);
+   assert.equal(persistent.storageMode, 'LOCAL_SINGLE_INSTANCE_ONLY');
    const durableBridge=createLearningEvolutionBridge({proposalStore:persistent,auditWriter:async()=>{}});
    const durableResult=await durableBridge.submit({...base,proposalId:'proposal-durable-001'});
    assert.equal(durableResult.status,'PENDING_HUMAN_REVIEW');
@@ -112,6 +132,7 @@ const bridge=createLearningEvolutionBridge({proposalStore:memoryStore,auditWrite
  'HFM_PHASE8_NO_AUTOMATIC_PROMOTION_OR_EXECUTION=PASS','HFM_PHASE8_NO_CANONICAL_MEMORY_WRITES=PASS',
  'HFM_PHASE8_AUDIT_FAILURE_RECONCILIATION=PASS','HFM_PHASE8_DURABLE_STORE_REOPEN_AND_IMMUTABILITY=PASS',
  'HFM_PHASE8_STORED_TAMPER_DETECTION=PASS','HFM_PHASE8_PUBLIC_RETRIEVAL_EVIDENCE_ADAPTER=PASS',
- 'HFM_PHASE8_RETRIEVAL_TRUST_AND_SOURCE_GATES=PASS','HFM_PHASE8_LIVE_NETWORK_CALLS=0',
+ 'HFM_PHASE8_RETRIEVAL_TRUST_AND_SOURCE_GATES=PASS','HFM_PHASE8_PRODUCTION_PERSISTENCE_GATE=PASS',
+ 'HFM_PHASE8_LOCAL_STORE_NOT_PRODUCTION_CERTIFIED=PASS','HFM_PHASE8_LIVE_NETWORK_CALLS=0',
  'HFM_PHASE8_PRODUCTION_DATABASE_ADAPTER=0','TESTS_FAILED=0'].join('\n')+'\n');
 })().catch(e=>{process.stderr.write(String(e.stack||e)+'\n');process.exitCode=1;});
