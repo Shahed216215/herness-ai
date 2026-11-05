@@ -7,9 +7,11 @@ const os = require('node:os');
 const path = require('node:path');
 const { createLocalStagingSnapshotSource } = require('../services/mira-hfm-local-staging-snapshot-source');
 const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
+const { canonicalizeProvenancePolicy } = require('../services/mira-hfm-signed-provenance-policy');
+const { REQUIRED_FIELDS } = require('../services/mira-hfm-source-provenance-contract');
 const { runStagingBackupDrill } = require('../services/mira-hfm-staging-backup-drill');
 
-function makeSnapshotSigningProvider(privateKey, keyId) { return { descriptor: { contractVersion: '1', providerId: 'fixture-snapshot-signer', providerVersion: '1', keyId, keyVersion: '1', keyPurpose: 'MIRA_HFM_SNAPSHOT_ATTESTATION', algorithm: 'Ed25519', environment: 'staging' }, async sign({ message }) { return crypto.sign(null, message, privateKey); } }; }
+function makeSnapshotSigningProvider(privateKey, keyId) { return { descriptor: { contractVersion: '1', providerId: 'fixture-snapshot-signer-' + keyId, providerVersion: '1', keyId, keyVersion: '1', keyPurpose: 'MIRA_HFM_SNAPSHOT_ATTESTATION', algorithm: 'Ed25519', environment: 'staging' }, async sign({ message }) { return crypto.sign(null, message, privateKey); } }; }
 function makeAuthorization(privateKey, request) {
   const issued = Date.now();
   const decision = {
@@ -136,6 +138,170 @@ function request(actorId, requestId, nonce) {
   };
 }
 
+function makeEd25519Key() {
+  const pair = crypto.generateKeyPairSync('ed25519');
+  return {
+    privateKey: pair.privateKey,
+    publicKeyPem: pair.publicKey.export({ type: 'spki', format: 'pem' }).toString(),
+    publicKeySha256: crypto.createHash('sha256')
+      .update(pair.publicKey.export({ type: 'spki', format: 'der' })).digest('hex')
+  };
+}
+function makeTrust(key, keyId, keyVersion = '1') {
+  return { keyId, keyVersion, publicKeyPem: key.publicKeyPem, publicKeySha256: key.publicKeySha256 };
+}
+function signPolicyPayload(payload, key) {
+  return {
+    payload,
+    signature: crypto.sign(null, Buffer.from(canonicalizeProvenancePolicy(payload)), key.privateKey).toString('base64')
+  };
+}
+function makePolicyAcceptance(backupSource, baselineSource) {
+  const now = Date.now();
+  const issuedAt = new Date(now - 1000).toISOString();
+  const expiresAt = new Date(now + 120000).toISOString();
+  const policyKey = makeEd25519Key();
+  const stateKey = makeEd25519Key();
+  const reviewerA = makeEd25519Key();
+  const reviewerB = makeEd25519Key();
+  const evidenceKey = makeEd25519Key();
+  const policyIssuer = 'synthetic-staging-policy-issuer';
+  const stateAuthority = 'synthetic-staging-policy-state-authority';
+  const evidenceIssuer = 'synthetic-staging-evidence-issuer';
+  const reviewerIds = ['synthetic-reviewer-a', 'synthetic-reviewer-b'];
+  const sources = {
+    [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance,
+    [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance
+  };
+  const evidenceRecords = new Map();
+  const evidence = {};
+  for (const [sourceId, profile] of Object.entries(sources)) {
+    evidence[sourceId] = {};
+    for (const dimension of REQUIRED_FIELDS) {
+      const evidenceId = sourceId + ':' + dimension;
+      const record = {
+        sourceId,
+        dimension,
+        observedValue: profile[dimension],
+        environment: 'staging',
+        projectId: 'mira-staging'
+      };
+      const digest = crypto.createHash('sha256')
+        .update(canonicalizeProvenancePolicy(record)).digest('hex');
+      const evidencePayload = {
+        contractVersion: '1',
+        evidenceId,
+        sourceId,
+        dimension,
+        issuerId: evidenceIssuer,
+        signerKeyId: 'staging-evidence-key',
+        signerKeyVersion: '1',
+        issuedAt,
+        expiresAt,
+        scope: { environment: 'staging', projectId: 'mira-staging' },
+        reviewerIds,
+        record
+      };
+      evidenceRecords.set(evidenceId, signPolicyPayload(evidencePayload, evidenceKey));
+      evidence[sourceId][dimension] = {
+        evidenceId,
+        sha256: digest,
+        issuerId: evidenceIssuer,
+        reviewerIds
+      };
+    }
+  }
+
+  const policyPayload = {
+    contractVersion: '1',
+    policyId: 'synthetic-staging-policy-' + crypto.randomBytes(6).toString('hex'),
+    policyVersion: 'staging-provenance-v1',
+    sequence: 1,
+    issuedAt,
+    notBefore: issuedAt,
+    expiresAt,
+    scope: { environment: 'staging', projectId: 'mira-staging' },
+    signer: { issuerId: policyIssuer, keyId: 'staging-policy-key', keyVersion: '1' },
+    sources,
+    evidence,
+    approvals: []
+  };
+  const reviewPayload = { ...policyPayload };
+  delete reviewPayload.approvals;
+  const reviewMessage = Buffer.from(canonicalizeProvenancePolicy(reviewPayload));
+  policyPayload.approvals = [
+    {
+      reviewerId: reviewerIds[0], keyId: 'staging-review-key-a', role: 'security-reviewer',
+      signature: crypto.sign(null, reviewMessage, reviewerA.privateKey).toString('base64')
+    },
+    {
+      reviewerId: reviewerIds[1], keyId: 'staging-review-key-b', role: 'policy-owner',
+      signature: crypto.sign(null, reviewMessage, reviewerB.privateKey).toString('base64')
+    }
+  ];
+
+  const statePayload = {
+    contractVersion: '1',
+    authorityId: stateAuthority,
+    signer: { authorityId: stateAuthority, keyId: 'staging-state-key', keyVersion: '1' },
+    issuedAt,
+    expiresAt,
+    statusAvailable: true,
+    durable: true,
+    atomic: true,
+    highestAcceptedSequence: 0,
+    lastAcceptedPolicyId: null,
+    lastAcceptedPolicyDigest: null,
+    revokedPolicyIds: []
+  };
+  let currentState = signPolicyPayload(statePayload, stateKey);
+  const policyStateProvider = {
+    async readState() { return currentState; },
+    async compareAndSwap(input) {
+      if (input.expectedSequence !== currentState.payload.highestAcceptedSequence ||
+          input.expectedDigest !== currentState.payload.lastAcceptedPolicyDigest) {
+        const error = new Error('synthetic policy-state CAS conflict');
+        error.code = 'HFM_POLICY_STATE_CAS_CONFLICT';
+        throw error;
+      }
+      const next = {
+        ...statePayload,
+        highestAcceptedSequence: input.nextState.highestAcceptedSequence,
+        lastAcceptedPolicyId: input.nextState.lastAcceptedPolicyId,
+        lastAcceptedPolicyDigest: input.nextState.lastAcceptedPolicyDigest
+      };
+      currentState = signPolicyPayload(next, stateKey);
+      return signPolicyPayload({
+        contractVersion: '1',
+        authorityId: stateAuthority,
+        signer: { authorityId: stateAuthority, keyId: 'staging-state-key', keyVersion: '1' },
+        issuedAt,
+        expiresAt,
+        previousSequence: input.expectedSequence,
+        nextSequence: input.nextState.highestAcceptedSequence,
+        policyId: input.nextState.lastAcceptedPolicyId,
+        policyDigest: input.nextState.lastAcceptedPolicyDigest
+      }, stateKey);
+    }
+  };
+
+  return {
+    policyEnvelope: signPolicyPayload(policyPayload, policyKey),
+    policyStateProvider,
+    trustedStateAuthorities: { [stateAuthority]: makeTrust(stateKey, 'staging-state-key') },
+    expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers: { [policyIssuer]: makeTrust(policyKey, 'staging-policy-key') },
+    trustedPolicyReviewers: {
+      [reviewerIds[0]]: makeTrust(reviewerA, 'staging-review-key-a'),
+      [reviewerIds[1]]: makeTrust(reviewerB, 'staging-review-key-b')
+    },
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers: {
+      [evidenceIssuer]: makeTrust(evidenceKey, 'staging-evidence-key')
+    }
+  };
+}
+
 async function run() {
   const backupSource = fixture('synthetic-staging-backup-source');
   const baselineSource = fixture('synthetic-staging-independent-baseline');
@@ -157,7 +323,7 @@ async function run() {
         [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
       },
       keyProvider: testKeyProvider(),
-      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
+      ...makePolicyAcceptance(backupSource, baselineSource),
       backupDirectory,
       backupFileName: 'mira-hfm-staging-drill-001.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
@@ -194,7 +360,7 @@ async function run() {
         [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
       },
       keyProvider: testKeyProvider(),
-      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
+      ...makePolicyAcceptance(backupSource, baselineSource),
       backupDirectory,
       backupFileName: 'mira-hfm-staging-drill-001.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
@@ -220,7 +386,7 @@ async function run() {
         [independentBaseline.source.descriptor.sourceId]: independentBaseline.trusted
       },
       keyProvider: testKeyProvider(),
-      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [changedBackup.source.descriptor.sourceId]: changedBackup.trusted.provenance, [independentBaseline.source.descriptor.sourceId]: independentBaseline.trusted.provenance } },
+      ...makePolicyAcceptance(changedBackup, independentBaseline),
       backupDirectory: mismatchOutput,
       backupFileName: 'mira-hfm-staging-mismatch.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
