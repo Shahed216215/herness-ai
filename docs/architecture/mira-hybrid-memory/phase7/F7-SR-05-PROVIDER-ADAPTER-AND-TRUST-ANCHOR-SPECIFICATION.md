@@ -264,3 +264,12 @@ Evidence records are semantically bound to the exact policy source ID, provenanc
 Before asynchronous provider access, the orchestrator snapshots the signed policy envelope and state/policy/reviewer/evidence trust maps. The evidence verifier independently snapshots source profiles, evidence references, and evidence trust before the first resolver await. Staging also snapshots source descriptors, pinned source trust, requests, key-provider descriptor/method references, and schema allowlists before the policy-state provider is awaited.
 
 These are software-level contract controls. They do not prove independent administration of real trust anchors, non-exportable key custody, durable evidence stores, or infrastructure separation.
+
+
+## 12. Backup key-provider secret boundary
+
+The backup wrapping/unwrapping adapter accepts only the declared wrap/unwrap interface and public descriptor metadata. Raw private keys, master keys, KEKs, encryption-key bytes, generic key-material fields, credential objects, access/refresh tokens, and client secrets are rejected on both the provider object and its descriptor. Snapshot signing providers apply the equivalent sign-only boundary.
+
+Exceptions from external `wrapDataKey` and `unwrapDataKey` calls are normalized to generic `BACKUP_KEY_WRAP_FAILED` and `BACKUP_KEY_UNWRAP_FAILED` errors; upstream exception text and provider-specific codes are not exposed to the caller. Temporary copied DEK buffers are zeroed after wrap attempts, including failure paths.
+
+These controls reduce accidental secret transport and error-detail leakage. They do not prove KMS/HSM non-exportability, workload identity, IAM separation, key rotation/revocation, or provider auditability. Production key custody remains NOT_APPROVED pending independent evidence.
