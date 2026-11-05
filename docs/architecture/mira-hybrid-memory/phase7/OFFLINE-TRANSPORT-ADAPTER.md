@@ -10,7 +10,7 @@ Status: INJECTED TRANSPORT CONTRACT PROTOTYPE — NO GOOGLE DRIVE SDK, OAUTH, NE
 
 - Construct with an injected transport, a fixed project ID, and the dedicated namespace `mira-hfm-emergency/v1`.
 - The transport must implement `getCapabilities`, `atomicCreate`, `readObject`, and `listPage`; `getQuota` is optional.
-- Before every operation, the adapter performs a cached provider capability negotiation. The provider must explicitly declare `atomicCreateIfAbsent`, `readAfterWrite`, `projectIsolation`, `encryptedObjectStorage`, and `paginatedList` as true, plus `consistency: "read-after-write"`, a bounded `maxObjectBytes` (1 byte–64 MiB), and `maxPageSize` (1–500). Missing, malformed, or unsupported capability declarations fail closed. Negotiated limits are enforced on uploads and listing.
+- Before every operation, the adapter performs a cached provider capability negotiation. The provider must explicitly declare `atomicCreateIfAbsent`, `readAfterWrite`, `projectIsolation`, `encryptedObjectStorage`, and `paginatedList` as true, plus `consistency: "read-after-write"`, a bounded `maxObjectBytes` (1 byte–64 MiB), and `maxPageSize` (1–500). Missing, malformed, or unsupported capability declarations fail closed. Negotiated limits are enforced on uploads, downloaded object reads, and listing. A provider cannot return more items than the negotiated page size.
 - Negotiation is a contract declaration, not proof of provider behavior; a real provider still requires independent verification.
 - `atomicCreate` must be a provider-side atomic create-if-absent primitive. Search-then-upload is not compliant.
 - Every non-error create response is followed by exact-byte readback; a positive create result is not accepted without matching project, backup ID, object key, encryption metadata, byte length, SHA-256 digest, and exact ciphertext bytes.
@@ -18,7 +18,7 @@ Status: INJECTED TRANSPORT CONTRACT PROTOTYPE — NO GOOGLE DRIVE SDK, OAUTH, NE
 - A pre-existing object with the same backup ID but different ciphertext/metadata is rejected as `HFM_DRIVE_OBJECT_CONFLICT`; missing readback after an explicit create result is `HFM_DRIVE_READBACK_FAILED`.
 - The caller must treat reconciled/already-present as verified presence, not proof that this invocation created the object.
 - Uploads require the exact project namespace, AES-256-GCM content type, and a SHA-256 digest field. Root keys and plaintext are not accepted by this interface.
-- Reads and listings validate project/object metadata and bounded explicit pagination.
+- Reads validate project/object metadata, canonical SHA-256 metadata, and the negotiated maximum object size. Listings validate project/object metadata, canonical UTC creation timestamps, and bounded explicit pagination.
 - Optional `getQuota` responses are validated for provider ID, account/project scope, project binding, canonical measurement timestamp, and safe integer byte counts. Missing provider quota is reported as `NOT_REPORTED`, never inferred.
 - Capacity reporting keeps the configured 5,000,000,000-byte HFM project budget separate from provider-reported quota. Account-level provider quota is explicitly labeled account scope; it is not presented as the HFM project budget.
 - The adapter exposes no delete, overwrite, move, permission-grant, OAuth, or routine-sync methods.
@@ -26,7 +26,7 @@ Status: INJECTED TRANSPORT CONTRACT PROTOTYPE — NO GOOGLE DRIVE SDK, OAUTH, NE
 
 ## Offline evidence
 
-The synthetic test uses an in-memory fake transport only. It checks capability negotiation and fail-closed unsupported providers, negotiated object/page bounds, scoped quota validation and unavailable-quota reporting, concurrent create-only behavior, project isolation, namespace traversal rejection, encrypted metadata requirements, exact-byte readback, multi-page listing, timeout-after-commit reconciliation, timeout-before-commit uncertainty, immutable-ID collision rejection, missing/unreadable readback, and absence of OAuth/network use. No credentials, network calls, real backups, or production stores are used.
+The synthetic test uses an in-memory fake transport only. It checks capability negotiation and fail-closed unsupported providers, negotiated upload/read object-size and per-page item-count bounds, canonical listing timestamp validation, scoped quota validation and unavailable-quota reporting, concurrent create-only behavior, project isolation, namespace traversal rejection, encrypted metadata requirements, exact-byte readback, multi-page listing, timeout-after-commit reconciliation, timeout-before-commit uncertainty, immutable-ID collision rejection, missing/unreadable readback, and absence of OAuth/network use. No credentials, network calls, real backups, or production stores are used.
 
 VERSION=v0.2
 TRANSPORT_ADAPTER=INJECTED_CONTRACT_PROTOTYPE
