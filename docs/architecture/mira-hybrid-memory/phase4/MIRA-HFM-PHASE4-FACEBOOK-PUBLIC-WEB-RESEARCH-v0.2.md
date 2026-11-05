@@ -18,14 +18,20 @@ Provide a no-Meta-token fallback so Mira can discover publicly indexed informati
 5. Accept only a Page root profile path or supported Page post permalink shape. Exclude groups, personal profiles and unrelated Facebook URLs.
 6. Deduplicate results, cap result count and snippet length, and preserve source URL and observation time.
 7. Return an evidence context suitable for a downstream answer generator. Every item remains SOURCE_RECORDED / UNVERIFIED / PENDING_REVIEW.
-8. Expose the workflow as the read-only Mira tool facebook_page_public_research, defaulting to the selected Page ID and name.
+8. Expose facebook_page_public_research as a Mira tool, defaulting to the selected Page ID and name. It archives accepted snippets in a separate local research store.
+9. Expose facebook_research_lookup as an offline retrieval tool. It searches the archive by Page ID and query, returning source URLs and explicit unverified status.
 
 ## Hard boundaries
 
 - No direct HTTP fetch of Facebook pages.
 - No Facebook login, session cookies, browser automation, scraping, CAPTCHA/rate-limit bypass or private-content access.
 - No Meta Graph API call, OAuth flow, Page Access Token or publishing permission.
-- No automatic persistent Memory write. The report is ephemeral, source-linked and untrusted; it must pass human review and independent verification before any governed HFM promotion.
+- Search evidence is persisted in an isolated, append-only, owner-only local Research Archive, not in Canonical HFM Memory. Archive records remain UNTRUSTED_RESEARCH_ONLY / SOURCE_RECORDED / UNVERIFIED / PENDING_REVIEW.
+- The default archive directory is `~/.mira/facebook-research-memory`; `MIRA_FACEBOOK_RESEARCH_MEMORY_DIR` can override it. The directory must be owner-only (0700), and files are owner-only (0600).
+- Archive writes are immutable and idempotent, capped at 300 records per Page and 10,000 files per archive scan. No automatic pruning or trust promotion occurs.
+- The archive contains bounded search-result snippets, titles, source URLs, timestamps and digests. It does not fetch or store full Facebook Page content, private content, credentials or cookies.
+- The archive is local to the running Mira installation. It is not synchronized across devices or cloud instances unless the operator separately configures persistent storage.
+- Research Archive entries must pass independent verification and a separate governed HFM promotion workflow before they can become Canonical Memory.
 - Search provider configuration is separate from Meta credentials. The existing web-search integration may require its own provider key (for example, the configured Tavily key); without a configured provider, status is unavailable rather than pretending a search occurred.
 - Search-engine snippets may be stale, incomplete, truncated or incorrectly attributed. Exact Page-ID presence is a minimum identity filter, not proof of authorship, ownership, current visibility or truth.
 
@@ -49,13 +55,15 @@ It must not state that it read the full Facebook profile or all Page posts when 
 | Evidence provenance and untrusted status | Implemented |
 | Direct Facebook fetch / login / cookies | Prohibited; zero in contract tests |
 | Meta API token dependency | None |
+| Isolated immutable UNTRUSTED research archive | Implemented; owner-only directory/files; capped and idempotent |
+| Offline retrieval from research archive | Implemented via facebook_research_lookup |
 | Canonical HFM Memory write | Not implemented / prohibited in this mode |
 | Live search-provider execution | Not run by offline tests |
 | Mira tool registration and read-only policy | Implemented; offline CI verified |
 | End-to-end answer integration | Pending separate integration and verification |
 
 VERSION=v0.2
-PHASE4_PUBLIC_WEB_RESEARCH=OFFLINE_CONTRACT
+PHASE4_PUBLIC_WEB_RESEARCH=UNTRUSTED_ARCHIVE_AND_RETRIEVAL_OFFLINE_CONTRACT
 META_TOKEN_REQUIRED=NO
 LIVE_SEARCH=NOT_RUN
 CANONICAL_MEMORY_WRITE=NOT_ALLOWED
