@@ -36,7 +36,7 @@ function buildFacebookPageResearchQueries({ pageId, pageName, pageUrl } = {}) {
 }
 function parseSearchResults(value) {
   let parsed = value;
-  if (typeof parsed === 'string') { try { parsed = JSON.parse(parsed); } catch { return []; } }
+  if (typeof parsed === 'string') { try { parsed = JSON.parse(parsed); } catch { throw new Error('SEARCH_PROVIDER_INVALID_RESPONSE'); } }
   if (Array.isArray(parsed)) return parsed;
   if (parsed && Array.isArray(parsed.results)) return parsed.results;
   if (parsed && Array.isArray(parsed.items)) return parsed.items;
@@ -111,7 +111,7 @@ async function collectPublicFacebookPageEvidence({
     schemaVersion: '1.0.0', providerId: 'facebook-public-web-research',
     page: Object.freeze({ pageId: id, pageName: pageName ? text(pageName, 'pageName', 128) : null }),
     retrievalMode: 'PUBLIC_SEARCH_INDEX_ONLY',
-    status: evidence.length ? 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED' : 'NO_ID_BOUND_PUBLIC_FACEBOOK_RESULTS',
+    status: evidence.length ? 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED' : errors.length ? 'SEARCH_PROVIDER_UNAVAILABLE' : 'NO_ID_BOUND_PUBLIC_FACEBOOK_RESULTS',
     queriesExecuted: queries.length - errors.length,
     evidence: Object.freeze(evidence), errors: Object.freeze(errors),
     limits: Object.freeze({
