@@ -13,11 +13,13 @@ on:
       - 'services/mira-hfm-learning-legacy-compatibility.js'
       - 'services/mira-hfm-legacy-learning-evidence-adapter.js'
       - 'routes/mira-hfm-learning-evolution.js'
+      - 'public/index.html'
       - 'server.js'
       - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
       - 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
       - 'tests/mira-hfm-learning-generation-cycle.test.js'
+      - 'tests/mira-hfm-learning-ui-contract.test.js'
       - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
       - 'tests/mira-hfm-learning-evolution-review-route.test.js'
       - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
@@ -74,4 +76,5 @@ jobs:
           node tests/mira-hfm-learning-evolution-review-route.test.js &&
           node tests/mira-hfm-learning-legacy-compatibility.test.js &&
           node tests/mira-hfm-learning-supabase-store.test.js &&
-          node tests/mira-hfm-learning-generation-cycle.test.js
+          node tests/mira-hfm-learning-generation-cycle.test.js &&
+          node tests/mira-hfm-learning-ui-contract.test.js
