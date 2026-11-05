@@ -74,6 +74,24 @@ async function rejectsCode(promise, code) {
   })), 'HFM_POLICY_STATE_UNAVAILABLE');
   restarted.setUnavailable(false);
 
+  // Request is lost before commit: state remains unchanged and same-key retry is safe.
+  const preCommitLoss = createLocalFakePolicyStateProvider({ authorityId });
+  preCommitLoss.failNextRequestBeforeCommit();
+  const notCommittedRequest = request({ key: 'lost-before-commit-key' });
+  await rejectsCode(preCommitLoss.compareAndSwap(notCommittedRequest), 'HFM_POLICY_STATE_REQUEST_NOT_COMMITTED');
+  assert.equal((await preCommitLoss.readState()).highestAcceptedSequence, 0);
+  const safeRetryReceipt = await preCommitLoss.compareAndSwap(notCommittedRequest);
+  assert.equal(safeRetryReceipt.nextSequence, 1);
+  assert.equal((await preCommitLoss.readState()).highestAcceptedSequence, 1);
+
+  // Returned state and exported snapshots cannot mutate provider-owned state.
+  const isolated = createLocalFakePolicyStateProvider({ authorityId });
+  const exposedState = await isolated.readState();
+  exposedState.highestAcceptedSequence = 99;
+  const exported = isolated.exportSnapshot();
+  exported.state.highestAcceptedSequence = 88;
+  assert.equal((await isolated.readState()).highestAcceptedSequence, 0);
+
   // Commit succeeds but response is lost; same-key retry reconciles receipt without duplicate commit.
   const ambiguous = createLocalFakePolicyStateProvider({ authorityId });
   ambiguous.loseNextCommitResponse();
