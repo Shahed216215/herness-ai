@@ -99,7 +99,8 @@ function createLocalStagingSnapshotSource(config) {
     knowledgeFile = pinnedRoot.path + '/' + knowledgeName;
     for (const [filePath, label] of [[memoryFile, 'Memory source'], [knowledgeFile, 'Knowledge source']]) {
       const stat = fs.lstatSync(filePath);
-      if (stat.isSymbolicLink() || !stat.isFile()) fail(label + ' must be a regular file.', 'HFM_STAGING_FILE_UNSAFE');
+      if (stat.isSymbolicLink()) fail(label + ' must not traverse a symbolic link.', 'HFM_STAGING_PATH_OUTSIDE_ROOT');
+      if (!stat.isFile()) fail(label + ' must be a regular file.', 'HFM_STAGING_FILE_UNSAFE');
       if (stat.size > MAX_SOURCE_FILE_BYTES) fail(label + ' exceeds the staging snapshot size limit.', 'HFM_STAGING_FILE_TOO_LARGE');
     }
   } catch (error) {
