@@ -101,10 +101,16 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
       actorRole:event.actorRole, actorId:event.actorId || 'unknown',
       canonicalMemoryWrites:0, recordedAt:new Date().toISOString() };
     const eventDigest = digest(payload);
-    const eventId = crypto.randomUUID();
+    const identity = crypto.createHash('sha256').update([
+      event.event, event.projectId, event.proposalId, event.proposalDigest
+    ].join('|'), 'utf8').digest('hex').slice(0, 32);
+    const variant = ((parseInt(identity[16], 16) & 3) | 8).toString(16);
+    const eventId = identity.slice(0, 8) + '-' + identity.slice(8, 12) + '-5' +
+      identity.slice(13, 16) + '-' + variant + identity.slice(17, 20) + '-' + identity.slice(20);
     const row = { event_id:eventId, project_id:event.projectId, proposal_id:event.proposalId,
       event_digest:eventDigest, payload };
-    const inserted = responseRows(await callTable(AUDIT_TABLE, '', 'POST', [row], { Prefer:'return=representation' }));
+    const inserted = responseRows(await callTable(AUDIT_TABLE, '?on_conflict=event_id', 'POST', [row],
+      { Prefer:'resolution=ignore-duplicates,return=representation' }));
     if (inserted.length !== 1 || inserted[0].event_id !== eventId || inserted[0].event_digest !== eventDigest)
       fail('HFM_LEARNING_SUPABASE_AUDIT_WRITE_FAILED', 'Supabase did not confirm the proposal audit insert.');
     const verified = responseRows(await callTable(AUDIT_TABLE,
