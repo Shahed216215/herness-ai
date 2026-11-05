@@ -307,12 +307,22 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       const chunks = [];
       let total = 0;
       for await (const chunk of stream) {
-        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        total += bytes.length;
-        if (total > MAX_OBJECT_BYTES) {
+        let chunkBytes;
+        if (Buffer.isBuffer(chunk) || chunk instanceof Uint8Array) {
+          chunkBytes = chunk.byteLength;
+        } else if (typeof chunk === 'string') {
+          chunkBytes = Buffer.byteLength(chunk, 'utf8');
+        } else {
+          reject('Google Drive media stream emitted an unsupported chunk type.',
+            'HFM_GOOGLE_DRIVE_DOWNLOAD_INVALID');
+        }
+        if (!Number.isSafeInteger(chunkBytes) || chunkBytes < 0 ||
+            total + chunkBytes > MAX_OBJECT_BYTES) {
           reject('Google Drive media response exceeds the encrypted object limit.',
             'HFM_GOOGLE_DRIVE_OBJECT_TOO_LARGE');
         }
+        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        total += chunkBytes;
         chunks.push(bytes);
       }
       if (total < 1) reject('Google Drive returned an empty backup object.',
