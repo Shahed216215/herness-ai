@@ -6,7 +6,7 @@ const REQUIRED_FIELDS = Object.freeze([
   'securityPrincipalId',
   'trustDomainId',
   'sourceSystemId',
-  'authorizationIssuerId'
+  'snapshotIssuerId'
 ]);
 
 function fail(message, code) {
