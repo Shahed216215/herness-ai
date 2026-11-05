@@ -1,0 +1,31 @@
+name: Mira HFM Phase 7 Encrypted Emergency Backup
+
+on:
+  pull_request:
+    paths:
+      - 'services/mira-hfm-encrypted-emergency-backup.js'
+      - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase7/**'
+      - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
+  push:
+    branches:
+      - 'work/mira-hfm-v02-phase7-encrypted-emergency-backup'
+    paths:
+      - 'services/mira-hfm-encrypted-emergency-backup.js'
+      - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase7/**'
+      - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-encryption-and-restore-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run synthetic offline backup tests
+        run: node tests/mira-hfm-encrypted-emergency-backup.test.js
