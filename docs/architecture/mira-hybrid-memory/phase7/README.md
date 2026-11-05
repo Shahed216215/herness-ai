@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Encrypted Emergency Backup
 
-Status: ENCRYPTION, IMMUTABLE LOCAL ARTIFACT, INTEGRITY VERIFICATION, RESTORE PREVIEW/STAGING, PROVIDER-NEUTRAL CAPACITY MONITOR AND NON-DESTRUCTIVE RETENTION PREVIEW IMPLEMENTED; GOOGLE DRIVE ADAPTER AND LIVE RESTORE NOT CERTIFIED.
+Status: ENCRYPTION, IMMUTABLE LOCAL ARTIFACT, INTEGRITY VERIFICATION, RESTORE PREVIEW/STAGING, PROVIDER-NEUTRAL CAPACITY MONITOR AND NON-DESTRUCTIVE RETENTION PREVIEW IMPLEMENTED; GOOGLE DRIVE ADAPTER, PRODUCTION KEY CUSTODY AND LIVE RESTORE NOT CERTIFIED.
 
 ## Scope
 
@@ -41,7 +41,7 @@ Run: `node tests/mira-hfm-encrypted-emergency-backup.test.js`
 Latest pagination-enabled GitHub Actions run **41977403086: SUCCESS** (job **127079375920**); all 16 emitted PASS test-group markers were present, including `HFM_PHASE7_PAGINATION_COMPLETE_AND_INCOMPLETE_REJECTED=PASS`; `TESTS_FAILED=0`, `CANONICAL_WRITES=0`, `PRODUCTION_RESTORE=0`. Earlier run 41966766573 is historical. Verified log groups include authenticated local/cloud restore preview without writes, project-scoped 5 GB capacity monitoring, non-destructive retention planning, independent-process recovery, and failed-authentication/no-stage-artifact checks. Synthetic offline tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, authenticated local/cloud restore previews without writes, authenticated-before-write local storage (wrong-key input creates no file), immutable write/readback, encrypted-only cloud adapter capability gates, create-only cloud upload/readback, project isolation, project-scoped 5 GB capacity accounting, non-destructive retention planning, cloud-download restore-to-staging, independent-process recovery from the exact encrypted artifact, and proof that failed authentication creates no restore-stage file. No live network or cloud calls occur.
 
 VERSION=v0.2
-PHASE7=ENCRYPTED_EMERGENCY_BACKUP_PRIMITIVE_IMPLEMENTED
+PHASE7=ENCRYPTED_EMERGENCY_BACKUP_AND_OFFLINE_KEY_VERSION_CONTRACT_IMPLEMENTED
 ROUTINE_DRIVE_SYNC=UNCHANGED
 CLOUD_TRANSPORT=PROVIDER_NEUTRAL_CONTRACT_ONLY
 PRODUCTION_RESTORE=NOT_CERTIFIED
@@ -54,6 +54,16 @@ PRODUCTION_RESTORE=NOT_CERTIFIED
 - Capacity inspection requires `capabilities.list === true` and an adapter `list({ projectId, prefix, cursor, limit })` implementation returning `{ items, complete, nextCursor }`. The consumer follows bounded opaque cursors to explicit completion; legacy one-shot arrays, malformed pages, repeated cursors, and page/item-limit exhaustion are rejected as INCONCLUSIVE. Each listed object must bind to the exact project/object key and provide a positive byte count and canonical creation timestamp.
 - Retention preview requires an explicit `keepLast` and `maxAgeDays`; it labels old snapshots as candidates but never removes them. No automatic pruning or deletion is implemented.
 
+
+
+## Versioned key-provider contract prototype
+
+- Added `services/mira-hfm-backup-key-provider.js` as a provider-injected offline contract wrapper; it is not a production key vault/KMS.
+- Backup envelopes authenticate `metadata.keyVersionId`; decryption requests that exact version and does not silently fall back.
+- A temporary key copy is zeroed after callback completion; this is best-effort JavaScript memory hygiene, not a guarantee that runtime copies are erased.
+- Distinct provider failure codes, historical key A decryption after key B creation, malformed key rejection, and retirement evidence gates are covered by synthetic tests.
+- Latest code/test CI run **41979355022 — SUCCESS** (job **127085605994**); raw log contains **20 PASS test-group markers**, including all four new key-provider groups; `TESTS_FAILED=0`, `CANONICAL_WRITES=0`, `PRODUCTION_RESTORE=0`.
+- Production key provider, key creation/rotation/retirement operations, escrow and recovery remain NOT_IMPLEMENTED / NOT_CERTIFIED.
 
 ## Next integration gate
 
