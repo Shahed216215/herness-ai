@@ -54,7 +54,7 @@ function normalizeResult(item, pageId, observedAt) {
   const snippet = snippetRaw.slice(0, MAX_SNIPPET_CHARS);
   if (!(url.toString() + ' ' + title + ' ' + snippet).includes(pageId)) return null;
   const parts = url.pathname.split('/').filter(Boolean);
-  const isPost = (parts.length === 3 && parts[1] === 'posts') ||
+  const isPost = (parts.length === 3 && parts[0] === pageId && parts[1] === 'posts') ||
     (url.pathname === '/permalink.php' && url.searchParams.get('id') === pageId && !!url.searchParams.get('story_fbid'));
   const isProfile = parts.length === 1 && parts[0] === pageId;
   if (!isPost && !isProfile) return null;
