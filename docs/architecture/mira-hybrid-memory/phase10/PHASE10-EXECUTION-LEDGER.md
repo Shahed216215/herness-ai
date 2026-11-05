@@ -32,3 +32,16 @@ Status: INDEPENDENT_VERIFICATION_HARNESS_ADDED / CI_PENDING
 - Verified markers: `PHASE10_PHASE7_ENCRYPTED_BACKUP_RECOVERY_PREVIEW_PASS`, `PHASE10_RECOVERY_BASELINE_MISMATCH_BLOCK_PASS`, `PHASE10_PHASE8_DERIVED_PROJECTION_LINEAGE_PASS`, `PHASE10_PHASE9_PROJECT_RETRIEVAL_INDEX_PASS`, `PHASE10_PHASE8_EVOLUTION_PREPARE_ONLY_WITH_PHASE7_RECOVERY_PASS`, `PHASE10_UNVERIFIED_CANDIDATE_NOT_RETRIEVABLE_PASS`, `PHASE10_STATIC_NO_CANONICAL_WRITE_OR_EVOLUTION_APPLY_PATH_PASS`.
 - Logs: `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `PERSISTENT_INDEX_WRITES=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `RESTORE_EXECUTED=NO`, `EVOLUTION_APPLIED=NO`.
 - Phase 10 synthetic independent verification: PASS. Production readiness remains NOT_CERTIFIED pending real host authority, durable replay, production key custody, infrastructure independence, live Drive and actual canonical persistence/recovery review.
+
+
+## Entry 003 — Phase 10 re-run with signed policy-state and independent evidence verifier
+
+- Latest Phase 10 run #31, ID `42052640195`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42052640195, exact commit `6ec332d46ea0032a92cd1c077b366f5d3b3e8b2d`: SUCCESS. Job `phase10-independent-cross-phase-verification` SUCCESS.
+- Same-commit Phase 7 run #159 / ID `42052640162`: SUCCESS.
+- Phase 10 now re-runs the signed policy-state provider and independent provenance evidence verifier tests in addition to the previous 10 Phase 7, 9 Phase 8 and 3 Phase 9 suites, then runs the independent cross-phase test.
+- Policy-state markers passed: signed authority, freshness/revocation, durable/atomic capability claims, compare-and-swap, commit receipt binding and fail-closed conflict handling.
+- Independent evidence markers passed: signed issuer, scope binding, digest binding, freshness and fail-closed behavior.
+- Phase 9 performance on this run: 1k records p50 38.59 ms / p95 41.07 ms; 5k records p50 150.49 ms / p95 159.75 ms; RSS delta 271.38 MiB.
+- Phase 10 cross-phase markers passed for encrypted backup/recovery preview, baseline mismatch rejection, derived projection lineage, project-scoped retrieval, Evolution prepare-only with verified recovery proof, pending/unverified candidate exclusion and static no-write/no-apply source audit.
+- Logs: `NETWORK_REQUESTS=0`, `PERSISTENT_INDEX_WRITES=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `RESTORE_EXECUTED=NO`, `EVOLUTION_APPLIED=NO`.
+- Phase 10 synthetic independent verification: PASS. Production readiness remains NOT_CERTIFIED.
