@@ -45,6 +45,15 @@ on:
       - work/mira-hfm-v02-phase4-facebook-page-connector
     paths:
       - 'services/mira-facebook-page-memory-connector.js'
+      - 'services/mira-facebook-research-memory.js'
+      - 'services/mira-facebook-research-memory-provider.js'
+      - 'services/mira-facebook-public-web-research.js'
+      - 'tools/facebook-page-research.js'
+      - 'tools/facebook-research-lookup.js'
+      - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-facebook-research-supabase-provider.test.js'
+      - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase4/**'
       - 'tests/mira-facebook-page-memory-connector.test.js'
       - 'services/mira-facebook-page-hfm-adapter.js'
       - 'services/mira-facebook-page-operation-recovery.js'
