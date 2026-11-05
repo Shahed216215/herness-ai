@@ -232,7 +232,7 @@ Official API references reviewed:
 
 The documentation supports generated IDs for `drive` and `appDataFolder` spaces and describes duplicate-preventing 409 responses on retry after a successful create. Pre-generated IDs are not supported for ordinary Google Workspace document conversion; HFM must remain an ordinary binary file. This research does not authorize OAuth or certify the injected account-fingerprint callback.
 
-STATUS=INJECTED_GOOGLE_DRIVE_V3_MAPPER_OFFLINE_TESTED
+STATUS=INJECTED_GOOGLE_DRIVE_V3_MAPPER_IMPLEMENTED_CI_PENDING
 OAUTH_CLIENT=NOT_CREATED
 LIVE_GOOGLE_DRIVE=NOT_TESTED
 SHARED_DRIVE=NOT_CERTIFIED
