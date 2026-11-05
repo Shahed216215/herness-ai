@@ -40,6 +40,21 @@ const missingTavily = evaluateDeploymentPreflight({
 assert.equal(missingTavily.status, 'BLOCKED');
 assert.equal(missingTavily.checks.find(item => item.name === 'TAVILY_API_KEY').status, 'FAIL');
 
+const openAiMissingModel = evaluateDeploymentPreflight({
+  env: { ...goodEnv, OPENAI_API_KEY: 'openai-synthetic-secret' },
+  nodeVersion: 'v24.18.0',
+  providerRuntime: { provider: 'openai', model: '' }
+});
+assert.equal(openAiMissingModel.status, 'BLOCKED');
+assert.equal(openAiMissingModel.checks.find(item => item.name === 'AI_PROVIDER_MODEL').status, 'FAIL');
+
+const openAiReady = evaluateDeploymentPreflight({
+  env: { ...goodEnv, OPENAI_API_KEY: 'openai-synthetic-secret' },
+  nodeVersion: 'v24.18.0',
+  providerRuntime: { provider: 'openai', model: 'gpt-4.1-mini' }
+});
+assert.equal(openAiReady.status, 'READY_FOR_LIVE_TEST');
+
 const custom = evaluateDeploymentPreflight({
   env: goodEnv,
   nodeVersion: 'v24.18.0',
@@ -60,6 +75,7 @@ console.log('HFM_PHASE6_DEPLOYMENT_PREFLIGHT_SECRET_REDACTION=PASS');
 console.log('HFM_PHASE6_DEPLOYMENT_PREFLIGHT_SUPABASE_CONFIG_VALIDATION=PASS');
 console.log('HFM_PHASE6_DEPLOYMENT_PREFLIGHT_EPHEMERAL_STORAGE_BLOCK=PASS');
 console.log('HFM_PHASE6_DEPLOYMENT_PREFLIGHT_MISSING_PROVIDER_KEY_BLOCK=PASS');
+console.log('HFM_PHASE6_DEPLOYMENT_PREFLIGHT_OPENAI_MODEL_REQUIRED=PASS');
 console.log('HFM_PHASE6_DEPLOYMENT_PREFLIGHT_CUSTOM_PROVIDER_REVIEW=PASS');
 console.log('LIVE_NETWORK_REQUESTS=0');
 console.log('TESTS_FAILED=0');
