@@ -17,6 +17,13 @@ function fail(code, message) {
   throw error;
 }
 
+function failCommitted(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  error.stateCommitted = true;
+  throw error;
+}
+
 function validateConfig(env = process.env) {
   const rawUrl = typeof env.SUPABASE_URL === 'string' ? env.SUPABASE_URL.trim() : '';
   const key = typeof env.SUPABASE_SERVICE_ROLE_KEY === 'string'
