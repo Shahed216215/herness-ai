@@ -53,3 +53,8 @@ PRODUCTION_RESTORE=NOT_CERTIFIED
 - Capacity states: `WITHIN_BUDGET`, `NEAR_BUDGET_LIMIT` (90% or more), and `OVER_BUDGET`.
 - Capacity inspection requires `capabilities.list === true` and an adapter `list({ projectId, prefix })` implementation. Each listed object must bind to the exact project/object key and provide a positive byte count and canonical creation timestamp.
 - Retention preview requires an explicit `keepLast` and `maxAgeDays`; it labels old snapshots as candidates but never removes them. No automatic pruning or deletion is implemented.
+
+
+## Next integration gate
+
+See [Drive and Key-Management Integration Gates](./DRIVE-KEY-MANAGEMENT-INTEGRATION-GATES.md) for the required OAuth least-privilege contract, encrypted-only Drive adapter requirements, key-provider/rotation requirements, snapshot-exporter dependency, offline test matrix, and separate live-authorization gate. This is a design contract only; no live Drive integration or key provider is certified.
