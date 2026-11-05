@@ -1,6 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { validateKeyProviderContract } = require('../services/mira-hfm-key-provider-contract');
+const { validateSnapshotSigningProvider } = require('../services/mira-hfm-snapshot-signing-provider-contract');
 
 const metadata = { keyId: 'fixture-key', keyVersion: '2' };
 const provider = {
@@ -21,4 +22,27 @@ assert.throws(() => validateKeyProviderContract({ ...provider, unwrapDataKey: un
   metadata, 'wrapDataKey'), error => error.code === 'BACKUP_KEY_PROVIDER_CONTRACT_INVALID');
 assert.throws(() => validateKeyProviderContract(provider, metadata, 'deleteKey'),
   error => error.code === 'BACKUP_KEY_PROVIDER_CONTRACT_INVALID');
+
+const signingProvider = {
+  descriptor: { contractVersion: '1', providerId: 'fixture-snapshot-signer', providerVersion: '1',
+    keyId: 'snapshot-key', keyVersion: 'v2', keyPurpose: 'MIRA_HFM_SNAPSHOT_ATTESTATION',
+    algorithm: 'Ed25519', environment: 'staging' },
+  async sign() { return Buffer.alloc(64); }
+};
+const signingResult = validateSnapshotSigningProvider(signingProvider, {
+  environment: 'staging', keyId: 'snapshot-key'
+});
+assert.equal(signingResult.status, 'SIGNING_PROVIDER_SHAPE_VALID_NOT_CUSTODY_APPROVAL');
+assert.equal(signingResult.productionUseAllowed, false);
+assert.throws(() => validateSnapshotSigningProvider({
+  ...signingProvider, descriptor: { ...signingProvider.descriptor, keyVersion: '' }
+}, { environment: 'staging', keyId: 'snapshot-key' }),
+error => error.code === 'HFM_SIGNING_PROVIDER_CONTRACT_INVALID');
+assert.throws(() => validateSnapshotSigningProvider({
+  ...signingProvider, privateKeyPem: 'must-not-enter-provider-interface'
+}, { environment: 'staging', keyId: 'snapshot-key' }),
+error => error.code === 'HFM_SIGNING_PROVIDER_CONTRACT_INVALID');
+process.stdout.write('MIRA_HFM_PHASE7_SNAPSHOT_SIGNING_PROVIDER_CONTRACT_PASS\\n');
+process.stdout.write('PRIVATE_KEY_MATERIAL_EXPOSED_TO_ADAPTER=NO\\n');
+
 process.stdout.write('MIRA_HFM_PHASE7_KEY_PROVIDER_CONTRACT_PASS\nPRODUCTION_KEY_CUSTODY=NOT_APPROVED\nNETWORK_REQUESTS=0\n');
