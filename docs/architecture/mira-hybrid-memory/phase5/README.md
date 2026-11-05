@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 5 Facebook Group Manual Import
 
-Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FOUR FOCUSED PHASE 5 TESTS, NINE DEPENDENCY-FREE STATIC REGRESSION TESTS, AND THE CANONICAL 29-TEST `npm test` CHAIN PASS ON THE PREVIOUS EXACT HEAD. A subsequent Render preflight found and corrected duplicate Facebook Group route declaration/mount wiring and changed the production bind host to `0.0.0.0` while preserving local loopback binding. A new server-startup contract test was added to make the canonical chain 30 tests; exact-head CI for this latest change is pending. Live Supabase migration/persistence, Render deployment, and runtime verification remain deferred.
+Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FOUR FOCUSED PHASE 5 TESTS, NINE DEPENDENCY-FREE STATIC REGRESSION TESTS, AND THE FULL CANONICAL 30-TEST `npm test` CHAIN PASS IN EXACT-HEAD CI. The four formerly absent test paths were recreated as scoped tests from current source contracts. A Render preflight also corrected duplicate Facebook Group route declaration/mount wiring and made the bind host production-aware. Supabase migration/persistence and live Render deployment/runtime verification remain deferred.
 
 ## Scope implemented
 
@@ -88,7 +88,7 @@ The following nine tests are also run by `npm run test:offline-static-regression
 - `tests/provider-navigation-contract.js`
 - `tests/mira-facebook-group-memory-migration-structure.test.js`
 
-The `npm run test:offline-regression:available` script now covers all 29 test paths in the canonical `npm test` chain. After explicit approval, GitHub Actions installed the exact lockfile dependencies with `npm ci --ignore-scripts --no-audit --no-fund`; dependency lifecycle scripts were disabled. The canonical `npm test` command completed successfully on the exact reviewed commit. Tests use temporary local files, mocked provider-health/request functions, and loopback-only local HTTP servers. CI logs report zero live Facebook requests, private Group access, canonical Memory writes, or production migration.
+The `npm run test:offline-regression:available` script now covers all 30 test paths in the canonical `npm test` chain. After explicit approval, GitHub Actions installed the exact lockfile dependencies with `npm ci --ignore-scripts --no-audit --no-fund`; dependency lifecycle scripts were disabled. The canonical `npm test` command completed successfully on exact head `1d200056d26fc029ff46b7a69ee7e60e720e6a76`. Tests use temporary local files, mocked provider-health/request functions, and loopback-only local HTTP servers. CI logs report zero live Facebook requests, private Group access, canonical Memory writes, or production migration.
 
 ### Full test command integrity finding and resolution
 
@@ -99,25 +99,25 @@ The four test paths previously missing from the repository were not recoverable 
 - `tests/custom-provider-config-route-isolated.test.js` — isolated read/save/invalid-input route behavior and proof that saving metadata does not activate or rewrite runtime provider configuration.
 - `tests/provider-claude-grok-contract.test.js` — Anthropic/Claude and xAI/Grok request shape, message filtering, model/credential requirements, and injected mock transport.
 
-The canonical `npm test` script retains all 29 test entries. The separate `npm run test:offline-regression:available` command was expanded to the same 29-file set; no test entry was silently removed. The workflow now executes the canonical `npm test` command directly and includes `tests/**` in its pull-request path filters. GitHub Actions installed locked dependencies only after explicit approval using `npm ci --ignore-scripts --no-audit --no-fund`; no package installation was performed on the user's Termux device.
+The canonical `npm test` script retains all 30 test entries, including `tests/server-startup-contract.test.js`. The separate `npm run test:offline-regression:available` command contains the same 30-file set; no test entry was silently removed. The workflow executes the canonical `npm test` command directly and includes `tests/**` in its pull-request path filters. GitHub Actions installed locked dependencies only after explicit approval using `npm ci --ignore-scripts --no-audit --no-fund`; no package installation was performed on the user's Termux device.
 
 ### Verified exact-head CI evidence (2026-11-05)
 
 - Branch: `work/mira-hfm-v02-phase5-clean-restack-on-phase4-20261105`.
-- Latest canonical-test commit: `4139c045c0ef73ac958eb40536924969fb0a73a1`.
-- Exact-head GitHub Actions run: [42032283115](https://github.com/Shahed216215/herness-ai/actions/runs/42032283115) — SUCCESS.
-- Preceding 29-test regression run: [42032167282](https://github.com/Shahed216215/herness-ai/actions/runs/42032167282) — SUCCESS.
+- Latest reviewed head: `1d200056d26fc029ff46b7a69ee7e60e720e6a76`.
+- Exact-head GitHub Actions run: [42033146301](https://github.com/Shahed216215/herness-ai/actions/runs/42033146301) — SUCCESS.
 - Job: `facebook-group-import-offline`; Node.js 24.
-- All four focused Phase 5 suites, all nine dependency-free static regression tests, and the full canonical `npm test` chain (29 test files) passed.
+- All four focused Phase 5 suites, all nine dependency-free static regression tests, and the full canonical `npm test` chain (30 test files) passed.
+- The server-startup regression test reported `SERVER_JAVASCRIPT_SYNTAX=PASS`, `FACEBOOK_GROUP_ROUTE_SINGLE_DECLARATION=PASS`, `FACEBOOK_GROUP_ROUTE_SINGLE_MOUNT=PASS`, `PRODUCTION_BIND_HOST_CONTRACT=PASS`, `LOCAL_LOOPBACK_BIND_CONTRACT=PASS`, and `SERVER_STARTUP_CONTRACT_TEST=PASS`.
 - The first dependency-enabled run found incomplete isolated test fixtures: they did not copy `services/mira-json-state-store.js` and `services/mira-store-initialization-guard.js`, required by `audit-log.js`. Five isolated fixtures were corrected to include those dependencies; the final exact-head CI passed.
 - Recorded boundary checks: `LIVE_FACEBOOK_REQUESTS=0`, `PRIVATE_GROUP_ACCESS=0`, `CANONICAL_MEMORY_WRITES=0`, and `PRODUCTION_MIGRATION=0`.
-- Therefore the focused Phase 5 offline CI result is **PASS**. This does not mean the full repository `npm test` chain passed: that broader chain has not been verified on this exact head in this acceptance check.
+- The latest 30-test exact-head CI result is **PASS**. This is offline CI evidence only; it does not prove that Supabase migration or Render deployment/runtime has occurred.
 
 ## Render startup preflight finding (2026-11-05)
 
 The pre-deployment source review found two duplicate declarations of `registerFacebookGroupMemoryImportRoutes` and two identical route-mount calls in `server.js`. The duplicate `const` declaration would prevent Node.js from parsing the server. The second declaration and second mount were removed, leaving one route declaration and one mount.
 
-The same review found the server listening on `127.0.0.1` unconditionally. The bind host is now production-aware: `0.0.0.0` when `NODE_ENV=production`, and `127.0.0.1` for local development. A new `tests/server-startup-contract.test.js` test runs `node --check server.js` and verifies single route declaration/mount plus the production/local bind contract. It was added to both canonical `npm test` and `test:offline-regression:available`, increasing the chain from 29 to 30 test files. The previous 29-test exact-head run does not validate this new fix; the latest 30-test exact-head CI result is pending.
+The same review found the server listening on `127.0.0.1` unconditionally. The bind host is now production-aware: `0.0.0.0` when `NODE_ENV=production`, and `127.0.0.1` for local development. A new `tests/server-startup-contract.test.js` test runs `node --check server.js` and verifies single route declaration/mount plus the production/local bind contract. It was added to both canonical `npm test` and `test:offline-regression:available`, increasing the chain from 29 to 30 test files. Exact-head CI run `42033146301` passed all 30 tests and the startup contract.
 
 ## Deferred Render verification
 
@@ -137,14 +137,14 @@ The same review found the server listening on `127.0.0.1` unconditionally. The b
 | Focused Phase 5 offline CI suites | PASS | Actions run `42008461380`, exact head SHA above |
 | External-action boundaries in focused CI | PASS | Zero live Facebook requests, private Group access, canonical Memory writes, and production migrations |
 | Dependency-free static regression suite | PASS | Nine tests passed in exact-head run `42029506505`; includes Stage 19 URL/transport contracts and UI/rollback contracts |
-| Full canonical `npm test` regression set (29 tests) | PASS | Exact-head CI run `42032283115`; locked dependencies installed with lifecycle scripts disabled |
-| Full repository `npm test` chain | PASS | All 29 referenced test files exist; four missing paths were redesigned as scoped tests and run on exact head `4139c045c0ef73ac958eb40536924969fb0a73a1` |
+| Full canonical `npm test` regression set (30 tests) | PASS | Exact-head CI run `42033146301`; locked dependencies installed with lifecycle scripts disabled |
+| Full repository `npm test` chain | PASS | All 30 referenced test files exist; four missing paths were redesigned as scoped tests and the startup contract test passed on exact head `1d200056d26fc029ff46b7a69ee7e60e720e6a76` |
 | SQL migration static structure checks | PASS | New offline test verifies both tables, keys, digest constraints, RLS, and service-role SELECT/INSERT-only grants; no PostgreSQL parser/database execution was performed |
 | Supabase migration application and real persistence/readback | DEFERRED | Requires explicit deployment-window approval and target-project verification |
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
 | Native Meta export archive compatibility | NOT_IMPLEMENTED | Only documented JSON, JSONL, and manual-text interchange formats are supported |
 
-**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_29_PASS_PREVIOUS_HEAD; SERVER_STARTUP_FIX_APPLIED; CANONICAL_NPM_TEST_30_PENDING_EXACT_HEAD_CI; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified because the latest startup fix needs exact-head CI and Supabase/Render live verification remains deferred. All work remains within Mira HFM v0.2.
+**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified because Supabase/Render live verification remains deferred. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
