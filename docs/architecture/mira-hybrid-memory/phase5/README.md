@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 5 Facebook Group Manual Import
 
-Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FOUR FOCUSED PHASE 5 TESTS, NINE DEPENDENCY-FREE STATIC REGRESSION TESTS, AND THE FULL CANONICAL 30-TEST `npm test` CHAIN PASS IN EXACT-HEAD CI. The four formerly absent test paths were recreated as scoped tests from current source contracts. A Render preflight also corrected duplicate Facebook Group route declaration/mount wiring and made the bind host production-aware. Supabase migration/persistence and live Render deployment/runtime verification remain deferred.
+Status: IMPORT PIPELINE, ADMIN API ROUTES, ATOMIC BATCH/AUDIT RPC, ADDITIVE MIGRATIONS, FOUR FOCUSED PHASE 5 TESTS, NINE DEPENDENCY-FREE STATIC REGRESSION TESTS, FULL CANONICAL 30-TEST `npm test` CHAIN, AND ISOLATED POSTGRESQL 16 INTEGRATION PASS IN EXACT-HEAD CI. The four formerly absent test paths were recreated as scoped tests from current source contracts. A Render preflight corrected duplicate Facebook Group route declaration/mount wiring and made the bind host production-aware. Live Supabase migration/persistence and Render deployment/runtime verification remain deferred.
 
 ## Scope implemented
 
@@ -11,8 +11,8 @@ Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FO
 - Maps imported records to `sourceType=facebook_group`, `PROJECT_PRIVATE`, `SOURCE_RECORDED`, `UNVERIFIED`, and `PENDING_REVIEW`.
 - Detects exact duplicates across existing stored batches and within an import. Stable generated memory identity is based on Group ID plus source ID so content changes do not evade version conflict detection.
 - Quarantines same-identity revision/content conflicts. Quarantined records remain in the immutable batch payload and are excluded from trusted Memory retrieval.
-- Uses a dedicated Supabase store adapter with immutable create-only batch staging, project/group scoping, read-after-write verification, and conflict detection.
-- Persists append-only import audit events in a separate Supabase table and verifies audit write readback.
+- Uses a dedicated Supabase store adapter with a transactional RPC for immutable Batch staging and Audit creation, project/group scoping, deterministic operation-key idempotency, and Batch/Audit readback verification.
+- The RPC uses transaction-scoped advisory locks and SECURITY INVOKER; table writes remain restricted to SELECT/INSERT for service_role, with no UPDATE/DELETE grant.
 - Provides an admin-only API for import and retrieval. Imported records are never written to canonical trusted Memory.
 
 ## Input formats
@@ -42,7 +42,9 @@ The import route requires a named authenticated administrator session for attrib
 
 ## Supabase persistence and migration
 
-Migration file: `supabase/migrations/20261105090000_mira_facebook_group_import_batches.sql`
+Migration files:
+- `supabase/migrations/20261105090000_mira_facebook_group_import_batches.sql`
+- `supabase/migrations/20261105120000_mira_facebook_group_import_atomic_recovery.sql`
 
 It creates two isolated tables:
 
@@ -72,7 +74,7 @@ Included in the repository `npm test` and the dedicated GitHub Actions workflow:
 - `tests/mira-facebook-group-memory-import-route.test.js` — admin guard, named actor, bounded parser, authorization attestation, import, audit, and retrieval routes.
 - `tests/mira-facebook-group-memory-migration-structure.test.js` — offline static checks for table/key/digest constraints, RLS, and least-privilege grants; it is not a PostgreSQL parser or live migration test.
 
-The tests use synthetic fixtures and injected mock storage. They make zero live Facebook requests and do not prove that the migration is applied or that the Render environment is configured.
+The offline contract tests use synthetic fixtures and injected mock storage. They make zero live Facebook requests and do not prove that the migration is applied to the user's Supabase project or that the Render environment is configured.
 
 ### Dependency-free static regression
 
@@ -139,12 +141,13 @@ The same review found the server listening on `127.0.0.1` unconditionally. The b
 | Dependency-free static regression suite | PASS | Nine tests passed in exact-head run `42029506505`; includes Stage 19 URL/transport contracts and UI/rollback contracts |
 | Full canonical `npm test` regression set (30 tests) | PASS | Exact-head CI run `42033146301`; locked dependencies installed with lifecycle scripts disabled |
 | Full repository `npm test` chain | PASS | All 30 referenced test files exist; four missing paths were redesigned as scoped tests and the startup contract test passed on exact head `1d200056d26fc029ff46b7a69ee7e60e720e6a76` |
-| SQL migration static structure checks | PASS | New offline test verifies both tables, keys, digest constraints, RLS, and service-role SELECT/INSERT-only grants; no PostgreSQL parser/database execution was performed |
+| SQL migration static structure checks | PASS | Offline test verifies additive migration structure, RLS, function security mode, conflict handling, and service-role grants |
+| Real PostgreSQL 16 migration + atomic RPC integration | PASS | Isolated GitHub Actions PostgreSQL service; both migrations applied and RPC tested for create, retry, operation-key identity conflict, immutable Batch conflict, audit-failure rollback, and role grants |
 | Supabase migration application and real persistence/readback | DEFERRED | Requires explicit deployment-window approval and target-project verification |
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
 | Native Meta export archive compatibility | NOT_IMPLEMENTED | Only documented JSON, JSONL, and manual-text interchange formats are supported |
 
-**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified because Supabase/Render live verification remains deferred. All work remains within Mira HFM v0.2.
+**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; ISOLATED_POSTGRESQL_16_INTEGRATION_PASS; LIVE_SUPABASE_RENDER_VERIFICATION_DEFERRED`. Phase 5 is not production-certified because the user's Supabase project and Render runtime have not been changed or verified. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
@@ -153,3 +156,20 @@ The same review found the server listening on `127.0.0.1` unconditionally. The b
 - No production database migration has been applied.
 - No Render deployment, live Facebook request, or production certification has occurred.
 - All work remains within Mira HFM v0.2.
+
+
+## Recovery Patch — real PostgreSQL integration evidence (2026-11-05)
+
+The additive recovery migration was applied to an ephemeral PostgreSQL 16 service in GitHub Actions. This was an isolated CI database; it was not the user's Supabase project.
+
+The integration test verifies:
+- Both Phase 5 migrations apply successfully to PostgreSQL 16.
+- `service_role` can execute the RPC while `anon` and `authenticated` cannot.
+- Batch and Audit are created by one RPC transaction.
+- A retry with the same operation key returns the original event and creates no duplicate rows.
+- Reusing the operation key with different audit semantics is rejected.
+- Reusing a Batch ID with a different digest is rejected.
+- An Audit primary-key collision rolls back the newly inserted Batch.
+- Advisory locks serialize identity checks without granting UPDATE or DELETE on the immutable tables.
+
+The isolated PostgreSQL test is real database execution, but it does not establish Supabase project configuration, production RLS behavior under the actual Supabase roles, live service-role credentials, Render environment correctness, or restart durability. Those remain deferred.
