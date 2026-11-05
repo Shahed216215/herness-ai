@@ -83,6 +83,30 @@ Run: `42016691503` — SUCCESS.
 4. Keep provider CAS, production audit cutover, Drive migration, backup and trust-anchor custody outside this offline patch until separately authorized.
 5. Re-run the integrated offline Phase 2 suite on the final combined candidate head and record exact SHA and workflow run.
 
-## 8. Release boundary
+
+## 9. Exact-head CI retrieval and access-path inventory evidence
+
+The workflow job log for run `42016691503`, job `127208881157`, was inspected after the run completed. The configured test sequence returned `TESTS_FAILED=0` and `RESULT=PHASE2_CORE_SAFETY_PASS`, with:
+- `PRODUCTION_MEMORY_TOUCHED=NO`
+- `REAL_GOOGLE_DRIVE_TOUCHED=NO`
+- `NETWORK_REQUESTS=0`
+- `EXTERNAL_ACTIONS=0`
+
+The same job log emitted the following retrieval scanner results:
+- `MIRA_HFM_RETRIEVAL_CALL_COUNT=36`
+- `MIRA_HFM_RETRIEVAL_CONSUMER_FILE_COUNT=14`
+- `MIRA_HFM_RETRIEVAL_FILES_WITHOUT_BOTH_FILTER_MARKERS=14`
+- `MIRA_HFM_RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED`
+
+The 14 review-listed files were:
+`autonomous-learning-controlled-apply.js`, `google-drive.js`, `knowledge-controlled-apply.js`, `knowledge-memory-evolution.js`, `knowledge.js`, `memory.js`, `routes/knowledge-improvements.js`, `server.js`, `services/learning.js`, `tools/knowledge-cleanup.js`, `tools/knowledge-count.js`, `tools/knowledge-improve.js`, `tools/knowledge-search.js`, and `tools/memory-count.js`.
+
+The access-path inventory in the same run emitted `MIRA_HFM_ACCESS_PATH_CANDIDATE_COUNT=312`.
+
+**Interpretation constraint:** the retrieval scanner is regex/static inventory. Its “filter marker in file” heuristic does not prove whether a particular callsite is reachable, protected indirectly, or vulnerable. These are review candidates, not 14 confirmed security defects. The 312 access-path count is a candidate inventory, not 312 confirmed runtime entry points. Dynamic imports, reflection and runtime dispatch are not proven complete by this scan.
+
+This evidence strengthens the basis for keeping universal retrieval integration at REVIEW_REQUIRED. It does not authorize blanket edits to all 14 files; each domain boundary requires source-level semantic review and a compatible policy adapter.
+
+## 10. Release boundary
 
 This document changes no production behavior and grants no additional authority. PR #39 remains a draft/unmerged review candidate. v0.2 remains unfinished; no v0.3 transition is implied.
