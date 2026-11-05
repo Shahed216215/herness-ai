@@ -95,7 +95,18 @@ async function main() {
   });
   assert.equal(created.id, fileId);
   assert.equal(created.created, true);
+  await assert.rejects(() => provider.createFile({
+    id: fileId, parents: [parentId], mimeType: CONTENT_TYPE, bytes: envelope,
+    accountBinding, driveSpace,
+    appProperties: {
+      projectId, backupId, schema: header.schema, version: header.version,
+      createdAt: header.createdAt, ciphertextSha256: 'a'.repeat(64),
+      bytes: String(envelope.length), encryption: 'AES-256-GCM'
+    }
+  }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
+  assert.equal(fake.calls.create, 1);
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_GENERATE_ID_AND_RESUMABLE_CREATE_MAPPING=PASS');
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_UPLOAD_DIGEST_RECHECK=PASS');
 
   const metadata = await provider.getFile({ id: fileId, accountBinding, driveSpace });
   assert.equal(metadata.id, fileId);
