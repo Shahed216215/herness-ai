@@ -75,8 +75,10 @@ async function rejectsCode(promise, code) {
   assert.equal(valid.replayGuardConsumed, true);
   assert.equal(valid.policyCorrectnessIndependentlyAudited, false);
 
+  const tamperedSignature = f.sign();
+  tamperedSignature.signature = Buffer.from('forged').toString('base64');
   await rejectsCode(verifyAuthorizationDecision({
-    decision: f.sign({ ...f.decision, signature: Buffer.from('forged').toString('base64') }),
+    decision: tamperedSignature,
     request: f.request, trustedIssuers: f.trustedIssuers, replayGuard: f.replayGuard, now: f.now
   }), 'HFM_AUTHZ_SIGNATURE_INVALID');
 
