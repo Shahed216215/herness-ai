@@ -6,10 +6,10 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
-const backupModule = require('../services/mira-hfm-encrypted-emergency-backup');
 const {
-  createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging
-} = backupModule;
+  createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging,
+  MAX_ENVELOPE_BYTES, MAX_PAYLOAD_BYTES
+} = require('../services/mira-hfm-encrypted-emergency-backup');
 
 const key = crypto.randomBytes(32);
 const payload = Buffer.from(JSON.stringify({ schemaVersion: '1.0.0', memories: [{ id: 'mem-001', content: 'synthetic test memory' }] }));
@@ -29,7 +29,21 @@ try {
   assert.equal(env.metadata.projectId, metadata.projectId);
   assert.equal(envelope.includes(payload), false);
   const verified = decryptAndVerifyBackup(envelope, key);
-  const preview = previewEncryptedBackup({ envelope, key });
+  let previewPlainBuffer;
+  let preview;
+  const originalBufferConcat = Buffer.concat;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      previewPlainBuffer = output;
+      return output;
+    };
+    preview = previewEncryptedBackup({ envelope, key });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.ok(Buffer.isBuffer(previewPlainBuffer));
+  assert.equal(previewPlainBuffer.every(byte => byte === 0), true);
   assert.equal(preview.status, 'VERIFIED_RESTORE_PREVIEW');
   assert.equal(preview.backupId, backupId);
   assert.equal(preview.integrityVerified, true);
@@ -37,9 +51,98 @@ try {
   assert.equal(preview.canonicalMemoryWrites, 0);
   assert.equal(preview.payloadBytes, payload.length);
   assert.deepEqual(verified.payload, payload);
+
+  let encryptionDerivedKey;
+  let encryptionPlainBuffer;
+  const originalCreateCipheriv = crypto.createCipheriv;
+  let zeroizationEnvelope;
+  try {
+    crypto.createCipheriv = function (algorithm, derivedKey, ...args) {
+      encryptionDerivedKey = derivedKey;
+      const cipher = originalCreateCipheriv.call(this, algorithm, derivedKey, ...args);
+      const originalUpdate = cipher.update.bind(cipher);
+      cipher.update = function (data, ...updateArgs) {
+        if (Buffer.isBuffer(data)) encryptionPlainBuffer = data;
+        return originalUpdate(data, ...updateArgs);
+      };
+      return cipher;
+    };
+    zeroizationEnvelope = createEncryptedBackup({
+      payload: Buffer.from('derived-key-zeroization-test'), key,
+      backupId: 'backup-zeroize-enc-001', createdAt, metadata
+    });
+  } finally {
+    crypto.createCipheriv = originalCreateCipheriv;
+  }
+  assert.ok(Buffer.isBuffer(encryptionDerivedKey));
+  assert.equal(encryptionDerivedKey.every(byte => byte === 0), true);
+  assert.ok(Buffer.isBuffer(encryptionPlainBuffer));
+  assert.equal(encryptionPlainBuffer.every(byte => byte === 0), true);
+
+  const invalidTimestampPayload = Buffer.from('invalid-timestamp-secret-buffer');
+  let rejectedPlainCopy;
+  const originalBufferFrom = Buffer.from;
+  try {
+    Buffer.from = function (value, ...args) {
+      const output = originalBufferFrom.call(this, value, ...args);
+      if (value === invalidTimestampPayload) rejectedPlainCopy = output;
+      return output;
+    };
+    assert.throws(() => createEncryptedBackup({
+      payload: invalidTimestampPayload, key, backupId: 'backup-zeroize-fail-001',
+      createdAt: 'not-a-canonical-timestamp', metadata
+    }));
+  } finally {
+    Buffer.from = originalBufferFrom;
+  }
+  assert.ok(Buffer.isBuffer(rejectedPlainCopy));
+  assert.equal(rejectedPlainCopy.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_TEMPORARY_PLAINTEXT_ZEROIZED_ON_VALIDATION_FAILURE=PASS');
+
+  let decryptionDerivedKey;
+  const originalCreateDecipheriv = crypto.createDecipheriv;
+  try {
+    crypto.createDecipheriv = function (algorithm, derivedKey, ...args) {
+      decryptionDerivedKey = derivedKey;
+      return originalCreateDecipheriv.call(this, algorithm, derivedKey, ...args);
+    };
+    const zeroizedResult = decryptAndVerifyBackup(zeroizationEnvelope, key);
+    assert.equal(zeroizedResult.payload.toString(), 'derived-key-zeroization-test');
+  } finally {
+    crypto.createDecipheriv = originalCreateDecipheriv;
+  }
+  assert.ok(Buffer.isBuffer(decryptionDerivedKey));
+  assert.equal(decryptionDerivedKey.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_DERIVED_ENCRYPTION_KEY_ZEROIZED=PASS');
+  console.log('HFM_PHASE7_TEMPORARY_PLAINTEXT_BUFFER_ZEROIZED=PASS');
+  console.log('HFM_PHASE7_DERIVED_DECRYPTION_KEY_ZEROIZED=PASS');
+  console.log('HFM_PHASE7_PREVIEW_DECRYPTED_PAYLOAD_ZEROIZED=PASS');
   console.log('HFM_PHASE7_AUTHENTICATED_RESTORE_PREVIEW_NO_WRITE=PASS');
   assert.equal(verified.plaintextSha256, crypto.createHash('sha256').update(payload).digest('hex'));
   console.log('HFM_PHASE7_ENCRYPT_DECRYPT_AND_AUTHENTICATE=PASS');
+
+  let unauthenticatedPlaintextChunk;
+  const originalCreateDecipherForFailure = crypto.createDecipheriv;
+  try {
+    crypto.createDecipheriv = function (algorithm, derivedKey, ...args) {
+      const decipher = originalCreateDecipherForFailure.call(this, algorithm, derivedKey, ...args);
+      const originalUpdate = decipher.update.bind(decipher);
+      decipher.update = function (data, ...updateArgs) {
+        unauthenticatedPlaintextChunk = originalUpdate(data, ...updateArgs);
+        return unauthenticatedPlaintextChunk;
+      };
+      return decipher;
+    };
+    assert.throws(
+      () => decryptAndVerifyBackup(envelope, crypto.randomBytes(32)),
+      error => error.code === 'HFM_BACKUP_AUTH_FAILED'
+    );
+  } finally {
+    crypto.createDecipheriv = originalCreateDecipherForFailure;
+  }
+  assert.ok(Buffer.isBuffer(unauthenticatedPlaintextChunk));
+  assert.equal(unauthenticatedPlaintextChunk.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_UNAUTHENTICATED_GCM_PLAINTEXT_ZEROIZED=PASS');
 
   assert.throws(() => decryptAndVerifyBackup(envelope, crypto.randomBytes(32)), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
   const tampered = Buffer.from(envelope);
@@ -49,14 +152,67 @@ try {
   parsed.metadata.projectId = metadata.projectId;
   parsed.ciphertext = (parsed.ciphertext[0] === 'A' ? 'B' : 'A') + parsed.ciphertext.slice(1);
   assert.throws(() => decryptAndVerifyBackup(Buffer.from(JSON.stringify(parsed)), key));
+  const extraEnvelopeField = JSON.parse(envelope.toString('utf8'));
+  extraEnvelopeField.untrustedExtra = 'must-not-be-accepted';
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(JSON.stringify(extraEnvelopeField) + '\n'), key
+  ));
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(envelope.toString('utf8').trimEnd()), key
+  ));
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(' ' + envelope.toString('utf8')), key
+  ));
+  const futureEnvelope = JSON.parse(envelope.toString('utf8'));
+  futureEnvelope.createdAt = new Date(Date.now() + 60000).toISOString();
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(JSON.stringify(futureEnvelope) + '\n'), key
+  ), /future-dated/);
+  assert.throws(() => createEncryptedBackup({
+    payload: Buffer.from('future backup timestamp'), key,
+    backupId: 'backup-future-time-001',
+    createdAt: new Date(Date.now() + 60000).toISOString(), metadata
+  }), /non-future/);
   console.log('HFM_PHASE7_WRONG_KEY_AND_TAMPER_REJECTED=PASS');
+  console.log('HFM_PHASE7_FUTURE_ENVELOPE_TIMESTAMP_REJECTED=PASS');
+  console.log('HFM_PHASE7_ENVELOPE_EXACT_SCHEMA_AND_CANONICAL_JSON=PASS');
 
   assert.throws(() => createEncryptedBackup({ payload, key: Buffer.alloc(16), backupId, createdAt }));
   assert.throws(() => createEncryptedBackup({ payload, key, backupId: '../escape', createdAt }));
   assert.throws(() => createEncryptedBackup({ payload: '', key, backupId, createdAt }));
+  const hostilePayload = { toString() { throw new Error('payload coercion must not run'); } };
+  const hostileEnvelope = { toString() { throw new Error('envelope coercion must not run'); } };
+  assert.throws(() => createEncryptedBackup({
+    payload: hostilePayload, key, backupId, createdAt
+  }), /payload must be non-empty bytes\/string/);
+  assert.throws(() => decryptAndVerifyBackup(hostileEnvelope, key),
+    /Backup envelope must be a Buffer or UTF-8 string/);
+  assert.throws(() => writeImmutableBackup({
+    envelope: hostileEnvelope, key, directory: dir, backupId
+  }), /Backup envelope must be a Buffer or UTF-8 string/);
+  assert.throws(() => decryptAndVerifyBackup(Buffer.alloc(MAX_ENVELOPE_BYTES + 1), key),
+    /Backup envelope exceeds the size limit/);
+  assert.throws(() => createEncryptedBackup({
+    payload: Buffer.alloc(MAX_PAYLOAD_BYTES + 1), key, backupId, createdAt
+  }), /payload must be non-empty bytes\/string/);
   console.log('HFM_PHASE7_INPUT_AND_KEY_GATES=PASS');
+  console.log('HFM_PHASE7_BOUNDED_INPUT_TYPE_AND_SIZE_GATES=PASS');
 
-  const stored = writeImmutableBackup({ envelope, key, directory: dir, backupId });
+  let writeVerifiedPlain;
+  let stored;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      writeVerifiedPlain = output;
+      return output;
+    };
+    stored = writeImmutableBackup({ envelope, key, directory: dir, backupId });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.ok(Buffer.isBuffer(writeVerifiedPlain));
+  assert.equal(writeVerifiedPlain.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_LOCAL_BACKUP_VERIFICATION_PAYLOAD_ZEROIZED=PASS');
   assert.equal(fs.readFileSync(stored.path).toString('utf8'), envelope.toString('utf8'));
   const invalidLocalDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-local-backup-test-'));
   try {
@@ -71,7 +227,33 @@ try {
   assert.throws(() => writeImmutableBackup({ envelope, key, directory: dir, backupId }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_IMMUTABLE_BACKUP_AND_READBACK=PASS');
 
-  const staged = restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' });
+  let restorePlainBuffer;
+  let stageReadbackBuffer;
+  let staged;
+  const originalReadFileSync = fs.readFileSync;
+  const stagedTargetPath = path.join(restoreDir, 'restore-restore-test-0001.verified-stage');
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      restorePlainBuffer = output;
+      return output;
+    };
+    fs.readFileSync = function (filePath, ...args) {
+      const output = originalReadFileSync.call(this, filePath, ...args);
+      if (path.resolve(String(filePath)) === path.resolve(stagedTargetPath)) stageReadbackBuffer = output;
+      return output;
+    };
+    staged = restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+    fs.readFileSync = originalReadFileSync;
+  }
+  assert.ok(Buffer.isBuffer(restorePlainBuffer));
+  assert.equal(restorePlainBuffer.every(byte => byte === 0), true);
+  assert.ok(Buffer.isBuffer(stageReadbackBuffer));
+  assert.equal(stageReadbackBuffer.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_RESTORE_STAGING_PAYLOAD_ZEROIZED=PASS');
+  console.log('HFM_PHASE7_RESTORE_STAGING_READBACK_BUFFER_ZEROIZED=PASS');
   assert.equal(staged.status, 'VERIFIED_STAGING_ONLY');
   assert.equal(staged.canonicalMemoryWrites, 0);
   assert.equal(staged.productionRestore, false);
@@ -91,15 +273,6 @@ try {
   }
   console.log('HFM_PHASE7_RESTORE_AUTH_FAILURE_NO_STAGE_ARTIFACT=PASS');
 
-  const capturedCloudPlaintextBuffers = [];
-  const originalCloudDecrypt = backupModule.decryptAndVerifyBackup;
-  backupModule.decryptAndVerifyBackup = (...args) => {
-    const result = originalCloudDecrypt(...args);
-    capturedCloudPlaintextBuffers.push(result.payload);
-    return result;
-  };
-  const cloudBackupModule = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
-  backupModule.decryptAndVerifyBackup = originalCloudDecrypt;
   const {
     uploadEncryptedEmergencyBackup,
     previewEncryptedEmergencyBackupFromCloud,
@@ -107,7 +280,7 @@ try {
     inspectEncryptedEmergencyBackupCapacity,
     planBackupRetention,
     DEFAULT_BACKUP_BUDGET_BYTES
-  } = cloudBackupModule;
+  } = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
   const objects = new Map();
   const adapter = {
     capabilities: { encryptedOnly: true, projectIsolated: true, createOnly: true, readAfterWrite: true },
@@ -125,15 +298,31 @@ try {
       return { ...item, bytes: Buffer.from(item.bytes) };
     }
   };
-  const uploaded = await uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key });
+  const hostileCloudEnvelope = { toString() { throw new Error('cloud envelope coercion must not run'); } };
+  await assert.rejects(() => uploadEncryptedEmergencyBackup({
+    adapter, projectId: 'mira-project-001', envelope: hostileCloudEnvelope, key
+  }), error => error.code === 'HFM_CLOUD_BACKUP_REJECTED');
+  const cloudUploadPlainBuffers = [];
+  let uploaded;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      cloudUploadPlainBuffers.push(output);
+      return output;
+    };
+    uploaded = await uploadEncryptedEmergencyBackup({
+      adapter, projectId: 'mira-project-001', envelope, key
+    });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.equal(cloudUploadPlainBuffers.length, 2);
+  assert.equal(cloudUploadPlainBuffers.every(buffer => buffer.every(byte => byte === 0)), true);
+  console.log('HFM_PHASE7_CLOUD_UPLOAD_VERIFICATION_PAYLOADS_ZEROIZED=PASS');
   assert.equal(uploaded.status, 'ENCRYPTED_CLOUD_BACKUP_VERIFIED');
   assert.equal(uploaded.rootKeyTransmitted, false);
   assert.equal(uploaded.plaintextTransmitted, false);
   assert.equal(objects.size, 1);
-  assert.equal(capturedCloudPlaintextBuffers.length, 2);
-  assert.equal(capturedCloudPlaintextBuffers.every(buffer =>
-    Buffer.isBuffer(buffer) && buffer.every(byte => byte === 0)), true);
-  console.log('HFM_PHASE7_CLOUD_UPLOAD_VERIFICATION_PLAINTEXT_ZEROIZED=PASS');
   console.log('HFM_PHASE7_ENCRYPTED_CLOUD_UPLOAD_AND_READBACK=PASS');
 
   const crossProjectBackupId = 'backup-cross-project-001';
@@ -283,9 +472,23 @@ try {
 
   await assert.rejects(() => uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key }),
     error => error.code === 'HFM_CLOUD_BACKUP_CONFLICT');
-  const cloudPreview = await previewEncryptedEmergencyBackupFromCloud({
-    adapter, projectId: 'mira-project-001', backupId, key
-  });
+  let cloudPreviewPlain;
+  let cloudPreview;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      cloudPreviewPlain = output;
+      return output;
+    };
+    cloudPreview = await previewEncryptedEmergencyBackupFromCloud({
+      adapter, projectId: 'mira-project-001', backupId, key
+    });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.ok(Buffer.isBuffer(cloudPreviewPlain));
+  assert.equal(cloudPreviewPlain.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_CLOUD_PREVIEW_PAYLOAD_ZEROIZED=PASS');
   assert.equal(cloudPreview.status, 'VERIFIED_RESTORE_PREVIEW');
   assert.equal(cloudPreview.source, 'ENCRYPTED_CLOUD_OBJECT');
   assert.equal(cloudPreview.restoreApplied, false);
@@ -294,15 +497,24 @@ try {
 
   const cloudStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-cloud-restore-test-'));
   try {
-    const capturedBeforeCloudRestore = capturedCloudPlaintextBuffers.length;
-    const cloudRestored = await restoreEncryptedEmergencyBackupFromCloud({
-      adapter, projectId: 'mira-project-001', backupId, key,
-      stagingDirectory: cloudStageDir, restoreId: 'cloud-restore-0001'
-    });
-    assert.equal(capturedCloudPlaintextBuffers.length, capturedBeforeCloudRestore + 1);
-    assert.equal(capturedCloudPlaintextBuffers[capturedCloudPlaintextBuffers.length - 1]
-      .every(byte => byte === 0), true);
-    console.log('HFM_PHASE7_CLOUD_RESTORE_VERIFICATION_PLAINTEXT_ZEROIZED=PASS');
+    const cloudRestorePlainBuffers = [];
+    let cloudRestored;
+    try {
+      Buffer.concat = function (chunks, ...args) {
+        const output = originalBufferConcat.call(this, chunks, ...args);
+        cloudRestorePlainBuffers.push(output);
+        return output;
+      };
+      cloudRestored = await restoreEncryptedEmergencyBackupFromCloud({
+        adapter, projectId: 'mira-project-001', backupId, key,
+        stagingDirectory: cloudStageDir, restoreId: 'cloud-restore-0001'
+      });
+    } finally {
+      Buffer.concat = originalBufferConcat;
+    }
+    assert.equal(cloudRestorePlainBuffers.length, 2);
+    assert.equal(cloudRestorePlainBuffers.every(buffer => buffer.every(byte => byte === 0)), true);
+    console.log('HFM_PHASE7_CLOUD_RESTORE_VERIFICATION_PAYLOADS_ZEROIZED=PASS');
     assert.equal(cloudRestored.status, 'VERIFIED_STAGING_ONLY');
     assert.equal(cloudRestored.canonicalMemoryWrites, 0);
     assert.deepEqual(fs.readFileSync(cloudRestored.path), payload);
@@ -423,6 +635,23 @@ try {
   assert.equal(ephemeralReference.every(byte => byte === 0), true);
   assert.equal(providerOwnedKey.every(byte => byte === 0x51), true);
   console.log('HFM_PHASE7_EPHEMERAL_KEY_COPY_ZEROIZED=PASS');
+
+  let failedOperationKeyCopy;
+  const providerOwnedFailureKey = Buffer.alloc(32, 0x61);
+  await assert.rejects(() => withBackupKey({
+    provider: { async getKey({ keyId }) {
+      return { keyId, key: providerOwnedFailureKey };
+    } },
+    keyId: 'key-version-E',
+    operation: keyMaterial => {
+      failedOperationKeyCopy = keyMaterial;
+      throw new Error('synthetic operation failure');
+    }
+  }), /synthetic operation failure/);
+  assert.ok(Buffer.isBuffer(failedOperationKeyCopy));
+  assert.equal(failedOperationKeyCopy.every(byte => byte === 0), true);
+  assert.equal(providerOwnedFailureKey.every(byte => byte === 0x61), true);
+  console.log('HFM_PHASE7_EPHEMERAL_KEY_COPY_ZEROIZED_ON_OPERATION_FAILURE=PASS');
 
   const providerFailures = [
     ['KEY_NOT_FOUND', 'HFM_KEY_NOT_FOUND'],
