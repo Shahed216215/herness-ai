@@ -53,10 +53,15 @@ const svc=createFacebookGroupImportService({store,auditWriter:async e=>audits.pu
 (async()=>{
  const result=await svc.import({content:JSON.stringify(env([rec()])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',existingRecords:[]});
  assert.equal(result.status,'IMPORT_STAGED_READBACK_VERIFIED');
+ const repeated=await svc.import({content:JSON.stringify(env([rec()])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',existingRecords:[]});
+ assert.equal(repeated.status,'IMPORT_STAGED_READBACK_VERIFIED');
+ assert.equal(repeated.batchDigest,result.batchDigest);
+ assert.equal(repeated.batchId,result.batchId);
  assert.equal(result.integrityStatus,'UNVERIFIED'); assert.equal(result.canonicalMemoryWrite,false); assert.equal(audits.length,1);
  const got=await svc.retrieve({projectId:'project-hfm-v02',groupId:'123456789',query:'synthetic project decision'});
  assert.equal(got.resultCount,1); assert.equal(got.results[0].retrievableAsTrustedMemory,false);
  console.log('GROUP_IMPORT_ATOMIC_STORE_READBACK_AUDIT_AND_RETRIEVAL=PASS');
+ console.log('GROUP_IMPORT_REPEAT_BATCH_IDEMPOTENCY=PASS');
  const corrupt={...store,async readBatch(id,p){const b=await store.readBatch(id,p);b.items[0].record.content='tampered';return b;}};
  const bad=createFacebookGroupImportService({store:corrupt,auditWriter:async()=>{}});
  await assert.rejects(()=>bad.import({content:JSON.stringify(env([rec({sourceId:'tamper-fixture'})],{exportId:'tamper-001'})),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',existingRecords:[]}),/readback identity or digest mismatch/);
