@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Supabase Free Research Archive Store Design
 
-Status: DESIGN APPROVED FOR IMPLEMENTATION PLANNING; NOT DEPLOYED
+Status: OPTIONAL PROVIDER IMPLEMENTED; OFFLINE TESTS PENDING; NOT DEPLOYED
 Version: v0.2 only
 Parent: PR #8 — Facebook Public Web Research & Memory
 Selected Page: Online canel (Page ID 118056109579206)
@@ -56,7 +56,7 @@ The payload retains the existing record contract:
 - evidenceId, archiveId, contentDigest, recordDigest
 - sourceIntegrity=NOT_INDEPENDENTLY_VERIFIED
 - canonicalMemoryWrite=false
-- trustStatus=SOURCE_RECORDED, integrityStatus=UNVERIFIED, lifecycle=PENDING_REVIEW
+- trustStatus=SOURCE_RECORDED, integrityStatus=UNVERIFIED, lifecycle=PENDING_REVIEW are synthesized by the lookup response from the immutable source record; they are not written as separate mutable trust fields in the payload.
 
 Do not store full Page content, credentials, cookies, private/group content, or user secrets.
 
@@ -75,6 +75,8 @@ Enable Row Level Security on the table.
 SQL bootstrap is an operator-run migration; no automated project creation or schema mutation from Mira.
 
 ## 5. Runtime contract
+
+Implementation now exists in `services/mira-facebook-research-memory-provider.js`. The existing research and lookup tool names remain unchanged and dispatch through this provider selector. Local remains the default; Supabase is opt-in. The adapter uses the repository's hardened HTTPS provider transport, validates the exact Supabase project hostname, and supports an injected transport for offline tests.
 
 When BACKEND=local:
 - Preserve current filesystem archive behavior and existing tests.
@@ -133,6 +135,7 @@ Live verification (separate, explicit operator action):
 - Version remains v0.2; no v0.3 work.
 
 Current status:
+SUPABASE_ADAPTER=IMPLEMENTED_OFFLINE_CONTRACT_PENDING
 SUPABASE_PROJECT=NOT_CREATED_OR_VERIFIED
 DATABASE_SCHEMA=NOT_APPLIED
 RENDER_ENVIRONMENT=NOT_CONFIGURED
