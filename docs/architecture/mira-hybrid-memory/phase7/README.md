@@ -27,17 +27,17 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 - No Google Drive OAuth, token access, upload, download, or API request is implemented in this phase slice.
 - A future emergency cloud transport must be a separately authorized adapter using encrypted envelope bytes only; it must not alter routine sync behavior.
-- Production key management, key rotation/recovery, durable cloud retention, snapshot export from the canonical HFM store, crash-recovery drills, and independent restore verification remain NOT_CERTIFIED.
+- Production key management, key rotation/recovery, real provider adapter/authentication, durable cloud retention, snapshot export from the canonical HFM store, crash-recovery drills, and independent restore verification remain NOT_CERTIFIED.
 - Do not store the root key beside the backup. Losing the key means the backup cannot be decrypted; losing the backup does not justify weakening key protection.
 
 ## Offline verification
 
 Run: `node tests/mira-hfm-encrypted-emergency-backup.test.js`
 
-Synthetic local tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, immutable write/readback, and restore-to-staging. No live network or cloud calls occur.
+Synthetic offline tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, immutable write/readback, encrypted-only cloud adapter capability gates, create-only cloud upload/readback, project isolation, and cloud-download restore-to-staging. No live network or cloud calls occur.
 
 VERSION=v0.2
 PHASE7=ENCRYPTED_EMERGENCY_BACKUP_PRIMITIVE_IMPLEMENTED
 ROUTINE_DRIVE_SYNC=UNCHANGED
-CLOUD_TRANSPORT=NOT_IMPLEMENTED
+CLOUD_TRANSPORT=PROVIDER_NEUTRAL_CONTRACT_ONLY
 PRODUCTION_RESTORE=NOT_CERTIFIED
