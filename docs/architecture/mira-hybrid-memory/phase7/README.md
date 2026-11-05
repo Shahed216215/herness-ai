@@ -334,3 +334,15 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Updated the provider adapter specification with the exact atomic replay-claim semantics and real-store acceptance gates.
 - CI remains `INCONCLUSIVE` until matching workflow logs are inspected. The fake guard does not prove durable storage, cross-process atomicity, replica failover, or production replay protection.
 - F7-SR-01 remains PARTIALLY_REMEDIATED / OPEN pending independent policy governance and real durable atomic replay-store evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; all work remains in v0.2.
+
+
+## Expanded provider secret boundaries and authorization replay snapshot — 2026-11-05
+
+- Latest implementation/test/workflow commit covered by this checkpoint: `19cee10d1a8c40cf7d33056996ad65772883164b`.
+- Authorization verifier now snapshots the signed decision, exact request, and issuer trust map before awaiting the replay guard; it captures the replay method reference and reports the immutable verified decision even if the callback mutates caller-owned objects.
+- Added `services/mira-hfm-local-fake-authorization-replay-guard.js` and `tests/mira-hfm-local-fake-authorization-replay-guard.test.js`. The fake uses a process-local Set, permits one winner among 32 concurrent duplicate claims, rejects expired/malformed claims, and supports digest-only restart simulation. It is explicitly NOT_DURABLE.
+- Phase 7 workflow now includes the fake replay guard service/test in both push and pull_request path filters and executes the new test.
+- Expanded backup key-provider and snapshot-signing secret boundaries to reject additional raw key, KEK, credential, token, and client-secret fields on both provider objects and descriptors. Wrap/unwrap provider errors remain normalized; unwrap failures now have a dedicated generic error code and regression test.
+- Updated `STAGING-SECURITY-REVIEW.md` with the latest offline remediation addendum and remaining operational gates.
+- CI disposition remains `INCONCLUSIVE` until matching workflow logs are inspected. No PASS claim is made for the new replay concurrency, TOCTOU, or secret-boundary tests.
+- F7-SR-01 remains OPEN pending independent policy governance and a real durable atomic replay store. F7-SR-02 remains OPEN pending real KMS/HSM custody. F7-SR-03/04 remain OPEN pending independent filesystem/host ACL/mount review. F7-SR-05 remains OPEN pending independently sourced infrastructure evidence and real durable policy-state/provider evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; all work remains within v0.2.
