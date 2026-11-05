@@ -70,6 +70,7 @@ try {
 
   const {
     uploadEncryptedEmergencyBackup,
+    previewEncryptedEmergencyBackupFromCloud,
     restoreEncryptedEmergencyBackupFromCloud,
     inspectEncryptedEmergencyBackupCapacity,
     planBackupRetention,
@@ -147,6 +148,15 @@ try {
 
   await assert.rejects(() => uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key }),
     error => error.code === 'HFM_CLOUD_BACKUP_CONFLICT');
+  const cloudPreview = await previewEncryptedEmergencyBackupFromCloud({
+    adapter, projectId: 'mira-project-001', backupId, key
+  });
+  assert.equal(cloudPreview.status, 'VERIFIED_RESTORE_PREVIEW');
+  assert.equal(cloudPreview.source, 'ENCRYPTED_CLOUD_OBJECT');
+  assert.equal(cloudPreview.restoreApplied, false);
+  assert.equal(cloudPreview.canonicalMemoryWrites, 0);
+  console.log('HFM_PHASE7_CLOUD_RESTORE_PREVIEW_NO_WRITE=PASS');
+
   const cloudStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-cloud-restore-test-'));
   try {
     const cloudRestored = await restoreEncryptedEmergencyBackupFromCloud({
