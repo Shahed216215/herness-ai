@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const { validateCanonicalMemoryRecord } = require('./mira-memory-conflict-assessment');
 const { filterTrustedRecords } = require('./mira-conflict-quarantine-registry');
 
-const DOMAINS = new Set(['general_memory', 'knowledge', 'crm_conversation_message']);
+const DOMAINS = new Set(['general_memory', 'knowledge', 'crm_conversation_message', 'work_learning']);
 const MAPPING_KEYS = [
   'domain', 'projectId', 'legacyId', 'memoryId', 'revision',
   'sourceDigest', 'sourceFileDigest', 'sourceOrdinal', 'classification', 'approvalReference', 'canonicalRecord'
@@ -19,6 +19,7 @@ function text(value, label) {
 function sourceLocator(domain, entry, sourceFileDigest, sourceOrdinal) {
   if (domain === 'general_memory') return 'legacy-memory:' + sourceFileDigest + ':' + sourceOrdinal;
   if (domain === 'knowledge') return entry.id;
+  if (domain === 'work_learning') return entry.learningId;
   return entry.messageId;
 }
 function serializeLegacyPayload(domain, entry) {
@@ -72,6 +73,9 @@ function adaptLegacyEntry({
   const record = mapping.canonicalRecord;
   const errors = validateCanonicalMemoryRecord(record, 'canonicalRecord');
   if (errors.length) throw new Error('Canonical record invalid: ' + errors.join('; '));
+  if (domain === 'work_learning' && record.recordType !== 'lesson') {
+    throw new Error('Work Learning must map to canonical recordType lesson.');
+  }
   if (record.projectId !== projectId || record.memoryId !== mapping.memoryId ||
       record.version.revision !== mapping.revision ||
       record.content !== serializeLegacyPayload(domain, entry) ||
