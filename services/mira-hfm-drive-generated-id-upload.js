@@ -21,7 +21,7 @@ function sha256(bytes) {
 }
 function validText(value, label, max = 256) {
   if (typeof value !== 'string' || !value.trim() || value.length > max ||
-      /[\r\n\u0000-\u001f]/.test(value)) reject(label + ' is invalid.');
+      /[\\r\\n\\u0000-\\u001f]/.test(value)) reject(label + ' is invalid.');
   return value;
 }
 function validateFileId(value) {
@@ -56,11 +56,14 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
     }
 
     let journal;
+    const journalBinding = {
+      accountBinding: account, driveSpace, projectId: project,
+      backupId, ciphertextSha256: digest, bytes: bytes.length
+    };
     try {
       journal = readBackupIdJournal({
         directory: journalDirectory, operationId,
-        expected: { accountBinding: account, driveSpace, projectId: project,
-          backupId, ciphertextSha256: digest, bytes: bytes.length }
+        expected: journalBinding
       });
     } catch (error) {
       if (error.code !== 'HFM_DRIVE_JOURNAL_MISSING') throw error;
@@ -69,11 +72,22 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
       catch (_) { reject('Drive ID generation failed; no upload was attempted.',
         'HFM_DRIVE_ID_GENERATION_FAILED'); }
       const generatedFileId = validateFileId(generated && generated.id);
-      journal = createBackupIdJournal({
-        directory: journalDirectory, operationId, accountBinding: account, driveSpace,
-        projectId: project, backupId, generatedFileId,
-        ciphertextSha256: digest, bytes: bytes.length
-      });
+      try {
+        journal = createBackupIdJournal({
+          directory: journalDirectory, operationId, accountBinding: account, driveSpace,
+          projectId: project, backupId, generatedFileId,
+          ciphertextSha256: digest, bytes: bytes.length
+        });
+      } catch (journalError) {
+        // Another concurrent request may have won the create-only journal link
+        // with a different generated ID. Adopt only the durable winner after
+        // re-reading and validating every operation/content binding.
+        if (journalError.code !== 'HFM_DRIVE_JOURNAL_CONFLICT') throw journalError;
+        journal = readBackupIdJournal({
+          directory: journalDirectory, operationId,
+          expected: journalBinding
+        });
+      }
     }
 
     const fileId = validateFileId(journal.generatedFileId);
