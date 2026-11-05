@@ -16,18 +16,34 @@ function reject(message, code = 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID') {
   error.code = code;
   throw error;
 }
+async function getGoogleDriveAccountFingerprint(drive) {
+  if (!drive || !drive.about || typeof drive.about.get !== 'function') {
+    reject('Google Drive about.get is required to verify account identity.');
+  }
+  let response;
+  try { response = await drive.about.get({ fields: 'user(permissionId)' }); }
+  catch (_) { reject('Google Drive authenticated account identity lookup failed.',
+    'HFM_GOOGLE_DRIVE_ACCOUNT_UNVERIFIED'); }
+  const permissionId = response && response.data && response.data.user && response.data.user.permissionId;
+  if (typeof permissionId !== 'string' || !permissionId) {
+    reject('Google Drive did not return an authenticated permissionId.',
+      'HFM_GOOGLE_DRIVE_ACCOUNT_UNVERIFIED');
+  }
+  return sha256(Buffer.from(permissionId, 'utf8'));
+}
+
 function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccountFingerprint,
   driveSpace, projectId, parentId } = {}) {
   if (!drive || !drive.files || typeof drive.files.generateIds !== 'function' ||
-      typeof drive.files.create !== 'function' || typeof drive.files.get !== 'function') {
+      typeof drive.files.create !== 'function' || typeof drive.files.get !== 'function' || typeof drive.files.list !== 'function' ||
+      !drive.about || typeof drive.about.get !== 'function') {
     reject('An injected Google Drive v3 files client is required.');
   }
   if (typeof accountBinding !== 'string' || !/^[a-f0-9]{64}$/.test(accountBinding)) {
     reject('accountBinding must be a SHA-256 account fingerprint.');
   }
-  if (typeof getAccountFingerprint !== 'function') {
-    reject('A verified authenticated-account fingerprint callback is required.');
-  }
+  const accountFingerprintGetter = typeof getAccountFingerprint === 'function'
+    ? getAccountFingerprint : async () => await getGoogleDriveAccountFingerprint(drive);
   if (typeof projectId !== 'string' || !ID_RE.test(projectId)) reject('projectId is invalid.');
   if (!['drive', 'appDataFolder'].includes(driveSpace)) reject('driveSpace is unsupported.');
   if (typeof parentId !== 'string' || !parentId.trim() || /[\r\n\u0000-\u001f]/.test(parentId)) {
@@ -42,7 +58,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       reject('Provider account/space binding mismatch.', 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
     }
     let actual;
-    try { actual = await getAccountFingerprint(); }
+    try { actual = await accountFingerprintGetter(); }
     catch (_) { reject('Authenticated account identity could not be verified.',
       'HFM_GOOGLE_DRIVE_ACCOUNT_UNVERIFIED'); }
     if (actual !== accountBinding) {
@@ -158,6 +174,103 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       };
     },
 
+    async listPage({ projectId: requestedProject, prefix, cursor = null, limit } = {}) {
+      await assertAccount(accountBinding, driveSpace);
+      if (requestedProject !== projectId ||
+          prefix !== 'mira-hfm-emergency/v1/' + projectId + '/' ||
+          !Number.isInteger(limit) || limit < 1 || limit > 500 ||
+          (cursor !== null && (typeof cursor !== 'string' || !cursor ||
+            cursor.length > 1024 || /[\\u0000-\\u001f]/.test(cursor)))) {
+        reject('Google Drive listing request is outside the configured project/page boundary.',
+          'HFM_GOOGLE_DRIVE_LIST_SCOPE');
+      }
+      let response;
+      try {
+        response = await drive.files.list({
+          q: "'" + parentId + "' in parents and trashed = false",
+          spaces: driveSpace,
+          pageSize: limit,
+          pageToken: cursor || undefined,
+          fields: 'nextPageToken,files(id,mimeType,parents,appProperties,size,createdTime)'
+        });
+      } catch (_) {
+        reject('Google Drive encrypted backup listing failed.',
+          'HFM_GOOGLE_DRIVE_LIST_FAILED');
+      }
+      const data = response && response.data;
+      if (!data || !Array.isArray(data.files) || data.files.length > limit ||
+          (data.nextPageToken != null &&
+            (typeof data.nextPageToken !== 'string' || !data.nextPageToken ||
+             data.nextPageToken.length > 1024 || /[\\u0000-\\u001f]/.test(data.nextPageToken) ||
+             data.nextPageToken === cursor))) {
+        reject('Google Drive listing response is malformed or has an invalid cursor.',
+          'HFM_GOOGLE_DRIVE_LIST_INVALID');
+      }
+      const items = data.files.map(file => {
+        const p = file && file.appProperties || {};
+        const size = Number(file && file.size);
+        const propertyBytes = Number(p.bytes);
+        const created = typeof p.createdAt === 'string' ? Date.parse(p.createdAt) : NaN;
+        if (!file || !FILE_ID_RE.test(file.id || '') ||
+            file.mimeType !== CONTENT_TYPE || !Array.isArray(file.parents) ||
+            file.parents.length !== 1 || file.parents[0] !== parentId ||
+            p.projectId !== projectId || !ID_RE.test(p.backupId || '') ||
+            p.schema !== 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' || p.version !== '1.0.0' ||
+            !Number.isSafeInteger(size) || size < 1 || size > MAX_OBJECT_BYTES ||
+            propertyBytes !== size || !DIGEST_RE.test(p.ciphertextSha256 || '') ||
+            p.encryption !== 'AES-256-GCM' || !Number.isFinite(created) ||
+            new Date(created).toISOString() !== p.createdAt) {
+          reject('Google Drive listed item failed encrypted metadata, project, parent, or size validation.',
+            'HFM_GOOGLE_DRIVE_LIST_ITEM_INVALID');
+        }
+        return { metadata: {
+          projectId, backupId: p.backupId,
+          objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + p.backupId + '.mhe',
+          createdAt: p.createdAt, bytes: size,
+          contentType: CONTENT_TYPE, encryption: p.encryption,
+          ciphertextSha256: p.ciphertextSha256
+        } };
+      });
+      return {
+        items, complete: data.nextPageToken == null,
+        nextCursor: data.nextPageToken == null ? undefined : data.nextPageToken
+      };
+    },
+
+    async getQuota({ projectId: requestedProject } = {}) {
+      await assertAccount(accountBinding, driveSpace);
+      if (requestedProject !== projectId) {
+        reject('Google Drive quota request project mismatch.', 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
+      }
+      let response;
+      try {
+        response = await drive.about.get({
+          fields: 'user(permissionId),storageQuota(limit,usage,usageInDrive,usageInDriveTrash)'
+        });
+      } catch (_) {
+        reject('Google Drive storage quota is unavailable.',
+          'HFM_GOOGLE_DRIVE_QUOTA_UNAVAILABLE');
+      }
+      const data = response && response.data;
+      const permissionId = data && data.user && data.user.permissionId;
+      if (typeof permissionId !== 'string' ||
+          sha256(Buffer.from(permissionId, 'utf8')) !== accountBinding) {
+        reject('Google Drive quota identity does not match the configured account.',
+          'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
+      }
+      const quotaBytes = Number(data.storageQuota && data.storageQuota.limit);
+      const usedBytes = Number(data.storageQuota && data.storageQuota.usage);
+      if (!Number.isSafeInteger(quotaBytes) || quotaBytes < 1 ||
+          !Number.isSafeInteger(usedBytes) || usedBytes < 0 || usedBytes > quotaBytes) {
+        reject('Google Drive account quota is absent, unlimited, or outside safe numeric bounds.',
+          'HFM_GOOGLE_DRIVE_QUOTA_UNAVAILABLE');
+      }
+      return {
+        providerId: 'google-drive-v3', scope: 'account', projectId: null,
+        quotaBytes, usedBytes, measuredAt: new Date().toISOString()
+      };
+    },
+
     async downloadFile({ id, accountBinding: account, driveSpace: space } = {}) {
       await assertAccount(account, space);
       const fileId = validateFileId(id);
@@ -193,4 +306,4 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
     }
   });
 }
-module.exports = { createGoogleDriveGeneratedIdProvider };
+module.exports = { createGoogleDriveGeneratedIdProvider, getGoogleDriveAccountFingerprint };
