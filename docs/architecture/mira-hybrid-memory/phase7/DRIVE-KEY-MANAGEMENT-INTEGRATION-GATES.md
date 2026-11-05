@@ -120,24 +120,26 @@ The branch adds `services/mira-hfm-drive-emergency-backup-adapter.js` as a provi
 
 - Fixed namespace: `mira-hfm-emergency/v1/{projectId}/{backupId}.mhe`; caller-supplied alternate namespaces are rejected.
 - Required transport methods: `atomicCreate({ objectKey, metadata, bytes })`, `readObject({ objectKey })`, and `listPage({ projectId, prefix, cursor, limit })`.
-- The adapter validates project binding, object key, AES-256-GCM content metadata, SHA-256 format, object metadata/byte length, and explicit bounded pagination.
+- The adapter validates project binding, object key, AES-256-GCM content metadata, SHA-256 format, object metadata/byte length, negotiated read-size and page-item limits, canonical listing timestamps, and explicit bounded pagination.
 - It rejects ambiguous atomic-create results. A future real transport must implement provider-side atomic create-if-absent; a preflight search plus ordinary upload is not acceptable.
 - Fake-transport tests exercise concurrent duplicate create calls (exactly one create result), project/namespace isolation, readback, multi-page listing, malformed create result rejection, and the absence of OAuth/network behavior.
 - The adapter has no delete, overwrite, move, permission-grant, OAuth, or routine-sync method.
 
 This prototype cannot establish real provider atomicity, remote durability, quota behavior, OAuth scope, or consistency. Those remain separate provider-specific review and live-test gates.
 
-## 10. Latest CI evidence
+## 10. Latest code-change CI evidence
 
-Branch-head commit `309fb9f50f5e9dadfb7814b7d367ce35ca373e9e` completed GitHub Actions run **41988338971** (job **127114317919**) successfully. The combined offline job logs contain **37 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+Code commit `77cf0f0deaa8101cac0e60bd3e7c0b2520a48435` completed GitHub Actions run **41990607983** (job **127121672506**) successfully. The combined offline job logs contain **40 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. The 3 additional transport assertions verify negotiated read-size enforcement, per-page item-count enforcement, and canonical listing timestamp validation. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+
+This evidence is for the latest code-change commit; later commits in this branch only refresh documentation.
 
 This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=41988338971_SUCCESS
-OFFLINE_CI_HEAD=309fb9f50f5e9dadfb7814b7d367ce35ca373e9e
-OFFLINE_PASS_MARKERS=37
+OFFLINE_CI_RUN=41990607983_SUCCESS
+OFFLINE_CI_HEAD=77cf0f0deaa8101cac0e60bd3e7c0b2520a48435
+OFFLINE_PASS_MARKERS=40
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
