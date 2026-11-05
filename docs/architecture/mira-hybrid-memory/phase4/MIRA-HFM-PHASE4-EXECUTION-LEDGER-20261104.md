@@ -222,3 +222,13 @@ Status: IN PROGRESS
 - The conditional live workflow job was skipped during normal push/PR CI; no real Meta request has occurred.
 - Next external prerequisite is owner configuration of GitHub Actions secret META_PAGE_ACCESS_TOKEN, followed by manual workflow_dispatch with exact Page ID and confirm_read_only_meta_get=true.
 - VERSION=v0.2; READ_ONLY_PROBE_CONTRACT=PASS; LIVE_META_READ_ONLY_TEST=NOT_RUN; PHASE4=IN_PROGRESS.
+
+
+## Entry 024 — Token-free public research archive and retrieval
+- Added services/mira-facebook-research-memory.js: isolated append-only archive for Page-ID-bound public search snippets. It uses owner-only directory/file permissions (0700/0600), immutable writes with readback digest verification, idempotent duplicate handling, source URL/Page-ID validation, bounded snippets, a 300-entry per-Page cap and bounded archive scans.
+- Default archive path is ~/.mira/facebook-research-memory; MIRA_FACEBOOK_RESEARCH_MEMORY_DIR can override it. Archive contents are local to the running Mira instance and are not automatically synchronized across installations.
+- Updated facebook_page_public_research to archive accepted snippets automatically. Added facebook_research_lookup for offline retrieval by Page ID and keywords.
+- Added explicit tool policies: research collection may append only to the isolated UNTRUSTED research archive; lookup is read-only. Neither tool writes Canonical HFM Memory or promotes trust.
+- Research archive records retain source URL, snippet, title, Page ID, observation/publication/archive timestamps, content digest and UNVERIFIED / SOURCE_RECORDED / PENDING_REVIEW labels. No full-page fetch, private content, login, cookies, Meta API token or publishing action is used.
+- Added offline tests for immutable archive writes, repeat-search idempotency, Page-scoped retrieval, owner-only file permissions and lookup tool behavior. CI verification is pending; do not mark PASS until the branch-head workflow completes.
+- VERSION=v0.2; META_TOKEN_REQUIRED=NO; LIVE_SEARCH=NOT_RUN; CANONICAL_MEMORY_WRITES=0; PRODUCTION_READINESS=NOT_CERTIFIED.
