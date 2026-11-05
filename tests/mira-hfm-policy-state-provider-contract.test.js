@@ -118,9 +118,28 @@ function policyEnvelope() {
 }
 function makeProvider(options = {}) {
   let current = signed(statePayload(), stateKey);
+  const receipts = new Map();
+  function requestDigest(request) {
+    return crypto.createHash('sha256').update(JSON.stringify({
+      authorityId: request.authorityId,
+      expectedSequence: request.expectedSequence,
+      expectedDigest: request.expectedDigest,
+      nextState: request.nextState
+    })).digest('hex');
+  }
   return {
     async readState() {
+      if (options.readError) throw new Error('synthetic state read failure');
       return options.badState ? options.badState : current;
+    },
+    async getCommitReceipt({ authorityId, idempotencyKey, requestDigest: expectedDigest }) {
+      if (authorityId !== stateAuthority || typeof idempotencyKey !== 'string') {
+        throw new Error('invalid receipt lookup');
+      }
+      const prior = receipts.get(idempotencyKey);
+      if (!prior) return null;
+      if (prior.requestDigest !== expectedDigest) throw new Error('receipt digest mismatch');
+      return prior.receipt;
     },
     async compareAndSwap(request) {
       if (options.casError) {
@@ -128,10 +147,31 @@ function makeProvider(options = {}) {
         error.code = options.casError;
         throw error;
       }
+      if (!request.idempotencyKey) {
+        const error = new Error('idempotency key required');
+        error.code = 'HFM_POLICY_STATE_IDEMPOTENCY_REQUIRED';
+        throw error;
+      }
+      const digest = requestDigest(request);
+      const prior = receipts.get(request.idempotencyKey);
+      if (prior) {
+        if (prior.requestDigest !== digest) {
+          const error = new Error('idempotency mismatch');
+          error.code = 'HFM_POLICY_STATE_IDEMPOTENCY_MISMATCH';
+          throw error;
+        }
+        return prior.receipt;
+      }
       if (request.expectedSequence !== current.payload.highestAcceptedSequence ||
           request.expectedDigest !== current.payload.lastAcceptedPolicyDigest) {
         const error = new Error('CAS conflict');
         error.code = 'HFM_POLICY_STATE_CAS_CONFLICT';
+        throw error;
+      }
+      if (options.failBeforeCommit && !options.preCommitFailureUsed) {
+        options.preCommitFailureUsed = true;
+        const error = new Error('synthetic request lost before commit');
+        error.code = 'HFM_POLICY_STATE_REQUEST_NOT_COMMITTED';
         throw error;
       }
       const next = statePayload({
@@ -139,7 +179,6 @@ function makeProvider(options = {}) {
         lastAcceptedPolicyId: request.nextState.lastAcceptedPolicyId,
         lastAcceptedPolicyDigest: request.nextState.lastAcceptedPolicyDigest
       });
-      current = signed(next, stateKey);
       const receiptPayload = {
         contractVersion: '1',
         authorityId: stateAuthority,
@@ -149,10 +188,22 @@ function makeProvider(options = {}) {
         previousSequence: request.expectedSequence,
         nextSequence: request.nextState.highestAcceptedSequence,
         policyId: request.nextState.lastAcceptedPolicyId,
-        policyDigest: request.nextState.lastAcceptedPolicyDigest
+        policyDigest: request.nextState.lastAcceptedPolicyDigest,
+        idempotencyKey: request.idempotencyKey,
+        requestDigest: digest
       };
       if (options.badReceipt) receiptPayload.policyDigest = '0'.repeat(64);
-      return signed(receiptPayload, stateKey);
+      if (options.badRequestDigest) receiptPayload.requestDigest = '0'.repeat(64);
+      const receipt = signed(receiptPayload, stateKey);
+      current = signed(next, stateKey);
+      receipts.set(request.idempotencyKey, { requestDigest: digest, receipt });
+      if (options.ambiguousResponse && !options.ambiguousResponseUsed) {
+        options.ambiguousResponseUsed = true;
+        const error = new Error('synthetic response lost after commit');
+        error.code = 'HFM_POLICY_STATE_AMBIGUOUS_COMMIT';
+        throw error;
+      }
+      return receipt;
     }
   };
 }
@@ -248,6 +299,27 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     trustedEvidenceIssuers, expectedEnvironment: 'test',
     expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
   }), 'HFM_POLICY_STATE_UNAVAILABLE');
+
+  const reconciled = await verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(), provider: makeProvider({ ambiguousResponse: true }),
+    trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers, trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+  });
+  assert.equal(reconciled.stateCommit.committed, true);
+  assert.equal(typeof reconciled.stateCommit.idempotencyKey, 'string');
+
+  const retriedBeforeCommit = await verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(), provider: makeProvider({ failBeforeCommit: true }),
+    trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers, trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+  });
+  assert.equal(retriedBeforeCommit.stateCommit.committed, true);
 
   await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(), provider: makeProvider({ badReceipt: true }),
