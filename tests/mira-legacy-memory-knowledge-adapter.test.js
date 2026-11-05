@@ -122,7 +122,7 @@ assert.throws(() => adaptLegacyEntry({
   domain: 'work_learning', entry: { ...learning, learningId: '' },
   mapping: learningMapping, projectId: 'project-alpha',
   sourceFileDigest, sourceOrdinal: 0
-}), /Legacy identity\/source locator mismatch|stable source locator/);
+}), /Work Learning learningId is absent/);
 console.log('WORK_LEARNING_MISSING_STABLE_ID_REJECTED=PASS');
 assert.throws(() => adaptLegacyEntry({
   domain: 'work_learning', entry: learning,
