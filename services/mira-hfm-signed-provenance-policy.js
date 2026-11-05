@@ -55,6 +55,11 @@ function verifySignedProvenancePolicy({
   envelope, trustedPolicyIssuers, trustedPolicyReviewers, acceptedPolicyState, expectedEnvironment,
   expectedProjectId, operationalIssuerIds = [], now = Date.now(), maxFutureSkewMs = 30000
 }) {
+  if (!Number.isSafeInteger(now) || !Number.isSafeInteger(maxFutureSkewMs) ||
+      maxFutureSkewMs < 0 || maxFutureSkewMs > 30000) {
+    fail('Provenance policy verifier time configuration is invalid or exceeds fixed safety limits.',
+      'HFM_PROVENANCE_POLICY_CONFIG_INVALID');
+  }
   if (!isPlainObject(envelope) || !isPlainObject(envelope.payload) ||
       !validText(envelope.signature, 2048) ||
       !isPlainObject(trustedPolicyIssuers) || !isPlainObject(trustedPolicyReviewers) ||
