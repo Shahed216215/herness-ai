@@ -157,6 +157,42 @@ async function rejectsCode(promise, code) {
     replayGuard: { async consume() { throw new Error('synthetic replay-store outage'); } }, now: f.now
   }), 'HFM_AUTHZ_REPLAY_REJECTED');
 
+  for (const config of [
+    { maxValidityMs: Infinity },
+    { maxValidityMs: NaN },
+    { maxValidityMs: 0 },
+    { maxValidityMs: -1 },
+    { maxValidityMs: 300001 },
+    { maxFutureSkewMs: Infinity },
+    { maxFutureSkewMs: NaN },
+    { maxFutureSkewMs: -1 },
+    { maxFutureSkewMs: 30001 },
+    { now: Infinity }
+  ]) {
+    await rejectsCode(verifyAuthorizationDecision({
+      decision: f.sign(), request: f.request, trustedIssuers: f.trustedIssuers,
+      replayGuard: f.replayGuard, now: f.now, ...config
+    }), 'HFM_AUTHZ_CONFIG_INVALID');
+  }
+
+  const malformedAnchor = {
+    'policy-issuer': {
+      ...f.trustedIssuers['policy-issuer'],
+      publicKeyPem: '-----BEGIN PUBLIC KEY-----\\nnot-a-valid-key\\n-----END PUBLIC KEY-----'
+    }
+  };
+  await rejectsCode(verifyAuthorizationDecision({
+    decision: f.sign(), request: f.request, trustedIssuers: malformedAnchor,
+    replayGuard: f.replayGuard, now: f.now
+  }), 'HFM_AUTHZ_TRUST_ANCHOR_INVALID');
+
+  const malformedSignature = f.sign();
+  malformedSignature.signature = '%%%not-base64%%%';
+  await rejectsCode(verifyAuthorizationDecision({
+    decision: malformedSignature, request: f.request, trustedIssuers: f.trustedIssuers,
+    replayGuard: f.replayGuard, now: f.now
+  }), 'HFM_AUTHZ_SIGNATURE_INVALID');
+
   const rsa = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
   const rsaTrust = {
     'policy-issuer': {
