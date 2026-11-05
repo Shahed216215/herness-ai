@@ -57,7 +57,7 @@ const { getToolPolicy, checkToolSafety } = require('../services/mira-tool-execut
 
   const serverPath = path.join(__dirname, '..', 'server.js');
   const server = fs.readFileSync(serverPath, 'utf8');
-  assert.match(server, /generate\([\s\S]{0,500}?declarations[\s\S]{0,500}?messages\)/,
+  assert.match(server, /await\s+generate\(\s*cleanCommand\s*,\s*declarations\s*,\s*messages\s*\)/,
     'server generation cycle must expose registered tool declarations to the model');
   assert.match(server, /const functionCalls\s*=\s*Array\.isArray\(\s*response\.functionCalls\s*\)/,
     'server must process model function calls');
