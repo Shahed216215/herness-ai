@@ -78,6 +78,11 @@ async function captureAuthorizedSnapshot({
       'HFM_SNAPSHOT_ATTESTATION_INVALID');
   }
   const a = result.attestation;
+  if (trusted.provenance !== undefined &&
+      (!isPlainObject(a.provenance) || canonicalize(a.provenance) !== canonicalize(trusted.provenance))) {
+    fail('Signed source provenance does not match the independently pinned source trust record.',
+      'HFM_SNAPSHOT_PROVENANCE_MISMATCH');
+  }
   const capturedAtMs = Date.parse(a.capturedAt);
   if (a.sourceId !== descriptor.sourceId || a.signingKeyId !== trusted.keyId ||
       a.signingKeyVersion !== trusted.keyVersion ||
@@ -122,6 +127,7 @@ async function captureAuthorizedSnapshot({
       signatureVerified: true, authorizationIndependentlyEnforced: false, authorizationDecisionAuthenticated: true,
       authorizationIssuerId: a.authorizationIssuerId, authorizationDecisionId: a.authorizationDecisionId,
       authorizationPolicyVersion: a.authorizationPolicyVersion, authorizationExpiresAt: a.authorizationExpiresAt,
+      ...(isPlainObject(a.provenance) ? { provenance: a.provenance } : {}),
       productionApproval: false
     }
   };
