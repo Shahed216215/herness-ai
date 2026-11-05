@@ -69,6 +69,9 @@ assert.ok(recovery.includes('on conflict (operation_key) do nothing'), 'Audit in
 assert.ok(recovery.includes('pg_advisory_xact_lock') && recovery.includes('hashtextextended'), 'RPC must serialize immutable identity checks with transaction-scoped advisory locks.');
 assert.doesNotMatch(recovery, /for update/i, 'RPC must not require UPDATE privileges for row locks.');
 assert.ok(recovery.includes('grant execute on function public.mira_stage_facebook_group_import_v1(jsonb, jsonb, text) to service_role'), 'RPC execute must be restricted to service_role.');
+assert.ok((recovery.match(/is distinct from/g) || []).length >= 18, 'RPC must reject missing JSON keys and NULL identity values with NULL-safe comparisons.');
+assert.ok(recovery.includes("p_event ->> 'eventtype' is distinct from 'facebook_group_memory_import_staged'"), 'Missing eventType must be rejected.');
+assert.ok(recovery.includes("p_batch ->> 'canonicalmemorywrite' is distinct from 'false'"), 'Missing Batch policy flag must be rejected.');
 assert.doesNotMatch(recovery, /\b(drop table|truncate table|delete from|update public\.)\b/i, 'Recovery migration must remain additive.');
 
 console.log('GROUP_IMPORT_RECOVERY_MIGRATION_ATOMIC_RPC_AND_IDEMPOTENCY=PASS');
