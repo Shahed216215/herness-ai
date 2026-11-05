@@ -27,7 +27,9 @@ assert.throws(() => validateKeyProviderContract({ ...provider, unwrapDataKey: un
 assert.throws(() => validateKeyProviderContract(provider, metadata, 'deleteKey'),
   error => error.code === 'BACKUP_KEY_PROVIDER_CONTRACT_INVALID');
 for (const field of ['privateKeyPem', 'privateKeyBytes', 'masterKey', 'masterKeyBytes',
-  'keyMaterial', 'secretKeyBytes']) {
+  'keyMaterial', 'secretKey', 'secretKeyBytes', 'keyEncryptionKey', 'keyEncryptionKeyBytes',
+  'kek', 'encryptionKey', 'encryptionKeyBytes', 'credential', 'credentials',
+  'accessToken', 'refreshToken', 'clientSecret']) {
   assert.throws(() => validateKeyProviderContract({
     ...provider, [field]: 'must-not-be-exposed'
   }, metadata, 'wrapDataKey'), error => error.code === 'BACKUP_KEY_PROVIDER_SECRET_BOUNDARY_VIOLATION');
