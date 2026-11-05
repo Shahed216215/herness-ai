@@ -54,20 +54,30 @@ async function verifyAuthorizationDecision({
     fail('A signed authorization decision, independent issuer trust store, request and replay guard are required.',
       'HFM_AUTHZ_CONTRACT_MISSING');
   }
+  let stableDecision, stableRequest, stableTrustedIssuers;
+  try {
+    stableDecision = JSON.parse(canonicalize(decision));
+    stableRequest = JSON.parse(canonicalize(request));
+    stableTrustedIssuers = JSON.parse(canonicalize(trustedIssuers));
+  } catch {
+    fail('Authorization decision, request, or trust configuration cannot be snapshotted safely.',
+      'HFM_AUTHZ_CONTRACT_INVALID');
+  }
+  const consumeReplay = replayGuard.consume;
   const required = ['issuerId', 'keyId', 'decisionId', 'policyVersion', 'projectId',
     'actorId', 'scope', 'requestId', 'nonce', 'issuedAt', 'expiresAt', 'signature'];
-  if (required.some(k => typeof decision[k] !== 'string' || !decision[k].trim()) ||
-      decision.decision !== 'ALLOW' ||
-      decision.projectId !== request.projectId || decision.actorId !== request.actorId ||
-      decision.scope !== request.scope || decision.requestId !== request.requestId ||
-      decision.nonce !== request.nonce || request.scope !== 'backup:read') {
+  if (required.some(k => typeof stableDecision[k] !== 'string' || !stableDecision[k].trim()) ||
+      stableDecision.decision !== 'ALLOW' ||
+      stableDecision.projectId !== stableRequest.projectId || stableDecision.actorId !== stableRequest.actorId ||
+      stableDecision.scope !== stableRequest.scope || stableDecision.requestId !== stableRequest.requestId ||
+      stableDecision.nonce !== stableRequest.nonce || stableRequest.scope !== 'backup:read') {
     fail('Authorization decision is denied, incomplete, or not bound to the exact request.',
       'HFM_AUTHZ_DECISION_MISMATCH');
   }
-  const trusted = trustedIssuers[decision.issuerId];
+  const trusted = stableTrustedIssuers[stableDecision.issuerId];
   if (!isPlainObject(trusted) || trusted.keyId !== decision.keyId ||
       typeof trusted.policyVersion !== 'string' || !trusted.policyVersion.trim() ||
-      decision.policyVersion !== trusted.policyVersion ||
+      stableDecision.policyVersion !== trusted.policyVersion ||
       typeof trusted.publicKeyPem !== 'string' || !trusted.publicKeyPem.includes('PUBLIC KEY') ||
       typeof trusted.publicKeySha256 !== 'string' || !/^[a-f0-9]{64}$/.test(trusted.publicKeySha256)) {
     fail('Authorization decision issuer is not independently trusted.', 'HFM_AUTHZ_ISSUER_UNTRUSTED');
@@ -84,30 +94,30 @@ async function verifyAuthorizationDecision({
   if (fingerprint !== trusted.publicKeySha256) {
     fail('Authorization issuer trust-anchor fingerprint mismatch.', 'HFM_AUTHZ_TRUST_ANCHOR_MISMATCH');
   }
-  const issuedAt = Date.parse(decision.issuedAt);
-  const expiresAt = Date.parse(decision.expiresAt);
+  const issuedAt = Date.parse(stableDecision.issuedAt);
+  const expiresAt = Date.parse(stableDecision.expiresAt);
   if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) ||
       issuedAt > now + maxFutureSkewMs || expiresAt <= now ||
       expiresAt <= issuedAt || expiresAt - issuedAt > maxValidityMs) {
     fail('Authorization decision is expired, future-dated, or exceeds its maximum validity.',
       'HFM_AUTHZ_DECISION_EXPIRED_OR_INVALID');
   }
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(decision.signature) ||
-      Buffer.from(decision.signature, 'base64').toString('base64') !== decision.signature) {
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(stableDecision.signature) ||
+      Buffer.from(stableDecision.signature, 'base64').toString('base64') !== stableDecision.signature) {
     fail('Authorization decision signature encoding is invalid.', 'HFM_AUTHZ_SIGNATURE_INVALID');
   }
   let valid = false;
   try {
-    valid = crypto.verify(null, Buffer.from(canonicalize(unsignedDecision(decision)), 'utf8'),
-      publicKey, Buffer.from(decision.signature, 'base64'));
+    valid = crypto.verify(null, Buffer.from(canonicalize(unsignedDecision(stableDecision)), 'utf8'),
+      publicKey, Buffer.from(stableDecision.signature, 'base64'));
   } catch { valid = false; }
   if (!valid) fail('Authorization decision signature verification failed.', 'HFM_AUTHZ_SIGNATURE_INVALID');
 
   let consumed = false;
   try {
-    consumed = await replayGuard.consume({
-      issuerId: decision.issuerId, decisionId: decision.decisionId,
-      requestId: decision.requestId, nonce: decision.nonce, expiresAt: decision.expiresAt
+    consumed = await consumeReplay.call(replayGuard, {
+      issuerId: stableDecision.issuerId, decisionId: stableDecision.decisionId,
+      requestId: stableDecision.requestId, nonce: stableDecision.nonce, expiresAt: stableDecision.expiresAt
     });
   } catch {
     fail('Authorization decision was already consumed or replay protection is unavailable.',
@@ -119,9 +129,9 @@ async function verifyAuthorizationDecision({
   }
   return {
     status: 'SIGNED_AUTHORIZATION_DECISION_AUTHENTICATED',
-    issuerId: decision.issuerId, keyId: decision.keyId,
-    decisionId: decision.decisionId, policyVersion: decision.policyVersion,
-    expiresAt: decision.expiresAt, trustAnchorSha256: fingerprint,
+    issuerId: stableDecision.issuerId, keyId: stableDecision.keyId,
+    decisionId: stableDecision.decisionId, policyVersion: stableDecision.policyVersion,
+    expiresAt: stableDecision.expiresAt, trustAnchorSha256: fingerprint,
     replayGuardConsumed: true,
     policyCorrectnessIndependentlyAudited: false
   };
