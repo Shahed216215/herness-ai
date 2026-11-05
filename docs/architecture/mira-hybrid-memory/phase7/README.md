@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Encrypted Emergency Backup
 
-Status: ENCRYPTION, IMMUTABLE LOCAL ARTIFACT, INTEGRITY VERIFICATION, RESTORE PREVIEW/STAGING, PROVIDER-NEUTRAL CAPACITY MONITOR AND NON-DESTRUCTIVE RETENTION PREVIEW IMPLEMENTED; GOOGLE DRIVE ADAPTER, PRODUCTION KEY CUSTODY AND LIVE RESTORE NOT CERTIFIED.
+Status: ENCRYPTED BACKUP, IMMUTABLE LOCAL ARTIFACT, INTEGRITY VERIFICATION, RESTORE PREVIEW/STAGING, CAPACITY/RETENTION CONTRACTS, VERSIONED KEY-PROVIDER WRAPPER, AND OFFLINE INJECTED TRANSPORT ADAPTER PROTOTYPE IMPLEMENTED. GOOGLE DRIVE OAUTH AND PRODUCTION RESTORE NOT CERTIFIED.
 
 ## Scope
 
@@ -11,60 +11,64 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - AES-256-GCM authenticated encryption with a fresh 96-bit nonce per backup.
 - HKDF-SHA256 derives a per-backup encryption key from a caller-supplied 32-byte root key and random 128-bit salt.
 - Root key is injected by an external key provider. This module never generates, stores, logs, exports, or transmits the root key.
-- The authenticated header binds schema/version, algorithm, backup ID, timestamp, payload length, plaintext digest, and allowlisted metadata.
+- The authenticated header binds schema/version, algorithm, backup ID, timestamp, payload length, plaintext digest, and allowlisted metadata, including optional key version ID.
 - Ciphertext and plaintext SHA-256 digests are checked; GCM authentication is mandatory before plaintext is returned.
 - Payload and envelope sizes are bounded.
 
 ## Storage and restore safety
 
-- Local emergency artifacts must authenticate/decrypt successfully with the supplied external key before any file is created; they then use owner-only directory/file permissions, symlink rejection, atomic create-only hard-link publication, fsync, and read-after-write verification.
+- Local emergency artifacts authenticate/decrypt before file creation; owner-only permissions, symlink rejection, atomic create-only publication, fsync, and read-after-write verification are enforced. Restore staging fsyncs the staging directory after create-only publication and verifies exact plaintext bytes; failed authentication leaves no staging artifact.
 - Existing backup IDs cannot be overwritten.
-- Restore preview authenticates/decrypts the exact envelope and reports metadata, byte count, and digest without writing a stage file.
-- Cloud restore preview verifies project/object identity and encryption before any restore staging.
+- Restore preview authenticates/decrypts without writing a stage file.
+- Cloud restore preview verifies project/object identity and encryption before staging.
 - Actual restore decrypts and verifies into a separate owner-only staging directory only.
 - No canonical Memory writes, live provider calls, production restore, or automatic trust promotion occur.
-- A provider-neutral capacity monitor totals project-scoped backup object bytes against a 5,000,000,000-byte emergency-backup budget. It requires a future adapter with explicit project-scoped list capability; it is not a live Google Drive quota/API integration.
-- Retention planning accepts explicit `keepLast` and `maxAgeDays` policy, produces a non-destructive candidate list, and never deletes artifacts. Any future deletion requires a separately approved workflow.
-- A successful cryptographic verification proves integrity under the supplied key; it does not prove that the source snapshot was complete, correct, or authorized.
+- Capacity monitoring uses explicit project-scoped pagination and a configured 5,000,000,000-byte emergency-backup budget. It validates provider quota schema, scope, arithmetic, and non-future measurement time; it validates canonical non-future backup timestamps. It reports the HFM budget separately from optional provider-reported account/project quota; unavailable provider quota is explicitly NOT_REPORTED. This is still not a live Google Drive quota integration.
+- Retention planning is non-destructive and never deletes artifacts.
 
-## Explicit exclusions / next integration
+## Offline key-provider contract
 
-- No Google Drive OAuth, token access, concrete Drive adapter, live upload, download, or API request is implemented in this phase slice. The 5 GB monitor is a tested provider-neutral inventory contract only.
-- A future emergency cloud transport must be a separately authorized adapter using encrypted envelope bytes only; it must not alter routine sync behavior.
-- Production key management, key rotation/recovery, real provider adapter/authentication, durable cloud retention, snapshot export from the canonical HFM store, crash-recovery drills, and independent production restore verification remain NOT_CERTIFIED. The offline cross-process synthetic recovery check is not a production recovery drill.
-- Do not store the root key beside the backup. Losing the key means the backup cannot be decrypted; losing the backup does not justify weakening key protection.
+- `services/mira-hfm-backup-key-provider.js` provides an injected `getKey({ keyId })` wrapper, exact 32-byte validation, authenticated key-version metadata, historical version lookup, normalized failure codes, ephemeral key-copy zeroization, and a retirement evidence gate.
+- This is not a production key vault/KMS. JavaScript zeroization is best-effort memory hygiene only; production custody, rotation operations, escrow, and recovery remain NOT_CERTIFIED.
 
-## Offline verification
+## Offline injected transport adapter
 
-Run: `node tests/mira-hfm-encrypted-emergency-backup.test.js`
+- `services/mira-hfm-drive-emergency-backup-adapter.js` provides a provider-neutral adapter around an injected `atomicCreate`, `readObject`, and `listPage` transport.
+- It fixes a project-scoped namespace, validates encrypted-envelope content metadata and SHA-256 format, rejects cross-project/path traversal access, enforces negotiated object-size and per-page item limits, validates canonical listing timestamps, bounded cursors, encrypted-only listing metadata and negotiated object sizes, and rejects ambiguous create results.
+- Before operations it negotiates provider capabilities and fails closed unless atomic create-if-absent, read-after-write consistency, project isolation, encrypted object storage, paginated listing, and bounded object/page limits are explicitly declared.
+- Optional provider quota reports are strictly scope- and timestamp-validated. Capacity output separates provider-reported quota from the configured 5 GB HFM emergency-backup budget; no quota is inferred when the provider does not report it.
+- The transport's `atomicCreate` must be a true provider-side atomic create-if-absent operation. The adapter cannot prove that a future real provider implements this correctly.
+- Synthetic fake-transport tests cover provider capability negotiation, unsupported-provider fail-closed behavior, scoped quota validation and explicit unavailable-quota status, configured-budget/provider-quota separation, concurrent create-only behavior, namespace isolation, metadata binding, exact-byte readback, negotiated read-size and page-item limits, canonical listing timestamp validation, multi-page listing, timeout-after-commit reconciliation, timeout-before-commit uncertainty, immutable-ID collision rejection, missing/unreadable readback, and no OAuth/network use.
+- No Google Drive SDK, OAuth, token handling, real Drive calls, delete/overwrite, permission grants, or routine-sync mutation is implemented.
 
-Latest pagination-enabled GitHub Actions run **41977403086: SUCCESS** (job **127079375920**); all 16 emitted PASS test-group markers were present, including `HFM_PHASE7_PAGINATION_COMPLETE_AND_INCOMPLETE_REJECTED=PASS`; `TESTS_FAILED=0`, `CANONICAL_WRITES=0`, `PRODUCTION_RESTORE=0`. Earlier run 41966766573 is historical. Verified log groups include authenticated local/cloud restore preview without writes, project-scoped 5 GB capacity monitoring, non-destructive retention planning, independent-process recovery, and failed-authentication/no-stage-artifact checks. Synthetic offline tests cover authenticated encrypt/decrypt, wrong-key rejection, metadata/ciphertext tamper rejection, input/key gates, authenticated local/cloud restore previews without writes, authenticated-before-write local storage (wrong-key input creates no file), immutable write/readback, encrypted-only cloud adapter capability gates, create-only cloud upload/readback, project isolation, project-scoped 5 GB capacity accounting, non-destructive retention planning, cloud-download restore-to-staging, independent-process recovery from the exact encrypted artifact, and proof that failed authentication creates no restore-stage file. No live network or cloud calls occur.
+## Verification
+
+- Latest code-change CI: run **41990607983 — SUCCESS**, job **127121672506**, code commit **77cf0f0deaa8101cac0e60bd3e7c0b2520a48435**.
+- Latest code-change CI: run **41992655865 — SUCCESS**, job **127128310119**, commit **eaa2871bfa84a7457680ce9e9c49490a7dbce581**.
+- Combined offline job logs: **49 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
+- Provider read operations now receive the fixed projectId explicitly; the injected transport fixture asserts that binding.
+- New assertions cover bounded pagination cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaving no stage artifact, strict provider quota/timestamp validation, and authenticated project binding across cloud upload, preview, and restore.
+- Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+- This is synthetic offline CI evidence, not a live-provider or production recovery certification.
+
+## Explicit exclusions and blockers
+
+- Actual Google Drive adapter/OAuth/live upload/download/Drive quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
+- Production key provider/KMS/OS keystore, key custody, rotation execution, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
+- Canonical HFM snapshot exporter: BLOCKED pending production-grade canonical store integration and approved project-owner mappings. Phase 1 static reconciliation is COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS; Phase 2 local-core safety acceptance is PASS_SCOPED; Phase 3 is COMPLETE_SYNTHETIC_CONTRACT_ONLY. These scoped completions do not establish production host authentication, a persistent authoritative project-owner registry, durable replay protection, production record mappings, or a single committed canonical store. No legacy store is safe to export as a canonical HFM snapshot yet.
+- Production restore drill and independent production recovery certification: NOT_TESTED.
+- Existing routine Google Drive synchronization: UNCHANGED.
 
 VERSION=v0.2
-PHASE7=ENCRYPTED_EMERGENCY_BACKUP_AND_OFFLINE_KEY_VERSION_CONTRACT_IMPLEMENTED
+PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
+LATEST_CI=41992655865_SUCCESS
+LATEST_CI_HEAD=eaa2871bfa84a7457680ce9e9c49490a7dbce581
+OFFLINE_PASS_MARKERS=49
+PROVIDER_CAPABILITY_NEGOTIATION=PASS
+PROVIDER_QUOTA_REPORTING_CONTRACT=PASS
+NEGOTIATED_LIMIT_ENFORCEMENT=PASS
+TRANSPORT_TIMEOUT_RECONCILIATION=PASS
+BLIND_RETRY=DISABLED
+LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
-CLOUD_TRANSPORT=PROVIDER_NEUTRAL_CONTRACT_ONLY
 PRODUCTION_RESTORE=NOT_CERTIFIED
-
-
-## Capacity and retention contracts
-
-- Default emergency-backup allocation: `5,000,000,000` bytes (decimal 5 GB), scoped to one project.
-- Capacity states: `WITHIN_BUDGET`, `NEAR_BUDGET_LIMIT` (90% or more), and `OVER_BUDGET`.
-- Capacity inspection requires `capabilities.list === true` and an adapter `list({ projectId, prefix, cursor, limit })` implementation returning `{ items, complete, nextCursor }`. The consumer follows bounded opaque cursors to explicit completion; legacy one-shot arrays, malformed pages, repeated cursors, and page/item-limit exhaustion are rejected as INCONCLUSIVE. Each listed object must bind to the exact project/object key and provide a positive byte count and canonical creation timestamp.
-- Retention preview requires an explicit `keepLast` and `maxAgeDays`; it labels old snapshots as candidates but never removes them. No automatic pruning or deletion is implemented.
-
-
-
-## Versioned key-provider contract prototype
-
-- Added `services/mira-hfm-backup-key-provider.js` as a provider-injected offline contract wrapper; it is not a production key vault/KMS.
-- Backup envelopes authenticate `metadata.keyVersionId`; decryption requests that exact version and does not silently fall back.
-- A temporary key copy is zeroed after callback completion; this is best-effort JavaScript memory hygiene, not a guarantee that runtime copies are erased.
-- Distinct provider failure codes, historical key A decryption after key B creation, malformed key rejection, and retirement evidence gates are covered by synthetic tests.
-- Latest code/test CI run **41979355022 — SUCCESS** (job **127085605994**); raw log contains **20 PASS test-group markers**, including all four new key-provider groups; `TESTS_FAILED=0`, `CANONICAL_WRITES=0`, `PRODUCTION_RESTORE=0`.
-- Production key provider, key creation/rotation/retirement operations, escrow and recovery remain NOT_IMPLEMENTED / NOT_CERTIFIED.
-
-## Next integration gate
-
-See [Drive and Key-Management Integration Gates](./DRIVE-KEY-MANAGEMENT-INTEGRATION-GATES.md) for the required OAuth least-privilege contract, encrypted-only Drive adapter requirements, key-provider/rotation requirements, snapshot-exporter dependency, offline test matrix, and separate live-authorization gate. This is a design contract only; no live Drive integration or key provider is certified.
