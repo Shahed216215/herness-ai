@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 5 Facebook Group Manual Import
 
-Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FOUR FOCUSED PHASE 5 TESTS, NINE DEPENDENCY-FREE STATIC REGRESSION TESTS, AND THE FULL CANONICAL 29-TEST `npm test` CHAIN PASS IN EXACT-HEAD CI. The four formerly absent test paths have been re-created as scoped regression tests from the current source contracts; original historical copies were not recoverable from the inspected branches. Live Supabase migration/persistence, Render deployment, and runtime verification remain deferred.
+Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FOUR FOCUSED PHASE 5 TESTS, NINE DEPENDENCY-FREE STATIC REGRESSION TESTS, AND THE CANONICAL 29-TEST `npm test` CHAIN PASS ON THE PREVIOUS EXACT HEAD. A subsequent Render preflight found and corrected duplicate Facebook Group route declaration/mount wiring and changed the production bind host to `0.0.0.0` while preserving local loopback binding. A new server-startup contract test was added to make the canonical chain 30 tests; exact-head CI for this latest change is pending. Live Supabase migration/persistence, Render deployment, and runtime verification remain deferred.
 
 ## Scope implemented
 
@@ -113,6 +113,12 @@ The canonical `npm test` script retains all 29 test entries. The separate `npm r
 - Recorded boundary checks: `LIVE_FACEBOOK_REQUESTS=0`, `PRIVATE_GROUP_ACCESS=0`, `CANONICAL_MEMORY_WRITES=0`, and `PRODUCTION_MIGRATION=0`.
 - Therefore the focused Phase 5 offline CI result is **PASS**. This does not mean the full repository `npm test` chain passed: that broader chain has not been verified on this exact head in this acceptance check.
 
+## Render startup preflight finding (2026-11-05)
+
+The pre-deployment source review found two duplicate declarations of `registerFacebookGroupMemoryImportRoutes` and two identical route-mount calls in `server.js`. The duplicate `const` declaration would prevent Node.js from parsing the server. The second declaration and second mount were removed, leaving one route declaration and one mount.
+
+The same review found the server listening on `127.0.0.1` unconditionally. The bind host is now production-aware: `0.0.0.0` when `NODE_ENV=production`, and `127.0.0.1` for local development. A new `tests/server-startup-contract.test.js` test runs `node --check server.js` and verifies single route declaration/mount plus the production/local bind contract. It was added to both canonical `npm test` and `test:offline-regression:available`, increasing the chain from 29 to 30 test files. The previous 29-test exact-head run does not validate this new fix; the latest 30-test exact-head CI result is pending.
+
 ## Deferred Render verification
 
 1. Confirm the Render service points to `Shahed216215/herness-ai` and the reviewed branch `work/mira-hfm-v02-phase5-clean-restack-on-phase4-20261105` (the previously inspected service was connected to a different repository).
@@ -138,7 +144,7 @@ The canonical `npm test` script retains all 29 test entries. The separate `npm r
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
 | Native Meta export archive compatibility | NOT_IMPLEMENTED | Only documented JSON, JSONL, and manual-text interchange formats are supported |
 
-**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_29_PASS; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified because Supabase/Render live verification remains deferred. All work remains within Mira HFM v0.2.
+**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_29_PASS_PREVIOUS_HEAD; SERVER_STARTUP_FIX_APPLIED; CANONICAL_NPM_TEST_30_PENDING_EXACT_HEAD_CI; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified because the latest startup fix needs exact-head CI and Supabase/Render live verification remains deferred. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
