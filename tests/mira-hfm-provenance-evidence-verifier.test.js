@@ -62,6 +62,19 @@ async function rejects(promise, code) {
   });
   assert.equal(valid.verifiedCount, 12);
 
+  const duplicate = fixture();
+  duplicate.policyPayload.evidence.backup.storageInstanceId.evidenceId =
+    duplicate.policyPayload.evidence.baseline.storageSystemId.evidenceId;
+  await rejects(verifyAllPolicyEvidence({
+    ...duplicate, trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', now
+  }), 'HFM_PROVENANCE_EVIDENCE_DUPLICATE_ID');
+
+  await rejects(verifyAllPolicyEvidence({
+    ...fixture(), trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds: [issuerId], now
+  }), 'HFM_PROVENANCE_EVIDENCE_BINDING_MISMATCH');
+
   const badDigest = fixture();
   badDigest.policyPayload.evidence.baseline.storageSystemId.sha256 = '0'.repeat(64);
   await rejects(verifyAllPolicyEvidence({
