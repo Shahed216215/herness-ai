@@ -149,7 +149,7 @@ async function run() {
 
   await assert.rejects(() => verifyRecoveryCandidate({
     backup: encrypted.bytes,
-    keyProvider,
+    keyProvider: provider,
     expectedProjectId: projectId,
     supportedSchemaVersions: ['1.0.0'],
     expectedSourceRevision: sourceRevision,
