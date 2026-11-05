@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Emergency Backup
 
-Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
+Status: STAGING BACKUP/RECOVERY DRILL IMPLEMENTED; NEW CI RUN PENDING; PRODUCTION KEY CUSTODY AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
 
 ## Implemented
 - Per-backup random 256-bit data-encryption key (DEK), AES-256-GCM payload encryption, and external key-provider wrapping/unwrapping of the DEK (KEK boundary).
@@ -38,6 +38,14 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - New synthetic tests cover successful signed staging capture, denied authorization, production-environment rejection, path pinning, and source-file immutability. CI execution for this addition is pending until the new workflow run completes.
 - This adapter is not a production integration and must not be pointed at production data.
 
+## Staging backup and recovery drill (new)
+- `services/mira-hfm-staging-backup-drill.js` composes two separately pinned staging snapshot sources, encrypted envelope creation, immutable local publication, byte-for-byte file readback, and the existing non-mutating recovery verifier.
+- The baseline source is captured independently before the backup source. Source revision, record count, and canonical payload digest must match before any backup file is published; a mismatch blocks publication.
+- The published encrypted file is read back from disk and recovery-verified against the independent baseline. Existing backup names are never overwritten.
+- The drill requires an existing explicit non-symlink staging backup directory and a restricted filename. It does not call Drive, write canonical Memory/Knowledge, restore data, or delete files.
+- Synthetic tests cover successful publication and recovery preview, unchanged source files, overwrite refusal, and mismatch blocking. The new CI suite is pending; no PASS is claimed until its workflow logs confirm execution.
+- Both source adapters are synthetic test identities. This demonstrates the staging workflow contract, not independent production authority, real key custody, or production store correctness.
+
 ## Explicit limitations
 - No production Memory source is read. No production store is wired into the source contract.
 - No Drive folder is created or credentials loaded by the adapter; caller must supply a verified folder ID and authorized client.
@@ -53,7 +61,8 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - Project/schema/count validation: PASS_CI.
 - Immutable local write/readback: PASS_CI.
 - Mocked Drive quota/upload/no-overwrite/remote-readback contract: PASS_CI.
-- Local staging snapshot adapter: IMPLEMENTED; CI_PENDING.
+- Local staging snapshot adapter: PASS_CI (six-suite workflow evidence).
+- Staging backup publication and recovery drill: IMPLEMENTED; CI_PENDING.
 - Retention: plan-only; deletion not authorized.
 - Restore: decrypt-and-validate preview only; production restore not authorized.
 - Production readiness: NOT_CERTIFIED.
