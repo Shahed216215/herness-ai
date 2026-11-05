@@ -1,18 +1,18 @@
 'use strict';
 
 const { collectPublicFacebookPageEvidence } = require('../services/mira-facebook-public-web-research');
-const { archiveFacebookResearchEvidence } = require('../services/mira-facebook-research-memory');
+const { archiveFacebookResearchEvidenceWithProvider } = require('../services/mira-facebook-research-memory-provider');
 const DEFAULT_PAGE_ID = '118056109579206';
 const DEFAULT_PAGE_NAME = 'Online canel';
 
 function createTool({ searchWeb, archive } = {}) {
   const providerSearch = typeof searchWeb === 'function' ? searchWeb : query => require('./web-search').execute({ query });
-  const archiveEvidence = typeof archive === 'function' ? archive : input => archiveFacebookResearchEvidence(input);
+  const archiveEvidence = typeof archive === 'function' ? archive : input => archiveFacebookResearchEvidenceWithProvider(input);
   return {
     name: 'facebook_page_public_research',
     declaration: {
       name: 'facebook_page_public_research',
-      description: 'Search public web-indexed information for a Facebook Page and archive bounded source-linked snippets in Mira separate UNTRUSTED research memory. No login, direct Facebook fetch, Group/private access, Meta API, publishing or canonical HFM Memory write.',
+      description: 'Search public web-indexed information for a Facebook Page and archive bounded source-linked snippets in Mira separate UNTRUSTED research memory. Storage backend defaults to local; optional Supabase backend requires explicit server-side configuration and verified remote readback. No login, direct Facebook fetch, Group/private access, Meta API, publishing or canonical HFM Memory write.',
       parameters: { type: 'object', properties: {
         pageId: { type: 'string', description: 'Numeric Facebook Page ID. Defaults to Online canel.' },
         pageName: { type: 'string', description: 'Optional Page name. Defaults to Online canel.' },
