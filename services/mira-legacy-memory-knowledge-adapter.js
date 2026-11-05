@@ -55,6 +55,7 @@ function adaptLegacyEntry({
   if (typeof observedId !== 'string' || !observedId) {
     throw new Error(domain === 'knowledge' ? 'Legacy Knowledge id is absent.' :
       domain === 'crm_conversation_message' ? 'Persisted CRM messageId is absent.' :
+      domain === 'work_learning' ? 'Work Learning learningId is absent.' :
       'General Memory source locator is invalid.');
   }
   if (observedId !== mapping.legacyId) throw new Error('Legacy identity/source locator mismatch.');
