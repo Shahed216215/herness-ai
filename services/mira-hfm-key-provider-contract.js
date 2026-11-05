@@ -20,6 +20,11 @@ function validateKeyProviderContract(provider, metadata, operation) {
     throw error;
   }
   const descriptor = provider.descriptor;
+  if (descriptor.environment === 'production') {
+    const error = new Error('Production key-provider use is not approved by the Phase 7 contract.');
+    error.code = 'BACKUP_PRODUCTION_KEY_PROVIDER_NOT_APPROVED';
+    throw error;
+  }
   const required = ['providerId', 'providerVersion', 'keyId', 'keyVersion', 'environment'];
   if (descriptor.contractVersion !== CONTRACT_VERSION ||
       descriptor.keyPurpose !== REQUIRED_PURPOSE ||
