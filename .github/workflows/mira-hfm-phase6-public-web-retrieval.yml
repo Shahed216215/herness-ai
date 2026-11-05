@@ -1,0 +1,62 @@
+name: Mira HFM Phase 6 Public Web Retrieval
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase6-web-search-retrieval
+    paths:
+      - 'services/mira-hfm-public-web-retrieval.js'
+      - 'services/mira-facebook-public-web-research.js'
+      - 'services/mira-facebook-research-memory.js'
+      - 'services/mira-facebook-research-memory-provider.js'
+      - 'services/mira-tool-execution-policy.js'
+      - 'tools/mira-hfm-public-web-retrieval.js'
+      - 'tools/web-search.js'
+      - 'tests/mira-hfm-public-web-retrieval.test.js'
+      - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase6/**'
+      - '.github/workflows/mira-hfm-phase6-public-web-retrieval.yml'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase5-facebook-group-import
+    paths:
+      - 'services/mira-hfm-public-web-retrieval.js'
+      - 'services/mira-facebook-public-web-research.js'
+      - 'services/mira-facebook-research-memory.js'
+      - 'services/mira-facebook-research-memory-provider.js'
+      - 'services/mira-tool-execution-policy.js'
+      - 'tools/mira-hfm-public-web-retrieval.js'
+      - 'tools/web-search.js'
+      - 'tests/mira-hfm-public-web-retrieval.test.js'
+      - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase6/**'
+      - '.github/workflows/mira-hfm-phase6-public-web-retrieval.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase6-offline-retrieval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run Phase 6 offline retrieval tests
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-public-web-retrieval.test.js
+          node tests/mira-facebook-public-web-research.test.js
+      - name: Confirm external action boundary
+        run: |
+          echo "LIVE_FACEBOOK_REQUESTS=0"
+          echo "META_GRAPH_API_CALLS=0"
+          echo "PRIVATE_GROUP_ACCESS=0"
+          echo "CANONICAL_MEMORY_WRITES=0"
+          echo "RESULT=MIRA_HFM_PHASE6_OFFLINE_TESTS_COMPLETED"
