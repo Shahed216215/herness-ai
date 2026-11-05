@@ -10,6 +10,7 @@ on:
       - 'services/mira-memory-unified-facade.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'tests/mira-hfm-retrieval-index.test.js'
+      - 'tests/mira-hfm-retrieval-index-performance.test.js'
       - 'tests/mira-hfm-work-learning-retrieval.test.js'
       - 'tests/mira-memory-unified-facade.test.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
@@ -24,6 +25,7 @@ on:
       - 'services/mira-memory-unified-facade.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'tests/mira-hfm-retrieval-index.test.js'
+      - 'tests/mira-hfm-retrieval-index-performance.test.js'
       - 'tests/mira-hfm-work-learning-retrieval.test.js'
       - 'tests/mira-memory-unified-facade.test.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
@@ -49,6 +51,7 @@ jobs:
           node tests/mira-memory-unified-facade.test.js
           node tests/mira-hfm-work-learning-retrieval.test.js
           node tests/mira-hfm-retrieval-index.test.js
+          node tests/mira-hfm-retrieval-index-performance.test.js
           echo "NETWORK_REQUESTS=0"
           echo "PERSISTENT_INDEX_WRITES=0"
           echo "CANONICAL_MEMORY_WRITTEN=NO"
