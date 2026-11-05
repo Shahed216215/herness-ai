@@ -7,7 +7,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const {
-  createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging
+  createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging,
+  MAX_ENVELOPE_BYTES, MAX_PAYLOAD_BYTES
 } = require('../services/mira-hfm-encrypted-emergency-backup');
 
 const key = crypto.randomBytes(32);
@@ -125,7 +126,23 @@ try {
   assert.throws(() => createEncryptedBackup({ payload, key: Buffer.alloc(16), backupId, createdAt }));
   assert.throws(() => createEncryptedBackup({ payload, key, backupId: '../escape', createdAt }));
   assert.throws(() => createEncryptedBackup({ payload: '', key, backupId, createdAt }));
+  const hostilePayload = { toString() { throw new Error('payload coercion must not run'); } };
+  const hostileEnvelope = { toString() { throw new Error('envelope coercion must not run'); } };
+  assert.throws(() => createEncryptedBackup({
+    payload: hostilePayload, key, backupId, createdAt
+  }), /payload must be non-empty bytes\/string/);
+  assert.throws(() => decryptAndVerifyBackup(hostileEnvelope, key),
+    /Backup envelope must be a Buffer or UTF-8 string/);
+  assert.throws(() => writeImmutableBackup({
+    envelope: hostileEnvelope, key, directory: dir, backupId
+  }), /Backup envelope must be a Buffer or UTF-8 string/);
+  assert.throws(() => decryptAndVerifyBackup(Buffer.alloc(MAX_ENVELOPE_BYTES + 1), key),
+    /Backup envelope exceeds the size limit/);
+  assert.throws(() => createEncryptedBackup({
+    payload: Buffer.alloc(MAX_PAYLOAD_BYTES + 1), key, backupId, createdAt
+  }), /payload must be non-empty bytes\/string/);
   console.log('HFM_PHASE7_INPUT_AND_KEY_GATES=PASS');
+  console.log('HFM_PHASE7_BOUNDED_INPUT_TYPE_AND_SIZE_GATES=PASS');
 
   let writeVerifiedPlain;
   let stored;
@@ -227,6 +244,10 @@ try {
       return { ...item, bytes: Buffer.from(item.bytes) };
     }
   };
+  const hostileCloudEnvelope = { toString() { throw new Error('cloud envelope coercion must not run'); } };
+  await assert.rejects(() => uploadEncryptedEmergencyBackup({
+    adapter, projectId: 'mira-project-001', envelope: hostileCloudEnvelope, key
+  }), error => error.code === 'HFM_CLOUD_BACKUP_REJECTED');
   const cloudUploadPlainBuffers = [];
   let uploaded;
   try {
