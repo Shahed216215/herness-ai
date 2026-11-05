@@ -9259,7 +9259,7 @@ document.querySelectorAll(
         appendMiraHfmDetail(miraHfmProposalDetails, "Review decision", proposal.review.decision);
         appendMiraHfmDetail(miraHfmProposalDetails, "Review status", proposal.review.status);
         appendMiraHfmDetail(miraHfmProposalDetails, "Reviewed by", proposal.review.actorId);
-        appendMiraHfmProposal(miraHfmProposalDetails, "Review reason", proposal.review.reason);
+        appendMiraHfmDetail(miraHfmProposalDetails, "Review reason", proposal.review.reason);
       }
       const reviewable = proposal.status === "PENDING_HUMAN_REVIEW" &&
         proposal.trustState === "UNTRUSTED" && !proposal.review;
