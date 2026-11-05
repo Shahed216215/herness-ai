@@ -23,7 +23,7 @@ const {
       return JSON.stringify([
         { title: 'Online canel Page ' + pageId, link: 'https://www.facebook.com/' + pageId, snippet: 'Public page result for ' + pageId },
         { title: 'Page post', url: 'https://www.facebook.com/' + pageId + '/posts/123456', content: 'Public indexed post for ' + pageId },
-        { title: 'Wrong Page', url: 'https://www.facebook.com/other/posts/987', content: 'Not the requested page' },
+        { title: 'Wrong Page', url: 'https://www.facebook.com/other/posts/987', content: 'Not the requested page' },\n        { title: 'Spoofed Page Post', url: 'https://www.facebook.com/other/posts/999', content: 'This unrelated result mentions Page ID ' + pageId },
         { title: 'Lookalike', url: 'https://facebook.com.evil.test/' + pageId, content: 'spoof' },
         { title: 'Group', url: 'https://www.facebook.com/groups/123', content: pageId }
       ]);
