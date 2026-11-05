@@ -89,10 +89,16 @@ async function verifyAuthorizationDecision({
   } catch { valid = false; }
   if (!valid) fail('Authorization decision signature verification failed.', 'HFM_AUTHZ_SIGNATURE_INVALID');
 
-  const consumed = await replayGuard.consume({
-    issuerId: decision.issuerId, decisionId: decision.decisionId,
-    requestId: decision.requestId, nonce: decision.nonce, expiresAt: decision.expiresAt
-  });
+  let consumed = false;
+  try {
+    consumed = await replayGuard.consume({
+      issuerId: decision.issuerId, decisionId: decision.decisionId,
+      requestId: decision.requestId, nonce: decision.nonce, expiresAt: decision.expiresAt
+    });
+  } catch {
+    fail('Authorization decision was already consumed or replay protection is unavailable.',
+      'HFM_AUTHZ_REPLAY_REJECTED');
+  }
   if (consumed !== true) {
     fail('Authorization decision was already consumed or replay protection is unavailable.',
       'HFM_AUTHZ_REPLAY_REJECTED');
