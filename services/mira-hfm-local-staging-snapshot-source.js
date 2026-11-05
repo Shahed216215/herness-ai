@@ -98,7 +98,11 @@ function createLocalStagingSnapshotSource(config) {
       if (stat.isSymbolicLink() || !stat.isFile()) fail(label + ' must be a regular file.', 'HFM_STAGING_FILE_UNSAFE');
       if (stat.size > MAX_SOURCE_FILE_BYTES) fail(label + ' exceeds the staging snapshot size limit.', 'HFM_STAGING_FILE_TOO_LARGE');
     }
-  } catch (error) { pinnedRoot.close(); throw error; }
+  } catch (error) {
+    pinnedRoot.close();
+    if (error.code === 'HFM_PINNED_DIRECTORY_CHILD_REQUIRED') error.code = 'HFM_STAGING_PATH_OUTSIDE_ROOT';
+    throw error;
+  }
   if (memoryFile === knowledgeFile) fail('Memory and Knowledge source files must be distinct.', 'HFM_STAGING_SOURCE_FILES_COLLIDE');
 
   const signingProvider = config.signingProvider;
