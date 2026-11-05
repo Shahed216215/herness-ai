@@ -8,33 +8,33 @@ on:
       - 'services/mira-hfm-learning-evolution-bridge.js'
       - 'services/mira-hfm-learning-proposal-store.js'
       - 'services/mira-hfm-learning-proposal-supabase-store.js'
-      - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
-      - 'tests/mira-hfm-learning-supabase-store.test.js'
-      - 'services/mira-hfm-learning-proposal-supabase-store.js'
-      - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
-      - 'tests/mira-hfm-learning-supabase-store.test.js'
       - 'services/mira-hfm-learning-evidence-adapter.js'
       - 'services/mira-hfm-learning-legacy-compatibility.js'
       - 'services/mira-hfm-legacy-learning-evidence-adapter.js'
       - 'routes/mira-hfm-learning-evolution.js'
       - 'server.js'
+      - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
-      - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
       - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
+      - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
+      - 'tests/mira-hfm-learning-supabase-store.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
   pull_request:
     paths:
-      - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
       - 'services/mira-hfm-learning-evolution-bridge.js'
       - 'services/mira-hfm-learning-proposal-store.js'
+      - 'services/mira-hfm-learning-proposal-supabase-store.js'
       - 'services/mira-hfm-learning-evidence-adapter.js'
       - 'services/mira-hfm-learning-legacy-compatibility.js'
       - 'services/mira-hfm-legacy-learning-evidence-adapter.js'
       - 'routes/mira-hfm-learning-evolution.js'
       - 'server.js'
+      - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
       - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
+      - 'tests/mira-hfm-learning-supabase-store.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
 
@@ -51,6 +51,18 @@ jobs:
         with:
           node-version: 24
       - name: Check Phase 8 JavaScript syntax
-        run: node --check server.js && node --check routes/mira-hfm-learning-evolution.js && node --check services/mira-hfm-learning-proposal-store.js && node --check services/mira-hfm-learning-proposal-supabase-store.js && node --check services/mira-hfm-learning-proposal-supabase-store.js && node --check services/mira-hfm-learning-evidence-adapter.js && node --check services/mira-hfm-learning-legacy-compatibility.js && node --check services/mira-hfm-legacy-learning-evidence-adapter.js && node --check services/mira-hfm-learning-evolution-bridge.js
-      - name: Run proposal-only bridge tests
-        run: node tests/mira-hfm-learning-evolution-bridge.test.js && node tests/mira-hfm-learning-evolution-route-contract.test.js && node tests/mira-hfm-learning-legacy-compatibility.test.js && node tests/mira-hfm-learning-supabase-store.test.js && node tests/mira-hfm-learning-supabase-store.test.js
+        run: >-
+          node --check server.js &&
+          node --check routes/mira-hfm-learning-evolution.js &&
+          node --check services/mira-hfm-learning-proposal-store.js &&
+          node --check services/mira-hfm-learning-proposal-supabase-store.js &&
+          node --check services/mira-hfm-learning-evidence-adapter.js &&
+          node --check services/mira-hfm-learning-legacy-compatibility.js &&
+          node --check services/mira-hfm-legacy-learning-evidence-adapter.js &&
+          node --check services/mira-hfm-learning-evolution-bridge.js
+      - name: Run Phase 8 offline contract tests
+        run: >-
+          node tests/mira-hfm-learning-evolution-bridge.test.js &&
+          node tests/mira-hfm-learning-evolution-route-contract.test.js &&
+          node tests/mira-hfm-learning-legacy-compatibility.test.js &&
+          node tests/mira-hfm-learning-supabase-store.test.js
