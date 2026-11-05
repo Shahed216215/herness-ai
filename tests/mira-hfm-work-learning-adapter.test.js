@@ -155,7 +155,7 @@ const forged = { ...firstMapping, mappingDigest: '0'.repeat(64) };
 assert.throws(() => adaptApprovedWorkLearningEntry({
   entry: first, mapping: forged, projectId: 'project-alpha',
   sourceFileDigest, sourceOrdinal: 0, observedAt, verifyApproval, now
-}), /mapping digest mismatch/);
+}), /Mapping digest mismatch/);
 console.log('WORK_LEARNING_FORGED_MAPPING_BLOCK_PASS');
 
 assert.throws(() => adaptApprovedWorkLearningEntries({
