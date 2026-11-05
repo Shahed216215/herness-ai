@@ -11,7 +11,7 @@ function text(value, label, max = 512) {
 }
 function validatePageId(value) {
   const id = text(value, 'pageId', 32);
-  if (!/^\\d{1,32}$/.test(id)) throw new Error('pageId must be numeric.');
+  if (!/^[0-9]{1,32}$/.test(id)) throw new Error('pageId must be numeric.');
   return id;
 }
 function validateFacebookUrl(value, label = 'pageUrl') {
@@ -21,7 +21,7 @@ function validateFacebookUrl(value, label = 'pageUrl') {
   if (url.protocol !== 'https:' || !FACEBOOK_HOSTS.has(url.hostname.toLowerCase()) ||
       url.username || url.password || url.hash || (url.port && url.port !== '443')) throw new Error(label + ' must be a standard HTTPS Facebook URL.');
   url.search = '';
-  return url.toString().replace(/\\/$/, '');
+  const normalized = url.toString();\n  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
 }
 function buildFacebookPageResearchQueries({ pageId, pageName, pageUrl } = {}) {
   const id = validatePageId(pageId);
