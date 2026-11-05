@@ -76,15 +76,23 @@ function createEncryptedBackup({ payload, key, backupId, createdAt = new Date().
   };
   const salt = crypto.randomBytes(16);
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(ALGORITHM, deriveKey(key, salt), iv);
-  cipher.setAAD(aadFor(header));
-  const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+  const derivedKey = deriveKey(key, salt);
+  let ciphertext;
+  let authenticationTag;
+  try {
+    const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, iv);
+    cipher.setAAD(aadFor(header));
+    ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+    authenticationTag = cipher.getAuthTag();
+  } finally {
+    derivedKey.fill(0);
+  }
   const envelope = {
     ...header,
     kdf: 'HKDF-SHA256',
     salt: salt.toString('base64'),
     iv: iv.toString('base64'),
-    tag: cipher.getAuthTag().toString('base64'),
+    tag: authenticationTag.toString('base64'),
     ciphertext: ciphertext.toString('base64'),
     ciphertextSha256: sha256(ciphertext)
   };
@@ -123,13 +131,16 @@ function decryptAndVerifyBackup(envelopeBytes, key) {
     plaintextSha256: env.plaintextSha256, metadata
   };
   let plain;
+  const derivedKey = deriveKey(key, salt);
   try {
-    const decipher = crypto.createDecipheriv(ALGORITHM, deriveKey(key, salt), iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, iv);
     decipher.setAAD(aadFor(header));
     decipher.setAuthTag(tag);
     plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   } catch {
     fail('Backup authentication failed; key or backup data is incorrect.', 'HFM_BACKUP_AUTH_FAILED');
+  } finally {
+    derivedKey.fill(0);
   }
   if (plain.length !== env.payloadBytes || sha256(plain) !== env.plaintextSha256) fail('Decrypted payload integrity check failed.');
   return { backupId: env.backupId, createdAt: env.createdAt, metadata, payload: plain, plaintextSha256: env.plaintextSha256 };
