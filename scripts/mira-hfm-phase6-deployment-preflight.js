@@ -72,6 +72,10 @@ function evaluateDeploymentPreflight({
     }
   }
 
+  const auditDurable = env.MIRA_AUDIT_DURABLE_STORAGE_CONFIRMED === 'true';
+  addCheck(checks, 'AUDIT_DURABILITY', auditDurable ? 'PASS' : 'FAIL',
+    auditDurable ? 'Operator has explicitly confirmed the audit-log mount is persistent.' : 'Production archive writes require an explicitly confirmed durable audit-log mount.');
+
   const backend = String(env.MIRA_FACEBOOK_RESEARCH_MEMORY_BACKEND || 'local').trim().toLowerCase();
   if (backend === 'local') {
     const durable = env.MIRA_FACEBOOK_RESEARCH_MEMORY_DURABLE_STORAGE_CONFIRMED === 'true';
