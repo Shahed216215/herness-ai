@@ -41,6 +41,13 @@ function verifyLearningProjection(projection) {
         projection.status !== 'DERIVED_READ_ONLY_NOT_CANONICAL' ||
         projection.rebuildable !== true ||
         projection.sourceLineage?.projectId !== projection.projectId ||
+        projection.data?.learningId !== projection.sourceLineage?.sourceId ||
+        !Array.isArray(projection.data?.lessons) ||
+        projection.mayEnterCanonicalMemory !== false ||
+        (projection.projectionKind === 'experience_memory' &&
+          projection.data.experienceId !== projection.projectionId) ||
+        (projection.projectionKind === 'work_knowledge' &&
+          projection.data.experienceId !== null) ||
         projection.projectionId !== projectionIdentity({
           projectionKind: projection.projectionKind,
           algorithmVersion: projection.algorithmVersion,
@@ -158,8 +165,11 @@ function createProjectScopedLearningProjections({
         sourceLineage: Object.freeze({ ...projection.sourceLineage }),
         data: Object.freeze({
           ...projection.data,
-          task: Object.freeze({ ...projection.data.task }),
-          requirements: undefined
+          task: Object.freeze({
+            ...projection.data.task,
+            requirements: Object.freeze([...projection.data.task.requirements])
+          }),
+          lessons: Object.freeze([...projection.data.lessons])
         })
       }));
     }
