@@ -1,8 +1,10 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const { secureProviderRequest } = require('./security/secure-provider-request');
 
 const TABLE = 'mira_facebook_group_import_batches';
+const AUDIT_TABLE = 'mira_facebook_group_import_audit_events';
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_BATCHES = 1000;
 
@@ -119,6 +121,54 @@ function createSupabaseFacebookGroupImportStore({
     };
   }
 
+  async function writeAuditEvent(event) {
+    if (!event || event.eventType !== 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED' ||
+        typeof event.projectId !== 'string' || typeof event.groupId !== 'string' ||
+        typeof event.batchId !== 'string' || typeof event.batchDigest !== 'string' ||
+        typeof event.actorId !== 'string' || !event.actorId.trim()) {
+      fail('FB_GROUP_STORE_AUDIT_INVALID', 'Group import audit event is incomplete.');
+    }
+    const payload = {
+      schemaVersion: '1.0.0',
+      eventType: event.eventType,
+      projectId: event.projectId,
+      groupId: event.groupId,
+      batchId: event.batchId,
+      batchDigest: event.batchDigest,
+      actorId: event.actorId,
+      outcome: event.outcome,
+      canonicalMemoryWrite: false,
+      recordedAt: new Date().toISOString()
+    };
+    const canonical = JSON.stringify(Object.fromEntries(Object.keys(payload).sort().map(k => [k, payload[k]])));
+    const eventDigest = require('node:crypto').createHash('sha256').update(canonical, 'utf8').digest('hex');
+    const eventId = crypto.randomUUID();
+    const row = {
+      event_id: eventId,
+      project_id: event.projectId,
+      group_id: event.groupId,
+      batch_id: event.batchId,
+      event_digest: eventDigest,
+      payload
+    };
+    const inserted = rows(await request(config.baseUrl + '/rest/v1/' + AUDIT_TABLE, {
+      method: 'POST',
+      headers: {
+        apikey: config.key,
+        Authorization: 'Bearer ' + config.key,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation'
+      },
+      data: [row]
+    }));
+    if (inserted.length !== 1 || inserted[0].event_id !== eventId ||
+        inserted[0].event_digest !== eventDigest ||
+        !inserted[0].payload || inserted[0].payload.batchId !== event.batchId) {
+      fail('FB_GROUP_STORE_AUDIT_READBACK_FAILED', 'Durable Group import audit readback failed.');
+    }
+    return { status: 'AUDIT_WRITE_READBACK_VERIFIED', eventId, eventDigest };
+  }
+
   async function listBatches({ projectId, groupId } = {}) {
     const query = '?select=batch_id,project_id,group_id,batch_digest,payload' +
       '&project_id=eq.' + encodeURIComponent(projectId) +
@@ -136,12 +186,14 @@ function createSupabaseFacebookGroupImportStore({
       immutableVersions: true,
       projectIsolation: true,
       readAfterWrite: true,
-      durableQuarantine: true
+      durableQuarantine: true,
+      durableAudit: true
     }),
     stageBatch,
     readBatch: (batchId, projectId) => readBatch(batchId, projectId, null)
       .then(value => value),
-    listBatches
+    listBatches,
+    writeAuditEvent
   });
 }
 
