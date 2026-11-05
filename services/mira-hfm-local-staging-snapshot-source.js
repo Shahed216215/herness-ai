@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const { canonicalize, sha256 } = require('./mira-hfm-authoritative-snapshot');
 const { verifyAuthorizationDecision } = require('./mira-hfm-authorization-decision');
 const { validateSnapshotSigningProvider } = require('./mira-hfm-snapshot-signing-provider-contract');
+const { openPinnedDirectory, assertDirectChild } = require('./mira-hfm-pinned-directory');
 
 const MAX_SOURCE_FILE_BYTES = 25 * 1024 * 1024;
 
@@ -85,8 +86,16 @@ function createLocalStagingSnapshotSource(config) {
   }
   const rootReal = fs.realpathSync(config.rootDir);
   if (rootReal !== path.resolve(config.rootDir)) fail('Staging root path must not traverse a symbolic link.', 'HFM_STAGING_ROOT_UNSAFE');
-  const memoryFile = resolvePinnedFile(rootReal, config.memoryFile, 'Memory source');
-  const knowledgeFile = resolvePinnedFile(rootReal, config.knowledgeFile, 'Knowledge source');
+  const pinnedRoot = openPinnedDirectory(rootReal);
+  let memoryFile, knowledgeFile;
+  try {
+    const memoryName = assertDirectChild(rootReal, config.memoryFile, 'Memory source');
+    const knowledgeName = assertDirectChild(rootReal, config.knowledgeFile, 'Knowledge source');
+    memoryFile = pinnedRoot.path + '/' + memoryName;
+    knowledgeFile = pinnedRoot.path + '/' + knowledgeName;
+    resolvePinnedFile(pinnedRoot.path, memoryFile, 'Memory source');
+    resolvePinnedFile(pinnedRoot.path, knowledgeFile, 'Knowledge source');
+  } catch (error) { pinnedRoot.close(); throw error; }
   if (memoryFile === knowledgeFile) fail('Memory and Knowledge source files must be distinct.', 'HFM_STAGING_SOURCE_FILES_COLLIDE');
 
   const signingProvider = config.signingProvider;
@@ -103,6 +112,7 @@ function createLocalStagingSnapshotSource(config) {
 
   return Object.freeze({
     descriptor,
+    close: pinnedRoot.close,
     async readSnapshot(request) {
       if (!request || typeof request.projectId !== 'string' || !request.projectId.trim() ||
           typeof request.actorId !== 'string' || !request.actorId.trim() ||
