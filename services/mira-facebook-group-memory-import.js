@@ -147,9 +147,8 @@ function validateStoredBatch(stored, prepared) {
       stored.groupId !== prepared.groupId || stored.batchDigest !== prepared.batchDigest ||
       digest(Object.fromEntries(Object.entries(stored).filter(([k]) => k !== 'batchDigest'))) !== stored.batchDigest) fail('FB_GROUP_IMPORT_READBACK_FAILED', 'Stored Group import readback identity or digest mismatch.');
 }
-function createFacebookGroupImportService({ store, auditWriter } = {}) {
+function createFacebookGroupImportService({ store } = {}) {
   validateStore(store);
-  if (typeof auditWriter !== 'function') fail('FB_GROUP_IMPORT_AUDIT_REQUIRED', 'A durable auditWriter is required.');
   return Object.freeze({
     async import(input) {
       const prepared = prepareFacebookGroupImport(input), staged = await store.stageBatch(prepared);
