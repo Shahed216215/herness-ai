@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
-const {openPinnedDirectory,assertPrivateDirectory}=require('../services/mira-hfm-pinned-directory');
+const {openPinnedDirectory,assertPrivateDirectory,readPinnedChildFile}=require('../services/mira-hfm-pinned-directory');
 const {writeBackupAtomicAt}=require('../services/mira-hfm-emergency-backup');
 function run(){
  if(process.platform!=='linux'||!fs.existsSync('/proc/self/fd')||!fs.constants.O_DIRECTORY||!fs.constants.O_NOFOLLOW){process.stdout.write('MIRA_HFM_PINNED_BACKUP_RACE_TEST=SKIPPED_UNSUPPORTED_PLATFORM\n');return;}
@@ -35,6 +35,19 @@ function run(){
   fs.chmodSync(policyDir,0o600);
   assert.throws(()=>writeBackupAtomicAt(policyPinned,'owner-mode.mira-hfm.enc.json',bytes),e=>e.code==='HFM_BACKUP_DIRECTORY_MODE_UNSAFE');
   process.stdout.write('MIRA_HFM_BACKUP_DIRECTORY_OWNER_MODE_POLICY_BLOCK_PASS\\n');
+  const singleLinkPath=path.join(policyDir,'single-link.json');
+  fs.writeFileSync(singleLinkPath,'{"safe":true}');
+  assert.equal(readPinnedChildFile(policyPinned,'single-link.json',1024).bytes.toString(),'{"safe":true}');
+  const outsideHardLink=path.join(parent,'outside-hard-link.json');
+  fs.writeFileSync(outsideHardLink,'{"outside":true}');
+  fs.linkSync(outsideHardLink,path.join(policyDir,'hard-link.json'));
+  assert.throws(()=>readPinnedChildFile(policyPinned,'hard-link.json',1024),
+    e=>e.code==='HFM_PINNED_FILE_UNSAFE');
+  fs.symlinkSync(singleLinkPath,path.join(policyDir,'symlink.json'));
+  assert.throws(()=>readPinnedChildFile(policyPinned,'symlink.json',1024),
+    e=>e.code==='HFM_PINNED_FILE_UNSAFE');
+  process.stdout.write('MIRA_HFM_PINNED_CHILD_SINGLE_LINK_AND_NOFOLLOW_PASS\\n');
+
  } finally { policyPinned.close(); }
  fs.rmSync(parent,{recursive:true,force:true});
  process.stdout.write('MIRA_HFM_PINNED_BACKUP_DIRECTORY_RACE_TEST_COMPLETE\n');
