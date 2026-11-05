@@ -89,6 +89,10 @@ const connector = createFacebookPageConnector({
     error => error.code === "FACEBOOK_POST_URL_INVALID"
   );
   assert.throws(
+    () => connector.parsePagePostUrl("https://www.facebook.com:8443/123/posts/456"),
+    error => error.code === "FACEBOOK_POST_URL_INVALID"
+  );
+  assert.throws(
     () => connector.parsePagePostUrl("https://www.facebook.com/123456789/posts/987654321?access_token=leak"),
     error => error.code === "FACEBOOK_POST_URL_INVALID"
   );
