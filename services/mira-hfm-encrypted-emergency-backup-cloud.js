@@ -172,6 +172,13 @@ async function inspectEncryptedEmergencyBackupCapacity({
       'HFM_CLOUD_LIST_CAPABILITY_MISSING');
   }
   const project = validId(projectId, 'projectId');
+  const providerQuota = typeof adapter.getProviderQuota === 'function'
+    ? await adapter.getProviderQuota()
+    : { status: 'NOT_REPORTED', providerQuotaAvailable: false };
+  if (!providerQuota || !['REPORTED', 'NOT_REPORTED'].includes(providerQuota.status)) {
+    fail('Provider quota report is invalid; capacity status is INCONCLUSIVE.',
+      'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+  }
   if (!Number.isSafeInteger(budgetBytes) || budgetBytes < 1 || budgetBytes > 1000000000000) {
     fail('Backup budget must be a bounded positive byte count.');
   }
@@ -247,6 +254,8 @@ async function inspectEncryptedEmergencyBackupCapacity({
     projectId: project, backupCount: backups.length,
     budgetBytes, usedBytes, availableBytes: Math.max(0, budgetBytes - usedBytes),
     utilizationPercent, retention,
+    budgetSource: 'HFM_CONFIGURED_PROJECT_EMERGENCY_BUDGET',
+    providerQuota,
     deletionPerformed: false,
     routineDriveSyncChanged: false
   });
