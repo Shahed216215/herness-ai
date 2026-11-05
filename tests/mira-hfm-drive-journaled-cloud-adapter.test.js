@@ -15,7 +15,7 @@ const { createJournaledDriveCloudAdapter } = require('../services/mira-hfm-drive
 const { readBackupIdJournal } = require('../services/mira-hfm-drive-backup-id-journal');
 
 const projectId = 'mira-project-001';
-const accountBinding = 'google-subject-123456';
+const accountBinding = 'b'.repeat(64);
 const driveSpace = 'drive';
 const parentId = 'dedicated-folder-123456';
 const backupId = 'backup-hfm-integration-0001';
