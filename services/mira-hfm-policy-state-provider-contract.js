@@ -157,8 +157,7 @@ async function verifyAndAcceptSignedProvenancePolicy({
   let stateEnvelope;
   try {
     stateEnvelope = await provider.readState({ authorityId: expectedStateAuthorityId });
-  } catch (error) {
-    if (error && error.code === 'HFM_POLICY_STATE_UNAVAILABLE') throw error;
+  } catch {
     fail('Policy-state authority could not be read; signed policy acceptance is denied.',
       'HFM_POLICY_STATE_UNAVAILABLE');
   }
@@ -240,17 +239,23 @@ async function verifyAndAcceptSignedProvenancePolicy({
       } catch (retryError) {
         if (retryError && retryError.code === 'HFM_POLICY_STATE_AMBIGUOUS_COMMIT') {
           await reconcileAmbiguousCommit();
-        } else if (retryError && (retryError.code === 'HFM_POLICY_STATE_CAS_CONFLICT' ||
-            retryError.code === 'HFM_POLICY_STATE_UNAVAILABLE')) {
-          throw retryError;
+        } else if (retryError && retryError.code === 'HFM_POLICY_STATE_CAS_CONFLICT') {
+          fail('Policy-state compare-and-swap conflicted; policy acceptance was not confirmed.',
+            'HFM_POLICY_STATE_CAS_CONFLICT');
+        } else if (retryError && retryError.code === 'HFM_POLICY_STATE_UNAVAILABLE') {
+          fail('Policy-state provider is unavailable; policy acceptance was not confirmed.',
+            'HFM_POLICY_STATE_UNAVAILABLE');
         } else {
           fail('Policy-state retry did not complete; policy acceptance remains unresolved.',
             'HFM_POLICY_STATE_COMMIT_FAILED');
         }
       }
-    } else if (error && (error.code === 'HFM_POLICY_STATE_CAS_CONFLICT' ||
-        error.code === 'HFM_POLICY_STATE_UNAVAILABLE')) {
-      throw error;
+    } else if (error && error.code === 'HFM_POLICY_STATE_CAS_CONFLICT') {
+      fail('Policy-state compare-and-swap conflicted; policy acceptance was not confirmed.',
+        'HFM_POLICY_STATE_CAS_CONFLICT');
+    } else if (error && error.code === 'HFM_POLICY_STATE_UNAVAILABLE') {
+      fail('Policy-state provider is unavailable; policy acceptance was not confirmed.',
+        'HFM_POLICY_STATE_UNAVAILABLE');
     } else {
       fail('Policy-state compare-and-swap did not complete; policy remains unaccepted.',
         'HFM_POLICY_STATE_COMMIT_FAILED');
