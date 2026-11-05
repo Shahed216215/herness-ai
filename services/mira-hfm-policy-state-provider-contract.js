@@ -154,7 +154,7 @@ async function verifyAndAcceptSignedProvenancePolicy({
     acceptedPolicyState,
     expectedEnvironment,
     expectedProjectId,
-    operationalIssuerIds: [...operationalIssuerIds, expectedStateAuthorityId],
+    operationalIssuerIds,
     now
   });
   let receipt;
