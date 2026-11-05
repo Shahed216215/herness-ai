@@ -58,10 +58,14 @@ const connector = createFacebookPageConnector({
   const parsed = connector.parsePagePostUrl(
     "https://www.facebook.com/123456789/posts/987654321"
   );
-  assert.equal(parsed.postId, "987654321");
+  assert.equal(parsed.postId, "123456789_987654321");
 
   assert.throws(
     () => connector.parsePagePostUrl("https://evil.example/posts/123"),
+    error => error.code === "FACEBOOK_POST_URL_INVALID"
+  );
+  assert.throws(
+    () => connector.parsePagePostUrl("https://www.facebook.com/123456789/posts/987654321?access_token=leak"),
     error => error.code === "FACEBOOK_POST_URL_INVALID"
   );
 
