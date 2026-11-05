@@ -2,6 +2,8 @@ name: Mira HFM Phase 7 Encrypted Emergency Backup
 
 on:
   pull_request:
+    branches:
+      - 'work/mira-hfm-v02-phase6-web-search-retrieval-restacked-20261105'
     paths:
       - 'services/mira-hfm-encrypted-emergency-backup.js'
       - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
