@@ -14,6 +14,10 @@ const result = validateKeyProviderContract(provider, metadata, 'wrapDataKey');
 assert.equal(result.status, 'CONTRACT_SHAPE_VALID_NOT_APPROVAL');
 assert.equal(result.productionUseAllowed, false);
 assert.equal(result.approvalRequired, true);
+assert.throws(() => validateKeyProviderContract({
+  ...provider,
+  descriptor: { ...provider.descriptor, environment: 'production' }
+}, metadata, 'wrapDataKey'), error => error.code === 'BACKUP_PRODUCTION_KEY_PROVIDER_NOT_APPROVED');
 assert.throws(() => validateKeyProviderContract(provider, { ...metadata, keyVersion: '3' }, 'wrapDataKey'),
   error => error.code === 'BACKUP_KEY_PROVIDER_CONTRACT_INVALID');
 assert.throws(() => validateKeyProviderContract({ ...provider, descriptor: { ...provider.descriptor, keyPurpose: 'OTHER' } },
