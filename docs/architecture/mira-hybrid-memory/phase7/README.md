@@ -72,9 +72,9 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest code/test CI: run **42012504877 — SUCCESS**, job **127194781693**, tested code/test head commit `bcb4b8228a7624bb48708007090dc0db88465a03`.
-- Node syntax check and all six offline test suites completed successfully. Logs contain **107 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
-- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings. Payload/envelope type and size limits are checked before buffer allocation; arbitrary objects are not coerced to strings. Temporary plaintext is also zeroized when timestamp/metadata validation fails before encryption begins.
+- Latest code/test CI: run **42012852971 — SUCCESS**, job **127195959616**, tested code/test head commit `25321d25408484f52af38c76400aaaf1efefc099`.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **108 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings. Payload/envelope type and size limits are checked before buffer allocation; arbitrary objects are not coerced to strings. Bounded envelope buffers are snapshotted before verification. Temporary plaintext is also zeroized when timestamp/metadata validation fails before encryption begins. Google Drive media chunks are type- and size-checked before allocation.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
 - This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
@@ -95,11 +95,11 @@ The exporter is not blocked by encryption code; it is blocked by source authorit
 VERSION=v0.2
 PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
-CURRENT_HEAD_CI_RUN=42012504877
-CURRENT_HEAD_CI_JOB=127194781693
-CURRENT_HEAD_CODE_TEST_COMMIT=bcb4b8228a7624bb48708007090dc0db88465a03
+CURRENT_HEAD_CI_RUN=42012852971
+CURRENT_HEAD_CI_JOB=127195959616
+CURRENT_HEAD_CODE_TEST_COMMIT=25321d25408484f52af38c76400aaaf1efefc099
 CURRENT_HEAD_TEST_SUITES=6
-OFFLINE_PASS_MARKERS=107
+OFFLINE_PASS_MARKERS=108
 OFFLINE_TESTS_FAILED=0
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 JOURNAL_RECOVERY=AUTHENTICATED_PROVIDER_OBJECT_RECONSTRUCTION_IMPLEMENTED_OFFLINE
