@@ -19,6 +19,18 @@ const good=[
  assert.ok(queries.some(q=>q.includes('deployment')));
  assert.deepEqual(parseResults(JSON.stringify(good)),good);
  assert.throws(()=>parseResults('provider unavailable'),/non-JSON/);
+ assert.equal(
+  require('../services/mira-hfm-public-web-retrieval').validatePageUrlBinding(
+   'https://www.facebook.com/profile.php?id='+pageId,pageId
+  ),
+  'https://www.facebook.com/profile.php'
+ );
+ assert.throws(
+  ()=>require('../services/mira-hfm-public-web-retrieval').validatePageUrlBinding(
+   'https://www.facebook.com/profile.php?id=999999999',pageId
+  ),
+  error=>error.code==='HFM_WEB_RETRIEVAL_PAGE_URL_MISMATCH'
+ );
  const calls=[];
  const report=await retrievePublicFacebookMemory({
   pageId,memoryId,projectId,observedAt,importResults:false,
