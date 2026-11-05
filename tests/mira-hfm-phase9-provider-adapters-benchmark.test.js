@@ -29,7 +29,7 @@ async function run(){
  assert.equal(rows[1].length,1);assert.equal(rows[1][0].trustState,'UNVERIFIED');
  assert.equal(rows[2][0].lifecycle,'REVIEW_REQUIRED');
  assert.equal(facadeCalls,1);assert.equal(archiveCalls,1);assert.equal(groupCalls,1);
- const counter=createModelTokenizerCounter({modelId:'test-model-tokenizer-v1',encode:value=>value.match(/\\S+/g)||[]});
+ const counter=createModelTokenizerCounter({modelId:'test-model-tokenizer-v1',encode:value=>value.match(/\S+/g)||[]});
  assert.equal(counter('one two three'),3);
  const result=await retrieveOptimized({query:'Mira memory content',projectId:project,sources:[canonical,archive,group],tokenBudget:500,maxResults:10,tokenCounter:counter});
  assert.equal(result.metrics.tokenEstimator,'MODEL_TOKENIZER');
