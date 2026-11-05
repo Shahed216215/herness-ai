@@ -81,6 +81,10 @@ const registerCapacityChangeRoutes =
 
 const registerAutonomousLearningRoutes =
   require("./routes/autonomous-learning");
+const registerMiraHfmLearningEvolutionRoutes =
+  require("./routes/mira-hfm-learning-evolution");
+const { stageAgentGenerationProposal } =
+  require("./services/mira-hfm-learning-generation-cycle-request");
 const registerMiraResearchGovernanceRoutes =
   require("./routes/mira-research-governance");
 const registerFacebookPageConnectorRoutes =
@@ -89,6 +93,8 @@ const registerFacebookGroupMemoryImportRoutes =
   require("./routes/mira-facebook-group-memory-import");
 const registerMiraFacebookResearchArchiveRoutes =
   require("./routes/mira-facebook-research-archive");
+const registerFacebookGroupMemoryImportRoutes =
+  require("./routes/mira-facebook-group-memory-import");
 
 const registerMiraEvolutionRoutes =
   require("./routes/mira-evolution");
@@ -225,6 +231,11 @@ registerAutonomousLearningRoutes(
   requireAdminPermission,
   PERMISSIONS
 );
+registerMiraHfmLearningEvolutionRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
 registerMiraResearchGovernanceRoutes(
   app,
   requireAdminPermission,
@@ -242,6 +253,11 @@ registerFacebookGroupMemoryImportRoutes(
   PERMISSIONS
 );
 registerMiraFacebookResearchArchiveRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+registerFacebookGroupMemoryImportRoutes(
   app,
   requireAdminPermission,
   PERMISSIONS
@@ -1653,6 +1669,9 @@ app.post(
       let finalResult =
         null;
 
+      let learningProposalHandoff = null;
+      let learningProposalHandoffAttempted = false;
+
       let firewallInspectionAssessment =
         null;
 
@@ -1852,6 +1871,22 @@ app.post(
           }
 
           if (
+            toolName === "mira_hfm_public_web_retrieval" &&
+            req.body && req.body.learningProposalOptIn === true &&
+            !learningProposalHandoffAttempted
+          ) {
+            const handoff = await stageAgentGenerationProposal({
+              req,
+              toolName,
+              toolResult,
+              stage: app.locals && app.locals.miraHfmLearningGenerationCycle &&
+                app.locals.miraHfmLearningGenerationCycle.stage
+            });
+            learningProposalHandoffAttempted = handoff.attempted;
+            learningProposalHandoff = handoff.result;
+          }
+
+          if (
             toolName ===
               "firewall_defense" &&
             String(
@@ -1919,7 +1954,8 @@ app.post(
             return res.json({
               success: true,
               role: req.role,
-              result: finalResult
+              result: finalResult,
+              learningProposalHandoff
             });
           }
 
@@ -1983,6 +2019,16 @@ app.post(
             "$1"
           );
 
+      if (req.body && req.body.learningProposalOptIn === true && !learningProposalHandoffAttempted) {
+        learningProposalHandoff = {
+          success: false,
+          status: "BLOCKED",
+          code: "HFM_LEARNING_PUBLIC_RETRIEVAL_NOT_EXECUTED",
+          canonicalMemoryWrites: 0,
+          automaticExecution: false
+        };
+      }
+
       addMemory({
         role: "user",
         content:
@@ -1991,8 +2037,8 @@ app.post(
 
       addMemory({
         role: "assistant",
-        content:
-          finalResult
+        content: finalResult,
+        learningProposalHandoff
       });
 
       return res.json({
@@ -2000,7 +2046,8 @@ app.post(
         role:
           req.role,
         result:
-          finalResult
+          finalResult,
+        learningProposalHandoff
       });
     } catch (error) {
       next(error);
