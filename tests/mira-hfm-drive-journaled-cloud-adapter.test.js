@@ -168,6 +168,19 @@ async function main() {
       error => error.code === 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
     console.log('HFM_PHASE7_JOURNALED_CLOUD_QUOTA_ACCOUNT_MISMATCH_FAILS_CLOSED=PASS');
 
+    const quotaUnavailableAdapter = createJournaledDriveCloudAdapter({
+      provider: { ...provider, async getQuota() {
+        const error = new Error('synthetic quota not exposed');
+        error.code = 'HFM_GOOGLE_DRIVE_QUOTA_UNAVAILABLE';
+        throw error;
+      } },
+      journalDirectory, accountBinding, driveSpace, projectId, parentId
+    });
+    const unavailableQuota = await quotaUnavailableAdapter.getProviderQuota();
+    assert.equal(unavailableQuota.status, 'NOT_REPORTED');
+    assert.equal(unavailableQuota.providerQuotaAvailable, false);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_UNAVAILABLE_QUOTA_EXPLICIT=PASS');
+
     const preview = await previewEncryptedEmergencyBackupFromCloud({
       adapter, projectId, backupId, key
     });
