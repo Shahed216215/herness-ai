@@ -34,7 +34,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 ## Durable Google Drive generated-ID journal prototype
 
 - `services/mira-hfm-drive-backup-id-journal.js` provides a local-only immutable operation journal for a future pre-generated Drive file ID.
-- It persists account binding, Drive space, project/backup identity, generated file ID, ciphertext digest and byte length before a future provider upload can begin.
+- It persists SHA-256 account fingerprint, Drive space, project/backup identity, generated file ID, ciphertext digest and byte length before a future provider upload can begin.
 - Publication uses a same-directory temporary file, owner-only permissions, fsync, create-only hard-link publication, directory fsync and exact-byte readback. Existing operation IDs cannot be overwritten.
 - Restart reconciliation returns the persisted ID but explicitly does not assert remote upload success; provider exact-ID retrieval and exact-byte verification remain mandatory.
 - Synthetic offline tests are run in the Phase 7 GitHub Actions workflow. No Google OAuth/API or network calls are performed.
