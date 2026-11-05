@@ -39,7 +39,7 @@ const connector = createFacebookPageConnector({
   assert.equal(draft.status, "PENDING_MANUAL_POST");
   assert.equal(draft.published, false);
 
-  assert.throws(
+  await assert.rejects(
     () => connector.publishPost({ message: "not approved" }),
     error => error.code === "FACEBOOK_PUBLISH_APPROVAL_REQUIRED"
   );
