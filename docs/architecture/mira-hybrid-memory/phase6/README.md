@@ -43,7 +43,9 @@ Offline tests:
 - `node tests/mira-facebook-public-web-research.test.js`
 - `node tests/mira-hfm-tool-registry-policy-parity.test.js`
 
-The service test injects synthetic search results and an in-memory archive writer. The runtime integration test exercises the actual tool module and policy with injected providers, statically verifies automatic tool discovery and server generation-cycle dispatch, and avoids loading unrelated application dependencies. It does not execute the complete registry or real model dispatch. Neither test makes a live web request or real model call.
+The service test injects synthetic search results and an in-memory archive writer. The runtime integration test exercises the actual tool module and policy with injected providers, statically verifies automatic tool discovery and server generation-cycle dispatch, and avoids loading unrelated application dependencies. It does not execute the complete registry or real model dispatch.
+
+Latest GitHub Actions evidence: run **41966286033** completed SUCCESS on Node.js 24. The four workflow test commands passed, including the retrieval service, tool/module and server-dispatch contract, existing Phase 4 public research/archive regression suite, and static tool-policy parity (27 active tools; zero missing policies). The logs report `TESTS_FAILED=0`, `LIVE_FACEBOOK_REQUESTS=0`, `META_GRAPH_API_CALLS=0`, `PRIVATE_GROUP_ACCESS=0`, and `CANONICAL_MEMORY_WRITES=0`. Neither test makes a live web request or real model call.
 
 Status handling distinguishes:
 - `SEARCH_PROVIDER_UNAVAILABLE`: no query succeeded.
