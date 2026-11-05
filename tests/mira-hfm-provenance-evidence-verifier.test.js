@@ -116,6 +116,8 @@ async function rejects(promise, code) {
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_SCOPE_BINDING_PASS\n');
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_DIGEST_BINDING_PASS\n');
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_FRESHNESS_PASS\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_DUPLICATE_ID_REJECTION_PASS\n');
+  process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_ISSUER_SEPARATION_PASS\n');
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_FAIL_CLOSED_PASS\n');
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_CONTRACT_COMPLETE\n');
 })().catch(error => {
