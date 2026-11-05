@@ -156,7 +156,7 @@ async function verifyAllPolicyEvidence({
         fail('Independent evidence could not be resolved: ' + reference.evidenceId,
           'HFM_PROVENANCE_EVIDENCE_UNAVAILABLE');
       }
-      verified.push(verifyEvidenceEnvelope({
+      const verifiedEvidence = verifyEvidenceEnvelope({
         envelope, reference, sourceId, dimension,
         expectedValue: policyPayload.sources[sourceId][dimension], trustedEvidenceIssuers,
         expectedEnvironment, expectedProjectId, operationalIssuerIds,
