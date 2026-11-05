@@ -23,7 +23,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 - Cloud restore preview verifies project/object identity and encryption before staging.
 - Actual restore decrypts and verifies into a separate owner-only staging directory only.
 - No canonical Memory writes, live provider calls, production restore, or automatic trust promotion occur.
-- Capacity monitoring uses explicit project-scoped pagination and a configured 5,000,000,000-byte emergency-backup budget; it is not a live Google Drive quota integration.
+- Capacity monitoring uses explicit project-scoped pagination and a configured 5,000,000,000-byte emergency-backup budget. It now reports this HFM budget separately from optional provider-reported account/project quota; unavailable provider quota is explicitly NOT_REPORTED. This is still not a live Google Drive quota integration.
 - Retention planning is non-destructive and never deletes artifacts.
 
 ## Offline key-provider contract
@@ -35,8 +35,10 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 - `services/mira-hfm-drive-emergency-backup-adapter.js` provides a provider-neutral adapter around an injected `atomicCreate`, `readObject`, and `listPage` transport.
 - It fixes a project-scoped namespace, validates encrypted-envelope content metadata and SHA-256 format, rejects cross-project/path traversal access, enforces explicit bounded pagination, and rejects ambiguous create results.
+- Before operations it negotiates provider capabilities and fails closed unless atomic create-if-absent, read-after-write consistency, project isolation, encrypted object storage, paginated listing, and bounded object/page limits are explicitly declared.
+- Optional provider quota reports are strictly scope- and timestamp-validated. Capacity output separates provider-reported quota from the configured 5 GB HFM emergency-backup budget; no quota is inferred when the provider does not report it.
 - The transport's `atomicCreate` must be a true provider-side atomic create-if-absent operation. The adapter cannot prove that a future real provider implements this correctly.
-- Synthetic fake-transport tests cover concurrent create-only behavior, namespace isolation, metadata binding, exact-byte readback, multi-page listing, timeout-after-commit reconciliation, timeout-before-commit uncertainty, immutable-ID collision rejection, missing/unreadable readback, and no OAuth/network use.
+- Synthetic fake-transport tests cover provider capability negotiation, unsupported-provider fail-closed behavior, scoped quota validation and explicit unavailable-quota status, configured-budget/provider-quota separation, concurrent create-only behavior, namespace isolation, metadata binding, exact-byte readback, multi-page listing, timeout-after-commit reconciliation, timeout-before-commit uncertainty, immutable-ID collision rejection, missing/unreadable readback, and no OAuth/network use.
 - No Google Drive SDK, OAuth, token handling, real Drive calls, delete/overwrite, permission grants, or routine-sync mutation is implemented.
 
 ## Verification
@@ -49,7 +51,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Explicit exclusions and blockers
 
-- Actual Google Drive adapter/OAuth/live upload/download/Drive quota API: NOT_IMPLEMENTED / NOT_TESTED.
+- Actual Google Drive adapter/OAuth/live upload/download/Drive quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
 - Production key provider/KMS/OS keystore, key custody, rotation execution, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
 - Canonical HFM snapshot exporter: BLOCKED pending authoritative store/schema reconciliation in Phases 1–3.
 - Production restore drill and independent production recovery certification: NOT_TESTED.
@@ -57,7 +59,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 VERSION=v0.2
 PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
-LATEST_CI=41987453707_SUCCESS
+LATEST_CI=PENDING_AFTER_CAPABILITY_AND_QUOTA_UPDATE
 TRANSPORT_TIMEOUT_RECONCILIATION=PASS
 BLIND_RETRY=DISABLED
 LIVE_NETWORK=NOT_AUTHORIZED
