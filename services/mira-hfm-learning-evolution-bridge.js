@@ -41,6 +41,7 @@ function buildProposal(input = {}) {
   if (!Number.isFinite(date.getTime()) || date.toISOString() !== createdAt) fail('createdAt must be canonical ISO.');
   const p = { schema: SCHEMA, version: VERSION, proposalId, projectId, createdAt,
     title: txt(input.title, 'title', 240), rationale: txt(input.rationale, 'rationale', 4000),
+    evidenceOrigin: input.evidenceOrigin === undefined ? 'EXPLICITLY_SUPPLIED_EVIDENCE' : txt(input.evidenceOrigin, 'evidenceOrigin', 120),
     proposedChange: txt(input.proposedChange, 'proposedChange', 8000), evidence,
     evidenceDigest: digest(evidence), status: 'PENDING_HUMAN_REVIEW', trustState: 'UNTRUSTED',
     approvalRequired: true, automaticPromotion: false, automaticExecution: false,
