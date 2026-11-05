@@ -26,6 +26,15 @@ assert.throws(() => validateKeyProviderContract({ ...provider, unwrapDataKey: un
   metadata, 'wrapDataKey'), error => error.code === 'BACKUP_KEY_PROVIDER_CONTRACT_INVALID');
 assert.throws(() => validateKeyProviderContract(provider, metadata, 'deleteKey'),
   error => error.code === 'BACKUP_KEY_PROVIDER_CONTRACT_INVALID');
+for (const field of ['privateKeyPem', 'privateKeyBytes', 'masterKey', 'masterKeyBytes',
+  'keyMaterial', 'secretKeyBytes']) {
+  assert.throws(() => validateKeyProviderContract({
+    ...provider, [field]: 'must-not-be-exposed'
+  }, metadata, 'wrapDataKey'), error => error.code === 'BACKUP_KEY_PROVIDER_SECRET_BOUNDARY_VIOLATION');
+  assert.throws(() => validateKeyProviderContract({
+    ...provider, descriptor: { ...provider.descriptor, [field]: 'must-not-be-exposed' }
+  }, metadata, 'wrapDataKey'), error => error.code === 'BACKUP_KEY_PROVIDER_SECRET_BOUNDARY_VIOLATION');
+}
 
 const signingProvider = {
   descriptor: { contractVersion: '1', providerId: 'fixture-snapshot-signer', providerVersion: '1',
