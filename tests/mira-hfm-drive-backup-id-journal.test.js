@@ -11,11 +11,14 @@ const {
 function base(overrides = {}) {
   return {
     operationId: 'drive-operation-0001',
-    accountBinding: 'google-subject-123456',
+    accountBinding: 'b'.repeat(64),
     driveSpace: 'drive',
     projectId: 'mira-project-001',
     backupId: 'backup-journal-0001',
     generatedFileId: 'aBcdEF0123456789_-xy',
+    backupSchema: 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP',
+    backupVersion: '1.0.0',
+    backupCreatedAt: '2026-11-04T23:59:00.000Z',
     ciphertextSha256: 'a'.repeat(64),
     bytes: 4096,
     createdAt: '2026-11-05T00:00:00.000Z',
