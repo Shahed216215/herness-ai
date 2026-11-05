@@ -106,7 +106,7 @@ The canonical `npm test` script retains all 30 test entries, including `tests/se
 ### Verified exact-head CI evidence (2026-11-05)
 
 - Branch: `work/mira-hfm-v02-phase5-clean-restack-on-phase4-20261105`.
-- Latest reviewed head: `1d200056d26fc029ff46b7a69ee7e60e720e6a76`.
+- Historical full-suite baseline head: `1d200056d26fc029ff46b7a69ee7e60e720e6a76`.
 - Exact-head GitHub Actions run: [42033146301](https://github.com/Shahed216215/herness-ai/actions/runs/42033146301) — SUCCESS.
 - Job: `facebook-group-import-offline`; Node.js 24.
 - All four focused Phase 5 suites, all nine dependency-free static regression tests, and the full canonical `npm test` chain (30 test files) passed.
@@ -135,19 +135,19 @@ The same review found the server listening on `127.0.0.1` unconditionally. The b
 
 | Acceptance item | Status | Evidence / boundary |
 |---|---|---|
-| Phase 5 implementation files present on reviewed branch | PASS | Exact branch and commit above; PR #33 remains open/draft |
+| Phase 5 implementation files present on reviewed branch | PASS | Branch head `5d9b96af7ff9c9f710177b8ee1259744927706df`; PR #33 remains open/draft |
 | Focused Phase 5 offline CI suites | PASS | Actions run `42008461380`, exact head SHA above |
 | External-action boundaries in focused CI | PASS | Zero live Facebook requests, private Group access, canonical Memory writes, and production migrations |
 | Dependency-free static regression suite | PASS | Nine tests passed in exact-head run `42029506505`; includes Stage 19 URL/transport contracts and UI/rollback contracts |
 | Full canonical `npm test` regression set (30 tests) | PASS | Exact-head CI run `42033146301`; locked dependencies installed with lifecycle scripts disabled |
-| Full repository `npm test` chain | PASS | All 30 referenced test files exist; four missing paths were redesigned as scoped tests and the startup contract test passed on exact head `1d200056d26fc029ff46b7a69ee7e60e720e6a76` |
+| Full repository `npm test` chain | PASS | All 30 referenced test files exist; four missing paths were redesigned as scoped tests; latest exact-head CI run `42067111202` passed |
 | SQL migration static structure checks | PASS | Offline test verifies additive migration structure, RLS, function security mode, conflict handling, and service-role grants |
-| Real PostgreSQL 16 migration + atomic RPC integration | PASS | Isolated GitHub Actions PostgreSQL service; both migrations applied and RPC tested for create, retry, operation-key identity conflict, immutable Batch conflict, audit-failure rollback, and role grants |
+| Real PostgreSQL 16 migration + atomic RPC integration | PASS | Latest exact-head CI run `42067111202`; isolated PostgreSQL 16 service applied both migrations and passed create, retry, operation-key conflict, immutable Batch conflict, audit-failure rollback and role-grant checks |
 | Supabase migration application and real persistence/readback | DEFERRED | Requires explicit deployment-window approval and target-project verification |
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
-| Native Meta export archive compatibility | NOT_IMPLEMENTED | Only documented JSON, JSONL, and manual-text interchange formats are supported |
+| Native Meta export archive compatibility | SKIPPED_INPUT_MISSING | `P5-SKIP-002`; only JSON, JSONL and manual-text are implemented until a lawful representative archive sample is supplied |
 
-**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; ISOLATED_POSTGRESQL_16_INTEGRATION_PASS; LIVE_SUPABASE_RENDER_VERIFICATION_DEFERRED`. Phase 5 is not production-certified because the user's Supabase project and Render runtime have not been changed or verified. All work remains within Mira HFM v0.2.
+| Independent human review | SKIPPED_USER_DIRECTED | `P5-SKIP-001`; skipped at the user's direction; not an approval and not counted as PASS |\n\n**Phase 5 implementation/CI status:** `IMPLEMENTATION_COMPLETE; FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; ISOLATED_POSTGRESQL_16_INTEGRATION_PASS; SKIPS_TRACKED; LIVE_SUPABASE_RENDER_VERIFICATION_DEFERRED`. The latest code head `5d9b96af7ff9c9f710177b8ee1259744927706df` passed both jobs in exact-head workflow `42067111202`. Live Supabase persistence and Render runtime/restart verification remain deferred; therefore this is not production certification. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
@@ -177,3 +177,12 @@ The isolated PostgreSQL test is real database execution, but it does not establi
 ## Skip and deferred work register
 
 The durable skip/deferred ledger is [`SKIP-AND-DEFERRED-REGISTER.md`](./SKIP-AND-DEFERRED-REGISTER.md). It distinguishes user-directed skips, missing-input skips, authorization deferrals and environment deferrals. Every unresolved item has a stable ID, evidence/reason and a concrete resume condition. A skipped or deferred item is never counted as PASS. Update the ledger whenever Phase 5 work is skipped or resumed.
+
+## Latest Phase 5 continuation verification (2026-11-05)
+
+- Current branch head: `5d9b96af7ff9c9f710177b8ee1259744927706df`.
+- Exact-head GitHub Actions run [42067111202](https://github.com/Shahed216215/herness-ai/actions/runs/42067111202): **SUCCESS**.
+- `facebook-group-import-offline`: completed successfully; includes all four focused Phase 5 tests, nine static regression tests, and the canonical 30-test `npm test` chain.
+- `postgres-atomic-recovery-integration`: completed successfully; both migrations applied to ephemeral PostgreSQL 16 and atomic recovery integration cases passed.
+- Follow-up hardening classifies PostgreSQL class-22 data exceptions, including malformed UUID SQLSTATE `22P02`, as deterministic rejection; regression coverage passed.
+- PR #33 remains Draft/Open/unmerged. No Supabase migration or Render deployment was performed.
