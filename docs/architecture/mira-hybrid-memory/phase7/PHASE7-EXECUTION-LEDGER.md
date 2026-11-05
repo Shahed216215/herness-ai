@@ -47,7 +47,9 @@
 
 ## Authoritative snapshot source and recovery verification continuation
 - Added `services/mira-hfm-authoritative-snapshot.js`: injected read-only source contract with project/actor/scope request, source revision, schema, record count, capture time and SHA-256 payload attestation checks.
-- Added `tests/mira-hfm-authoritative-snapshot.test.js`: synthetic-only positive and negative tests. Status semantics explicitly state `SNAPSHOT_CONTRACT_VERIFIED_NOT_SOURCE_AUTHENTICATED`; caller-supplied descriptor/attestation is not cryptographic proof of source identity or real authorization.
+- Snapshot source now uses an independently pinned Ed25519 trust anchor and fingerprint, verifies signed attestations, binds request ID/nonce and actor/project/scope, enforces freshness, and validates revision/count/payload digest. Signature verification authenticates the signer against the configured trust anchor; it does not independently enforce source-side authorization or prove production-store authority.
+- `createEncryptedBackupFromSource` connects verified snapshot capture to encryption and returns prepared encrypted bytes only; it does not publish or upload them.
+- Tests cover signature validity, trust-anchor mismatch, denied claims, stale attestation, nonce replay mismatch, and source-to-encrypted-backup preparation.
 - Added `services/mira-hfm-recovery-verification.js`: non-mutating decrypt/authenticate and independent baseline comparison for source revision, record count and payload SHA-256.
 - Added `tests/mira-hfm-recovery-verification.test.js`: successful recovery preview, baseline mismatch, missing baseline, and no-canonical-write assertions.
 - CI workflow now runs five isolated offline suites. No production Memory/Knowledge read, production restore, live Drive/KMS call, or deletion was performed.
