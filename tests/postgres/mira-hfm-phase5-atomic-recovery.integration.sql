@@ -90,8 +90,8 @@ BEGIN
 
   -- Same batch identity with a different digest must be rejected.
   conflict_batch := jsonb_set(b,'{batchDigest}',to_jsonb(repeat('c',64)));
-  conflict_batch := jsonb_set(conflict_batch,'{exportId}',to_jsonb('pg-integration-export-conflict'));
-  conflict_batch := jsonb_set(conflict_batch,'{batchId}',to_jsonb('pg-integration-batch-001'));
+  conflict_batch := jsonb_set(conflict_batch,'{exportId}',to_jsonb('pg-integration-export-conflict'::text));
+  conflict_batch := jsonb_set(conflict_batch,'{batchId}',to_jsonb('pg-integration-batch-001'::text));
   conflict_event := jsonb_set(e,'{batchDigest}',to_jsonb(repeat('c',64)));
   conflict_event := jsonb_set(conflict_event,'{eventDigest}',to_jsonb(repeat('d',64)));
   conflict_op := 'facebook-group-import:staged:v1:pg-integration-batch-001:' || repeat('c',64);
