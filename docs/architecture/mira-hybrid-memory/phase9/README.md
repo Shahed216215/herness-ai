@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 9 Retrieval & Capacity Optimization
 
-Status: ISOLATED RETRIEVAL OPTIMIZER, READ-ONLY ADAPTER CONTRACTS FOR EXISTING HFM CANONICAL/PUBLIC ARCHIVE/GROUP IMPORT INTERFACES, INJECTABLE MODEL TOKENIZER COUNTER AND SYNTHETIC 1x/10x/100x BENCHMARKS ADDED; LIVE PROVIDER EXECUTION, DEPLOYED TOKENIZER CALIBRATION AND PRODUCTION CAPACITY NOT CERTIFIED.
+Status: ISOLATED RETRIEVAL OPTIMIZER, READ-ONLY ADAPTER CONTRACTS FOR EXISTING HFM CANONICAL/PUBLIC ARCHIVE/GROUP IMPORT INTERFACES, INJECTABLE MODEL TOKENIZER COUNTER, SYNTHETIC 1x/10x/100x BENCHMARKS AND PROMPT-INJECTION BOUNDARY REGRESSION ADDED; LIVE PROVIDER EXECUTION, DEPLOYED TOKENIZER CALIBRATION AND PRODUCTION CAPACITY NOT CERTIFIED.
 Parent: Phase 8 learning/evolution integration branch.
 Version: v0.2 only.
 
@@ -31,6 +31,8 @@ Phase 9 adds an opt-in, dependency-injected, read-only retrieval optimizer. Exis
 - The adapters are read-only wrappers. Invoking an injected Supabase archive lookup may perform a read-only network request; the adapter tests use in-memory mocks and make no live requests. No Facebook API call, storage write, canonical Memory mutation, trust promotion, learning execution or self-modification is performed by the adapters.
 - Source adapters are injected by the caller; no default connector or automatic runtime hook is registered.
 - External snippets remain untrusted evidence. Text found in a Memory record is data, never an instruction to override system, developer, project or user policy.
+- The new prompt-injection regression test feeds hostile instruction-like text and adversarial provider fields through the optimizer. It verifies the content remains unchanged data, trust stays UNVERIFIED, non-schema action fields are not propagated, and no external action/canonical write occurs in the test harness.
+- This regression does NOT prove that a downstream LLM prompt builder, tool router, or generation lifecycle safely isolates retrieved text. Downstream prompt-boundary/E2E testing remains NOT TESTED and must be independently implemented before runtime integration.
 - Search failure is not evidence of deletion or data loss.
 - Conflicts are surfaced, not silently merged.
 
@@ -43,6 +45,7 @@ Phase 9 adds an opt-in, dependency-injected, read-only retrieval optimizer. Exis
 Run:
 - `node tests/mira-hfm-phase9-retrieval-optimizer.test.js`
 - `node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js`
+- `node tests/mira-hfm-phase9-prompt-injection-regression.test.js`
 
 The tests use mock facade/archive/group services and synthetic in-memory adapters, including 100/1,000/10,000-record scale cases. They do not access local user data, Facebook, Google Drive, Supabase, Render, external APIs or production storage.
 
@@ -51,12 +54,14 @@ The tests use mock facade/archive/group services and synthetic in-memory adapter
 1. Execute the adapters against the actual authorized local/HFM and Supabase provider instances only after explicit live-test authorization; the current tests use mocks.
 2. Supply the exact deployed model tokenizer encoder and reserve prompt/system/tool overhead in the generation layer.
 3. Run representative provider benchmarks at 1x/10x/100x and measure p50/p95 latency, memory, candidate recall, token use, concurrency and failure/recovery behavior.
-4. Add independent retrieval relevance and adversarial prompt-injection regression tests.
+4. Independently test the downstream prompt builder and tool router with hostile retrieved content; this test suite covers optimizer data handling only.
 5. Integrate into the Mira generation lifecycle only after Phase 8 live Supabase integration and governance gates are completed.
 6. Do not certify 100x end-to-end capacity until provider/runtime measured evidence exists.
 
 VERSION=v0.2
 PHASE9=RETRIEVAL_OPTIMIZER_AND_READ_ONLY_PROVIDER_ADAPTER_CONTRACTS_IMPLEMENTED
+PROMPT_INJECTION_OPTIMIZER_BOUNDARY=REGRESSION_TEST_ADDED
+DOWNSTREAM_PROMPT_ISOLATION=NOT_TESTED
 LIVE_PROVIDER_EXECUTION=NOT_CERTIFIED
 DEPLOYED_MODEL_TOKENIZER=NOT_CONFIGURED
 SYNTHETIC_1X_10X_100X_BENCHMARK=ADDED
