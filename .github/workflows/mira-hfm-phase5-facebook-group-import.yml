@@ -30,6 +30,7 @@ on:
       - 'routes/mira-facebook-group-memory-import.js'
       - 'server.js'
       - 'package.json'
+      - 'package-lock.json'
       - 'tests/**'
       - 'supabase/migrations/**'
       - 'tests/mira-facebook-group-memory-import.test.js'
