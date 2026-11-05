@@ -3,7 +3,7 @@ name: Mira HFM Phase 8 Learning Evolution Bridge
 on:
   push:
     branches:
-      - work/mira-hfm-v02-phase8-clean-restack-v3-20261105
+      - work/mira-hfm-v02-phase8-clean-restack-on-phase7-v2-20261105
     paths:
       - 'services/mira-hfm-learning-evolution-bridge.js'
       - 'services/mira-hfm-learning-generation-cycle.js'
