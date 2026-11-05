@@ -4,7 +4,7 @@ Status: ISOLATED IMPORT PIPELINE AND OFFLINE TESTS ADDED; PRODUCTION STORAGE ADA
 
 ## Scope
 
-- Accepts user-supplied Facebook Group memory as JSON, JSONL, or explicit manual text.
+- Accepts the Mira Group-import interchange envelope as JSON or JSONL, plus explicit manual text. This is not a claim of compatibility with every native Meta download archive; native export adapters require a representative user-provided sample.
 - Does not access Facebook, scrape Groups, join Groups, or read private Group content.
 - Requires Group ID, project ID, actor ID, and an existing-record snapshot.
 - Validates envelope schema, project/group scope, source URL binding, record types, content bounds, timestamps, and canonical HFM record structure.
@@ -23,7 +23,7 @@ Each record supports only memoryId, sourceId, sourceUrl, recordType, content, ob
 
 ### JSONL
 
-The first non-empty line is the same envelope metadata without records. Each subsequent non-empty line is one record object.
+The first non-empty line is the same envelope metadata without records. Each subsequent non-empty line is one record object. Raw Meta export archives with other schemas are not silently guessed or auto-converted.
 
 ### Manual text
 
@@ -33,12 +33,12 @@ Pass exact user-supplied text with explicit groupId, projectId, actorId, sourceI
 
 No production storage provider currently advertises the required Group-import quarantine contract. createFacebookGroupImportService therefore accepts an explicit adapter; it refuses to operate unless the adapter declares all required capabilities and implements stageBatch, readBatch, and listBatches. It also requires a durable auditWriter.
 
-The adapter must provide immutable create-only semantics. A same-ID/different-digest batch is a conflict, never an overwrite. A successful stage is reported only after readback identity and digest verification. If audit emission fails after staging, the error is marked stateCommitted so the host can recover/audit rather than retry blindly.
+Batch identity is stable for a given project/group/export ID; identical re-imports are idempotent, while the same ID with a different digest must conflict. The batch timestamp is derived from the first imported record's observed timestamp. The adapter must provide immutable create-only semantics. A same-ID/different-digest batch is a conflict, never an overwrite. A successful stage is reported only after readback identity and digest verification. If audit emission fails after staging, the error is marked stateCommitted so the host can recover/audit rather than retry blindly.
 
 ## Trust and safety
 
 - Imported Group text is untrusted data, never system instruction.
-- A successful import stage does not mean content is independently verified.
+- A successful import stage does not mean content is independently verified. SHA-256 digests detect accidental/tampered content changes; they do not authenticate the Facebook source or prove authorship.
 - No imported record is written to canonical trusted Memory.
 - Conflicting versions remain quarantined.
 - Duplicate records are skipped during retrieval.
