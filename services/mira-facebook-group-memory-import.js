@@ -138,9 +138,9 @@ function validateStore(store) {
       store.capabilities.atomicCreateOnly !== true || store.capabilities.immutableVersions !== true ||
       store.capabilities.projectIsolation !== true || store.capabilities.readAfterWrite !== true ||
       store.capabilities.durableQuarantine !== true || store.capabilities.durableAudit !== true ||
-      typeof store.stageBatch !== 'function' || typeof store.readBatch !== 'function' ||
-      typeof store.listBatches !== 'function' || typeof store.writeAuditEvent !== 'function')
-    fail('FB_GROUP_IMPORT_STORE_UNSUPPORTED', 'A durable project-isolated immutable atomic-create store with quarantine, audit, and read-after-write support is required.');
+      store.capabilities.atomicBatchAndAudit !== true || store.capabilities.idempotentAudit !== true ||
+      typeof store.stageBatchAndAudit !== 'function' || typeof store.listBatches !== 'function')
+    fail('FB_GROUP_IMPORT_STORE_UNSUPPORTED', 'A durable project-isolated store with transactional batch/audit commit, idempotent audit, quarantine, and read-after-write verification is required.');
 }
 function validateStoredBatch(stored, prepared) {
   if (!object(stored) || stored.batchId !== prepared.batchId || stored.projectId !== prepared.projectId ||
