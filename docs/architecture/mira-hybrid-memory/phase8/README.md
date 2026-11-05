@@ -1,6 +1,6 @@
 # Mira Hybrid Memory v0.2 — Phase 8: Learning & Evolution Governance Bridge
 
-Status: PROPOSED EXECUTION BASELINE — SOURCE AUDIT STARTED — IMPLEMENTATION BLOCKED ON AUTHORITATIVE PROJECT SCOPE.
+Status: P8-A EXPLICIT MAPPING CONTRACT + P8-B READ-ONLY WORK LEARNING ADAPTER IMPLEMENTED; SYNTHETIC CI PASS; SOURCE SNAPSHOT CAPTURE AND RUNTIME INTEGRATION REMAIN BLOCKED.
 
 This phase is a working execution breakdown aligned to the v0.2 Phase 2 contract's Learning/Evolution integration requirements and the Phase 3 domain-scope review. It does not advance the release beyond v0.2. No production data, canonical writes, migration, live provider calls, deployment or autonomous code application are authorized.
 
@@ -75,3 +75,17 @@ Test missing/forged/expired/revoked authority, cross-project task substitution, 
 - HFM project-scoped Experience Retrieval: NOT_INTEGRATED.
 - HFM Evolution prepare-only bridge: NOT_INTEGRATED.
 - Production integration: NOT_APPROVED.
+
+
+## Implementation checkpoint — P8-A / P8-B (2026-11-05)
+
+- Extended the read-only mapping contract with the explicit `work_learning` domain and fixed source system `mira_work_learning`. Unknown derived domains such as Work Knowledge Consolidation remain rejected.
+- Added `services/mira-hfm-work-learning-adapter.js`. It validates an exact owner-approved mapping through the existing project-owner registry verifier, binds `learningId`, source ordinal, caller-supplied source snapshot digest, raw record digest and canonical candidate digest, and emits only a canonical `lesson` candidate.
+- Candidate state is fixed to `PENDING_REVIEW`, `integrity=UNVERIFIED`, `trust=SOURCE_RECORDED`; no canonical write or activation is possible through this adapter.
+- Full raw Work Learning payload is preserved, but records containing secret-like field names are rejected before candidate construction. Bounded recursive scan rejects excessive depth/node count and cyclic objects.
+- Batch adaptation rejects duplicate learning IDs, missing/unused mappings, duplicate canonical IDs, source ordinal drift, cross-project mappings, revoked owner registry evidence, forged mapping digests and source digest changes.
+- Important limitation: this adapter does not open or hash the source file itself. The caller-supplied `sourceFileDigest` must come from a separately verified immutable snapshot-capture component. This is not yet implemented or authenticated in production.
+- CI run #373, ID `42045846125`, commit `e7ddac2a4a6ebe6c29487419439aecf94f8c12b8`: SUCCESS. Job `phase8-learning-scope-contract` SUCCESS. Logs verified the four suites, all Work Learning markers, `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `CANONICAL_MEMORY_WRITTEN=NO`, and `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- Earlier run #372 (ID `42045571144`) failed only on a case-sensitive test assertion for the expected error text. The assertion was corrected in the next commit and run #373 passed. The earlier failed run remains in history.
+- P8-A mapping contract and P8-B in-memory source adaptation: PASS_CI_SYNTHETIC.
+- Trusted production owner-registry provider, source-file capture/authenticity, task/work-item authority source, and runtime project-scoped retrieval remain REVIEW_REQUIRED / NOT_APPROVED / NOT_IMPLEMENTED.
