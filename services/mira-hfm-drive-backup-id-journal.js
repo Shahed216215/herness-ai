@@ -24,9 +24,8 @@ function validId(value, label) {
   return value;
 }
 function validAccountBinding(value) {
-  if (typeof value !== 'string' || value.length < 8 || value.length > 160 ||
-      !/^[A-Za-z0-9._:@-]+$/.test(value)) {
-    reject('accountBinding must be a bounded non-secret provider account subject identifier.');
+  if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) {
+    reject('accountBinding must be a SHA-256 fingerprint of a non-secret provider account subject identifier.');
   }
   return value;
 }
