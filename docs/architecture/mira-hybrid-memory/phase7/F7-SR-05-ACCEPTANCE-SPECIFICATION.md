@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — F7-SR-05 Infrastructure Independence Acceptance Specification
 
-Status: DESIGN SPECIFICATION ONLY — NOT IMPLEMENTED, NOT APPROVED
+Status: ACCEPTANCE SPECIFICATION — SIGNED POLICY VERIFIER CONTRACT IMPLEMENTED; OPERATIONAL TRUST AND STAGING INTEGRATION NOT APPROVED
 Finding: F7-SR-05 — Baseline provenance claims do not independently certify infrastructure
 Severity: HIGH
 Scope: Phase 7 emergency-backup baseline/source independence
@@ -51,7 +51,7 @@ The bundle must contain:
 - previous accepted bundle digest or another authenticated anti-rollback anchor;
 - revocation/status reference and a defined fail-closed behavior when status cannot be established.
 
-The verifier must obtain the trust anchor and accepted policy version from a separately controlled configuration boundary, not from the same caller that supplies the policy being evaluated. The policy issuer MUST be distinct from both snapshot sources, snapshot-signing issuers, authorization-decision issuer, and backup key provider. Distinct names are insufficient: administrative control and identity-provider dependencies must also be reviewed.
+The verifier module now checks a signed Ed25519 policy envelope against separately injected pinned issuer and reviewer trust maps, plus an accepted-policy-state descriptor. The accepted-state descriptor is required to assert authenticated, durable and atomic semantics and to identify a separate authority. These are interface assertions only: the module cannot prove that the caller actually obtained the maps/state from an independent provider, nor can it persist the next sequence checkpoint. A separately implemented, authenticated, durable and atomic state provider plus out-of-band trust provisioning remain mandatory. The verifier must obtain the trust anchor and accepted policy version from a separately controlled configuration boundary, not from the same caller that supplies the policy being evaluated. The policy issuer MUST be distinct from both snapshot sources, snapshot-signing issuers, authorization-decision issuer, and backup key provider. Distinct names are insufficient: administrative control and identity-provider dependencies must also be reviewed.
 
 A signed policy bundle authenticates the publisher and integrity of the bundle. It does not prove that the evidence inside is true; Sections 4–6 remain mandatory.
 
@@ -167,7 +167,7 @@ Fail closed if policy signature, version, scope, validity, revocation status, or
 
 ## 7. Required implementation behavior
 
-The implementation change, if separately approved, must:
+The signed policy verifier contract has been implemented as `services/mira-hfm-signed-provenance-policy.js`. It validates Ed25519 policy signatures, pinned issuer/key fingerprint, reviewer signatures, project/environment scope, validity window, revocation status, anti-rollback sequence, evidence-reference shape, and the six distinct provenance dimensions. It returns a policy object compatible with the existing six-dimension comparison contract, plus an explicit next-state checkpoint that an external durable provider must atomically persist. The verifier is not yet wired into the staging backup drill or any production path. It must not be treated as operational approval.\n\nRemaining integration requirements:
 - validate a signed policy envelope against a separately pinned policy-issuer trust anchor;
 - enforce exact environment/project/source scope and schema version;
 - enforce sequence/anti-rollback and expiry/revocation;
