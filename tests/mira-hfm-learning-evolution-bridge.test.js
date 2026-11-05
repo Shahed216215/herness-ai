@@ -62,9 +62,12 @@ assert.throws(()=>buildProposal({...base,evidence:[evidence[0],evidence[0]]}));
 assert.throws(()=>buildProposal({...base,evidence:[]}));
 
 const records = new Map();
+const reviews = new Map();
 const memoryStore = { projectIsolated:true, createOnly:true, immutableVersions:true, readAfterWrite:true,
   async putIfAbsent(project,id,value) { const k=project+':'+id; if(records.has(k)) return {created:false}; records.set(k,structuredClone(value)); return {created:true}; },
-  async get(project,id) { return structuredClone(records.get(project+':'+id)||null); } };
+  async get(project,id) { return structuredClone(records.get(project+':'+id)||null); },
+  async putReviewIfAbsent(project,id,value) { const k=project+':'+id; if(reviews.has(k)) return {created:false}; reviews.set(k,structuredClone(value)); return {created:true}; },
+  async getReview(project,id) { return structuredClone(reviews.get(project+':'+id)||null); } };
 const audit=[];
 const bridge=createLearningEvolutionBridge({proposalStore:memoryStore,auditWriter:async e=>audit.push(e)});
 const localAudit = async () => {};
@@ -99,6 +102,20 @@ assert.equal(hasProductionIntegrationCapabilities({
  assert.equal(audit.length,1);
  assert.equal(audit[0].actorRole,'admin');
  assert.equal(audit[0].actorId,'admin-user-001');
+ const reviewResult=await bridge.review('project-alpha','proposal-001',
+   {decision:'APPROVE_FOR_MANUAL_HANDOFF',reason:'Evidence reviewed; permit manual follow-up only.'},
+   {actorRole:'admin',actorId:'admin-user-001'});
+ assert.equal(reviewResult.status,'APPROVED_FOR_MANUAL_HANDOFF');
+ assert.equal(reviewResult.trustState,'UNTRUSTED');
+ assert.equal(reviewResult.canonicalMemoryWrites,0);
+ assert.equal(reviewResult.automaticExecution,false);
+ await assert.rejects(()=>bridge.review('project-alpha','proposal-001',
+   {decision:'REJECT',reason:'Second review must be blocked.'},
+   {actorRole:'admin',actorId:'admin-user-001'}),e=>e.code==='HFM_LEARNING_REVIEW_CONFLICT');
+ const reviewed=await bridge.get('project-alpha','proposal-001');
+ assert.equal(reviewed.review.decision,'APPROVE_FOR_MANUAL_HANDOFF');
+ assert.equal(reviewed.review.trustState,'UNTRUSTED');
+ assert.equal(audit[1].event,'HFM_LEARNING_PROPOSAL_REVIEWED');
  await assert.rejects(()=>bridge.submit(base),e=>e.code==='HFM_LEARNING_PROPOSAL_CONFLICT');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:{},auditWriter:async()=>{}}),e=>e.code==='HFM_LEARNING_STORE_CAPABILITY_REQUIRED');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:memoryStore}),e=>e.code==='HFM_LEARNING_AUDIT_REQUIRED');
