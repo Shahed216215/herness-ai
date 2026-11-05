@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 5 Facebook Group Manual Import
 
-Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FOUR FOCUSED PHASE 5 TESTS, AND NINE DEPENDENCY-FREE STATIC REGRESSION TESTS ARE IMPLEMENTED AND PASS IN EXACT-HEAD CI. The wider 25-test available regression set is defined but could not run because CI has no installed project dependencies; full `npm test` also references four absent test files. Live Supabase migration/persistence, Render deployment, and runtime verification remain deferred.
+Status: IMPORT PIPELINE, SUPABASE STORE ADAPTER, ADMIN API ROUTES, MIGRATION, FOUR FOCUSED PHASE 5 TESTS, NINE DEPENDENCY-FREE STATIC REGRESSION TESTS, AND ALL 25 CURRENTLY PRESENT REGRESSION TESTS PASS IN EXACT-HEAD CI. The canonical `npm test` command remains blocked by four test paths absent from the repository. Live Supabase migration/persistence, Render deployment, and runtime verification remain deferred.
 
 ## Scope implemented
 
@@ -88,7 +88,7 @@ The following nine tests are also run by `npm run test:offline-static-regression
 - `tests/provider-navigation-contract.js`
 - `tests/mira-facebook-group-memory-migration-structure.test.js`
 
-A separate `npm run test:offline-regression:available` script lists the 25 test files that currently exist from the wider repository test command, excluding missing paths. It was attempted in CI without installing dependencies and stopped immediately because `dotenv` is unavailable. It has **not** passed and must not be represented as a completed regression run.
+A separate `npm run test:offline-regression:available` script runs all 25 test files that currently exist from the wider repository test command, excluding the four missing paths. After explicit approval, GitHub Actions installed the exact lockfile dependencies with `npm ci --ignore-scripts --no-audit --no-fund`; the available 25-test regression command completed successfully. Dependency lifecycle scripts were disabled. Tests use temporary local files, mocked provider-health/request functions, and loopback-only local HTTP servers. CI logs report zero live Facebook requests, private Group access, canonical Memory writes, or production migration.
 
 ### Full test command integrity finding
 
@@ -99,16 +99,16 @@ The repository `npm test` command references four files that are absent from the
 - `tests/custom-provider-config-route-isolated.test.js`
 - `tests/provider-claude-grok-contract.test.js`
 
-These entries have not been silently removed or replaced. The main `npm test` command therefore cannot be certified until the missing tests are recovered or their intended coverage is explicitly redesigned. The broader available suite also needs project dependencies installed. No dependency installation was performed because it requires package downloads over the network and was not authorized in this offline-only work.
+These entries have not been silently removed or replaced. The main `npm test` command therefore cannot be certified until the missing tests are recovered or their intended coverage is explicitly redesigned. The available suite was run after approved locked dependency installation in GitHub Actions; no package installation was performed on the user's Termux device.
 
 ### Verified exact-head CI evidence (2026-11-05)
 
 - Branch: `work/mira-hfm-v02-phase5-clean-restack-on-phase4-20261105`.
-- Latest tested commit: `d8fcef39358de757d7b51290150938ce63e76fb4`.
-- Latest GitHub Actions run: [42029506505](https://github.com/Shahed216215/herness-ai/actions/runs/42029506505) (push) and [42029513615](https://github.com/Shahed216215/herness-ai/actions/runs/42029513615) (pull request).
+- Latest tested commit: `3f37d7f759db77bf7d4ab0e8e31e7b3426972612`.
+- Latest GitHub Actions runs: [42030892043](https://github.com/Shahed216215/herness-ai/actions/runs/42030892043) (push) and [42030901365](https://github.com/Shahed216215/herness-ai/actions/runs/42030901365) (pull request), both successful on the exact tested commit.
 - Job: `facebook-group-import-offline`; Node.js 24.
-- All four focused Phase 5 suites and all nine dependency-free static regression tests passed.
-- A separate 25-test available-suite attempt failed before executing the first test because the runner did not have the `dotenv` dependency installed. This is an environment/setup blocker, not a passing regression result.
+- All four focused Phase 5 suites, all nine dependency-free static regression tests, and all 25 currently present tests in `test:offline-regression:available` passed.
+- The first dependency-enabled run found incomplete isolated test fixtures: they did not copy `services/mira-json-state-store.js` and `services/mira-store-initialization-guard.js`, required by `audit-log.js`. Five isolated fixtures were corrected to include those dependencies; the final exact-head CI passed.
 - Recorded boundary checks: `LIVE_FACEBOOK_REQUESTS=0`, `PRIVATE_GROUP_ACCESS=0`, `CANONICAL_MEMORY_WRITES=0`, and `PRODUCTION_MIGRATION=0`.
 - Therefore the focused Phase 5 offline CI result is **PASS**. This does not mean the full repository `npm test` chain passed: that broader chain has not been verified on this exact head in this acceptance check.
 
@@ -130,14 +130,14 @@ These entries have not been silently removed or replaced. The main `npm test` co
 | Focused Phase 5 offline CI suites | PASS | Actions run `42008461380`, exact head SHA above |
 | External-action boundaries in focused CI | PASS | Zero live Facebook requests, private Group access, canonical Memory writes, and production migrations |
 | Dependency-free static regression suite | PASS | Nine tests passed in exact-head run `42029506505`; includes Stage 19 URL/transport contracts and UI/rollback contracts |
-| Wider available regression set (25 extant tests) | INCONCLUSIVE | Attempt stopped at first test: `Cannot find module 'dotenv'`; no package installation was performed |
+| Wider available regression set (25 extant tests) | PASS | Exact-head CI run `42030892043`; locked dependencies installed with lifecycle scripts disabled |
 | Full repository `npm test` chain | BLOCKED | Four referenced test files are absent from the reviewed branch and two inspected source branches; no coverage has been silently dropped |
 | SQL migration static structure checks | PASS | New offline test verifies both tables, keys, digest constraints, RLS, and service-role SELECT/INSERT-only grants; no PostgreSQL parser/database execution was performed |
 | Supabase migration application and real persistence/readback | DEFERRED | Requires explicit deployment-window approval and target-project verification |
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
 | Native Meta export archive compatibility | NOT_IMPLEMENTED | Only documented JSON, JSONL, and manual-text interchange formats are supported |
 
-**Phase 5 closure status:** `FOCUSED_PHASE5_AND_NINE_STATIC_REGRESSION_TESTS_PASS; WIDER_REGRESSION_INCONCLUSIVE_DEPENDENCY_MISSING; FULL_NPM_TEST_BLOCKED_MISSING_FILES; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified. All work remains within Mira HFM v0.2.
+**Phase 5 closure status:** `FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; AVAILABLE_25_TEST_REGRESSION_PASS; CANONICAL_NPM_TEST_BLOCKED_FOUR_MISSING_FILES; LIVE_DEPLOYMENT_DEFERRED`. Phase 5 is not fully closed or production-certified. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
