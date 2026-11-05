@@ -49,13 +49,18 @@ let mounted;
 const app = {
   use(...args) { mounted = args; }
 };
-const adminGuard = () => function adminOnly() {};
+let adminGuardPermission;
+const adminGuard = permission => {
+  adminGuardPermission = permission;
+  return function adminOnly() {};
+};
 register(app, adminGuard, { SYSTEM_ADMIN: "SYSTEM_ADMIN" }, {
   createConnector: () => connector
 });
 
 assert.equal(mounted[0], "/api/admin/facebook-page");
 assert.equal(typeof mounted[1], "function");
+assert.equal(adminGuardPermission, "SYSTEM_ADMIN");
 assert.equal(mounted[2], router);
 
 async function invoke(method, path, body = {}) {
