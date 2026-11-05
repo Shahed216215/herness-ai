@@ -32,6 +32,13 @@ console.log('GROUP_IMPORT_VERSION_CONFLICT_QUARANTINE=PASS');
 const intra=prepare([rec(),rec({content:'Same identity and revision, changed content'})]);
 assert.equal(intra.items[1].disposition,'QUARANTINED');
 console.log('GROUP_IMPORT_SAME_REVISION_CONTENT_CONFLICT=PASS');
+const generatedIdentity = prepare([
+  rec({ memoryId: undefined, sourceId: 'stable-source-identity' }),
+  rec({ memoryId: undefined, sourceId: 'stable-source-identity', content: 'A changed revision from the same source.' })
+]);
+assert.equal(generatedIdentity.items[0].memoryId, generatedIdentity.items[1].memoryId);
+assert.equal(generatedIdentity.items[1].disposition, 'QUARANTINED');
+console.log('GROUP_IMPORT_GENERATED_ID_STABLE_VERSION_CONFLICT=PASS');
 assert.throws(()=>prepareFacebookGroupImport({content:JSON.stringify(env([rec()],{projectId:'project-other'})),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}),/scope does not match/);
 assert.throws(()=>prepareFacebookGroupImport({content:JSON.stringify(env([rec({sourceUrl:'https://www.facebook.com/groups/999/posts/1/'})])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}),/identify the supplied Facebook Group/);
 assert.throws(()=>prepareFacebookGroupImport({content:JSON.stringify(env([rec({content:'x'.repeat(100001)})])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}),/bounded non-empty text/);
@@ -42,6 +49,7 @@ const jsonl=[JSON.stringify({schemaVersion:'1.0.0',kind:'MIRA_FACEBOOK_GROUP_MEM
 assert.equal(prepareFacebookGroupImport({content:jsonl,format:'jsonl',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}).summary.pendingReview,1);
 const manual=prepareFacebookGroupImport({content:'Manual user supplied Group note.',format:'manual',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,sourceId:'manual-source-1',sourceUrl:'https://www.facebook.com/groups/123456789/',observedAt:now,existingRecords:[]});
 assert.equal(manual.summary.pendingReview,1);
+assert.throws(() => prepareFacebookGroupImport({content:'Missing observed time',format:'manual',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,sourceId:'manual-source-2',existingRecords:[]}), /record.observedAt/);
 console.log('GROUP_IMPORT_JSON_JSONL_AND_MANUAL_TEXT_INPUT=PASS');
 const db=new Map();
 const store={
