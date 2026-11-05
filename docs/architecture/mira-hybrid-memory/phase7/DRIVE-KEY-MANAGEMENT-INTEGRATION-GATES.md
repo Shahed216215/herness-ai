@@ -81,6 +81,18 @@ A canonical HFM snapshot exporter is intentionally not implemented in this Phase
 
 The exporter must produce a bounded, schema-validated snapshot payload and manifest. It must not mutate canonical data. A successful encryption test cannot certify snapshot completeness.
 
+## 5A. Phase 1–3 source-authority evidence for snapshot exporter
+
+The exporter remains blocked because the current candidate stores do not share an approved canonical authority boundary:
+- General Memory: legacy role/content/time array; no durable actor/project identity or production CAS contract.
+- Knowledge: legacy source metadata without authoritative owner/project relation; Drive remains coupled to routine workflows.
+- CRM Conversation: no trusted client-to-project registry; stable messageId and approved project mapping are required.
+- Work Learning / Experience / Work Knowledge: separate stores/projections without authoritative task-to-project mapping and complete lineage.
+- Conversation, Audit, Research Governance and Learning Governance are separate domains with independent schemas and retention/approval semantics; do not silently include them.
+- Snapshot Manager and Local Memory backup are not complete HFM canonical snapshots.
+
+Phase 3 validators and host adapters are injected contracts only. The project-owner registry is not persisted/administered; host identity, authoritative project mapping, current revocation lookup and atomic replay protection are not connected to production. General Memory, Knowledge and CRM Conversation remain BLOCKED_FOR_PRODUCTION; Work Learning/Experience/Work Knowledge remain BLOCKED. The detailed source inventory, disposition and owner prerequisites are recorded in the Phase 7 Google Drive Live Integration Approval Plan, Section 7A.
+
 ## 6. Required offline test matrix before any live provider test
 
 - Adapter rejects plaintext, malformed envelope, wrong project, wrong backup ID, and invalid digest.
