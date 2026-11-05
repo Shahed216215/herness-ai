@@ -154,7 +154,7 @@ Important limitations and gates:
 - This candidate may satisfy the provider-side create-only requirement only after a dedicated fake-transport regression suite and a separately authorized, narrowly scoped live test verify create, timeout-after-commit, 409 reconciliation, exact download and duplicate prevention.
 
 STATUS=DOCUMENTED_DESIGN_CANDIDATE_ONLY
-GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 LIVE_GOOGLE_DRIVE=NOT_TESTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
@@ -192,7 +192,7 @@ The branch now includes `services/mira-hfm-drive-generated-id-upload.js`. This c
 This is a provider orchestration prototype only. It has no delete, overwrite, move, permission grant, or routine-sync integration. A real provider mapping must prove that `getFile` binds account/space/parent and maps actual Drive metadata faithfully; only then can a separately approved live test be considered.
 
 STATUS=OFFLINE_JOURNALED_UPLOAD_ORCHESTRATION_PROTOTYPE
-GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
 ## 9.4 Journaled cloud adapter integration (offline prototype)
@@ -208,7 +208,7 @@ The branch now includes `services/mira-hfm-drive-journaled-cloud-adapter.js`, wh
 This proves only the injected fake-provider and offline Google Drive v3 method-mapping contracts. It does not establish live Google account identity, remote consistency, OAuth scope approval, production quota behavior or provider durability.
 
 STATUS=OFFLINE_JOURNALED_CLOUD_ADAPTER_AND_AUTHENTICATED_JOURNAL_RECOVERY
-GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
 ## 9.5 Injected Google Drive v3 provider mapper (fake-client CI pending)
@@ -237,29 +237,28 @@ Official API references reviewed:
 
 The documentation supports generated IDs for `drive` and `appDataFolder` spaces and describes duplicate-preventing 409 responses on retry after a successful create. Pre-generated IDs are not supported for ordinary Google Workspace document conversion; HFM must remain an ordinary binary file. This research does not authorize OAuth or certify the injected account-fingerprint callback.
 
-STATUS=INJECTED_GOOGLE_DRIVE_V3_MAPPER_IMPLEMENTED_CI_PENDING
+STATUS=INJECTED_GOOGLE_DRIVE_V3_MAPPER_IMPLEMENTED_OFFLINE_CI_VERIFIED
 OAUTH_CLIENT=NOT_CREATED
 LIVE_GOOGLE_DRIVE=NOT_TESTED
 SHARED_DRIVE=NOT_CERTIFIED
 
 ## 10. Latest code-change CI evidence
 
-The latest current-head Phase 7 workflow completed GitHub Actions run **42007614192 — SUCCESS**, job **127178244541**, against workflow head commit `f71b875d906efd7687c62060a4de9ab3962b26f4`. The tested application/test source commit is `34709f7bc02bfcb04981d56fa1e1ac68436c479a`; the later head commit changes documentation only. The run completed the Node syntax check and all six offline test suites. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+The latest Phase 7 code/test workflow completed GitHub Actions run **42010270018 — SUCCESS**, job **127187209938**, against code/test commit `db3013912fa4f636c539be331d2e45ea70d996c2`. The run completed the Node syntax check and all six offline test suites. Logs contain **94 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-The Phase 7 branch is restacked on the latest Phase 6 base; PR #16 is mergeable, Draft and unmerged.
+The Google Drive v3 fake-client suite additionally verifies exact appProperties allowlisting and 124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota mapping and exact media readback.
 
-This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
+The Phase 7 branch remains restacked on the latest Phase 6 base; PR #16 remains Draft and unmerged. This is synthetic offline CI evidence only. It does not certify OAuth, live Google Drive operations, production key custody, canonical snapshot completeness or production recovery.
 
 VERSION=v0.2
-OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=42007614192_SUCCESS
-OFFLINE_CI_JOB=127178244541
-OFFLINE_CI_HEAD_COMMIT=f71b875d906efd7687c62060a4de9ab3962b26f4
-OFFLINE_CI_CODE_TEST_COMMIT=34709f7bc02bfcb04981d56fa1e1ac68436c479a
-OFFLINE_PASS_MARKERS=91
+OFFLINE_CI_RUN=42010270018_SUCCESS
+OFFLINE_CI_JOB=127187209938
+OFFLINE_CI_CODE_TEST_COMMIT=db3013912fa4f636c539be331d2e45ea70d996c2
+OFFLINE_PASS_MARKERS=94
 OFFLINE_TEST_SUITES=6
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
-LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
+LIVE_GOOGLE_DRIVE=NOT_TESTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
 PRODUCTION_RESTORE=NOT_CERTIFIED
