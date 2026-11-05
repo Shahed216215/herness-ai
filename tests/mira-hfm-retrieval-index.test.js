@@ -30,7 +30,7 @@ function authorize(input) {
   };
 }
 function record({
-  id, projectId = 'project-alpha', title, lessons,
+  id, projectId = 'project-alpha', title, lessons, description = 'Test reliability and verify the result',
   lifecycle = 'ACTIVE', integrity = 'VERIFIED',
   trust = 'CONTENT_VERIFIED', metadata = undefined
 }) {
@@ -38,7 +38,7 @@ function record({
     domain: 'work_learning',
     record: {
       learningId: id, taskId: 'task-' + id,
-      task: { title, description: 'Test reliability and verify the result' },
+      task: { title, description },
       lessons,
       ...(metadata ? { metadata } : {})
     }
@@ -96,6 +96,7 @@ const secret = record({
 const bengali = record({
   id: 'memory-index-bengali-001',
   title: 'বাংলা স্মৃতি অনুসন্ধান',
+  description: 'বাংলা তথ্য যাচাই',
   lessons: ['বাংলা তথ্য যাচাই এবং সংরক্ষণ']
 });
 const conflicts = [{
