@@ -191,8 +191,12 @@ function verifySignedProvenancePolicy({
     let reviewerKey;
     try { reviewerKey = crypto.createPublicKey(reviewer.publicKeyPem); }
     catch { fail('Policy reviewer public key is invalid.', 'HFM_PROVENANCE_POLICY_REVIEWER_INVALID'); }
+    const reviewerFingerprint = sha256(reviewerKey.export({ type: 'spki', format: 'der' }));
     if (reviewerKey.asymmetricKeyType !== 'ed25519' ||
-        sha256(reviewerKey.export({ type: 'spki', format: 'der' })) !== reviewer.publicKeySha256) {
+        reviewerFingerprint !== reviewer.publicKeySha256 ||
+        reviewerFingerprint === fingerprint ||
+        reviewerFingerprint === acceptedPolicyState.trustAnchorSha256 ||
+        reviewerKeyFingerprints.includes(reviewerFingerprint)) {
       fail('Policy reviewer key type or fingerprint is invalid.', 'HFM_PROVENANCE_POLICY_REVIEWER_INVALID');
     }
     let reviewerSignature;
