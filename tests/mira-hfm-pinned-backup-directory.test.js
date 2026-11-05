@@ -19,7 +19,7 @@ function run(){
  try{fs.renameSync(root2,moved2);fs.symlinkSync(replacement,root2);const result=writeBackupAtomicAt(pinned2,'symlink-race.mira-hfm.enc.json',bytes);
   assert(result.readbackBytes.equals(bytes));assert(fs.readFileSync(path.join(moved2,'symlink-race.mira-hfm.enc.json')).equals(bytes));assert.deepEqual(fs.readdirSync(replacement),[]);
   process.stdout.write('MIRA_HFM_PINNED_BACKUP_SYMLINK_REPLACEMENT_BLOCK_PASS\n');
- }finally{pinned2.close();fs.rmSync(parent,{recursive:true,force:true});}
+ }finally{pinned2.close();}
  const policyDir=path.join(parent,'policy-dir');fs.mkdirSync(policyDir,{mode:0o700});
  const policyPinned=openPinnedDirectory(policyDir);
  try {
@@ -36,6 +36,7 @@ function run(){
   assert.throws(()=>writeBackupAtomicAt(policyPinned,'owner-mode.mira-hfm.enc.json',bytes),e=>e.code==='HFM_BACKUP_DIRECTORY_MODE_UNSAFE');
   process.stdout.write('MIRA_HFM_BACKUP_DIRECTORY_OWNER_MODE_POLICY_BLOCK_PASS\\n');
  } finally { policyPinned.close(); }
+ fs.rmSync(parent,{recursive:true,force:true});
  process.stdout.write('MIRA_HFM_PINNED_BACKUP_DIRECTORY_RACE_TEST_COMPLETE\n');
 }
 try{run();}catch(e){process.stderr.write((e.stack||e.message)+'\n');process.exitCode=1;}
