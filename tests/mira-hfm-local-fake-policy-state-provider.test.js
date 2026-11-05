@@ -34,7 +34,7 @@ async function rejectsCode(promise, code) {
   assert.equal((await provider.readState()).lastAcceptedPolicyId, 'policy-1');
 
   // A stale expected sequence/digest must conflict.
-  await rejectsCode(provider.compareAndSwap(first), 'HFM_POLICY_STATE_CAS_CONFLICT');
+  await rejectsCode(provider.compareAndSwap(request({ key: 'stale-new-request' })), 'HFM_POLICY_STATE_CAS_CONFLICT');
 
   // Two writers from the same baseline: exactly one wins.
   provider = createLocalFakePolicyStateProvider({ authorityId });
