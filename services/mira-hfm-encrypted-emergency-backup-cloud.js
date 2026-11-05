@@ -52,7 +52,10 @@ async function uploadEncryptedEmergencyBackup({ adapter, projectId, envelope, ke
   if (expectedBackupId !== undefined && backupId !== expectedBackupId) fail('Backup ID mismatch.');
   // Authenticate before sending. The root key is used locally and is never passed to the adapter.
   const verified = decryptAndVerifyBackup(bytes, key);
-  if (verified.metadata.projectId !== project) {
+  const authenticatedProjectId = verified.metadata.projectId;
+  const authenticatedPlaintextSha256 = verified.plaintextSha256;
+  verified.payload.fill(0);
+  if (authenticatedProjectId !== project) {
     fail('Authenticated backup metadata does not match the requested project.',
       'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
   }
@@ -75,7 +78,14 @@ async function uploadEncryptedEmergencyBackup({ adapter, projectId, envelope, ke
   }
   // Re-authenticate the exact bytes read back from cloud storage.
   const checked = decryptAndVerifyBackup(stored, key);
-  if (checked.backupId !== backupId || checked.plaintextSha256 !== verified.plaintextSha256) {
+  let readbackIdentityMatches;
+  try {
+    readbackIdentityMatches = checked.backupId === backupId &&
+      checked.plaintextSha256 === authenticatedPlaintextSha256;
+  } finally {
+    checked.payload.fill(0);
+  }
+  if (!readbackIdentityMatches) {
     fail('Cloud backup readback identity verification failed.', 'HFM_CLOUD_BACKUP_IDENTITY_FAILED');
   }
   return { projectId: project, backupId, objectKey: keyPath, bytes: stored.length,
@@ -117,7 +127,9 @@ async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
   const { bytes, parsed } = envelopeBytes(object.bytes);
   if (parsed.backupId !== id) fail('Cloud object and encrypted envelope identities do not match.');
   const verified = decryptAndVerifyBackup(bytes, key);
-  if (verified.metadata.projectId !== project) {
+  const authenticatedProjectId = verified.metadata.projectId;
+  verified.payload.fill(0);
+  if (authenticatedProjectId !== project) {
     fail('Authenticated backup metadata does not match the requested project.',
       'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
   }
