@@ -87,6 +87,8 @@ const registerFacebookPageConnectorRoutes =
   require("./routes/mira-facebook-page-connector");
 const registerFacebookGroupMemoryImportRoutes =
   require("./routes/mira-facebook-group-memory-import");
+const registerMiraFacebookResearchArchiveRoutes =
+  require("./routes/mira-facebook-research-archive");
 const registerFacebookGroupMemoryImportRoutes =
   require("./routes/mira-facebook-group-memory-import");
 
@@ -236,6 +238,11 @@ registerFacebookPageConnectorRoutes(
 );
 
 registerFacebookGroupMemoryImportRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+registerMiraFacebookResearchArchiveRoutes(
   app,
   requireAdminPermission,
   PERMISSIONS
