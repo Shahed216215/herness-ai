@@ -22,7 +22,9 @@ function validateKeyProviderContract(provider, metadata, operation) {
   const descriptor = provider.descriptor;
   const forbiddenKeyMaterialFields = [
     'privateKeyPem', 'privateKey', 'privateKeyBytes',
-    'masterKey', 'masterKeyBytes', 'keyMaterial', 'secretKeyBytes'
+    'masterKey', 'masterKeyBytes', 'keyMaterial', 'secretKey', 'secretKeyBytes',
+    'keyEncryptionKey', 'keyEncryptionKeyBytes', 'kek', 'encryptionKey', 'encryptionKeyBytes',
+    'credential', 'credentials', 'accessToken', 'refreshToken', 'clientSecret'
   ];
   if (forbiddenKeyMaterialFields.some(field =>
       Object.prototype.hasOwnProperty.call(provider, field) ||
