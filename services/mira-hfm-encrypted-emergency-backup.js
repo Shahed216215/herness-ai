@@ -201,8 +201,21 @@ function safeDirectory(directory) {
 }
 function writeImmutableBackup({ envelope, key, directory, backupId } = {}) {
   validateId(backupId);
-  const bytes = Buffer.isBuffer(envelope) ? envelope : Buffer.from(String(envelope), 'utf8');
-  if (bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Backup envelope exceeds the size limit.');
+  let bytes;
+  if (Buffer.isBuffer(envelope)) {
+    if (envelope.length < 1 || envelope.length > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = envelope;
+  } else if (typeof envelope === 'string') {
+    const envelopeLength = Buffer.byteLength(envelope, 'utf8');
+    if (envelopeLength < 1 || envelopeLength > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = Buffer.from(envelope, 'utf8');
+  } else {
+    fail('Backup envelope must be a Buffer or UTF-8 string.');
+  }
   const verified = decryptAndVerifyBackup(bytes, key);
   const authenticatedBackupId = verified.backupId;
   verified.payload.fill(0);
