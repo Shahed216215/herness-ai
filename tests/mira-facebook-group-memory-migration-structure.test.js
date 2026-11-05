@@ -64,7 +64,7 @@ assert.ok(recovery.includes('add column if not exists operation_key text'), 'Aud
 assert.ok(recovery.includes('unique (operation_key)'), 'Audit operation key uniqueness missing.');
 assert.ok(recovery.includes('create or replace function public.mira_stage_facebook_group_import_v1'), 'Atomic recovery RPC missing.');
 assert.ok(recovery.includes('security invoker'), 'RPC must use SECURITY INVOKER.');
-assert.ok(recovery.includes('on conflict (batch_id) do nothing'), 'Batch insert must be idempotent.');
+assert.ok(recovery.includes('on conflict on constraint mira_facebook_group_import_batches_pkey do nothing'), 'Batch insert must be idempotent without output-column ambiguity.');
 assert.ok(recovery.includes('on conflict (operation_key) do nothing'), 'Audit insert must be idempotent.');
 assert.ok(recovery.includes('pg_advisory_xact_lock') && recovery.includes('hashtextextended'), 'RPC must serialize immutable identity checks with transaction-scoped advisory locks.');
 assert.doesNotMatch(recovery, /for update/i, 'RPC must not require UPDATE privileges for row locks.');
