@@ -142,7 +142,7 @@ async function run() {
     }),
     authorizeRequest: authorize,
     query: 'automation validate', now
-  }), /expired|validity window/);
+  }), /expiry must be after issue time|expired|validity window/);
   console.log('HFM_INDEX_EXPIRED_REQUEST_BLOCK_PASS');
   console.log('NETWORK_REQUESTS=0');
   console.log('PERSISTENT_INDEX_WRITES=0');
