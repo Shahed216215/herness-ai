@@ -181,7 +181,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
           prefix !== 'mira-hfm-emergency/v1/' + projectId + '/' ||
           !Number.isInteger(limit) || limit < 1 || limit > 500 ||
           (cursor !== null && (typeof cursor !== 'string' || !cursor ||
-            cursor.length > 1024 || /[\\u0000-\\u001f]/.test(cursor)))) {
+            cursor.length > 1024 || /[\u0000-\u001f]/.test(cursor)))) {
         reject('Google Drive listing request is outside the configured project/page boundary.',
           'HFM_GOOGLE_DRIVE_LIST_SCOPE');
       }
@@ -202,7 +202,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       if (!data || !Array.isArray(data.files) || data.files.length > limit ||
           (data.nextPageToken != null &&
             (typeof data.nextPageToken !== 'string' || !data.nextPageToken ||
-             data.nextPageToken.length > 1024 || /[\\u0000-\\u001f]/.test(data.nextPageToken) ||
+             data.nextPageToken.length > 1024 || /[\u0000-\u001f]/.test(data.nextPageToken) ||
              data.nextPageToken === cursor))) {
         reject('Google Drive listing response is malformed or has an invalid cursor.',
           'HFM_GOOGLE_DRIVE_LIST_INVALID');
