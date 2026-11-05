@@ -39,17 +39,11 @@ The seven-suite CI success demonstrates the tested synthetic contracts. It does 
 
 ### F7-SR-04 — Existing backup directory permissions and ownership are not enforced
 - Severity: HIGH
-- Evidence: `services/mira-hfm-staging-backup-drill.js`, `validateStagingDirectory()` checks absolute path, directory type and symlink status but not owner, group, or mode. `writeBackupAtomic()` creates a missing directory with mode 0700, but the staging drill requires an existing directory and does not validate its effective permissions.
-- Impact: A pre-existing directory may be readable, writable or traversable by unintended local principals. File mode 0600 does not protect filenames, deletion/replacement attempts, or directory metadata.
-- Required remediation: Require an explicitly provisioned directory with expected owner/workload identity and restrictive mode (normally 0700 on POSIX), reject group/other access and unexpected ownership, and document platform-specific ACL handling. Verify the directory identity/mode at use time. Add tests for permissive mode, wrong owner where testable, symlink, and directory replacement.
-- Gate: BLOCKS REAL STAGING BACKUP DIRECTORY USE.
-
-### F7-SR-05 — Distinct source IDs do not establish independent baseline authority
-- Severity: HIGH
-- Evidence: `services/mira-hfm-staging-backup-drill.js`; independence currently means the two descriptor `sourceId` strings differ. The orchestrator does not verify distinct storage roots, administrative principals, infrastructure, or acquisition paths.
-- Impact: Two separately named adapters may read the same underlying files or be controlled by the same principal. Matching snapshots then provide consistency evidence, not independent baseline assurance.
-- Required remediation: Add an explicit, independently governed source-provenance contract covering storage identity, administrative/security principal, acquisition path and trust domain. Reject duplicate provenance identities. For high-assurance baseline, obtain the baseline from a separately controlled source or signed immutable checkpoint. Tests must prove same-root/same-principal provenance is rejected.
-- Gate: BLOCKS CLAIMS OF INDEPENDENT BASELINE VERIFICATION.
+- Remediation status: PARTIALLY_REMEDIATED / OPEN pending commit-matched CI, independent review and platform ACL verification.
+- Implementation (2026-11-05): `services/mira-hfm-pinned-directory.js` now validates the retained directory descriptor's owner UID and group GID against the effective workload UID/GID (or explicit expected values), and requires exact POSIX mode `0700`. It rechecks the pinned descriptor before temporary creation, before immutable link publication, and before readback. Both the staging drill and the generic local backup writer use this fail-closed policy. No automatic chmod/chown is performed.
+- Tests added: permissive `0750`, owner access-deficient `0600`, expected UID mismatch, expected GID mismatch, and enforcement by the writer itself. Existing directory replacement race tests remain.
+- Platform boundary: this is POSIX mode/UID/GID enforcement on the Linux procfs-backed path. It does not independently enumerate or certify every platform-specific ACL mechanism (including Windows DACLs and non-POSIX ACL extensions). Production provisioning must verify ACLs and mount/storage policy separately. The application cannot establish that the host administrator or container runtime is trustworthy.
+- Gate: BLOCKS REAL STAGING BACKUP DIRECTORY USE until CI and independent security review pass; ACL/host governance remains an operational requirement.
 
 ## Positive controls observed
 
