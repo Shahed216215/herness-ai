@@ -113,6 +113,7 @@ on:
     branches:
       - main
       - work/mira-hfm-v02-phase2-core-safety
+      - work/mira-hfm-v02-phase6-clean-restack-on-phase5-20261105
     paths:
       - 'knowledge.js'
       - 'audit-log.js'
