@@ -57,6 +57,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Syntax-check Phase 7 journal and Drive modules
+        run: |
+          for file in \
+            services/mira-hfm-drive-backup-id-journal.js \
+            services/mira-hfm-drive-generated-id-upload.js \
+            services/mira-hfm-drive-journaled-cloud-adapter.js \
+            services/mira-hfm-google-drive-generated-id-provider.js \
+            tests/mira-hfm-drive-backup-id-journal.test.js \
+            tests/mira-hfm-drive-generated-id-upload.test.js \
+            tests/mira-hfm-drive-journaled-cloud-adapter.test.js \
+            tests/mira-hfm-google-drive-generated-id-provider.test.js
+          do
+            node --check "$file"
+          done
       - name: Run synthetic offline backup tests
         run: node tests/mira-hfm-encrypted-emergency-backup.test.js
       - name: Run synthetic offline transport adapter tests
