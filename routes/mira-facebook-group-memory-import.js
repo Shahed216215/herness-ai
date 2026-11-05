@@ -70,6 +70,7 @@ function registerFacebookGroupMemoryImportRoutes(
         groupId: body.groupId,
         projectId: body.projectId,
         actorId: actor.id,
+        authorizedAccess: body.authorizedAccess === true,
         sourceId: body.sourceId,
         sourceUrl: body.sourceUrl,
         recordType: body.recordType,
@@ -82,7 +83,7 @@ function registerFacebookGroupMemoryImportRoutes(
       const code = safeErrorCode(error, 'FB_GROUP_IMPORT_FAILED');
       const committed = error && error.stateCommitted === true;
       const status = committed ? 503
-        : /INVALID_INPUT|SCHEMA_INVALID|SCOPE_MISMATCH|ACTOR_REQUIRED/.test(code) ? 400
+        : /INVALID_INPUT|SCHEMA_INVALID|SCOPE_MISMATCH|ACTOR_REQUIRED|AUTHORIZATION_REQUIRED/.test(code) ? 400
         : /BATCH_ID_CONFLICT|IDENTITY_CONFLICT/.test(code) ? 409
         : 503;
       return res.status(status).json({
