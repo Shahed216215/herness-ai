@@ -35,6 +35,18 @@ assert.throws(()=>fromPublicRetrieval({projectId:'project-alpha',proposalId:'pro
   title:'Invalid source candidate',rationale:'This must be blocked.',proposedChange:'No changes.',
   retrievalResult:{...rawRetrieval,evidence:[{...rawRetrieval.evidence[0],sourceUrl:'https://evil.example/x'}]}}),
   e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
+assert.throws(()=>fromPublicRetrieval({projectId:'project-alpha',proposalId:'proposal-retrieval-004',
+  title:'Mismatched Page path',rationale:'This must be blocked.',proposedChange:'No changes.',
+  retrievalResult:{...rawRetrieval,evidence:[{...rawRetrieval.evidence[0],sourceUrl:'https://www.facebook.com/other/posts/987654321'}]}}),
+  e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
+assert.throws(()=>fromPublicRetrieval({projectId:'project-alpha',proposalId:'proposal-retrieval-005',
+  title:'Trusted-state spoof',rationale:'This must be blocked.',proposedChange:'No changes.',
+  retrievalResult:{...rawRetrieval,evidence:[{...rawRetrieval.evidence[0],trustStatus:'TRUSTED'}]}}),
+  e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
+assert.throws(()=>fromPublicRetrieval({projectId:'project-alpha',proposalId:'proposal-retrieval-006',
+  title:'Provider miss with forged evidence',rationale:'This must be blocked.',proposedChange:'No changes.',
+  retrievalResult:{...rawRetrieval,status:'NOT_FOUND_BY_PUBLIC_SEARCH'}}),
+  e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
 
 const p = buildProposal(base);
 assert.equal(p.status,'PENDING_HUMAN_REVIEW');
