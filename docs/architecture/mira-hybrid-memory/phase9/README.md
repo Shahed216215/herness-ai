@@ -1,6 +1,6 @@
 # Mira Hybrid Memory v0.2 — Phase 9: Retrieval, Indexing & Performance
 
-Status: IMPLEMENTATION STARTED — EPHEMERAL LEXICAL INDEX CONTRACT ADDED — CI PENDING.
+Status: EPHEMERAL LEXICAL INDEX + PERFORMANCE/ISOLATION CONTRACTS IMPLEMENTED; CI PASS.
 
 ## Objective
 
@@ -46,3 +46,17 @@ Add a bounded, project-scoped retrieval index that ranks only records already au
 No production source reads, live model calls, embeddings API, external vector database, persistent index, canonical Memory/Knowledge writes, migration, deletion, deployment or Evolution application.
 
 Phase 9 can be marked synthetic-contract complete only after all tests and performance gates pass with commit-matched CI logs. Production readiness remains NOT_CERTIFIED until external infrastructure gates are reviewed.
+
+
+## Verification checkpoint — 2026-11-05
+
+- CI run #7, ID `42050327966`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42050327966, tested commit `efe13db0c33c32e99c1ab10453a9a9599c0fdff5`: SUCCESS. Job `phase9-ephemeral-retrieval-index` SUCCESS.
+- Four suites passed: structural conflict assessment, unified HFM facade, project-scoped Work Learning retrieval, lexical retrieval index, plus the 1k/5k performance and isolation suite.
+- Measured on GitHub Actions Node 24 runner:
+  - 1,000 records: p50 `59.66 ms`, p95 `68.04 ms`.
+  - 5,000 records: p50 `255.02 ms`, p95 `379.93 ms`.
+  - RSS delta for the benchmark process: `206.09 MiB`.
+- Verified markers: filter-before-index, BM25-style ranking, secret payload exclusion, Bengali/Unicode search, cross-project and host-DENY blocks, query/result bounds, source-digest invalidation, request isolation, expired-request rejection.
+- Logs: `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `PERSISTENT_INDEX_WRITES=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- An earlier run failed because the Bengali tokenizer omitted Unicode combining marks. The tokenizer was corrected to include `\\p{M}`; the next run passed Bengali search. The performance run then failed only because the expiry assertion expected a different error string; the assertion was aligned to the HFM authorization contract and the next run passed.
+- Phase 9 synthetic retrieval/index/performance gate: PASS. The index remains ephemeral and is rebuilt per request; persistent index, production source integration and external search services remain disabled.
