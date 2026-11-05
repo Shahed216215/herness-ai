@@ -20,7 +20,7 @@ A future adapter may be considered only when it exposes the provider-neutral ope
 
 - `putIfAbsent({ objectKey, projectId, backupId, bytes, contentType, ciphertextSha256, encryption })`
 - `get({ objectKey, projectId })`
-- `list({ projectId, prefix })`
+- `list({ projectId, prefix, cursor, limit })` returning `{ items, complete, nextCursor }`; every page must explicitly state whether pagination is complete.
 
 The adapter must additionally demonstrate:
 
@@ -29,7 +29,7 @@ The adapter must additionally demonstrate:
 3. Create-only semantics implemented without a check-then-create race. A preflight search followed by an ordinary upload is not create-only.
 4. Upload metadata binds project ID, backup ID, schema/version, ciphertext SHA-256, byte length, and creation timestamp.
 5. Readback downloads the exact object bytes and compares byte-for-byte with the submitted envelope.
-6. Listing is paginated to completion, rejects malformed/cross-project objects, detects duplicate IDs, and reports incomplete pagination as INCONCLUSIVE.
+6. Listing uses opaque cursors and a bounded page size; every page explicitly declares `complete`. The consumer follows cursors to completion, rejects repeated/malformed cursors, malformed/cross-project objects and duplicate IDs, and reports truncation or page-limit exhaustion as INCONCLUSIVE. A legacy one-shot array response is not accepted as proof of complete listing.
 7. Quota reporting distinguishes provider quota from the configured 5,000,000,000-byte HFM allocation. The configured budget is not evidence of actual Drive quota.
 8. Retry behavior is bounded and idempotent; uncertain upload outcomes are reconciled by object identity and digest before retry.
 9. No delete, overwrite, move, permission grant, or routine-sync mutation is exposed through the Phase 7 adapter.
@@ -73,7 +73,7 @@ The exporter must produce a bounded, schema-validated snapshot payload and manif
 - Create-only race: concurrent duplicate uploads result in exactly one object creation.
 - Upload timeout after remote commit is reconciled without overwriting or duplicating.
 - Readback byte mismatch and authenticated-envelope mismatch are rejected.
-- Pagination truncation, duplicate IDs, invalid timestamps, and cross-project records are rejected.
+- Multi-page listing is aggregated to completion; pagination truncation, repeated cursors, malformed page envelopes, duplicate IDs, invalid timestamps, and cross-project records are rejected.
 - Quota unknown/permission denied is reported as INCONCLUSIVE, not zero usage.
 - Key provider unavailable, denied, missing key, retired version, and malformed key are distinct failures.
 - Rotation preserves decryptability of historical backups.
