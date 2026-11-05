@@ -23,7 +23,8 @@ async function main() {
       store.set(objectKey, { metadata: { ...metadata, createdAt: '2026-11-05T00:00:00.000Z' }, bytes: Buffer.from(bytes) });
       return { created: true };
     },
-    async readObject({ objectKey }) {
+    async readObject({ projectId: scope, objectKey }) {
+      assert.equal(scope, projectId);
       const value = store.get(objectKey);
       return value ? { metadata: value.metadata, bytes: Buffer.from(value.bytes) } : null;
     },
