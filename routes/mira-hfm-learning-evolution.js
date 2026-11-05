@@ -3,6 +3,7 @@ const express = require('express');
 const { createLearningEvolutionBridge } = require('../services/mira-hfm-learning-evolution-bridge');
 const { createPersistentProposalStore } = require('../services/mira-hfm-learning-proposal-store');
 const { recordAudit } = require('../audit-log');
+const { fromPublicRetrieval } = require('../services/mira-hfm-learning-evidence-adapter');
 
 function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PERMISSIONS, options = {}) {
   const router = express.Router();
@@ -38,6 +39,22 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
         committed: error && error.stateCommitted === true,
         reconciliationRequired: error && error.stateCommitted === true
       });
+    }
+  });
+
+  router.post('/proposals/from-public-retrieval', async (req, res) => {
+    try {
+      const proposalInput = fromPublicRetrieval(req.body || {});
+      const result = await bridge.submit(proposalInput, { actorRole: req.role || 'admin' });
+      return res.status(201).json({ success: true, proposal: result });
+    } catch (error) {
+      const code = String(error && error.code || 'HFM_LEARNING_RETRIEVAL_SUBMISSION_FAILED').slice(0, 80);
+      const status = code === 'HFM_LEARNING_PROPOSAL_CONFLICT' ? 409
+        : code === 'HFM_LEARNING_RETRIEVAL_INVALID' || code === 'HFM_LEARNING_INVALID' ||
+          code === 'HFM_LEARNING_PROJECT_MISMATCH' ? 400 : 503;
+      return res.status(status).json({ success: false, code,
+        committed: error && error.stateCommitted === true,
+        reconciliationRequired: error && error.stateCommitted === true });
     }
   });
 
