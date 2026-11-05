@@ -6,6 +6,7 @@
 const {
   retrieveCanonicalRecordsWithReport
 } = require('./mira-memory-unified-facade');
+const { assertNoSecretFields } = require('./mira-hfm-work-learning-adapter');
 
 const MAX_RESULTS = 20;
 function fail(message, code = 'HFM_WORK_LEARNING_RETRIEVAL_INVALID') {
@@ -82,6 +83,12 @@ function retrieveProjectScopedWorkLearning({
         typeof payload.record.taskId !== 'string' ||
         !payload.record.taskId.trim() ||
         !Array.isArray(payload.record.lessons)) {
+      malformedLearningPayloads++;
+      continue;
+    }
+    try {
+      assertNoSecretFields(payload.record);
+    } catch {
       malformedLearningPayloads++;
       continue;
     }
