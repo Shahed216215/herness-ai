@@ -24,6 +24,7 @@ on:
       - work/mira-hfm-v02-phase5-facebook-group-import
     paths:
       - 'services/mira-hfm-public-web-retrieval.js'
+      - 'services/ai.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
@@ -31,6 +32,7 @@ on:
       - 'tools/mira-hfm-public-web-retrieval.js'
       - 'tools/web-search.js'
       - 'tests/mira-hfm-public-web-retrieval.test.js'
+      - 'tests/mira-hfm-public-web-retrieval-runtime-integration.test.js'
       - 'tests/mira-facebook-public-web-research.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase6/**'
