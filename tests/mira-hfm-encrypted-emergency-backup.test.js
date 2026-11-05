@@ -108,7 +108,19 @@ try {
   parsed.metadata.projectId = metadata.projectId;
   parsed.ciphertext = (parsed.ciphertext[0] === 'A' ? 'B' : 'A') + parsed.ciphertext.slice(1);
   assert.throws(() => decryptAndVerifyBackup(Buffer.from(JSON.stringify(parsed)), key));
+  const extraEnvelopeField = JSON.parse(envelope.toString('utf8'));
+  extraEnvelopeField.untrustedExtra = 'must-not-be-accepted';
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(JSON.stringify(extraEnvelopeField) + '\n'), key
+  ));
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(envelope.toString('utf8').trimEnd()), key
+  ));
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(' ' + envelope.toString('utf8')), key
+  ));
   console.log('HFM_PHASE7_WRONG_KEY_AND_TAMPER_REJECTED=PASS');
+  console.log('HFM_PHASE7_ENVELOPE_EXACT_SCHEMA_AND_CANONICAL_JSON=PASS');
 
   assert.throws(() => createEncryptedBackup({ payload, key: Buffer.alloc(16), backupId, createdAt }));
   assert.throws(() => createEncryptedBackup({ payload, key, backupId: '../escape', createdAt }));
