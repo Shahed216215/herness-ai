@@ -24,9 +24,9 @@ function fromPublicRetrieval(input = {}) {
   if (!ID_RE.test(projectId) || !ID_RE.test(proposalId)) fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Project or proposal ID format is invalid.');
   const evidence = report.evidence.map((item, index) => {
     if (!item || typeof item !== 'object' || item.pageId !== report.page.pageId) fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Evidence page binding mismatch at index ' + index + '.');
-    const sourceRef = bounded(item.sourceUrl, 'evidence.sourceUrl', 2048);
+    const rawSourceRef = bounded(item.sourceUrl, 'evidence.sourceUrl', 2048);
     let url;
-    try { url = new URL(sourceRef); } catch { fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Evidence source URL is invalid.'); }
+    try { url = new URL(rawSourceRef); } catch { fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Evidence source URL is invalid.'); }
     if (url.protocol !== 'https:' || !['facebook.com','www.facebook.com','m.facebook.com'].includes(url.hostname.toLowerCase()) ||
         url.username || url.password || url.hash || (url.port && url.port !== '443') ||
         ['access_token','token','appsecret_proof'].some(name => url.searchParams.has(name))) {
@@ -59,7 +59,7 @@ function fromPublicRetrieval(input = {}) {
         item.lifecycle !== 'PENDING_REVIEW') {
       fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Evidence trust and provenance states are not valid for proposal intake.');
     }
-    const sourceRef = url.origin + url.pathname + (
+    const canonicalSourceRef = url.origin + url.pathname + (
       url.pathname === '/profile.php'
         ? '?id=' + encodeURIComponent(report.page.pageId)
         : url.pathname === '/permalink.php'
@@ -67,7 +67,7 @@ function fromPublicRetrieval(input = {}) {
           : ''
     );
     return { evidenceId, projectId, sourceType: 'PUBLIC_FACEBOOK_WEB_SEARCH',
-      trustState: 'UNVERIFIED', sourceRef, content };
+      trustState: 'UNVERIFIED', sourceRef: canonicalSourceRef, content };
   });
   if (new Set(evidence.map(item => item.evidenceId)).size !== evidence.length) fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Duplicate retrieval evidence IDs are forbidden.');
   return {
