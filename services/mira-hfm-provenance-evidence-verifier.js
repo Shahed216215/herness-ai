@@ -145,6 +145,7 @@ async function verifyAllPolicyEvidence({
   }
   const stableOperationalIssuerIds = Object.freeze(operationalIssuerIds.slice());
   const stableExcludedKeyFingerprints = Object.freeze(excludedKeyFingerprints.slice());
+  const resolveEvidence = evidenceProvider.resolve;
   const sourceIds = Object.keys(stablePayload.sources);
   const evidenceSourceIds = Object.keys(stablePayload.evidence);
   if (evidenceSourceIds.length !== sourceIds.length ||
@@ -184,7 +185,7 @@ async function verifyAllPolicyEvidence({
       }
       seenEvidenceIds.add(reference.evidenceId);
       let envelope;
-      try { envelope = await evidenceProvider.resolve({ evidenceId: reference.evidenceId }); }
+      try { envelope = await resolveEvidence.call(evidenceProvider, { evidenceId: reference.evidenceId }); }
       catch {
         fail('Independent evidence could not be resolved: ' + reference.evidenceId,
           'HFM_PROVENANCE_EVIDENCE_UNAVAILABLE');
