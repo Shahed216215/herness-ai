@@ -268,3 +268,12 @@ F7-SR-05 may be closed only when G1–G8 pass, G9 is approved by an independent 
 - Production readiness: NOT_CERTIFIED.
 
 This document is an acceptance specification, not evidence that any gate has passed.
+
+
+## 10. Orchestrator integration checkpoint — 2026-11-05
+
+The staging drill now invokes the signed policy/state/evidence acceptance flow before reading either source. It requires a signed policy envelope, separately pinned issuer/reviewer/state/evidence trust, a policy-state provider, and an evidence resolver. It no longer accepts a caller-supplied unsigned provenance policy object.
+
+The policy-state provider interface now requires authoritative `getCommitReceipt` lookup. CAS requests carry a deterministic policy/digest idempotency key; signed receipts bind that key and the canonical request digest. A known pre-commit request loss is retried once with the same key. An ambiguous post-commit response is reconciled by retrieving and verifying the exact receipt. If no authoritative receipt is available, acceptance remains unresolved and the drill does not read source data.
+
+Synthetic tests exercise this ordering and the retry/reconciliation failure paths. This closes the offline orchestration gap only. A real adapter must still prove atomic durable persistence of both state and receipts, restart-safe authoritative lookup, independent policy governance, and real evidence provenance. The provider's signed `durable`/`atomic` claims remain assertions until independently demonstrated. Staging approval and production certification remain outstanding.
