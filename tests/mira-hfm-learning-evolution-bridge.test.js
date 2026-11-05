@@ -13,7 +13,8 @@ const base = { projectId:'project-alpha', proposalId:'proposal-001', title:'Cand
   evidence, createdAt:'2026-11-05T06:00:00.000Z' };
 const rawRetrieval = {
   providerId:'mira-hfm-public-web-retrieval', retrievalMode:'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
-  page:{pageId:'123456789'}, limits:{canonicalMemoryWrite:false,trustPromotion:false},
+  status:'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED', page:{pageId:'123456789'},
+  limits:{canonicalMemoryWrite:false,trustPromotion:false,directFacebookFetches:0,metaGraphApiCalls:0,loginOrCookieUse:0,privateOrGroupContentAccess:0},
   evidence:[{evidenceId:'fbweb-evidence-001',pageId:'123456789',
     sourceUrl:'https://www.facebook.com/123456789/posts/987654321',
     title:'Public page post',snippet:'Synthetic indexed snippet.'}]
