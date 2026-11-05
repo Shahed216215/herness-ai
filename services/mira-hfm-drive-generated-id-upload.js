@@ -48,10 +48,11 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
   async function upload(input = {}) {
     const operationId = validText(input.operationId, 'operationId', 96);
     const backupId = validText(input.backupId, 'backupId', 96);
-    const bytes = Buffer.isBuffer(input.bytes) ? Buffer.from(input.bytes) : null;
-    if (!bytes || bytes.length < 1 || bytes.length > MAX_OBJECT_BYTES) {
+    if (!Buffer.isBuffer(input.bytes) || input.bytes.length < 1 ||
+        input.bytes.length > MAX_OBJECT_BYTES) {
       reject('Only bounded encrypted backup bytes are accepted.');
     }
+    const bytes = Buffer.from(input.bytes);
     const digest = sha256(bytes);
     if (input.ciphertextSha256 !== digest ||
         input.contentType !== CONTENT_TYPE || input.encryption !== 'AES-256-GCM') {
