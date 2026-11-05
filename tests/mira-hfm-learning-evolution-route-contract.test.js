@@ -19,6 +19,7 @@ assert.match(route, /backend === 'supabase'/);
 assert.match(route, /MIRA_HFM_LEARNING_PROPOSAL_BACKEND/);
 assert.match(route, /MIRA_HFM_LEARNING_PROPOSAL_PRODUCTION_READY/);
 assert.match(route, /auditWriter\.durable = true/);
+assert.match(route, /auditWriter\.idempotent = true/);
 assert.match(supabaseStore, /durable:true, crossInstanceAtomicCreate:true/);
 assert.match(supabaseStore, /resolution=ignore-duplicates,return=representation/);
 assert.match(migration, /enable row level security/i);
@@ -39,6 +40,7 @@ assert.match(store, /durable: false, crossInstanceAtomicCreate: false, storageMo
 assert.match(bridge, /proposalStore\.durable === true/);
 assert.match(bridge, /proposalStore\.crossInstanceAtomicCreate === true/);
 assert.match(bridge, /auditWriter\.durable === true/);
+assert.match(bridge, /auditWriter\.idempotent === true/);
 assert.match(server, /registerMiraHfmLearningEvolutionRoutes\(/);
 assert.match(server, /requireAdminPermission,[\s\S]{0,100}?PERMISSIONS/);
 
