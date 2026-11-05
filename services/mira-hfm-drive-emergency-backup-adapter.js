@@ -88,7 +88,7 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
   async function readForReconciliation(expected) {
     let item;
     try {
-      item = await transport.readObject({ objectKey: expected.objectKey });
+      item = await transport.readObject({ projectId: project, objectKey: expected.objectKey });
     } catch (_) {
       reject('Create outcome could not be reconciled safely.', 'HFM_DRIVE_CREATE_UNCERTAIN');
     }
@@ -204,7 +204,7 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
           namespace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/' +
           project + '/([A-Za-z0-9][A-Za-z0-9._-]{7,95})\\.mhe$'));
       if (!match) reject('Object key is outside the dedicated project namespace.', 'HFM_DRIVE_NAMESPACE_REJECTED');
-      const item = await transport.readObject({ objectKey: input.objectKey });
+      const item = await transport.readObject({ projectId: project, objectKey: input.objectKey });
       if (!item) return null;
       const metadata = item.metadata;
       const provider = await negotiateCapabilities();
