@@ -36,6 +36,41 @@ try {
   assert.equal(preview.canonicalMemoryWrites, 0);
   assert.equal(preview.payloadBytes, payload.length);
   assert.deepEqual(verified.payload, payload);
+
+  let encryptionDerivedKey;
+  const originalCreateCipheriv = crypto.createCipheriv;
+  let zeroizationEnvelope;
+  try {
+    crypto.createCipheriv = function (algorithm, derivedKey, ...args) {
+      encryptionDerivedKey = derivedKey;
+      return originalCreateCipheriv.call(this, algorithm, derivedKey, ...args);
+    };
+    zeroizationEnvelope = createEncryptedBackup({
+      payload: Buffer.from('derived-key-zeroization-test'), key,
+      backupId: 'backup-zeroize-enc-001', createdAt, metadata
+    });
+  } finally {
+    crypto.createCipheriv = originalCreateCipheriv;
+  }
+  assert.ok(Buffer.isBuffer(encryptionDerivedKey));
+  assert.equal(encryptionDerivedKey.every(byte => byte === 0), true);
+
+  let decryptionDerivedKey;
+  const originalCreateDecipheriv = crypto.createDecipheriv;
+  try {
+    crypto.createDecipheriv = function (algorithm, derivedKey, ...args) {
+      decryptionDerivedKey = derivedKey;
+      return originalCreateDecipheriv.call(this, algorithm, derivedKey, ...args);
+    };
+    const zeroizedResult = decryptAndVerifyBackup(zeroizationEnvelope, key);
+    assert.equal(zeroizedResult.payload.toString(), 'derived-key-zeroization-test');
+  } finally {
+    crypto.createDecipheriv = originalCreateDecipheriv;
+  }
+  assert.ok(Buffer.isBuffer(decryptionDerivedKey));
+  assert.equal(decryptionDerivedKey.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_DERIVED_ENCRYPTION_KEY_ZEROIZED=PASS');
+  console.log('HFM_PHASE7_DERIVED_DECRYPTION_KEY_ZEROIZED=PASS');
   console.log('HFM_PHASE7_AUTHENTICATED_RESTORE_PREVIEW_NO_WRITE=PASS');
   assert.equal(verified.plaintextSha256, crypto.createHash('sha256').update(payload).digest('hex'));
   console.log('HFM_PHASE7_ENCRYPT_DECRYPT_AND_AUTHENTICATE=PASS');
