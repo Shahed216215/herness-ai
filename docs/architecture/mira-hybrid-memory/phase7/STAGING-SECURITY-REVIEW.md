@@ -34,7 +34,7 @@ The seven-suite CI success demonstrates the tested synthetic contracts. It does 
 - Evidence: `services/mira-hfm-local-staging-snapshot-source.js`; root and file paths are resolved/checked at construction, while later reads reopen the absolute file path. `O_NOFOLLOW` protects the final path component where supported, but does not pin every parent directory component against replacement.
 - Evidence: `services/mira-hfm-emergency-backup.js`; `writeBackupAtomic()` checks the directory and later performs path-based temporary-file creation, link, unlink and readback.
 - Impact: In a hostile or concurrently mutable filesystem, a checked parent directory can potentially be replaced between validation and later path operations. Current tests cover static symlink/path escapes, not adversarial directory replacement races.
-- Required remediation: Use directory-handle-relative operations where supported (open and retain a trusted directory descriptor; operate via `openat`-style APIs or a native helper with no-follow semantics), verify directory identity immediately before and after operations, and fail closed where the platform cannot provide the required guarantees. Add race-oriented tests in an isolated temporary filesystem. Do not claim race-free confinement from the current checks.
+- Remediation progress (2026-11-05): Added `services/mira-hfm-pinned-directory.js`. The local staging source now opens and retains a no-follow Linux directory descriptor, restricts source files to direct children, and opens/reads them through `/proc/self/fd/<dirfd>/...`; it fails closed when Linux procfs and required directory flags are unavailable. The descriptor identity is checked across open. This protects source reads against replacement of the configured root pathname after descriptor acquisition. Remaining: `services/mira-hfm-emergency-backup.js` immutable publication and `services/mira-hfm-staging-backup-drill.js` readback still use path-based operations; adversarial race tests and runtime verification have not run. Finding remains PARTIALLY_REMEDIATED / OPEN.
 - Gate: BLOCKS REAL STAGING BACKUP DIRECTORY USE UNTIL REVIEWED.
 
 ### F7-SR-04 — Existing backup directory permissions and ownership are not enforced
@@ -66,10 +66,11 @@ The seven-suite CI success demonstrates the tested synthetic contracts. It does 
 
 1. Define trusted authorization-decision provider and threat model.
 2. Define signing-key provider/custody and lifecycle.
-3. Harden directory-relative filesystem operations and permissions.
-4. Add source-provenance independence contract.
-5. Add adversarial offline tests for all four controls.
-6. Run isolated CI and inspect actual logs; only then reassess staging approval.
+3. Complete directory-handle-relative backup publication/readback and adversarial directory replacement tests.
+4. Enforce backup directory owner/mode and platform ACL policy.
+5. Add source-provenance independence contract.
+6. Add adversarial offline tests for all controls.
+7. Run isolated CI and inspect actual logs; only then reassess staging approval.
 
 ## Final disposition
 
