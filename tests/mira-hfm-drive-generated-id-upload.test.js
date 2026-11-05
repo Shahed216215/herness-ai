@@ -43,6 +43,11 @@ function fixture(directory, behavior = {}) {
         error.code = 'ETIMEDOUT';
         throw error;
       }
+      if (objects.has(fileId)) {
+        const error = new Error('synthetic duplicate generated ID');
+        error.code = '409';
+        throw error;
+      }
       const metadata = {
         accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
         ciphertextSha256: digest, bytes: bytes.length, contentType: CONTENT_TYPE,
@@ -90,7 +95,13 @@ async function main() {
     assert.equal(created.metadataVerified, true);
     assert.equal(created.canonicalMemoryWrites, 0);
     assert.deepEqual(normal.counts, { generate: 1, create: 1, get: 1, download: 1 });
+    const duplicate = await normal.uploader.upload(input());
+    assert.equal(duplicate.status, 'RECONCILED_VERIFIED');
+    assert.equal(duplicate.exactByteReadback, true);
+    assert.equal(normal.counts.generate, 1);
+    assert.equal(normal.counts.create, 2);
     console.log('HFM_PHASE7_GENERATED_ID_JOURNAL_BEFORE_UPLOAD_AND_EXACT_READBACK=PASS');
+    console.log('HFM_PHASE7_GENERATED_ID_409_DUPLICATE_RECONCILED=PASS');
 
     const afterDir = path.join(root, 'after-timeout');
     const after = fixture(afterDir, { afterCommitTimeout: true });
