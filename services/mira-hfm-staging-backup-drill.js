@@ -105,6 +105,15 @@ async function runStagingBackupDrill({
     fail('A signed provenance policy, independent trust maps, evidence resolver and policy-state provider are required.',
       'HFM_STAGING_POLICY_ACCEPTANCE_REQUIRED');
   }
+  const policySources = policyEnvelope.payload && policyEnvelope.payload.sources;
+  const expectedSourceIds = [source.descriptor.sourceId, baselineSource.descriptor.sourceId].sort();
+  const policySourceIds = policySources && typeof policySources === 'object' && !Array.isArray(policySources)
+    ? Object.keys(policySources).sort() : [];
+  if (policySourceIds.length !== 2 ||
+      policySourceIds.some((sourceId, index) => sourceId !== expectedSourceIds[index])) {
+    fail('Signed provenance policy must bind exactly the backup and independent baseline source identities before policy-state acceptance.',
+      'HFM_STAGING_POLICY_SOURCE_BINDING_MISMATCH');
+  }
 
   const directoryPolicy = {
     expectedUid: backupDirectoryExpectedUid,
