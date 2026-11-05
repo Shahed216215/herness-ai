@@ -262,6 +262,110 @@ try {
   console.log('HFM_PHASE7_FAILED_AUTH_NO_RESTORE_ARTIFACT=PASS');
 
 
+  const {
+    withBackupKey,
+    createEncryptedBackupWithKeyProvider,
+    decryptBackupWithKeyProvider,
+    assertKeyVersionRetirementAllowed
+  } = require('../services/mira-hfm-backup-key-provider');
+  const keyVersions = new Map([
+    ['key-version-A', Buffer.alloc(32, 0x41)],
+    ['key-version-B', Buffer.alloc(32, 0x42)]
+  ]);
+  const fakeKeyProvider = {
+    async getKey({ keyId }) {
+      if (!keyVersions.has(keyId)) {
+        const error = new Error('provider-private-detail-must-not-leak');
+        error.code = 'KEY_NOT_FOUND';
+        throw error;
+      }
+      return { keyId, key: Buffer.from(keyVersions.get(keyId)) };
+    }
+  };
+  const versionAPayload = Buffer.from('synthetic historical backup encrypted with key version A');
+  const versionAEnvelope = await createEncryptedBackupWithKeyProvider({
+    provider: fakeKeyProvider, keyId: 'key-version-A',
+    payload: versionAPayload, backupId: 'backup-keyver-A-001',
+    createdAt, metadata: { projectId: 'mira-hfm-v02' }
+  });
+  const versionAHeader = JSON.parse(versionAEnvelope.toString('utf8'));
+  assert.equal(versionAHeader.metadata.keyVersionId, 'key-version-A');
+  const versionBEnvelope = await createEncryptedBackupWithKeyProvider({
+    provider: fakeKeyProvider, keyId: 'key-version-B',
+    payload: Buffer.from('synthetic new backup encrypted with key version B'),
+    backupId: 'backup-keyver-B-001', createdAt,
+    metadata: { projectId: 'mira-hfm-v02' }
+  });
+  assert.equal(JSON.parse(versionBEnvelope.toString('utf8')).metadata.keyVersionId, 'key-version-B');
+  const historicalA = await decryptBackupWithKeyProvider({
+    provider: fakeKeyProvider, envelope: versionAEnvelope
+  });
+  assert.deepEqual(historicalA.payload, versionAPayload);
+  assert.equal(historicalA.metadata.keyVersionId, 'key-version-A');
+  const currentB = await decryptBackupWithKeyProvider({
+    provider: fakeKeyProvider, envelope: versionBEnvelope
+  });
+  assert.equal(currentB.metadata.keyVersionId, 'key-version-B');
+  console.log('HFM_PHASE7_KEY_VERSION_A_B_HISTORICAL_DECRYPTION=PASS');
+
+  let ephemeralReference;
+  const providerOwnedKey = Buffer.alloc(32, 0x51);
+  const ephemeralResult = await withBackupKey({
+    provider: { async getKey({ keyId }) { return { keyId, key: providerOwnedKey }; } },
+    keyId: 'key-version-C',
+    operation: keyMaterial => {
+      ephemeralReference = keyMaterial;
+      assert.equal(keyMaterial.length, 32);
+      assert.equal(keyMaterial.equals(providerOwnedKey), true);
+      return 'operation-complete';
+    }
+  });
+  assert.equal(ephemeralResult, 'operation-complete');
+  assert.equal(ephemeralReference.every(byte => byte === 0), true);
+  assert.equal(providerOwnedKey.every(byte => byte === 0x51), true);
+  console.log('HFM_PHASE7_EPHEMERAL_KEY_COPY_ZEROIZED=PASS');
+
+  const providerFailures = [
+    ['KEY_NOT_FOUND', 'HFM_KEY_NOT_FOUND'],
+    ['KEY_ACCESS_DENIED', 'HFM_KEY_ACCESS_DENIED'],
+    ['KEY_VERSION_RETIRED', 'HFM_KEY_VERSION_RETIRED'],
+    ['PROVIDER_UNAVAILABLE', 'HFM_PROVIDER_UNAVAILABLE'],
+    ['INVALID_KEY_MATERIAL', 'HFM_INVALID_KEY_MATERIAL']
+  ];
+  for (const [providerCode, expectedCode] of providerFailures) {
+    const failingProvider = {
+      async getKey() {
+        if (providerCode === 'INVALID_KEY_MATERIAL') return { keyId: 'key-version-D', key: Buffer.alloc(16) };
+        const error = new Error('sensitive-provider-error-detail');
+        error.code = providerCode;
+        throw error;
+      }
+    };
+    await assert.rejects(() => withBackupKey({
+      provider: failingProvider, keyId: 'key-version-D', operation: () => true
+    }), error => error.code === expectedCode &&
+      !error.message.includes('sensitive-provider-error-detail'));
+  }
+  await assert.rejects(() => withBackupKey({
+    provider: { async getKey() { return { keyId: 'another-key-version', key: Buffer.alloc(32) }; } },
+    keyId: 'key-version-D', operation: () => true
+  }), error => error.code === 'HFM_INVALID_KEY_MATERIAL');
+  console.log('HFM_PHASE7_KEY_PROVIDER_FAILURE_TAXONOMY=PASS');
+
+  assert.throws(() => assertKeyVersionRetirementAllowed({
+    referencedBackupCount: 1, migrationVerified: false, recoveryVerified: false
+  }), error => error.code === 'HFM_KEY_VERSION_IN_USE');
+  assert.throws(() => assertKeyVersionRetirementAllowed({
+    referencedBackupCount: 1, migrationVerified: true, recoveryVerified: false
+  }), error => error.code === 'HFM_KEY_VERSION_IN_USE');
+  assert.equal(assertKeyVersionRetirementAllowed({
+    referencedBackupCount: 1, migrationVerified: true, recoveryVerified: true
+  }).allowed, true);
+  assert.equal(assertKeyVersionRetirementAllowed({
+    referencedBackupCount: 0
+  }).allowed, true);
+  console.log('HFM_PHASE7_KEY_RETIREMENT_EVIDENCE_GATE=PASS');
+
   console.log('HFM_PHASE7_CANONICAL_WRITES=0');
   console.log('HFM_PHASE7_PRODUCTION_RESTORE=0');
   console.log('TESTS_FAILED=0');
