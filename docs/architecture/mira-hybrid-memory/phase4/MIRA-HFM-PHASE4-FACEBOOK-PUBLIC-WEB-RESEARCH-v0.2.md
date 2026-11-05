@@ -20,6 +20,8 @@ Provide a no-Meta-token fallback so Mira can discover publicly indexed informati
 7. Return an evidence context suitable for a downstream answer generator. Every item remains SOURCE_RECORDED / UNVERIFIED / PENDING_REVIEW.
 8. Expose facebook_page_public_research as a Mira tool, defaulting to the selected Page ID and name. It archives accepted snippets in a separate local research store.
 9. Expose facebook_research_lookup as an offline retrieval tool. It searches the archive by Page ID and query, returning source URLs and explicit unverified status.
+10. Both tools are auto-discovered by tools/index.js and their declarations are supplied to the AI generation loop in server.js; lookup guidance directs Mira to retrieve first and refresh public search only when no matching archive entry exists.
+9. Expose facebook_research_lookup as an offline retrieval tool. It searches the archive by Page ID and query, returning source URLs and explicit unverified status.
 
 ## Hard boundaries
 
@@ -60,7 +62,8 @@ It must not state that it read the full Facebook profile or all Page posts when 
 | Offline retrieval from research archive | Implemented via facebook_research_lookup |
 | Canonical HFM Memory write | Not implemented / prohibited in this mode |
 | Live search-provider execution | Not run by offline tests |
-| Mira tool registration and read-only policy | Implemented; offline CI verified |
+| Mira tool registration and explicit execution policy | Implemented; offline CI verified |
+| Runtime auto-discovery and AI function declaration wiring | Verified by source inspection (`tools/index.js` → `server.js` `generate`) |
 | End-to-end answer integration | Pending separate integration and verification |
 
 VERSION=v0.2
