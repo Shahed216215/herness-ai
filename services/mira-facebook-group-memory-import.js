@@ -17,9 +17,10 @@ function validateGroupUrl(value, groupId) {
   const raw = text(value, 'sourceUrl', 2048); let url;
   try { url = new URL(raw); } catch { fail('FB_GROUP_IMPORT_INVALID_INPUT', 'sourceUrl must be a valid URL.'); }
   if (url.protocol !== 'https:' || !['facebook.com','www.facebook.com','m.facebook.com'].includes(url.hostname.toLowerCase()) || url.username || url.password || url.hash || (url.port && url.port !== '443')) fail('FB_GROUP_IMPORT_INVALID_INPUT', 'Only standard HTTPS Facebook Group URLs are accepted.');
+  if ([...url.searchParams.keys()].some(key => /token|secret|password|authorization|credential|session/i.test(key))) fail('FB_GROUP_IMPORT_INVALID_INPUT', 'sourceUrl contains a forbidden credential parameter.');
   const parts = url.pathname.split('/').filter(Boolean);
   if (parts[0] !== 'groups' || parts[1] !== groupId) fail('FB_GROUP_IMPORT_INVALID_INPUT', 'sourceUrl must identify the supplied Facebook Group.');
-  return 'https://www.facebook.com/groups/' + groupId + (parts.length > 2 ? '/' + parts.slice(2).map(encodeURIComponent).join('/') : '/') + url.search;
+  return 'https://www.facebook.com/groups/' + groupId + (parts.length > 2 ? '/' + parts.slice(2).join('/') : '/');
 }
 function validTimestamp(v, label) { const raw = text(v, label, 64), n = Date.parse(raw); if (!Number.isFinite(n) || n > Date.now() + 60000) fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' must be a valid non-future timestamp.'); return new Date(n).toISOString(); }
 function exactKeys(v, allowed, label) { if (!object(v) || Object.keys(v).some(k => !allowed.includes(k))) fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' must contain only supported fields.'); }
@@ -38,7 +39,7 @@ function parsePayload(input) {
     schemaVersion: '1.0.0', kind: 'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT',
     groupId: input.groupId, projectId: input.projectId,
     exportId: 'manual-' + sha256(content).slice(0, 24),
-    records: [{ memoryId: input.memoryId, sourceId: input.sourceId, sourceUrl: input.sourceUrl, recordType: input.recordType || 'knowledge', content, observedAt: input.observedAt || new Date().toISOString(), revision: 1 }]
+    records: [{ memoryId: input.memoryId, sourceId: input.sourceId, sourceUrl: input.sourceUrl, recordType: input.recordType || 'knowledge', content, observedAt: input.observedAt, revision: 1 }]
   };
   try { return format === 'json' ? JSON.parse(content) : parseJsonLines(content); }
   catch (e) { if (e && e.code === 'FB_GROUP_IMPORT_INVALID_INPUT') throw e; fail('FB_GROUP_IMPORT_INVALID_INPUT', 'Import payload is invalid JSON.'); }
