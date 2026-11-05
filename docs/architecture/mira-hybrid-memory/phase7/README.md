@@ -56,8 +56,8 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 ## Injected Google Drive v3 provider mapper
 
 - `services/mira-hfm-google-drive-generated-id-provider.js` maps an injected Drive v3 client to generated-ID upload, exact-ID metadata read and bounded media download.
-- It validates account fingerprint, drive space, parent folder, appProperties, encrypted MIME type, envelope digest/timestamp and download size. It does not create OAuth clients or make requests during construction.
-- The provider is offline-tested with a fake client only. Real OAuth, live Drive calls, Shared Drives, listing/quota, sharing and destructive methods remain unimplemented or uncertified.
+- It validates account fingerprint, drive space, parent folder, appProperties, encrypted MIME type, envelope digest/timestamp and download size; it also maps project-scoped pagination and account quota through `files.list` and `about.get`. It does not create OAuth clients or make requests during construction.
+- The provider is offline-tested with a fake client only. Real OAuth, live Drive calls, Shared Drives, sharing and destructive methods remain unimplemented or uncertified.
 - Official Google Drive API docs support generated IDs for `drive` and `appDataFolder` and document 409 duplicate prevention on retry; see the integration gates document for source links.
 
 ## Offline injected transport adapter
