@@ -122,6 +122,16 @@ function response() {
   assert.equal(audits.length, 1);
 
   res = response();
+  await routes['POST /import']({
+    role: 'admin',
+    session: { authenticated: true, role: 'admin', username: 'fixture-admin' },
+    body: { ...base, authorizedAccess: true }
+  }, res);
+  assert.equal(res.statusCode, 201);
+  assert.equal(db.size, 1);
+  assert.equal(audits.length, 2);
+
+  res = response();
   await routes['GET /retrieve']({
     query: { projectId: 'project-hfm-v02', groupId: '123456789', query: 'synthetic note', limit: '10' }
   }, res);
