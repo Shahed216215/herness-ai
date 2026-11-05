@@ -174,9 +174,12 @@ async function verifyAndAcceptSignedProvenancePolicy({
       'HFM_POLICY_STATE_TRUST_CONFIG_INVALID');
   }
   const stableOperationalIssuerIds = Object.freeze(operationalIssuerIds.slice());
+  const readState = provider.readState;
+  const compareAndSwap = provider.compareAndSwap;
+  const getCommitReceipt = provider.getCommitReceipt;
   let stateEnvelope;
   try {
-    stateEnvelope = await provider.readState({ authorityId: expectedStateAuthorityId });
+    stateEnvelope = await readState.call(provider, { authorityId: expectedStateAuthorityId });
   } catch {
     fail('Policy-state authority could not be read; signed policy acceptance is denied.',
       'HFM_POLICY_STATE_UNAVAILABLE');
@@ -239,7 +242,7 @@ async function verifyAndAcceptSignedProvenancePolicy({
   let receipt;
   async function reconcileAmbiguousCommit() {
     try {
-      receipt = await provider.getCommitReceipt({
+      receipt = await getCommitReceipt.call(provider, {
         authorityId: expectedStateAuthorityId,
         idempotencyKey: casRequest.idempotencyKey,
         requestDigest
@@ -254,13 +257,13 @@ async function verifyAndAcceptSignedProvenancePolicy({
     }
   }
   try {
-    receipt = await provider.compareAndSwap({ ...casRequest });
+    receipt = await compareAndSwap.call(provider, { ...casRequest });
   } catch (error) {
     if (error && error.code === 'HFM_POLICY_STATE_AMBIGUOUS_COMMIT') {
       await reconcileAmbiguousCommit();
     } else if (error && error.code === 'HFM_POLICY_STATE_REQUEST_NOT_COMMITTED') {
       try {
-        receipt = await provider.compareAndSwap({ ...casRequest });
+        receipt = await compareAndSwap.call(provider, { ...casRequest });
       } catch (retryError) {
         if (retryError && retryError.code === 'HFM_POLICY_STATE_AMBIGUOUS_COMMIT') {
           await reconcileAmbiguousCommit();
