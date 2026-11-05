@@ -8,8 +8,8 @@ Status: IMPLEMENTED AS AN ISOLATED CONNECTOR AND ADMIN ROUTE SLICE. MOCK TESTS A
 - Write capability: remains NOT_VERIFIED until a separately approved publish/readback workflow succeeds. Capability detection never publishes.
 - Manual posting: generates a PENDING_MANUAL_POST draft; no browser automation or Facebook write.
 - Automatic posting: requires explicit route confirmation and connector approval. A successful POST returns PENDING_READBACK, never VERIFIED.
-- Readback: retrieves the post and checks post ID and Page ownership when Meta supplies the author.
-- URL import: accepts only HTTPS Facebook hostnames and supported numeric post ID URL patterns; then requires API readback.
+- Readback: retrieves the post, checks the post ID, and requires Meta to return an author ID matching the configured Page. Missing or mismatched ownership is rejected; it is never treated as VERIFIED.
+- URL import: accepts only standard-port HTTPS Facebook hostnames and supported numeric post ID URL patterns; then requires API readback.
 - No canonical memory write. Research/source content remains external evidence and must be independently classified by the memory layer.
 
 ## Environment
