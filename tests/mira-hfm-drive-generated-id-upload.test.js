@@ -72,7 +72,7 @@ function fixture(directory, behavior = {}) {
   const uploader = createJournaledDriveUpload({
     provider, journalDirectory: directory, accountBinding, driveSpace, projectId, parentId
   });
-  return { uploader, counts, objects, fileId };
+  return { uploader, provider, counts, objects, fileId };
 }
 function input(operationId = 'drive-upload-operation-001') {
   return { operationId, backupId: 'backup-upload-0001', bytes: Buffer.from(bytes),
@@ -131,7 +131,7 @@ async function main() {
     const binding = fixture(bindingDir);
     await binding.uploader.upload(input());
     const wrongAccount = createJournaledDriveUpload({
-      provider: binding.uploader, journalDirectory: bindingDir,
+      provider: binding.provider, journalDirectory: bindingDir,
       accountBinding: 'different-google-subject-123', driveSpace, projectId, parentId
     });
     await assert.rejects(() => wrongAccount.upload(input()),
