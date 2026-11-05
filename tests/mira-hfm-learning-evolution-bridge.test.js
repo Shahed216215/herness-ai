@@ -83,13 +83,14 @@ assert.equal(hasProductionIntegrationCapabilities({
   proposalStore: productionStore, auditWriter: productionAudit, productionIntegrationReady: true
 }), true);
 (async()=>{
- const result=await bridge.submit(base,{actorRole:'admin'});
+ const result=await bridge.submit(base,{actorRole:'admin',actorId:'admin-user-001'});
  assert.equal(result.status,'PENDING_HUMAN_REVIEW');
  assert.equal(result.trustState,'UNTRUSTED');
  assert.equal(result.approvalRequired,true);
  assert.equal(result.canonicalMemoryWrites,0);
  assert.equal(audit.length,1);
  assert.equal(audit[0].actorRole,'admin');
+ assert.equal(audit[0].actorId,'admin-user-001');
  await assert.rejects(()=>bridge.submit(base),e=>e.code==='HFM_LEARNING_PROPOSAL_CONFLICT');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:{},auditWriter:async()=>{}}),e=>e.code==='HFM_LEARNING_STORE_CAPABILITY_REQUIRED');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:memoryStore}),e=>e.code==='HFM_LEARNING_AUDIT_REQUIRED');
