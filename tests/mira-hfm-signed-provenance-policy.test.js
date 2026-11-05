@@ -79,10 +79,10 @@ function trust() {
 }
 function reviewers() {
   return {
-    'reviewer-a': { keyId: 'review-key-a', publicKeyPem: reviewerAKey.publicKeyPem,
-      publicKeySha256: reviewerAKey.publicKeySha256 },
-    'reviewer-b': { keyId: 'review-key-b', publicKeyPem: reviewerBKey.publicKeyPem,
-      publicKeySha256: reviewerBKey.publicKeySha256 }
+    'reviewer-a': { keyId: 'review-key-a', role: 'security-reviewer',
+      publicKeyPem: reviewerAKey.publicKeyPem, publicKeySha256: reviewerAKey.publicKeySha256 },
+    'reviewer-b': { keyId: 'review-key-b', role: 'policy-owner',
+      publicKeyPem: reviewerBKey.publicKeyPem, publicKeySha256: reviewerBKey.publicKeySha256 }
   };
 }
 function state(overrides = {}) {
