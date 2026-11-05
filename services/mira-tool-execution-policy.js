@@ -184,6 +184,13 @@ const TOOL_POLICIES = Object.freeze({
   },
 
   facebook_page_public_research: {
+    operation: "research_evidence_archive",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
+  facebook_research_lookup: {
     operation: "read",
     autonomous: true,
     humanApprovalRequired: false,
