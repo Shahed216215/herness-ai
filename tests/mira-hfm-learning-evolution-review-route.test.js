@@ -67,6 +67,15 @@ async function main() {
   if (previousHookFlag === undefined) delete process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED;
   else process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED = previousHookFlag;
   assert.equal(typeof app.locals.miraHfmLearningGenerationCycle.stage, 'function');
+  const statusLayer = registered[0][2].stack.find(item => item.route &&
+    item.route.path === '/status' && item.route.methods.get);
+  assert.ok(statusLayer, 'HFM status GET route must be registered');
+  const statusResponse = responseRecorder();
+  await statusLayer.route.stack[0].handle({session:{authenticated:true,role:'admin',username:'named-admin'}}, statusResponse);
+  assert.equal(statusResponse.body.success, true);
+  assert.equal(statusResponse.body.generationCycleHookEnabled, true);
+  assert.equal(statusResponse.body.canonicalMemoryWrites, 0);
+  assert.equal(statusResponse.body.automaticExecution, false);
   const staged = await app.locals.miraHfmLearningGenerationCycle.stage({
     explicitOptIn:true, actor:{authenticated:true,role:'admin',actorId:'named-admin'},
     projectId:'project-alpha', proposalId:'proposal-route-001', title:'Candidate',
@@ -116,6 +125,8 @@ async function main() {
   assert.equal(conflict.statusCode,409);
   assert.equal(conflict.body.code,'HFM_LEARNING_REVIEW_CONFLICT');
 
+  console.log('HFM_PHASE8_STATUS_ROUTE_NAMED_ADMIN_READ_ONLY=PASS');
+  console.log('HFM_PHASE8_STATUS_ROUTE_NO_CANONICAL_WRITES=PASS');
   console.log('HFM_PHASE8_GENERATION_CYCLE_ROUTE_BRIDGE_EXPOSED=PASS');
   console.log('HFM_PHASE8_GENERATION_CYCLE_ROUTE_HUMAN_REVIEW_ONLY=PASS');
   console.log('HFM_PHASE8_REVIEW_ROUTE_NAMED_ADMIN_ENFORCEMENT=PASS');
