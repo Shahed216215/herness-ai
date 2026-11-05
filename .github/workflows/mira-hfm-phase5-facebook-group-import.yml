@@ -1,4 +1,4 @@
-name: Mira HFM Phase 5 Facebook Group Import
+name: Mira HFM Phase 5 and Offline Regression Tests
 
 on:
   push:
@@ -17,6 +17,7 @@ on:
       - 'tests/mira-facebook-group-memory-migration-structure.test.js'
       - 'tests/**'
       - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
       - 'docs/architecture/mira-hybrid-memory/phase5/**'
   pull_request:
@@ -50,7 +51,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Run offline Facebook Group import tests
+      - name: Install locked npm dependencies (approved package downloads only)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run Phase 5 and isolated regression tests
         run: |
           set -euo pipefail
           node tests/mira-facebook-group-memory-import.test.js
@@ -58,10 +61,11 @@ jobs:
           node tests/mira-facebook-group-memory-import-route.test.js
           node tests/mira-facebook-group-memory-migration-structure.test.js
           npm run test:offline-static-regression
+          npm run test:offline-regression:available
       - name: Confirm external boundaries
         run: |
           echo "LIVE_FACEBOOK_REQUESTS=0"
           echo "PRIVATE_GROUP_ACCESS=0"
           echo "CANONICAL_MEMORY_WRITES=0"
           echo "PRODUCTION_MIGRATION=0"
-          echo "RESULT=MIRA_HFM_PHASE5_OFFLINE_TESTS_COMPLETED"
+          echo "RESULT=MIRA_HFM_PHASE5_AND_AVAILABLE_REGRESSION_TESTS_COMPLETED"
