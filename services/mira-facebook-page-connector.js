@@ -138,20 +138,20 @@ function createFacebookPageConnector(options = {}) {
     try { url = new URL(String(rawUrl || "")); }
     catch { fail("FACEBOOK_POST_URL_INVALID", "A valid Facebook post URL is required."); }
     const hosts = new Set(["facebook.com", "www.facebook.com", "m.facebook.com", "web.facebook.com"]);
-    if (url.protocol !== "https:" || !hosts.has(url.hostname.toLowerCase()))
+    if (url.protocol !== "https:" || url.port || !hosts.has(url.hostname.toLowerCase()))
       fail("FACEBOOK_POST_URL_INVALID", "Only standard HTTPS Facebook URLs are accepted.");
     if (url.username || url.password || url.hash ||
         ["access_token", "token", "appsecret_proof"].some(key => url.searchParams.has(key)))
       fail("FACEBOOK_POST_URL_INVALID", "Facebook post URL contains forbidden components.");
-    const pathMatch = url.pathname.match(/\\/([0-9]{1,32})\\/(?:posts|permalink)\\/([0-9]{1,32})\\/?$/);
+    const pathMatch = url.pathname.match(/\/([0-9]{1,32})\/(?:posts|permalink)\/([0-9]{1,32})\/?$/);
     const storyId = url.searchParams.get("story_fbid") || url.searchParams.get("fbid");
     const queryPageId = url.searchParams.get("id");
     const id = pathMatch
       ? pathMatch[1] + "_" + pathMatch[2]
-      : storyId && queryPageId && /^\\d{1,32}$/.test(queryPageId)
+      : storyId && queryPageId && /^\d{1,32}$/.test(queryPageId)
         ? queryPageId + "_" + storyId
-        : storyId || (url.pathname.match(/\\/permalink\\/([0-9]+)/) || [])[1];
-    if (!id || !/^\\d{1,32}(?:_\\d{1,32})?$/.test(id))
+        : storyId || (url.pathname.match(/\/permalink\/([0-9]+)/) || [])[1];
+    if (!id || !/^\d{1,32}(?:_\d{1,32})?$/.test(id))
       fail("FACEBOOK_POST_URL_UNSUPPORTED", "The URL does not contain a supported numeric post ID.");
     const safeUrl = new URL(url.origin + url.pathname);
     for (const key of ["story_fbid", "fbid", "id"])
@@ -169,7 +169,9 @@ function createFacebookPageConnector(options = {}) {
     const result = await graphCall(url, "GET", cfg.token);
     if (String(result.id || "") !== postId)
       fail("FACEBOOK_READBACK_MISMATCH", "Readback returned a different post ID.");
-    if (result.from && result.from.id && String(result.from.id) !== cfg.pageId)
+    if (!result.from || !result.from.id)
+      fail("FACEBOOK_READBACK_OWNER_UNAVAILABLE", "Meta did not provide the post owner needed to verify the Page.");
+    if (String(result.from.id) !== cfg.pageId)
       fail("FACEBOOK_READBACK_PAGE_MISMATCH", "Readback post belongs to a different Page.");
     return {
       status: "VERIFIED",
