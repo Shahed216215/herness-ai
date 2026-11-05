@@ -46,7 +46,8 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
     ? getAccountFingerprint : async () => await getGoogleDriveAccountFingerprint(drive);
   if (typeof projectId !== 'string' || !ID_RE.test(projectId)) reject('projectId is invalid.');
   if (!['drive', 'appDataFolder'].includes(driveSpace)) reject('driveSpace is unsupported.');
-  if (typeof parentId !== 'string' || !parentId.trim() || /[\r\n\u0000-\u001f]/.test(parentId)) {
+  if (typeof parentId !== 'string' || !parentId.trim() || /[\r\n\u0000-\u001f]/.test(parentId) ||
+      (driveSpace === 'drive' && !FILE_ID_RE.test(parentId))) {
     reject('A dedicated Drive parent ID is required.');
   }
   if (driveSpace === 'appDataFolder' && parentId !== 'appDataFolder') {
