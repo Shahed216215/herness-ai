@@ -241,7 +241,7 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
         verified.backupId === backupId &&
         verified.createdAt === match.backupCreatedAt && verified.metadata &&
         verified.metadata.projectId === project;
-      if (Buffer.isBuffer(verified.payload)) verified.payload.fill(0);
+      if (verified && Buffer.isBuffer(verified.payload)) verified.payload.fill(0);
       if (!authenticatedIdentityMatches) {
         reject('Authenticated envelope identity does not match the requested project/backup.',
           'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
