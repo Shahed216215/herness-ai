@@ -202,3 +202,12 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Phase 10 independent verification run #62 (ID `42067672031`) completed SUCCESS on the same exact commit.
 - The preceding authorization verifier patch was independently verified by Phase 7 run #185 / Phase 10 run #59 on commit `b5dc8eb5b16cc1c85c4e0d1435b6ced459523a1c`; the dedicated marker `MIRA_HFM_AUTHORIZATION_DECISION_NEGATIVE_TESTS=PASS` was present in retrieved logs.
 - All tests use synthetic keys and fixtures. No live key custody, KMS/HSM, independent policy authority, or durable replay-store behavior is certified. F7-SR-01 and F7-SR-02 remain PARTIALLY_REMEDIATED / OPEN pending independent governance and real provider evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
+
+
+## Independent provenance evidence verifier failure-path expansion — 2026-11-05
+
+- Expanded `tests/mira-hfm-provenance-evidence-verifier.test.js` with malformed base64 signature rejection, pinned evidence-key fingerprint mismatch rejection, and evidence-resolver outage fail-closed behavior.
+- Phase 7 run #192 (ID `42067928386`) completed SUCCESS on exact commit `685ef65c1ed3279ff5a80a169078b1207d98fab2`; job `phase7-offline-contract` SUCCESS. Retrieved logs include `MIRA_HFM_PROVENANCE_EVIDENCE_FAIL_CLOSED_PASS` and `MIRA_HFM_PROVENANCE_EVIDENCE_CONTRACT_COMPLETE`.
+- Phase 10 independent verification run #65 (ID `42067928501`) completed SUCCESS on the same exact commit.
+- The same run confirms authorization decision negative tests and local fake provider tests passed. Safety markers confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
+- These tests verify synthetic signature, digest, scope, issuer, freshness and resolver-failure handling only. They do not establish that evidence records originate from truthful provider control planes or that trust roles are independent in real infrastructure. F7-SR-05 remains PARTIALLY_REMEDIATED / OPEN; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
