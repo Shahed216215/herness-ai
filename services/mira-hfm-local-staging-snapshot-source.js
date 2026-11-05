@@ -93,8 +93,11 @@ function createLocalStagingSnapshotSource(config) {
     const knowledgeName = assertDirectChild(rootReal, config.knowledgeFile, 'Knowledge source');
     memoryFile = pinnedRoot.path + '/' + memoryName;
     knowledgeFile = pinnedRoot.path + '/' + knowledgeName;
-    resolvePinnedFile(pinnedRoot.path, memoryFile, 'Memory source');
-    resolvePinnedFile(pinnedRoot.path, knowledgeFile, 'Knowledge source');
+    for (const [filePath, label] of [[memoryFile, 'Memory source'], [knowledgeFile, 'Knowledge source']]) {
+      const stat = fs.lstatSync(filePath);
+      if (stat.isSymbolicLink() || !stat.isFile()) fail(label + ' must be a regular file.', 'HFM_STAGING_FILE_UNSAFE');
+      if (stat.size > MAX_SOURCE_FILE_BYTES) fail(label + ' exceeds the staging snapshot size limit.', 'HFM_STAGING_FILE_TOO_LARGE');
+    }
   } catch (error) { pinnedRoot.close(); throw error; }
   if (memoryFile === knowledgeFile) fail('Memory and Knowledge source files must be distinct.', 'HFM_STAGING_SOURCE_FILES_COLLIDE');
 
