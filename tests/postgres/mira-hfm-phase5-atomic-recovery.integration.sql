@@ -17,9 +17,32 @@ BEGIN
   IF has_function_privilege('anon', fn, 'EXECUTE') THEN RAISE EXCEPTION 'anon unexpectedly has RPC execute'; END IF;
   IF has_function_privilege('authenticated', fn, 'EXECUTE') THEN RAISE EXCEPTION 'authenticated unexpectedly has RPC execute'; END IF;
   IF NOT has_function_privilege('service_role', fn, 'EXECUTE') THEN RAISE EXCEPTION 'service_role lacks RPC execute'; END IF;
+  IF NOT has_table_privilege('service_role', 'public.mira_facebook_group_import_batches', 'SELECT')
+     OR NOT has_table_privilege('service_role', 'public.mira_facebook_group_import_batches', 'INSERT')
+     OR has_table_privilege('service_role', 'public.mira_facebook_group_import_batches', 'UPDATE')
+     OR has_table_privilege('service_role', 'public.mira_facebook_group_import_batches', 'DELETE') THEN
+    RAISE EXCEPTION 'service_role Batch table grants violate SELECT/INSERT-only policy';
+  END IF;
+  IF NOT has_table_privilege('service_role', 'public.mira_facebook_group_import_audit_events', 'SELECT')
+     OR NOT has_table_privilege('service_role', 'public.mira_facebook_group_import_audit_events', 'INSERT')
+     OR has_table_privilege('service_role', 'public.mira_facebook_group_import_audit_events', 'UPDATE')
+     OR has_table_privilege('service_role', 'public.mira_facebook_group_import_audit_events', 'DELETE') THEN
+    RAISE EXCEPTION 'service_role Audit table grants violate SELECT/INSERT-only policy';
+  END IF;
+  IF has_table_privilege('anon', 'public.mira_facebook_group_import_batches', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.mira_facebook_group_import_batches', 'SELECT')
+     OR has_table_privilege('anon', 'public.mira_facebook_group_import_audit_events', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.mira_facebook_group_import_audit_events', 'SELECT') THEN
+    RAISE EXCEPTION 'client role unexpectedly has table SELECT';
+  END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.mira_facebook_group_import_batches'::regclass)
+     OR NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.mira_facebook_group_import_audit_events'::regclass) THEN
+    RAISE EXCEPTION 'RLS is not enabled on both Phase 5 tables';
+  END IF;
 END
-$$;
-\echo 'POSTGRES_RPC_ROLE_GRANTS=PASS'
+$;
+\echo 'POSTGRES_RPC_AND_TABLE_ROLE_GRANTS=PASS'
+\echo 'POSTGRES_RLS_ENABLED=PASS'
 
 -- Execute the RPC as the same least-privilege role used by the Supabase service key.
 SET ROLE service_role;
