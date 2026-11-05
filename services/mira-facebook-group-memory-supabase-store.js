@@ -80,15 +80,15 @@ function createSupabaseFacebookGroupImportStore({
     return response;
   }
 
-  async function readBatch(batchId, projectId, groupId) {
+  async function readBatch(batchId, projectId, groupId = null) {
     const query = '?select=batch_id,project_id,group_id,batch_digest,payload' +
       '&batch_id=eq.' + encodeURIComponent(batchId) +
       '&project_id=eq.' + encodeURIComponent(projectId) +
-      '&group_id=eq.' + encodeURIComponent(groupId) + '&limit=2';
+      (groupId === null ? '' : '&group_id=eq.' + encodeURIComponent(groupId)) + '&limit=2';
     const found = rows(await call(query, 'GET'));
     if (!found.length) return null;
     if (found.length !== 1) fail('FB_GROUP_STORE_IDENTITY_CONFLICT', 'Multiple rows matched one immutable Group import batch.');
-    return validateBatchRow(found[0], projectId, groupId);
+    return validateBatchRow(found[0], projectId, found[0].group_id);
   }
 
   async function stageBatch(batch) {
