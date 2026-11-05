@@ -154,9 +154,15 @@ async function decryptBackup({ backup, keyProvider, expectedProjectId, supported
   }
   let dataKey;
   try {
-    dataKey = await keyProvider.unwrapDataKey({
-      wrappedDataKey: manifest.wrappedDataKey, keyId: manifest.keyId, keyVersion: manifest.keyVersion
-    });
+    try {
+      dataKey = await keyProvider.unwrapDataKey({
+        wrappedDataKey: manifest.wrappedDataKey, keyId: manifest.keyId, keyVersion: manifest.keyVersion
+      });
+    } catch {
+      const error = new Error('External key provider could not unwrap the backup data key.');
+      error.code = 'BACKUP_KEY_UNWRAP_FAILED';
+      throw error;
+    }
     if (!Buffer.isBuffer(dataKey) || dataKey.length !== 32) throw new Error('Invalid unwrapped data key.');
     const decipher = crypto.createDecipheriv(ALGORITHM, dataKey, Buffer.from(manifest.nonce, 'base64'));
     decipher.setAAD(Buffer.from(canonicalize(manifest), 'utf8'));
