@@ -78,15 +78,15 @@ try {
   assert.throws(() => restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_RESTORE_STAGING_ONLY=PASS');
 
-  const invalidLocalRestoreStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-stage-test-'));
+  const invalidLocalStageAuthDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-stage-test-'));
   try {
     assert.throws(() => restoreToStaging({
-      envelope, key: crypto.randomBytes(32), directory: invalidLocalRestoreStageDir,
+      envelope, key: crypto.randomBytes(32), directory: invalidLocalStageAuthDir,
       restoreId: 'restore-wrong-key-001'
     }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
-    assert.deepEqual(fs.readdirSync(invalidLocalRestoreStageDir), []);
+    assert.deepEqual(fs.readdirSync(invalidLocalStageAuthDir), []);
   } finally {
-    fs.rmSync(invalidLocalRestoreStageDir, { recursive: true, force: true });
+    fs.rmSync(invalidLocalStageAuthDir, { recursive: true, force: true });
   }
   console.log('HFM_PHASE7_RESTORE_AUTH_FAILURE_NO_STAGE_ARTIFACT=PASS');
 
