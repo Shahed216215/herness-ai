@@ -91,7 +91,9 @@ function policyEnvelope() {
     },
     approvals: []
   };
-  const reviewPayload = { ...p };\n  delete reviewPayload.approvals;\n  const reviewMessage = Buffer.from(canonicalizeProvenancePolicy(reviewPayload));
+  const reviewPayload = { ...p };
+  delete reviewPayload.approvals;
+  const reviewMessage = Buffer.from(canonicalizeProvenancePolicy(reviewPayload));
   p.approvals = [
     { reviewerId: 'reviewer-a', keyId: 'review-a', role: 'security-reviewer',
       signature: crypto.sign(null, reviewMessage, reviewerA.privateKey).toString('base64') },
