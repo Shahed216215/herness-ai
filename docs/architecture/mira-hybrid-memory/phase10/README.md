@@ -1,6 +1,6 @@
 # Mira Hybrid Memory v0.2 — Phase 10: Independent Verification
 
-Status: INDEPENDENT CROSS-PHASE TEST HARNESS ADDED — CI PENDING.
+Status: INDEPENDENT CROSS-PHASE VERIFICATION PASS — SYNTHETIC CONTRACTS ONLY; PRODUCTION NOT CERTIFIED.
 
 ## Objective
 
@@ -41,3 +41,14 @@ Independently re-run Phase 7, Phase 8 and Phase 9 contract suites and verify tha
 - Static safety scan finds no direct canonical write or Evolution apply path in the new adapters.
 - Logs prove zero network requests, zero persistent index writes, zero canonical writes, zero restore and zero Evolution apply.
 - Remaining external production gates are explicitly documented as REVIEW_REQUIRED / NOT_APPROVED / NOT_RUN.
+
+
+## Verification result — 2026-11-05
+
+- Latest Phase 10 run #5, ID `42051248785`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42051248785, exact commit `b455c5306e40b710a6582c25a616d105f759a3c9`: SUCCESS. Job `phase10-independent-cross-phase-verification` SUCCESS.
+- Same-commit Phase 7 run #140, ID `42051248602`, SUCCESS. It re-ran all 10 Phase 7 suites, including signed provenance policy/reviewer signature tests.
+- Phase 10 workflow re-ran 10 Phase 7 suites, 9 Phase 8 suites, 3 Phase 9 suites and the independent cross-phase test.
+- Cross-phase markers passed: Phase 7 encrypted backup/recovery preview, baseline mismatch rejection, Phase 8 derived projection lineage, Phase 9 project retrieval, Phase 8 Evolution prepare-only with Phase 7 recovery proof, pending/unverified candidate non-retrievability, and static no-canonical-write/no-Evolution-apply scan.
+- Phase 9 performance during the same independent run: 1k records p50 64.78 ms / p95 78.91 ms; 5k records p50 236.38 ms / p95 284.80 ms; RSS delta 207.18 MiB.
+- Logs: `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `PERSISTENT_INDEX_WRITES=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `RESTORE_EXECUTED=NO`, `EVOLUTION_APPLIED=NO`.
+- Phase 10 synthetic independent verification: PASS. It is not production certification. KMS/HSM custody, live Drive, real production owner registry/workload identity, durable replay service, actual canonical-store integration/CAS/audit and production restore remain NOT_APPROVED / REVIEW_REQUIRED / NOT_RUN.
