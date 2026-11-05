@@ -43,7 +43,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Earlier Phase 7 code-change CI runs **41990607983** and **41992655865** also succeeded; the latest restacked branch-head run is **41994278556**.
+- Latest verified code/test CI: run **41994278556 — SUCCESS**, job **127133573967**, code/test commit **e02b32e16c3503479a4bc37f3d9d06f3be0beee6**. Subsequent commits only refresh documentation; no application or test source changed.
 - Combined offline job logs: **49 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
 - Provider read operations now receive the fixed projectId explicitly; the injected transport fixture asserts that binding.
 - New assertions cover bounded pagination cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaving no stage artifact, strict provider quota/timestamp validation, and authenticated project binding across cloud upload, preview, and restore.
@@ -60,8 +60,8 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 VERSION=v0.2
 PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
-LATEST_CI=41994278556_SUCCESS
-LATEST_CI_HEAD=248d89bb20e695ebd98ece6904bc7d099c50c728
+LATEST_CODE_TEST_CI=41994278556_SUCCESS
+LATEST_CODE_TEST_COMMIT=e02b32e16c3503479a4bc37f3d9d06f3be0beee6
 OFFLINE_PASS_MARKERS=49
 PROVIDER_CAPABILITY_NEGOTIATION=PASS
 PROVIDER_QUOTA_REPORTING_CONTRACT=PASS
