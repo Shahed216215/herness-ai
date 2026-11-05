@@ -48,9 +48,16 @@ function pinnedChildPath(pinned, name) {
   return path.join(pinned.path,name);
 }
 function readPinnedChildFile(pinned,name,maxBytes=256*1024*1024) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || maxBytes > 256*1024*1024) {
+    fail('Pinned child read limit must be a bounded non-negative safe integer.', 'HFM_PINNED_FILE_LIMIT_INVALID');
+  }
+  if (!fs.constants.O_NOFOLLOW || !fs.constants.O_NONBLOCK) {
+    fail('Pinned child reads require no-follow and non-blocking open flags.', 'HFM_PINNED_DIRECTORY_UNSUPPORTED');
+  }
   let fd;
   try {
-    fd=fs.openSync(pinnedChildPath(pinned,name),fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW);
+    fd=fs.openSync(pinnedChildPath(pinned,name),
+      fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
   } catch {
     fail('Pinned child could not be opened without following links.','HFM_PINNED_FILE_UNSAFE');
   }
