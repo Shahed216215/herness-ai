@@ -29,6 +29,11 @@ async function run(){
  assert.ok(scaled.metrics.estimatedTokensUsed<=2500);
  assert.equal(measureCapacity({observedRecords:scaled.metrics.candidateCount,baselineCapacity:100}).targetStatus,'MEASURED_TARGET_MET');
  await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[],tokenBudget:100}),/sources/i);
+ await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],minScore:-1}),/finite non-negative/i);
+ await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],minScore:Infinity}),/finite non-negative/i);
+ await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],includeUnverified:'false'}),/includeUnverified must be boolean/i);
+ await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[{id:'local',type:'LOCAL',retrieve:async()=>[verified]}],tokenCounter:()=>0}),/positive safe integer/i);
+
  console.log('HFM_PHASE9_TOKEN_AWARE_BUDGET=PASS');
  console.log('HFM_PHASE9_MULTI_SOURCE_DEGRADATION=PASS');
  console.log('HFM_PHASE9_PROJECT_ISOLATION=PASS');
