@@ -13,6 +13,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202611051
 const verification = fs.readFileSync(path.join(root, 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'), 'utf8');
 const bridge = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evolution-bridge.js'), 'utf8');
 const adapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evidence-adapter.js'), 'utf8');
+const generationRequestAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle-request.js'), 'utf8');
 
 assert.match(route, /const isProduction = process\.env\.NODE_ENV === 'production'/);
 assert.match(route, /backend === 'local' && !isProduction/,
@@ -70,9 +71,13 @@ assert.match(bridge, /auditWriter\.idempotent === true/);
 assert.match(server, /registerMiraHfmLearningEvolutionRoutes\(/);
 assert.match(server, /learningProposalOptIn === true/);
 assert.match(server, /mira_hfm_public_web_retrieval/);
-assert.match(server, /HFM_LEARNING_NAMED_ADMIN_REQUIRED/);
+assert.match(generationRequestAdapter, /HFM_LEARNING_NAMED_ADMIN_REQUIRED/);
 assert.match(server, /HFM_LEARNING_PUBLIC_RETRIEVAL_NOT_EXECUTED/);
 assert.match(server, /learningProposalHandoff/);
+assert.match(server, /stageAgentGenerationProposal/);
+assert.match(generationRequestAdapter, /learningProposalOptIn !== true/);
+assert.match(generationRequestAdapter, /session\.authenticated === true/);
+assert.match(generationRequestAdapter, /session\.role === 'admin'/);
 assert.match(route, /MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED === 'true'/);
 assert.match(route, /app\.locals\.miraHfmLearningGenerationCycle/);
 assert.match(route, /createGenerationCycleProposalOrchestrator/);
