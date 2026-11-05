@@ -15,9 +15,7 @@ const hostileText =
 const retrievalReport = {
   providerId: 'mira-hfm-public-web-retrieval',
   retrievalMode: 'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
-  status: 'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY' === 'never'
-    ? 'INVALID'
-    : 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED',
+  status: 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED',
   limits: {
     canonicalMemoryWrite: false,
     trustPromotion: false,
