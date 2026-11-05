@@ -266,6 +266,17 @@ function makePolicyAcceptance(backupSource, baselineSource) {
       return entry.receipt;
     },
     async compareAndSwap(input) {
+      const requestDigest = crypto.createHash('sha256').update(JSON.stringify({
+        authorityId: input.authorityId,
+        expectedSequence: input.expectedSequence,
+        expectedDigest: input.expectedDigest,
+        nextState: input.nextState
+      })).digest('hex');
+      const prior = committedReceipts.get(input.idempotencyKey);
+      if (prior) {
+        if (prior.requestDigest !== requestDigest) throw new Error('idempotency request mismatch');
+        return prior.receipt;
+      }
       if (input.expectedSequence !== currentState.payload.highestAcceptedSequence ||
           input.expectedDigest !== currentState.payload.lastAcceptedPolicyDigest) {
         const error = new Error('synthetic policy-state CAS conflict');
@@ -278,8 +289,7 @@ function makePolicyAcceptance(backupSource, baselineSource) {
         lastAcceptedPolicyId: input.nextState.lastAcceptedPolicyId,
         lastAcceptedPolicyDigest: input.nextState.lastAcceptedPolicyDigest
       };
-      currentState = signPolicyPayload(next, stateKey);
-      return signPolicyPayload({
+      const receiptPayload = {
         contractVersion: '1',
         authorityId: stateAuthority,
         signer: { authorityId: stateAuthority, keyId: 'staging-state-key', keyVersion: '1' },
@@ -293,6 +303,7 @@ function makePolicyAcceptance(backupSource, baselineSource) {
         requestDigest
       };
       const receipt = signPolicyPayload(receiptPayload, stateKey);
+      currentState = signPolicyPayload(next, stateKey);
       committedReceipts.set(input.idempotencyKey, { requestDigest, receipt });
       return receipt;
     }
