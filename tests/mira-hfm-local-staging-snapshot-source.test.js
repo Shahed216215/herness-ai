@@ -10,6 +10,7 @@ const { captureAuthorizedSnapshot, sha256 } = require('../services/mira-hfm-auth
 const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
 const { verifyAuthorizationDecision } = require('../services/mira-hfm-authorization-decision');
 
+function makeSigningProvider(privateKey, keyId) { return { descriptor: { contractVersion: '1', providerId: 'fixture-signing-provider', providerVersion: '1', keyId, keyVersion: '1', keyPurpose: 'MIRA_HFM_SNAPSHOT_ATTESTATION', algorithm: 'Ed25519', environment: 'staging' }, async sign({ message }) { return crypto.sign(null, message, privateKey); } }; }
 function makeReplayGuard() {
   const seen = new Set();
   return { async consume(item) {
@@ -59,14 +60,14 @@ function fixture() {
   const replayGuard = makeReplayGuard();
   const source = createLocalStagingSnapshotSource({
     environment: 'staging', sourceId, signingKeyId,
-    privateKeyPem: sourcePair.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    signingProvider: makeSigningProvider(sourcePair.privateKey, signingKeyId),
     rootDir, memoryFile, knowledgeFile,
     authorizationTrust: auth.trust, replayGuard,
     authorize: async request => signDecision(request, auth.privateKey)
   });
   const publicKey = crypto.createPublicKey(publicKeyPem);
   const trustedSources = { [sourceId]: {
-    publicKeyPem, keyId: signingKeyId,
+    publicKeyPem, keyId: signingKeyId, keyVersion: '1',
     publicKeySha256: sha256(publicKey.export({ type: 'spki', format: 'der' }))
   }};
   return { rootDir, memoryFile, knowledgeFile, source, trustedSources, auth, replayGuard };
@@ -106,7 +107,7 @@ async function run() {
       fs.writeFileSync(denied.memoryFile, 'INVALID_JSON_MUST_NOT_BE_READ');
       const deniedSource = createLocalStagingSnapshotSource({
         environment: 'staging', sourceId: 'denied-source', signingKeyId: 'denied-key',
-        privateKeyPem: crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }),
+        signingProvider: makeSigningProvider(crypto.generateKeyPairSync('ed25519').privateKey, 'denied-key'),
         rootDir: denied.rootDir, memoryFile: denied.memoryFile, knowledgeFile: denied.knowledgeFile,
         authorizationTrust: denied.auth.trust, replayGuard: denied.replayGuard,
         authorize: async r => signDecision(r, denied.auth.privateKey, { decision: 'DENY' })
@@ -166,7 +167,7 @@ async function run() {
     try {
       assert.throws(() => createLocalStagingSnapshotSource({
         environment: 'staging', sourceId: 'outside', signingKeyId: 'outside-key',
-        privateKeyPem: crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }),
+        signingProvider: makeSigningProvider(crypto.generateKeyPairSync('ed25519').privateKey, 'outside-key'),
         rootDir: f.rootDir, memoryFile: outsideFile, knowledgeFile: f.knowledgeFile,
         authorizationTrust: f.auth.trust, replayGuard: f.replayGuard, authorize: async () => true
       }), error => error.code === 'HFM_STAGING_PATH_OUTSIDE_ROOT');
@@ -175,7 +176,7 @@ async function run() {
     fs.symlinkSync(f.memoryFile, symlinkFile);
     assert.throws(() => createLocalStagingSnapshotSource({
       environment: 'staging', sourceId: 'symlink', signingKeyId: 'symlink-key',
-      privateKeyPem: crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }),
+      signingProvider: makeSigningProvider(crypto.generateKeyPairSync('ed25519').privateKey, 'symlink-key'),
       rootDir: f.rootDir, memoryFile: symlinkFile, knowledgeFile: f.knowledgeFile,
       authorizationTrust: f.auth.trust, replayGuard: f.replayGuard, authorize: async () => true
     }), error => error.code === 'HFM_STAGING_PATH_OUTSIDE_ROOT');
