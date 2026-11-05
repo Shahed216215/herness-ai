@@ -88,6 +88,15 @@ The current PR metadata and commit comparisons reveal a separate, material stale
 
 **Disposition:** Phase 5's current branch includes the recovery patch, but the Phase 6–9 chain is stale relative to the current Phase 5 and Phase 7 tips. Later Phase 8/9 offline CI evidence is valid only for the exact tested stale-chain heads; it does not certify inclusion of the newer Phase 5 recovery patch or current Phase 7 tip.
 
+
+### Related Phase 2 identity-bypass fix and audit branch
+
+- PR #39 (legacy retrieval adapter identity-bypass fix) is still Draft/Open/Unmerged. Its head `a30aea429831168671ed400b678e3c6a88fe72f3` contains six commits after its Phase 6 base `8f8f35e34a138a53a52f22bd74d9327093aa496c`; its PR description records the scoped Phase 2 isolated-core-safety workflow as SUCCESS on executable source head `9ce3f84cc129623f0bbb0a11cbdc59ab7e5f0931`, with later commits documentation-only.
+- Comparing PR #39 head with Phase 9 head `3026e22aa1e2ec9d3a61bf89320174828e120999` returns `diverged` (Phase 9 head: 3 commits ahead; PR #39 head: 6 commits ahead). The identity-bypass fix is therefore not established as integrated into the Phase 9/10 chain. Its exact-head offline PASS is not a production acceptance or a downstream integration proof.
+- PR #38 (Phase 1–6 consolidated audit) is also a separate documentation branch; its head `69730e2ab5c1fde9c686bae52bc66477db04dbc8` is one commit ahead of the old Phase 6 base, while Phase 9 and PR #38 diverge (Phase 9 is 3 commits ahead / PR #38 one commit ahead). Do not treat that report branch as merged into the Phase 9/10 chain.
+
+**Additional disposition:** Phase 2 retrieval identity-bypass regression fix remains review/integration-required; it must be deliberately incorporated into the corrected restack and retested on the exact downstream heads.
+
 Do not merge or deploy this chain as if it were fully reconciled. A safe continuation requires a deliberate clean restack of Phase 6 on the current Phase 5 head, then Phase 7, Phase 8 and Phase 9 in sequence, followed by exact-head CI re-execution. Preserve all historical branches and avoid force-push.
 
 ## 5. Phase 10 impact
