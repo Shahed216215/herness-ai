@@ -84,3 +84,39 @@ The seven-suite CI success demonstrates the tested synthetic contracts. It does 
 - Real staging integration: NOT_APPROVED.
 - Production integration/deployment: NOT_APPROVED.
 - No code behavior was changed by this review.
+
+
+---
+
+## Remediation addendum — 2026-11-05 (latest offline implementation)
+
+This addendum supplements, and does not erase, the original static-review findings above.
+
+### F7-SR-01 — authorization decision and replay protection
+- The verifier now snapshots the signed decision, exact request, and pinned issuer trust before awaiting replay protection; it also captures the replay-guard method reference.
+- A local fake replay guard now tests a concurrent single-winner claim across 32 simultaneous attempts, duplicate rejection, expiry handling, and restart simulation from digest-only state.
+- The fake is process-local and explicitly NOT_DURABLE. Real atomicity across processes/replicas, restart/failover behavior, independent policy governance, and durable retention remain unverified. F7-SR-01 remains PARTIALLY_REMEDIATED / OPEN.
+
+### F7-SR-02 — signing and wrapping-key interface boundary
+- Backup key-provider and snapshot-signing provider contracts now reject raw private/master keys, KEKs, encryption-key bytes, generic key material, credentials, access/refresh tokens, and client secrets on provider objects and descriptors.
+- Backup wrap/unwrap provider errors are normalized so provider-specific messages/codes are not exposed; copied DEK buffers are zeroed on wrap success/failure paths.
+- No non-exportable KMS/HSM, workload identity, IAM separation, rotation/revocation, escrow/recovery, or provider audit evidence exists. F7-SR-02 remains PARTIALLY_REMEDIATED / OPEN.
+
+### F7-SR-03 — pinned filesystem inventory
+- Backup inventory now reads through a retained no-follow directory descriptor and non-blocking no-follow child opens. Symlink, hard-link, non-regular, oversized, and changing files are rejected as REVIEW_REQUIRED.
+- This is offline Linux/procfs-backed code and synthetic coverage; no independent host/filesystem security review or production runtime evidence has been supplied. F7-SR-03 remains PARTIALLY_REMEDIATED / OPEN.
+
+### F7-SR-04 — owner/mode and host ACL boundary
+- Existing implementation still enforces pinned-directory UID/GID and POSIX 0700 policy at descriptor-relative publication/readback boundaries, without automatic chmod/chown.
+- The new changes do not establish host/container administrator trust, mount options, platform-specific ACLs, Windows DACLs, or non-POSIX ACL extensions. Independent host ACL/mount review remains outstanding. F7-SR-04 remains PARTIALLY_REMEDIATED / OPEN.
+
+### F7-SR-05 — provenance semantics and role independence
+- Signed evidence records now bind exact source ID, dimension, policy-declared observed value, environment, and project. Exactly two source profiles and six required evidence dimensions are enforced.
+- Reviewer roles are pinned to trust records and must be distinct. Policy signer, state authority, reviewer, and evidence issuer key fingerprints must be disjoint; evidence reviewer identities cannot overlap policy/operational roles.
+- Policy, trust maps, evidence references, source descriptors, key-provider descriptor/method references, requests, and schema allowlists are snapshotted before asynchronous callbacks. The staging drill rejects policy source/profile mismatches before policy-state read/CAS or source reads.
+- These are synthetic software controls only. Real source control-plane evidence, storage/account/security-principal/trust-domain independence, independent evidence collection, durable atomic policy state/receipt store, and real provider operation remain unverified. F7-SR-05 remains PARTIALLY_REMEDIATED / OPEN.
+
+### CI and gate disposition
+- The Phase 7 workflow path filters now include the latest changed services/tests, including the local fake authorization replay guard and its concurrency test.
+- The available GitHub connector currently returns no combined status checks or PR-triggered workflow runs for the latest branch commit. Latest new-test disposition is INCONCLUSIVE; do not treat historical commit-matched CI passes as proof for these new changes.
+- Staging remains NOT_APPROVED. Production readiness remains NOT_CERTIFIED. No live Drive, KMS/HSM, staging/production deployment, real credential use, production Memory/Knowledge write, backup deletion, or restore occurred.
