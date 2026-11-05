@@ -3,6 +3,7 @@
 // Provider-injected, offline-testable orchestration for a pre-generated Drive ID.
 // No Google SDK, OAuth, credentials, network, or canonical Memory writes live here.
 const crypto = require('node:crypto');
+const { MAX_ENVELOPE_BYTES, MAX_PAYLOAD_BYTES } = require('./mira-hfm-encrypted-emergency-backup');
 const {
   createBackupIdJournal, readBackupIdJournal
 } = require('./mira-hfm-drive-backup-id-journal');
@@ -49,7 +50,7 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
     const operationId = validText(input.operationId, 'operationId', 96);
     const backupId = validText(input.backupId, 'backupId', 96);
     if (!Buffer.isBuffer(input.bytes) || input.bytes.length < 1 ||
-        input.bytes.length > MAX_OBJECT_BYTES) {
+        input.bytes.length > MAX_ENVELOPE_BYTES) {
       reject('Only bounded encrypted backup bytes are accepted.');
     }
     const bytes = Buffer.from(input.bytes);
@@ -59,15 +60,37 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
       reject('Upload must be bound to the encrypted envelope content type, algorithm and digest.');
     }
     let envelope;
-    try { envelope = JSON.parse(bytes.toString('utf8')); }
+    const serializedEnvelope = bytes.toString('utf8');
+    try { envelope = JSON.parse(serializedEnvelope); }
     catch { reject('Upload bytes are not a valid encrypted HFM envelope.'); }
+    const expectedEnvelopeKeys = ['schema','version','algorithm','backupId','createdAt',
+      'payloadBytes','plaintextSha256','metadata','kdf','salt','iv','tag','ciphertext','ciphertextSha256'].sort();
+    const envelopeKeys = envelope && typeof envelope === 'object' && !Array.isArray(envelope)
+      ? Object.keys(envelope).sort() : [];
     const backupTime = new Date(envelope && envelope.createdAt);
-    if (!envelope || envelope.schema !== BACKUP_SCHEMA || envelope.version !== BACKUP_VERSION ||
-        envelope.algorithm !== 'aes-256-gcm' || envelope.backupId !== backupId ||
-        !envelope.metadata || envelope.metadata.projectId !== project ||
+    const ciphertext = typeof (envelope && envelope.ciphertext) === 'string'
+      ? Buffer.from(envelope.ciphertext, 'base64') : null;
+    const canonicalBase64 = (value, decoded, length) => typeof value === 'string' &&
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value) &&
+      decoded && decoded.length === length && decoded.toString('base64') === value;
+    if (!envelope || envelopeKeys.length !== expectedEnvelopeKeys.length ||
+        envelopeKeys.some((field, index) => field !== expectedEnvelopeKeys[index]) ||
+        JSON.stringify(envelope) + '\n' !== serializedEnvelope ||
+        envelope.schema !== BACKUP_SCHEMA || envelope.version !== BACKUP_VERSION ||
+        envelope.algorithm !== 'aes-256-gcm' || envelope.kdf !== 'HKDF-SHA256' ||
+        envelope.backupId !== backupId || !envelope.metadata ||
+        envelope.metadata.projectId !== project ||
+        !Number.isInteger(envelope.payloadBytes) || envelope.payloadBytes < 1 ||
+        envelope.payloadBytes > MAX_PAYLOAD_BYTES ||
+        !/^[a-f0-9]{64}$/.test(envelope.plaintextSha256 || '') ||
+        !/^[a-f0-9]{64}$/.test(envelope.ciphertextSha256 || '') ||
         !Number.isFinite(backupTime.getTime()) || backupTime.toISOString() !== envelope.createdAt ||
-        typeof envelope.ciphertext !== 'string' || typeof envelope.tag !== 'string' ||
-        typeof envelope.salt !== 'string' || typeof envelope.iv !== 'string') {
+        backupTime.getTime() > Date.now() ||
+        !canonicalBase64(envelope.salt, Buffer.from(envelope.salt || '', 'base64'), 16) ||
+        !canonicalBase64(envelope.iv, Buffer.from(envelope.iv || '', 'base64'), 12) ||
+        !canonicalBase64(envelope.tag, Buffer.from(envelope.tag || '', 'base64'), 16) ||
+        !canonicalBase64(envelope.ciphertext, ciphertext, envelope.payloadBytes) ||
+        sha256(ciphertext) !== envelope.ciphertextSha256) {
       reject('Encrypted HFM envelope identity/schema/timestamp does not match the upload request.');
     }
     const backupCreatedAt = envelope.createdAt;
