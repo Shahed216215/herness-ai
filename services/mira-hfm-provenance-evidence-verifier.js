@@ -44,7 +44,7 @@ function verifyEvidenceEnvelope({
       !isPlainObject(p.scope) || p.scope.environment !== expectedEnvironment ||
       p.scope.projectId !== expectedProjectId ||
       !Array.isArray(p.reviewerIds) || p.reviewerIds.length < 1 ||
-      p.reviewerIds.some(id => typeof id !== 'string' || !id.trim()) ||
+      p.reviewerIds.some(id => typeof id !== 'string' || !id.trim() || operationalIssuerIds.includes(id)) ||
       new Set(p.reviewerIds).size !== p.reviewerIds.length ||
       !Array.isArray(reference.reviewerIds) ||
       reference.reviewerIds.length !== p.reviewerIds.length ||
