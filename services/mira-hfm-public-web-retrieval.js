@@ -32,13 +32,9 @@ function parseResults(response) {
 }
 function hasExactIdentifier(result, identifier) {
   if (!identifier) return true;
-  const escaped = identifier.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\function hasExactIdentifier(result, identifier) {
-  if (!identifier) return true;
   const haystack = [result.title, result.snippet, result.sourceUrl].join('\n');
-  return haystack.includes(identifier);
-}');
-  const boundary = new RegExp('(?:^|[^A-Za-z0-9])' + escaped + '(?:$|[^A-Za-z0-9])');
-  return [result.title, result.snippet, result.sourceUrl].some(value => boundary.test(value));
+  const tokens = haystack.split(/[^A-Za-z0-9._:-]+/).filter(Boolean);
+  return tokens.includes(identifier);
 }
 function buildQueries({ pageId, pageName, pageUrl, query, memoryId, projectId }) {
   const base = buildFacebookPageResearchQueries({ pageId, pageName, pageUrl });
