@@ -215,8 +215,12 @@ async function main() {
     drive: appDataFake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
     driveSpace: 'appDataFolder', projectId, parentId
   }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
+  const badSpaceFake = fakeDrive();
+  badSpaceFake.drive.files.generateIds = async () => ({
+    data: { ids: [fileId], space: 'drive' }
+  });
   const badSpace = createGoogleDriveGeneratedIdProvider({
-    drive: fake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
+    drive: badSpaceFake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
     driveSpace: 'appDataFolder', projectId, parentId: 'appDataFolder'
   });
   await assert.rejects(() => badSpace.generateFileId({ accountBinding, driveSpace: 'appDataFolder' }),
