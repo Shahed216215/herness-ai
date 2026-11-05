@@ -177,3 +177,18 @@ No live Meta, public web search provider, Facebook publishing, Supabase, or Rend
 | 4 | OFFLINE_CONTRACTS_PASS (scoped) | Live Meta permissions, Page read/write/publish/readback and deployed archive durability not verified |
 
 These findings explain why later-phase offline CI cannot independently certify the whole system. They do not authorize bypassing foundation gates or performing live actions.
+
+
+### Exact-head CI refresh (verified 2026-11-06)
+
+The workflow-run lookup was repeated against the current PR heads rather than relying only on PR body text. It returned completed successful runs for all five current Phase 5–9 heads:
+
+| Phase | Current head SHA | Workflow run | Result |
+|---|---|---|---|
+| 5 / PR #33 | `70f5e725b515b8b1964712630b5423cd00cd087a` | [42071463237](https://github.com/Shahed216215/herness-ai/actions/runs/42071463237) | SUCCESS |
+| 6 / PR #34 | `8f8f35e34a138a53a52f22bd74d9327093aa496c` | [42008748231](https://github.com/Shahed216215/herness-ai/actions/runs/42008748231) | SUCCESS |
+| 7 / PR #35 | `364aa77e065b20427046359ed9d7d9fcb09dfc49` | [42022222314](https://github.com/Shahed216215/herness-ai/actions/runs/42022222314) | SUCCESS |
+| 8 / PR #36 | `66eccc0cbd81cb48e4a4bf1d8d3a08aa6457fc09` | [42010563995](https://github.com/Shahed216215/herness-ai/actions/runs/42010563995) | SUCCESS |
+| 9 / PR #37 | `3026e22aa1e2ec9d3a61bf89320174828e120999` | [42010854004](https://github.com/Shahed216215/herness-ai/actions/runs/42010854004) | SUCCESS |
+
+This refresh upgrades the evidence for Phase 5 and Phase 7 to the current PR heads, and independently confirms Phase 6, 8 and 9 workflow success on their current PR heads. It does **not** resolve the ancestry defect: Phase 6 remains based on a commit 93 behind current Phase 5; Phase 8 remains based on a commit 28 behind current Phase 7. Passing CI on a stale branch does not prove that the missing upstream changes are integrated. These are workflow-level SUCCESS results only; they do not establish production integration, live-provider behavior, migration application, deployment, restore certification, or Phase 10 readiness.
