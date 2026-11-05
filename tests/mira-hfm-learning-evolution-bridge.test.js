@@ -111,11 +111,43 @@ assert.equal(hasProductionIntegrationCapabilities({
  assert.equal(reviewResult.automaticExecution,false);
  await assert.rejects(()=>bridge.review('project-alpha','proposal-001',
    {decision:'REJECT',reason:'Second review must be blocked.'},
-   {actorRole:'admin',actorId:'admin-user-001'}),e=>e.code==='HFM_LEARNING_REVIEW_CONFLICT');
+   {actorRole:'admin',actorId:'admin-user-001'}));
  const reviewed=await bridge.get('project-alpha','proposal-001');
  assert.equal(reviewed.review.decision,'APPROVE_FOR_MANUAL_HANDOFF');
  assert.equal(reviewed.review.trustState,'UNTRUSTED');
  assert.equal(audit[1].event,'HFM_LEARNING_PROPOSAL_REVIEWED');
+
+ let failReviewAuditOnce = true;
+ const reviewAuditEvents = [];
+ const reviewAuditWriter = async event => {
+   if (event.event === 'HFM_LEARNING_PROPOSAL_REVIEWED' && failReviewAuditOnce) {
+     failReviewAuditOnce = false;
+     throw new Error('synthetic review audit response failure');
+   }
+   reviewAuditEvents.push(event);
+ };
+ reviewAuditWriter.idempotent = true;
+ const reviewRetryBridge = createLearningEvolutionBridge({
+   proposalStore: memoryStore, auditWriter: reviewAuditWriter
+ });
+ await reviewRetryBridge.submit({ ...base, proposalId: 'proposal-review-retry-001' });
+ const reviewArgs = {
+   decision: 'REJECT', reason: 'Rejected after independent review.',
+   reviewedAt: '2026-11-05T07:00:00.000Z'
+ };
+ await assert.rejects(() => reviewRetryBridge.review(
+   'project-alpha', 'proposal-review-retry-001', reviewArgs,
+   { actorRole: 'admin', actorId: 'admin-user-001' }
+ ), error => error.code === 'HFM_LEARNING_REVIEW_AUDIT_FAILED' && error.stateCommitted === true);
+ const reconciledReview = await reviewRetryBridge.review(
+   'project-alpha', 'proposal-review-retry-001', reviewArgs,
+   { actorRole: 'admin', actorId: 'admin-user-001' }
+ );
+ assert.equal(reconciledReview.idempotentRetry, true);
+ assert.equal(reconciledReview.status, 'REJECTED');
+ assert.equal(reviewAuditEvents.filter(event => event.event === 'HFM_LEARNING_PROPOSAL_REVIEWED').length, 1);
+ console.log('HFM_PHASE8_REVIEW_AUDIT_FAILURE_IDEMPOTENT_RECONCILIATION=PASS');
+
  await assert.rejects(()=>bridge.submit(base),e=>e.code==='HFM_LEARNING_PROPOSAL_CONFLICT');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:{},auditWriter:async()=>{}}),e=>e.code==='HFM_LEARNING_STORE_CAPABILITY_REQUIRED');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:memoryStore}),e=>e.code==='HFM_LEARNING_AUDIT_REQUIRED');
