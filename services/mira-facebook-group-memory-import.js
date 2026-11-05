@@ -152,11 +152,7 @@ function createFacebookGroupImportService({ store } = {}) {
   return Object.freeze({
     async import(input) {
       const prepared = prepareFacebookGroupImport(input), staged = await store.stageBatchAndAudit(prepared, { eventType: 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED', projectId: prepared.projectId, groupId: prepared.groupId, batchId: prepared.batchId, batchDigest: prepared.batchDigest, actorId: prepared.createdBy, canonicalMemoryWrite: false });
-      if (!object(staged) || !['CREATED','ALREADY_EXISTS'].includes(staged.status) || staged.batchId !== prepared.batchId) fail('FB_GROUP_IMPORT_STAGE_FAILED', 'Store did not confirm immutable batch staging.');
-      validateStoredBatch(await store.readBatch(prepared.batchId, prepared.projectId), prepared);
-      try {
-        await auditWriter({ eventType: 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED', projectId: prepared.projectId, groupId: prepared.groupId, batchId: prepared.batchId, batchDigest: prepared.batchDigest, actorId: prepared.createdBy, outcome: staged.status, canonicalMemoryWrite: false });
-      } catch (e) { e.stateCommitted = true; e.code = e.code || 'FB_GROUP_IMPORT_AUDIT_FAILED_AFTER_STAGE'; throw e; }
+      if (!object(staged) || staged.status !== 'ATOMIC_BATCH_AUDIT_READBACK_VERIFIED' || staged.batchId !== prepared.batchId || staged.batchDigest !== prepared.batchDigest || typeof staged.eventId !== 'string' || typeof staged.operationKey !== 'string') fail('FB_GROUP_IMPORT_ATOMIC_COMMIT_UNVERIFIED', 'Store did not verify the atomic Batch and Audit transaction.');
       return Object.freeze({
         status: 'IMPORT_STAGED_READBACK_VERIFIED', batchId: prepared.batchId, batchDigest: prepared.batchDigest,
         summary: prepared.summary, items: prepared.items.map(x => ({ memoryId: x.memoryId, revision: x.revision, disposition: x.disposition, reasonCode: x.reasonCode })),
