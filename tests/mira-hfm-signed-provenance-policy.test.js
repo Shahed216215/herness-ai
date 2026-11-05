@@ -140,6 +140,9 @@ rejects(() => verify(signed(), { operationalIssuerIds: [issuerId] }), 'HFM_PROVE
 rejects(() => verify(signed(), {
   acceptedPolicyState: state({ authorityId: issuerId })
 }), 'HFM_PROVENANCE_POLICY_ISSUER_COLLISION');
+rejects(() => verify(signed(), {
+  acceptedPolicyState: state({ trustAnchorSha256: policyKey.publicKeySha256 })
+}), 'HFM_PROVENANCE_POLICY_ISSUER_COLLISION');
 
 rejects(() => verify(signed(), { acceptedPolicyState: state({ highestAcceptedSequence: 1 }) }),
   'HFM_PROVENANCE_POLICY_ROLLBACK');
