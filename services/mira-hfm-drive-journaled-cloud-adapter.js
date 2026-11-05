@@ -6,9 +6,13 @@ const crypto = require('node:crypto');
 const {
   createJournaledDriveUpload, CONTENT_TYPE
 } = require('./mira-hfm-drive-generated-id-upload');
-const { readBackupIdJournal } = require('./mira-hfm-drive-backup-id-journal');
+const { createBackupIdJournal, readBackupIdJournal } = require('./mira-hfm-drive-backup-id-journal');
+const { decryptAndVerifyBackup } = require('./mira-hfm-encrypted-emergency-backup');
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
+const DRIVE_FILE_ID_RE = /^[A-Za-z0-9_-]{10,256}$/;
+const BACKUP_SCHEMA = 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP';
+const BACKUP_VERSION = '1.0.0';
 function reject(message, code = 'HFM_DRIVE_JOURNALED_ADAPTER_REJECTED') {
   const error = new Error(message);
   error.code = code;
@@ -136,6 +140,111 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
     }
   };
   if (supportsList) {
+    adapter.recoverJournal = async ({ backupId: requestedBackupId, key } = {}) => {
+      const backupId = validId(requestedBackupId, 'backupId');
+      const operationId = operationIdFor(backupId);
+      const existing = readJournal(backupId);
+      if (existing) {
+        return { status: 'JOURNAL_ALREADY_PRESENT', backupId,
+          generatedFileId: existing.generatedFileId, recovered: false };
+      }
+      let cursor = null;
+      const cursors = new Set();
+      let pages = 0;
+      let inspected = 0;
+      let match = null;
+      while (true) {
+        pages += 1;
+        if (pages > 100) reject('Journal recovery exceeded the bounded page limit.',
+          'HFM_DRIVE_JOURNAL_RECOVERY_INCOMPLETE');
+        const page = await provider.listPage({
+          projectId: project, prefix, cursor, limit: 500
+        });
+        if (!page || !Array.isArray(page.items) || page.items.length > 500 ||
+            typeof page.complete !== 'boolean' ||
+            (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor ||
+              page.nextCursor.length > 1024 || /[\u0000-\u001f]/.test(page.nextCursor) ||
+              page.nextCursor === cursor || cursors.has(page.nextCursor))) ||
+            (page.complete && page.nextCursor != null)) {
+          reject('Journal recovery listing is incomplete or malformed.',
+            'HFM_DRIVE_JOURNAL_RECOVERY_INCOMPLETE');
+        }
+        inspected += page.items.length;
+        if (inspected > 50000) reject('Journal recovery exceeded the bounded item limit.',
+          'HFM_DRIVE_JOURNAL_RECOVERY_INCOMPLETE');
+        for (const item of page.items) {
+          const m = item && item.metadata;
+          if (!m || m.projectId !== project) {
+            reject('Journal recovery encountered an invalid or cross-project listing item.',
+              'HFM_DRIVE_OBJECT_INVALID');
+          }
+          if (m.backupId !== backupId) continue;
+          if (match) reject('More than one remote object matches this immutable backup ID.',
+            'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
+          match = m;
+        }
+        if (page.complete) break;
+        cursors.add(page.nextCursor);
+        cursor = page.nextCursor;
+      }
+      if (!match) return { status: 'REMOTE_BACKUP_NOT_FOUND', backupId, recovered: false };
+      const createdMs = typeof match.backupCreatedAt === 'string'
+        ? Date.parse(match.backupCreatedAt) : NaN;
+      if (typeof match.fileId !== 'string' || !DRIVE_FILE_ID_RE.test(match.fileId) ||
+          match.objectKey !== prefix + backupId + '.mhe' ||
+          match.backupSchema !== BACKUP_SCHEMA || match.backupVersion !== BACKUP_VERSION ||
+          !Number.isFinite(createdMs) || new Date(createdMs).toISOString() !== match.backupCreatedAt ||
+          createdMs > Date.now() ||
+          match.createdAt !== match.backupCreatedAt ||
+          !Number.isSafeInteger(match.bytes) || match.bytes < 1 || match.bytes > 64 * 1024 * 1024 ||
+          match.contentType !== CONTENT_TYPE || match.encryption !== 'AES-256-GCM' ||
+          typeof match.ciphertextSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(match.ciphertextSha256)) {
+        reject('Remote listing metadata cannot safely reconstruct the missing journal.',
+          'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
+      }
+      const expected = {
+        accountBinding, driveSpace, projectId: project, backupId,
+        generatedFileId: match.fileId, backupSchema: match.backupSchema,
+        backupVersion: match.backupVersion, backupCreatedAt: match.backupCreatedAt,
+        ciphertextSha256: match.ciphertextSha256, bytes: match.bytes
+      };
+      let remote;
+      try { remote = await provider.getFile({ id: match.fileId, accountBinding, driveSpace }); }
+      catch (_) { reject('Exact-ID metadata verification failed during journal recovery.',
+        'HFM_DRIVE_GENERATED_UPLOAD_UNCERTAIN'); }
+      validateRemote(remote, expected, backupId);
+      let bytes;
+      try { bytes = await provider.downloadFile({ id: match.fileId, accountBinding, driveSpace }); }
+      catch (_) { reject('Exact-ID ciphertext download failed during journal recovery.',
+        'HFM_DRIVE_GENERATED_UPLOAD_UNCERTAIN'); }
+      if (!Buffer.isBuffer(bytes) || bytes.length !== match.bytes ||
+          sha256(bytes) !== match.ciphertextSha256) {
+        reject('Remote ciphertext digest/size failed during journal recovery.',
+          'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
+      }
+      let verified;
+      try { verified = decryptAndVerifyBackup(bytes, key); }
+      catch (_) { reject('Remote backup could not be authenticated with the supplied root key.',
+        'HFM_DRIVE_JOURNAL_RECOVERY_AUTH_FAILED'); }
+      if (verified.backupId !== backupId || verified.createdAt !== match.backupCreatedAt ||
+          !verified.metadata || verified.metadata.projectId !== project) {
+        reject('Authenticated envelope identity does not match the requested project/backup.',
+          'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
+      }
+      const journal = createBackupIdJournal({
+        directory: journalDirectory, operationId, accountBinding, driveSpace,
+        projectId: project, backupId, generatedFileId: match.fileId,
+        backupSchema: match.backupSchema, backupVersion: match.backupVersion,
+        backupCreatedAt: match.backupCreatedAt,
+        ciphertextSha256: match.ciphertextSha256, bytes: match.bytes
+      });
+      return {
+        status: 'JOURNAL_RECOVERED_FROM_AUTHENTICATED_PROVIDER_OBJECT',
+        backupId, generatedFileId: journal.generatedFileId,
+        recovered: true, providerObjectAuthenticated: true,
+        exactCiphertextVerified: true, canonicalMemoryWrites: 0
+      };
+    };
     adapter.list = async (input = {}) => {
       if (input.projectId !== project || input.prefix !== prefix ||
           !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 500) {
