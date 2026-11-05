@@ -130,6 +130,18 @@ async function main() {
     assert.deepEqual(fs.readFileSync(restored.path), payload);
     console.log('HFM_PHASE7_JOURNALED_CLOUD_RESTORE_STAGING_ONLY=PASS');
 
+    const stageBeforeTamper = fs.readdirSync(stagingDirectory);
+    provider.objects.get(fileId).bytes[0] ^= 0xff;
+    await assert.rejects(() => previewEncryptedEmergencyBackupFromCloud({
+      adapter, projectId, backupId, key
+    }), error => error.code === 'HFM_DRIVE_GENERATED_UPLOAD_CONFLICT');
+    await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
+      adapter, projectId, backupId, key, stagingDirectory,
+      restoreId: 'hfm-restore-tampered-0001'
+    }), error => error.code === 'HFM_DRIVE_GENERATED_UPLOAD_CONFLICT');
+    assert.deepEqual(fs.readdirSync(stagingDirectory), stageBeforeTamper);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_TAMPERED_BYTES_NO_STAGE=PASS');
+
     await assert.rejects(() => adapter.get({
       projectId: 'other-project-001',
       objectKey: 'mira-hfm-emergency/v1/other-project-001/' + backupId + '.mhe'
