@@ -99,3 +99,54 @@ This addendum is documentation-only. It does not:
 All remaining live, production, credential, migration, restore, and deployment actions stay deferred until the required authorization and target-environment evidence exist.
 
 **Result:** Phase 1 historical scoped completion and Phase 2 residual blockers are now explicitly carried into Phase 10 evidence reconciliation. Overall production readiness remains `NOT_CERTIFIED`. Version remains **v0.2**.
+
+
+## 7. Phase 3–4 — Unified Contract and Facebook Connector
+
+### Phase 3 — Unified Memory Contract
+
+**Determination:** `COMPLETE_SYNTHETIC_CONTRACT_ONLY`; production runtime integration and migration remain not approved.
+
+Evidence:
+- Clean-restack PR [#30](https://github.com/Shahed216215/herness-ai/pull/30) is described as based on the Phase 2 clean-restack branch, three commits ahead / zero behind, with 35 changed files.
+- PR #30 records Phase 2 workflow run `42007427222` and Phase 3 workflow run `42007427307` as SUCCESS on head `26a3cccb34115c1f467a72cffb4dbea9cb37aacc`.
+- Original Phase 3 contract PR [#6](https://github.com/Shahed216215/herness-ai/pull/6) describes canonical record/provenance/integrity/revision/lifecycle/trust/conflict contracts, owner-bound mapping approval fixtures, legacy batch adaptation, and prepare-only read/write facades.
+
+Production blockers explicitly recorded in PR #6:
+- Real server session identity propagation and production admin/service-principal provisioning are not wired.
+- Project-owner and mapping registries are contracts/fixtures, not persistent production registries; no real owner assignments or approved production mappings exist.
+- General Memory, Knowledge and CRM Conversation remain BLOCKED_FOR_PRODUCTION; Work Learning/Experience/Work Knowledge remain BLOCKED.
+- Durable/distributed replay consumption, provider CAS, durable audit emission, actual provider commit and rollback execution are not implemented.
+- Runtime callers are not migrated to the HFM facade; dynamic reflection/computed properties/runtime injection/re-export chains remain static-analysis limitations.
+
+Therefore the Phase 3 synthetic contract PASS does not authorize production canonical writes, migration, or caller cutover.
+
+### Phase 4 — Facebook Page Connector and Public Research
+
+**Determination:** offline connector/public-research contracts exist; live Meta and production integration remain NOT_TESTED / NOT_CERTIFIED.
+
+Evidence:
+- Facebook Page connector clean-restack PR [#31](https://github.com/Shahed216215/herness-ai/pull/31) is based on the Phase 3 clean-restack branch, two commits ahead / zero behind, with 17 Phase 4 files.
+- PR #31 records exact-head workflow run [42007664263](https://github.com/Shahed216215/herness-ai/actions/runs/42007664263) as SUCCESS for the offline contract job. The gated Meta read-only probe job was SKIPPED; no live Meta request was made.
+- The original connector PR [#7](https://github.com/Shahed216215/herness-ai/pull/7) describes manual Page-post draft preparation from explicitly public, ACTIVE, integrity-VERIFIED records; review queue and authorization boundaries; bounded read retry and no automatic WRITE retry. It does not establish live Page permissions, feed/post READ, publishing, or independent published-post readback.
+- The separate token-free public research PR [#8](https://github.com/Shahed216215/herness-ai/pull/8) describes public web-search snippets archived as untrusted research evidence in a local archive. Its stated CI is offline; live web search was not run, archive persistence is local to the running installation, and no canonical HFM Memory write occurs.
+
+Phase 4 residual gates:
+1. Actual Page token/permissions and Page ownership remain unverified.
+2. The read-only Meta metadata probe remains unexecuted; do not treat its skipped workflow job as PASS.
+3. Authenticated Page feed/post READ, automatic WRITE/publishing and independent post readback are not established.
+4. Public search results can be stale/incomplete/misattributed; they remain untrusted evidence, not canonical Memory.
+5. Persistent production archive storage, live provider/model behavior, and deployed runtime E2E remain unverified.
+
+No live Meta, public web search provider, Facebook publishing, Supabase, or Render action is authorized by the offline CI evidence.
+
+## 8. Consolidated foundation disposition
+
+| Phase | Current evidence-based disposition | Main inherited gate |
+|---|---|---|
+| 1 | COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS (scoped) | Historical source/runtime gaps remain; no implementation implied |
+| 2 | IN_PROGRESS / REVIEW_REQUIRED | Universal conflict guard, authoritative identity, writer arbitration, verifier and Drive/backup gates |
+| 3 | COMPLETE_SYNTHETIC_CONTRACT_ONLY | Production identity/registries, runtime caller migration, provider commit/CAS and rollback absent |
+| 4 | OFFLINE_CONTRACTS_PASS (scoped) | Live Meta permissions, Page read/write/publish/readback and deployed archive durability not verified |
+
+These findings explain why later-phase offline CI cannot independently certify the whole system. They do not authorize bypassing foundation gates or performing live actions.
