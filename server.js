@@ -87,8 +87,6 @@ const registerFacebookPageConnectorRoutes =
   require("./routes/mira-facebook-page-connector");
 const registerFacebookGroupMemoryImportRoutes =
   require("./routes/mira-facebook-group-memory-import");
-const registerFacebookGroupMemoryImportRoutes =
-  require("./routes/mira-facebook-group-memory-import");
 
 const registerMiraEvolutionRoutes =
   require("./routes/mira-evolution");
@@ -126,7 +124,7 @@ const registerStage16_17Routes = require("./routes/stage16-17");
 
 const app = express();
 
-const HOST = "127.0.0.1";
+const HOST = IS_PRODUCTION ? "0.0.0.0" : "127.0.0.1";
 const PORT = Number(process.env.PORT) || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -235,11 +233,6 @@ registerFacebookPageConnectorRoutes(
   PERMISSIONS
 );
 
-registerFacebookGroupMemoryImportRoutes(
-  app,
-  requireAdminPermission,
-  PERMISSIONS
-);
 registerFacebookGroupMemoryImportRoutes(
   app,
   requireAdminPermission,
