@@ -12,6 +12,7 @@ on:
       - 'services/mira-hfm-local-staging-snapshot-source.js'
       - 'services/mira-hfm-authorization-decision.js'
       - 'services/mira-hfm-staging-backup-drill.js'
+      - 'services/mira-hfm-source-provenance-contract.js'
       - 'services/mira-hfm-recovery-verification.js'
       - 'services/mira-hfm-key-provider-contract.js'
       - 'tests/mira-hfm-pinned-backup-directory.test.js'
@@ -21,6 +22,7 @@ on:
       - 'tests/mira-hfm-authoritative-snapshot.test.js'
       - 'tests/mira-hfm-local-staging-snapshot-source.test.js'
       - 'tests/mira-hfm-staging-backup-drill.test.js'
+      - 'tests/mira-hfm-source-provenance-contract.test.js'
       - 'tests/mira-hfm-recovery-verification.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-emergency-backup.yml'
@@ -70,6 +72,7 @@ jobs:
           node tests/mira-hfm-authoritative-snapshot.test.js
           node tests/mira-hfm-local-staging-snapshot-source.test.js
           node tests/mira-hfm-staging-backup-drill.test.js
+          node tests/mira-hfm-source-provenance-contract.test.js
           node tests/mira-hfm-recovery-verification.test.js
           echo "NETWORK_REQUESTS=0"
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
