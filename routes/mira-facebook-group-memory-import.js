@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const rejectUnsupportedUploads = require('../services/security/reject-unsupported-uploads');
 const {
   createFacebookGroupImportService,
   prepareFacebookGroupImport
@@ -38,6 +39,7 @@ function registerFacebookGroupMemoryImportRoutes(
   // The global JSON parser skips this endpoint; parse up to 1 MiB only
   // after the SYSTEM_ADMIN guard has authenticated the request.
   router.use(express.json({ limit: '1mb' }));
+  router.use(rejectUnsupportedUploads);
 
   router.post('/import', async (req, res) => {
     let actor;
