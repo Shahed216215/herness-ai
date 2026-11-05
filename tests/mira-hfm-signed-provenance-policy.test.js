@@ -107,7 +107,8 @@ function verify(envelope = signed(), opts = {}) {
     expectedEnvironment: opts.expectedEnvironment || 'test',
     expectedProjectId: opts.expectedProjectId || 'mira-hfm-v02',
     operationalIssuerIds: opts.operationalIssuerIds || [],
-    now
+    now: opts.now === undefined ? now : opts.now,
+    maxFutureSkewMs: opts.maxFutureSkewMs === undefined ? 30000 : opts.maxFutureSkewMs
   });
 }
 function rejects(fn, code) {
