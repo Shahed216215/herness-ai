@@ -43,10 +43,11 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest branch-head CI: run **41981522602 — SUCCESS**, job **127092457448**, commit **a5c092056800734bc3b1bec1989fed6f9c311a05**.
-- Existing encrypted-backup/key-provider suite: **20 PASS markers**, `TESTS_FAILED=0`.
-- New injected-transport adapter suite: **6 PASS markers**, `TESTS_FAILED=0`.
-- Log confirms `CANONICAL_WRITES=0` and `PRODUCTION_RESTORE=0`.
+- Latest branch-head CI: run **41988206836 — SUCCESS**, job **127113892653**, commit **649b94ccc5bcd29f2697d95f39af888438d6eeac**.
+- Encrypted-backup/key-provider suite: **20 PASS markers**, `TESTS_FAILED=0`.
+- Injected-transport adapter suite: **16 PASS markers**, `TESTS_FAILED=0`.
+- Total: **36 PASS markers** across both offline suites.
+- Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - This is synthetic offline CI evidence, not a live-provider or production recovery certification.
 
 ## Explicit exclusions and blockers
@@ -59,7 +60,11 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 VERSION=v0.2
 PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
-LATEST_CI=PENDING_AFTER_CAPABILITY_AND_QUOTA_UPDATE
+LATEST_CI=41988206836_SUCCESS
+LATEST_CI_HEAD=649b94ccc5bcd29f2697d95f39af888438d6eeac
+PROVIDER_CAPABILITY_NEGOTIATION=PASS
+PROVIDER_QUOTA_REPORTING_CONTRACT=PASS
+NEGOTIATED_LIMIT_ENFORCEMENT=PASS
 TRANSPORT_TIMEOUT_RECONCILIATION=PASS
 BLIND_RETRY=DISABLED
 LIVE_NETWORK=NOT_AUTHORIZED
