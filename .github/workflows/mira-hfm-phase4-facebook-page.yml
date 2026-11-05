@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - work/mira-hfm-v02-phase4-facebook-page-connector
+      - work/mira-hfm-v02-phase4-public-web-research
     paths:
       - 'services/mira-facebook-page-memory-connector.js'
+      - 'services/mira-facebook-public-web-research.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
+      - 'tests/mira-facebook-public-web-research.test.js'
       - 'services/mira-facebook-page-hfm-adapter.js'
       - 'services/mira-facebook-page-import-review-registry.js'
       - 'services/mira-facebook-page-operation-recovery.js'
@@ -23,6 +26,7 @@ on:
   pull_request:
     branches:
       - work/mira-hfm-v02-phase3-unified-memory-contract-core
+      - work/mira-hfm-v02-phase4-facebook-page-connector
     paths:
       - 'services/mira-facebook-page-memory-connector.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
@@ -68,6 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           node tests/mira-facebook-page-memory-connector.test.js
+          node tests/mira-facebook-public-web-research.test.js
           node tests/mira-facebook-page-hfm-adapter.test.js
           node tests/mira-facebook-page-import-review-registry.test.js
           node tests/mira-facebook-page-operation-recovery.test.js
