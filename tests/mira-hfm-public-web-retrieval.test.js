@@ -34,6 +34,7 @@ const good=[
  assert.equal(report.evidence[0].trustStatus,'SOURCE_RECORDED');
  assert.equal(report.evidence[0].integrityStatus,'UNVERIFIED');
  assert.equal(report.limits.canonicalMemoryWrite,false);
+ assert.equal(report.queriesAttempted,4);
  console.log('HFM_PHASE6_PAGE_MEMORY_PROJECT_ID_SEARCH=PASS');
  console.log('HFM_PHASE6_SOURCE_HOST_PATH_AND_EXACT_ID_FILTER=PASS');
  console.log('HFM_PHASE6_IDENTIFIER_TOKEN_BOUNDARIES=PASS');
@@ -55,6 +56,15 @@ const good=[
  assert.equal(empty.status,'NOT_FOUND_BY_PUBLIC_SEARCH');
  assert.equal(empty.limits.canonicalMemoryWrite,false);
  console.log('HFM_PHASE6_SEARCH_MISS_NOT_DATA_LOSS=PASS');
+
+ const partialMiss=await retrievePublicFacebookMemory({
+  pageId,projectId,observedAt,importResults:false,
+  searchWeb:async q=>{if(q.includes(projectId))throw Object.assign(new Error('temporary'),{code:'TEMPORARY_PROVIDER_ERROR'});return [];}
+ });
+ assert.equal(partialMiss.status,'DEGRADED_SEARCH_NO_EVIDENCE');
+ assert.equal(partialMiss.queriesAttempted,3);
+ assert.equal(partialMiss.queriesSucceeded,2);
+ console.log('HFM_PHASE6_PARTIAL_FAILURE_NOT_MISREPORTED_AS_SEARCH_MISS=PASS');
 
  const partial=await retrievePublicFacebookMemory({
   pageId,projectId,observedAt,importResults:false,
