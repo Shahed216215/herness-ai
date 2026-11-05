@@ -7,6 +7,10 @@ function env(records=[rec()], overrides={}) { return { schemaVersion:'1.0.0', ki
 function prepare(records, overrides={}) { return prepareFacebookGroupImport({ content:JSON.stringify(env(records,overrides)), format:'json', groupId:'123456789', projectId:'project-hfm-v02', actorId:'human-fixture', authorizedAccess:true, existingRecords:[] }); }
 assert.throws(() => prepareFacebookGroupImport({content:JSON.stringify(env([rec()])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',existingRecords:[]}), error => error.code === 'FB_GROUP_IMPORT_AUTHORIZATION_REQUIRED');
 assert.throws(() => prepareFacebookGroupImport({content:JSON.stringify(env([rec({sourceUrl:'https://www.facebook.com/groups/123456789/posts/101/?access_token=secret'})])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}), error => error.code === 'FB_GROUP_IMPORT_INVALID_INPUT');
+assert.throws(() => prepare([rec({ observedAt: '2026-02-31T10:00:00.000Z' })]), error => error.code === 'FB_GROUP_IMPORT_INVALID_INPUT');
+assert.throws(() => prepare([rec({ observedAt: '2026-11-04T10:00:00.000' })]), error => error.code === 'FB_GROUP_IMPORT_INVALID_INPUT');
+assert.throws(() => prepare([rec({ observedAt: '2026-11-04' })]), error => error.code === 'FB_GROUP_IMPORT_INVALID_INPUT');
+console.log('GROUP_IMPORT_TIMESTAMP_ISO_TIMEZONE_AND_CALENDAR_VALIDATION=PASS');
 const first=prepare([rec()]);
 assert.equal(first.status,'PREPARED');
 assert.equal(first.items[0].disposition,'PENDING_REVIEW');
