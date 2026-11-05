@@ -53,6 +53,7 @@ jobs:
           set -euo pipefail
           node tests/mira-hfm-public-web-retrieval.test.js
           node tests/mira-facebook-public-web-research.test.js
+          node tests/mira-hfm-tool-registry-policy-parity.test.js
       - name: Confirm external action boundary
         run: |
           echo "LIVE_FACEBOOK_REQUESTS=0"
