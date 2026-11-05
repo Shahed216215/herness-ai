@@ -8,6 +8,15 @@ async function main() {
   const store = new Map();
   let createCalls = 0;
   const transport = {
+    async getCapabilities() {
+      return { atomicCreateIfAbsent: true, readAfterWrite: true, projectIsolation: true,
+        encryptedObjectStorage: true, paginatedList: true, consistency: 'read-after-write',
+        maxObjectBytes: 1024 * 1024, maxPageSize: 10 };
+    },
+    async getQuota() {
+      return { providerId: 'fake-provider', scope: 'project', projectId,
+        quotaBytes: 1000000, usedBytes: 1234, measuredAt: '2026-11-05T00:00:00.000Z' };
+    },
     async atomicCreate({ objectKey, metadata, bytes }) {
       createCalls += 1;
       if (store.has(objectKey)) return { created: false };
@@ -35,8 +44,16 @@ async function main() {
   assert.deepEqual(adapter.capabilities, {
     encryptedOnly: true, projectIsolated: true, createOnly: true,
     readAfterWrite: true, list: true, dedicatedNamespace: true,
-    timeoutReconciliation: true, immutableCollisionDetection: true
+    timeoutReconciliation: true, immutableCollisionDetection: true,
+    providerNegotiationRequired: true
   });
+  const negotiated = await adapter.negotiateCapabilities();
+  assert.equal(negotiated.consistency, 'read-after-write');
+  assert.equal(negotiated.maxPageSize, 10);
+  const quota = await adapter.getProviderQuota();
+  assert.equal(quota.status, 'REPORTED');
+  assert.equal(quota.scope, 'project');
+  assert.equal(quota.availableBytes, 998766);
   const bytes = Buffer.from('synthetic-encrypted-envelope');
   const digest = crypto.createHash('sha256').update(bytes).digest('hex');
   const input = { projectId, backupId: 'backup-test-0001',
@@ -105,6 +122,7 @@ async function main() {
   const timeoutBeforeCommit = createEmergencyBackupTransportAdapter({
     projectId,
     transport: {
+      async getCapabilities() { return await transport.getCapabilities(); },
       async atomicCreate() { throw new Error('synthetic timeout before commit'); },
       async readObject() { return null; },
       listPage: transport.listPage
@@ -151,6 +169,31 @@ async function main() {
   await assert.rejects(() => unreadable.putIfAbsent({ ...input, backupId: unreadableId,
     objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + unreadableId + '.mhe' }),
     e => e.code === 'HFM_DRIVE_CREATE_UNCERTAIN');
+  const unsupported = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async getCapabilities() {
+      return { ...(await transport.getCapabilities()), atomicCreateIfAbsent: false };
+    } }
+  });
+  await assert.rejects(() => unsupported.negotiateCapabilities(),
+    e => e.code === 'HFM_DRIVE_CAPABILITY_UNSUPPORTED');
+  const badQuota = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async getQuota() {
+      return { providerId: 'fake-provider', scope: 'project', projectId: 'other-project-001',
+        quotaBytes: 1000, usedBytes: 1, measuredAt: '2026-11-05T00:00:00.000Z' };
+    } }
+  });
+  await assert.rejects(() => badQuota.getProviderQuota(),
+    e => e.code === 'HFM_DRIVE_QUOTA_INVALID');
+  const noQuota = createEmergencyBackupTransportAdapter({
+    projectId, transport: { ...transport, getQuota: undefined }
+  });
+  assert.equal((await noQuota.getProviderQuota()).status, 'NOT_REPORTED');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PROVIDER_CAPABILITY_NEGOTIATION=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_UNSUPPORTED_PROVIDER_FAIL_CLOSED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_SCOPED_QUOTA_REPORT=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_QUOTA_UNAVAILABLE_EXPLICIT=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_CONCURRENT_CREATE_ONLY=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PROJECT_NAMESPACE=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_ENCRYPTED_METADATA_BINDING=PASS');
