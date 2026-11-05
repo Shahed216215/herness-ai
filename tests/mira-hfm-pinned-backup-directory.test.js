@@ -46,7 +46,7 @@ function run(){
   fs.symlinkSync(singleLinkPath,path.join(policyDir,'symlink.json'));
   assert.throws(()=>readPinnedChildFile(policyPinned,'symlink.json',1024),
     e=>e.code==='HFM_PINNED_FILE_UNSAFE');
-  process.stdout.write('MIRA_HFM_PINNED_CHILD_SINGLE_LINK_AND_NOFOLLOW_PASS\\n');
+  process.stdout.write('MIRA_HFM_PINNED_CHILD_SINGLE_LINK_AND_NOFOLLOW_PASS\n');
 
  } finally { policyPinned.close(); }
  fs.rmSync(parent,{recursive:true,force:true});
