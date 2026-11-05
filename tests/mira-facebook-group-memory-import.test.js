@@ -4,7 +4,9 @@ const { prepareFacebookGroupImport, createFacebookGroupImportService } = require
 const now = '2026-11-04T10:00:00.000Z';
 function rec(overrides = {}) { return { memoryId:'memory-group-0001', sourceId:'group-post-101', sourceUrl:'https://www.facebook.com/groups/123456789/posts/101/', recordType:'knowledge', content:'Group members shared a synthetic project decision.', observedAt:now, revision:1, ...overrides }; }
 function env(records=[rec()], overrides={}) { return { schemaVersion:'1.0.0', kind:'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT', groupId:'123456789', projectId:'project-hfm-v02', exportId:'export-fixture-001', records, ...overrides }; }
-function prepare(records, overrides={}) { return prepareFacebookGroupImport({ content:JSON.stringify(env(records,overrides)), format:'json', groupId:'123456789', projectId:'project-hfm-v02', actorId:'human-fixture', existingRecords:[] }); }
+function prepare(records, overrides={}) { return prepareFacebookGroupImport({ content:JSON.stringify(env(records,overrides)), format:'json', groupId:'123456789', projectId:'project-hfm-v02', actorId:'human-fixture', authorizedAccess:true, existingRecords:[] }); }
+assert.throws(() => prepareFacebookGroupImport({content:JSON.stringify(env([rec()])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',existingRecords:[]}), error => error.code === 'FB_GROUP_IMPORT_AUTHORIZATION_REQUIRED');
+assert.throws(() => prepareFacebookGroupImport({content:JSON.stringify(env([rec({sourceUrl:'https://www.facebook.com/groups/123456789/posts/101/?access_token=secret'})])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}), error => error.code === 'FB_GROUP_IMPORT_INVALID_INPUT');
 const first=prepare([rec()]);
 assert.equal(first.status,'PREPARED_NOT_PERSISTED');
 assert.equal(first.items[0].disposition,'PENDING_REVIEW');
@@ -38,7 +40,7 @@ assert.throws(()=>prepareFacebookGroupImport({content:JSON.stringify(env()),form
 console.log('GROUP_IMPORT_SCOPE_SCHEMA_AND_BOUNDS_FAIL_CLOSED=PASS');
 const jsonl=[JSON.stringify({schemaVersion:'1.0.0',kind:'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT',groupId:'123456789',projectId:'project-hfm-v02',exportId:'jsonl-fixture-001'}),JSON.stringify(rec())].join('\n');
 assert.equal(prepareFacebookGroupImport({content:jsonl,format:'jsonl',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}).summary.pendingReview,1);
-const manual=prepareFacebookGroupImport({content:'Manual user supplied Group note.',format:'manual',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',sourceId:'manual-source-1',sourceUrl:'https://www.facebook.com/groups/123456789/',observedAt:now,existingRecords:[]});
+const manual=prepareFacebookGroupImport({content:'Manual user supplied Group note.',format:'manual',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,sourceId:'manual-source-1',sourceUrl:'https://www.facebook.com/groups/123456789/',observedAt:now,existingRecords:[]});
 assert.equal(manual.summary.pendingReview,1);
 console.log('GROUP_IMPORT_JSON_JSONL_AND_MANUAL_TEXT_INPUT=PASS');
 const db=new Map();
