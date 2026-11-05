@@ -112,3 +112,28 @@ PHASE7_DRIVE_KEY_INTEGRATION=OFFLINE_CONTRACT_PROTOTYPE_ONLY
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
 PRODUCTION_RESTORE=NOT_CERTIFIED
+
+
+## 9. Offline injected transport adapter prototype (v0.2)
+
+The branch adds `services/mira-hfm-drive-emergency-backup-adapter.js` as a provider-neutral boundary around an injected transport. It is not a Google Drive implementation.
+
+- Fixed namespace: `mira-hfm-emergency/v1/{projectId}/{backupId}.mhe`; caller-supplied alternate namespaces are rejected.
+- Required transport methods: `atomicCreate({ objectKey, metadata, bytes })`, `readObject({ objectKey })`, and `listPage({ projectId, prefix, cursor, limit })`.
+- The adapter validates project binding, object key, AES-256-GCM content metadata, SHA-256 format, object metadata/byte length, and explicit bounded pagination.
+- It rejects ambiguous atomic-create results. A future real transport must implement provider-side atomic create-if-absent; a preflight search plus ordinary upload is not acceptable.
+- Fake-transport tests exercise concurrent duplicate create calls (exactly one create result), project/namespace isolation, readback, multi-page listing, malformed create result rejection, and the absence of OAuth/network behavior.
+- The adapter has no delete, overwrite, move, permission-grant, OAuth, or routine-sync method.
+
+This prototype cannot establish real provider atomicity, remote durability, quota behavior, OAuth scope, or consistency. Those remain separate provider-specific review and live-test gates.
+
+## 10. Latest CI evidence
+
+Branch-head commit `a5c092056800734bc3b1bec1989fed6f9c311a05` completed GitHub Actions run **41981522602** (job **127092457448**) successfully. The existing backup/key-provider suite emitted 20 PASS markers and the new transport adapter suite emitted 6 PASS markers. Both reported `TESTS_FAILED=0`; the existing suite also reported `CANONICAL_WRITES=0` and `PRODUCTION_RESTORE=0`.
+
+VERSION=v0.2
+OFFLINE_TRANSPORT_ADAPTER=PASS
+LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
+LIVE_NETWORK=NOT_AUTHORIZED
+ROUTINE_DRIVE_SYNC=UNCHANGED
+PRODUCTION_RESTORE=NOT_CERTIFIED
