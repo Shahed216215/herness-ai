@@ -197,6 +197,20 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     envelope: nonAtomicState, trustedStateAuthorities, expectedAuthorityId: stateAuthority, now
   }), error => error.code === 'HFM_POLICY_STATE_CONTENT_INVALID');
 
+  const revokedState = signed(statePayload({ revokedPolicyIds: ['synthetic-policy-01'] }), stateKey);
+  const revokedProvider = {
+    async readState() { return revokedState; },
+    async compareAndSwap() { throw new Error('must not commit revoked policy'); }
+  };
+  await rejects(verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(), provider: revokedProvider,
+    trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers, trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+  }), 'HFM_PROVENANCE_POLICY_REVOKED');
+
   await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(), provider: makeProvider({ casError: 'HFM_POLICY_STATE_CAS_CONFLICT' }),
     trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
