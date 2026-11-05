@@ -51,6 +51,7 @@ function readPinnedJsonArray(filePath, label) {
     const after = fs.fstatSync(fd, { bigint: true });
     if (before.dev !== after.dev || before.ino !== after.ino ||
         before.size !== after.size || before.mtimeNs !== after.mtimeNs ||
+        before.ctimeNs !== after.ctimeNs || before.nlink !== 1n ||
         BigInt(raw.length) !== after.size) {
       fail(label + ' changed while being read; snapshot was rejected.', 'HFM_STAGING_FILE_CHANGED_DURING_READ');
     }
@@ -87,6 +88,9 @@ function createLocalStagingSnapshotSource(config) {
     fail('Staging root must be a real directory, not a symlink.', 'HFM_STAGING_ROOT_UNSAFE');
   }
   const rootReal = fs.realpathSync(config.rootDir);
+  if (rootReal !== path.resolve(config.rootDir)) {
+    fail('Staging root path must not traverse a symbolic link.', 'HFM_STAGING_ROOT_UNSAFE');
+  }
   const memoryFile = resolvePinnedFile(rootReal, config.memoryFile, 'Memory source');
   const knowledgeFile = resolvePinnedFile(rootReal, config.knowledgeFile, 'Knowledge source');
   if (memoryFile === knowledgeFile) fail('Memory and Knowledge source files must be distinct.', 'HFM_STAGING_SOURCE_FILES_COLLIDE');
