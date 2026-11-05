@@ -73,3 +73,10 @@ Status: SIGNED STAGING AUTHORIZATION CONTRACT IMPLEMENTED; CI PENDING; KEY CUSTO
 - Five HIGH findings remain open: independently enforced authorization, signing-key custody, parent-directory TOCTOU resistance, existing backup-directory ownership/permissions, and independently governed baseline provenance.
 - Real staging integration is NOT_APPROVED until remediation and adversarial offline tests are complete. Production readiness remains NOT_CERTIFIED.
 - Review was read-only; no staging/production data, secrets, live providers, or deployment were accessed.
+
+
+## Signed authorization decision update (2026-11-05)
+- Added a separate authorization-decision verifier with a pinned Ed25519 issuer trust store, request-bound short-lived ALLOW decisions, key-fingerprint validation, and mandatory one-time replay-guard consumption before staging file reads.
+- Snapshot attestation now includes authorization issuer, decision ID, policy version and expiry; the independent snapshot verifier rejects missing or expired authorization claims.
+- Synthetic tests were expanded for denial, expiry, actor mismatch and replay. The end-to-end staging drill fixtures now use signed authorization decisions.
+- This is a contract implementation, not a production policy service or durable replay store. CI verification is pending; F7-SR-01 remains partially remediated/open until provider governance and durable replay-store review.
