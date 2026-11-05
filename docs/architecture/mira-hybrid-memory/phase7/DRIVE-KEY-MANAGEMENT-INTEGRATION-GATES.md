@@ -129,7 +129,7 @@ This prototype cannot establish real provider atomicity, remote durability, quot
 
 ## 10. Latest code-change CI evidence
 
-Code commit `77cf0f0deaa8101cac0e60bd3e7c0b2520a48435` completed GitHub Actions run **41990607983** (job **127121672506**) successfully. The combined offline job logs contain **40 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. The 3 additional transport assertions verify negotiated read-size enforcement, per-page item-count enforcement, and canonical listing timestamp validation. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+Code commit `4ef7ae04bbd0f2fa705fa256cc73868bcd725749` completed GitHub Actions run **41992001807** (job **127126170037**) successfully. The combined offline job logs contain **45 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. New assertions verify that failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, and capacity listing timestamps are canonical. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
 This evidence is for the latest code-change commit; later commits in this branch only refresh documentation.
 
@@ -137,9 +137,9 @@ This is synthetic offline CI evidence only. It does not certify a live Google Dr
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=41990607983_SUCCESS
-OFFLINE_CI_HEAD=77cf0f0deaa8101cac0e60bd3e7c0b2520a48435
-OFFLINE_PASS_MARKERS=40
+OFFLINE_CI_RUN=41992001807_SUCCESS
+OFFLINE_CI_HEAD=4ef7ae04bbd0f2fa705fa256cc73868bcd725749
+OFFLINE_PASS_MARKERS=45
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
