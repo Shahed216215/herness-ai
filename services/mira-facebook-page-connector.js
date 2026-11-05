@@ -138,7 +138,7 @@ function createFacebookPageConnector(options = {}) {
     try { url = new URL(String(rawUrl || "")); }
     catch { fail("FACEBOOK_POST_URL_INVALID", "A valid Facebook post URL is required."); }
     const hosts = new Set(["facebook.com", "www.facebook.com", "m.facebook.com", "web.facebook.com"]);
-    if (url.protocol !== "https:" || !hosts.has(url.hostname.toLowerCase()))
+    if (url.protocol !== "https:" || url.port || !hosts.has(url.hostname.toLowerCase()))
       fail("FACEBOOK_POST_URL_INVALID", "Only standard HTTPS Facebook URLs are accepted.");
     if (url.username || url.password || url.hash ||
         ["access_token", "token", "appsecret_proof"].some(key => url.searchParams.has(key)))
