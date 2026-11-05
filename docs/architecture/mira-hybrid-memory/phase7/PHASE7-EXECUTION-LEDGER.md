@@ -136,3 +136,27 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - Real staging integration: NOT_APPROVED until the external gates above are independently evidenced and reviewed.
 - Production readiness: NOT_CERTIFIED.
 - Phase 7 must not be labelled fully certified or production-ready on synthetic CI alone. The offline engineering track can proceed to Phase 8 only after the configured Phase 7 suites have commit-matched PASS logs; external provider/infrastructure gates remain reserved for the agreed final live-test window.
+
+
+## CI verification addendum — 2026-11-05
+
+- Exact tested branch HEAD: `0c94bd0b4909946534760c041f966b16fddb8b1c`.
+- GitHub Actions run: #127, ID `42043450318`.
+- Run URL: https://github.com/Shahed216215/herness-ai/actions/runs/42043450318
+- Workflow: `.github/workflows/mira-hfm-phase7-emergency-backup.yml`.
+- Event: `push`; status: `completed`; conclusion: `success`.
+- Job: `phase7-offline-contract`; job ID: `127299998178`; conclusion: `success`.
+- Retrieved job logs and step summaries directly. The isolated emergency-backup contract test step completed successfully.
+- Nine test suites executed successfully: pinned backup-directory race/permissions, encrypted emergency backup, Google Drive adapter mock contract, key-provider and snapshot-signing provider contracts, authoritative signed snapshot source, local staging snapshot/authorization, staging backup and recovery drill, source provenance independence, and recovery verification.
+- F7-SR-05 log markers verified:
+  - `MIRA_HFM_PROVENANCE_FULLY_INDEPENDENT_PROFILE_PASS`
+  - `MIRA_HFM_PROVENANCE_SHARED_BOUNDARY_BLOCK_PASS`
+  - `MIRA_HFM_PROVENANCE_DUPLICATE_ID_BLOCK_PASS`
+  - `MIRA_HFM_PROVENANCE_FORGED_CLAIM_BLOCK_PASS`
+  - `MIRA_HFM_PROVENANCE_UNPINNED_POLICY_BLOCK_PASS`
+  - `MIRA_HFM_PROVENANCE_CONTRACT_COMPLETE`
+- Additional logs verify pinned directory rename/symlink/owner-mode guards, signed authorization replay/expiry/actor/policy binding, staging no-overwrite and baseline mismatch rejection, and recovery verification.
+- Safety markers: `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `BACKUP_DELETION=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- A Node.js `punycode` deprecation warning and GitHub Actions Node 20 deprecation warning appeared in cleanup logs; neither failed the job.
+- Disposition: PHASE7_OFFLINE_CONTRACT_CI=PASS for the exact commit above. This is synthetic/offline contract evidence only. Production KMS/HSM custody, real independent infrastructure provenance, authorization issuer governance, live Drive behavior, host/container ACL policy, and real restore/migration remain REVIEW_REQUIRED / NOT_APPROVED / NOT_RUN as applicable.
+- Phase 7 overall production certification remains NOT_CERTIFIED. This CI result does not authorize deployment, migration, restore, deletion, or live API use.
