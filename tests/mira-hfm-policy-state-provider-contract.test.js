@@ -176,7 +176,8 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     operationalIssuerIds,
     now
   });
-  assert.equal(result.stateCommit.committed, true);\n  assert.equal(result.evidenceVerification.verifiedCount, 12);
+  assert.equal(result.stateCommit.committed, true);
+  assert.equal(result.evidenceVerification.verifiedCount, 12);
   assert.equal(result.stateCommit.nextSequence, 1);
   assert.equal(result.infrastructureIndependentlyCertified, false);
   assert.equal(result.productionApproval, false);
