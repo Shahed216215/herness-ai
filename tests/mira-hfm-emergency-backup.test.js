@@ -28,6 +28,21 @@ const keyProvider = {
   const snapshot = { records: [{ memoryId: 'm-1', revision: 1, content: 'fixture' }] };
   const metadata = { schemaVersion: '1.0.0', projectId: 'project-fixture', sourceRevision: 'fixture-revision-1',
     recordCount: 1, keyId: 'fixture-kek-reference', keyVersion: '1' };
+  let failedProviderKeyCopy;
+  const failingKeyProvider = {
+    ...keyProvider,
+    async wrapDataKey({ dataKey }) {
+      failedProviderKeyCopy = dataKey;
+      throw new Error('synthetic provider secret detail must not escape');
+    }
+  };
+  await assert.rejects(
+    () => backup.encryptSnapshot({ snapshot, metadata, keyProvider: failingKeyProvider }),
+    error => error.code === 'BACKUP_KEY_WRAP_FAILED' &&
+      !error.message.includes('synthetic provider secret detail')
+  );
+  assert.ok(Buffer.isBuffer(failedProviderKeyCopy));
+  assert.equal(failedProviderKeyCopy.every(byte => byte === 0), true);
   const encrypted = await backup.encryptSnapshot({ snapshot, metadata, keyProvider });
   const restored = await backup.decryptBackup({ backup: encrypted.bytes, keyProvider, expectedProjectId: 'project-fixture',
     supportedSchemaVersions: ['1.0.0'] });
