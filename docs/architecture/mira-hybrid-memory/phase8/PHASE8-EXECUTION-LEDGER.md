@@ -49,3 +49,19 @@ Status: SOURCE_AUDIT_COMPLETE_FOR_SELECTED_MODULES / IMPLEMENTATION_BLOCKED_PEND
 `CANONICAL_WRITES=0`
 `NETWORK_REQUESTS=0`
 `PRODUCTION_READINESS=NOT_CERTIFIED`
+
+
+## Entry 002 — P8-A/P8-B Work Learning adapter implementation and CI
+
+- Added explicit `work_learning -> mira_work_learning` domain support to `services/mira-memory-project-mapping-contract.js`. The mapping remains explicit and owner-approved; no project scope is inferred from taskId/planId/opportunityId.
+- Extended `services/mira-legacy-memory-knowledge-adapter.js` to bind Work Learning `learningId` and require canonical `recordType=lesson`, preserving the complete source record.
+- Added `services/mira-hfm-work-learning-adapter.js` to compose the owner-registry approval verifier, exact mapping validator, raw source digest check, source-file digest/ordinal binding, canonical candidate digest check and read-only legacy adapter.
+- Candidate is always `PENDING_REVIEW`, `UNVERIFIED`, `SOURCE_RECORDED`. Secret-like fields are rejected recursively; duplicate identities, missing mappings, stale/forged digests, wrong ordinal, revoked owner registry and cross-project mapping fail closed.
+- The adapter consumes already captured in-memory entries and a caller-supplied sourceFileDigest; it does not open/hash the source file. Production snapshot authenticity is therefore NOT_ESTABLISHED.
+- New test: `tests/mira-hfm-work-learning-adapter.test.js`; Phase 8 workflow runs structural conflict assessment, mapping contract, owner approval contract, legacy adapter and Work Learning adapter suites.
+- CI run #373 / ID `42045846125`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42045846125, tested commit `e7ddac2a4a6ebe6c29487419439aecf94f8c12b8`, push event, conclusion SUCCESS. Job `phase8-learning-scope-contract` completed SUCCESS.
+- Verified markers: `WORK_LEARNING_OWNER_APPROVED_MAPPING_AND_LOSSLESS_PAYLOAD_PASS`, `WORK_LEARNING_BATCH_SNAPSHOT_MAPPING_PASS`, `WORK_LEARNING_CROSS_PROJECT_MAPPING_BLOCK_PASS`, `WORK_LEARNING_SOURCE_TAMPER_BLOCK_PASS`, `WORK_LEARNING_FORGED_MAPPING_BLOCK_PASS`, `WORK_LEARNING_DUPLICATE_SOURCE_ID_BLOCK_PASS`, `WORK_LEARNING_MISSING_OWNER_MAPPING_BLOCK_PASS`, `WORK_LEARNING_SNAPSHOT_ORDINAL_DRIFT_BLOCK_PASS`, `WORK_LEARNING_REVOKED_OWNER_REGISTRY_BLOCK_PASS`, `WORK_LEARNING_NO_PROJECT_INFERENCE_PENDING_REVIEW_PASS`, `WORK_LEARNING_SECRET_FIELD_REJECTED_PASS`.
+- Logs: `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- First adapter CI run #372 failed at the test's case-sensitive expected-error regex only; implementation threw the expected `Mapping digest mismatch.` error. Test assertion corrected; run #373 verified the correction. No code failure was observed in the failing run.
+- P8-A/P8-B: PASS_CI_SYNTHETIC. Phase 8 overall: IN_PROGRESS.
+- Remaining: authenticated snapshot file capture, trusted task/work-item-to-project authority source, Work Knowledge/Experience projection lineage, project-scoped retrieval, HFM Evolution prepare-only bridge, full bypass tests and independent review.
