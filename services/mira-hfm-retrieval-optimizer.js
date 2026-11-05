@@ -36,7 +36,8 @@ function resolveDuplicates(items){
 }
 function safeErrorCode(e){return typeof e?.code==='string'&&/^[A-Z0-9_-]{1,64}$/.test(e.code)?e.code:'SOURCE_UNAVAILABLE';}
 async function retrieveOptimized({query,projectId,sources,tokenBudget=DEFAULTS.tokenBudget,maxResults=DEFAULTS.maxResults,maxCandidatesPerSource=DEFAULTS.maxCandidatesPerSource,minScore=DEFAULTS.minScore,includeUnverified=true,tokenCounter=estimateTokens}={}){
- requiredText(query,'query',DEFAULTS.maxQueryLength);requiredText(projectId,'projectId',128);\n if(typeof tokenCounter!=='function')fail('HFM_RETRIEVAL_INVALID_TOKENIZER','tokenCounter must be a synchronous token-count function.');
+ requiredText(query,'query',DEFAULTS.maxQueryLength);requiredText(projectId,'projectId',128);
+ if(typeof tokenCounter!=='function')fail('HFM_RETRIEVAL_INVALID_TOKENIZER','tokenCounter must be a synchronous token-count function.');
  if(!Array.isArray(sources)||sources.length<1||sources.length>12)fail('HFM_RETRIEVAL_INVALID_SOURCES','Between 1 and 12 injected sources are required.');
  if(!Number.isInteger(tokenBudget)||tokenBudget<32||tokenBudget>100000||!Number.isInteger(maxResults)||maxResults<1||maxResults>100||!Number.isInteger(maxCandidatesPerSource)||maxCandidatesPerSource<1||maxCandidatesPerSource>1000)fail('HFM_RETRIEVAL_INVALID_BUDGET','Retrieval limits are outside supported bounds.');
  const q=tokenize(query);if(!q.length)fail('HFM_RETRIEVAL_EMPTY_QUERY','Query contains no searchable terms.');
