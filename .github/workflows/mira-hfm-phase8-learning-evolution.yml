@@ -1,0 +1,60 @@
+name: Mira HFM Phase 8 Learning and Evolution
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase7-emergency-backup
+    paths:
+      - 'services/mira-memory-project-mapping-contract.js'
+      - 'services/mira-memory-project-mapping-owner-approval-adapter.js'
+      - 'services/mira-memory-project-owner-registry-contract.js'
+      - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'services/mira-conflict-quarantine-registry.js'
+      - 'tests/mira-memory-project-mapping-contract.test.js'
+      - 'tests/mira-memory-project-mapping-owner-approval.test.js'
+      - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - 'tests/mira-memory-conflict-assessment.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase8/**'
+      - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase7-emergency-backup
+    paths:
+      - 'services/mira-memory-project-mapping-contract.js'
+      - 'services/mira-memory-project-mapping-owner-approval-adapter.js'
+      - 'services/mira-memory-project-owner-registry-contract.js'
+      - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'services/mira-conflict-quarantine-registry.js'
+      - 'tests/mira-memory-project-mapping-contract.test.js'
+      - 'tests/mira-memory-project-mapping-owner-approval.test.js'
+      - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - 'tests/mira-memory-conflict-assessment.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase8/**'
+      - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase8-learning-scope-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run isolated learning-scope and canonical mapping tests
+        run: |
+          set -euo pipefail
+          node tests/mira-memory-conflict-assessment.test.js
+          node tests/mira-memory-project-mapping-contract.test.js
+          node tests/mira-memory-project-mapping-owner-approval.test.js
+          node tests/mira-legacy-memory-knowledge-adapter.test.js
+          echo "NETWORK_REQUESTS=0"
+          echo "CANONICAL_MEMORY_WRITTEN=NO"
+          echo "CANONICAL_KNOWLEDGE_WRITTEN=NO"
+          echo "PRODUCTION_MEMORY_TOUCHED=NO"
+          echo "RESULT=MIRA_HFM_PHASE8_LEARNING_SCOPE_CONTRACT_COMPLETE"
