@@ -72,9 +72,9 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest code/test CI: run **42011567355 — SUCCESS**, job **127191631723**, tested code/test head commit `d7e45a970e8db67cd3dcb879cbb2846c2463d72a`.
-- Node syntax check and all six offline test suites completed successfully. Logs contain **104 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
-- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized.
+- Latest code/test CI: run **42011787754 — SUCCESS**, job **127192358426**, tested code/test head commit `49e94606e2cd62d822dabdc1a1f7d68daf74ae1d`.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **105 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
 - This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
@@ -95,11 +95,11 @@ The exporter is not blocked by encryption code; it is blocked by source authorit
 VERSION=v0.2
 PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
-CURRENT_HEAD_CI_RUN=42011567355
-CURRENT_HEAD_CI_JOB=127191631723
-CURRENT_HEAD_CODE_TEST_COMMIT=d7e45a970e8db67cd3dcb879cbb2846c2463d72a
+CURRENT_HEAD_CI_RUN=42011787754
+CURRENT_HEAD_CI_JOB=127192358426
+CURRENT_HEAD_CODE_TEST_COMMIT=49e94606e2cd62d822dabdc1a1f7d68daf74ae1d
 CURRENT_HEAD_TEST_SUITES=6
-OFFLINE_PASS_MARKERS=104
+OFFLINE_PASS_MARKERS=105
 OFFLINE_TESTS_FAILED=0
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 JOURNAL_RECOVERY=AUTHENTICATED_PROVIDER_OBJECT_RECONSTRUCTION_IMPLEMENTED_OFFLINE
