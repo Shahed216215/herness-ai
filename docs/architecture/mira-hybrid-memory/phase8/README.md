@@ -23,6 +23,7 @@ Connect existing Mira Learning and HFM evidence to a controlled learning/evoluti
 - HFM public retrieval adapter validates the provider/mode, successful or degraded-evidence status, zero-canonical-write declarations, exact numeric Page-ID-bound Facebook paths, declared source type, provenance and credential-free HTTPS URL. Imported evidence is forced to UNVERIFIED.
 - Legacy Learning Engine adapter reads one requested record through the existing read/verify interfaces, requires matching successful integrity evidence, screens candidate text for likely secrets, and maps lesson/improvement candidates into UNVERIFIED HFM evidence. It does not modify the legacy record.
 - Read-only compatibility inspector checks Learning Engine, Experience Memory, Experience Retrieval, Knowledge Consolidation and Evolution Snapshot/rollback interfaces without migration, rewrite, deletion, rollback or Drive/network calls.
+- Added a fail-closed generation-cycle proposal orchestration adapter. It is disabled by default, requires an explicit opt-in and named authenticated admin context, validates the HFM public-retrieval report, and stages only an UNTRUSTED proposal for human review. It never approves, promotes trust, writes canonical Memory, executes learning or modifies code. The adapter is unit-tested but is not yet invoked by the live `/api/agent` generation/retrieval loop.
 - Every proposal remains `PENDING_HUMAN_REVIEW` and `UNTRUSTED`. A named administrator may create one immutable `APPROVE_FOR_MANUAL_HANDOFF` or `REJECT` decision. Approval permits manual follow-up only; it does not promote trust, execute a learning action, change canonical Memory or modify code.
 
 ## Trust and governance
@@ -56,10 +57,9 @@ The migration has been committed to the branch only. It has NOT been applied to 
 
 1. Apply the SQL migration in the approved Supabase project and verify RLS, grants, primary-key uniqueness and foreign-key behavior.
 2. Run an authorized live integration test: insert, duplicate conflict, cross-project isolation, audit readback, restart/reconnect recovery and fail-closed behavior. This has not been done.
-3. Wire proposal intake into the actual Mira generation/retrieval cycle under explicit governance, instead of requiring a trusted caller to submit the evidence payload.
-4. Add a dedicated orchestration adapter that consumes verified HFM retrieval reports from the actual generation/retrieval cycle; current intake is an explicit admin API call and does not automatically run after retrieval.
-5. Add UI visibility and independent end-to-end verification for the complete HFM → evidence → proposal → review → human-controlled handoff path.
-6. Verify Render instance/restart behavior and Supabase free-tier capacity without exceeding the $0/month constraint.
+3. Wire the tested generation-cycle adapter into the actual Mira `/api/agent` retrieval lifecycle. The adapter exists but is not yet called by the live request loop; current intake remains an explicit admin API call.
+4. Add UI visibility and independent end-to-end verification for the complete HFM → evidence → proposal → review → human-controlled handoff path.
+5. Verify Render instance/restart behavior and Supabase free-tier capacity without exceeding the $0/month constraint.
 
 ## Offline verification
 
@@ -71,7 +71,7 @@ The migration has been committed to the branch only. It has NOT been applied to 
 The Supabase adapter test uses an injected mock PostgREST request. It does not contact Supabase. Local filesystem tests use a temporary directory. No production data is accessed.
 
 VERSION=v0.2
-PHASE8=PROPOSAL_BRIDGE_SUPABASE_ADAPTER_AND_IMMUTABLE_REVIEW_IMPLEMENTED
+PHASE8=PROPOSAL_BRIDGE_IMMUTABLE_REVIEW_AND_GATED_GENERATION_ADAPTER_IMPLEMENTED
 CANONICAL_MEMORY_WRITES=0
 AUTOMATIC_PROMOTION=0
 AUTOMATIC_EXECUTION=0
