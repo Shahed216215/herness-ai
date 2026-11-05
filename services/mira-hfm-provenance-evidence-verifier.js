@@ -21,6 +21,10 @@ function verifyEvidenceEnvelope({
   envelope, reference, sourceId, dimension, trustedEvidenceIssuers,
   expectedEnvironment, expectedProjectId, operationalIssuerIds = [], now = Date.now()
 }) {
+  if (!Number.isSafeInteger(now)) {
+    fail('Provenance evidence verifier clock configuration is invalid.',
+      'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
+  }
   if (!isPlainObject(envelope) || !isPlainObject(envelope.payload) ||
       typeof envelope.signature !== 'string' || !isPlainObject(reference)) {
     fail('Independent provenance evidence envelope or policy reference is missing.',
