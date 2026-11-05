@@ -83,7 +83,9 @@ function createEncryptedBackup({ payload, key, backupId, createdAt = new Date().
   }
   try {
     const timestamp = new Date(createdAt);
-    if (!Number.isFinite(timestamp.getTime()) || timestamp.toISOString() !== createdAt) fail('createdAt must be a canonical ISO timestamp.');
+    if (!Number.isFinite(timestamp.getTime()) || timestamp.toISOString() !== createdAt || timestamp.getTime() > Date.now()) {
+      fail('createdAt must be a canonical, non-future ISO timestamp.');
+    }
     const header = {
       schema: SCHEMA, version: VERSION, algorithm: ALGORITHM, backupId,
       createdAt, payloadBytes: plain.length, plaintextSha256: sha256(plain),
@@ -152,7 +154,9 @@ function decryptAndVerifyBackup(envelopeBytes, key) {
       env.payloadBytes < 1 || env.payloadBytes > MAX_PAYLOAD_BYTES || !/^[a-f0-9]{64}$/.test(env.plaintextSha256 || '') ||
       !/^[a-f0-9]{64}$/.test(env.ciphertextSha256 || '') || !isObject(env.metadata)) fail('Backup envelope schema is invalid.');
   const created = new Date(env.createdAt);
-  if (!Number.isFinite(created.getTime()) || created.toISOString() !== env.createdAt) fail('Backup timestamp is invalid.');
+  if (!Number.isFinite(created.getTime()) || created.toISOString() !== env.createdAt || created.getTime() > Date.now()) {
+    fail('Backup timestamp is invalid or future-dated.');
+  }
   const metadata = safeMetadata(env.metadata);
   if (JSON.stringify(metadata) !== JSON.stringify(env.metadata)) fail('Backup metadata is not canonical.');
   const salt = decodeBase64(env.salt, 16, 'salt');
