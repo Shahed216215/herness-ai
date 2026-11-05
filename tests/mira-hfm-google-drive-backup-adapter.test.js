@@ -53,6 +53,43 @@ const keyProvider = {
   });
   assert.equal(uploaded.status, 'VERIFIED');
   assert.equal(creates, 1);
+  let methodCaptureDrive;
+  let methodCaptureFile = null;
+  let methodCaptureBytes = null;
+  const methodCaptureDriveOriginalCreate = async args => {
+    const chunks = [];
+    for await (const chunk of args.media.body) chunks.push(Buffer.from(chunk));
+    methodCaptureBytes = Buffer.concat(chunks);
+    methodCaptureFile = {
+      id: 'remote-method-capture', name: args.requestBody.name,
+      parents: args.requestBody.parents, appProperties: args.requestBody.appProperties
+    };
+    return { data: methodCaptureFile };
+  };
+  const methodCaptureDriveOriginalGet = async () => ({ data: Buffer.from(methodCaptureBytes) });
+  const methodCaptureDriveOriginalQuota = async () =>
+    ({ data: { storageQuota: { usage: '100', limit: '10000000000' } } });
+  methodCaptureDrive = {
+    about: { get: methodCaptureDriveOriginalQuota },
+    files: {
+      list: async () => {
+        methodCaptureDrive.files.create = async () => { throw new Error('swapped create method must not run'); };
+        methodCaptureDrive.about.get = async () => { throw new Error('swapped quota method must not run'); };
+        return { data: { files: [] } };
+      },
+      create: methodCaptureDriveOriginalCreate,
+      get: methodCaptureDriveOriginalGet
+    }
+  };
+  const capturedMethodsUpload = await driveBackup.uploadEncryptedBackup({
+    drive: methodCaptureDrive, folderId: 'folder_123',
+    fileName: 'mira-hfm-project-1-20261105T120005Z.mira-hfm.enc.json',
+    bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
+  });
+  assert.equal(capturedMethodsUpload.status, 'VERIFIED');
+  assert.equal(capturedMethodsUpload.fileId, 'remote-method-capture');
+
+
 
   const malformedListDrive = {
     ...drive,
