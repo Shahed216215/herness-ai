@@ -5,11 +5,33 @@ const os = require('node:os');
 const path = require('node:path');
 const { buildProposal, createLearningEvolutionBridge } = require('../services/mira-hfm-learning-evolution-bridge');
 const { createPersistentProposalStore } = require('../services/mira-hfm-learning-proposal-store');
+const { fromPublicRetrieval } = require('../services/mira-hfm-learning-evidence-adapter');
 const evidence = [{ evidenceId:'evidence-001', projectId:'project-alpha', sourceType:'web_research',
   trustState:'UNVERIFIED', sourceRef:'https://example.invalid/source/1', content:'Synthetic untrusted evidence.' }];
 const base = { projectId:'project-alpha', proposalId:'proposal-001', title:'Candidate learning improvement',
   rationale:'A bounded hypothesis supported by recorded evidence.', proposedChange:'Prepare a human-reviewable proposal only.',
   evidence, createdAt:'2026-11-05T06:00:00.000Z' };
+const retrievalInput = fromPublicRetrieval({
+  projectId:'project-alpha', proposalId:'proposal-retrieval-001',
+  title:'Public research learning candidate', rationale:'Review public indexed evidence before any learning action.',
+  proposedChange:'Prepare a human-reviewed learning candidate.',
+  retrievalResult:{
+    providerId:'mira-hfm-public-web-retrieval', retrievalMode:'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
+    page:{pageId:'123456789'},
+    limits:{canonicalMemoryWrite:false,trustPromotion:false},
+    evidence:[{evidenceId:'fbweb-evidence-001',pageId:'123456789',
+      sourceUrl:'https://www.facebook.com/123456789/posts/987654321',
+      title:'Public page post',snippet:'Synthetic indexed snippet.'}]
+  }
+});
+assert.equal(retrievalInput.evidenceOrigin,'HFM_PUBLIC_FACEBOOK_SEARCH_RESULT_UNVERIFIED');
+assert.equal(retrievalInput.evidence[0].trustState,'UNVERIFIED');
+assert.equal(buildProposal(retrievalInput).trustState,'UNTRUSTED');
+assert.throws(()=>fromPublicRetrieval({...retrievalInput,retrievalResult:{...retrievalInput.retrievalResult,limits:{canonicalMemoryWrite:true,trustPromotion:false}}}),
+  e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
+assert.throws(()=>fromPublicRetrieval({...retrievalInput,retrievalResult:{...retrievalInput.retrievalResult,evidence:[{...retrievalInput.evidence[0],sourceUrl:'https://evil.example/x'}]}}),
+  e=>e.code==='HFM_LEARNING_RETRIEVAL_INVALID');
+
 const p = buildProposal(base);
 assert.equal(p.status,'PENDING_HUMAN_REVIEW');
 assert.equal(p.trustState,'UNTRUSTED');
@@ -73,6 +95,6 @@ const bridge=createLearningEvolutionBridge({proposalStore:memoryStore,auditWrite
  'HFM_PHASE8_CREATE_ONLY_AND_READBACK=PASS','HFM_PHASE8_HUMAN_APPROVAL_REQUIRED=PASS',
  'HFM_PHASE8_NO_AUTOMATIC_PROMOTION_OR_EXECUTION=PASS','HFM_PHASE8_NO_CANONICAL_MEMORY_WRITES=PASS',
  'HFM_PHASE8_AUDIT_FAILURE_RECONCILIATION=PASS','HFM_PHASE8_DURABLE_STORE_REOPEN_AND_IMMUTABILITY=PASS',
- 'HFM_PHASE8_STORED_TAMPER_DETECTION=PASS','HFM_PHASE8_LIVE_NETWORK_CALLS=0',
+ 'HFM_PHASE8_STORED_TAMPER_DETECTION=PASS','HFM_PHASE8_PUBLIC_RETRIEVAL_EVIDENCE_ADAPTER=PASS',\n 'HFM_PHASE8_RETRIEVAL_TRUST_AND_SOURCE_GATES=PASS','HFM_PHASE8_LIVE_NETWORK_CALLS=0',
  'HFM_PHASE8_PRODUCTION_DATABASE_ADAPTER=0','TESTS_FAILED=0'].join('\n')+'\n');
 })().catch(e=>{process.stderr.write(String(e.stack||e)+'\n');process.exitCode=1;});
