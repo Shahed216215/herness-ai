@@ -203,6 +203,13 @@ const TOOL_POLICIES = Object.freeze({
     humanApprovalRequired: false,
     explicitConfirmation: false
   }
+,
+  mira_hfm_public_web_retrieval: {
+    operation: "read",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  }
 });
 
 function cleanText(value, max = 5000) {
