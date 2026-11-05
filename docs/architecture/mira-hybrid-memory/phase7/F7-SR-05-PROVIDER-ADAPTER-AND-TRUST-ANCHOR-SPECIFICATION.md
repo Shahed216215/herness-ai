@@ -251,3 +251,16 @@ The Phase 7 policy-acceptance orchestrator now requires three provider operation
 - If the adapter explicitly reports `HFM_POLICY_STATE_REQUEST_NOT_COMMITTED`, the orchestrator retries once with the identical request and idempotency key. If it reports `HFM_POLICY_STATE_AMBIGUOUS_COMMIT`, the orchestrator retrieves and verifies the exact receipt through `getCommitReceipt`. Missing, unavailable, or mismatched receipt evidence fails closed as unresolved; it must not create a new key or sequence.
 - The in-memory fake provider and synthetic tests cover pre-commit request loss, post-commit response loss, receipt lookup, request-digest binding, and unresolved receipt failure. They do not prove that a real provider stores state and idempotency receipts atomically or durably.
 - A real provider must demonstrate that state mutation and receipt persistence are one atomic durable transaction and that receipt lookup is authoritative across restart, replica failover, and ambiguous network outcomes. Until then, the policy-state provider remains NOT_CERTIFIED and staging remains NOT_APPROVED.
+
+
+## 11. Trust-role key separation and authenticated-input snapshots
+
+The signed provenance policy reviewer trust map must pin each reviewer's role in addition to key ID, key version, public key, and fingerprint. Every approval role must match its pinned reviewer identity, and reviewer roles must be distinct within the approval quorum. Reviewer key fingerprints must be unique and must not match the policy signer or verified policy-state authority.
+
+Evidence issuer public-key fingerprints must be disjoint from the policy signer, state authority, and reviewer keys. Evidence reviewer identities must not overlap policy reviewers or operational issuer identities. Evidence issuer IDs must not alias the same signing-key fingerprint under multiple names.
+
+Evidence records are semantically bound to the exact policy source ID, provenance dimension, observed value, environment, and project ID; the digest and signature alone are not enough. The policy source/evidence maps must contain exactly two sources and exactly the six required dimensions per source.
+
+Before asynchronous provider access, the orchestrator snapshots the signed policy envelope and state/policy/reviewer/evidence trust maps. The evidence verifier independently snapshots source profiles, evidence references, and evidence trust before the first resolver await. Staging also snapshots source descriptors, pinned source trust, requests, key-provider descriptor/method references, and schema allowlists before the policy-state provider is awaited.
+
+These are software-level contract controls. They do not prove independent administration of real trust anchors, non-exportable key custody, durable evidence stores, or infrastructure separation.
