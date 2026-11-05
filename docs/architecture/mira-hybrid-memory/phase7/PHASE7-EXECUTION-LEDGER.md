@@ -394,3 +394,18 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - Regression markers were added for policy-state/evidence TOCTOU snapshots and Drive method snapshot behavior. Provider specifications and Drive addendum now describe these controls and their limits.
 - CI remains `INCONCLUSIVE` until matching workflow logs are inspected. All method-snapshot tests are synthetic; they do not establish provider truthfulness, real storage guarantees, KMS/HSM custody, durable replay/state stores, host ACL governance, or infrastructure independence.
 - F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent operational evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; version remains v0.2.
+
+
+## Final offline integration hardening before CI review — 2026-11-05
+
+- Latest implementation/test commit covered by this checkpoint: `92fd608b18c82213a54ca89fdf23f349d58db580`.
+- Evidence verifier and policy-state orchestrator now snapshot mutable policy, trust, and provider inputs before asynchronous calls and capture provider method references. Staging snapshots source descriptors, pinned trust, requests, key-provider descriptor/methods, and schema allowlists. Authorization verifier snapshots the signed decision/request/trust before replay checks.
+- Staging preflight binds exact policy source IDs and all six policy provenance values to the independently pinned backup/baseline source trust profiles before policy-state read/CAS or source reads.
+- Provenance evidence now binds source ID, dimension, exact observed value, environment, and project; reviewer roles are pinned and distinct; policy/state/reviewer/evidence key material is cross-role separated; evidence reviewers cannot overlap policy/operational roles.
+- Local fake authorization replay guard and concurrency test are in the Phase 7 workflow. It demonstrates a process-local single-winner claim and restart simulation only; it is NOT a durable production replay store.
+- Google Drive adapter now has deterministic upload identity, exact idempotent reuse, byte-readback reconciliation after ambiguous create outcomes, fail-closed malformed duplicate checks, no blind second create, immutable metadata conflict rejection, bounded response bodies, quota checks only for new uploads, and captured client method references. A same-name mismatched object is never overwritten.
+- Pinned backup inventory uses descriptor-relative no-follow/non-blocking reads and marks symlink, hard-link, non-regular, oversized, or changing entries REVIEW_REQUIRED.
+- Backup key providers and snapshot-signing providers reject raw key/credential fields; wrap/unwrap provider errors are normalized and copied DEK buffers are zeroed on failure.
+- Phase 7 workflow path filters include all modified services and tests, and the workflow executes the new fake replay guard test. However, no combined status checks or PR-triggered run records are exposed for the latest push commits by the available GitHub connector. `CI_STATUS=INCONCLUSIVE`; no new test PASS claim is made.
+- No live Drive API, KMS/HSM, external replay store, deployment, staging/production integration, credential use, Memory/Knowledge write, backup deletion, or restore was performed.
+- F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent policy governance, durable replay and policy-state providers, real key custody, host ACL/mount review, and independently sourced six-dimension infrastructure evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; scope remains v0.2.
