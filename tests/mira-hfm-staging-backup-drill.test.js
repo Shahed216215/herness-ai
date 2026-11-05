@@ -316,8 +316,8 @@ function makePolicyAcceptance(backupSource, baselineSource) {
     expectedStateAuthorityId: stateAuthority,
     trustedPolicyIssuers: { [policyIssuer]: makeTrust(policyKey, 'staging-policy-key') },
     trustedPolicyReviewers: {
-      [reviewerIds[0]]: makeTrust(reviewerA, 'staging-review-key-a'),
-      [reviewerIds[1]]: makeTrust(reviewerB, 'staging-review-key-b')
+      [reviewerIds[0]]: { ...makeTrust(reviewerA, 'staging-review-key-a'), role: 'security-reviewer' },
+      [reviewerIds[1]]: { ...makeTrust(reviewerB, 'staging-review-key-b'), role: 'policy-owner' }
     },
     evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
     trustedEvidenceIssuers: {
