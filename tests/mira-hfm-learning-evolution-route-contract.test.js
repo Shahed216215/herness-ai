@@ -8,13 +8,22 @@ const root = path.join(__dirname, '..');
 const route = fs.readFileSync(path.join(root, 'routes/mira-hfm-learning-evolution.js'), 'utf8');
 const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const store = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-proposal-store.js'), 'utf8');
+const supabaseStore = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-proposal-supabase-store.js'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'), 'utf8');
 const bridge = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evolution-bridge.js'), 'utf8');
 
 assert.match(route, /const isProduction = process\.env\.NODE_ENV === 'production'/);
-assert.match(route, /isProduction \? null : createPersistentProposalStore\(\)/,
-  'production must not fall back to ephemeral local proposal files');
-assert.match(route, /isProduction \? null : \(event => recordAudit/,
-  'production must not fall back to a local-only audit callback');
+assert.match(route, /backend === 'local' && !isProduction/,
+  'local filesystem adapter must remain development-only');
+assert.match(route, /backend === 'supabase'/);
+assert.match(route, /MIRA_HFM_LEARNING_PROPOSAL_BACKEND/);
+assert.match(route, /MIRA_HFM_LEARNING_PROPOSAL_PRODUCTION_READY/);
+assert.match(route, /auditWriter\.durable = true/);
+assert.match(supabaseStore, /durable:true, crossInstanceAtomicCreate:true/);
+assert.match(supabaseStore, /resolution=ignore-duplicates,return=representation/);
+assert.match(migration, /enable row level security/i);
+assert.match(migration, /grant select, insert[\s\S]*to service_role/i);
+assert.doesNotMatch(migration, /grant\s+(all|update|delete)/i);
 assert.match(route, /hasProductionIntegrationCapabilities\(/);
 assert.match(route, /HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED/);
 assert.match(route, /session\.authenticated !== true/);
@@ -30,6 +39,8 @@ assert.match(server, /registerMiraHfmLearningEvolutionRoutes\(/);
 assert.match(server, /requireAdminPermission,[\s\S]{0,100}?PERMISSIONS/);
 
 console.log('HFM_PHASE8_PRODUCTION_LOCAL_STORE_FAIL_CLOSED=PASS');
+console.log('HFM_PHASE8_SUPABASE_PRODUCTION_ADAPTER_GATE=PASS');
+console.log('HFM_PHASE8_SUPABASE_RLS_AND_NO_UPDATE_DELETE=PASS');
 console.log('HFM_PHASE8_DURABLE_AUDIT_REQUIRED_FOR_PRODUCTION=PASS');
 console.log('HFM_PHASE8_NAMED_ADMIN_SESSION_REQUIRED=PASS');
 console.log('HFM_PHASE8_SYSTEM_ADMIN_ROUTE_GUARD=PASS');
