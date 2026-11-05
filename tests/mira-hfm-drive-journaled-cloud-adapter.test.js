@@ -9,7 +9,8 @@ const { createEncryptedBackup } = require('../services/mira-hfm-encrypted-emerge
 const {
   uploadEncryptedEmergencyBackup,
   previewEncryptedEmergencyBackupFromCloud,
-  restoreEncryptedEmergencyBackupFromCloud
+  restoreEncryptedEmergencyBackupFromCloud,
+  inspectEncryptedEmergencyBackupCapacity
 } = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
 const { createJournaledDriveCloudAdapter } = require('../services/mira-hfm-drive-journaled-cloud-adapter');
 const { readBackupIdJournal } = require('../services/mira-hfm-drive-backup-id-journal');
@@ -85,6 +86,29 @@ function createProvider(directory) {
       calls.download += 1;
       const object = objects.get(id);
       return object ? Buffer.from(object.bytes) : null;
+    },
+    async listPage({ projectId: scope, prefix, cursor, limit }) {
+      assert.equal(scope, projectId);
+      assert.equal(prefix, 'mira-hfm-emergency/v1/' + projectId + '/');
+      assert.ok(limit >= 1 && limit <= 500);
+      const values = [...objects.values()];
+      if (cursor === 'next-page') return { items: [], complete: true };
+      return {
+        items: values.map(object => ({ metadata: {
+          projectId, backupId: object.metadata.backupId,
+          objectKey: prefix + object.metadata.backupId + '.mhe',
+          createdAt: object.metadata.backupCreatedAt, bytes: object.metadata.bytes,
+          contentType: object.metadata.contentType, encryption: object.metadata.encryption,
+          ciphertextSha256: object.metadata.ciphertextSha256
+        } })),
+        complete: true
+      };
+    },
+    async getQuota({ projectId: scope }) {
+      assert.equal(scope, projectId);
+      return { providerId: 'google-drive-v3', scope: 'account', projectId: null,
+        quotaBytes: 15000000000, usedBytes: 6000000000,
+        measuredAt: '2026-11-05T00:05:00.000Z' };
     }
   };
 }
@@ -116,6 +140,17 @@ async function main() {
     assert.equal(provider.calls.generate, 1);
     assert.equal(provider.calls.create, 2);
     console.log('HFM_PHASE7_JOURNALED_CLOUD_IDEMPOTENT_409_RETRY=PASS');
+
+    const capacity = await inspectEncryptedEmergencyBackupCapacity({
+      adapter, projectId, budgetBytes: 5000000000,
+      now: '2026-11-05T00:10:00.000Z',
+      retentionPolicy: { keepLast: 1, maxAgeDays: 30 }
+    });
+    assert.equal(capacity.status, 'WITHIN_BUDGET');
+    assert.equal(capacity.providerQuota.status, 'REPORTED');
+    assert.equal(capacity.providerQuota.availableBytes, 9000000000);
+    assert.equal(capacity.deletionPerformed, false);
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_LISTING_AND_QUOTA_CAPACITY=PASS');
 
     const preview = await previewEncryptedEmergencyBackupFromCloud({
       adapter, projectId, backupId, key
