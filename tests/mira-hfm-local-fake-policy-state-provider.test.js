@@ -86,7 +86,7 @@ async function rejectsCode(promise, code) {
   assert.equal((await ambiguous.readState()).highestAcceptedSequence, 1);
 
   console.log('LOCAL_FAKE_PROVIDER_TESTS=PASS');
-  console.log('CASES=read_state,cas_conflict,concurrent_writers,idempotent_retry,key_reuse_rejection,restart_snapshot,outage_fail_closed,ambiguous_commit_reconciliation');
+  console.log('CASES=read_state,cas_conflict,concurrent_writers,idempotent_retry,key_reuse_rejection,restart_snapshot,outage_fail_closed,request_loss_before_commit,ambiguous_commit_reconciliation,defensive_copy_isolation');
   console.log('REAL_DURABILITY=NOT_PROVEN');
   console.log('DISTRIBUTED_ATOMICITY=NOT_PROVEN');
   console.log('INFRASTRUCTURE_INDEPENDENCE=NOT_PROVEN');
