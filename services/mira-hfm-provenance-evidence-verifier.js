@@ -132,6 +132,8 @@ async function verifyAllPolicyEvidence({
   }
   const verified = [];
   const seenEvidenceIds = new Set();
+  const issuerFingerprintById = new Map();
+  const issuerIdByFingerprint = new Map();
   for (const sourceId of Object.keys(policyPayload.sources)) {
     const refs = policyPayload.evidence[sourceId];
     if (!isPlainObject(refs)) fail('Policy evidence references are incomplete.',
