@@ -136,6 +136,98 @@ function createSupabaseFacebookGroupImportStore({
     return validateBatchRow(found[0], projectId, found[0].group_id);
   }
 
+  async function stageBatchAndAudit(batch, event) {
+    if (!batch || !event || event.eventType !== 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED' ||
+        event.projectId !== batch.projectId || event.groupId !== batch.groupId ||
+        event.batchId !== batch.batchId || event.batchDigest !== batch.batchDigest ||
+        typeof event.actorId !== 'string' || !event.actorId.trim()) {
+      fail('FB_GROUP_STORE_ATOMIC_INVALID', 'Atomic Group import batch/audit identity is invalid.');
+    }
+    const operationKey = 'facebook-group-import:staged:v1:' +
+      batch.batchId + ':' + batch.batchDigest;
+    const eventPayload = {
+      schemaVersion: '1.0.0',
+      eventType: event.eventType,
+      projectId: event.projectId,
+      groupId: event.groupId,
+      batchId: event.batchId,
+      batchDigest: event.batchDigest,
+      actorId: event.actorId,
+      outcome: 'ATOMIC_STAGED',
+      canonicalMemoryWrite: false
+    };
+    const eventDigest = digest(eventPayload);
+    const eventId = crypto.randomUUID();
+    let response;
+    try {
+      response = await request(config.baseUrl + '/rest/v1/rpc/mira_stage_facebook_group_import_v1', {
+        method: 'POST',
+        headers: {
+          apikey: config.key,
+          Authorization: 'Bearer ' + config.key,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        data: {
+          p_batch: batch,
+          p_event: { ...eventPayload, eventId, eventDigest },
+          p_operation_key: operationKey
+        }
+      });
+    } catch (_error) {
+      fail('FB_GROUP_STORE_ATOMIC_REQUEST_FAILED', 'Atomic Supabase Group import transaction request failed; retry with the same batch identity.');
+    }
+    if (!response || !Number.isInteger(response.status) ||
+        response.status < 200 || response.status >= 300) {
+      fail('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase Group import transaction returned a non-success status.');
+    }
+    const result = rows(response);
+    if (result.length !== 1 || result[0].batch_id !== batch.batchId ||
+        result[0].batch_digest !== batch.batchDigest ||
+        result[0].project_id !== batch.projectId ||
+        result[0].group_id !== batch.groupId ||
+        !['CREATED', 'ALREADY_EXISTS'].includes(result[0].batch_status) ||
+        !['CREATED', 'ALREADY_EXISTS'].includes(result[0].audit_status) ||
+        typeof result[0].event_id !== 'string' ||
+        result[0].event_digest !== eventDigest) {
+      fail('FB_GROUP_STORE_ATOMIC_RESULT_INVALID', 'Atomic Supabase transaction result failed identity or digest verification.');
+    }
+
+    const stored = await readBatch(batch.batchId, batch.projectId, batch.groupId);
+    if (!stored || stored.batchDigest !== batch.batchDigest)
+      fail('FB_GROUP_STORE_READBACK_FAILED', 'Atomic Group import batch readback failed.');
+
+    const auditRows = rows(await callTable(
+      AUDIT_TABLE,
+      '?select=event_id,operation_key,project_id,group_id,batch_id,event_digest,payload&operation_key=eq.' +
+        encodeURIComponent(operationKey) + '&limit=2',
+      'GET'
+    ));
+    if (auditRows.length !== 1 ||
+        auditRows[0].event_id !== result[0].event_id ||
+        auditRows[0].operation_key !== operationKey ||
+        auditRows[0].project_id !== event.projectId ||
+        auditRows[0].group_id !== event.groupId ||
+        auditRows[0].batch_id !== event.batchId ||
+        auditRows[0].event_digest !== eventDigest ||
+        !auditRows[0].payload ||
+        auditRows[0].payload.batchDigest !== event.batchDigest ||
+        auditRows[0].payload.actorId !== event.actorId ||
+        auditRows[0].payload.canonicalMemoryWrite !== false) {
+      fail('FB_GROUP_STORE_ATOMIC_AUDIT_READBACK_FAILED', 'Atomic Group import audit readback failed.');
+    }
+    return {
+      status: 'ATOMIC_BATCH_AUDIT_READBACK_VERIFIED',
+      batchId: batch.batchId,
+      batchDigest: batch.batchDigest,
+      batchStatus: result[0].batch_status,
+      auditStatus: result[0].audit_status,
+      eventId: result[0].event_id,
+      eventDigest,
+      operationKey
+    };
+  }
+
   async function stageBatch(batch) {
     const row = {
       batch_id: batch.batchId,
@@ -238,8 +330,11 @@ function createSupabaseFacebookGroupImportStore({
       projectIsolation: true,
       readAfterWrite: true,
       durableQuarantine: true,
-      durableAudit: true
+      durableAudit: true,
+      atomicBatchAndAudit: true,
+      idempotentAudit: true
     }),
+    stageBatchAndAudit,
     stageBatch,
     readBatch: (batchId, projectId) => readBatch(batchId, projectId, null)
       .then(value => value),
