@@ -98,6 +98,8 @@ function classifyRecord(record, existingRecords, batchSeen) {
 function prepareFacebookGroupImport(input = {}) {
   const projectId = safeProjectId(input.projectId), groupId = safeGroupId(input.groupId);
   const actorId = text(input.actorId, 'actorId', 128);
+  if (input.authorizedAccess !== true)
+    fail('FB_GROUP_IMPORT_AUTHORIZATION_REQUIRED', 'The importing administrator must confirm authorized access to the supplied Group content.');
   if (!Array.isArray(input.existingRecords) || input.existingRecords.length > 10000) fail('FB_GROUP_IMPORT_INVALID_INPUT', 'existingRecords must be a bounded array.');
   const payload = parsePayload({ ...input, groupId, projectId });
   exactKeys(payload, ['schemaVersion','kind','groupId','projectId','exportId','records'], 'import payload');
@@ -116,6 +118,7 @@ function prepareFacebookGroupImport(input = {}) {
     schemaVersion: '1.0.0', kind: 'MIRA_FACEBOOK_GROUP_MEMORY_IMPORT_BATCH',
     batchId: 'mira-fb-group-import-' + sha256(projectId + '|' + groupId + '|' + exportId).slice(0, 48),
     projectId, groupId, exportId, sourceType: 'facebook_group',
+    sourceAuthorization: 'USER_ATTESTED_AUTHORIZED_GROUP_ACCESS',
     createdAt: items[0].record.source.observedAt, createdBy: actorId, status: 'PREPARED_NOT_PERSISTED',
     items,
     summary: { total: items.length, pendingReview: items.filter(x => x.disposition === 'PENDING_REVIEW').length, duplicates: items.filter(x => x.disposition === 'DUPLICATE').length, quarantined: items.filter(x => x.disposition === 'QUARANTINED').length },
