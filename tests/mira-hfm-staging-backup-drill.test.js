@@ -388,7 +388,37 @@ async function run() {
     }), error => error.code === 'HFM_STAGING_POLICY_SOURCE_BINDING_MISMATCH');
     assert.equal(mismatchedPolicyStateReads, 0);
     assert.equal(blockedSourceReads, 0);
-    process.stdout.write('MIRA_HFM_PHASE7_POLICY_SOURCE_BINDING_BLOCKED_BEFORE_STATE_AND_SOURCE_READ_PASS\\n');
+    const wrongProfilePolicy = makePolicyAcceptance(backupSource, baselineSource);
+    wrongProfilePolicy.policyEnvelope.payload.sources[backupSource.source.descriptor.sourceId].storageSystemId =
+      'policy-value-not-in-independent-source-trust';
+    let wrongProfileStateReads = 0;
+    const wrongProfileBaseProvider = wrongProfilePolicy.policyStateProvider;
+    wrongProfilePolicy.policyStateProvider = {
+      async readState(input) {
+        wrongProfileStateReads += 1;
+        return wrongProfileBaseProvider.readState(input);
+      },
+      async compareAndSwap(input) { return wrongProfileBaseProvider.compareAndSwap(input); },
+      async getCommitReceipt(input) { return wrongProfileBaseProvider.getCommitReceipt(input); }
+    };
+    await assert.rejects(() => runStagingBackupDrill({
+      source: { descriptor: backupSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      baselineSource: { descriptor: baselineSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      request: request('staging-operator-backup', 'wrong-profile-policy-request-01', 'wrong-profile-policy-nonce-01'),
+      baselineRequest: request('staging-operator-baseline', 'wrong-profile-policy-base-01', 'wrong-profile-policy-base-nonce'),
+      trustedSources: {
+        [backupSource.source.descriptor.sourceId]: backupSource.trusted,
+        [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
+      },
+      keyProvider: testKeyProvider(),
+      ...wrongProfilePolicy,
+      backupDirectory,
+      backupFileName: 'mira-hfm-staging-wrong-profile-policy.mira-hfm.enc.json',
+      supportedSchemaVersions: ['1.0.0']
+    }), error => error.code === 'HFM_STAGING_POLICY_SOURCE_BINDING_MISMATCH');
+    assert.equal(wrongProfileStateReads, 0);
+    assert.equal(blockedSourceReads, 0);
+    process.stdout.write('MIRA_HFM_PHASE7_POLICY_PROFILE_TRUST_BINDING_BLOCK_PASS\\n');
 
     const outagePolicy = makePolicyAcceptance(backupSource, baselineSource);
     outagePolicy.policyStateProvider = {
