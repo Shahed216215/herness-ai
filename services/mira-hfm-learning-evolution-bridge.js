@@ -114,11 +114,11 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     const safeProjectId = id(projectId, 'projectId');
     const safeProposalId = id(proposalId, 'proposalId');
     const proposal = await proposalStore.get(safeProjectId, safeProposalId);
-    if (!proposal) fail('HFM_LEARNING_PROPOSAL_NOT_FOUND', 'Proposal was not found.');
+    if (!proposal) fail('Proposal was not found.', 'HFM_LEARNING_PROPOSAL_NOT_FOUND');
     const existing = await proposalStore.getReview(safeProjectId, safeProposalId);
     if (!obj(input) || !['APPROVE_FOR_MANUAL_HANDOFF', 'REJECT'].includes(input.decision))
-      fail('HFM_LEARNING_REVIEW_INVALID', 'Review decision must be APPROVE_FOR_MANUAL_HANDOFF or REJECT.');
-    if (context.actorRole !== 'admin') fail('HFM_LEARNING_REVIEW_ACTOR_REQUIRED', 'A named system administrator is required.');
+      fail('Review decision must be APPROVE_FOR_MANUAL_HANDOFF or REJECT.', 'HFM_LEARNING_REVIEW_INVALID');
+    if (context.actorRole !== 'admin') fail('A named system administrator is required.', 'HFM_LEARNING_REVIEW_ACTOR_REQUIRED');
     const actorId = txt(context.actorId, 'actorId', 128);
     const reason = txt(input.reason, 'reason', 2000);
     const reviewedAt = input.reviewedAt || (existing && existing.reviewedAt) || new Date().toISOString();
@@ -158,9 +158,9 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     };
     if (existing) {
       if (existing.reviewDigest !== review.reviewDigest)
-        fail('HFM_LEARNING_REVIEW_CONFLICT', 'An immutable, different human review already exists.');
+        fail('An immutable, different human review already exists.', 'HFM_LEARNING_REVIEW_CONFLICT');
       if (auditWriter.idempotent !== true)
-        fail('HFM_LEARNING_REVIEW_CONFLICT', 'Existing review cannot be safely reconciled by this audit writer.');
+        fail('Existing review cannot be safely reconciled by this audit writer.', 'HFM_LEARNING_REVIEW_CONFLICT');
       try { await auditWriter(auditEvent); }
       catch (cause) {
         const error = new Error('Existing review is present but audit reconciliation failed.');
@@ -176,7 +176,7 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     }
     const stored = await proposalStore.putReviewIfAbsent(safeProjectId, safeProposalId, review);
     if (!stored || stored.created !== true)
-      fail('HFM_LEARNING_REVIEW_CONFLICT', 'A review already exists; review records cannot be overwritten.');
+      fail('A review already exists; review records cannot be overwritten.', 'HFM_LEARNING_REVIEW_CONFLICT');
     const readback = await proposalStore.getReview(safeProjectId, safeProposalId);
     if (!readback || readback.reviewDigest !== review.reviewDigest ||
         readback.proposalDigest !== proposal.proposalDigest ||
