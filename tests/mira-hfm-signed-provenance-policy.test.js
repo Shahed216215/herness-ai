@@ -174,7 +174,12 @@ issuerAsReviewer.approvals = [
   { reviewerId: issuerId, keyId: 'policy-key-1', role: 'reviewer', signature: 'AA==' },
   { reviewerId: 'reviewer-b', keyId: 'review-key-b', role: 'reviewer', signature: 'AA==' }
 ];
-rejects(() => verify(signed(issuerAsReviewer)), 'HFM_PROVENANCE_POLICY_APPROVAL_QUORUM_INVALID');
+const issuerAsReviewerEnvelope = {
+  payload: issuerAsReviewer,
+  signature: crypto.sign(null, Buffer.from(canonicalizeProvenancePolicy(issuerAsReviewer)),
+    policyKey.privateKey).toString('base64')
+};
+rejects(() => verify(issuerAsReviewerEnvelope), 'HFM_PROVENANCE_POLICY_APPROVAL_QUORUM_INVALID');
 
 process.stdout.write('MIRA_HFM_SIGNED_PROVENANCE_POLICY_VALID_SIGNATURE_PASS\\n');
 process.stdout.write('MIRA_HFM_SIGNED_PROVENANCE_POLICY_ISSUER_PINNING_PASS\\n');
