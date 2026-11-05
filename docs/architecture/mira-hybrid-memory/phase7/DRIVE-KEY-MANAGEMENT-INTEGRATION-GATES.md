@@ -136,7 +136,7 @@ Relevant official references:
 - https://developers.google.com/workspace/drive/api/guides/manage-uploads#use_a_pre-generated_id_to_upload_files
 - https://developers.google.com/workspace/drive/api/reference/rest/v3/files/generateIds
 
-Candidate provider algorithm (NOT IMPLEMENTED or live-tested):
+Historical provider design candidate; the later sections below document the implemented offline journal/uploader/Drive v3 mapper. Live provider behavior remains untested:
 
 1. Bind the operation to the authenticated Google account and selected Drive space (`drive` or `appDataFolder`). The generated IDs are issued for the requesting user and selected space; never reuse an ID across account/space boundaries.
 2. Request one generated file ID with `files.generateIds`.
@@ -149,7 +149,7 @@ Candidate provider algorithm (NOT IMPLEMENTED or live-tested):
 Important limitations and gates:
 - Google documents pre-generated IDs for create/copy/upload and duplicate prevention on retry, but this documentation review is not a live proof of our exact OAuth account, folder, upload mode, or quota behavior.
 - Pre-generated IDs are not supported for Google Workspace file creation/conversion (except documented special MIME types); HFM backup objects must remain ordinary binary files.
-- The local durable ID journal becomes a required recovery dependency. Its atomicity, fsync, encryption/permissions, crash recovery, account binding, backup/restore and retention policy require a separate offline design and test before adapter implementation.
+- The local durable ID journal is a required recovery dependency. Its atomicity, fsync, permissions, crash recovery and account binding are implemented as an offline prototype; it is not encrypted or MAC-authenticated. Authenticated provider-listing recovery is implemented later in this document, but cross-device journal replication and recovery when the backup ID/root key/account are lost remain unresolved.
 - The minimum suitable OAuth scope, dedicated-folder ownership, Shared Drive behavior (if any), and `appDataFolder` versus a visible dedicated folder must be decided before OAuth authorization. No OAuth scope is approved by this document.
 - This candidate may satisfy the provider-side create-only requirement only after a dedicated fake-transport regression suite and a separately authorized, narrowly scoped live test verify create, timeout-after-commit, 409 reconciliation, exact download and duplicate prevention.
 
@@ -163,17 +163,17 @@ LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 The branch now includes `services/mira-hfm-drive-backup-id-journal.js`. It is a local-only prerequisite prototype for a future Google Drive provider; it does not call Google APIs or authorize an upload.
 
 - `createBackupIdJournal` writes a canonical, bounded record using a same-directory temporary file, owner-only file permissions, fsync, create-only hard-link publication, directory fsync and exact-byte readback.
-- The journal binds one immutable operation ID to a SHA-256 fingerprint of a non-secret provider account subject (never a raw email or account identifier), selected Drive space (`drive` or `appDataFolder`), project ID, backup ID, pre-generated Drive file ID, ciphertext SHA-256, byte length and canonical timestamp.
+- The journal binds one immutable operation ID to a SHA-256 fingerprint of a non-secret provider account subject (never a raw email or account identifier), selected Drive space (`drive` or `appDataFolder`), project ID, backup ID, pre-generated Drive file ID, authenticated backup schema/version/createdAt, ciphertext SHA-256, byte length and canonical journal timestamp.
 - Repeating an identical journal creation is idempotent. Reusing an operation ID with different content/file ID is rejected; no journal overwrite or delete operation exists.
 - `readBackupIdJournal` validates schema/canonical encoding, owner-only permissions, regular-file/no-symlink constraints, and optional expected account/space/project/backup/schema/version/timestamp/digest/size bindings.
 - `reconcileBackupIdJournal` returns only the persisted identity and an explicit `JOURNAL_VERIFIED_PROVIDER_RECONCILIATION_REQUIRED` status. It does NOT claim the remote object exists, that upload succeeded, or that provider bytes were verified. A future provider may retry only with the same persisted file ID, then must retrieve and compare exact ciphertext bytes.
 - Missing/corrupt/mismatched journals fail closed. No credential, access token, root key, plaintext, or payload is stored in the journal.
 - Offline synthetic tests cover create/readback, owner-only permissions, idempotent recovery, immutable collision, account/space binding, missing/corrupt records, symlink rejection, invalid input and no network/OAuth/canonical writes.
 
-Limitations: the journal is not encrypted or MAC-authenticated; it relies on the owner-only local filesystem boundary and detects malformed/canonical/schema/binding failures, not a malicious same-user rewrite. It does not provide multi-device synchronization, backup/restore of the journal, or a provider transaction. Production integration must separately define journal backup/recovery, account identity derivation, retention and device-loss handling before any live upload.
+Limitations: the journal is not encrypted or MAC-authenticated; it relies on the owner-only local filesystem boundary and detects malformed/canonical/schema/binding failures, not a malicious same-user rewrite. It does not provide multi-device synchronization or a provider transaction. The journal can be reconstructed from an intact authenticated provider object only when the correct account, backup ID and root key remain available; cross-device journal replication and device-loss procedures remain a separate production gate.
 
 STATUS=OFFLINE_DURABLE_JOURNAL_PROTOTYPE
-GOOGLE_DRIVE_UPLOAD=NOT_IMPLEMENTED
+GOOGLE_DRIVE_UPLOAD_ORCHESTRATION=IMPLEMENTED_OFFLINE
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
 ## 9.3 Journaled generated-ID upload orchestration (offline prototype)
@@ -192,7 +192,7 @@ The branch now includes `services/mira-hfm-drive-generated-id-upload.js`. This c
 This is a provider orchestration prototype only. It has no delete, overwrite, move, permission grant, or routine-sync integration. A real provider mapping must prove that `getFile` binds account/space/parent and maps actual Drive metadata faithfully; only then can a separately approved live test be considered.
 
 STATUS=OFFLINE_JOURNALED_UPLOAD_ORCHESTRATION_PROTOTYPE
-GOOGLE_DRIVE_SDK=NOT_IMPLEMENTED
+GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
 ## 9.4 Journaled cloud adapter integration (offline prototype)
