@@ -199,7 +199,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
           'HFM_GOOGLE_DRIVE_LIST_FAILED');
       }
       const data = response && response.data;
-      if (!data || !Array.isArray(data.files) || data.files.length > limit ||
+      if (!data || data.incompleteSearch === true || !Array.isArray(data.files) || data.files.length > limit ||
           (data.nextPageToken != null &&
             (typeof data.nextPageToken !== 'string' || !data.nextPageToken ||
              data.nextPageToken.length > 1024 || /[\u0000-\u001f]/.test(data.nextPageToken) ||
