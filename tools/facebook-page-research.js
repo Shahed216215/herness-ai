@@ -2,6 +2,7 @@
 
 const { collectPublicFacebookPageEvidence } = require('../services/mira-facebook-public-web-research');
 const { archiveFacebookResearchEvidenceWithProvider } = require('../services/mira-facebook-research-memory-provider');
+const { checkToolSafety } = require('../services/mira-tool-execution-policy');
 const DEFAULT_PAGE_ID = '118056109579206';
 const DEFAULT_PAGE_NAME = 'Online canel';
 
@@ -21,6 +22,11 @@ function createTool({ searchWeb, archive } = {}) {
       }, required: [] }
     },
     execute: async ({ pageId = DEFAULT_PAGE_ID, pageName = DEFAULT_PAGE_NAME, pageUrl, maxResults } = {}) => {
+      const safety = checkToolSafety('facebook_page_public_research', {});
+      if (!safety || safety.passed !== true) return JSON.stringify({
+        success: false, status: 'BLOCKED', code: 'TOOL_POLICY_DENIED',
+        reason: safety && safety.reason ? safety.reason : 'Human approval is required for research archive writes.'
+      });
       const report = await collectPublicFacebookPageEvidence({ pageId, pageName, pageUrl, maxResults, searchWeb: providerSearch });
       let archiveReport = { status: 'NOT_ATTEMPTED', storedCount: 0, duplicateCount: 0, canonicalMemoryWrite: false };
       if (report.evidence.length > 0) {

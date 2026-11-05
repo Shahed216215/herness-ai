@@ -1,0 +1,54 @@
+name: Mira HFM Phase 7 Encrypted Emergency Backup
+
+on:
+  pull_request:
+    branches:
+      - 'work/mira-hfm-v02-phase6-clean-restack-on-phase5-20261105'
+    paths:
+      - 'services/mira-hfm-encrypted-emergency-backup.js'
+      - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
+      - 'services/mira-hfm-backup-key-provider.js'
+      - 'services/mira-hfm-drive-emergency-backup-adapter.js'
+      - 'services/mira-hfm-drive-backup-id-journal.js'
+      - 'services/mira-hfm-drive-generated-id-upload.js'
+      - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
+      - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
+      - 'tests/mira-hfm-drive-backup-id-journal.test.js'
+      - 'tests/mira-hfm-drive-generated-id-upload.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase7/**'
+      - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
+  push:
+    branches:
+      - 'work/mira-hfm-v02-phase7-clean-restack-on-phase6-20261105'
+    paths:
+      - 'services/mira-hfm-encrypted-emergency-backup.js'
+      - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
+      - 'services/mira-hfm-backup-key-provider.js'
+      - 'services/mira-hfm-drive-emergency-backup-adapter.js'
+      - 'services/mira-hfm-drive-backup-id-journal.js'
+      - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
+      - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
+      - 'tests/mira-hfm-drive-backup-id-journal.test.js'
+      - 'tests/mira-hfm-drive-generated-id-upload.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase7/**'
+      - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-encryption-and-restore-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run synthetic offline backup tests
+        run: node tests/mira-hfm-encrypted-emergency-backup.test.js
+      - name: Run synthetic offline transport adapter tests
+        run: node tests/mira-hfm-drive-emergency-backup-adapter.test.js
+      - name: Run durable Drive backup ID journal tests
+        run: node tests/mira-hfm-drive-backup-id-journal.test.js
+      - name: Run journaled generated-ID upload tests
+        run: node tests/mira-hfm-drive-generated-id-upload.test.js
