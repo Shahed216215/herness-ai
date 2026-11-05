@@ -125,21 +125,36 @@ async function verifyAllPolicyEvidence({
       'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
   }
   if (!isPlainObject(policyPayload) || !isPlainObject(policyPayload.sources) ||
-      !isPlainObject(policyPayload.evidence) || !isPlainObject(evidenceProvider) ||
-      typeof evidenceProvider.resolve !== 'function') {
-    fail('Policy payload and independent evidence resolver are required.',
+      !isPlainObject(policyPayload.evidence) || !isPlainObject(trustedEvidenceIssuers) ||
+      !isPlainObject(evidenceProvider) || typeof evidenceProvider.resolve !== 'function' ||
+      !Array.isArray(operationalIssuerIds) ||
+      operationalIssuerIds.some(id => typeof id !== 'string' || !id.trim())) {
+    fail('Policy payload, pinned evidence trust and independent evidence resolver are required.',
       'HFM_PROVENANCE_EVIDENCE_PROVIDER_REQUIRED');
   }
-  const sourceIds = Object.keys(policyPayload.sources);
-  const evidenceSourceIds = Object.keys(policyPayload.evidence);
+  // Snapshot mutable caller inputs before the first asynchronous evidence lookup.
+  let stablePayload, stableEvidenceTrust;
+  try {
+    stablePayload = JSON.parse(canonicalizeProvenancePolicy({
+      sources: policyPayload.sources, evidence: policyPayload.evidence
+    }));
+    stableEvidenceTrust = JSON.parse(canonicalizeProvenancePolicy(trustedEvidenceIssuers));
+  } catch {
+    fail('Policy evidence references or trust anchors cannot be snapshotted as canonical JSON.',
+      'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
+  }
+  const stableOperationalIssuerIds = Object.freeze(operationalIssuerIds.slice());
+  const stableExcludedKeyFingerprints = Object.freeze(excludedKeyFingerprints.slice());
+  const sourceIds = Object.keys(stablePayload.sources);
+  const evidenceSourceIds = Object.keys(stablePayload.evidence);
   if (evidenceSourceIds.length !== sourceIds.length ||
       sourceIds.some(sourceId => !Object.prototype.hasOwnProperty.call(policyPayload.evidence, sourceId))) {
     fail('Evidence register source keys must exactly match the signed source profiles.',
       'HFM_PROVENANCE_EVIDENCE_REFERENCE_MISSING');
   }
   for (const sourceId of sourceIds) {
-    const profile = policyPayload.sources[sourceId];
-    const refs = policyPayload.evidence[sourceId];
+    const profile = stablePayload.sources[sourceId];
+    const refs = stablePayload.evidence[sourceId];
     if (!isPlainObject(profile) || REQUIRED_FIELDS.some(field =>
         typeof profile[field] !== 'string' || !profile[field].trim()) ||
         !isPlainObject(refs) || Object.keys(refs).length !== REQUIRED_FIELDS.length ||
@@ -152,8 +167,8 @@ async function verifyAllPolicyEvidence({
   const seenEvidenceIds = new Set();
   const issuerFingerprintById = new Map();
   const issuerIdByFingerprint = new Map();
-  for (const sourceId of Object.keys(policyPayload.sources)) {
-    const refs = policyPayload.evidence[sourceId];
+  for (const sourceId of Object.keys(stablePayload.sources)) {
+    const refs = stablePayload.evidence[sourceId];
     if (!isPlainObject(refs)) fail('Policy evidence references are incomplete.',
       'HFM_PROVENANCE_EVIDENCE_REFERENCE_MISSING');
     for (const dimension of REQUIRED_FIELDS) {
@@ -176,9 +191,9 @@ async function verifyAllPolicyEvidence({
       }
       const verifiedEvidence = verifyEvidenceEnvelope({
         envelope, reference, sourceId, dimension,
-        expectedValue: policyPayload.sources[sourceId][dimension], trustedEvidenceIssuers,
-        expectedEnvironment, expectedProjectId, operationalIssuerIds,
-        excludedKeyFingerprints, now
+        expectedValue: stablePayload.sources[sourceId][dimension], trustedEvidenceIssuers: stableEvidenceTrust,
+        expectedEnvironment, expectedProjectId, operationalIssuerIds: stableOperationalIssuerIds,
+        excludedKeyFingerprints: stableExcludedKeyFingerprints, now
       });
       const priorFingerprint = issuerFingerprintById.get(verifiedEvidence.issuerId);
       const priorIssuer = issuerIdByFingerprint.get(verifiedEvidence.keyFingerprint);
