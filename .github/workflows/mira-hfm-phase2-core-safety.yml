@@ -21,7 +21,8 @@ name: Mira Hybrid Memory Phase 2 Core Safety
 on:
   push:
     branches:
-      - work/mira-hfm-v02-phase2-clean-restack-on-main-20261105
+      - work/mira-hfm-v02-phase2-core-safety
+      - work/mira-hfm-v02-phase3-unified-memory-contract-core
     paths:
       - 'knowledge.js'
       - 'audit-log.js'
@@ -30,6 +31,12 @@ on:
       - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
       - 'tests/mira-hfm-retrieval-callsite-inventory.test.js'
       - 'services/**'
+      - 'tests/mira-memory-request-authorization.test.js'
+      - 'tests/mira-memory-project-mapping-contract.test.js'
+      - 'tests/mira-memory-unified-facade.test.js'
+      - 'tests/mira-memory-domain-payload-adapter.test.js'
+      - 'tests/mira-memory-domain-batch-adapter.test.js'
+      - '.github/workflows/mira-hfm-phase3-contract.yml'
       - 'memory.js'
       - 'knowledge-controlled-apply.js'
       - 'tools/**'
@@ -103,6 +110,7 @@ on:
   pull_request:
     branches:
       - main
+      - work/mira-hfm-v02-phase2-core-safety
     paths:
       - 'knowledge.js'
       - 'audit-log.js'
@@ -199,6 +207,15 @@ jobs:
           node tests/mira-memory-evolution-integration-test.js
           node tests/mira-memory-conflict-assessment.test.js
           node tests/mira-legacy-memory-knowledge-adapter.test.js
+          node tests/mira-memory-request-authorization.test.js
+          node tests/mira-memory-project-mapping-contract.test.js
+          node tests/mira-memory-unified-facade.test.js
+          node tests/mira-memory-domain-payload-adapter.test.js
+          node tests/mira-memory-domain-batch-adapter.test.js
+          node tests/mira-memory-provider-contract.test.js
+          node tests/mira-hfm-access-path-inventory.test.js
+          node scripts/mira-hfm-access-path-inventory.js > "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
+          grep -E '^MIRA_HFM_(ACCESS_PATH_CANDIDATE_COUNT|PUBLIC_OR_INTERNAL_RETRIEVAL_COUNT|DIRECT_STORE_READ_COUNT|GENERIC_STORE_LOADER_COUNT|PROVIDER_OR_SNAPSHOT_READ_COUNT|CRM_CONVERSATION_READ_COUNT|WORK_LEARNING_OR_EXPERIENCE_READ_COUNT|WORK_KNOWLEDGE_READ_COUNT|ALIASED_DOMAIN_READ_COUNT|ACCESS_FILE_SUMMARY)=' "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
           node tests/mira-hfm-migration-manifest.test.js
           node tests/mira-hfm-test-registry.test.js
           node tests/mira-hfm-timestamp-profile.test.js

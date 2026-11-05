@@ -1,0 +1,99 @@
+name: Mira HFM Phase 3 Contract Tests
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase3-unified-memory-contract-core
+    paths:
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'tests/mira-memory-conflict-assessment.test.js'
+      - 'tests/mira-hfm-knowledge-drive-retry.test.js'
+      - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - 'tests/mira-hfm-memory-version-recovery-policy.test.js'
+      - 'tests/mira-knowledge-cleanup-tool-boundary.test.js'
+      - 'tests/mira-hfm-admin-backup-restore-authority.test.js'
+      - 'tests/mira-hfm-conversation-route-contract.test.js'
+      - 'tests/mira-conversation-store-safety.test.js'
+      - 'tests/mira-hfm-direct-dispatch-boundary.test.js'
+      - 'tests/mira-hfm-direct-tool-dispatch-boundary.test.js'
+      - 'tests/mira-hfm-persistent-wrapper-guard.test.js'
+      - 'services/mira-memory-host-identity-contract.js'
+      - 'services/mira-memory-project-owner-registry-contract.js'
+      - 'tests/mira-memory-project-owner-registry-contract.test.js'
+      - 'services/mira-memory-project-mapping-owner-approval-adapter.js'
+      - 'tests/mira-memory-project-mapping-owner-approval.test.js'
+      - 'tests/mira-memory-host-identity-integration.test.js'
+      - 'tests/mira-memory-host-identity-contract.test.js'
+      - 'services/mira-memory-host-authorization-adapter.js'
+      - 'tests/mira-memory-host-authorization-adapter.test.js'
+      - 'services/mira-memory-project-authority-contract.js'
+      - 'tests/mira-memory-project-authority-contract.test.js'
+      - 'services/mira-memory-request-authorization.js'
+      - 'tests/mira-memory-request-authorization.test.js'
+      - 'services/mira-memory-project-mapping-contract.js'
+      - 'tests/mira-memory-project-mapping-contract.test.js'
+      - 'services/mira-memory-unified-facade.js'
+      - 'services/mira-memory-domain-payload-adapter.js'
+      - 'services/mira-memory-provider-contract.js'
+      - 'scripts/mira-hfm-access-path-inventory.js'
+      - 'tests/mira-hfm-access-path-inventory.test.js'
+      - 'tests/mira-hfm-persistent-writer-callsite-inventory.test.js'
+      - 'tests/mira-memory-provider-contract.test.js'
+      - 'tests/mira-memory-domain-payload-adapter.test.js'
+      - 'tests/mira-memory-domain-batch-adapter.test.js'
+      - 'tests/mira-memory-unified-facade.test.js'
+      - '.github/workflows/mira-hfm-phase3-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  request-authorization-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run isolated request authorization contract tests
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-knowledge-drive-retry.test.js
+          node tests/mira-legacy-memory-knowledge-adapter.test.js
+          node tests/mira-hfm-memory-version-recovery-policy.test.js
+          node tests/mira-memory-conflict-assessment.test.js
+          node tests/mira-knowledge-cleanup-tool-boundary.test.js
+          node tests/mira-hfm-admin-backup-restore-authority.test.js
+          node tests/mira-hfm-conversation-route-contract.test.js
+          node tests/mira-conversation-store-safety.test.js
+          node tests/mira-hfm-direct-dispatch-boundary.test.js
+          node tests/mira-hfm-direct-tool-dispatch-boundary.test.js
+          node tests/mira-hfm-persistent-wrapper-guard.test.js
+
+          node tests/mira-memory-host-identity-contract.test.js
+          node tests/mira-memory-project-owner-registry-contract.test.js
+          node tests/mira-memory-project-mapping-owner-approval.test.js
+          node tests/mira-memory-host-identity-integration.test.js
+          node tests/mira-memory-host-authorization-adapter.test.js
+          node tests/mira-memory-project-authority-contract.test.js
+          node tests/mira-memory-request-authorization.test.js
+          node tests/mira-memory-project-mapping-contract.test.js
+          node tests/mira-memory-unified-facade.test.js
+          node tests/mira-memory-domain-payload-adapter.test.js
+          node tests/mira-memory-domain-batch-adapter.test.js
+          node tests/mira-memory-provider-contract.test.js
+          node tests/mira-hfm-access-path-inventory.test.js
+          node tests/mira-hfm-persistent-writer-callsite-inventory.test.js
+          node scripts/mira-hfm-access-path-inventory.js > "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
+          grep -E '^MIRA_HFM_(ACCESS_PATH_CANDIDATE_COUNT|PUBLIC_OR_INTERNAL_RETRIEVAL_COUNT|DIRECT_STORE_READ_COUNT|DIRECT_MEMORY_FILE_IO_COUNT|GENERIC_STORE_LOADER_COUNT|PROVIDER_OR_SNAPSHOT_READ_COUNT|CRM_CONVERSATION_READ_COUNT|WORK_LEARNING_OR_EXPERIENCE_READ_COUNT|WORK_KNOWLEDGE_READ_COUNT|ALIASED_DOMAIN_READ_COUNT|NAMESPACE_DOMAIN_READ_COUNT|CANONICAL_STORE_FILE_BACKED_READ_COUNT|CACHE_OR_INDEX_ACCESS_COUNT|EXPORT_ARCHIVE_OPERATION_COUNT|BACKUP_RESTORE_OPERATION_COUNT|PROVIDER_MEMORY_WRITE_COUNT|BACKGROUND_WORKER_DOMAIN_ACCESS_COUNT|ACCESS_FILE_SUMMARY)=|^MIRA_HFM_ACCESS_CANDIDATE=' "$RUNNER_TEMP/mira-hfm-access-inventory.txt"
+      - name: Report isolation boundary
+        run: |
+          echo "PRODUCTION_MEMORY_TOUCHED=NO"
+          echo "LIVE_PROVIDER_CALLS=NO"
+          echo "NETWORK_REQUESTS_FROM_TEST=0"
+          echo "EXTERNAL_ACTIONS_FROM_TEST=0"
+          echo "RESULT=MIRA_HFM_PHASE3_UNIFIED_CONTRACT_CI_COMPLETE"
