@@ -25,6 +25,8 @@ Phase 4 already supplies Facebook Page-ID-bound public search, Page profile/post
 - Does not fetch Facebook URLs, use Meta Graph API, log in, use cookies, scrape, or access Groups/private content.
 - Accepted results must be standard HTTPS Facebook hosts and supported Page-bound profile/post paths.
 - Search snippets and IDs are untrusted external evidence; exact ID presence is a relevance filter, not proof of authorship, truth, or source ownership.
+- Mira's system instruction explicitly rejects prompt-injection text inside public search results and archive entries, prohibits automatic trusted/canonical Memory promotion, and requires search failure to remain distinct from data loss.
+- The server returns tool results to the model as tool-role context for the answer-generation loop; the integration test statically verifies this return path and trust-policy contract.
 - Imported results remain SOURCE_RECORDED / UNVERIFIED / PENDING_REVIEW in the Phase 4 Research Archive.
 - No canonical HFM Memory write or trust promotion occurs.
 - Provider keys/network execution are not used by offline tests.
