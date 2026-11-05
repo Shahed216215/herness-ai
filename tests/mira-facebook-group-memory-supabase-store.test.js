@@ -146,6 +146,14 @@ const input = {
     () => rejectedStore.stageBatchAndAudit(atomicBatch, atomicEvent),
     error => error.code === 'FB_GROUP_STORE_ATOMIC_REJECTED' && error.stateCommitted !== true
   );
+  const invalidUuidStore = createSupabaseFacebookGroupImportStore({
+    env,
+    request: async () => ({ status: 400, data: { code: '22P02' } })
+  });
+  await assert.rejects(
+    () => invalidUuidStore.stageBatchAndAudit(atomicBatch, atomicEvent),
+    error => error.code === 'FB_GROUP_STORE_ATOMIC_REJECTED' && error.stateCommitted !== true
+  );
   const ambiguousStore = createSupabaseFacebookGroupImportStore({
     env,
     request: async () => ({ status: 502, data: { code: 'GATEWAY_FAILURE' } })
