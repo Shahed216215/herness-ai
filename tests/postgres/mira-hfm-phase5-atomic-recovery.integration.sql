@@ -111,6 +111,38 @@ BEGIN
     RAISE EXCEPTION 'idempotency count mismatch: batches %, audits %', batch_count, audit_count;
   END IF;
 
+  -- Required JSON properties must reject missing keys (->> yields SQL NULL).
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b - 'kind', e, op);
+    RAISE EXCEPTION 'missing Batch kind was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b - 'canonicalMemoryWrite', e, op);
+    RAISE EXCEPTION 'missing Batch canonicalMemoryWrite was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b, e - 'eventType', op);
+    RAISE EXCEPTION 'missing Audit eventType was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b, e - 'projectId', op);
+    RAISE EXCEPTION 'missing Audit projectId was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b, e - 'canonicalMemoryWrite', op);
+    RAISE EXCEPTION 'missing Audit canonicalMemoryWrite was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b, e - 'actorId', op);
+    RAISE EXCEPTION 'missing Audit actorId was accepted' USING ERRCODE = 'P0001';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+
   -- Reusing the same operation key for different audit semantics must be rejected.
   retry_event := jsonb_set(e,'{eventId}',to_jsonb('10000000-0000-4000-8000-000000000003'::text));
   retry_event := jsonb_set(retry_event,'{eventDigest}',to_jsonb(repeat('9',64)));
