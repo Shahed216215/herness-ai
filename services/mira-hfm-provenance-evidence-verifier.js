@@ -112,10 +112,16 @@ function verifyEvidenceEnvelope({
 
 async function verifyAllPolicyEvidence({
   policyPayload, evidenceProvider, trustedEvidenceIssuers,
-  expectedEnvironment, expectedProjectId, operationalIssuerIds = [], now = Date.now()
+  expectedEnvironment, expectedProjectId, operationalIssuerIds = [],
+  excludedKeyFingerprints = [], now = Date.now()
 }) {
   if (!Number.isSafeInteger(now)) {
     fail('Provenance evidence collection clock configuration is invalid.',
+      'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
+  }
+  if (!Array.isArray(excludedKeyFingerprints) ||
+      excludedKeyFingerprints.some(value => !/^[a-f0-9]{64}$/.test(value))) {
+    fail('Excluded evidence trust-role fingerprints are invalid.',
       'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
   }
   if (!isPlainObject(policyPayload) || !isPlainObject(policyPayload.sources) ||
