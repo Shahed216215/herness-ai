@@ -159,6 +159,20 @@ function createSupabaseFacebookGroupImportStore({
     if (inserted.length !== 1 || inserted[0].event_id !== eventId ||
         inserted[0].event_digest !== eventDigest ||
         !inserted[0].payload || inserted[0].payload.batchId !== event.batchId) {
+      fail('FB_GROUP_STORE_AUDIT_WRITE_FAILED', 'Supabase did not confirm the durable Group import audit insert.');
+    }
+    const verified = rows(await callTable(
+      AUDIT_TABLE,
+      '?select=event_id,project_id,group_id,batch_id,event_digest,payload&event_id=eq.' +
+        encodeURIComponent(eventId) + '&limit=2',
+      'GET'
+    ));
+    if (verified.length !== 1 || verified[0].event_id !== eventId ||
+        verified[0].project_id !== event.projectId ||
+        verified[0].group_id !== event.groupId ||
+        verified[0].batch_id !== event.batchId ||
+        verified[0].event_digest !== eventDigest ||
+        !verified[0].payload || verified[0].payload.batchDigest !== event.batchDigest) {
       fail('FB_GROUP_STORE_AUDIT_READBACK_FAILED', 'Durable Group import audit readback failed.');
     }
     return { status: 'AUDIT_WRITE_READBACK_VERIFIED', eventId, eventDigest };
