@@ -9,6 +9,8 @@ const os = require('node:os');
 
 const SCHEMA = 'MIRA_HFM_DRIVE_BACKUP_ID_JOURNAL';
 const VERSION = '1.0.0';
+const BACKUP_SCHEMA = 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP';
+const BACKUP_VERSION = '1.0.0';
 const MAX_RECORD_BYTES = 16 * 1024;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
 const DRIVE_FILE_ID_RE = /^[A-Za-z0-9_-]{10,256}$/;
@@ -54,6 +56,9 @@ function normalizeRecord(input = {}) {
   if (typeof input.ciphertextSha256 !== 'string' || !DIGEST_RE.test(input.ciphertextSha256)) {
     reject('ciphertextSha256 must be a lowercase SHA-256 digest.');
   }
+  if (input.backupSchema !== BACKUP_SCHEMA || input.backupVersion !== BACKUP_VERSION) {
+    reject('Authenticated backup schema/version binding is invalid.');
+  }
   return {
     schema: SCHEMA,
     version: VERSION,
@@ -63,6 +68,9 @@ function normalizeRecord(input = {}) {
     projectId: validId(input.projectId, 'projectId'),
     backupId: validId(input.backupId, 'backupId'),
     generatedFileId: validFileId(input.generatedFileId),
+    backupSchema: input.backupSchema,
+    backupVersion: input.backupVersion,
+    backupCreatedAt: canonicalTimestamp(input.backupCreatedAt),
     ciphertextSha256: input.ciphertextSha256,
     bytes,
     createdAt: canonicalTimestamp(input.createdAt || new Date().toISOString())
@@ -144,7 +152,7 @@ function readBackupIdJournal({ directory, operationId, expected = {} } = {}) {
   const record = parseRecord(readJournalBytes(file));
   if (record.operationId !== operationId) reject('Journal operation identity mismatch.', 'HFM_DRIVE_JOURNAL_CORRUPT');
   for (const field of ['accountBinding', 'driveSpace', 'projectId', 'backupId',
-    'generatedFileId', 'ciphertextSha256', 'bytes']) {
+    'generatedFileId', 'backupSchema', 'backupVersion', 'backupCreatedAt', 'ciphertextSha256', 'bytes']) {
     if (expected[field] !== undefined && record[field] !== expected[field]) {
       reject('Journal binding mismatch: ' + field + '.', 'HFM_DRIVE_JOURNAL_BINDING_MISMATCH');
     }
