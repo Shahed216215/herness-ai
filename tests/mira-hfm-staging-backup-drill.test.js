@@ -355,6 +355,41 @@ async function run() {
     }), error => error.code === 'HFM_STAGING_POLICY_ACCEPTANCE_REQUIRED');
     assert.equal(blockedSourceReads, 0);
     process.stdout.write('MIRA_HFM_PHASE7_UNSIGNED_POLICY_BLOCKED_BEFORE_SOURCE_READ_PASS\\n');
+    const mismatchedPolicy = makePolicyAcceptance(backupSource, baselineSource);
+    const policySourceEntries = Object.entries(mismatchedPolicy.policyEnvelope.payload.sources);
+    mismatchedPolicy.policyEnvelope.payload.sources = {
+      [policySourceEntries[0][0]]: policySourceEntries[0][1],
+      'unrelated-staging-source': policySourceEntries[1][1]
+    };
+    let mismatchedPolicyStateReads = 0;
+    const mismatchedBaseProvider = mismatchedPolicy.policyStateProvider;
+    mismatchedPolicy.policyStateProvider = {
+      async readState(input) {
+        mismatchedPolicyStateReads += 1;
+        return mismatchedBaseProvider.readState(input);
+      },
+      async compareAndSwap(input) { return mismatchedBaseProvider.compareAndSwap(input); },
+      async getCommitReceipt(input) { return mismatchedBaseProvider.getCommitReceipt(input); }
+    };
+    await assert.rejects(() => runStagingBackupDrill({
+      source: { descriptor: backupSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      baselineSource: { descriptor: baselineSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      request: request('staging-operator-backup', 'wrong-source-policy-request-01', 'wrong-source-policy-nonce-01'),
+      baselineRequest: request('staging-operator-baseline', 'wrong-source-policy-base-01', 'wrong-source-policy-base-nonce'),
+      trustedSources: {
+        [backupSource.source.descriptor.sourceId]: backupSource.trusted,
+        [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
+      },
+      keyProvider: testKeyProvider(),
+      ...mismatchedPolicy,
+      backupDirectory,
+      backupFileName: 'mira-hfm-staging-wrong-source-policy.mira-hfm.enc.json',
+      supportedSchemaVersions: ['1.0.0']
+    }), error => error.code === 'HFM_STAGING_POLICY_SOURCE_BINDING_MISMATCH');
+    assert.equal(mismatchedPolicyStateReads, 0);
+    assert.equal(blockedSourceReads, 0);
+    process.stdout.write('MIRA_HFM_PHASE7_POLICY_SOURCE_BINDING_BLOCKED_BEFORE_STATE_AND_SOURCE_READ_PASS\\n');
+
     const outagePolicy = makePolicyAcceptance(backupSource, baselineSource);
     outagePolicy.policyStateProvider = {
       async readState() { throw new Error('synthetic state authority outage'); },
