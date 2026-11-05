@@ -87,6 +87,10 @@ async function captureAuthorizedSnapshot({
       now - capturedAtMs > maxAttestationAgeMs ||
       a.recordCount !== result.snapshot.records.length ||
       typeof a.payloadSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(a.payloadSha256) ||
+      typeof a.authorizationIssuerId !== 'string' || !a.authorizationIssuerId.trim() ||
+      typeof a.authorizationDecisionId !== 'string' || !a.authorizationDecisionId.trim() ||
+      typeof a.authorizationPolicyVersion !== 'string' || !a.authorizationPolicyVersion.trim() ||
+      !Number.isFinite(Date.parse(a.authorizationExpiresAt)) || Date.parse(a.authorizationExpiresAt) < capturedAtMs ||
       sha256(Buffer.from(canonicalize(result.snapshot), 'utf8')) !== a.payloadSha256 ||
       typeof a.signature !== 'string' || !/^[A-Za-z0-9+/]+=*$/.test(a.signature)) {
     fail('Snapshot source authorization, request binding, freshness, revision, count, or digest attestation failed.',
@@ -111,7 +115,7 @@ async function captureAuthorizedSnapshot({
       trustAnchorSha256: fingerprint, actorId: a.actorId,
       authorizationScope: a.authorizationScope, requestId: a.requestId,
       capturedAt: a.capturedAt, payloadSha256: a.payloadSha256,
-      signatureVerified: true, authorizationIndependentlyEnforced: false,
+      signatureVerified: true, authorizationIndependentlyEnforced: false, authorizationDecisionAuthenticated: true,
       productionApproval: false
     }
   };
