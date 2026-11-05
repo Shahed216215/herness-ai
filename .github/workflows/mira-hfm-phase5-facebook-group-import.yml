@@ -1,0 +1,62 @@
+name: Mira HFM Phase 5 Facebook Group Import
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase5-clean-restack-on-phase4-20261105
+    paths:
+      - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-facebook-group-memory-supabase-store.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'routes/mira-facebook-group-memory-import.js'
+      - 'server.js'
+      - 'supabase/migrations/**'
+      - 'tests/mira-facebook-group-memory-import.test.js'
+      - 'tests/mira-facebook-group-memory-supabase-store.test.js'
+      - 'tests/mira-facebook-group-memory-import-route.test.js'
+      - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase5/**'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase4-public-research-clean-restack-20261105
+    paths:
+      - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-facebook-group-memory-supabase-store.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'routes/mira-facebook-group-memory-import.js'
+      - 'server.js'
+      - 'package.json'
+      - 'supabase/migrations/**'
+      - 'tests/mira-facebook-group-memory-import.test.js'
+      - 'tests/mira-facebook-group-memory-supabase-store.test.js'
+      - 'tests/mira-facebook-group-memory-import-route.test.js'
+      - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase5/**'
+
+permissions:
+  contents: read
+
+jobs:
+  facebook-group-import-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run offline Facebook Group import tests
+        run: |
+          set -euo pipefail
+          node tests/mira-facebook-group-memory-import.test.js
+          node tests/mira-facebook-group-memory-supabase-store.test.js
+          node tests/mira-facebook-group-memory-import-route.test.js
+      - name: Confirm external boundaries
+        run: |
+          echo "LIVE_FACEBOOK_REQUESTS=0"
+          echo "PRIVATE_GROUP_ACCESS=0"
+          echo "CANONICAL_MEMORY_WRITES=0"
+          echo "PRODUCTION_MIGRATION=0"
+          echo "RESULT=MIRA_HFM_PHASE5_OFFLINE_TESTS_COMPLETED"

@@ -85,6 +85,10 @@ const registerMiraResearchGovernanceRoutes =
   require("./routes/mira-research-governance");
 const registerFacebookPageConnectorRoutes =
   require("./routes/mira-facebook-page-connector");
+const registerFacebookGroupMemoryImportRoutes =
+  require("./routes/mira-facebook-group-memory-import");
+const registerFacebookGroupMemoryImportRoutes =
+  require("./routes/mira-facebook-group-memory-import");
 
 const registerMiraEvolutionRoutes =
   require("./routes/mira-evolution");
@@ -149,11 +153,13 @@ app.use(rejectUnsupportedUploads);
 app.use(
   express.json({
     limit: MAX_BODY_SIZE,
-    // The SEO route has its own larger parser after admin authentication.
+    // SEO audit and Group import routes install bounded parsers after admin authentication.
     // All other endpoints retain the global 50KB request limit.
     type: req => !(
-      req.method === "POST" &&
-      req.path === "/api/admin/mira-seo/audit"
+      req.method === "POST" && (
+        req.path === "/api/admin/mira-seo/audit" ||
+        req.path === "/api/admin/facebook-group/import"
+      )
     )
   })
 );
@@ -224,6 +230,17 @@ registerMiraResearchGovernanceRoutes(
   PERMISSIONS
 );
 registerFacebookPageConnectorRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+
+registerFacebookGroupMemoryImportRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+registerFacebookGroupMemoryImportRoutes(
   app,
   requireAdminPermission,
   PERMISSIONS
