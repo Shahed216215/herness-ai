@@ -27,7 +27,7 @@ async function mockRequest(rawUrl, config) {
   if (url.pathname.endsWith('/rpc/mira_stage_facebook_group_import_v1') && config.method === 'POST') {
     const { p_batch, p_event, p_operation_key } = config.data;
     const oldBatch = batches.get(p_batch.batchId);
-    if (oldBatch && oldBatch.batch_digest !== p_batch.batchDigest) throw new Error('batch conflict');
+    if (oldBatch && oldBatch.batch_digest !== p_batch.batchDigest) return { status: 409, data: { code: '23505' } };
     if (!oldBatch) batches.set(p_batch.batchId, {
       batch_id: p_batch.batchId, project_id: p_batch.projectId, group_id: p_batch.groupId,
       export_id: p_batch.exportId, batch_digest: p_batch.batchDigest, payload: JSON.parse(JSON.stringify(p_batch))
@@ -141,7 +141,7 @@ const input = {
   };
   await assert.rejects(
     () => service.import({ ...input, content: JSON.stringify(conflictEnvelope) }),
-    error => error.code === 'FB_GROUP_IMPORT_BATCH_ID_CONFLICT'
+    error => error.code === 'FB_GROUP_STORE_ATOMIC_IDENTITY_CONFLICT'
   );
   assert.equal(batches.size, 1);
 
