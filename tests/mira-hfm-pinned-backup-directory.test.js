@@ -38,6 +38,10 @@ function run(){
   const singleLinkPath=path.join(policyDir,'single-link.json');
   fs.writeFileSync(singleLinkPath,'{"safe":true}');
   assert.equal(readPinnedChildFile(policyPinned,'single-link.json',1024).bytes.toString(),'{"safe":true}');
+  assert.throws(()=>readPinnedChildFile(policyPinned,'single-link.json',NaN),
+    e=>e.code==='HFM_PINNED_FILE_LIMIT_INVALID');
+  assert.throws(()=>readPinnedChildFile(policyPinned,'single-link.json',256*1024*1024+1),
+    e=>e.code==='HFM_PINNED_FILE_LIMIT_INVALID');
   const outsideHardLink=path.join(parent,'outside-hard-link.json');
   fs.writeFileSync(outsideHardLink,'{"outside":true}');
   fs.linkSync(outsideHardLink,path.join(policyDir,'hard-link.json'));
