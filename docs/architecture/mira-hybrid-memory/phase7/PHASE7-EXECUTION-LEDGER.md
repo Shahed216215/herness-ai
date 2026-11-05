@@ -329,3 +329,20 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - CI disposition: `CI_STATUS=INCONCLUSIVE`. The Phase 7 workflow path filters include all changed services/tests, but the available GitHub connector returned no combined status checks or PR-triggered workflow runs for the latest commit. No test PASS is claimed for this checkpoint.
 - No live Drive API, upload, delete, restore, deployment, production Memory/Knowledge write, or real credential use occurred.
 - F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending their independent governance, KMS/HSM, host ACL/mount, real provider, and provenance evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains in v0.2.
+
+
+## Semantic provenance evidence, trust-role separation, and staging TOCTOU hardening — 2026-11-05
+
+- Latest implementation/test commit covered by this checkpoint: `1534fb80dfffee7ac9c40fc1d46a81ef41fa397f`.
+- Provenance evidence records must now bind the exact `sourceId`, `dimension`, policy-declared `observedValue`, `environment`, and `projectId`. Evidence digest/signature validity without this semantic binding is rejected.
+- Signed policies must contain exactly two source profiles and an exact six-dimension evidence register for each source. Extra source registers or unknown provenance dimensions are rejected by both the policy verifier and standalone evidence verifier.
+- Reviewer roles are independently pinned in reviewer trust records; approval roles must match those records and be distinct. Reviewer key fingerprints cannot alias policy signer, policy-state authority, or another reviewer.
+- Evidence reviewer identities are disjoint from policy reviewers and operational issuers. Evidence issuer keys must be cryptographically distinct from policy/state/reviewer keys; different evidence issuer IDs cannot alias one signing key.
+- The policy-state orchestrator snapshots the signed envelope and state/policy/reviewer/evidence trust maps before awaiting any provider. The evidence verifier snapshots policy source profiles, evidence references, and evidence trust before awaiting the resolver. Regression tests mutate caller-owned envelopes/trust maps from provider callbacks and verify that the authenticated snapshot remains stable.
+- Before policy-state CAS, the staging drill now requires exact backup/baseline source IDs and exact match between each policy provenance profile and the independently pinned source trust profile. Mismatch fails before state-provider read and before source reads.
+- The staging drill snapshots source descriptors, source trust, request objects, key-provider descriptor and method references, and schema allowlists before asynchronous provider calls. A regression test mutates the original source trust and key-provider object from the policy-state callback; the stable snapshot must still complete the synthetic drill.
+- Google Drive exact idempotent reuse now remains available when current quota is exhausted because it creates no new object. Quota verification remains mandatory before a new upload. Regression coverage includes this retry case.
+- Updated F7-SR-05 acceptance and provider-adapter specifications and the Drive adapter addendum with these exact requirements and limitations.
+- CI disposition: `CI_STATUS=INCONCLUSIVE`. The Phase 7 workflow path filters include the changed services/tests, but the available GitHub connector reports no combined status checks or PR-triggered workflow runs for the latest branch commit. No PASS claim is made for this checkpoint.
+- No live Drive API, KMS/HSM, staging/production integration, upload, deletion, restore, deployment, production Memory/Knowledge write, or real credential use occurred.
+- F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent governance, real key custody, host ACL/mount review, durable provider behavior, and independently sourced infrastructure provenance. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains within v0.2.
