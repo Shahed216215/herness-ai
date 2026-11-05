@@ -89,3 +89,12 @@
 - Five HIGH findings remain open. Details, evidence paths, impact, and required remediation are recorded in the review document.
 - Static review is COMPLETE; runtime adversarial tests are NOT_RUN; real staging integration is NOT_APPROVED; production remains NOT_CERTIFIED.
 - No application code or runtime behavior was changed. No staging/production data, credentials, KMS, Drive API, or deployment was accessed.
+
+
+## Signed authorization decision implementation — 2026-11-05
+- Added `services/mira-hfm-authorization-decision.js`: Ed25519 signed ALLOW decision verification using an authorization-issuer trust store separate from snapshot-source trust; binds project, actor, scope, request ID and nonce; enforces issuer key fingerprint, policy version, short expiry and one-time replay-guard consumption.
+- Updated the local staging source to require this decision and replay guard before opening either source file. Its signed source attestation carries authorization issuer/decision/policy/expiry provenance; the authoritative snapshot verifier validates and retains these claims.
+- Expanded synthetic tests for successful decision verification, DENY, expired decision, actor mismatch, replay, and expired authorization claim. Staging backup drill fixtures now use signed decisions.
+- The replay-guard interface is not itself a production implementation. Real deployments must provide a durable, atomic, cross-instance consume operation; test Set-based guard is synthetic only. The authorization issuer's policy correctness and governance are not independently certified.
+- CI for this new authorization implementation: PENDING / NOT VERIFIED. Do not claim PASS until actual workflow logs are inspected.
+- F7-SR-01: PARTIALLY_REMEDIATED / OPEN. Real staging remains NOT_APPROVED.
