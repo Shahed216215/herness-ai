@@ -94,7 +94,8 @@ async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
 const DEFAULT_BACKUP_BUDGET_BYTES = 5000000000;
 const MAX_BACKUP_LIST_ITEMS = 10000;
 
-function planBackupRetention({ backups, keepLast, maxAgeDays, now = new Date().toISOString() } = {}) {
+function planBackupRetention({ backups, projectId, keepLast, maxAgeDays, now = new Date().toISOString() } = {}) {
+  const project = validId(projectId, 'projectId');
   if (!Array.isArray(backups) || backups.length > MAX_BACKUP_LIST_ITEMS ||
       !Number.isInteger(keepLast) || keepLast < 1 || keepLast > MAX_BACKUP_LIST_ITEMS ||
       !Number.isInteger(maxAgeDays) || maxAgeDays < 1 || maxAgeDays > 3650) {
@@ -109,7 +110,7 @@ function planBackupRetention({ backups, keepLast, maxAgeDays, now = new Date().t
         !Number.isSafeInteger(item.bytes) || item.bytes < 1) {
       fail('Retention backup metadata is invalid.');
     }
-    validId(item.projectId, 'projectId');
+    if (item.projectId !== project) fail('Retention preview cannot mix project scopes.');
     validId(item.backupId, 'backupId');
     const createdMs = Date.parse(item.createdAt);
     if (!Number.isFinite(createdMs) || new Date(createdMs).toISOString() !== item.createdAt || createdMs > nowMs) {
@@ -124,7 +125,7 @@ function planBackupRetention({ backups, keepLast, maxAgeDays, now = new Date().t
   sorted.forEach((item, index) => {
     const keep = index < keepLast || (nowMs - item.createdMs) <= maxAgeMs;
     (keep ? retained : candidates).push({
-      projectId: item.projectId, backupId: item.backupId,
+      projectId: project, backupId: item.backupId,
       createdAt: item.createdAt, bytes: item.bytes
     });
   });
@@ -174,7 +175,11 @@ async function inspectEncryptedEmergencyBackupCapacity({
   });
   let retention = { status: 'NOT_REQUESTED', deletionPerformed: false };
   if (retentionPolicy !== undefined) {
+    if (!retentionPolicy || typeof retentionPolicy !== 'object' || Array.isArray(retentionPolicy)) {
+      fail('retentionPolicy must be an object.');
+    }
     retention = planBackupRetention({
+      projectId: project,
       backups, keepLast: retentionPolicy.keepLast,
       maxAgeDays: retentionPolicy.maxAgeDays, now
     });
