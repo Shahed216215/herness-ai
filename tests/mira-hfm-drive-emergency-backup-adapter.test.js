@@ -34,7 +34,8 @@ async function main() {
   const adapter = createEmergencyBackupTransportAdapter({ transport, projectId });
   assert.deepEqual(adapter.capabilities, {
     encryptedOnly: true, projectIsolated: true, createOnly: true,
-    readAfterWrite: true, list: true, dedicatedNamespace: true
+    readAfterWrite: true, list: true, dedicatedNamespace: true,
+    timeoutReconciliation: true, immutableCollisionDetection: true
   });
   const bytes = Buffer.from('synthetic-encrypted-envelope');
   const digest = crypto.createHash('sha256').update(bytes).digest('hex');
@@ -74,11 +75,89 @@ async function main() {
     transport: { ...transport, async atomicCreate() { return {}; } }
   });
   await assert.rejects(() => broken.putIfAbsent(input), e => e.code === 'HFM_DRIVE_CREATE_UNCERTAIN');
+
+  // Timeout after provider commit: reconcile by exact-byte read, never blindly retry create.
+  let timeoutAfterCommitCalls = 0;
+  const timeoutAfterCommit = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: {
+      async atomicCreate({ objectKey, metadata, bytes: payload }) {
+        timeoutAfterCommitCalls += 1;
+        store.set(objectKey, { metadata: { ...metadata, createdAt: '2026-11-05T00:02:00.000Z' }, bytes: Buffer.from(payload) });
+        const error = new Error('synthetic timeout after commit');
+        error.code = 'ETIMEDOUT';
+        throw error;
+      },
+      readObject: transport.readObject,
+      listPage: transport.listPage
+    }
+  });
+  const timeoutId = 'backup-timeout-0001';
+  const timeoutInput = { ...input, backupId: timeoutId,
+    objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + timeoutId + '.mhe' };
+  assert.deepEqual(await timeoutAfterCommit.putIfAbsent(timeoutInput), { created: false, reconciled: true });
+  assert.equal(timeoutAfterCommitCalls, 1);
+
+  // Timeout before commit: absence cannot be interpreted as success.
+  const timeoutBeforeCommit = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: {
+      async atomicCreate() { throw new Error('synthetic timeout before commit'); },
+      async readObject() { return null; },
+      listPage: transport.listPage
+    }
+  });
+  const absentId = 'backup-absent-0001';
+  await assert.rejects(() => timeoutBeforeCommit.putIfAbsent({ ...input, backupId: absentId,
+    objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + absentId + '.mhe' }),
+    e => e.code === 'HFM_DRIVE_CREATE_UNCERTAIN');
+
+  // Same immutable ID with different bytes is a hard conflict, never overwrite.
+  const conflictId = 'backup-conflict-0001';
+  const conflictKey = 'mira-hfm-emergency/v1/' + projectId + '/' + conflictId + '.mhe';
+  store.set(conflictKey, { metadata: { projectId, backupId: conflictId, objectKey: conflictKey,
+    contentType: input.contentType, encryption: input.encryption,
+    ciphertextSha256: crypto.createHash('sha256').update(Buffer.from('different-ciphertext')).digest('hex'),
+    bytes: Buffer.from('different-ciphertext').length, createdAt: '2026-11-05T00:03:00.000Z' },
+    bytes: Buffer.from('different-ciphertext') });
+  const conflictInput = { ...input, backupId: conflictId, objectKey: conflictKey };
+  const collision = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async atomicCreate() { return { created: false }; } }
+  });
+  await assert.rejects(() => collision.putIfAbsent(conflictInput),
+    e => e.code === 'HFM_DRIVE_OBJECT_CONFLICT');
+
+  // A create response followed by missing readback is not success.
+  const missingReadback = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async atomicCreate() { return { created: true }; }, async readObject() { return null; } }
+  });
+  const missingId = 'backup-readback-0001';
+  await assert.rejects(() => missingReadback.putIfAbsent({ ...input, backupId: missingId,
+    objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + missingId + '.mhe' }),
+    e => e.code === 'HFM_DRIVE_READBACK_FAILED');
+
+  // Readback transport failure after an ambiguous commit stays uncertain.
+  const unreadable = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async atomicCreate() { throw new Error('timeout'); },
+      async readObject() { throw new Error('read outage'); } }
+  });
+  const unreadableId = 'backup-unreadable-0001';
+  await assert.rejects(() => unreadable.putIfAbsent({ ...input, backupId: unreadableId,
+    objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + unreadableId + '.mhe' }),
+    e => e.code === 'HFM_DRIVE_CREATE_UNCERTAIN');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_CONCURRENT_CREATE_ONLY=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PROJECT_NAMESPACE=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_ENCRYPTED_METADATA_BINDING=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_READBACK_AND_MULTIPAGE_LISTING=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_UNCERTAIN_CREATE_REJECTED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_TIMEOUT_AFTER_COMMIT_RECONCILED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_TIMEOUT_BEFORE_COMMIT_UNCERTAIN=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_IMMUTABLE_ID_COLLISION_REJECTED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_EXACT_READBACK_REQUIRED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_READBACK_OUTAGE_FAIL_CLOSED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_NO_NETWORK_OR_OAUTH=PASS');
   console.log('TESTS_FAILED=0');
 }
