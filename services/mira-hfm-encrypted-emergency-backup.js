@@ -11,6 +11,8 @@ const ALGORITHM = 'aes-256-gcm';
 const MAX_PAYLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_ENVELOPE_BYTES = 36 * 1024 * 1024;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
+const ENVELOPE_KEYS = ['schema','version','algorithm','backupId','createdAt','payloadBytes',
+  'plaintextSha256','metadata','kdf','salt','iv','tag','ciphertext','ciphertextSha256'].sort();
 
 function fail(message, code = 'HFM_BACKUP_INVALID') {
   const error = new Error(message);
@@ -64,31 +66,57 @@ function deriveKey(rootKey, salt) {
 function createEncryptedBackup({ payload, key, backupId, createdAt = new Date().toISOString(), metadata = {} } = {}) {
   validateId(backupId);
   validateKey(key);
-  const plain = Buffer.isBuffer(payload) ? Buffer.from(payload) :
-    (typeof payload === 'string' ? Buffer.from(payload, 'utf8') : null);
-  if (!plain || plain.length < 1 || plain.length > MAX_PAYLOAD_BYTES) fail('payload must be non-empty bytes/string within the size limit.');
-  const timestamp = new Date(createdAt);
-  if (!Number.isFinite(timestamp.getTime()) || timestamp.toISOString() !== createdAt) fail('createdAt must be a canonical ISO timestamp.');
-  const header = {
-    schema: SCHEMA, version: VERSION, algorithm: ALGORITHM, backupId,
-    createdAt, payloadBytes: plain.length, plaintextSha256: sha256(plain),
-    metadata: safeMetadata(metadata)
-  };
-  const salt = crypto.randomBytes(16);
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(ALGORITHM, deriveKey(key, salt), iv);
-  cipher.setAAD(aadFor(header));
-  const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
-  const envelope = {
-    ...header,
-    kdf: 'HKDF-SHA256',
-    salt: salt.toString('base64'),
-    iv: iv.toString('base64'),
-    tag: cipher.getAuthTag().toString('base64'),
-    ciphertext: ciphertext.toString('base64'),
-    ciphertextSha256: sha256(ciphertext)
-  };
-  return Buffer.from(JSON.stringify(envelope) + '\n', 'utf8');
+  let plain;
+  if (Buffer.isBuffer(payload)) {
+    if (payload.length < 1 || payload.length > MAX_PAYLOAD_BYTES) {
+      fail('payload must be non-empty bytes/string within the size limit.');
+    }
+    plain = Buffer.from(payload);
+  } else if (typeof payload === 'string') {
+    const payloadBytes = Buffer.byteLength(payload, 'utf8');
+    if (payloadBytes < 1 || payloadBytes > MAX_PAYLOAD_BYTES) {
+      fail('payload must be non-empty bytes/string within the size limit.');
+    }
+    plain = Buffer.from(payload, 'utf8');
+  } else {
+    fail('payload must be non-empty bytes/string within the size limit.');
+  }
+  try {
+    const timestamp = new Date(createdAt);
+    if (!Number.isFinite(timestamp.getTime()) || timestamp.toISOString() !== createdAt || timestamp.getTime() > Date.now()) {
+      fail('createdAt must be a canonical, non-future ISO timestamp.');
+    }
+    const header = {
+      schema: SCHEMA, version: VERSION, algorithm: ALGORITHM, backupId,
+      createdAt, payloadBytes: plain.length, plaintextSha256: sha256(plain),
+      metadata: safeMetadata(metadata)
+    };
+    const salt = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(12);
+    const derivedKey = deriveKey(key, salt);
+    let ciphertext;
+    let authenticationTag;
+    try {
+      const cipher = crypto.createCipheriv(ALGORITHM, derivedKey, iv);
+      cipher.setAAD(aadFor(header));
+      ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+      authenticationTag = cipher.getAuthTag();
+    } finally {
+      derivedKey.fill(0);
+    }
+    const envelope = {
+      ...header,
+      kdf: 'HKDF-SHA256',
+      salt: salt.toString('base64'),
+      iv: iv.toString('base64'),
+      tag: authenticationTag.toString('base64'),
+      ciphertext: ciphertext.toString('base64'),
+      ciphertextSha256: sha256(ciphertext)
+    };
+    return Buffer.from(JSON.stringify(envelope) + '\n', 'utf8');
+  } finally {
+    plain.fill(0);
+  }
 }
 function decodeBase64(value, length, label) {
   if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) fail(label + ' is invalid base64.');
@@ -98,16 +126,37 @@ function decodeBase64(value, length, label) {
 }
 function decryptAndVerifyBackup(envelopeBytes, key) {
   validateKey(key);
-  const bytes = Buffer.isBuffer(envelopeBytes) ? envelopeBytes : Buffer.from(String(envelopeBytes), 'utf8');
-  if (bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Backup envelope exceeds the size limit.');
+  let bytes;
+  if (Buffer.isBuffer(envelopeBytes)) {
+    if (envelopeBytes.length < 1 || envelopeBytes.length > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = Buffer.from(envelopeBytes);
+  } else if (typeof envelopeBytes === 'string') {
+    const envelopeLength = Buffer.byteLength(envelopeBytes, 'utf8');
+    if (envelopeLength < 1 || envelopeLength > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = Buffer.from(envelopeBytes, 'utf8');
+  } else {
+    fail('Backup envelope must be a Buffer or UTF-8 string.');
+  }
   let env;
-  try { env = JSON.parse(bytes.toString('utf8')); } catch { fail('Backup envelope is not valid JSON.'); }
-  if (!isObject(env) || env.schema !== SCHEMA || env.version !== VERSION || env.algorithm !== ALGORITHM ||
+  const serialized = bytes.toString('utf8');
+  try { env = JSON.parse(serialized); } catch { fail('Backup envelope is not valid JSON.'); }
+  if (!isObject(env) || Object.keys(env).sort().length !== ENVELOPE_KEYS.length ||
+      Object.keys(env).sort().some((key, index) => key !== ENVELOPE_KEYS[index]) ||
+      JSON.stringify(env) + '\n' !== serialized) {
+    fail('Backup envelope contains unknown fields or is not canonical JSON.');
+  }
+  if (env.schema !== SCHEMA || env.version !== VERSION || env.algorithm !== ALGORITHM ||
       env.kdf !== 'HKDF-SHA256' || !ID_RE.test(env.backupId || '') || !Number.isInteger(env.payloadBytes) ||
       env.payloadBytes < 1 || env.payloadBytes > MAX_PAYLOAD_BYTES || !/^[a-f0-9]{64}$/.test(env.plaintextSha256 || '') ||
       !/^[a-f0-9]{64}$/.test(env.ciphertextSha256 || '') || !isObject(env.metadata)) fail('Backup envelope schema is invalid.');
   const created = new Date(env.createdAt);
-  if (!Number.isFinite(created.getTime()) || created.toISOString() !== env.createdAt) fail('Backup timestamp is invalid.');
+  if (!Number.isFinite(created.getTime()) || created.toISOString() !== env.createdAt || created.getTime() > Date.now()) {
+    fail('Backup timestamp is invalid or future-dated.');
+  }
   const metadata = safeMetadata(env.metadata);
   if (JSON.stringify(metadata) !== JSON.stringify(env.metadata)) fail('Backup metadata is not canonical.');
   const salt = decodeBase64(env.salt, 16, 'salt');
@@ -123,15 +172,31 @@ function decryptAndVerifyBackup(envelopeBytes, key) {
     plaintextSha256: env.plaintextSha256, metadata
   };
   let plain;
+  let updateOutput;
+  let finalOutput;
+  const derivedKey = deriveKey(key, salt);
   try {
-    const decipher = crypto.createDecipheriv(ALGORITHM, deriveKey(key, salt), iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, derivedKey, iv);
     decipher.setAAD(aadFor(header));
     decipher.setAuthTag(tag);
-    plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    updateOutput = decipher.update(ciphertext);
+    finalOutput = decipher.final();
+    plain = Buffer.concat([updateOutput, finalOutput]);
   } catch {
+    if (Buffer.isBuffer(updateOutput)) updateOutput.fill(0);
+    if (Buffer.isBuffer(finalOutput)) finalOutput.fill(0);
     fail('Backup authentication failed; key or backup data is incorrect.', 'HFM_BACKUP_AUTH_FAILED');
+  } finally {
+    // GCM may emit unauthenticated plaintext from update() before final() checks the tag.
+    // Clear both temporary chunks on success, authentication failure, or concat failure.
+    if (Buffer.isBuffer(updateOutput)) updateOutput.fill(0);
+    if (Buffer.isBuffer(finalOutput)) finalOutput.fill(0);
+    derivedKey.fill(0);
   }
-  if (plain.length !== env.payloadBytes || sha256(plain) !== env.plaintextSha256) fail('Decrypted payload integrity check failed.');
+  if (plain.length !== env.payloadBytes || sha256(plain) !== env.plaintextSha256) {
+    plain.fill(0);
+    fail('Decrypted payload integrity check failed.');
+  }
   return { backupId: env.backupId, createdAt: env.createdAt, metadata, payload: plain, plaintextSha256: env.plaintextSha256 };
 }
 function safeDirectory(directory) {
@@ -142,7 +207,13 @@ function safeDirectory(directory) {
   for (let index = 0; index < segments.length; index += 1) {
     current = path.join(current, segments[index]);
     const isFinal = index === segments.length - 1;
-    try { fs.mkdirSync(current, { mode: 0o700 }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+    let created = false;
+    try { fs.mkdirSync(current, { mode: 0o700 }); created = true; }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+    if (created) {
+      const parentFd = fs.openSync(path.dirname(current), 'r');
+      try { fs.fsyncSync(parentFd); } finally { fs.closeSync(parentFd); }
+    }
     const stat = fs.lstatSync(current);
     if (stat.isSymbolicLink() || !stat.isDirectory()) fail('Backup directory path must not contain symlinks or non-directory components.');
     // Parent directories such as /tmp and /home need not be private; only the
@@ -153,10 +224,25 @@ function safeDirectory(directory) {
 }
 function writeImmutableBackup({ envelope, key, directory, backupId } = {}) {
   validateId(backupId);
-  const bytes = Buffer.isBuffer(envelope) ? envelope : Buffer.from(String(envelope), 'utf8');
-  if (bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Backup envelope exceeds the size limit.');
+  let bytes;
+  if (Buffer.isBuffer(envelope)) {
+    if (envelope.length < 1 || envelope.length > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = Buffer.from(envelope);
+  } else if (typeof envelope === 'string') {
+    const envelopeLength = Buffer.byteLength(envelope, 'utf8');
+    if (envelopeLength < 1 || envelopeLength > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = Buffer.from(envelope, 'utf8');
+  } else {
+    fail('Backup envelope must be a Buffer or UTF-8 string.');
+  }
   const verified = decryptAndVerifyBackup(bytes, key);
-  if (verified.backupId !== backupId) fail('Backup ID does not match the authenticated envelope.');
+  const authenticatedBackupId = verified.backupId;
+  verified.payload.fill(0);
+  if (authenticatedBackupId !== backupId) fail('Backup ID does not match the authenticated envelope.');
   const dir = safeDirectory(directory);
   const target = path.join(dir, 'mira-hfm-emergency-' + backupId + '.mhe');
   const temp = path.join(dir, '.mira-hfm-tmp-' + crypto.randomBytes(12).toString('hex'));
@@ -183,47 +269,63 @@ function writeImmutableBackup({ envelope, key, directory, backupId } = {}) {
 }
 function previewEncryptedBackup({ envelope, key } = {}) {
   const verified = decryptAndVerifyBackup(envelope, key);
-  return Object.freeze({
-    status: 'VERIFIED_RESTORE_PREVIEW',
-    backupId: verified.backupId,
-    createdAt: verified.createdAt,
-    metadata: Object.freeze({ ...verified.metadata }),
-    payloadBytes: verified.payload.length,
-    plaintextSha256: verified.plaintextSha256,
-    integrityVerified: true,
-    restoreApplied: false,
-    canonicalMemoryWrites: 0,
-    productionRestore: false
-  });
+  try {
+    return Object.freeze({
+      status: 'VERIFIED_RESTORE_PREVIEW',
+      backupId: verified.backupId,
+      createdAt: verified.createdAt,
+      metadata: Object.freeze({ ...verified.metadata }),
+      payloadBytes: verified.payload.length,
+      plaintextSha256: verified.plaintextSha256,
+      integrityVerified: true,
+      restoreApplied: false,
+      canonicalMemoryWrites: 0,
+      productionRestore: false
+    });
+  } finally {
+    verified.payload.fill(0);
+  }
 }
 function restoreToStaging({ envelope, key, directory, restoreId } = {}) {
   validateId(restoreId, 'restoreId');
   const verified = decryptAndVerifyBackup(envelope, key);
-  const dir = safeDirectory(directory || path.join(os.homedir(), '.mira', 'hfm-restore-staging'));
-  const target = path.join(dir, 'restore-' + restoreId + '.verified-stage');
-  const temp = path.join(dir, '.mira-restore-tmp-' + crypto.randomBytes(12).toString('hex'));
-  let fd;
-  let linked = false;
   try {
-    fd = fs.openSync(temp, 'wx', 0o600);
-    fs.writeFileSync(fd, verified.payload);
-    fs.fsyncSync(fd);
-    fs.closeSync(fd); fd = undefined;
-    fs.linkSync(temp, target); linked = true;
-    fs.unlinkSync(temp);
-    const dirFd = fs.openSync(dir, 'r');
-    try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
-    const staged = fs.readFileSync(target);
-    if (!staged.equals(verified.payload) || sha256(staged) !== verified.plaintextSha256) {
-      fail('Restore staging readback failed.', 'HFM_RESTORE_READBACK_FAILED');
+    const dir = safeDirectory(directory || path.join(os.homedir(), '.mira', 'hfm-restore-staging'));
+    const target = path.join(dir, 'restore-' + restoreId + '.verified-stage');
+    const temp = path.join(dir, '.mira-restore-tmp-' + crypto.randomBytes(12).toString('hex'));
+    let fd;
+    let linked = false;
+    try {
+      fd = fs.openSync(temp, 'wx', 0o600);
+      fs.writeFileSync(fd, verified.payload);
+      fs.fsyncSync(fd);
+      fs.closeSync(fd); fd = undefined;
+      fs.linkSync(temp, target); linked = true;
+      fs.unlinkSync(temp);
+      const dirFd = fs.openSync(dir, 'r');
+      try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
+      const staged = fs.readFileSync(target);
+      const stagedBytes = staged.length;
+      let stagedReadbackValid;
+      try {
+        stagedReadbackValid = staged.equals(verified.payload) &&
+          sha256(staged) === verified.plaintextSha256;
+      } finally {
+        staged.fill(0);
+      }
+      if (!stagedReadbackValid) {
+        fail('Restore staging readback failed.', 'HFM_RESTORE_READBACK_FAILED');
+      }
+      return { restoreId, path: target, bytes: stagedBytes, sha256: verified.plaintextSha256,
+        status: 'VERIFIED_STAGING_ONLY', canonicalMemoryWrites: 0, productionRestore: false };
+    } catch (error) {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+      try { fs.unlinkSync(temp); } catch {}
+      if (linked) error.stateCommitted = true;
+      throw error;
     }
-    return { restoreId, path: target, bytes: staged.length, sha256: verified.plaintextSha256,
-      status: 'VERIFIED_STAGING_ONLY', canonicalMemoryWrites: 0, productionRestore: false };
-  } catch (error) {
-    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
-    try { fs.unlinkSync(temp); } catch {}
-    if (linked) error.stateCommitted = true;
-    throw error;
+  } finally {
+    verified.payload.fill(0);
   }
 }
 module.exports = { createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging,
