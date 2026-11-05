@@ -12,7 +12,7 @@ const {
 
 const key = crypto.randomBytes(32);
 const payload = Buffer.from(JSON.stringify({ schemaVersion: '1.0.0', memories: [{ id: 'mem-001', content: 'synthetic test memory' }] }));
-const metadata = { projectId: 'mira-hfm-v02', source: 'synthetic-offline-test' };
+const metadata = { projectId: 'mira-project-001', source: 'synthetic-offline-test' };
 const backupId = 'backup-test-0001';
 const createdAt = '2026-11-05T00:00:00.000Z';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-backup-test-'));
@@ -78,6 +78,18 @@ try {
   assert.throws(() => restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_RESTORE_STAGING_ONLY=PASS');
 
+  const invalidLocalStageAuthDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-stage-test-'));
+  try {
+    assert.throws(() => restoreToStaging({
+      envelope, key: crypto.randomBytes(32), directory: invalidLocalStageAuthDir,
+      restoreId: 'restore-wrong-key-001'
+    }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
+    assert.deepEqual(fs.readdirSync(invalidLocalStageAuthDir), []);
+  } finally {
+    fs.rmSync(invalidLocalStageAuthDir, { recursive: true, force: true });
+  }
+  console.log('HFM_PHASE7_RESTORE_AUTH_FAILURE_NO_STAGE_ARTIFACT=PASS');
+
   const {
     uploadEncryptedEmergencyBackup,
     previewEncryptedEmergencyBackupFromCloud,
@@ -110,8 +122,41 @@ try {
   assert.equal(objects.size, 1);
   console.log('HFM_PHASE7_ENCRYPTED_CLOUD_UPLOAD_AND_READBACK=PASS');
 
+  const crossProjectBackupId = 'backup-cross-project-001';
+  const crossProjectEnvelope = createEncryptedBackup({
+    payload, key, backupId: crossProjectBackupId, createdAt,
+    metadata: { projectId: 'other-project-001', source: 'synthetic-cross-project-test' }
+  });
+  await assert.rejects(() => uploadEncryptedEmergencyBackup({
+    adapter, projectId: 'mira-project-001', envelope: crossProjectEnvelope, key
+  }), error => error.code === 'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+  const crossProjectObjectKey = 'mira-hfm-emergency/v1/mira-project-001/' + crossProjectBackupId + '.mhe';
+  objects.set(crossProjectObjectKey, {
+    projectId: 'mira-project-001', backupId: crossProjectBackupId,
+    bytes: Buffer.from(crossProjectEnvelope)
+  });
+  await assert.rejects(() => previewEncryptedEmergencyBackupFromCloud({
+    adapter, projectId: 'mira-project-001', backupId: crossProjectBackupId, key
+  }), error => error.code === 'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+  const crossProjectRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-cross-project-restore-test-'));
+  try {
+    await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
+      adapter, projectId: 'mira-project-001', backupId: crossProjectBackupId, key,
+      stagingDirectory: crossProjectRestoreDir, restoreId: 'cross-project-restore-001'
+    }), error => error.code === 'HFM_CLOUD_BACKUP_PROJECT_MISMATCH');
+    assert.deepEqual(fs.readdirSync(crossProjectRestoreDir), []);
+  } finally {
+    fs.rmSync(crossProjectRestoreDir, { recursive: true, force: true });
+  }
+  console.log('HFM_PHASE7_AUTHENTICATED_CLOUD_PROJECT_BINDING=PASS');
+
   const capacityAdapter = {
     capabilities: { ...adapter.capabilities, list: true },
+    async getProviderQuota() {
+      return { status: 'REPORTED', providerQuotaAvailable: true, providerId: 'synthetic-drive',
+        scope: 'account', projectId: null, measuredAt: '2026-11-05T00:00:00.000Z',
+        quotaBytes: 9000000000, usedBytes: 2000000000, availableBytes: 7000000000 };
+    },
     async list(input) {
       assert.equal(input.projectId, 'mira-project-001');
       assert.equal(input.prefix, 'mira-hfm-emergency/v1/mira-project-001/');
@@ -141,6 +186,10 @@ try {
   });
   assert.equal(capacity.status, 'WITHIN_BUDGET');
   assert.equal(capacity.budgetBytes, 5000000000);
+  assert.equal(capacity.budgetSource, 'HFM_CONFIGURED_PROJECT_EMERGENCY_BUDGET');
+  assert.equal(capacity.providerQuota.status, 'REPORTED');
+  assert.equal(capacity.providerQuota.scope, 'account');
+  assert.equal(capacity.providerQuota.quotaBytes, 9000000000);
   assert.equal(capacity.usedBytes, envelope.length + 100);
   assert.equal(capacity.backupCount, 2);
   assert.equal(capacity.deletionPerformed, false);
@@ -180,11 +229,42 @@ try {
     projectId: 'mira-project-001'
   }), error => error.code === 'HFM_CLOUD_LIST_INCOMPLETE');
   await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
-    adapter: { capabilities: { list: true }, async list() { return []; } },
-    projectId: 'mira-project-001'
-  }), error => error.code === 'HFM_CLOUD_LIST_INVALID');
+    adapter: { capabilities: { list: true }, async getProviderQuota() {
+      return { status: 'REPORTED', providerQuotaAvailable: true };
+    }, async list() { return { items: [], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async getProviderQuota() {
+      return { status: 'REPORTED', providerQuotaAvailable: true, providerId: 'synthetic-drive',
+        scope: 'account', projectId: null, measuredAt: '2026-11-06T00:00:00.000Z',
+        quotaBytes: 1000, usedBytes: 100, availableBytes: 900 };
+    }, async list() { return { items: [], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_PROVIDER_QUOTA_INVALID');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() { return { items: [{
+      projectId: 'mira-project-001', backupId: 'backup-invalid-time',
+      objectKey: 'mira-hfm-emergency/v1/mira-project-001/backup-invalid-time.mhe',
+      bytes: 12, createdAt: 'not-a-date'
+    }], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_LIST_TIMESTAMP_INVALID');
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() { return { items: [{
+      projectId: 'mira-project-001', backupId: 'backup-future-time',
+      objectKey: 'mira-hfm-emergency/v1/mira-project-001/backup-future-time.mhe',
+      bytes: 12, createdAt: '2026-11-06T00:00:00.000Z'
+    }], complete: true }; } },
+    projectId: 'mira-project-001', now: '2026-11-05T00:00:00.000Z'
+  }), error => error.code === 'HFM_CLOUD_LIST_TIMESTAMP_INVALID');
+  console.log('HFM_PHASE7_PROVIDER_QUOTA_REPORT_SCHEMA_ENFORCED=PASS');
+  console.log('HFM_PHASE7_FUTURE_PROVIDER_QUOTA_REJECTED=PASS');
+  console.log('HFM_PHASE7_CAPACITY_LIST_TIMESTAMP_VALIDATED=PASS');
+  console.log('HFM_PHASE7_FUTURE_BACKUP_TIMESTAMP_REJECTED=PASS');
   console.log('HFM_PHASE7_PAGINATION_COMPLETE_AND_INCOMPLETE_REJECTED=PASS');
   console.log('HFM_PHASE7_5GB_CAPACITY_MONITOR_AND_PROJECT_SCOPE=PASS');
+  console.log('HFM_PHASE7_CONFIGURED_BUDGET_DISTINCT_FROM_PROVIDER_QUOTA=PASS');
   console.log('HFM_PHASE7_RETENTION_PREVIEW_NO_AUTOMATIC_DELETION=PASS');
 
   await assert.rejects(() => uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key }),
@@ -248,15 +328,15 @@ try {
   assert.equal(independentResult.backupId, backupId);
   assert.equal(independentResult.plaintextSha256, verified.plaintextSha256);
   assert.equal(independentResult.payloadBytes, payload.length);
-  const invalidRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-test-'));
+  const invalidLocalRestoreStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-test-'));
   try {
     await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
       adapter, projectId: 'mira-project-001', backupId, key: crypto.randomBytes(32),
-      stagingDirectory: invalidRestoreDir, restoreId: 'wrong-key-restore-001'
+      stagingDirectory: invalidLocalRestoreStageDir, restoreId: 'wrong-key-restore-001'
     }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
-    assert.deepEqual(fs.readdirSync(invalidRestoreDir), []);
+    assert.deepEqual(fs.readdirSync(invalidLocalRestoreStageDir), []);
   } finally {
-    fs.rmSync(invalidRestoreDir, { recursive: true, force: true });
+    fs.rmSync(invalidLocalRestoreStageDir, { recursive: true, force: true });
   }
   console.log('HFM_PHASE7_INDEPENDENT_PROCESS_RECOVERY=PASS');
   console.log('HFM_PHASE7_FAILED_AUTH_NO_RESTORE_ARTIFACT=PASS');
