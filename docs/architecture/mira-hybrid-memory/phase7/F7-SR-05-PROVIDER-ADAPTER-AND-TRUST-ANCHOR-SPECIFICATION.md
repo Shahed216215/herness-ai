@@ -55,21 +55,31 @@ Input:
 - authority ID;
 - expected prior sequence;
 - expected prior digest;
-- complete next-state tuple.
+- complete next-state tuple;
+- deterministic idempotency key derived from the policy ID and verified policy digest.
 
 Required behavior:
 1. Validate caller workload identity and authorization for this authority.
 2. Atomically compare both prior sequence and prior digest.
 3. Require next sequence = prior sequence + 1.
 4. Persist the complete next-state tuple as one atomic transaction.
-5. Return a signed receipt binding authority, prior sequence, next sequence, policy ID, policy digest, request/correlation ID, and commit time.
+5. Return a signed receipt binding authority, prior sequence, next sequence, policy ID, policy digest, idempotency key, canonical request digest, and commit time.
 6. Make duplicate retries with the same idempotency key and identical request return the same logical commit result.
 7. Reject reuse of an idempotency key with different request content.
 8. Never partially advance sequence or update revocation list separately.
 
 A conflict must return `HFM_POLICY_STATE_CAS_CONFLICT`. A known provider outage before commit must return `HFM_POLICY_STATE_UNAVAILABLE`. Do not report success without a verifiable signed receipt.
 
-### 3.3 Ambiguous commit outcome
+### 3.3 getCommitReceipt
+
+Input:
+- exact authority ID;
+- exact idempotency key;
+- SHA-256 digest of the canonical CAS request.
+
+Return the original signed receipt for that exact committed request, or null only when the exact request is authoritatively known not to have committed. Reject a request-digest mismatch for an existing idempotency key. Receipt lookup must remain authoritative across provider restart and replica failover; a stale or eventually consistent replica is not sufficient to resolve an ambiguous commit.
+
+### 3.4 Ambiguous commit outcome
 
 A timeout or connection loss after request submission does not prove that the transaction failed. The adapter must support safe reconciliation using an immutable request/idempotency ID and authoritative read:
 
@@ -79,7 +89,7 @@ A timeout or connection loss after request submission does not prove that the tr
 - if the state advanced to a different request or cannot be determined, fail closed and raise an operator-review event;
 - never retry as a new policy acceptance with a new sequence based only on a client timeout.
 
-The current orchestration must not be interpreted as resolving every ambiguous post-commit timeout. This behavior requires adapter-level design and tests before staging integration.
+The orchestrator retries an explicitly confirmed pre-commit request loss once with the same idempotency key and uses getCommitReceipt to reconcile an ambiguous post-commit response. It still cannot resolve an outcome when the adapter cannot authoritatively retrieve the exact receipt; in that case it fails closed and requires operator review. Real adapter-level durability and restart-safe receipt lookup remain unimplemented and unverified.
 
 ## 4. State persistence and consistency requirements
 
