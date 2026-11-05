@@ -52,12 +52,13 @@ function validateEvidence(evidence, sourceId, label) {
   }
 }
 function verifySignedProvenancePolicy({
-  envelope, trustedPolicyIssuers, acceptedPolicyState, expectedEnvironment,
+  envelope, trustedPolicyIssuers, trustedPolicyReviewers, acceptedPolicyState, expectedEnvironment,
   expectedProjectId, operationalIssuerIds = [], now = Date.now(), maxFutureSkewMs = 30000
 }) {
   if (!isPlainObject(envelope) || !isPlainObject(envelope.payload) ||
       !validText(envelope.signature, 2048) ||
-      !isPlainObject(trustedPolicyIssuers) || !isPlainObject(acceptedPolicyState)) {
+      !isPlainObject(trustedPolicyIssuers) || !isPlainObject(trustedPolicyReviewers) ||
+      !isPlainObject(acceptedPolicyState)) {
     fail('Signed policy envelope, separately pinned issuer trust and accepted policy state are required.',
       'HFM_PROVENANCE_POLICY_TRUST_INPUT_REQUIRED');
   }
@@ -153,7 +154,7 @@ function verifySignedProvenancePolicy({
     }
   }
   if (!Array.isArray(p.approvals) || p.approvals.length < 2 ||
-      !isPlainObject(arguments[0].trustedPolicyReviewers) ||
+
       p.approvals.some(a => !isPlainObject(a) || !validText(a.reviewerId) ||
         !validText(a.keyId) || !validText(a.role) || !validText(a.signature, 2048) ||
         a.reviewerId === p.signer.issuerId || operationalIssuerIds.includes(a.reviewerId)) ||
@@ -165,7 +166,7 @@ function verifySignedProvenancePolicy({
   delete unsignedForReview.approvals;
   const reviewMessage = Buffer.from(canonicalize(unsignedForReview), 'utf8');
   for (const approval of p.approvals) {
-    const reviewer = arguments[0].trustedPolicyReviewers[approval.reviewerId];
+    const reviewer = trustedPolicyReviewers[approval.reviewerId];
     if (!isPlainObject(reviewer) || reviewer.keyId !== approval.keyId ||
         typeof reviewer.publicKeyPem !== 'string' || !reviewer.publicKeyPem.includes('PUBLIC KEY') ||
         !/^[a-f0-9]{64}$/.test(reviewer.publicKeySha256 || '')) {
