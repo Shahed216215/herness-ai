@@ -20,7 +20,8 @@ function evaluateDeploymentPreflight({
   env = process.env,
   nodeVersion = process.version,
   providerRuntime,
-  openAiCredentialConfigured = false
+  openAiCredentialConfigured = false,
+  openAiModelConfigured = false
 } = {}) {
   const checks = [];
   const nodeMajor = Number(String(nodeVersion).replace(/^v/, '').split('.')[0]);
@@ -57,7 +58,14 @@ function evaluateDeploymentPreflight({
       : typeof env[keyName] === 'string' && !!env[keyName].trim();
     addCheck(checks, 'AI_PROVIDER_CREDENTIAL', keyOk ? 'PASS' : 'FAIL',
       keyOk ? 'Selected provider credential is present; value is hidden.' : 'Selected provider credential is missing; value is never displayed.');
-    if (['anthropic', 'xai'].includes(provider) && !(runtime.model || env[provider === 'anthropic' ? 'ANTHROPIC_MODEL' : 'XAI_MODEL'])) {
+    const modelRequired = ['anthropic', 'xai', 'openai'].includes(provider);
+    const modelConfigured = !!(
+      runtime.model ||
+      (provider === 'anthropic' && env.ANTHROPIC_MODEL) ||
+      (provider === 'xai' && env.XAI_MODEL) ||
+      (provider === 'openai' && (env.OPENAI_MODEL || openAiModelConfigured))
+    );
+    if (modelRequired && !modelConfigured) {
       addCheck(checks, 'AI_PROVIDER_MODEL', 'FAIL', 'Selected provider requires an explicit model ID.');
     } else {
       addCheck(checks, 'AI_PROVIDER_MODEL', 'PASS', 'Provider model is available or has a supported default.');
@@ -95,13 +103,15 @@ if (require.main === module) {
   try {
     const runtime = require('../providers').getRuntimeConfig();
     let openAiCredentialConfigured = false;
+    let openAiModelConfigured = false;
     if (runtime.provider === 'openai') {
       try {
         const credential = require('../services/provider-credential-resolver').getCredential('openai');
         openAiCredentialConfigured = !!(credential && credential.key);
+        openAiModelConfigured = !!(credential && credential.model);
       } catch (_) {}
     }
-    const result = evaluateDeploymentPreflight({ providerRuntime: runtime, openAiCredentialConfigured });
+    const result = evaluateDeploymentPreflight({ providerRuntime: runtime, openAiCredentialConfigured, openAiModelConfigured });
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
     if (result.status !== 'READY_FOR_LIVE_TEST') process.exitCode = 1;
   } catch (_) {
