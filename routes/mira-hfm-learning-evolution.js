@@ -39,6 +39,8 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
             projectId: event.projectId,
             proposalDigest: event.proposalDigest,
             proposalStatus: event.status,
+            reviewDigest: event.reviewDigest || null,
+            decision: event.decision || null,
             actorId: event.actorId || 'unknown',
             canonicalMemoryWrites: 0
           }
