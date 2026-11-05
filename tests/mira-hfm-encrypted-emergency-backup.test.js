@@ -140,7 +140,18 @@ try {
   assert.throws(() => decryptAndVerifyBackup(
     Buffer.from(' ' + envelope.toString('utf8')), key
   ));
+  const futureEnvelope = JSON.parse(envelope.toString('utf8'));
+  futureEnvelope.createdAt = new Date(Date.now() + 60000).toISOString();
+  assert.throws(() => decryptAndVerifyBackup(
+    Buffer.from(JSON.stringify(futureEnvelope) + '\n'), key
+  ), /future-dated/);
+  assert.throws(() => createEncryptedBackup({
+    payload: Buffer.from('future backup timestamp'), key,
+    backupId: 'backup-future-time-001',
+    createdAt: new Date(Date.now() + 60000).toISOString(), metadata
+  }), /non-future/);
   console.log('HFM_PHASE7_WRONG_KEY_AND_TAMPER_REJECTED=PASS');
+  console.log('HFM_PHASE7_FUTURE_ENVELOPE_TIMESTAMP_REJECTED=PASS');
   console.log('HFM_PHASE7_ENVELOPE_EXACT_SCHEMA_AND_CANONICAL_JSON=PASS');
 
   assert.throws(() => createEncryptedBackup({ payload, key: Buffer.alloc(16), backupId, createdAt }));
