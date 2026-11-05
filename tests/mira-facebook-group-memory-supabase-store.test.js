@@ -124,6 +124,37 @@ const input = {
 };
 
 (async () => {
+  const atomicBatch = {
+    batchId: 'validation-rejection-fixture',
+    batchDigest: 'a'.repeat(64),
+    projectId: 'project-fixture',
+    groupId: 'group-fixture'
+  };
+  const atomicEvent = {
+    eventType: 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED',
+    projectId: atomicBatch.projectId,
+    groupId: atomicBatch.groupId,
+    batchId: atomicBatch.batchId,
+    batchDigest: atomicBatch.batchDigest,
+    actorId: 'admin-fixture'
+  };
+  const rejectedStore = createSupabaseFacebookGroupImportStore({
+    env,
+    request: async () => ({ status: 400, data: { code: '22023' } })
+  });
+  await assert.rejects(
+    () => rejectedStore.stageBatchAndAudit(atomicBatch, atomicEvent),
+    error => error.code === 'FB_GROUP_STORE_ATOMIC_REJECTED' && error.stateCommitted !== true
+  );
+  const ambiguousStore = createSupabaseFacebookGroupImportStore({
+    env,
+    request: async () => ({ status: 502, data: { code: 'GATEWAY_FAILURE' } })
+  });
+  await assert.rejects(
+    () => ambiguousStore.stageBatchAndAudit(atomicBatch, atomicEvent),
+    error => error.code === 'FB_GROUP_STORE_ATOMIC_HTTP_ERROR' && error.stateCommitted === true
+  );
+
   const result = await service.import(input);
   assert.equal(result.status, 'IMPORT_STAGED_READBACK_VERIFIED');
   assert.equal(batches.size, 1);
