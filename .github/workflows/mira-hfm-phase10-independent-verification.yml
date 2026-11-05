@@ -62,6 +62,8 @@ jobs:
           node tests/mira-hfm-staging-backup-drill.test.js
           node tests/mira-hfm-source-provenance-contract.test.js
           node tests/mira-hfm-signed-provenance-policy.test.js
+          node tests/mira-hfm-policy-state-provider-contract.test.js
+          node tests/mira-hfm-provenance-evidence-verifier.test.js
           node tests/mira-hfm-recovery-verification.test.js
       - name: Re-run Phase 8 learning, retrieval and Evolution contracts
         run: |
