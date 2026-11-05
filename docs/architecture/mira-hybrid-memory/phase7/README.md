@@ -72,11 +72,11 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest code/test CI: run **42018583267 — SUCCESS**, job **127215246547**, tested code/test head commit `0f26022d960ab9ed2a5613e65d7e51fa935e1ceb`.
-- Node syntax check and all six offline test suites completed successfully. Logs contain **112 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Latest code/test CI: run **42021674679 — SUCCESS**, job **127225699641**, tested code/test head commit `2c0d177904f37f86a79dacf8bcb6740de0399ae9`.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **113 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
 - Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings. Payload/envelope type and size limits are checked before buffer allocation; arbitrary objects are not coerced to strings. Bounded envelope buffers are snapshotted before verification. Temporary plaintext is also zeroized when timestamp/metadata validation fails before encryption begins. Google Drive media chunks are type- and size-checked before allocation; Drive file sizes, appProperties byte counts and quota values require canonical decimal integer strings. Newly created backup/journal directories now fsync their parent directory entries before proceeding.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
-- PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
+- PR #35 is Draft and unmerged; its clean-restack branch is 6 commits ahead of the Phase 6 base and 0 behind.
 - This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
 
 
@@ -95,11 +95,11 @@ The exporter is not blocked by encryption code; it is blocked by source authorit
 VERSION=v0.2
 PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
-CURRENT_HEAD_CI_RUN=42018583267
-CURRENT_HEAD_CI_JOB=127215246547
-CURRENT_HEAD_CODE_TEST_COMMIT=0f26022d960ab9ed2a5613e65d7e51fa935e1ceb
+CURRENT_HEAD_CI_RUN=42021674679
+CURRENT_HEAD_CI_JOB=127225699641
+CURRENT_HEAD_CODE_TEST_COMMIT=2c0d177904f37f86a79dacf8bcb6740de0399ae9
 CURRENT_HEAD_TEST_SUITES=6
-OFFLINE_PASS_MARKERS=112
+OFFLINE_PASS_MARKERS=113
 OFFLINE_TESTS_FAILED=0
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 JOURNAL_RECOVERY=AUTHENTICATED_PROVIDER_OBJECT_RECONSTRUCTION_IMPLEMENTED_OFFLINE
