@@ -44,7 +44,7 @@ async function main() {
     assert.equal(fs.readdirSync(directory).filter(name => name.startsWith('.drive-journal-tmp-')).length, 0);
     const hardlink = path.join(root, 'journal-hardlink');
     fs.linkSync(first.journalPath, hardlink);
-    await assert.rejects(() => readBackupIdJournal({
+    assert.throws(() => readBackupIdJournal({
       directory, operationId: input.operationId
     }), error => error.code === 'HFM_DRIVE_JOURNAL_PERMISSIONS');
     fs.unlinkSync(hardlink);
@@ -62,21 +62,21 @@ async function main() {
     assert.equal(recovered.canonicalMemoryWrites, 0);
     console.log('HFM_PHASE7_ID_JOURNAL_RESTART_RECOVERY_SAME_ID_ONLY=PASS');
 
-    await assert.rejects(() => createBackupIdJournal({
+    assert.throws(() => createBackupIdJournal({
       directory, ...input, generatedFileId: 'differentFileId_123456'
     }), error => error.code === 'HFM_DRIVE_JOURNAL_CONFLICT');
-    await assert.rejects(() => readBackupIdJournal({
+    assert.throws(() => readBackupIdJournal({
       directory, operationId: input.operationId,
       expected: { accountBinding: 'different-subject-123' }
     }), error => error.code === 'HFM_DRIVE_JOURNAL_BINDING_MISMATCH');
-    await assert.rejects(() => readBackupIdJournal({
+    assert.throws(() => readBackupIdJournal({
       directory, operationId: input.operationId,
       expected: { driveSpace: 'appDataFolder' }
     }), error => error.code === 'HFM_DRIVE_JOURNAL_BINDING_MISMATCH');
     console.log('HFM_PHASE7_ID_JOURNAL_IMMUTABLE_ID_AND_ACCOUNT_SPACE_BINDING=PASS');
 
     const missing = path.join(root, 'missing');
-    await assert.rejects(() => readBackupIdJournal({
+    assert.throws(() => readBackupIdJournal({
       directory: missing, operationId: input.operationId
     }), error => error.code === 'HFM_DRIVE_JOURNAL_MISSING');
     console.log('HFM_PHASE7_ID_JOURNAL_MISSING_FAIL_CLOSED=PASS');
@@ -86,14 +86,14 @@ async function main() {
       directory: corruptDir, ...base({ operationId: 'drive-operation-corrupt' })
     });
     fs.writeFileSync(corrupt.journalPath, '{not-json}\n', { mode: 0o600 });
-    await assert.rejects(() => readBackupIdJournal({
+    assert.throws(() => readBackupIdJournal({
       directory: corruptDir, operationId: 'drive-operation-corrupt'
     }), error => error.code === 'HFM_DRIVE_JOURNAL_CORRUPT');
     console.log('HFM_PHASE7_ID_JOURNAL_CORRUPTION_FAIL_CLOSED=PASS');
 
     const symlinkDir = path.join(root, 'symlink-dir');
     fs.symlinkSync(directory, symlinkDir, 'dir');
-    await assert.rejects(() => readBackupIdJournal({
+    assert.throws(() => readBackupIdJournal({
       directory: symlinkDir, operationId: input.operationId
     }), error => error.code === 'HFM_DRIVE_JOURNAL_INVALID');
     console.log('HFM_PHASE7_ID_JOURNAL_DIRECTORY_SYMLINK_REJECTED=PASS');
@@ -103,16 +103,16 @@ async function main() {
     const target = path.join(root, 'outside-record');
     fs.writeFileSync(target, 'outside', { mode: 0o600 });
     fs.symlinkSync(target, path.join(linkDir, 'drive-backup-operation-drive-operation-0001.json'));
-    await assert.rejects(() => readBackupIdJournal({
+    assert.throws(() => readBackupIdJournal({
       directory: linkDir, operationId: input.operationId
     }), error => error.code === 'HFM_DRIVE_JOURNAL_PERMISSIONS');
     console.log('HFM_PHASE7_ID_JOURNAL_FILE_SYMLINK_REJECTED=PASS');
 
-    await assert.rejects(() => createBackupIdJournal({
+    assert.throws(() => createBackupIdJournal({
       directory: path.join(root, 'bad-input'),
       ...base({ generatedFileId: '../unsafe' })
     }), error => error.code === 'HFM_DRIVE_JOURNAL_INVALID');
-    await assert.rejects(() => createBackupIdJournal({
+    assert.throws(() => createBackupIdJournal({
       directory: path.join(root, 'bad-account'),
       ...base({ accountBinding: 'shahed@example.com\nforged' })
     }), error => error.code === 'HFM_DRIVE_JOURNAL_INVALID');
