@@ -33,4 +33,9 @@ function createTool({ searchWeb, archiveEvidence } = {}) {
   };
 }
 const defaultTool=createTool();
-module.exports={name:'mira_hfm_public_web_retrieval',declaration:defaultTool.declaration,execute:defaultTool.execute,createTool};
+module.exports = {
+  name: 'mira_hfm_public_web_retrieval',
+  declaration: defaultTool.declaration,
+  execute: defaultTool.execute,
+  createTool
+};
