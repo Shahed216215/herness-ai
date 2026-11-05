@@ -150,6 +150,72 @@ async function main() {
     assert.equal(binding.counts.generate, 1);
     console.log('HFM_PHASE7_GENERATED_ID_CROSS_ACCOUNT_REUSE_REJECTED=PASS');
 
+    // Force two callers past the initial missing-journal read before either
+    // can publish its generated-ID record. Both must adopt the durable winner.
+    const concurrentDir = path.join(root, 'concurrent');
+    const concurrentObjects = new Map();
+    const concurrentCounts = { generate: 0, create: 0 };
+    let releaseGeneration;
+    const generationBarrier = new Promise(resolve => { releaseGeneration = resolve; });
+    const concurrentProvider = {
+      async generateFileId() {
+        concurrentCounts.generate += 1;
+        const ordinal = concurrentCounts.generate;
+        if (ordinal === 2) releaseGeneration();
+        await generationBarrier;
+        return { id: ordinal === 1 ? 'generatedFileIdA_123456' : 'generatedFileIdB_123456' };
+      },
+      async createFile(args) {
+        concurrentCounts.create += 1;
+        if (concurrentObjects.has(args.id)) {
+          const error = new Error('concurrent duplicate create');
+          error.code = '409';
+          throw error;
+        }
+        concurrentObjects.set(args.id, {
+          id: args.id,
+          metadata: {
+            accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
+            ciphertextSha256: digest, bytes: bytes.length, contentType: CONTENT_TYPE,
+            encryption: 'AES-256-GCM', parentId
+          },
+          bytes: Buffer.from(args.bytes)
+        });
+        return { id: args.id, created: true };
+      },
+      async getFile({ id }) {
+        const item = concurrentObjects.get(id);
+        return item ? { id: item.id, metadata: { ...item.metadata } } : null;
+      },
+      async downloadFile({ id }) {
+        const item = concurrentObjects.get(id);
+        return item ? Buffer.from(item.bytes) : null;
+      }
+    };
+    const concurrentUploader = createJournaledDriveUpload({
+      provider: concurrentProvider, journalDirectory: concurrentDir,
+      accountBinding, driveSpace, projectId, parentId
+    });
+    const concurrentResults = await Promise.all([
+      concurrentUploader.upload(input('concurrent-upload-operation-001')),
+      concurrentUploader.upload(input('concurrent-upload-operation-001'))
+    ]);
+    assert.equal(concurrentCounts.generate, 2);
+    assert.equal(concurrentObjects.size, 1);
+    assert.equal(concurrentCounts.create, 2);
+    assert.equal(concurrentResults[0].fileId, concurrentResults[1].fileId);
+    assert.deepEqual(
+      concurrentResults.map(result => result.status).sort(),
+      ['CREATED_VERIFIED', 'RECONCILED_VERIFIED']
+    );
+    const concurrentJournal = readBackupIdJournal({
+      directory: concurrentDir, operationId: 'concurrent-upload-operation-001',
+      expected: { accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
+        ciphertextSha256: digest, bytes: bytes.length }
+    });
+    assert.equal(concurrentJournal.generatedFileId, concurrentResults[0].fileId);
+    console.log('HFM_PHASE7_GENERATED_ID_CONCURRENT_JOURNAL_WINNER_REUSED=PASS');
+
     console.log('HFM_PHASE7_GENERATED_ID_NO_NETWORK_OAUTH_OR_CANONICAL_WRITE=PASS');
     console.log('HFM_PHASE7_GENERATED_ID_UPLOAD_TESTS_FAILED=0');
   } finally {
