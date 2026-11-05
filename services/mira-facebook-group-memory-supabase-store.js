@@ -186,7 +186,7 @@ function createSupabaseFacebookGroupImportStore({
     }
     if (!response || !Number.isInteger(response.status) ||
         response.status < 200 || response.status >= 300) {
-      fail('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase Group import transaction returned a non-success status.');
+      failCommitted('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase transaction outcome is uncertain after a non-success response.');
     }
     const result = rows(response);
     if (result.length !== 1 || result[0].batch_id !== batch.batchId ||
@@ -197,12 +197,12 @@ function createSupabaseFacebookGroupImportStore({
         !['CREATED', 'ALREADY_EXISTS'].includes(result[0].audit_status) ||
         typeof result[0].event_id !== 'string' ||
         result[0].event_digest !== eventDigest) {
-      fail('FB_GROUP_STORE_ATOMIC_RESULT_INVALID', 'Atomic Supabase transaction result failed identity or digest verification.');
+      failCommitted('FB_GROUP_STORE_ATOMIC_RESULT_INVALID', 'Atomic Supabase transaction result failed identity or digest verification.');
     }
 
     const stored = await readBatch(batch.batchId, batch.projectId, batch.groupId);
     if (!stored || stored.batchDigest !== batch.batchDigest)
-      fail('FB_GROUP_STORE_READBACK_FAILED', 'Atomic Group import batch readback failed.');
+      failCommitted('FB_GROUP_STORE_READBACK_FAILED', 'Atomic Group import batch readback failed after commit may have occurred.');
 
     const auditRows = rows(await callTable(
       AUDIT_TABLE,
@@ -221,7 +221,7 @@ function createSupabaseFacebookGroupImportStore({
         auditRows[0].payload.batchDigest !== event.batchDigest ||
         auditRows[0].payload.actorId !== event.actorId ||
         auditRows[0].payload.canonicalMemoryWrite !== false) {
-      fail('FB_GROUP_STORE_ATOMIC_AUDIT_READBACK_FAILED', 'Atomic Group import audit readback failed.');
+      failCommitted('FB_GROUP_STORE_ATOMIC_AUDIT_READBACK_FAILED', 'Atomic Group import audit readback failed after commit may have occurred.');
     }
     return {
       status: 'ATOMIC_BATCH_AUDIT_READBACK_VERIFIED',
