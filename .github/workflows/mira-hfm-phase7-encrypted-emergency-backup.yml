@@ -17,7 +17,7 @@ on:
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
   push:
     branches:
-      - 'work/mira-hfm-v02-phase7-encrypted-emergency-backup-restacked-20261105'
+      - 'work/mira-hfm-v02-phase7-clean-restack-on-phase6-20261105'
     paths:
       - 'services/mira-hfm-encrypted-emergency-backup.js'
       - 'services/mira-hfm-encrypted-emergency-backup-cloud.js'
@@ -27,6 +27,7 @@ on:
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
+      - 'tests/mira-hfm-drive-generated-id-upload.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
 
