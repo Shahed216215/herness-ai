@@ -16,7 +16,9 @@ const rawRetrieval = {
   status:'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED', page:{pageId:'123456789'},
   limits:{canonicalMemoryWrite:false,trustPromotion:false,directFacebookFetches:0,metaGraphApiCalls:0,loginOrCookieUse:0,privateOrGroupContentAccess:0},
   evidence:[{evidenceId:'fbweb-evidence-001',pageId:'123456789',
-    sourceUrl:'https://www.facebook.com/123456789/posts/987654321',
+    sourceUrl:'https://www.facebook.com/123456789/posts/987654321', sourceType:'FACEBOOK_PAGE_POST',
+    identityBinding:'PAGE_ID_PRESENT_IN_INDEXED_RESULT',trustStatus:'SOURCE_RECORDED',
+    integrityStatus:'UNVERIFIED',lifecycle:'PENDING_REVIEW',
     title:'Public page post',snippet:'Synthetic indexed snippet.'}]
 };
 const retrievalInput = fromPublicRetrieval({
