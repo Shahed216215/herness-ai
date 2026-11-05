@@ -177,7 +177,7 @@ function createWorkLearningStagingSnapshotSource(config) {
     async readSnapshot(request) {
       if (!request || typeof request.projectId !== 'string' || !request.projectId.trim() ||
           typeof request.actorId !== 'string' || !request.actorId.trim() ||
-          request.scope !== 'work_learning:store:snapshot:read' ||
+          request.scope !== 'backup:read' ||
           typeof request.requestId !== 'string' || !request.requestId.trim() ||
           typeof request.nonce !== 'string' || request.nonce.length < 16) {
         fail('A complete authorized Work Learning store-snapshot request is required.',
