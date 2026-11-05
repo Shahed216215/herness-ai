@@ -16,7 +16,7 @@ Phase 4 already supplies Facebook Page-ID-bound public search, Page profile/post
 - Exact identifier presence in indexed title/snippet/source URL.
 - Duplicate URL elimination and bounded results.
 - Search results remain untrusted and are not automatically archived by the autonomous retrieval tool.
-- Archive writing remains a separate operation and is not exposed through this autonomous read tool pending a separately governed human-approval workflow.
+- Archive writing remains separate from autonomous retrieval and is exposed only through the named-admin, explicit-confirmation archive import endpoint.
 - Explicit status for provider unavailable, search miss, partial provider degradation, and collected untrusted evidence.
 - Search failure is not interpreted as Memory deletion or data loss.
 
@@ -87,7 +87,7 @@ The approved archive workflow now blocks production local-backend writes unless 
 
 ## Secret-safe Render deployment preflight (2026-11-05)
 
-Added scripts/mira-hfm-phase6-deployment-preflight.js. It performs no network requests and prints only PASS/FAIL/REVIEW_REQUIRED checks, never secret values. It checks Node.js 24+, NODE_ENV=production, MIRA_SESSION_SECRET length, production bind host, Tavily key presence, selected AI provider credential/model readiness, and archive backend durability/configuration. A local archive backend in production is blocked unless MIRA_FACEBOOK_RESEARCH_MEMORY_DURABLE_STORAGE_CONFIRMED=true; Supabase configuration is structurally validated without sending a request. Custom AI providers remain REVIEW_REQUIRED. Run in the deployed service shell before any live test: `node scripts/mira-hfm-phase6-deployment-preflight.js`. A READY_FOR_LIVE_TEST result is configuration preflight only, not proof of live provider access, deployment health, or successful model generation. CI pending.
+Added scripts/mira-hfm-phase6-deployment-preflight.js. It performs no network requests and prints only PASS/FAIL/REVIEW_REQUIRED checks, never secret values. It checks Node.js 24+, NODE_ENV=production, MIRA_SESSION_SECRET length, production bind host, Tavily key presence, selected AI provider credential/model readiness, and archive backend durability/configuration. A local archive backend in production is blocked unless MIRA_FACEBOOK_RESEARCH_MEMORY_DURABLE_STORAGE_CONFIRMED=true; Supabase configuration is structurally validated without sending a request. Custom AI providers remain REVIEW_REQUIRED. Run in the deployed service shell before any live test: `node scripts/mira-hfm-phase6-deployment-preflight.js`. A READY_FOR_LIVE_TEST result is configuration preflight only, not proof of live provider access, deployment health, or successful model generation. The preflight suite passed on current head 96909ea6108b861df3314104331d00c749c1ebc9 (CI runs 41989389553 and 41989398709).
 
 The preflight additionally requires an explicit model ID for OpenAI, Anthropic, and xAI; supported providers with code-defined defaults are checked accordingly. Managed OpenAI credentials are inspected only for presence/model availability and are never printed. CI coverage includes missing and configured OpenAI model cases.
 
