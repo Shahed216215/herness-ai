@@ -22,9 +22,11 @@ on:
       - 'services/mira-hfm-learning-evolution-bridge.js'
       - 'services/mira-hfm-learning-proposal-store.js'
       - 'services/mira-hfm-learning-evidence-adapter.js'
+      - 'services/mira-hfm-learning-legacy-compatibility.js'
       - 'routes/mira-hfm-learning-evolution.js'
       - 'server.js'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
 
