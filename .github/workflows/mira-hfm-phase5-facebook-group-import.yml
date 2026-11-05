@@ -1,0 +1,47 @@
+name: Mira HFM Phase 5 Facebook Group Import
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase5-facebook-group-import
+    paths:
+      - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'tests/mira-facebook-group-memory-import.test.js'
+      - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase5/**'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase4-public-web-research
+    paths:
+      - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'tests/mira-facebook-group-memory-import.test.js'
+      - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase5/**'
+
+permissions:
+  contents: read
+
+jobs:
+  facebook-group-import-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run offline Facebook Group import tests
+        run: |
+          set -euo pipefail
+          node tests/mira-facebook-group-memory-import.test.js
+      - name: Confirm external boundaries
+        run: |
+          echo "LIVE_FACEBOOK_REQUESTS=0"
+          echo "PRIVATE_GROUP_ACCESS=0"
+          echo "CANONICAL_MEMORY_WRITES=0"
+          echo "PRODUCTION_MIGRATION=0"
+          echo "RESULT=MIRA_HFM_PHASE5_OFFLINE_TESTS_COMPLETED"
