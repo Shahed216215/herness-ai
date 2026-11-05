@@ -30,6 +30,7 @@ on:
       - 'routes/mira-facebook-group-memory-import.js'
       - 'server.js'
       - 'package.json'
+      - 'tests/**'
       - 'supabase/migrations/**'
       - 'tests/mira-facebook-group-memory-import.test.js'
       - 'tests/mira-facebook-group-memory-supabase-store.test.js'
@@ -61,7 +62,7 @@ jobs:
           node tests/mira-facebook-group-memory-import-route.test.js
           node tests/mira-facebook-group-memory-migration-structure.test.js
           npm run test:offline-static-regression
-          npm run test:offline-regression:available
+          npm test
       - name: Confirm external boundaries
         run: |
           echo "LIVE_FACEBOOK_REQUESTS=0"
