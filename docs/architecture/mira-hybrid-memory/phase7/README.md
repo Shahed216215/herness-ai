@@ -72,15 +72,11 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest verified CI: run **42001767982 — SUCCESS**, job **127158482183**, commit `d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf`.
-- That run executed four offline suites (encrypted backup/key provider, injected transport adapter, durable ID journal, generated-ID upload orchestration): **66 explicit Phase 7 PASS markers** and all four commands reported `TESTS_FAILED=0`.
-- The later journaled cloud adapter end-to-end suite, tampered-byte/no-stage regression, SHA-256 account-fingerprint enforcement, envelope schema/version/timestamp binding, and injected Google Drive v3 provider mapper/fake-client suite were added after that run. Their current-head CI evidence is **PENDING / INCONCLUSIVE**, not PASS.
-- The verified run confirms `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
-- This is synthetic offline CI evidence only, not a live-provider or production recovery certification.
-
-## Live integration approval plan
-
-See [GOOGLE-DRIVE-LIVE-INTEGRATION-APPROVAL-PLAN.md](./GOOGLE-DRIVE-LIVE-INTEGRATION-APPROVAL-PLAN.md). It compares appDataFolder and dedicated My Drive folder options, identifies candidate narrow scopes, and defines the synthetic live-test approval gates. No scope is selected or authorized.
+- Latest complete offline CI: GitHub Actions run **42007196180 — SUCCESS**, job **127176834532**, code/test commit `34709f7bc02bfcb04981d56fa1e1ac68436c479a`.
+- All six offline test suites and the Node syntax-check step completed successfully. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+- The current branch was restacked on the latest Phase 6 base before this run. Subsequent documentation-only commits do not alter the tested application/test source.
+- This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
 
 ## Explicit exclusions and blockers
 
@@ -91,13 +87,18 @@ See [GOOGLE-DRIVE-LIVE-INTEGRATION-APPROVAL-PLAN.md](./GOOGLE-DRIVE-LIVE-INTEGRA
 - Existing routine Google Drive synchronization: UNCHANGED.
 
 VERSION=v0.2
-PHASE7=OFFLINE_ENCRYPTED_BACKUP_JOURNAL_RECOVERY_AND_INJECTED_DRIVE_V3_MAPPER
+PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
 LATEST_VERIFIED_CI=42001767982_SUCCESS
 LATEST_VERIFIED_CI_JOB=127158482183
 LATEST_VERIFIED_COMMIT=d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf
 OFFLINE_PASS_MARKERS=66
-CURRENT_HEAD_CI=INCONCLUSIVE_PENDING
+CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
+CURRENT_HEAD_CI_RUN=42007196180
+CURRENT_HEAD_CI_JOB=127176834532
+LATEST_VERIFIED_COMMIT=34709f7bc02bfcb04981d56fa1e1ac68436c479a
 CURRENT_HEAD_TEST_SUITES=6
+OFFLINE_PASS_MARKERS=91
+OFFLINE_TESTS_FAILED=0
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_CI_PENDING
 JOURNAL_RECOVERY=AUTHENTICATED_PROVIDER_OBJECT_RECONSTRUCTION_IMPLEMENTED_OFFLINE
 LIVE_GOOGLE_DRIVE=NOT_TESTED
