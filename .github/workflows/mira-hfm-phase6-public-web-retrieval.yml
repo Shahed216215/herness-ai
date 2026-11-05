@@ -7,6 +7,7 @@ on:
     paths:
       - 'services/mira-hfm-public-web-retrieval.js'
       - 'services/ai.js'
+      - 'server.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
