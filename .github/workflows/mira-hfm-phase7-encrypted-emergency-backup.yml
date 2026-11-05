@@ -11,11 +11,13 @@ on:
       - 'services/mira-hfm-drive-generated-id-upload.js'
       - 'services/mira-hfm-drive-journaled-cloud-adapter.js'
       - 'services/mira-hfm-google-drive-generated-id-provider.js'
+      - 'services/mira-hfm-google-drive-generated-id-provider.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
       - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
+      - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
       - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
@@ -31,11 +33,13 @@ on:
       - 'services/mira-hfm-drive-generated-id-upload.js'
       - 'services/mira-hfm-drive-journaled-cloud-adapter.js'
       - 'services/mira-hfm-google-drive-generated-id-provider.js'
+      - 'services/mira-hfm-google-drive-generated-id-provider.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
       - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
+      - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
       - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
@@ -63,5 +67,7 @@ jobs:
         run: node tests/mira-hfm-drive-generated-id-upload.test.js
       - name: Run journaled cloud adapter integration tests
         run: node tests/mira-hfm-drive-journaled-cloud-adapter.test.js
+      - name: Run injected Google Drive v3 provider tests
+        run: node tests/mira-hfm-google-drive-generated-id-provider.test.js
       - name: Run injected Google Drive v3 provider tests
         run: node tests/mira-hfm-google-drive-generated-id-provider.test.js
