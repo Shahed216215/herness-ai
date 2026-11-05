@@ -9,10 +9,12 @@ on:
       - 'services/mira-hfm-drive-emergency-backup-adapter.js'
       - 'services/mira-hfm-drive-backup-id-journal.js'
       - 'services/mira-hfm-drive-generated-id-upload.js'
+      - 'services/mira-hfm-drive-journaled-cloud-adapter.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
+      - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
   push:
@@ -25,10 +27,12 @@ on:
       - 'services/mira-hfm-drive-emergency-backup-adapter.js'
       - 'services/mira-hfm-drive-backup-id-journal.js'
       - 'services/mira-hfm-drive-generated-id-upload.js'
+      - 'services/mira-hfm-drive-journaled-cloud-adapter.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
+      - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
 
@@ -51,3 +55,5 @@ jobs:
         run: node tests/mira-hfm-drive-backup-id-journal.test.js
       - name: Run journaled generated-ID upload tests
         run: node tests/mira-hfm-drive-generated-id-upload.test.js
+      - name: Run journaled cloud adapter integration tests
+        run: node tests/mira-hfm-drive-journaled-cloud-adapter.test.js
