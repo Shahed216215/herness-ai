@@ -1,0 +1,112 @@
+name: Mira HFM Phase 5 and Offline Regression Tests
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase5-clean-restack-on-phase4-20261105
+    paths:
+      - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-facebook-group-memory-supabase-store.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'routes/mira-facebook-group-memory-import.js'
+      - 'server.js'
+      - 'supabase/migrations/**'
+      - 'tests/mira-facebook-group-memory-import.test.js'
+      - 'tests/mira-facebook-group-memory-supabase-store.test.js'
+      - 'tests/mira-facebook-group-memory-import-route.test.js'
+      - 'tests/mira-facebook-group-memory-migration-structure.test.js'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase5/**'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase4-public-research-clean-restack-20261105
+    paths:
+      - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-facebook-group-memory-supabase-store.js'
+      - 'services/mira-memory-conflict-assessment.js'
+      - 'routes/mira-facebook-group-memory-import.js'
+      - 'server.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tests/**'
+      - 'supabase/migrations/**'
+      - 'tests/mira-facebook-group-memory-import.test.js'
+      - 'tests/mira-facebook-group-memory-supabase-store.test.js'
+      - 'tests/mira-facebook-group-memory-import-route.test.js'
+      - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase5/**'
+
+permissions:
+  contents: read
+
+jobs:
+  facebook-group-import-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked npm dependencies (approved package downloads only)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run Phase 5 and isolated regression tests
+        run: |
+          set -euo pipefail
+          node tests/mira-facebook-group-memory-import.test.js
+          node tests/mira-facebook-group-memory-supabase-store.test.js
+          node tests/mira-facebook-group-memory-import-route.test.js
+          node tests/mira-facebook-group-memory-migration-structure.test.js
+          npm run test:offline-static-regression
+          npm test
+      - name: Confirm external boundaries
+        run: |
+          echo "LIVE_FACEBOOK_REQUESTS=0"
+          echo "PRIVATE_GROUP_ACCESS=0"
+          echo "CANONICAL_MEMORY_WRITES=0"
+          echo "PRODUCTION_MIGRATION=0"
+          echo "RESULT=MIRA_HFM_PHASE5_AND_AVAILABLE_REGRESSION_TESTS_COMPLETED"
+
+  postgres-atomic-recovery-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mira_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mira_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare isolated PostgreSQL roles
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF; IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF; IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF; END \$\$; ALTER ROLE service_role BYPASSRLS;"
+      - name: Apply Phase 5 base and additive recovery migrations to ephemeral PostgreSQL
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec -i "$PG_CONTAINER" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -f - < supabase/migrations/20261105090000_mira_facebook_group_import_batches.sql
+          docker exec -i "$PG_CONTAINER" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -f - < supabase/migrations/20261105120000_mira_facebook_group_import_atomic_recovery.sql
+      - name: Run real PostgreSQL atomic recovery integration cases
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec -i "$PG_CONTAINER" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -f - < tests/postgres/mira-hfm-phase5-atomic-recovery.integration.sql
