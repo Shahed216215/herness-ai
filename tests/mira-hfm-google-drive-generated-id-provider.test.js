@@ -132,8 +132,26 @@ async function main() {
     }
   }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
   assert.equal(fake.calls.create, 1);
+  const validProperties = {
+    projectId, backupId, schema: header.schema, version: header.version,
+    createdAt: header.createdAt, ciphertextSha256: digest,
+    bytes: String(envelope.length), encryption: 'AES-256-GCM'
+  };
+  await assert.rejects(() => provider.createFile({
+    id: fileId, parents: [parentId], mimeType: CONTENT_TYPE, bytes: envelope,
+    accountBinding, driveSpace,
+    appProperties: { ...validProperties, createdAt: new Date(Date.now() + 60000).toISOString() }
+  }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
+  await assert.rejects(() => provider.createFile({
+    id: fileId, parents: [parentId], mimeType: CONTENT_TYPE, bytes: envelope,
+    accountBinding, driveSpace,
+    appProperties: { ...validProperties, unexpectedPlaintextHint: 'must-not-be-stored' }
+  }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
+  assert.equal(fake.calls.create, 1);
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_GENERATE_ID_AND_RESUMABLE_CREATE_MAPPING=PASS');
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_UPLOAD_DIGEST_RECHECK=PASS');
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_FUTURE_TIMESTAMP_REJECTED=PASS');
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_APP_PROPERTIES_ALLOWLIST_AND_SIZE=PASS');
 
   const metadata = await provider.getFile({ id: fileId, accountBinding, driveSpace });
   assert.equal(metadata.id, fileId);
