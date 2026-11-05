@@ -78,15 +78,15 @@ try {
   assert.throws(() => restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_RESTORE_STAGING_ONLY=PASS');
 
-  const invalidRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-stage-test-'));
+  const invalidLocalRestoreStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-stage-test-'));
   try {
     assert.throws(() => restoreToStaging({
-      envelope, key: crypto.randomBytes(32), directory: invalidRestoreDir,
+      envelope, key: crypto.randomBytes(32), directory: invalidLocalRestoreStageDir,
       restoreId: 'restore-wrong-key-001'
     }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
-    assert.deepEqual(fs.readdirSync(invalidRestoreDir), []);
+    assert.deepEqual(fs.readdirSync(invalidLocalRestoreStageDir), []);
   } finally {
-    fs.rmSync(invalidRestoreDir, { recursive: true, force: true });
+    fs.rmSync(invalidLocalRestoreStageDir, { recursive: true, force: true });
   }
   console.log('HFM_PHASE7_RESTORE_AUTH_FAILURE_NO_STAGE_ARTIFACT=PASS');
 
@@ -270,15 +270,15 @@ try {
   assert.equal(independentResult.backupId, backupId);
   assert.equal(independentResult.plaintextSha256, verified.plaintextSha256);
   assert.equal(independentResult.payloadBytes, payload.length);
-  const invalidRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-test-'));
+  const invalidLocalRestoreStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-test-'));
   try {
     await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
       adapter, projectId: 'mira-project-001', backupId, key: crypto.randomBytes(32),
-      stagingDirectory: invalidRestoreDir, restoreId: 'wrong-key-restore-001'
+      stagingDirectory: invalidLocalRestoreStageDir, restoreId: 'wrong-key-restore-001'
     }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
-    assert.deepEqual(fs.readdirSync(invalidRestoreDir), []);
+    assert.deepEqual(fs.readdirSync(invalidLocalRestoreStageDir), []);
   } finally {
-    fs.rmSync(invalidRestoreDir, { recursive: true, force: true });
+    fs.rmSync(invalidLocalRestoreStageDir, { recursive: true, force: true });
   }
   console.log('HFM_PHASE7_INDEPENDENT_PROCESS_RECOVERY=PASS');
   console.log('HFM_PHASE7_FAILED_AUTH_NO_RESTORE_ARTIFACT=PASS');
