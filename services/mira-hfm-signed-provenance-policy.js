@@ -183,6 +183,7 @@ function verifySignedProvenancePolicy({
   for (const approval of p.approvals) {
     const reviewer = trustedPolicyReviewers[approval.reviewerId];
     if (!isPlainObject(reviewer) || reviewer.keyId !== approval.keyId ||
+        reviewer.role !== approval.role ||
         typeof reviewer.publicKeyPem !== 'string' || !reviewer.publicKeyPem.includes('PUBLIC KEY') ||
         !/^[a-f0-9]{64}$/.test(reviewer.publicKeySha256 || '')) {
       fail('Policy reviewer is not independently pinned.', 'HFM_PROVENANCE_POLICY_REVIEWER_UNTRUSTED');
