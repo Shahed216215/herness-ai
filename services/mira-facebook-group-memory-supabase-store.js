@@ -350,9 +350,11 @@ function createSupabaseFacebookGroupImportStore({
       durableQuarantine: true,
       durableAudit: true,
       atomicBatchAndAudit: true,
-      idempotentAudit: true
+      idempotentAudit: true,
+      recoveryByIdempotentRetry: true
     }),
     stageBatchAndAudit,
+    reconcileBatchAudit: stageBatchAndAudit,
     stageBatch,
     readBatch: (batchId, projectId) => readBatch(batchId, projectId, null)
       .then(value => value),
