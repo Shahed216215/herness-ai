@@ -76,7 +76,8 @@ jobs:
           node --check services/mira-hfm-learning-legacy-compatibility.js &&
           node --check services/mira-hfm-legacy-learning-evidence-adapter.js &&
           node --check services/mira-hfm-learning-evolution-bridge.js &&
-          node --check services/mira-hfm-learning-generation-cycle.js
+          node --check services/mira-hfm-learning-generation-cycle.js &&
+          node --check services/mira-hfm-learning-generation-cycle-request.js
       - name: Run Phase 8 offline contract tests
         run: >-
           node tests/mira-hfm-learning-evolution-bridge.test.js &&
