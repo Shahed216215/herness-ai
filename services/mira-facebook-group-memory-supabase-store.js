@@ -188,8 +188,15 @@ function createSupabaseFacebookGroupImportStore({
       failCommitted('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase transaction outcome is uncertain after an invalid response.');
     }
     if (response.status < 200 || response.status >= 300) {
-      if (response.data && response.data.code === '23505')
+      const databaseCode = response.data && typeof response.data.code === 'string'
+        ? response.data.code : null;
+      if (databaseCode === '23505')
         fail('FB_GROUP_STORE_ATOMIC_IDENTITY_CONFLICT', 'Atomic Group import encountered an immutable batch or audit identity conflict.');
+      // PostgreSQL 22023 is a deterministic function-argument/policy rejection.
+      // The function statement has failed and its transaction did not commit.
+      if (databaseCode === '22023')
+        fail('FB_GROUP_STORE_ATOMIC_REJECTED', 'PostgreSQL rejected the atomic Group import arguments or policy fields.');
+      // Other HTTP failures may be gateway/transport ambiguity; preserve retry recovery.
       failCommitted('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase transaction outcome is uncertain after a non-success response.');
     }
     let result;
