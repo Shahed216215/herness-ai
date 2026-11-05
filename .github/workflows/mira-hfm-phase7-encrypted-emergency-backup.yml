@@ -17,7 +17,6 @@ on:
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
       - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
       - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
-      - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
   push:
     branches:
@@ -37,7 +36,6 @@ on:
       - 'tests/mira-hfm-drive-generated-id-upload.test.js'
       - 'tests/mira-hfm-drive-journaled-cloud-adapter.test.js'
       - 'tests/mira-hfm-google-drive-generated-id-provider.test.js'
-      - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
 
 # Safety invariant: this workflow remains synthetic/offline; never add OAuth, provider secrets,
