@@ -77,7 +77,10 @@ function verifySignedProvenancePolicy({
     fail('Policy is not currently valid or has an invalid validity interval.',
       'HFM_PROVENANCE_POLICY_EXPIRED_OR_INVALID');
   }
-  if (acceptedPolicyState.statusAvailable !== true ||
+  if (acceptedPolicyState.authenticated !== true || acceptedPolicyState.durable !== true ||
+      acceptedPolicyState.atomic !== true || !validText(acceptedPolicyState.authorityId) ||
+      operationalIssuerIds.includes(acceptedPolicyState.authorityId) ||
+      acceptedPolicyState.statusAvailable !== true ||
       !Number.isFinite(Date.parse(acceptedPolicyState.statusValidUntil)) ||
       Date.parse(acceptedPolicyState.statusValidUntil) <= now ||
       !Number.isSafeInteger(acceptedPolicyState.highestAcceptedSequence) ||
@@ -150,11 +153,41 @@ function verifySignedProvenancePolicy({
     }
   }
   if (!Array.isArray(p.approvals) || p.approvals.length < 2 ||
+      !isPlainObject(arguments[0].trustedPolicyReviewers) ||
       p.approvals.some(a => !isPlainObject(a) || !validText(a.reviewerId) ||
-        !validText(a.role) || a.reviewerId === p.signer.issuerId) ||
+        !validText(a.keyId) || !validText(a.role) || !validText(a.signature, 2048) ||
+        a.reviewerId === p.signer.issuerId || operationalIssuerIds.includes(a.reviewerId)) ||
       new Set(p.approvals.map(a => a.reviewerId)).size !== p.approvals.length) {
-    fail('Policy requires two distinct reviewers separate from the policy issuer.',
+    fail('Policy requires two distinct, separately trusted reviewer signatures.',
       'HFM_PROVENANCE_POLICY_APPROVAL_QUORUM_INVALID');
+  }
+  const unsignedForReview = { ...p };
+  delete unsignedForReview.approvals;
+  const reviewMessage = Buffer.from(canonicalize(unsignedForReview), 'utf8');
+  for (const approval of p.approvals) {
+    const reviewer = arguments[0].trustedPolicyReviewers[approval.reviewerId];
+    if (!isPlainObject(reviewer) || reviewer.keyId !== approval.keyId ||
+        typeof reviewer.publicKeyPem !== 'string' || !reviewer.publicKeyPem.includes('PUBLIC KEY') ||
+        !/^[a-f0-9]{64}$/.test(reviewer.publicKeySha256 || '')) {
+      fail('Policy reviewer is not independently pinned.', 'HFM_PROVENANCE_POLICY_REVIEWER_UNTRUSTED');
+    }
+    let reviewerKey;
+    try { reviewerKey = crypto.createPublicKey(reviewer.publicKeyPem); }
+    catch { fail('Policy reviewer public key is invalid.', 'HFM_PROVENANCE_POLICY_REVIEWER_INVALID'); }
+    if (reviewerKey.asymmetricKeyType !== 'ed25519' ||
+        sha256(reviewerKey.export({ type: 'spki', format: 'der' })) !== reviewer.publicKeySha256) {
+      fail('Policy reviewer key type or fingerprint is invalid.', 'HFM_PROVENANCE_POLICY_REVIEWER_INVALID');
+    }
+    let reviewerSignature;
+    try {
+      reviewerSignature = Buffer.from(approval.signature, 'base64');
+      if (reviewerSignature.toString('base64') !== approval.signature) throw new Error('bad base64');
+    } catch {
+      fail('Policy reviewer signature encoding is invalid.', 'HFM_PROVENANCE_POLICY_REVIEWER_SIGNATURE_INVALID');
+    }
+    if (!crypto.verify(null, reviewMessage, reviewerKey, reviewerSignature)) {
+      fail('Policy reviewer signature verification failed.', 'HFM_PROVENANCE_POLICY_REVIEWER_SIGNATURE_INVALID');
+    }
   }
   const digest = sha256(Buffer.from(canonicalize(p), 'utf8'));
   return Object.freeze({
@@ -166,11 +199,14 @@ function verifySignedProvenancePolicy({
     policyIssuerId: p.signer.issuerId,
     policyIssuerKeyId: p.signer.keyId,
     policyIssuerKeyFingerprint: fingerprint,
+    policyStateAuthorityId: acceptedPolicyState.authorityId,
+    reviewerIds: p.approvals.map(a => a.reviewerId),
     provenancePolicy: Object.freeze({
       contractVersion: '1',
       policyVersion: p.policyVersion,
       sources: Object.freeze(profiles)
     }),
+    policyStatePersistenceRequired: true,
     nextAcceptedState: Object.freeze({
       highestAcceptedSequence: p.sequence,
       lastAcceptedPolicyId: p.policyId,
