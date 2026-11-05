@@ -77,7 +77,6 @@ function prepareRecords({ pageId: requestedPageId, pageName = null, evidence } =
       archivePolicy: 'UNTRUSTED_RESEARCH_ONLY',
       pageId: id,
       pageName: pageName == null ? null : boundedText(pageName, 'pageName', 128),
-      pageId: id,
       sourceUrl: safe.sourceUrl,
       title: safe.title,
       snippet: safe.snippet,
@@ -131,9 +130,9 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
     });
     return result;
   }
-  async function countPage(pageId) {
+  async function listPageIds(pageId) {
     const result = await call('?select=archive_id&page_id=eq.' + encodeURIComponent(pageId) + '&limit=' + (MAX_ENTRIES_PER_PAGE + 1), 'GET');
-    return responseRows(result).length;
+    return responseRows(result).map(row => row.archive_id);
   }
   async function archive(input) {
     const { pageId, records } = prepareRecords(input);
@@ -142,8 +141,10 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
       totalExistingForPage: (await listPageIds(pageId)).length, maxEntriesPerPage: MAX_ENTRIES_PER_PAGE,
       archived: [], archivePolicy: 'UNTRUSTED_RESEARCH_ONLY', canonicalMemoryWrite: false
     };
-    const count = await countPage(pageId);
-    if (count > MAX_ENTRIES_PER_PAGE || count + records.length > MAX_ENTRIES_PER_PAGE)
+    const existingIds = await listPageIds(pageId);
+    const existingSet = new Set(existingIds);
+    const newIds = new Set(records.map(record => record.archiveId).filter(id => !existingSet.has(id)));
+    if (existingIds.length > MAX_ENTRIES_PER_PAGE || existingIds.length + newIds.size > MAX_ENTRIES_PER_PAGE)
       fail('RESEARCH_ARCHIVE_CAPACITY_REACHED', 'Per-Page research archive capacity reached; no automatic pruning is allowed.');
     let storedCount = 0, duplicateCount = 0;
     const archived = [];
@@ -162,10 +163,13 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
       ));
       if (verify.length !== 1) fail('RESEARCH_ARCHIVE_READBACK_FAILED', 'Supabase write readback did not return exactly one row.');
       const row = verify[0];
-      if (row.archive_id !== record.archiveId || row.page_id !== pageId ||
-          row.record_digest !== record.recordDigest || !row.payload ||
-          row.payload.archiveId !== record.archiveId || row.payload.recordDigest !== record.recordDigest ||
-          sha256(JSON.stringify(Object.fromEntries(Object.entries(row.payload).filter(([k]) => k !== 'recordDigest')))) !== record.recordDigest) {
+      if (row.archive_id !== record.archiveId || row.page_id !== pageId || !row.payload ||
+          row.payload.archiveId !== record.archiveId || row.payload.pageId !== pageId ||
+          row.record_digest !== row.payload.recordDigest ||
+          sha256(JSON.stringify(Object.fromEntries(Object.entries(row.payload).filter(([k]) => k !== 'recordDigest')))) !== row.payload.recordDigest ||
+          row.payload.contentDigest !== record.contentDigest || row.payload.sourceUrl !== record.sourceUrl ||
+          row.payload.observedAt !== record.observedAt || row.payload.title !== record.title ||
+          row.payload.snippet !== record.snippet) {
         fail('RESEARCH_ARCHIVE_IDENTITY_CONFLICT', 'Supabase archive readback identity or digest mismatch; manual review required.');
       }
       // Determine whether this record already existed by checking its archivedAt value.
@@ -193,10 +197,10 @@ function createSupabaseResearchArchiveStore({ env = process.env, request = secur
     const words = safeQuery.split(/\s+/).filter(word => word.length > 1);
     const ranked = rows.map(row => row.payload).filter(item =>
       item && item.pageId === id && item.archivePolicy === 'UNTRUSTED_RESEARCH_ONLY' &&
-      item.canonicalMemoryWrite === false && item.trustStatus === 'SOURCE_RECORDED' &&
-      item.integrityStatus === 'UNVERIFIED' && item.lifecycle === 'PENDING_REVIEW' &&
+      item.canonicalMemoryWrite === false &&
+      item.sourceIntegrity === 'NOT_INDEPENDENTLY_VERIFIED' &&
       /^[a-f0-9]{64}$/.test(item.recordDigest || '') &&
-      sha256(JSON.stringify(Object.fromEntries(Object.entries(item).filter(([k]) => k !== 'recordDigest'))) === item.recordDigest
+      sha256(JSON.stringify(Object.fromEntries(Object.entries(item).filter(([k]) => k !== 'recordDigest')))) === item.recordDigest
     ).map(item => {
       const title = String(item.title || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
       const snippet = String(item.snippet || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
