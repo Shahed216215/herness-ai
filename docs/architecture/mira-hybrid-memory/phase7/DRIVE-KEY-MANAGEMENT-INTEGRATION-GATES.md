@@ -256,17 +256,17 @@ SHARED_DRIVE=NOT_CERTIFIED
 
 ## 10. Latest code-change CI evidence
 
-The latest Phase 7 code/test workflow completed GitHub Actions run **42010780489 — SUCCESS**, job **127188957972**, against code/test commit `c37a71900eba330eea0a9b84e91bdd3303efcef9`. The run completed the Node syntax check and all six offline test suites. Logs contain **97 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+The latest Phase 7 code/test workflow completed GitHub Actions run **42011068132 — SUCCESS**, job **127189952783**, against code/test commit `1074eda511fefd0c394633e79aeb105f5c04decf`. The run completed the Node syntax check and all six offline test suites. Logs contain **100 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-The Google Drive v3 fake-client suite additionally verifies exact appProperties allowlisting and 124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota mapping and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption key and derived decryption key buffers are zeroized.
+The Google Drive v3 fake-client suite additionally verifies exact appProperties allowlisting and 124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota mapping and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, preview payloads, local-backup verification payloads and restore-staging in-memory payloads are zeroized.
 
 The Phase 7 branch remains restacked on the latest Phase 6 base; PR #16 remains Draft and unmerged. This is synthetic offline CI evidence only. It does not certify OAuth, live Google Drive operations, production key custody, canonical snapshot completeness or production recovery.
 
 VERSION=v0.2
-OFFLINE_CI_RUN=42010780489_SUCCESS
-OFFLINE_CI_JOB=127188957972
-OFFLINE_CI_CODE_TEST_COMMIT=c37a71900eba330eea0a9b84e91bdd3303efcef9
-OFFLINE_PASS_MARKERS=97
+OFFLINE_CI_RUN=42011068132_SUCCESS
+OFFLINE_CI_JOB=127189952783
+OFFLINE_CI_CODE_TEST_COMMIT=1074eda511fefd0c394633e79aeb105f5c04decf
+OFFLINE_PASS_MARKERS=100
 OFFLINE_TEST_SUITES=6
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
