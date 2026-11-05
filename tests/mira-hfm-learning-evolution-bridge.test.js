@@ -170,9 +170,10 @@ assert.equal(hasProductionIntegrationCapabilities({
  };
  retryAuditWriter.idempotent = true;
  const retryBridge = createLearningEvolutionBridge({proposalStore:retryStore,auditWriter:retryAuditWriter});
- await assert.rejects(()=>retryBridge.submit({...base,proposalId:'proposal-audit-retry-001'}),
+ const retrySubmitInput = {...base,proposalId:'proposal-audit-retry-001',createdAt:undefined};
+ await assert.rejects(()=>retryBridge.submit(retrySubmitInput),
    e=>e.code==='HFM_LEARNING_AUDIT_FAILED'&&e.stateCommitted===true);
- const reconciled = await retryBridge.submit({...base,proposalId:'proposal-audit-retry-001'});
+ const reconciled = await retryBridge.submit(retrySubmitInput);
  assert.equal(reconciled.idempotentRetry,true);
  assert.equal(retryAuditAttempts,2);
  console.log('HFM_PHASE8_AUDIT_FAILURE_IDEMPOTENT_RECONCILIATION=PASS');
