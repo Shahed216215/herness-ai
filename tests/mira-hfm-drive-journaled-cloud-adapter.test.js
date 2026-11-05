@@ -85,6 +85,7 @@ function createProvider(directory) {
   };
 }
 
+// Synthetic injected-provider integration only; this suite must never create an OAuth or network client.
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-journaled-cloud-integration-'));
   const journalDirectory = path.join(root, 'journal');
