@@ -45,7 +45,9 @@ const store = {
     projectIsolation: true,
     readAfterWrite: true,
     durableQuarantine: true,
-    durableAudit: true
+    durableAudit: true,
+    atomicBatchAndAudit: true,
+    idempotentAudit: true
   },
   async listBatches({ projectId, groupId }) {
     return [...db.values()].filter(b => b.projectId === projectId && b.groupId === groupId)
@@ -65,6 +67,15 @@ const store = {
     if (!batch || batch.projectId !== projectId) return null;
     return JSON.parse(JSON.stringify(batch));
   },
+  async stageBatchAndAudit(batch, event) {
+    const previous = db.get(batch.batchId);
+    if (previous && previous.batchDigest !== batch.batchDigest) throw new Error('immutable conflict');
+    if (!previous) db.set(batch.batchId, JSON.parse(JSON.stringify(batch)));
+    const operationKey = 'facebook-group-import:staged:v1:' + batch.batchId + ':' + batch.batchDigest;
+    let saved = audits.find(item => item.operationKey === operationKey);
+    if (!saved) { saved = { ...event, operationKey, eventId: 'route-event-fixture' }; audits.push(saved); }
+    return { status: 'ATOMIC_BATCH_AUDIT_READBACK_VERIFIED', batchId: batch.batchId, batchDigest: batch.batchDigest, eventId: saved.eventId, operationKey };
+  },
   async writeAuditEvent(event) {
     audits.push(event);
     return { status: 'AUDIT_WRITE_READBACK_VERIFIED' };
@@ -78,8 +89,7 @@ register(app, permission => {
   permissionRequested = permission;
   return function systemAdminGuard() {};
 }, { SYSTEM_ADMIN: 'SYSTEM_ADMIN' }, {
-  createStore: () => store,
-  auditWriter: async event => audits.push(event)
+  createStore: () => store
 });
 
 assert.equal(permissionRequested, 'SYSTEM_ADMIN');
@@ -153,7 +163,7 @@ assert.equal(guardNext, true);
   }, res);
   assert.equal(res.statusCode, 201);
   assert.equal(db.size, 1);
-  assert.equal(audits.length, 2);
+  assert.equal(audits.length, 1);
 
   res = response();
   await routes['GET /retrieve']({
