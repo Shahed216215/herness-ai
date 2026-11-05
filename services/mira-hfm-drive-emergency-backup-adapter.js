@@ -175,7 +175,7 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       try {
         // Must be a provider-side atomic create-if-absent; search-then-upload is non-compliant.
         result = await transport.atomicCreate({
-          objectKey: key, metadata, bytes: Buffer.from(bytes)
+          projectId: project, objectKey: key, metadata, bytes: Buffer.from(bytes)
         });
       } catch (_) {
         const recovered = await readForReconciliation(expected);
