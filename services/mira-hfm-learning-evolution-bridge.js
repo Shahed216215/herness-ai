@@ -211,7 +211,17 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     }
     const review = await proposalStore.getReview(safeProjectId, safeProposalId);
     if (review) {
-      if (review.proposalDigest !== stored.proposalDigest ||
+      const reviewTimestamp = typeof review.reviewedAt === 'string' ? new Date(review.reviewedAt) : null;
+      const reviewStatusValid =
+        (review.decision === 'APPROVE_FOR_MANUAL_HANDOFF' && review.status === 'APPROVED_FOR_MANUAL_HANDOFF') ||
+        (review.decision === 'REJECT' && review.status === 'REJECTED');
+      if (review.schema !== 'MIRA_HFM_LEARNING_PROPOSAL_REVIEW' || review.version !== '1.0.0' ||
+          review.projectId !== safeProjectId || review.proposalId !== safeProposalId ||
+          review.proposalDigest !== stored.proposalDigest || !reviewStatusValid ||
+          review.actorRole !== 'admin' || typeof review.actorId !== 'string' || !review.actorId.trim() ||
+          typeof review.reason !== 'string' || !review.reason.trim() ||
+          !reviewTimestamp || !Number.isFinite(reviewTimestamp.getTime()) ||
+          reviewTimestamp.toISOString() !== review.reviewedAt ||
           review.reviewDigest !== digest(Object.fromEntries(Object.entries(review).filter(([key]) => key !== 'reviewDigest'))) ||
           review.trustState !== 'UNTRUSTED' || review.canonicalMemoryWrites !== 0 ||
           review.automaticExecution !== false) {
