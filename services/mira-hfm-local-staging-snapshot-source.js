@@ -119,6 +119,7 @@ function createLocalStagingSnapshotSource(config) {
   const descriptor = Object.freeze({
     contractVersion: '1', sourceId: config.sourceId, signingKeyId: config.signingKeyId,
     signingKeyVersion, signingProviderId: signingProvider.descriptor.providerId,
+    ...(config.provenance && typeof config.provenance === 'object' ? { provenance: Object.freeze({ ...config.provenance }) } : {}),
     mode: 'read-only', environment: 'staging'
   });
 
@@ -162,6 +163,7 @@ function createLocalStagingSnapshotSource(config) {
         authorizationPolicyVersion: authorization.policyVersion,
         authorizationExpiresAt: authorization.expiresAt,
         requestId: request.requestId, nonce: request.nonce,
+        ...(descriptor.provenance ? { provenance: descriptor.provenance } : {}),
         sourceRevision, schemaVersion: snapshot.schemaVersion,
         capturedAt: new Date().toISOString(), recordCount: records.length,
         payloadSha256: sha256(Buffer.from(canonicalize(snapshot), 'utf8'))
