@@ -22,7 +22,8 @@
 - `services/mira-hfm-key-provider-contract.js`: validates the declared provider interface, key purpose and key reference/version consistency. Contract shape is not provider identity or approval.
 - `services/mira-hfm-authoritative-snapshot.js`: injected signed snapshot contract with independent Ed25519 trust anchor, request binding, freshness and payload/revision checks; produces encrypted bytes only.
 - `services/mira-hfm-recovery-verification.js`: non-mutating decrypt/authenticate and independent baseline comparison.
-- `services/mira-hfm-local-staging-snapshot-source.js`: staging-only local JSON source adapter with explicit file paths, staging-root containment, non-symlink file checks, authorization callback, bounded read-only file descriptors, and Ed25519 request-bound attestation.
+- `services/mira-hfm-authorization-decision.js`: verifies short-lived signed Ed25519 authorization decisions against a separate pinned issuer trust store and requires an atomic one-time replay-guard interface.
+- `services/mira-hfm-local-staging-snapshot-source.js`: staging-only local JSON source adapter with explicit file paths, staging-root containment, non-symlink file checks, signed authorization decision verification before reads, bounded read-only file descriptors, and Ed25519 request-bound attestation.
 - `services/mira-hfm-staging-backup-drill.js`: staging-only orchestrator that compares two separately pinned staging source captures, encrypts and immutably publishes a backup, reads it back from disk, and verifies recovery preview against the baseline.
 - Tests: emergency-backup, mocked Drive adapter, key-provider contract, authoritative snapshot, recovery verification, local staging snapshot source, and staging backup/recovery drill.
 - `.github/workflows/mira-hfm-phase7-emergency-backup.yml`: isolated Node 24 offline contract workflow; updated to include the staging-source and end-to-end staging backup/recovery drill suites.
@@ -30,11 +31,11 @@
 ## Local staging source design boundary
 - The adapter accepts only `environment: staging`; production environment is rejected.
 - No repository default storage path is resolved. Both JSON file paths must be explicitly supplied and remain inside a real, non-symlink staging root.
-- Authorization is delegated to an explicitly injected callback and must return literal `true` before either source file is read.
+- Authorization callback returns a signed, short-lived ALLOW decision; a separately pinned issuer key authenticates it and an injected one-time replay guard must atomically consume it before either source file is read.
 - The adapter does not call `readMemory()`, because that function may create an initialization marker; it does not call Knowledge backup creation, which writes backup/audit state.
 - The adapter signs the source revision, record count, payload digest, actor/project/scope, request ID and nonce using an injected Ed25519 key.
 - Synthetic tests only; no staging or production project files were read by this implementation session. No live source, KMS, Drive, or canonical Memory was touched.
-- The injected authorization callback and private-key custody are not independently certified. Production integration remains blocked.
+- The authorization issuer's policy governance, durable cross-instance replay guard, source signing-key custody and private-key lifecycle are not independently certified. Production integration remains blocked.
 
 ## CI evidence before local staging adapter
 - Latest previously observed five-suite workflow run `42028413165` completed SUCCESS on commit `8b8d7127a3c986d906f74edffcfefd1f924929d5`.
@@ -65,7 +66,7 @@
 ## Remaining blockers
 - Production KMS/KEK custody, access policy, rotation, escrow and recovery: REVIEW_REQUIRED.
 - Authoritative production snapshot source, actor/project authorization and source revision binding: NOT_INTEGRATED.
-- Staging authorization callback and signing-key custody need independent implementation review.
+- Signed authorization decision contract is implemented; issuer policy governance and durable replay-store review remain open. Source signing-key custody still requires independent review.
 - Live Google Drive permission/quota/upload/download verification: NOT_RUN.
 - Retention deletion approval and policy: NOT_APPROVED; plan-only behavior remains.
 - Restore preview is implemented through authenticated decrypt and validation; production restore/atomic canonical replacement remains NOT_IMPLEMENTED.
