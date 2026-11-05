@@ -112,6 +112,10 @@ function verifySignedProvenancePolicy({
     fail('Policy issuer overlaps a source or operational issuer trust role.',
       'HFM_PROVENANCE_POLICY_ISSUER_COLLISION');
   }
+  if (acceptedPolicyState.authorityId === p.signer.issuerId) {
+    fail('Policy state authority must be separate from the policy signer.',
+      'HFM_PROVENANCE_POLICY_ISSUER_COLLISION');
+  }
   let publicKey;
   try { publicKey = crypto.createPublicKey(trusted.publicKeyPem); }
   catch { fail('Policy issuer public key is invalid.', 'HFM_PROVENANCE_POLICY_KEY_INVALID'); }
