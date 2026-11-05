@@ -33,6 +33,7 @@ function validateFileId(value) {
 function createJournaledDriveUpload({ provider, journalDirectory, accountBinding,
   driveSpace, projectId, parentId } = {}) {
   const account = validText(accountBinding, 'accountBinding', 160);
+  if (!/^[a-f0-9]{64}$/.test(account)) reject('accountBinding must be a SHA-256 account fingerprint.');
   const project = validText(projectId, 'projectId', 96);
   const parent = validText(parentId, 'parentId', 256);
   if (!['drive', 'appDataFolder'].includes(driveSpace)) reject('driveSpace is unsupported.');
