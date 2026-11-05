@@ -235,7 +235,7 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       const effectiveLimit = Math.min(input.limit, provider.maxPageSize);
       const cursor = input.cursor === undefined ? null : input.cursor;
       if (cursor !== null && (typeof cursor !== 'string' || !cursor ||
-          cursor.length > 1024 || /[\\u0000-\\u001f]/.test(cursor))) {
+          cursor.length > 1024 || /[\u0000-\u001f]/.test(cursor))) {
         reject('Listing cursor is malformed or exceeds the bounded cursor size.', 'HFM_DRIVE_LIST_INVALID');
       }
       const page = await transport.listPage({
@@ -244,7 +244,7 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       if (!page || !Array.isArray(page.items) || page.items.length > effectiveLimit ||
           typeof page.complete !== 'boolean' ||
           (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor ||
-            page.nextCursor.length > 1024 || /[\\u0000-\\u001f]/.test(page.nextCursor) ||
+            page.nextCursor.length > 1024 || /[\u0000-\u001f]/.test(page.nextCursor) ||
             page.nextCursor === cursor)) ||
           (page.complete && page.nextCursor != null)) {
         reject('Transport returned an invalid explicit pagination envelope.', 'HFM_DRIVE_LIST_INVALID');
