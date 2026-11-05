@@ -13,6 +13,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202611051
 const verification = fs.readFileSync(path.join(root, 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'), 'utf8');
 const bridge = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evolution-bridge.js'), 'utf8');
 const adapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evidence-adapter.js'), 'utf8');
+const generationCycleAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle.js'), 'utf8');
 const generationRequestAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle-request.js'), 'utf8');
 
 assert.match(route, /const isProduction = process\.env\.NODE_ENV === 'production'/);
