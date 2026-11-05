@@ -81,6 +81,32 @@ const keyProvider = {
     error.stateCommitted === true && error.outcome === 'REVIEW_REQUIRED' &&
     !error.message.includes('PRIVATE_REMOTE_CREATE_ERROR'));
 
+  let reconciledFile = null;
+  const reconciledDrive = {
+    about: drive.about,
+    files: {
+      list: async () => ({ data: { files: reconciledFile ? [reconciledFile] : [] } }),
+      create: async args => {
+        const chunks = [];
+        for await (const chunk of args.media.body) chunks.push(Buffer.from(chunk));
+        assert.deepEqual(Buffer.concat(chunks), encrypted.bytes);
+        reconciledFile = {
+          id: 'remote-reconciled', name: args.requestBody.name,
+          parents: args.requestBody.parents, appProperties: args.requestBody.appProperties
+        };
+        throw new Error('PRIVATE_RESPONSE_LOST_AFTER_REMOTE_COMMIT');
+      },
+      get: async () => ({ data: Buffer.from(encrypted.bytes) })
+    }
+  };
+  const reconciledUpload = await driveBackup.uploadEncryptedBackup({
+    drive: reconciledDrive, folderId: 'folder_123',
+    fileName: 'mira-hfm-project-1-20261105T120004Z.mira-hfm.enc.json',
+    bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
+  });
+  assert.equal(reconciledUpload.status, 'VERIFIED_RECONCILED_AFTER_AMBIGUOUS_CREATE');
+  assert.equal(reconciledUpload.fileId, 'remote-reconciled');
+
   const unverifiedCreateDrive = {
     about: drive.about,
     files: {
@@ -101,10 +127,12 @@ const keyProvider = {
   });
   assert.equal(downloaded.status, 'DOWNLOADED_UNVERIFIED');
   assert.deepEqual(downloaded.bytes, encrypted.bytes);
-  await assert.rejects(() => driveBackup.uploadEncryptedBackup({
+  const idempotentReuse = await driveBackup.uploadEncryptedBackup({
     drive, folderId: 'folder_123', fileName: 'mira-hfm-project-1-20261105T120000Z.mira-hfm.enc.json',
     bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
-  }), error => error.code === 'DRIVE_BACKUP_ALREADY_EXISTS');
+  });
+  assert.equal(idempotentReuse.status, 'VERIFIED_EXISTING_IDEMPOTENT');
+  assert.equal(creates, 1);
   const fullDrive = { ...drive, about: { get: async () => ({ data: { storageQuota: { usage: '999999', limit: '10000000' } } }) } };
   await assert.rejects(() => driveBackup.uploadEncryptedBackup({
     drive: fullDrive, folderId: 'folder_123', fileName: 'mira-hfm-project-1-20261106T120000Z.mira-hfm.enc.json',
