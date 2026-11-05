@@ -48,3 +48,10 @@ These changes do not perform a live Drive call, upload, delete, restore, or prod
 ## 7. Exact existing-object reuse and quota boundary
 
 An exact existing object with matching deterministic upload metadata is verified by byte-for-byte readback and returned as `VERIFIED_EXISTING_IDEMPOTENT`. This is a no-new-upload path; a current quota snapshot is not required to reuse the already stored exact object. Quota verification remains mandatory before a new `files.create` operation. A same-name object with different metadata remains a hard conflict.
+
+
+## 8. Drive client method snapshot
+
+The upload adapter captures the Drive client's `files.list`, `files.create`, `files.get`, and quota `about.get` method references before the first asynchronous list operation. Replacing methods on the caller-owned client object from inside a list callback cannot swap the methods used later for quota verification, create, or readback. A synthetic regression test exercises this mutation path.
+
+This protects the in-flight adapter operation from caller-object method replacement; it does not authenticate the Google client, OAuth principal, folder ACL, or remote provider behavior.
