@@ -120,7 +120,7 @@ function makeProvider(options = {}) {
   let current = signed(statePayload(), stateKey);
   const receipts = new Map();
   function requestDigest(request) {
-    return crypto.createHash('sha256').update(JSON.stringify({
+    return crypto.createHash('sha256').update(canonicalizeProvenancePolicy({
       authorityId: request.authorityId,
       expectedSequence: request.expectedSequence,
       expectedDigest: request.expectedDigest,
