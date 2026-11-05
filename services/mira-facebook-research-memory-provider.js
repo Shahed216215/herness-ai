@@ -1,7 +1,9 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const { secureProviderRequest } = require('./security/secure-provider-request');
+function secureProviderRequest(...args) {
+  return require('./security/secure-provider-request').secureProviderRequest(...args);
+}
 const {
   archiveFacebookResearchEvidence: archiveLocal,
   searchFacebookResearchMemory: lookupLocal
