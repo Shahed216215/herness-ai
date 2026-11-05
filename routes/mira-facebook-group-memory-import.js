@@ -2,13 +2,11 @@
 
 const express = require('express');
 const {
-  createFacebookGroupImportService,
-  prepareFacebookGroupImport
+  createFacebookGroupImportService
 } = require('../services/mira-facebook-group-memory-import');
 const {
   createSupabaseFacebookGroupImportStore
-} = require('../services/mira-facebook-group-supabase-store');
-const { recordAudit } = require('../audit-log');
+} = require('../services/mira-facebook-group-memory-supabase-store');
 
 function actorIdentity(req) {
   const session = req.session;
@@ -34,21 +32,7 @@ function registerFacebookGroupMemoryImportRoutes(
 ) {
   const router = express.Router();
   const createStore = options.createStore || createSupabaseFacebookGroupImportStore;
-  const audit = options.auditWriter || (event => recordAudit({
-    actorRole: 'admin',
-    action: event.eventType,
-    resource: 'facebook_group_import_batch',
-    resourceId: event.batchId,
-    status: 'success',
-    details: {
-      actorId: event.actorId,
-      projectId: event.projectId,
-      groupId: event.groupId,
-      batchDigest: event.batchDigest,
-      outcome: event.outcome,
-      canonicalMemoryWrite: false
-    }
-  }));
+  const audit = options.auditWriter || ((event, store) => store.writeAuditEvent(event));
 
   // The global JSON parser skips this endpoint; parse up to 1 MiB only
   // after the SYSTEM_ADMIN guard has authenticated the request.
@@ -78,7 +62,7 @@ function registerFacebookGroupMemoryImportRoutes(
       }
       const service = createFacebookGroupImportService({
         store,
-        auditWriter: event => audit({ ...event, actorId: actor.id })
+        auditWriter: event => audit({ ...event, actorId: actor.id }, store)
       });
       const result = await service.import({
         format: body.format,
