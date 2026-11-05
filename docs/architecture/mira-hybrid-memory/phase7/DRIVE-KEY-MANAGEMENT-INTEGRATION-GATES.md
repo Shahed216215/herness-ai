@@ -127,6 +127,36 @@ The branch adds `services/mira-hfm-drive-emergency-backup-adapter.js` as a provi
 
 This prototype cannot establish real provider atomicity, remote durability, quota behavior, OAuth scope, or consistency. Those remain separate provider-specific review and live-test gates.
 
+## 9.1 Google Drive create-only design candidate (documentation review only)
+
+Official Google Drive API documentation describes a viable idempotent-create mechanism for ordinary binary files: call `files.generateIds`, pass one generated ID in the `id` field of the subsequent `files.create` upload, and reuse that same ID for every retry. Google documents that after a successful create, subsequent retries return HTTP `409 Conflict` and do not create duplicate files. This is materially stronger than a name-based search followed by ordinary create.
+
+Relevant official references:
+- https://developers.google.com/workspace/drive/api/guides/create-file#generate_ids_to_use_with_your_files
+- https://developers.google.com/workspace/drive/api/guides/manage-uploads#use_a_pre-generated_id_to_upload_files
+- https://developers.google.com/workspace/drive/api/reference/rest/v3/files/generateIds
+
+Candidate provider algorithm (NOT IMPLEMENTED or live-tested):
+
+1. Bind the operation to the authenticated Google account and selected Drive space (`drive` or `appDataFolder`). The generated IDs are issued for the requesting user and selected space; never reuse an ID across account/space boundaries.
+2. Request one generated file ID with `files.generateIds`.
+3. Before starting the upload, persist and fsync a local operation-journal entry binding account identity, space, projectId, backupId, generated file ID, ciphertext SHA-256, byte length and operation state. The journal must be durable across process restart and protected as sensitive metadata. If this journal is unavailable, do not start an upload.
+4. Create an ordinary binary file (never a Google Docs/Sheets/Slides conversion) using the generated ID in the file resource, the dedicated backup parent/folder, encrypted-only MIME type, and project/backup/digest metadata. Use a resumable upload for envelopes above 5 MB or mobile/network-interruption risk.
+5. On timeout or HTTP 409, do not generate a replacement ID. Retrieve the exact file by the journaled ID, verify its project/backup binding, parent, byte length and digest, then download and compare the exact ciphertext bytes. Only exact verified readback can reconcile the operation as successful.
+6. If the ID cannot be retrieved, metadata conflicts, the journal is missing, or the response remains ambiguous, report INCONCLUSIVE/UNCERTAIN and preserve the journal for recovery. Never fall back to search-by-name plus create.
+7. Complete the normal authenticated envelope verification after exact-byte readback. Keep root keys and plaintext outside the Drive transport.
+
+Important limitations and gates:
+- Google documents pre-generated IDs for create/copy/upload and duplicate prevention on retry, but this documentation review is not a live proof of our exact OAuth account, folder, upload mode, or quota behavior.
+- Pre-generated IDs are not supported for Google Workspace file creation/conversion (except documented special MIME types); HFM backup objects must remain ordinary binary files.
+- The local durable ID journal becomes a required recovery dependency. Its atomicity, fsync, encryption/permissions, crash recovery, account binding, backup/restore and retention policy require a separate offline design and test before adapter implementation.
+- The minimum suitable OAuth scope, dedicated-folder ownership, Shared Drive behavior (if any), and `appDataFolder` versus a visible dedicated folder must be decided before OAuth authorization. No OAuth scope is approved by this document.
+- This candidate may satisfy the provider-side create-only requirement only after a dedicated fake-transport regression suite and a separately authorized, narrowly scoped live test verify create, timeout-after-commit, 409 reconciliation, exact download and duplicate prevention.
+
+STATUS=DOCUMENTED_DESIGN_CANDIDATE_ONLY
+GOOGLE_DRIVE_ADAPTER=NOT_IMPLEMENTED
+LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
+
 ## 10. Latest code-change CI evidence
 
 Restacked code/test commit `e02b32e16c3503479a4bc37f3d9d06f3be0beee6` completed GitHub Actions run **41994278556** (job **127133573967**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
