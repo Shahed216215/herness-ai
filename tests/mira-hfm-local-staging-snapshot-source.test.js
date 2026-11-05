@@ -100,17 +100,34 @@ async function run() {
     }), error => error.code === 'HFM_STAGING_ENVIRONMENT_REQUIRED');
     process.stdout.write('MIRA_HFM_PHASE7_PRODUCTION_ENV_BLOCK_PASS\n');
 
+    const outsideFile = path.join(path.dirname(f.rootDir), path.basename(f.rootDir) + '-outside.json');
+    fs.writeFileSync(outsideFile, '[]');
+    try {
+      assert.throws(() => createLocalStagingSnapshotSource({
+        environment: 'staging',
+        sourceId: 'outside',
+        signingKeyId: 'outside-key',
+        privateKeyPem: crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }),
+        rootDir: f.rootDir,
+        memoryFile: outsideFile,
+        knowledgeFile: f.knowledgeFile,
+        authorize: async () => true
+      }), error => error.code === 'HFM_STAGING_PATH_OUTSIDE_ROOT');
+    } finally {
+      fs.unlinkSync(outsideFile);
+    }
+    const symlinkFile = path.join(f.rootDir, 'memory-link.json');
+    fs.symlinkSync(f.memoryFile, symlinkFile);
     assert.throws(() => createLocalStagingSnapshotSource({
       environment: 'staging',
-      sourceId: 'outside',
-      signingKeyId: 'outside-key',
+      sourceId: 'symlink',
+      signingKeyId: 'symlink-key',
       privateKeyPem: crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }),
       rootDir: f.rootDir,
-      memoryFile: path.join(path.dirname(f.rootDir), 'outside-memory.json'),
+      memoryFile: symlinkFile,
       knowledgeFile: f.knowledgeFile,
       authorize: async () => true
-    }), error => error.code === 'HFM_STAGING_FILE_UNAVAILABLE' ||
-      error.code === 'HFM_STAGING_PATH_OUTSIDE_ROOT');
+    }), error => error.code === 'HFM_STAGING_PATH_OUTSIDE_ROOT');
     process.stdout.write('MIRA_HFM_PHASE7_STAGING_PATH_PIN_PASS\n');
   } finally {
     fs.rmSync(f.rootDir, { recursive: true, force: true });
