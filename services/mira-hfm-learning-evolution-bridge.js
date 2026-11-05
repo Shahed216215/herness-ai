@@ -160,6 +160,7 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
         reviewDigest: review.reviewDigest,
         decision: review.decision,
         status: review.status,
+        createdAt: reviewedAt,
         actorRole: 'admin',
         actorId,
         canonicalMemoryWrites: 0,
