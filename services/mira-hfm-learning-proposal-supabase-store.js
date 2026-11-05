@@ -126,11 +126,16 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
     return { created: inserted.length === 1 };
   }
   async function writeAuditEvent(event) {
+    const recordedAt = event && event.event === 'HFM_LEARNING_PROPOSAL_REVIEWED'
+      ? event.reviewedAt : event && event.createdAt;
     if (!event || !['HFM_LEARNING_PROPOSAL_STAGED','HFM_LEARNING_PROPOSAL_REVIEWED'].includes(event.event) ||
         typeof event.projectId !== 'string' || typeof event.proposalId !== 'string' ||
         typeof event.proposalDigest !== 'string' || typeof event.actorRole !== 'string' ||
-        typeof event.createdAt !== 'string' || !Number.isFinite(Date.parse(event.createdAt)) ||
-        new Date(event.createdAt).toISOString() !== event.createdAt) {
+        typeof recordedAt !== 'string' || !Number.isFinite(Date.parse(recordedAt)) ||
+        new Date(recordedAt).toISOString() !== recordedAt ||
+        (event.event === 'HFM_LEARNING_PROPOSAL_REVIEWED' &&
+          (!/^[a-f0-9]{64}$/.test(event.reviewDigest || '') ||
+           !['APPROVE_FOR_MANUAL_HANDOFF','REJECT'].includes(event.decision)))) {
       fail('HFM_LEARNING_SUPABASE_AUDIT_INVALID', 'Learning proposal audit event is incomplete.');
     }
     const payload = { schemaVersion:'1.0.0', eventType:event.event, projectId:event.projectId,
@@ -138,10 +143,11 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
       reviewDigest:event.reviewDigest || null, decision:event.decision || null, status:event.status,
       actorRole:event.actorRole, actorId:event.actorId || 'unknown',
       canonicalMemoryWrites:0, automaticExecution:event.automaticExecution === true,
-      recordedAt:event.createdAt };
+      recordedAt };
     const eventDigest = digest(payload);
     const identity = crypto.createHash('sha256').update([
-      event.event, event.projectId, event.proposalId, event.proposalDigest
+      event.event, event.projectId, event.proposalId, event.proposalDigest,
+      event.reviewDigest || '', event.decision || ''
     ].join('|'), 'utf8').digest('hex').slice(0, 32);
     const variant = ((parseInt(identity[16], 16) & 3) | 8).toString(16);
     const eventId = identity.slice(0, 8) + '-' + identity.slice(8, 12) + '-5' +
