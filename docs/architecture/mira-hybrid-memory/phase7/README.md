@@ -244,3 +244,13 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - These changes use synthetic Ed25519 keys and an in-memory fake policy-state provider only. The provider's `durable`/`atomic` claims are not proof of real durability or atomicity; real policy governance, out-of-band trust provisioning, evidence collection, and infrastructure independence remain unverified.
 - Verification disposition: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. No new CI PASS is claimed until the exact push workflow logs for the implementation commit are inspected.
 - Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; all work remains within v0.2.
+
+
+## Time-configuration and key-provider failure hardening — 2026-11-05
+
+- Latest code/test commit before this documentation checkpoint: `2a1872ab2b5ba30832c6649952caca5cd6221a27`.
+- Bounded time configuration across signed provenance policy, policy-state records/acceptance, provenance evidence verification, and authoritative snapshot capture. Non-safe-integer clocks, invalid skew values, and excessive snapshot freshness windows now fail closed before provider/resolver/source access.
+- Added regression tests for NaN/infinite/over-limit time configuration and for rejecting invalid clocks before policy-state reads and evidence resolver calls.
+- Hardened backup key wrapping: unexpected external key-provider errors are normalized to `BACKUP_KEY_WRAP_FAILED` without propagating provider error text. The temporary DEK copy passed to the provider is zeroed even when wrapping throws; a regression test verifies both properties.
+- The Phase 7 workflow already includes the modified service/test paths. Matching push-run logs have not yet been retrievable through the currently available workflow-run lookup, which only returns pull-request-triggered runs. `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`; no PASS claim is made for these new tests.
+- All changes remain synthetic/offline contract work. Real provider custody, durable/atomic replay and policy state, host ACL/mount review, six-dimension infrastructure evidence, staging approval, and production certification remain outstanding.
