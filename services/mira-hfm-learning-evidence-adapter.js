@@ -22,6 +22,7 @@ function fromPublicRetrieval(input = {}) {
   const projectId = bounded(input.projectId, 'projectId', 128);
   const proposalId = bounded(input.proposalId, 'proposalId', 128);
   if (!ID_RE.test(projectId) || !ID_RE.test(proposalId)) fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Project or proposal ID format is invalid.');
+  if (!report.lookup || report.lookup.projectId !== projectId) fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Proposal project must exactly match the public retrieval Project ID.');
   const evidence = report.evidence.map((item, index) => {
     if (!item || typeof item !== 'object' || item.pageId !== report.page.pageId) fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Evidence page binding mismatch at index ' + index + '.');
     const rawSourceRef = bounded(item.sourceUrl, 'evidence.sourceUrl', 2048);
