@@ -8,7 +8,7 @@ const audits = new Map();
 const calls = [];
 async function mockRequest(rawUrl, config) {
   calls.push({ url:rawUrl, method:config.method, hasApiKey:!!config.headers.apikey,
-    hasAuthorization:!!config.headers.Authorization });
+    hasAuthorization:!!config.headers.Authorization, prefer:config.headers.Prefer || '' });
   const url = new URL(rawUrl);
   const table = url.pathname.split('/').pop();
   const map = table === 'mira_hfm_learning_proposals' ? proposals
@@ -23,8 +23,9 @@ async function mockRequest(rawUrl, config) {
       if (created) map.set(key, structuredClone(row));
       return { status:201, data:created ? [structuredClone(row)] : [] };
     }
-    map.set(key, structuredClone(row));
-    return { status:201, data:[structuredClone(row)] };
+    const created = !map.has(key);
+    if (created) map.set(key, structuredClone(row));
+    return { status:201, data:created ? [structuredClone(row)] : [] };
   }
   if (config.method === 'GET') {
     const rows = [...map.values()].filter(row => {
@@ -53,14 +54,21 @@ async function mockRequest(rawUrl, config) {
   const input={projectId:'project-alpha',proposalId:'proposal-supabase-001',
     title:'Supabase persistence test',rationale:'Mock-only adapter verification.',
     proposedChange:'No canonical change.',evidence,createdAt:'2026-11-05T06:00:00.000Z'};
-  const bridge=createLearningEvolutionBridge({proposalStore:store,auditWriter:event=>store.writeAuditEvent(event)});
+  const auditWriter=event=>store.writeAuditEvent(event);
+  auditWriter.durable=true;
+  auditWriter.idempotent=true;
+  const bridge=createLearningEvolutionBridge({proposalStore:store,auditWriter});
   const result=await bridge.submit(input,{actorRole:'admin',actorId:'test-admin'});
   assert.equal(result.status,'PENDING_HUMAN_REVIEW');
   assert.equal(proposals.size,1);
   assert.equal(audits.size,1);
   assert.equal((await bridge.get('project-alpha','proposal-supabase-001')).proposalDigest,result.proposalDigest);
-  await assert.rejects(()=>bridge.submit(input,{actorRole:'admin',actorId:'test-admin'}),
-    error=>error.code==='HFM_LEARNING_PROPOSAL_CONFLICT');
+  const retried=await bridge.submit(input,{actorRole:'admin',actorId:'test-admin'});
+  assert.equal(retried.idempotentRetry,true);
+  assert.equal(proposals.size,1);
+  assert.equal(audits.size,1);
+  assert.ok(calls.some(call=>call.url.includes('on_conflict=event_id') &&
+    call.prefer.includes('resolution=ignore-duplicates')));
   const second=buildProposal({...input,projectId:'project-beta',
     evidence:evidence.map(item=>({...item,projectId:'project-beta'}))});
   assert.equal((await store.putIfAbsent('project-beta',second.proposalId,second)).created,true);
@@ -74,7 +82,7 @@ async function mockRequest(rawUrl, config) {
     'HFM_PHASE8_SUPABASE_READBACK_AND_DIGEST=PASS',
     'HFM_PHASE8_SUPABASE_APPEND_ONLY_AUDIT_READBACK=PASS',
     'HFM_PHASE8_SUPABASE_CROSS_PROJECT_ISOLATION=PASS',
-    'HFM_PHASE8_SUPABASE_DUPLICATE_CONFLICT=PASS',
+    'HFM_PHASE8_SUPABASE_IDEMPOTENT_AUDIT_RECONCILIATION=PASS',
     'HFM_PHASE8_SUPABASE_MOCKED_REQUESTS_ONLY=PASS',
     'HFM_PHASE8_LIVE_NETWORK_CALLS=0',
     'TESTS_FAILED=0'
