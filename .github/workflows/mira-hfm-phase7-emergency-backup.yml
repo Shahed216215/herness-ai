@@ -7,14 +7,16 @@ on:
     paths:
       - 'services/mira-hfm-emergency-backup.js'
       - 'services/mira-hfm-google-drive-backup-adapter.js'
+      - 'services/mira-hfm-authoritative-snapshot.js'
+      - 'services/mira-hfm-local-staging-snapshot-source.js'
+      - 'services/mira-hfm-recovery-verification.js'
+      - 'services/mira-hfm-key-provider-contract.js'
       - 'tests/mira-hfm-emergency-backup.test.js'
       - 'tests/mira-hfm-google-drive-backup-adapter.test.js'
       - 'tests/mira-hfm-key-provider-contract.test.js'
       - 'tests/mira-hfm-authoritative-snapshot.test.js'
+      - 'tests/mira-hfm-local-staging-snapshot-source.test.js'
       - 'tests/mira-hfm-recovery-verification.test.js'
-      - 'services/mira-hfm-authoritative-snapshot.js'
-      - 'services/mira-hfm-recovery-verification.js'
-      - 'services/mira-hfm-key-provider-contract.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-emergency-backup.yml'
   pull_request:
@@ -23,8 +25,16 @@ on:
     paths:
       - 'services/mira-hfm-emergency-backup.js'
       - 'services/mira-hfm-google-drive-backup-adapter.js'
+      - 'services/mira-hfm-authoritative-snapshot.js'
+      - 'services/mira-hfm-local-staging-snapshot-source.js'
+      - 'services/mira-hfm-recovery-verification.js'
+      - 'services/mira-hfm-key-provider-contract.js'
       - 'tests/mira-hfm-emergency-backup.test.js'
       - 'tests/mira-hfm-google-drive-backup-adapter.test.js'
+      - 'tests/mira-hfm-key-provider-contract.test.js'
+      - 'tests/mira-hfm-authoritative-snapshot.test.js'
+      - 'tests/mira-hfm-local-staging-snapshot-source.test.js'
+      - 'tests/mira-hfm-recovery-verification.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-emergency-backup.yml'
 
@@ -47,6 +57,7 @@ jobs:
           node tests/mira-hfm-google-drive-backup-adapter.test.js
           node tests/mira-hfm-key-provider-contract.test.js
           node tests/mira-hfm-authoritative-snapshot.test.js
+          node tests/mira-hfm-local-staging-snapshot-source.test.js
           node tests/mira-hfm-recovery-verification.test.js
           echo "NETWORK_REQUESTS=0"
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
