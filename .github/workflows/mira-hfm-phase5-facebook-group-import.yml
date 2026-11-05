@@ -6,8 +6,13 @@ on:
       - work/mira-hfm-v02-phase5-facebook-group-import
     paths:
       - 'services/mira-facebook-group-memory-import.js'
+      - 'services/mira-facebook-group-memory-supabase-store.js'
       - 'services/mira-memory-conflict-assessment.js'
+      - 'routes/mira-facebook-group-memory-import.js'
+      - 'supabase/migrations/**'
       - 'tests/mira-facebook-group-memory-import.test.js'
+      - 'tests/mira-facebook-group-memory-supabase-store.test.js'
+      - 'tests/mira-facebook-group-memory-import-route.test.js'
       - '.github/workflows/mira-hfm-phase5-facebook-group-import.yml'
       - 'docs/architecture/mira-hybrid-memory/phase5/**'
   pull_request:
@@ -38,6 +43,8 @@ jobs:
         run: |
           set -euo pipefail
           node tests/mira-facebook-group-memory-import.test.js
+          node tests/mira-facebook-group-memory-supabase-store.test.js
+          node tests/mira-facebook-group-memory-import-route.test.js
       - name: Confirm external boundaries
         run: |
           echo "LIVE_FACEBOOK_REQUESTS=0"
