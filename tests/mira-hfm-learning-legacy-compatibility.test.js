@@ -2,7 +2,9 @@
 
 const assert = require('node:assert/strict');
 const { inspectLegacyLearningCompatibility } = require('../services/mira-hfm-learning-legacy-compatibility');
-const { fromLegacyLearningRecord } = require('../services/mira-hfm-legacy-learning-evidence-adapter');
+const {
+  fromLegacyLearningRecord, fromLegacyExperiences, fromLegacyConsolidatedKnowledge
+} = require('../services/mira-hfm-legacy-learning-evidence-adapter');
 
 function fixtures(overrides = {}) {
   const calls = { writes: 0, rollback: 0, drive: 0 };
@@ -71,6 +73,50 @@ function fixtures(overrides = {}) {
     integrity: { found: true, valid: true, learningId: legacyRecord.learningId, schemaVersion: 2 }
   }), error => error.code === 'HFM_LEARNING_LEGACY_SECRET_SUSPECTED');
   console.log('HFM_PHASE8_LEGACY_LEARNING_TO_UNTRUSTED_PROPOSAL_ADAPTER=PASS');
+
+  const experience = {
+    experienceId: 'learning-experience-001',
+    integrity: 'a'.repeat(64),
+    source: { type: 'work-learning-record', learningId: 'learning-experience-001' },
+    lesson: ['Use independent QA before declaring success.'],
+    feedback: { requestedChanges: ['Keep project scope explicit.'] },
+    error: { reasons: ['Previous attempt missed a requirement.'] },
+    performance: { failedChecks: ['requirements'] }
+  };
+  const experienceInput = fromLegacyExperiences({
+    projectId: 'project-mira-v02', proposalId: 'proposal-experience-001',
+    title: 'Experience retrieval review', rationale: 'Review verified related experiences.',
+    proposedChange: 'Create a human-reviewed proposal only.',
+    experiences: [{ experience, integrityVerified: true }]
+  });
+  assert.equal(experienceInput.evidence.length, 4);
+  assert.ok(experienceInput.evidence.every(item => item.trustState === 'UNVERIFIED'));
+  assert.throws(() => fromLegacyExperiences({
+    projectId: 'project-mira-v02', proposalId: 'proposal-experience-002',
+    title: 'Unverified experience', rationale: 'Must fail.', proposedChange: 'No changes.',
+    experiences: [{ experience, integrityVerified: false }]
+  }), error => error.code === 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED');
+  console.log('HFM_PHASE8_EXPERIENCE_RETRIEVAL_TO_UNTRUSTED_PROPOSAL=PASS');
+
+  const consolidatedInput = fromLegacyConsolidatedKnowledge({
+    projectId: 'project-mira-v02', proposalId: 'proposal-knowledge-001',
+    title: 'Consolidated knowledge review', rationale: 'Review store-integrity-verified knowledge.',
+    proposedChange: 'Prepare a human-reviewed knowledge proposal.',
+    storeIntegrity: { valid: true },
+    item: { id: 'wk_abcdef1234567890', fingerprint: 'b'.repeat(64),
+      lesson: 'Keep evidence provenance attached to each reusable knowledge item.',
+      sourceRecords: [{ recordId: 'learning-001' }] }
+  });
+  assert.equal(consolidatedInput.evidence.length, 1);
+  assert.equal(consolidatedInput.evidence[0].trustState, 'UNVERIFIED');
+  assert.throws(() => fromLegacyConsolidatedKnowledge({
+    projectId: 'project-mira-v02', proposalId: 'proposal-knowledge-002',
+    title: 'Corrupt knowledge store', rationale: 'Must fail.', proposedChange: 'No changes.',
+    storeIntegrity: { valid: false },
+    item: { id: 'wk_abcdef1234567890', fingerprint: 'b'.repeat(64),
+      lesson: 'Do not import corrupt store data.', sourceRecords: [{ recordId: 'learning-001' }] }
+  }), error => error.code === 'HFM_LEARNING_LEGACY_INTEGRITY_REQUIRED');
+  console.log('HFM_PHASE8_KNOWLEDGE_CONSOLIDATION_TO_UNTRUSTED_PROPOSAL=PASS');
 
   const { sources, calls } = fixtures();
   const report = await inspectLegacyLearningCompatibility(sources);
