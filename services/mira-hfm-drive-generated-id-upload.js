@@ -68,6 +68,22 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
     const envelopeKeys = envelope && typeof envelope === 'object' && !Array.isArray(envelope)
       ? Object.keys(envelope).sort() : [];
     const backupTime = new Date(envelope && envelope.createdAt);
+    const allowedMetadataKeys = ['projectId', 'source', 'memorySnapshotId', 'keyVersionId'];
+    let canonicalMetadata = false;
+    if (envelope && envelope.metadata && typeof envelope.metadata === 'object' &&
+        !Array.isArray(envelope.metadata)) {
+      const normalizedMetadata = {};
+      for (const field of allowedMetadataKeys) {
+        const value = envelope.metadata[field];
+        if (value === undefined) continue;
+        if (typeof value !== 'string' || !value.trim() || value.length > 128 ||
+            /[\\r\\n\\u0000-\\u001f]/.test(value)) break;
+        normalizedMetadata[field] = value.trim();
+      }
+      const metadataKeys = Object.keys(envelope.metadata);
+      canonicalMetadata = metadataKeys.every(field => allowedMetadataKeys.includes(field)) &&
+        JSON.stringify(normalizedMetadata) === JSON.stringify(envelope.metadata);
+    }
     const decodeCanonicalBase64 = value => {
       if (typeof value !== 'string' ||
           !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) return null;
@@ -83,7 +99,7 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
         JSON.stringify(envelope) + '\n' !== serializedEnvelope ||
         envelope.schema !== BACKUP_SCHEMA || envelope.version !== BACKUP_VERSION ||
         envelope.algorithm !== 'aes-256-gcm' || envelope.kdf !== 'HKDF-SHA256' ||
-        envelope.backupId !== backupId || !envelope.metadata ||
+        envelope.backupId !== backupId || !canonicalMetadata ||
         envelope.metadata.projectId !== project ||
         !Number.isInteger(envelope.payloadBytes) || envelope.payloadBytes < 1 ||
         envelope.payloadBytes > MAX_PAYLOAD_BYTES ||
