@@ -158,13 +158,24 @@ async function verifyAndAcceptSignedProvenancePolicy({
     operationalIssuerIds,
     now
   });
+  const policySignerId = envelope.payload && envelope.payload.signer &&
+    envelope.payload.signer.issuerId;
+  const policyReviewerIds = Array.isArray(envelope.payload && envelope.payload.approvals)
+    ? envelope.payload.approvals.map(approval => approval && approval.reviewerId).filter(Boolean)
+    : [];
+  const evidenceIssuerExclusions = [...new Set([
+    ...operationalIssuerIds,
+    expectedStateAuthorityId,
+    policySignerId,
+    ...policyReviewerIds
+  ].filter(Boolean))];
   const evidenceVerification = await verifyAllPolicyEvidence({
     policyPayload: envelope.payload,
     evidenceProvider,
     trustedEvidenceIssuers,
     expectedEnvironment,
     expectedProjectId,
-    operationalIssuerIds: [...operationalIssuerIds, expectedStateAuthorityId],
+    operationalIssuerIds: evidenceIssuerExclusions,
     now
   });
   let receipt;
