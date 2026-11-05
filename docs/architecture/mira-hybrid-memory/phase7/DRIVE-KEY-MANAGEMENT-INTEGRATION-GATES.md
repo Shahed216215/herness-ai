@@ -244,19 +244,20 @@ SHARED_DRIVE=NOT_CERTIFIED
 
 ## 10. Latest code-change CI evidence
 
-The Phase 7 workflow completed GitHub Actions run **42001767982 — SUCCESS**, job **127158482183**, against branch commit `d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf`. The job ran four offline test suites: encrypted backup/key-provider, injected transport adapter, durable generated-ID journal, and journaled generated-ID upload. Logs contain **66 explicit Phase 7 PASS markers**; all four commands report `TESTS_FAILED=0`. The new generated-ID upload suite verifies journal-before-upload ordering, HTTP 409 duplicate reconciliation, timeout-after-commit reconciliation, timeout-before-commit retry with the same ID, remote metadata conflict rejection, exact ciphertext mismatch rejection, and cross-account journal binding. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+The latest Phase 7 workflow completed GitHub Actions run **42007196180 — SUCCESS**, job **127176834532**, against code/test commit `34709f7bc02bfcb04981d56fa1e1ac68436c479a`. The run completed the Node syntax check and all six offline test suites. Logs contain **91 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-The journaled cloud-adapter integration, its end-to-end tampered-byte/no-stage regression, SHA-256 account-fingerprint enforcement, authenticated envelope schema/version/timestamp binding, and injected Google Drive v3 provider mapper/fake-client suite were added after that run. Current-head CI evidence for those later changes is PENDING / INCONCLUSIVE; they are not marked PASS.
+The Phase 7 branch was restacked on the latest Phase 6 base before this run. Later documentation-only commits do not change the verified application/test source.
 
 This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=42001767982_SUCCESS
-OFFLINE_CI_JOB=127158482183
-OFFLINE_CI_COMMIT=d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf
-OFFLINE_PASS_MARKERS=66
-OFFLINE_TEST_SUITES=4
+OFFLINE_CI_RUN=42007196180_SUCCESS
+OFFLINE_CI_JOB=127176834532
+OFFLINE_CI_COMMIT=34709f7bc02bfcb04981d56fa1e1ac68436c479a
+OFFLINE_PASS_MARKERS=91
+OFFLINE_TEST_SUITES=6
+CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
