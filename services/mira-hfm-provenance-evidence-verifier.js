@@ -18,7 +18,7 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 function verifyEvidenceEnvelope({
-  envelope, reference, sourceId, dimension, trustedEvidenceIssuers,
+  envelope, reference, sourceId, dimension, expectedValue, trustedEvidenceIssuers,
   expectedEnvironment, expectedProjectId, operationalIssuerIds = [], now = Date.now()
 }) {
   if (!Number.isSafeInteger(now)) {
@@ -43,7 +43,9 @@ function verifyEvidenceEnvelope({
       !Array.isArray(reference.reviewerIds) ||
       reference.reviewerIds.length !== p.reviewerIds.length ||
       reference.reviewerIds.some(id => !p.reviewerIds.includes(id)) ||
-      !isPlainObject(p.record)) {
+      !isPlainObject(p.record) || p.record.sourceId !== sourceId ||
+      p.record.dimension !== dimension || p.record.observedValue !== expectedValue ||
+      p.record.environment !== expectedEnvironment || p.record.projectId !== expectedProjectId) {
     fail('Independent evidence identity, scope, issuer or reviewer binding is invalid.',
       'HFM_PROVENANCE_EVIDENCE_BINDING_MISMATCH');
   }
@@ -136,7 +138,8 @@ async function verifyAllPolicyEvidence({
           'HFM_PROVENANCE_EVIDENCE_UNAVAILABLE');
       }
       verified.push(verifyEvidenceEnvelope({
-        envelope, reference, sourceId, dimension, trustedEvidenceIssuers,
+        envelope, reference, sourceId, dimension,
+        expectedValue: policyPayload.sources[sourceId][dimension], trustedEvidenceIssuers,
         expectedEnvironment, expectedProjectId, operationalIssuerIds, now
       }));
     }
