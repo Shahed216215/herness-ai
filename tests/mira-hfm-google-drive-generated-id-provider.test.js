@@ -198,6 +198,23 @@ async function main() {
   assert.equal(fake.calls.generate, 2);
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_ACCOUNT_SCOPE_FAIL_CLOSED=PASS');
 
+  const appDataFake = fakeDrive();
+  appDataFake.drive.files.generateIds = async args => {
+    assert.equal(args.space, 'appDataFolder');
+    return { data: { ids: [fileId], space: 'appDataFolder' } };
+  };
+  const appDataProvider = createGoogleDriveGeneratedIdProvider({
+    drive: appDataFake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
+    driveSpace: 'appDataFolder', projectId, parentId: 'appDataFolder'
+  });
+  const appDataGenerated = await appDataProvider.generateFileId({
+    accountBinding, driveSpace: 'appDataFolder'
+  });
+  assert.equal(appDataGenerated.id, fileId);
+  assert.throws(() => createGoogleDriveGeneratedIdProvider({
+    drive: appDataFake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
+    driveSpace: 'appDataFolder', projectId, parentId
+  }), error => error.code === 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID');
   const badSpace = createGoogleDriveGeneratedIdProvider({
     drive: fake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
     driveSpace: 'appDataFolder', projectId, parentId: 'appDataFolder'
@@ -205,6 +222,7 @@ async function main() {
   await assert.rejects(() => badSpace.generateFileId({ accountBinding, driveSpace: 'appDataFolder' }),
     error => error.code === 'HFM_GOOGLE_DRIVE_ID_RESPONSE_INVALID');
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_GENERATED_ID_SPACE_BINDING=PASS');
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_APPDATAFOLDER_PARENT_BOUND=PASS');
 
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_NO_OAUTH_OR_NETWORK_CLIENT_CREATION=PASS');
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_PROVIDER_TESTS_FAILED=0');
