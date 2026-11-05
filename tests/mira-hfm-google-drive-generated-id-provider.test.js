@@ -163,6 +163,14 @@ async function main() {
   const downloaded = await provider.downloadFile({ id: fileId, accountBinding, driveSpace });
   assert.deepEqual(downloaded, envelope);
   assert.equal(crypto.createHash('sha256').update(downloaded).digest('hex'), digest);
+  const originalDriveGet = fake.drive.files.get;
+  fake.drive.files.get = async (args, options) => args.alt === 'media'
+    ? { data: Readable.from([{ toString() { throw new Error('chunk coercion must not run'); } }]) }
+    : originalDriveGet(args, options);
+  await assert.rejects(() => provider.downloadFile({ id: fileId, accountBinding, driveSpace }),
+    error => error.code === 'HFM_GOOGLE_DRIVE_DOWNLOAD_INVALID');
+  fake.drive.files.get = originalDriveGet;
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_STREAM_CHUNK_TYPE_BOUND=PASS');
   const savedFile = fake.files.get(fileId);
   fake.files.set(fileId, { ...savedFile,
     appProperties: { ...savedFile.appProperties, unexpectedField: 'untrusted' } });
