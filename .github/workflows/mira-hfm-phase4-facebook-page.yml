@@ -14,6 +14,7 @@ on:
       - 'tools/facebook-research-lookup.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
       - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'services/mira-facebook-page-hfm-adapter.js'
       - 'services/mira-facebook-page-import-review-registry.js'
       - 'services/mira-facebook-page-operation-recovery.js'
@@ -84,11 +85,13 @@ jobs:
           node tests/mira-facebook-page-permission-contract.test.js
           node tests/mira-facebook-page-read-only-probe.test.js
           node tests/mira-memory-provider-contract.test.js
+          node tests/mira-hfm-tool-registry-policy-parity.test.js
       - name: Report external action boundary
         run: |
           echo "LIVE_META_API_CALLS=0"
           echo "FACEBOOK_POSTS_PUBLISHED=0"
-          echo "PERSISTENT_MEMORY_WRITES=0"
+          echo "CANONICAL_MEMORY_WRITES=0"
+          echo "UNTRUSTED_RESEARCH_ARCHIVE_TEST_WRITES=ISOLATED_TEMP_ONLY"
           echo "RESULT=MIRA_HFM_PHASE4_OFFLINE_CONTRACT_CI_COMPLETE"
 
   meta-read-only-page-probe:
