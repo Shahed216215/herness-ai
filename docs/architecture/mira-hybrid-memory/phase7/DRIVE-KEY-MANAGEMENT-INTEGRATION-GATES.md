@@ -239,7 +239,7 @@ SHARED_DRIVE=NOT_CERTIFIED
 
 The Phase 7 workflow completed GitHub Actions run **42001767982 — SUCCESS**, job **127158482183**, against branch commit `d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf`. The job ran four offline test suites: encrypted backup/key-provider, injected transport adapter, durable generated-ID journal, and journaled generated-ID upload. Logs contain **66 explicit Phase 7 PASS markers**; all four commands report `TESTS_FAILED=0`. The new generated-ID upload suite verifies journal-before-upload ordering, HTTP 409 duplicate reconciliation, timeout-after-commit reconciliation, timeout-before-commit retry with the same ID, remote metadata conflict rejection, exact ciphertext mismatch rejection, and cross-account journal binding. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-The journaled cloud-adapter integration, its end-to-end tampered-byte/no-stage regression, and SHA-256 account-fingerprint enforcement were added after that run. Current-head CI evidence for those later changes is PENDING / INCONCLUSIVE; they are not marked PASS.
+The journaled cloud-adapter integration, its end-to-end tampered-byte/no-stage regression, SHA-256 account-fingerprint enforcement, authenticated envelope schema/version/timestamp binding, and injected Google Drive v3 provider mapper/fake-client suite were added after that run. Current-head CI evidence for those later changes is PENDING / INCONCLUSIVE; they are not marked PASS.
 
 This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
 
