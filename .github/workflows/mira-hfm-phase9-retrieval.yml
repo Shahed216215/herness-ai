@@ -20,6 +20,7 @@ on:
       - 'services/mira-hfm-retrieval-optimizer.js'
       - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
       - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
+      - 'tests/mira-hfm-phase9-downstream-proposal-injection.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase9/**'
       - '.github/workflows/mira-hfm-phase9-retrieval.yml'
 
