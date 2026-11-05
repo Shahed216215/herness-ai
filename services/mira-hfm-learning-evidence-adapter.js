@@ -11,8 +11,10 @@ function fromPublicRetrieval(input = {}) {
   const report = input.retrievalResult;
   if (!report || report.providerId !== 'mira-hfm-public-web-retrieval' ||
       report.retrievalMode !== 'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY' ||
-      !report.limits || report.limits.canonicalMemoryWrite !== false ||
-      report.limits.trustPromotion !== false || !report.page ||
+      !['PUBLIC_FACEBOOK_EVIDENCE_COLLECTED_UNTRUSTED','DEGRADED_WITH_UNTRUSTED_EVIDENCE'].includes(report.status) ||
+      !report.limits || report.limits.canonicalMemoryWrite !== false || report.limits.trustPromotion !== false ||
+      report.limits.directFacebookFetches !== 0 || report.limits.metaGraphApiCalls !== 0 ||
+      report.limits.loginOrCookieUse !== 0 || report.limits.privateOrGroupContentAccess !== 0 || !report.page ||
       typeof report.page.pageId !== 'string' || !/^[0-9]{1,32}$/.test(report.page.pageId) ||
       !Array.isArray(report.evidence) || report.evidence.length < 1 || report.evidence.length > 10) {
     fail('HFM_LEARNING_RETRIEVAL_INVALID', 'A bounded HFM public Facebook retrieval result is required.');
@@ -26,7 +28,8 @@ function fromPublicRetrieval(input = {}) {
     let url;
     try { url = new URL(sourceRef); } catch { fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Evidence source URL is invalid.'); }
     if (url.protocol !== 'https:' || !['facebook.com','www.facebook.com','m.facebook.com'].includes(url.hostname.toLowerCase()) ||
-        url.username || url.password || url.hash || (url.port && url.port !== '443')) {
+        url.username || url.password || url.hash || (url.port && url.port !== '443') ||
+        (!url.pathname.split('/').includes(report.page.pageId) && url.searchParams.get('id') !== report.page.pageId)) {
       fail('HFM_LEARNING_RETRIEVAL_INVALID', 'Evidence source must be a standard HTTPS Facebook URL.');
     }
     const evidenceId = bounded(item.evidenceId, 'evidence.evidenceId', 128);
