@@ -107,7 +107,7 @@ async function main() {
   assert.equal(approved.body.review.trustState,'UNTRUSTED');
   assert.equal(approved.body.review.canonicalMemoryWrites,0);
   assert.equal(approved.body.review.automaticExecution,false);
-  assert.deepEqual(calls[0].actor,{actorRole:'admin',actorId:'named-admin'});
+  assert.deepEqual(calls[1].actor,{actorRole:'admin',actorId:'named-admin'});
 
   const conflict=responseRecorder();
   await handler({session:{authenticated:true,role:'admin',username:'named-admin'},
