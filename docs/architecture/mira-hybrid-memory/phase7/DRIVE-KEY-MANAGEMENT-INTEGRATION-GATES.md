@@ -129,16 +129,16 @@ This prototype cannot establish real provider atomicity, remote durability, quot
 
 ## 10. Latest code-change CI evidence
 
-Code/test commit `eaa2871bfa84a7457680ce9e9c49490a7dbce581` completed GitHub Actions run **41992655865** (job **127128310119**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+Restacked branch-head commit `248d89bb20e695ebd98ece6904bc7d099c50c728` completed GitHub Actions run **41994278556** (job **127133573967**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-This evidence is for the latest code-change commit; later commits in this branch only refresh documentation.
+This run verifies the current restacked branch head, including the restored regression tests and documentation.
 
 This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=41992655865_SUCCESS
-OFFLINE_CI_HEAD=eaa2871bfa84a7457680ce9e9c49490a7dbce581
+OFFLINE_CI_RUN=41994278556_SUCCESS
+OFFLINE_CI_HEAD=248d89bb20e695ebd98ece6904bc7d099c50c728
 OFFLINE_PASS_MARKERS=49
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
