@@ -203,7 +203,23 @@ try {
       return { ...item, bytes: Buffer.from(item.bytes) };
     }
   };
-  const uploaded = await uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key });
+  const cloudUploadPlainBuffers = [];
+  let uploaded;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      cloudUploadPlainBuffers.push(output);
+      return output;
+    };
+    uploaded = await uploadEncryptedEmergencyBackup({
+      adapter, projectId: 'mira-project-001', envelope, key
+    });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.equal(cloudUploadPlainBuffers.length, 2);
+  assert.equal(cloudUploadPlainBuffers.every(buffer => buffer.every(byte => byte === 0)), true);
+  console.log('HFM_PHASE7_CLOUD_UPLOAD_VERIFICATION_PAYLOADS_ZEROIZED=PASS');
   assert.equal(uploaded.status, 'ENCRYPTED_CLOUD_BACKUP_VERIFIED');
   assert.equal(uploaded.rootKeyTransmitted, false);
   assert.equal(uploaded.plaintextTransmitted, false);
@@ -357,9 +373,23 @@ try {
 
   await assert.rejects(() => uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key }),
     error => error.code === 'HFM_CLOUD_BACKUP_CONFLICT');
-  const cloudPreview = await previewEncryptedEmergencyBackupFromCloud({
-    adapter, projectId: 'mira-project-001', backupId, key
-  });
+  let cloudPreviewPlain;
+  let cloudPreview;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      cloudPreviewPlain = output;
+      return output;
+    };
+    cloudPreview = await previewEncryptedEmergencyBackupFromCloud({
+      adapter, projectId: 'mira-project-001', backupId, key
+    });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.ok(Buffer.isBuffer(cloudPreviewPlain));
+  assert.equal(cloudPreviewPlain.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_CLOUD_PREVIEW_PAYLOAD_ZEROIZED=PASS');
   assert.equal(cloudPreview.status, 'VERIFIED_RESTORE_PREVIEW');
   assert.equal(cloudPreview.source, 'ENCRYPTED_CLOUD_OBJECT');
   assert.equal(cloudPreview.restoreApplied, false);
@@ -368,10 +398,24 @@ try {
 
   const cloudStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-cloud-restore-test-'));
   try {
-    const cloudRestored = await restoreEncryptedEmergencyBackupFromCloud({
-      adapter, projectId: 'mira-project-001', backupId, key,
-      stagingDirectory: cloudStageDir, restoreId: 'cloud-restore-0001'
-    });
+    const cloudRestorePlainBuffers = [];
+    let cloudRestored;
+    try {
+      Buffer.concat = function (chunks, ...args) {
+        const output = originalBufferConcat.call(this, chunks, ...args);
+        cloudRestorePlainBuffers.push(output);
+        return output;
+      };
+      cloudRestored = await restoreEncryptedEmergencyBackupFromCloud({
+        adapter, projectId: 'mira-project-001', backupId, key,
+        stagingDirectory: cloudStageDir, restoreId: 'cloud-restore-0001'
+      });
+    } finally {
+      Buffer.concat = originalBufferConcat;
+    }
+    assert.equal(cloudRestorePlainBuffers.length, 2);
+    assert.equal(cloudRestorePlainBuffers.every(buffer => buffer.every(byte => byte === 0)), true);
+    console.log('HFM_PHASE7_CLOUD_RESTORE_VERIFICATION_PAYLOADS_ZEROIZED=PASS');
     assert.equal(cloudRestored.status, 'VERIFIED_STAGING_ONLY');
     assert.equal(cloudRestored.canonicalMemoryWrites, 0);
     assert.deepEqual(fs.readFileSync(cloudRestored.path), payload);
