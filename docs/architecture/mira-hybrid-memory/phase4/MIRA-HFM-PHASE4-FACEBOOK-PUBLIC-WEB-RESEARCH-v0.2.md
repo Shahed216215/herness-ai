@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Facebook Public Web Research Mode
 
-Status: IMPLEMENTATION CONTRACT / SEARCH-INDEX-ONLY
+Status: IMPLEMENTATION CONTRACT / SEARCH-INDEX-ONLY\nOffline contract service and regression suite are included on the public-web-research branch.
 Parent: Phase 4 Facebook Page connector
 Target Page: Online canel — Page ID 118056109579206
 Version: v0.2 (no v0.3 transition)
