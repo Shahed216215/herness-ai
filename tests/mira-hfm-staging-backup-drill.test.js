@@ -151,7 +151,7 @@ async function run() {
     fs.rmSync(backupDirectory, { recursive: true, force: true });
   }
 
-  const changedBackup = fixture('synthetic-staging-backup-changed');
+  const changedBackup = fixture('synthetic-staging-backup-changed', 'different staging knowledge payload');
   const independentBaseline = fixture('synthetic-staging-baseline-original');
   const mismatchOutput = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-drill-mismatch-'));
   try {
