@@ -75,6 +75,7 @@ const productionStore = {
 };
 const productionAudit = async () => {};
 productionAudit.durable = true;
+productionAudit.idempotent = true;
 assert.equal(hasProductionIntegrationCapabilities({
   proposalStore: memoryStore, auditWriter: localAudit, productionIntegrationReady: true
 }), false);
@@ -84,6 +85,11 @@ assert.equal(hasProductionIntegrationCapabilities({
 assert.equal(hasProductionIntegrationCapabilities({
   proposalStore: productionStore, auditWriter: productionAudit, productionIntegrationReady: true
 }), true);
+const nonIdempotentAudit = async () => {};
+nonIdempotentAudit.durable = true;
+assert.equal(hasProductionIntegrationCapabilities({
+  proposalStore: productionStore, auditWriter: nonIdempotentAudit, productionIntegrationReady: true
+}), false);
 (async()=>{
  const result=await bridge.submit(base,{actorRole:'admin',actorId:'admin-user-001'});
  assert.equal(result.status,'PENDING_HUMAN_REVIEW');
