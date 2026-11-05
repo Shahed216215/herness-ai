@@ -35,7 +35,8 @@ async function run(){
  console.log('HFM_PHASE9_RELEVANCE_RANKING=PASS');
  console.log('HFM_PHASE9_DUPLICATE_AND_CONFLICT_HANDLING=PASS');
  console.log('HFM_PHASE9_UNVERIFIED_EVIDENCE_BOUNDARY=PASS');
- console.log('HFM_PHASE9_CAPACITY_RATIO_MEASUREMENT=PASS');\n console.log('HFM_PHASE9_SYNTHETIC_100X_CORPUS=PASS');
+ console.log('HFM_PHASE9_CAPACITY_RATIO_MEASUREMENT=PASS');
+ console.log('HFM_PHASE9_SYNTHETIC_100X_CORPUS=PASS');
  console.log('HFM_PHASE9_READ_ONLY_GOVERNANCE=PASS');
 }
 run().catch(e=>{console.error(e.stack||e);process.exitCode=1;});
