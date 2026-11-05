@@ -8,6 +8,8 @@ const backup = require('../services/mira-hfm-emergency-backup');
 
 const kek = crypto.randomBytes(32);
 const keyProvider = {
+  descriptor: { contractVersion: '1', providerId: 'test-only-kek-fixture', providerVersion: '1',
+    keyId: 'fixture-kek-reference', keyVersion: '1', keyPurpose: 'MIRA_HFM_BACKUP', environment: 'test' },
   async wrapDataKey({ dataKey }) {
     const nonce = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', kek, nonce);
