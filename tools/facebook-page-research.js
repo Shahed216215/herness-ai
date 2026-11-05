@@ -1,6 +1,5 @@
 'use strict';
 
-const webSearch = require('./web-search');
 const {
   collectPublicFacebookPageEvidence
 } = require('../services/mira-facebook-public-web-research');
@@ -11,7 +10,7 @@ const DEFAULT_PAGE_NAME = 'Online canel';
 function createTool({ searchWeb } = {}) {
   const providerSearch = typeof searchWeb === 'function'
     ? searchWeb
-    : query => webSearch.execute({ query });
+    : query => require('./web-search').execute({ query });
 
   return {
     name: 'facebook_page_public_research',
