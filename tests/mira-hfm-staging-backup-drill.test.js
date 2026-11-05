@@ -266,7 +266,7 @@ function makePolicyAcceptance(backupSource, baselineSource) {
       return entry.receipt;
     },
     async compareAndSwap(input) {
-      const requestDigest = crypto.createHash('sha256').update(JSON.stringify({
+      const requestDigest = crypto.createHash('sha256').update(canonicalizeProvenancePolicy({
         authorityId: input.authorityId,
         expectedSequence: input.expectedSequence,
         expectedDigest: input.expectedDigest,
