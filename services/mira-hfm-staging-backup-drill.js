@@ -131,6 +131,41 @@ async function runStagingBackupDrill({
     }
   }
 
+  // Snapshot all caller-owned inputs that are used after asynchronous provider
+  // calls. A provider must not be able to rewrite the source, request, trust,
+  // key descriptor, or schema contract after policy verification begins.
+  let stableSource, stableBaselineSource, stableTrustedSources, stableKeyProvider;
+  let stableRequest, stableBaselineRequest, stableSchemaVersions;
+  try {
+    const sourceDescriptor = JSON.parse(canonicalize(source.descriptor));
+    const baselineDescriptor = JSON.parse(canonicalize(baselineSource.descriptor));
+    const keyDescriptor = JSON.parse(canonicalize(keyProvider.descriptor));
+    stableTrustedSources = JSON.parse(canonicalize(trustedSources));
+    stableRequest = JSON.parse(canonicalize(request));
+    stableBaselineRequest = JSON.parse(canonicalize(baselineRequest));
+    if (!Array.isArray(supportedSchemaVersions) ||
+        supportedSchemaVersions.some(version => typeof version !== 'string' || !version.trim())) {
+      throw new Error('schema version allowlist invalid');
+    }
+    stableSchemaVersions = Object.freeze(supportedSchemaVersions.slice());
+    stableSource = Object.freeze({
+      descriptor: Object.freeze(sourceDescriptor),
+      readSnapshot: input => source.readSnapshot(input)
+    });
+    stableBaselineSource = Object.freeze({
+      descriptor: Object.freeze(baselineDescriptor),
+      readSnapshot: input => baselineSource.readSnapshot(input)
+    });
+    stableKeyProvider = Object.freeze({
+      descriptor: Object.freeze(keyDescriptor),
+      wrapDataKey: input => keyProvider.wrapDataKey(input),
+      unwrapDataKey: input => keyProvider.unwrapDataKey(input)
+    });
+  } catch {
+    fail('Staging source, request, trust, key-provider descriptor, or schema inputs cannot be snapshotted safely.',
+      'HFM_STAGING_INPUT_SNAPSHOT_INVALID');
+  }
+
   const directoryPolicy = {
     expectedUid: backupDirectoryExpectedUid,
     expectedGid: backupDirectoryExpectedGid
@@ -150,16 +185,16 @@ async function runStagingBackupDrill({
       evidenceProvider,
       trustedEvidenceIssuers,
       expectedEnvironment: 'staging',
-      expectedProjectId: request.projectId,
-      operationalIssuerIds: collectOperationalIssuerIds(source, baselineSource, keyProvider),
+      expectedProjectId: stableRequest.projectId,
+      operationalIssuerIds: collectOperationalIssuerIds(stableSource, stableBaselineSource, stableKeyProvider),
       now
     });
 
     const baseline = await captureAuthorizedSnapshot({
-      source: baselineSource, request: baselineRequest, trustedSources, now
+      source: stableBaselineSource, request: stableBaselineRequest, trustedSources: stableTrustedSources, now
     });
     const captured = await captureAuthorizedSnapshot({
-      source, request, trustedSources, now
+      source: stableSource, request: stableRequest, trustedSources: stableTrustedSources, now
     });
     const provenance = verifyIndependentSourceProvenancePair({
       baselineEvidence: baseline.evidence,
@@ -177,10 +212,10 @@ async function runStagingBackupDrill({
 
     const metadata = {
       ...captured.metadata,
-      keyId: keyProvider && keyProvider.descriptor && keyProvider.descriptor.keyId,
-      keyVersion: keyProvider && keyProvider.descriptor && keyProvider.descriptor.keyVersion
+      keyId: stableKeyProvider && stableKeyProvider.descriptor && stableKeyProvider.descriptor.keyId,
+      keyVersion: stableKeyProvider && stableKeyProvider.descriptor && stableKeyProvider.descriptor.keyVersion
     };
-    const encrypted = await encryptSnapshot({ snapshot: captured.snapshot, metadata, keyProvider });
+    const encrypted = await encryptSnapshot({ snapshot: captured.snapshot, metadata, keyProvider: stableKeyProvider });
     const publication = writeBackupAtomicAt(pinned, fileName, encrypted.bytes, directoryPolicy);
     const readback = publication.readbackBytes;
     if (!Buffer.isBuffer(readback) || !readback.equals(encrypted.bytes) ||
@@ -192,9 +227,9 @@ async function runStagingBackupDrill({
     try {
       recovery = await verifyRecoveryCandidate({
         backup: readback,
-        keyProvider,
-        expectedProjectId: request.projectId,
-        supportedSchemaVersions,
+        keyProvider: stableKeyProvider,
+        expectedProjectId: stableRequest.projectId,
+        supportedSchemaVersions: stableSchemaVersions,
         expectedSourceRevision: baseline.metadata.sourceRevision,
         expectedRecordCount: baseline.metadata.recordCount,
         expectedPayloadSha256: baselineDigest
