@@ -7,7 +7,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const {
-  createEncryptedBackup, decryptAndVerifyBackup, writeImmutableBackup, restoreToStaging
+  createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging
 } = require('../services/mira-hfm-encrypted-emergency-backup');
 
 const key = crypto.randomBytes(32);
@@ -28,7 +28,15 @@ try {
   assert.equal(env.metadata.projectId, metadata.projectId);
   assert.equal(envelope.includes(payload), false);
   const verified = decryptAndVerifyBackup(envelope, key);
+  const preview = previewEncryptedBackup({ envelope, key });
+  assert.equal(preview.status, 'VERIFIED_RESTORE_PREVIEW');
+  assert.equal(preview.backupId, backupId);
+  assert.equal(preview.integrityVerified, true);
+  assert.equal(preview.restoreApplied, false);
+  assert.equal(preview.canonicalMemoryWrites, 0);
+  assert.equal(preview.payloadBytes, payload.length);
   assert.deepEqual(verified.payload, payload);
+  console.log('HFM_PHASE7_AUTHENTICATED_RESTORE_PREVIEW_NO_WRITE=PASS');
   assert.equal(verified.plaintextSha256, crypto.createHash('sha256').update(payload).digest('hex'));
   console.log('HFM_PHASE7_ENCRYPT_DECRYPT_AND_AUTHENTICATE=PASS');
 
@@ -62,7 +70,10 @@ try {
 
   const {
     uploadEncryptedEmergencyBackup,
-    restoreEncryptedEmergencyBackupFromCloud
+    restoreEncryptedEmergencyBackupFromCloud,
+    inspectEncryptedEmergencyBackupCapacity,
+    planBackupRetention,
+    DEFAULT_BACKUP_BUDGET_BYTES
   } = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
   const objects = new Map();
   const adapter = {
@@ -87,6 +98,52 @@ try {
   assert.equal(uploaded.plaintextTransmitted, false);
   assert.equal(objects.size, 1);
   console.log('HFM_PHASE7_ENCRYPTED_CLOUD_UPLOAD_AND_READBACK=PASS');
+
+  const capacityAdapter = {
+    capabilities: { ...adapter.capabilities, list: true },
+    async list(input) {
+      assert.equal(input.projectId, 'mira-project-001');
+      assert.equal(input.prefix, 'mira-hfm-emergency/v1/mira-project-001/');
+      return [{
+        projectId: 'mira-project-001', backupId,
+        objectKey: 'mira-hfm-emergency/v1/mira-project-001/' + backupId + '.mhe',
+        bytes: envelope.length, createdAt
+      }];
+    }
+  };
+  const capacity = await inspectEncryptedEmergencyBackupCapacity({
+    adapter: capacityAdapter, projectId: 'mira-project-001',
+    retentionPolicy: { keepLast: 1, maxAgeDays: 30 }, now: '2026-11-05T00:00:00.000Z'
+  });
+  assert.equal(capacity.status, 'WITHIN_BUDGET');
+  assert.equal(capacity.budgetBytes, 5000000000);
+  assert.equal(capacity.usedBytes, envelope.length);
+  assert.equal(capacity.deletionPerformed, false);
+  assert.equal(capacity.routineDriveSyncChanged, false);
+  assert.equal(capacity.retention.status, 'RETENTION_PREVIEW_ONLY');
+  assert.equal(capacity.retention.deletionPerformed, false);
+  assert.equal(DEFAULT_BACKUP_BUDGET_BYTES, 5000000000);
+  const retention = planBackupRetention({
+    projectId: 'mira-project-001',
+    backups: [
+      { projectId: 'mira-project-001', backupId: 'backup-old-0001', createdAt: '2026-06-01T00:00:00.000Z', bytes: 100 },
+      { projectId: 'mira-project-001', backupId: 'backup-new-0001', createdAt: '2026-10-20T00:00:00.000Z', bytes: 200 }
+    ],
+    keepLast: 1, maxAgeDays: 30, now: '2026-11-05T00:00:00.000Z'
+  });
+  assert.equal(retention.retained.length, 1);
+  assert.equal(retention.candidates.length, 1);
+  assert.equal(retention.candidates[0].backupId, 'backup-old-0001');
+  assert.equal(retention.deletionPerformed, false);
+  await assert.rejects(() => inspectEncryptedEmergencyBackupCapacity({
+    adapter: { capabilities: { list: true }, async list() { return [{
+      projectId: 'other-project', backupId, objectKey: 'mira-hfm-emergency/v1/other-project/' + backupId + '.mhe',
+      bytes: envelope.length, createdAt
+    }]; } },
+    projectId: 'mira-project-001'
+  }), error => error.code === 'HFM_CLOUD_LIST_SCOPE_INVALID');
+  console.log('HFM_PHASE7_5GB_CAPACITY_MONITOR_AND_PROJECT_SCOPE=PASS');
+  console.log('HFM_PHASE7_RETENTION_PREVIEW_NO_AUTOMATIC_DELETION=PASS');
 
   await assert.rejects(() => uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key }),
     error => error.code === 'HFM_CLOUD_BACKUP_CONFLICT');
