@@ -290,3 +290,15 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - Hardened backup key wrapping: unexpected external key-provider errors are normalized to `BACKUP_KEY_WRAP_FAILED` without propagating provider error text. The temporary DEK copy passed to the provider is zeroed even when wrapping throws; a regression test verifies both properties.
 - The Phase 7 workflow already includes the modified service/test paths. Matching push-run logs have not yet been retrievable through the currently available workflow-run lookup, which only returns pull-request-triggered runs. `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`; no PASS claim is made for these new tests.
 - All changes remain synthetic/offline contract work. Real provider custody, durable/atomic replay and policy state, host ACL/mount review, six-dimension infrastructure evidence, staging approval, and production certification remain outstanding.
+
+
+## Policy-state idempotency and ambiguous-commit reconciliation — 2026-11-05
+
+- Latest implementation/test commit for this checkpoint: `5ae3ba796a87ed935853288caf9780c1105b2f41`.
+- The signed policy-state provider contract now requires `readState`, `compareAndSwap`, and authoritative `getCommitReceipt`.
+- The orchestrator derives a deterministic policy/digest idempotency key and a SHA-256 digest over canonical JSON `{authorityId, expectedSequence, expectedDigest, nextState}`. The signed commit receipt must bind both values.
+- A provider-confirmed pre-commit request loss is retried once with the exact same idempotency key and request. A post-commit response-loss signal triggers exact receipt lookup and signature/binding verification. Missing or unavailable receipt lookup fails closed as `HFM_POLICY_STATE_COMMIT_UNRESOLVED`; the orchestrator does not invent a new key or sequence.
+- The local fake provider now exposes exact receipt lookup and rejects digest mismatch. Synthetic tests cover receipt lookup, wrong digest, pre-commit retry, post-commit response-loss reconciliation, and unresolved ambiguous outcomes. The staging drill fixture also exercises the signed receipt fields.
+- The provider adapter specification and F7-SR-05 acceptance specification now describe this contract. Real provider atomicity/durability across state and receipt persistence, restart-safe receipt lookup, and independent operational evidence remain unverified.
+- Verification disposition: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. No PASS claim is made until matching Phase 7 push workflow logs are inspected.
+- F7-SR-01 through F7-SR-05 remain partially remediated/open where real governance, provider custody, host controls, or independent infrastructure evidence is required. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; version remains v0.2.
