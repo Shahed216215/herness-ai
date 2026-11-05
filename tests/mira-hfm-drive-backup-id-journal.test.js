@@ -41,6 +41,13 @@ async function main() {
     const repeated = createBackupIdJournal({ directory, ...input });
     assert.equal(repeated.created, false);
     assert.equal(repeated.generatedFileId, input.generatedFileId);
+    assert.equal(fs.readdirSync(directory).filter(name => name.startsWith('.drive-journal-tmp-')).length, 0);
+    const hardlink = path.join(root, 'journal-hardlink');
+    fs.linkSync(first.journalPath, hardlink);
+    await assert.rejects(() => readBackupIdJournal({
+      directory, operationId: input.operationId
+    }), error => error.code === 'HFM_DRIVE_JOURNAL_PERMISSIONS');
+    fs.unlinkSync(hardlink);
     const recovered = reconcileBackupIdJournal({
       directory, operationId: input.operationId,
       expected: { accountBinding: input.accountBinding, driveSpace: input.driveSpace,
