@@ -194,6 +194,13 @@ assert.equal(one.canonicalRecord.projectId, 'project-alpha');
 assert.equal(one.canonicalRecord.access.allowedProjectIds[0], 'project-alpha');
 assert.equal(one.canonicalRecord.lifecycle, 'PENDING_REVIEW');
 console.log('WORK_LEARNING_NO_PROJECT_INFERENCE_PENDING_REVIEW_PASS');
+
+assert.throws(() => adaptApprovedWorkLearningEntry({
+  entry: { ...first, metadata: { apiToken: 'fixture-secret-value' } },
+  mapping: firstMapping, projectId: 'project-alpha',
+  sourceFileDigest, sourceOrdinal: 0, observedAt, verifyApproval, now
+}), /prohibited secret-like field/);
+console.log('WORK_LEARNING_SECRET_FIELD_REJECTED_PASS');
 console.log('NETWORK_REQUESTS=0');
 console.log('CANONICAL_MEMORY_WRITTEN=NO');
 console.log('CANONICAL_KNOWLEDGE_WRITTEN=NO');
