@@ -80,3 +80,5 @@ Status: SIGNED STAGING AUTHORIZATION CONTRACT IMPLEMENTED; CI PENDING; KEY CUSTO
 - Snapshot attestation now includes authorization issuer, decision ID, policy version and expiry; the independent snapshot verifier rejects missing or expired authorization claims.
 - Synthetic tests were expanded for denial, expiry, actor mismatch and replay. The end-to-end staging drill fixtures now use signed authorization decisions.
 - This is a contract implementation, not a production policy service or durable replay store. CI verification is pending; F7-SR-01 remains partially remediated/open until provider governance and durable replay-store review.
+
+- Authorization governance and replay-store requirements: `AUTHORIZATION-PROVIDER-GOVERNANCE.md`. Policy version is pinned to the issuer trust record; production issuer and durable replay store are not selected or approved.
