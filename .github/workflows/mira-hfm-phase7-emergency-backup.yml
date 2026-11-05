@@ -12,6 +12,8 @@ on:
       - 'services/mira-hfm-local-staging-snapshot-source.js'
       - 'services/mira-hfm-authorization-decision.js'
       - 'tests/mira-hfm-authorization-decision.test.js'
+      - 'services/mira-hfm-local-fake-authorization-replay-guard.js'
+      - 'tests/mira-hfm-local-fake-authorization-replay-guard.test.js'
       - 'services/mira-hfm-staging-backup-drill.js'
       - 'services/mira-hfm-source-provenance-contract.js'
       - 'services/mira-hfm-signed-provenance-policy.js'
@@ -47,6 +49,8 @@ on:
       - 'services/mira-hfm-local-staging-snapshot-source.js'
       - 'services/mira-hfm-authorization-decision.js'
       - 'tests/mira-hfm-authorization-decision.test.js'
+      - 'services/mira-hfm-local-fake-authorization-replay-guard.js'
+      - 'tests/mira-hfm-local-fake-authorization-replay-guard.test.js'
       - 'services/mira-hfm-staging-backup-drill.js'
       - 'services/mira-hfm-source-provenance-contract.js'
       - 'services/mira-hfm-signed-provenance-policy.js'
@@ -94,6 +98,7 @@ jobs:
           node tests/mira-hfm-authoritative-snapshot.test.js
           node tests/mira-hfm-local-staging-snapshot-source.test.js
           node tests/mira-hfm-authorization-decision.test.js
+          node tests/mira-hfm-local-fake-authorization-replay-guard.test.js
           node tests/mira-hfm-staging-backup-drill.test.js
           node tests/mira-hfm-source-provenance-contract.test.js
           node tests/mira-hfm-signed-provenance-policy.test.js
