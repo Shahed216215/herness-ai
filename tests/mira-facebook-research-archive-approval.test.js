@@ -66,6 +66,17 @@ const evidence = [{
   assert.equal(auditCalls, 0);
   assert.equal(archiveCalls, 0);
 
+  await assert.rejects(
+    () => archiveResearchEvidenceWithHumanApproval({
+      actor: 'named-admin', confirmed: true, pageId, evidence,
+      env: { NODE_ENV: 'production', MIRA_FACEBOOK_RESEARCH_MEMORY_BACKEND: 'local' },
+      authorize, audit, archiveEvidence
+    }),
+    error => error.code === 'RESEARCH_ARCHIVE_DURABILITY_NOT_CONFIRMED'
+  );
+  assert.equal(authorizeCalls, 0);
+  assert.equal(archiveCalls, 0);
+
   const denied = await assert.rejects(
     () => archiveResearchEvidenceWithHumanApproval({
       actor: 'named-admin', confirmed: true, pageId, evidence,
