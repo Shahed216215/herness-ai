@@ -2,6 +2,7 @@
 
 // Offline/provider-neutral boundary for a future dedicated emergency-backup transport.
 // This module performs no network or OAuth work. The injected transport owns atomicity.
+const crypto = require('node:crypto');
 const MAX_PAGE_SIZE = 500;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
 function reject(message, code = 'HFM_DRIVE_ADAPTER_REJECTED') {
@@ -14,6 +15,23 @@ function validId(value, label) {
 function bytesCopy(value) {
   if (!Buffer.isBuffer(value) || value.length < 1) reject('Encrypted object bytes are required.');
   return Buffer.from(value);
+}
+function sha256(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+function validateStoredItem(item, expected) {
+  if (!item || !item.metadata || !Buffer.isBuffer(item.bytes)) return false;
+  const m = item.metadata;
+  return m.projectId === expected.projectId &&
+    m.backupId === expected.backupId &&
+    m.objectKey === expected.objectKey &&
+    m.contentType === 'application/vnd.mira.hfm-encrypted-backup' &&
+    m.encryption === 'AES-256-GCM' &&
+    m.ciphertextSha256 === expected.ciphertextSha256 &&
+    m.bytes === expected.bytes.length &&
+    item.bytes.length === expected.bytes.length &&
+    sha256(item.bytes) === expected.ciphertextSha256 &&
+    item.bytes.equals(expected.bytes);
 }
 function createEmergencyBackupTransportAdapter({ transport, projectId, namespace = 'mira-hfm-emergency/v1' } = {}) {
   const project = validId(projectId, 'projectId');
@@ -28,10 +46,21 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
   function expectedKey(backupId) {
     return prefix + validId(backupId, 'backupId') + '.mhe';
   }
+  async function readForReconciliation(expected) {
+    let item;
+    try { item = await transport.readObject({ objectKey: expected.objectKey }); }
+    catch (_) { reject('Create outcome could not be reconciled safely.', 'HFM_DRIVE_CREATE_UNCERTAIN'); }
+    if (!item) return null;
+    if (!validateStoredItem(item, expected)) {
+      reject('Existing object conflicts with the requested immutable backup.', 'HFM_DRIVE_OBJECT_CONFLICT');
+    }
+    return item;
+  }
   return Object.freeze({
     capabilities: Object.freeze({
       encryptedOnly: true, projectIsolated: true, createOnly: true,
-      readAfterWrite: true, list: true, dedicatedNamespace: true
+      readAfterWrite: true, list: true, dedicatedNamespace: true,
+      timeoutReconciliation: true, immutableCollisionDetection: true
     }),
     async putIfAbsent(input = {}) {
       if (input.projectId !== project) reject('Cross-project upload rejected.', 'HFM_DRIVE_PROJECT_SCOPE');
@@ -42,7 +71,8 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       if (input.contentType !== 'application/vnd.mira.hfm-encrypted-backup' ||
           input.encryption !== 'AES-256-GCM' ||
           typeof input.ciphertextSha256 !== 'string' ||
-          !/^[a-f0-9]{64}$/.test(input.ciphertextSha256)) {
+          !/^[a-f0-9]{64}$/.test(input.ciphertextSha256) ||
+          sha256(bytes) !== input.ciphertextSha256) {
         reject('Only a digest-bound AES-256-GCM backup envelope is accepted.');
       }
       const metadata = Object.freeze({
@@ -50,13 +80,27 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
         contentType: input.contentType, encryption: input.encryption,
         ciphertextSha256: input.ciphertextSha256, bytes: bytes.length
       });
-      // atomicCreate MUST be a provider-side atomic create-if-absent primitive;
-      // a search-then-upload implementation is explicitly non-compliant.
-      const result = await transport.atomicCreate({ objectKey: key, metadata, bytes });
-      if (!result || typeof result.created !== 'boolean') {
-        reject('Transport did not return an explicit atomic-create result.', 'HFM_DRIVE_CREATE_UNCERTAIN');
+      const expected = { projectId: project, backupId, objectKey: key,
+        ciphertextSha256: input.ciphertextSha256, bytes };
+      let result;
+      try {
+        // MUST be provider-side atomic create-if-absent; search-then-upload is non-compliant.
+        result = await transport.atomicCreate({ objectKey: key, metadata, bytes: Buffer.from(bytes) });
+      } catch (_) {
+        // Timeout/error is ambiguous: never retry create blindly. Read the immutable key first.
+        const recovered = await readForReconciliation(expected);
+        if (recovered) return { created: false, reconciled: true };
+        reject('Create outcome is unknown and no matching object can be verified.', 'HFM_DRIVE_CREATE_UNCERTAIN');
       }
-      return { created: result.created === true };
+      if (!result || typeof result.created !== 'boolean') {
+        const recovered = await readForReconciliation(expected);
+        if (recovered) return { created: false, reconciled: true };
+        reject('Transport returned an uncertain create result with no matching readback.', 'HFM_DRIVE_CREATE_UNCERTAIN');
+      }
+      const readback = await readForReconciliation(expected);
+      if (!readback) reject('Create result was not visible during exact-byte readback.', 'HFM_DRIVE_READBACK_FAILED');
+      if (result.created === true) return { created: true, reconciled: false };
+      return { created: false, reconciled: false, alreadyPresent: true };
     },
     async get(input = {}) {
       if (input.projectId !== project) reject('Cross-project read rejected.', 'HFM_DRIVE_PROJECT_SCOPE');
@@ -68,8 +112,12 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       const metadata = item.metadata;
       if (!metadata || metadata.projectId !== project || metadata.backupId !== match[1] ||
           metadata.objectKey !== input.objectKey || !Buffer.isBuffer(item.bytes) ||
-          item.bytes.length !== metadata.bytes) {
-        reject('Transport object metadata or byte length failed project binding.', 'HFM_DRIVE_OBJECT_INVALID');
+          item.bytes.length !== metadata.bytes ||
+          metadata.contentType !== 'application/vnd.mira.hfm-encrypted-backup' ||
+          metadata.encryption !== 'AES-256-GCM' ||
+          typeof metadata.ciphertextSha256 !== 'string' ||
+          sha256(item.bytes) !== metadata.ciphertextSha256) {
+        reject('Transport object metadata, digest, or byte length failed project binding.', 'HFM_DRIVE_OBJECT_INVALID');
       }
       return { projectId: project, backupId: match[1], bytes: Buffer.from(item.bytes) };
     },
