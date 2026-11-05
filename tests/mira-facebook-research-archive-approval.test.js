@@ -77,6 +77,22 @@ const evidence = [{
   assert.equal(authorizeCalls, 0);
   assert.equal(archiveCalls, 0);
 
+  await assert.rejects(
+    () => archiveResearchEvidenceWithHumanApproval({
+      actor: 'named-admin', confirmed: true, pageId, evidence,
+      env: {
+        NODE_ENV: 'production',
+        MIRA_FACEBOOK_RESEARCH_MEMORY_BACKEND: 'supabase',
+        SUPABASE_URL: 'https://mira-test.supabase.co',
+        SUPABASE_SERVICE_ROLE_KEY: 's'.repeat(40)
+      },
+      authorize, audit, archiveEvidence
+    }),
+    error => error.code === 'RESEARCH_ARCHIVE_AUDIT_DURABILITY_NOT_CONFIRMED'
+  );
+  assert.equal(authorizeCalls, 0);
+  assert.equal(archiveCalls, 0);
+
   const denied = await assert.rejects(
     () => archiveResearchEvidenceWithHumanApproval({
       actor: 'named-admin', confirmed: true, pageId, evidence,
@@ -173,6 +189,7 @@ const evidence = [{
 
   console.log('HFM_PHASE6_ARCHIVE_REQUIRES_NAMED_ADMIN_SESSION=PASS');
   console.log('HFM_PHASE6_ARCHIVE_REQUIRES_EXPLICIT_CONFIRMATION=PASS');
+  console.log('HFM_PHASE6_ARCHIVE_REQUIRES_DURABLE_AUDIT_STORAGE=PASS');
   console.log('HFM_PHASE6_ARCHIVE_GLOBAL_POLICY_AND_AUDIT=PASS');
   console.log('HFM_PHASE6_ARCHIVE_UNTRUSTED_ONLY_NO_CANONICAL_WRITE=PASS');
   console.log('HFM_PHASE6_ARCHIVE_AUDIT_FAILURE_BLOCKS_WRITE=PASS');
