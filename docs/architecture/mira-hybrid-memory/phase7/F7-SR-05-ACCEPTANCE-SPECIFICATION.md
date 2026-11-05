@@ -167,7 +167,15 @@ Fail closed if policy signature, version, scope, validity, revocation status, or
 
 ## 7. Required implementation behavior
 
-The signed policy verifier contract is implemented as `services/mira-hfm-signed-provenance-policy.js`. It validates Ed25519 policy signatures, pinned issuer/key fingerprint, reviewer signatures, project/environment scope, validity window, revocation status, anti-rollback sequence, evidence-reference shape, and the six distinct provenance dimensions.\n\nThe policy-state contract is implemented as `services/mira-hfm-policy-state-provider-contract.js`. It verifies a signed policy-state envelope from a separately pinned authority, checks freshness/revocation/sequence metadata, requires the provider to expose `readState` and `compareAndSwap`, and verifies a signed commit receipt bound to the exact expected and next sequence/digest. The acceptance orchestrator fails closed on CAS conflict and does not commit before evidence verification. The `durable` and `atomic` fields are authenticated provider claims, not independent proof that the real backing store has those properties. A production adapter must demonstrate those properties under concurrency, restart and outage testing.\n\nEvidence verification is implemented as `services/mira-hfm-provenance-evidence-verifier.js`. It resolves all 12 evidence references through a separate evidence resolver, verifies each evidence issuer's Ed25519 signature and pinned key fingerprint, checks source/dimension/project/environment/reviewer binding and freshness, and recomputes the canonical record digest. The synthetic acceptance tests exercise valid evidence and fail-closed cases.\n\nThe combined `verifyAndAcceptSignedProvenancePolicy` orchestration requires both the state provider and evidence resolver, verifies all evidence before attempting state compare-and-swap, and returns explicit evidence/state receipt summaries. It is not yet wired into the staging backup drill or production path. It must not be treated as operational approval.\n\nRemaining integration requirements:
+The signed policy verifier contract is implemented as `services/mira-hfm-signed-provenance-policy.js`. It validates Ed25519 policy signatures, pinned issuer/key fingerprint, reviewer signatures, project/environment scope, validity window, revocation status, anti-rollback sequence, evidence-reference shape, and the six distinct provenance dimensions.
+
+The policy-state contract is implemented as `services/mira-hfm-policy-state-provider-contract.js`. It verifies a signed policy-state envelope from a separately pinned authority, checks freshness/revocation/sequence metadata, requires the provider to expose `readState` and `compareAndSwap`, and verifies a signed commit receipt bound to the exact expected and next sequence/digest. The acceptance orchestrator fails closed on CAS conflict and does not commit before evidence verification. The `durable` and `atomic` fields are authenticated provider claims, not independent proof that the real backing store has those properties. A production adapter must demonstrate those properties under concurrency, restart and outage testing.
+
+Evidence verification is implemented as `services/mira-hfm-provenance-evidence-verifier.js`. It resolves all 12 evidence references through a separate evidence resolver, verifies each evidence issuer's Ed25519 signature and pinned key fingerprint, checks source/dimension/project/environment/reviewer binding and freshness, and recomputes the canonical record digest. The synthetic acceptance tests exercise valid evidence and fail-closed cases.
+
+The combined `verifyAndAcceptSignedProvenancePolicy` orchestration requires both the state provider and evidence resolver, verifies all evidence before attempting state compare-and-swap, and returns explicit evidence/state receipt summaries. It is not yet wired into the staging backup drill or production path. It must not be treated as operational approval.
+
+Remaining integration requirements:
 - validate a signed policy envelope against a separately pinned policy-issuer trust anchor;
 - enforce exact environment/project/source scope and schema version;
 - enforce sequence/anti-rollback and expiry/revocation;
@@ -236,8 +244,8 @@ No production data, live Drive API, production KMS, or deployment is needed to c
 | G4 — Trust-domain separation | Administrative/federation/recovery dependency review | NOT_VERIFIED |
 | G5 — Source-system separation | Deployment/runtime/control-plane evidence | NOT_VERIFIED |
 | G6 — Snapshot issuer separation | Independent issuer/key governance and audit evidence | NOT_VERIFIED |
-| G7 — Evidence independence | Independent collection, integrity, reviewer and provenance | NOT_VERIFIED |
-| G8 — Offline implementation tests | Commit-matched CI logs for all positive/negative cases | NOT_RUN |
+| G7 — Evidence independence | Independent collection, integrity, reviewer and provenance | SYNTHETIC_SIGNATURE_AND_DIGEST_PASS; REAL_COLLECTION_NOT_VERIFIED |
+| G8 — Offline implementation tests | Commit-matched CI logs for all positive/negative cases | PASS_CI — RUN #149 |
 | G9 — Staging operational review | Approved staging evidence and adversarial results | NOT_APPROVED |
 | G10 — Production approval | Explicit security/owner approval after all prior gates | NOT_APPROVED |
 
@@ -247,7 +255,10 @@ F7-SR-05 may be closed only when G1–G8 pass, G9 is approved by an independent 
 
 - Existing six-dimension synthetic provenance contract: implemented.
 - Existing synthetic provenance tests: CI PASS on the specifically inspected commit/run only.
-- Authenticated and independently governed policy distribution: synthetic signature contract PASS; real out-of-band trust provisioning NOT_VERIFIED.\n- Signed policy-state provider interface and compare-and-swap contract: synthetic CI PASS; no production adapter or independently verified durable/atomic backing store.\n- Independent evidence signature and digest verification: synthetic CI PASS for 12 references; real provider-origin evidence collection/review NOT_VERIFIED.\n- Combined policy/state/evidence acceptance orchestration: synthetic CI PASS; not wired into the staging backup drill.
+- Authenticated and independently governed policy distribution: synthetic signature contract PASS; real out-of-band trust provisioning NOT_VERIFIED.
+- Signed policy-state provider interface and compare-and-swap contract: synthetic CI PASS; no production adapter or independently verified durable/atomic backing store.
+- Independent evidence signature and digest verification: synthetic CI PASS for 12 references; real provider-origin evidence collection/review NOT_VERIFIED.
+- Combined policy/state/evidence acceptance orchestration: synthetic CI PASS; not wired into the staging backup drill.
 - Real storage/account separation: NOT_VERIFIED.
 - Real workload identity separation: NOT_VERIFIED.
 - Real trust-domain and administrative independence: NOT_VERIFIED.
