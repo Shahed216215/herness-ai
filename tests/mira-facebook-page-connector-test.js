@@ -55,6 +55,30 @@ const connector = createFacebookPageConnector({
   assert.equal(readback.status, "VERIFIED");
   assert.equal(readback.canonicalMemoryWrite, false);
 
+  const missingOwnerConnector = createFacebookPageConnector({
+    env,
+    request: async () => ({
+      status: 200,
+      data: { id: "123456789_987654321", message: "owner unavailable" }
+    })
+  });
+  await assert.rejects(
+    () => missingOwnerConnector.verifyPost({ postId: "123456789_987654321" }),
+    error => error.code === "FACEBOOK_READBACK_OWNER_UNAVAILABLE"
+  );
+
+  const wrongOwnerConnector = createFacebookPageConnector({
+    env,
+    request: async () => ({
+      status: 200,
+      data: { id: "123456789_987654321", from: { id: "999999999" } }
+    })
+  });
+  await assert.rejects(
+    () => wrongOwnerConnector.verifyPost({ postId: "123456789_987654321" }),
+    error => error.code === "FACEBOOK_READBACK_PAGE_MISMATCH"
+  );
+
   const parsed = connector.parsePagePostUrl(
     "https://www.facebook.com/123456789/posts/987654321"
   );
