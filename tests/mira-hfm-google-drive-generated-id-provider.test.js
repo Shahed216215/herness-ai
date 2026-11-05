@@ -167,7 +167,13 @@ async function main() {
   assert.equal(quota.quotaBytes, 15000000000);
   assert.equal(quota.usedBytes, 6000000000);
   assert.equal(await getGoogleDriveAccountFingerprint(fake.drive), accountBinding);
+  const defaultVerifierProvider = createGoogleDriveGeneratedIdProvider({
+    drive: fake.drive, accountBinding, driveSpace, projectId, parentId
+  });
+  const verifiedGenerated = await defaultVerifierProvider.generateFileId({ accountBinding, driveSpace });
+  assert.equal(verifiedGenerated.id, fileId);
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_ACCOUNT_IDENTITY_AND_QUOTA=PASS');
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_DEFAULT_ABOUT_ACCOUNT_VERIFIER=PASS');
 
   assert.equal(await provider.getFile({
     id: 'missingFileId_123456', accountBinding, driveSpace
