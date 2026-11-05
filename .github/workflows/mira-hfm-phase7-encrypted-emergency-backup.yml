@@ -24,9 +24,11 @@ on:
       - 'services/mira-hfm-backup-key-provider.js'
       - 'services/mira-hfm-drive-emergency-backup-adapter.js'
       - 'services/mira-hfm-drive-backup-id-journal.js'
+      - 'services/mira-hfm-drive-generated-id-upload.js'
       - 'tests/mira-hfm-encrypted-emergency-backup.test.js'
       - 'tests/mira-hfm-drive-emergency-backup-adapter.test.js'
       - 'tests/mira-hfm-drive-backup-id-journal.test.js'
+      - 'tests/mira-hfm-drive-generated-id-upload.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
       - '.github/workflows/mira-hfm-phase7-encrypted-emergency-backup.yml'
 
