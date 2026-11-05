@@ -72,6 +72,12 @@ assert.ok(recovery.includes('grant execute on function public.mira_stage_faceboo
 assert.ok((recovery.match(/is distinct from/g) || []).length >= 18, 'RPC must reject missing JSON keys and NULL identity values with NULL-safe comparisons.');
 assert.ok(recovery.includes("p_event ->> 'eventtype' is distinct from 'facebook_group_memory_import_staged'"), 'Missing eventType must be rejected.');
 assert.ok(recovery.includes("p_batch ->> 'canonicalmemorywrite' is distinct from 'false'"), 'Missing Batch policy flag must be rejected.');
+assert.ok(recovery.includes("p_batch ->> 'schemaversion' is distinct from '1.0.0'"), 'Batch schemaVersion must be validated.');
+assert.ok(recovery.includes("p_batch ->> 'sourcetype' is distinct from 'facebook_group'"), 'Batch sourceType must be validated.');
+assert.ok(recovery.includes("p_batch ->> 'sourceauthorization' is distinct from 'user_attested_authorized_group_access'"), 'Batch source authorization policy must be validated.');
+assert.ok(recovery.includes("p_batch ->> 'trustpolicy' is distinct from 'untrusted_user_supplied_group_content'"), 'Batch trust policy must be validated.');
+assert.ok(recovery.includes("p_event ->> 'schemaversion' is distinct from '1.0.0'"), 'Audit schemaVersion must be validated.');
+assert.ok(recovery.includes("p_event ->> 'outcome' is distinct from 'atomic_staged'"), 'Audit outcome must be validated.');
 assert.doesNotMatch(recovery, /\b(drop table|truncate table|delete from|update public\.)\b/i, 'Recovery migration must remain additive.');
 
 console.log('GROUP_IMPORT_RECOVERY_MIGRATION_ATOMIC_RPC_AND_IDEMPOTENCY=PASS');
