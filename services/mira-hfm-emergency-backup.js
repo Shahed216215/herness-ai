@@ -4,7 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const BACKUP_FORMAT_VERSION = 1;
-const ENCRYPTION_PROFILE = 'MIRA_HFM_AES_256_GCM_V1';
+const ENCRYPTION_PROFILE = 'MIRA_HFM_ENVELOPE_AES_256_GCM_V1';
 const ALGORITHM = 'aes-256-gcm';
 const MAX_BACKUP_BYTES = 256 * 1024 * 1024;
 
@@ -21,13 +21,6 @@ function canonicalize(value) {
   return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + canonicalize(value[k])).join(',') + '}';
 }
 function sha256(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
-function assertKey(key) {
-  if (!Buffer.isBuffer(key) || key.length !== 32) {
-    const error = new Error('A 32-byte AES-256 key must be supplied by an external key provider.');
-    error.code = 'BACKUP_KEY_UNAVAILABLE';
-    throw error;
-  }
-}
 function validateMetadata(metadata) {
   if (!isPlainObject(metadata)) throw new Error('Backup metadata must be an object.');
   for (const field of ['schemaVersion', 'projectId', 'sourceRevision', 'keyId', 'keyVersion']) {
@@ -39,7 +32,14 @@ function validateMetadata(metadata) {
     throw new Error('recordCount must be a non-negative safe integer.');
   }
 }
-function makeManifest(snapshot, metadata, nonce) {
+function assertKeyProvider(provider, method) {
+  if (!isPlainObject(provider) || typeof provider[method] !== 'function') {
+    const error = new Error('An approved external key provider with ' + method + ' is required.');
+    error.code = 'BACKUP_KEY_PROVIDER_UNAVAILABLE';
+    throw error;
+  }
+}
+function makeManifest(snapshot, metadata, nonce, wrappedDataKey) {
   if (!isPlainObject(snapshot) || !Array.isArray(snapshot.records)) throw new Error('Snapshot must contain a records array.');
   validateMetadata(metadata);
   if (metadata.recordCount !== snapshot.records.length) throw new Error('Snapshot record count does not match metadata.');
@@ -56,34 +56,50 @@ function makeManifest(snapshot, metadata, nonce) {
     keyId: metadata.keyId,
     keyVersion: metadata.keyVersion,
     algorithm: ALGORITHM,
-    nonce: nonce.toString('base64')
+    nonce: nonce.toString('base64'),
+    wrappedDataKey
   };
   return { manifest: { ...base, manifestHash: sha256(canonicalize(base)) }, payload };
 }
-function encryptSnapshot({ snapshot, metadata, key }) {
-  assertKey(key);
-  const nonce = crypto.randomBytes(12);
-  const { manifest, payload } = makeManifest(snapshot, metadata, nonce);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, nonce);
-  cipher.setAAD(Buffer.from(canonicalize(manifest), 'utf8'));
-  const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
-  const envelope = {
-    envelopeType: 'MIRA_HFM_ENCRYPTED_BACKUP',
-    manifest,
-    ciphertext: ciphertext.toString('base64'),
-    authTag: cipher.getAuthTag().toString('base64')
-  };
-  const bytes = Buffer.from(JSON.stringify(envelope) + '\n', 'utf8');
-  if (bytes.length > MAX_BACKUP_BYTES) throw new Error('Encrypted backup exceeds the configured size limit.');
-  return { bytes, envelope, sha256: sha256(bytes) };
+async function encryptSnapshot({ snapshot, metadata, keyProvider }) {
+  assertKeyProvider(keyProvider, 'wrapDataKey');
+  validateMetadata(metadata);
+  const dataKey = crypto.randomBytes(32);
+  try {
+    const wrappedDataKey = await keyProvider.wrapDataKey({
+      dataKey: Buffer.from(dataKey), keyId: metadata.keyId, keyVersion: metadata.keyVersion
+    });
+    if (typeof wrappedDataKey !== 'string' || !wrappedDataKey || wrappedDataKey.length > 16384) {
+      throw new Error('Key provider returned an invalid wrapped data key.');
+    }
+    const nonce = crypto.randomBytes(12);
+    const { manifest, payload } = makeManifest(snapshot, metadata, nonce, wrappedDataKey);
+    const cipher = crypto.createCipheriv(ALGORITHM, dataKey, nonce);
+    cipher.setAAD(Buffer.from(canonicalize(manifest), 'utf8'));
+    const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
+    const envelope = {
+      envelopeType: 'MIRA_HFM_ENCRYPTED_BACKUP',
+      manifest,
+      ciphertext: ciphertext.toString('base64'),
+      authTag: cipher.getAuthTag().toString('base64')
+    };
+    const bytes = Buffer.from(JSON.stringify(envelope) + '\n', 'utf8');
+    if (bytes.length > MAX_BACKUP_BYTES) throw new Error('Encrypted backup exceeds the configured size limit.');
+    return { bytes, envelope, sha256: sha256(bytes) };
+  } finally {
+    dataKey.fill(0);
+  }
 }
 function validateManifest(manifest) {
+  const requiredText = ['schemaVersion', 'projectId', 'sourceRevision', 'keyId', 'keyVersion', 'createdAt', 'wrappedDataKey'];
   if (!isPlainObject(manifest) || manifest.backupFormatVersion !== BACKUP_FORMAT_VERSION ||
       manifest.encryptionProfile !== ENCRYPTION_PROFILE || manifest.algorithm !== ALGORITHM ||
       typeof manifest.nonce !== 'string' || Buffer.from(manifest.nonce, 'base64').length !== 12 ||
       typeof manifest.payloadHash !== 'string' || !/^[a-f0-9]{64}$/.test(manifest.payloadHash) ||
       typeof manifest.manifestHash !== 'string' || !/^[a-f0-9]{64}$/.test(manifest.manifestHash) ||
-      !Number.isSafeInteger(manifest.recordCount) || manifest.recordCount < 0) {
+      !Number.isSafeInteger(manifest.recordCount) || manifest.recordCount < 0 ||
+      requiredText.some(field => typeof manifest[field] !== 'string' || !manifest[field]) ||
+      !Number.isFinite(Date.parse(manifest.createdAt))) {
     throw new Error('Backup manifest is malformed or unsupported.');
   }
   const { manifestHash, ...base } = manifest;
@@ -94,19 +110,25 @@ function validateManifest(manifest) {
   }
 }
 function parseEnvelope(input) {
+  if ((Buffer.isBuffer(input) && input.length > MAX_BACKUP_BYTES) ||
+      (typeof input === 'string' && Buffer.byteLength(input) > MAX_BACKUP_BYTES)) {
+    throw new Error('Backup envelope exceeds the configured size limit.');
+  }
   let envelope;
   try { envelope = Buffer.isBuffer(input) || typeof input === 'string'
     ? JSON.parse(Buffer.isBuffer(input) ? input.toString('utf8') : input) : input; }
   catch { throw new Error('Backup envelope contains invalid JSON.'); }
   if (!isPlainObject(envelope) || envelope.envelopeType !== 'MIRA_HFM_ENCRYPTED_BACKUP' ||
-      typeof envelope.ciphertext !== 'string' || typeof envelope.authTag !== 'string') {
+      typeof envelope.ciphertext !== 'string' || typeof envelope.authTag !== 'string' ||
+      Buffer.from(envelope.authTag, 'base64').length !== 16 ||
+      Buffer.from(envelope.ciphertext, 'base64').length > MAX_BACKUP_BYTES) {
     throw new Error('Encrypted backup envelope is malformed.');
   }
   validateManifest(envelope.manifest);
   return envelope;
 }
-function decryptBackup({ backup, key, expectedProjectId, supportedSchemaVersions = [] }) {
-  assertKey(key);
+async function decryptBackup({ backup, keyProvider, expectedProjectId, supportedSchemaVersions = [] }) {
+  assertKeyProvider(keyProvider, 'unwrapDataKey');
   const envelope = parseEnvelope(backup);
   const manifest = envelope.manifest;
   if (expectedProjectId && manifest.projectId !== expectedProjectId) {
@@ -119,31 +141,40 @@ function decryptBackup({ backup, key, expectedProjectId, supportedSchemaVersions
     error.code = 'BACKUP_SCHEMA_UNSUPPORTED';
     throw error;
   }
-  let plaintext;
+  let dataKey;
   try {
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(manifest.nonce, 'base64'));
+    dataKey = await keyProvider.unwrapDataKey({
+      wrappedDataKey: manifest.wrappedDataKey, keyId: manifest.keyId, keyVersion: manifest.keyVersion
+    });
+    if (!Buffer.isBuffer(dataKey) || dataKey.length !== 32) throw new Error('Invalid unwrapped data key.');
+    const decipher = crypto.createDecipheriv(ALGORITHM, dataKey, Buffer.from(manifest.nonce, 'base64'));
     decipher.setAAD(Buffer.from(canonicalize(manifest), 'utf8'));
     decipher.setAuthTag(Buffer.from(envelope.authTag, 'base64'));
-    plaintext = Buffer.concat([decipher.update(Buffer.from(envelope.ciphertext, 'base64')), decipher.final()]);
-  } catch {
-    const error = new Error('Backup authentication/decryption failed.');
-    error.code = 'BACKUP_DECRYPTION_FAILED';
-    throw error;
+    const plaintext = Buffer.concat([
+      decipher.update(Buffer.from(envelope.ciphertext, 'base64')), decipher.final()
+    ]);
+    if (sha256(plaintext) !== manifest.payloadHash) {
+      const error = new Error('Decrypted backup payload integrity verification failed.');
+      error.code = 'BACKUP_PAYLOAD_INTEGRITY_FAILED';
+      throw error;
+    }
+    let snapshot;
+    try { snapshot = JSON.parse(plaintext.toString('utf8')); }
+    catch { throw new Error('Decrypted backup payload is not valid JSON.'); }
+    if (!isPlainObject(snapshot) || !Array.isArray(snapshot.records) || snapshot.records.length !== manifest.recordCount) {
+      const error = new Error('Decrypted backup record count or payload shape is invalid.');
+      error.code = 'BACKUP_RECORD_COUNT_MISMATCH';
+      throw error;
+    }
+    return { status: 'VERIFIED', integrity: 'AES_256_GCM_AND_SHA256_VERIFIED', manifest, snapshot };
+  } catch (error) {
+    if (error && error.code) throw error;
+    const failure = new Error('Backup authentication/decryption or key recovery failed.');
+    failure.code = 'BACKUP_DECRYPTION_FAILED';
+    throw failure;
+  } finally {
+    if (Buffer.isBuffer(dataKey)) dataKey.fill(0);
   }
-  if (sha256(plaintext) !== manifest.payloadHash) {
-    const error = new Error('Decrypted backup payload integrity verification failed.');
-    error.code = 'BACKUP_PAYLOAD_INTEGRITY_FAILED';
-    throw error;
-  }
-  let snapshot;
-  try { snapshot = JSON.parse(plaintext.toString('utf8')); }
-  catch { throw new Error('Decrypted backup payload is not valid JSON.'); }
-  if (!isPlainObject(snapshot) || !Array.isArray(snapshot.records) || snapshot.records.length !== manifest.recordCount) {
-    const error = new Error('Decrypted backup record count or payload shape is invalid.');
-    error.code = 'BACKUP_RECORD_COUNT_MISMATCH';
-    throw error;
-  }
-  return { status: 'VERIFIED', integrity: 'AES_256_GCM_AND_SHA256_VERIFIED', manifest, snapshot };
 }
 function writeBackupAtomic(filePath, bytes) {
   if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) throw new Error('Backup destination must be an absolute path.');
@@ -189,9 +220,10 @@ function inspectBackupDirectory(directory) {
     const fileStat = fs.lstatSync(filePath);
     if (fileStat.isSymbolicLink() || !fileStat.isFile()) return { name, status: 'REVIEW_REQUIRED', sizeBytes: fileStat.size || 0 };
     try {
-      const envelope = parseEnvelope(fs.readFileSync(filePath));
+      const raw = fs.readFileSync(filePath);
+      const envelope = parseEnvelope(raw);
       return { name, status: 'MANIFEST_VALID_ENCRYPTED_CONTENT_NOT_DECRYPTED', projectId: envelope.manifest.projectId,
-        createdAt: envelope.manifest.createdAt, sizeBytes: fileStat.size, sha256: sha256(fs.readFileSync(filePath)) };
+        createdAt: envelope.manifest.createdAt, sizeBytes: fileStat.size, sha256: sha256(raw) };
     } catch { return { name, status: 'REVIEW_REQUIRED', sizeBytes: fileStat.size }; }
   });
 }
