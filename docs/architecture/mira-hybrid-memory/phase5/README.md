@@ -147,7 +147,9 @@ The same review found the server listening on `127.0.0.1` unconditionally. The b
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
 | Native Meta export archive compatibility | SKIPPED_INPUT_MISSING | `P5-SKIP-002`; only JSON, JSONL and manual-text are implemented until a lawful representative archive sample is supplied |
 
-| Independent human review | SKIPPED_USER_DIRECTED | `P5-SKIP-001`; skipped at the user's direction; not an approval and not counted as PASS |\n\n**Phase 5 implementation/CI status:** `IMPLEMENTATION_COMPLETE; FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; ISOLATED_POSTGRESQL_16_INTEGRATION_PASS; SKIPS_TRACKED; LIVE_SUPABASE_RENDER_VERIFICATION_DEFERRED`. The latest code head `5d9b96af7ff9c9f710177b8ee1259744927706df` passed both jobs in exact-head workflow `42067111202`. Live Supabase persistence and Render runtime/restart verification remain deferred; therefore this is not production certification. All work remains within Mira HFM v0.2.
+| Independent human review | SKIPPED_USER_DIRECTED | `P5-SKIP-001`; skipped at the user's direction; not an approval and not counted as PASS |
+
+**Phase 5 implementation/CI status:** `IMPLEMENTATION_COMPLETE; FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; ISOLATED_POSTGRESQL_16_INTEGRATION_PASS; SKIPS_TRACKED; LIVE_SUPABASE_RENDER_VERIFICATION_DEFERRED`. The latest code head `5d9b96af7ff9c9f710177b8ee1259744927706df` passed both jobs in exact-head workflow `42067111202`. Live Supabase persistence and Render runtime/restart verification remain deferred; therefore this is not production certification. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
