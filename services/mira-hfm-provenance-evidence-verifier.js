@@ -72,9 +72,13 @@ function verifyEvidenceEnvelope({
   let key;
   try { key = crypto.createPublicKey(anchor.publicKeyPem); }
   catch { fail('Evidence issuer public key is invalid.', 'HFM_PROVENANCE_EVIDENCE_KEY_INVALID'); }
-  if (key.asymmetricKeyType !== 'ed25519' ||
-      sha256(key.export({ type: 'spki', format: 'der' })) !== anchor.publicKeySha256) {
+  const keyFingerprint = sha256(key.export({ type: 'spki', format: 'der' }));
+  if (key.asymmetricKeyType !== 'ed25519' || keyFingerprint !== anchor.publicKeySha256) {
     fail('Evidence issuer key type or fingerprint is invalid.', 'HFM_PROVENANCE_EVIDENCE_KEY_INVALID');
+  }
+  if (excludedKeyFingerprints.includes(keyFingerprint)) {
+    fail('Evidence issuer key material overlaps a policy, state, or reviewer trust role.',
+      'HFM_PROVENANCE_EVIDENCE_KEY_ROLE_COLLISION');
   }
   let signature;
   try {
