@@ -356,3 +356,25 @@ The next safe work is independent review of the clean-restack diffs, a unified c
 VERSION=v0.2
 PRODUCTION_READINESS=NOT_CERTIFIED
 PRODUCTION_DEPLOYMENT=NOT_APPROVED
+
+
+## 12. Unified Phase 5–9 offline verification — 2026-11-05
+
+- Unified workflow: `.github/workflows/mira-hfm-v02-unified-offline.yml`.
+- Pull request: #27, draft and unmerged.
+- Workflow run `42004933460`: completed SUCCESS on the PR merge candidate before this report-only update.
+- Job `unified-offline`: SUCCESS.
+- Successful steps: Node 24 setup, `npm ci`, integrated runtime syntax checks, Phase 5 Group import tests, Phase 6 public retrieval/archive-boundary tests, Phase 7 encrypted backup/restore-staging tests, Phase 8 learning/evolution tests, Phase 9 retrieval-optimizer tests, and external-boundary recording.
+- The workflow explicitly records zero live Facebook, Tavily, model, and Google Drive requests; zero Supabase writes, production migrations, and canonical Memory writes.
+- The only subsequent change to the PR head is this report update; application source and test files are unchanged. A fresh workflow run is required for the updated head before treating the updated PR check as green.
+
+### Updated decision
+
+`UNIFIED_PHASE5_TO_PHASE9_OFFLINE_CI=PASS_SCOPED`
+
+This is a single merged-tree offline suite across the implemented Phase 5–9 source branches. It does not prove live provider behavior, target Supabase persistence, cloud backup durability, restart recovery, Render deployment, production performance, or independent security certification.
+
+`FULL_SYSTEM_INDEPENDENT_VERIFICATION=INCONCLUSIVE`
+`PRODUCTION_READINESS=NOT_CERTIFIED`
+`PRODUCTION_DEPLOYMENT=NOT_APPROVED`
+`VERSION=v0.2`
