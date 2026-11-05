@@ -35,7 +35,7 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - It reads the two files through bounded regular-file descriptors, checks file identity/size/mtime across the read, parses JSON arrays, flattens records with store identifiers, and signs a request-bound attestation.
 - The adapter does not call `readMemory()` or `createKnowledgeBackup()`. This is intentional: inspection found that the former may create an initialization marker, while the latter writes backup/audit state.
 - The adapter does not write, migrate, restore, publish, upload, or delete anything. Its source signing provider, authorization issuer trust store, decision provider and replay guard are injected. The adapter receives only a sign operation; private-key PEM/bytes are not part of its configuration contract. Real issuer policy governance, durable distributed replay protection and source signing-key custody remain deployment responsibilities.
-- Synthetic tests cover successful signed staging capture, denial, expired decisions, actor mismatch, replay rejection, production-environment rejection, path pinning, and source-file immutability. CI execution is pending until the workflow run completes.
+- Synthetic tests cover successful signed staging capture, denial, expired decisions, actor mismatch, replay rejection, production-environment rejection, path pinning, and source-file immutability. Commit-matched CI run #42039641130 passed all eight offline suites.
 - This adapter is not a production integration and must not be pointed at production data.
 
 ## Staging backup and recovery drill (new)
@@ -43,7 +43,7 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - The baseline source is captured independently before the backup source. Source revision, record count, and canonical payload digest must match before any backup file is published; a mismatch blocks publication.
 - The published encrypted file is read back from disk and recovery-verified against the independent baseline. Existing backup names are never overwritten.
 - The drill requires an existing explicit non-symlink staging backup directory and a restricted filename. It does not call Drive, write canonical Memory/Knowledge, restore data, or delete files.
-- Synthetic tests cover successful publication and recovery preview, unchanged source files, overwrite refusal, and mismatch blocking. The new CI suite is pending; no PASS is claimed until its workflow logs confirm execution.
+- Synthetic tests cover successful publication and recovery preview, unchanged source files, overwrite refusal, and mismatch blocking. Commit-matched CI run #42039641130 passed the staging backup drill suite.
 - Both source adapters are synthetic test identities. This demonstrates the staging workflow contract, not independent production authority, real key custody, or production store correctness.
 
 ## Explicit limitations
@@ -62,7 +62,7 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Immutable local write/readback: PASS_CI.
 - Mocked Drive quota/upload/no-overwrite/remote-readback contract: PASS_CI.
 - Local staging snapshot adapter: PASS_CI (six-suite workflow evidence).
-- Staging backup publication and recovery drill: PASS_CI (commit f4f28b7; run #42038520652).
+- Staging backup publication and recovery drill: PASS_CI (commit 86bea6d; run #42039641130).
 - Retention: plan-only; deletion not authorized.
 - Restore: decrypt-and-validate preview only; production restore not authorized.
 - Production readiness: NOT_CERTIFIED.
@@ -120,5 +120,16 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Backup directory mode must be exactly `0700`; group/other access and missing owner read/write/execute permissions are rejected. Checks are repeated against the retained descriptor at publication boundaries.
 - The code never changes ownership or permissions automatically. Existing directories with a different owner/group or mode must be provisioned by an authorized operator before use.
 - This does not independently inspect Windows DACLs, non-POSIX ACL extensions, mount policy or host/container administrator trust. Production directory provisioning still requires external ACL and infrastructure review.
-- Tests cover permissive mode, insufficient owner mode, expected UID/GID mismatch and fail-closed writer behavior. CI verification is pending.
-- F7-SR-04 remains PARTIALLY_REMEDIATED / OPEN until commit-matched CI and independent security review.
+- Tests cover permissive mode, insufficient owner mode, expected UID/GID mismatch and fail-closed writer behavior. Commit-matched GitHub Actions run #42039641130 completed SUCCESS on commit `86bea6d16c6cd4ecaf649d08d05137620af1237e`; all eight offline suites and the owner/mode policy marker passed.
+- F7-SR-04 remains PARTIALLY_REMEDIATED / OPEN pending independent security review, ACL/mount policy verification and operational directory provisioning.
+
+
+## F7-SR-04 verification checkpoint — 2026-11-05
+- Commit: `86bea6d16c6cd4ecaf649d08d05137620af1237e`.
+- GitHub Actions run #42039641130: SUCCESS; all eight offline suites completed.
+- Owner/mode marker: `MIRA_HFM_BACKUP_DIRECTORY_OWNER_MODE_POLICY_BLOCK_PASS`.
+- Existing race markers: `MIRA_HFM_PINNED_BACKUP_DIRECTORY_RENAME_RACE_BLOCK_PASS`, `MIRA_HFM_PINNED_BACKUP_SYMLINK_REPLACEMENT_BLOCK_PASS`.
+- Staging drill markers: path pin, backup publication, recovery preview, source immutability, no-overwrite and baseline-mismatch block all passed.
+- Logs confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
+- No production store, live Drive, deployment or canonical Memory/Knowledge writes were exercised.
+- POSIX mode/UID/GID checks do not certify host-level ACLs, mount policy, container isolation or privileged administrator trust. F7-SR-04 remains PARTIALLY_REMEDIATED / OPEN.
