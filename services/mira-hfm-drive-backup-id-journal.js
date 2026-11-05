@@ -92,6 +92,32 @@ function safeDirectory(directory) {
 function recordPath(directory, operationId) {
   return path.join(directory, 'drive-backup-operation-' + validId(operationId, 'operationId') + '.json');
 }
+function readJournalBytes(file) {
+  let before;
+  try { before = fs.lstatSync(file); }
+  catch (error) { throw error; }
+  if (before.isSymbolicLink() || !before.isFile() || (before.mode & 0o077) !== 0 ||
+      before.nlink !== 1 || before.size < 2 || before.size > MAX_RECORD_BYTES) {
+    reject('Journal record must be a bounded, regular, owner-only, single-link file.',
+      'HFM_DRIVE_JOURNAL_PERMISSIONS');
+  }
+  let fd;
+  try {
+    const noFollow = fs.constants.O_NOFOLLOW || 0;
+    fd = fs.openSync(file, fs.constants.O_RDONLY | noFollow);
+    const opened = fs.fstatSync(fd);
+    if (!opened.isFile() || (opened.mode & 0o077) !== 0 || opened.nlink !== 1 ||
+        opened.size !== before.size || opened.ino !== before.ino) {
+      reject('Journal record changed during secure open.', 'HFM_DRIVE_JOURNAL_PERMISSIONS');
+    }
+    return fs.readFileSync(fd);
+  } catch (error) {
+    if (error.code === 'ELOOP') reject('Journal symlink is not permitted.', 'HFM_DRIVE_JOURNAL_PERMISSIONS');
+    throw error;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
 function parseRecord(bytes) {
   if (!Buffer.isBuffer(bytes) || bytes.length < 2 || bytes.length > MAX_RECORD_BYTES) {
     reject('Journal record size is invalid.', 'HFM_DRIVE_JOURNAL_CORRUPT');
@@ -110,17 +136,13 @@ function parseRecord(bytes) {
 function readBackupIdJournal({ directory, operationId, expected = {} } = {}) {
   const dir = safeDirectory(directory);
   const file = recordPath(dir, operationId);
-  let stat;
-  try { stat = fs.lstatSync(file); }
+  try { fs.lstatSync(file); }
   catch (error) {
     if (error.code === 'ENOENT') reject('Journal record is missing; provider operation must not proceed.',
       'HFM_DRIVE_JOURNAL_MISSING');
     throw error;
   }
-  if (stat.isSymbolicLink() || !stat.isFile() || (stat.mode & 0o077) !== 0) {
-    reject('Journal record must be a regular owner-only file.', 'HFM_DRIVE_JOURNAL_PERMISSIONS');
-  }
-  const record = parseRecord(fs.readFileSync(file));
+  const record = parseRecord(readJournalBytes(file));
   if (record.operationId !== operationId) reject('Journal operation identity mismatch.', 'HFM_DRIVE_JOURNAL_CORRUPT');
   for (const field of ['accountBinding', 'driveSpace', 'projectId', 'backupId',
     'generatedFileId', 'ciphertextSha256', 'bytes']) {
@@ -148,7 +170,7 @@ function createBackupIdJournal({ directory, ...input } = {}) {
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
       const existing = readBackupIdJournal({ directory: dir, operationId: record.operationId });
-      const existingBytes = fs.readFileSync(target);
+      const existingBytes = readJournalBytes(target);
       if (!existingBytes.equals(bytes)) {
         reject('Operation ID is already bound to a different immutable Drive file ID or backup.',
           'HFM_DRIVE_JOURNAL_CONFLICT');
@@ -161,7 +183,7 @@ function createBackupIdJournal({ directory, ...input } = {}) {
     fs.unlinkSync(temp); temp = undefined;
     const dirFd = fs.openSync(dir, 'r');
     try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
-    const stored = fs.readFileSync(target);
+    const stored = readJournalBytes(target);
     if (!stored.equals(bytes)) reject('Journal readback mismatch.', 'HFM_DRIVE_JOURNAL_READBACK_FAILED');
     return Object.freeze({ created: true, ...readBackupIdJournal({
       directory: dir, operationId: record.operationId
