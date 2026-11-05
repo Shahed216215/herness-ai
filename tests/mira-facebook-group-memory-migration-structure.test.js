@@ -12,70 +12,37 @@ const migrationPath = path.join(
   '20261105090000_mira_facebook_group_import_batches.sql'
 );
 const source = fs.readFileSync(migrationPath, 'utf8');
-const sql = source.replace(/--[^\r\n]*/g, '');
-const compact = sql.replace(/\s+/g, ' ').trim();
+const compact = source
+  .replace(/--[^\r\n]*/g, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase();
 
 const batchTable = 'mira_facebook_group_import_batches';
 const auditTable = 'mira_facebook_group_import_audit_events';
+const requireSql = (fragment, label) => {
+  assert.ok(compact.includes(fragment.toLowerCase()), label);
+};
 
-assert.match(compact, new RegExp('create table if not exists public\\.' + batchTable + ' \\('));
-assert.match(compact, new RegExp('create table if not exists public\\.' + auditTable + ' \\('));
-assert.match(compact, /batch_id text primary key/i);
-assert.match(compact, /event_id uuid primary key/i);
-assert.match(compact, /batch_id text not null references public\.mira_facebook_group_import_batches\(batch_id\) on delete restrict/i);
-assert.match(compact, /batch_digest ~ '\^\[a-f0-9\]\{64\}\/i);
-assert.match(compact, /event_digest ~ '\^\[a-f0-9\]\{64\}\/i);
-assert.equal((compact.match(/enable row level security/gi) || []).length, 2);
-assert.equal((compact.match(/revoke all on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/grant select, insert on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/to service_role/gi) || []).length, 2);
-assert.doesNotMatch(compact, /grant[^;]*\b(update|delete|all)\b/i);
-assert.doesNotMatch(compact, /create policy\b/i);
-assert.doesNotMatch(compact, /\b(drop table|truncate table|delete from|update public\.)\b/i);
+requireSql('create table if not exists public.' + batchTable + ' (', 'Batch table declaration missing.');
+requireSql('create table if not exists public.' + auditTable + ' (', 'Audit table declaration missing.');
+requireSql('batch_id text primary key', 'Batch primary key missing.');
+requireSql('event_id uuid primary key', 'Audit primary key missing.');
+requireSql('batch_id text not null references public.' + batchTable + '(batch_id) on delete restrict', 'Audit foreign key missing.');
+requireSql("batch_digest ~ '^[a-f0-9]{64}$'", 'Batch digest constraint missing.');
+requireSql("event_digest ~ '^[a-f0-9]{64}$'", 'Audit digest constraint missing.');
 
-console.log('GROUP_IMPORT_MIGRATION_TABLES_AND_KEYS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_DIGEST_AND_IDENTITY_CONSTRAINTS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_RLS_AND_SERVICE_ROLE_GRANTS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_NO_CLIENT_POLICY_OR_MUTATION_GRANTS=PASS');
-console.log('NOTE=STATIC_SQL_STRUCTURE_ONLY_NO_POSTGRES_EXECUTION');
-/i);
-assert.match(compact, /event_digest ~ '\\^\[a-f0-9\]\{64\}\$'/i);
-assert.equal((compact.match(/enable row level security/gi) || []).length, 2);
-assert.equal((compact.match(/revoke all on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/grant select, insert on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/to service_role/gi) || []).length, 2);
-assert.doesNotMatch(compact, /grant[^;]*\b(update|delete|all)\b/i);
-assert.doesNotMatch(compact, /create policy\b/i);
-assert.doesNotMatch(compact, /\b(drop table|truncate table|delete from|update public\.)\b/i);
+for (const table of [batchTable, auditTable]) {
+  requireSql('alter table public.' + table + ' enable row level security', 'RLS missing for ' + table + '.');
+  requireSql('revoke all on table public.' + table + ' from public, anon, authenticated, service_role', 'Privilege revocation missing for ' + table + '.');
+  requireSql('grant select, insert on table public.' + table + ' to service_role', 'Service-role least-privilege grant missing for ' + table + '.');
+}
 
-console.log('GROUP_IMPORT_MIGRATION_TABLES_AND_KEYS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_DIGEST_AND_IDENTITY_CONSTRAINTS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_RLS_AND_SERVICE_ROLE_GRANTS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_NO_CLIENT_POLICY_OR_MUTATION_GRANTS=PASS');
-console.log('NOTE=STATIC_SQL_STRUCTURE_ONLY_NO_POSTGRES_EXECUTION');
-/i);
-assert.equal((compact.match(/enable row level security/gi) || []).length, 2);
-assert.equal((compact.match(/revoke all on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/grant select, insert on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/to service_role/gi) || []).length, 2);
-assert.doesNotMatch(compact, /grant[^;]*\b(update|delete|all)\b/i);
-assert.doesNotMatch(compact, /create policy\b/i);
-assert.doesNotMatch(compact, /\b(drop table|truncate table|delete from|update public\.)\b/i);
-
-console.log('GROUP_IMPORT_MIGRATION_TABLES_AND_KEYS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_DIGEST_AND_IDENTITY_CONSTRAINTS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_RLS_AND_SERVICE_ROLE_GRANTS=PASS');
-console.log('GROUP_IMPORT_MIGRATION_NO_CLIENT_POLICY_OR_MUTATION_GRANTS=PASS');
-console.log('NOTE=STATIC_SQL_STRUCTURE_ONLY_NO_POSTGRES_EXECUTION');
-/i);
-assert.match(compact, /event_digest ~ '\\^\[a-f0-9\]\{64\}\$'/i);
-assert.equal((compact.match(/enable row level security/gi) || []).length, 2);
-assert.equal((compact.match(/revoke all on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/grant select, insert on table public\./gi) || []).length, 2);
-assert.equal((compact.match(/to service_role/gi) || []).length, 2);
-assert.doesNotMatch(compact, /grant[^;]*\b(update|delete|all)\b/i);
-assert.doesNotMatch(compact, /create policy\b/i);
-assert.doesNotMatch(compact, /\b(drop table|truncate table|delete from|update public\.)\b/i);
+const grantStatements = compact.match(/grant\s+[^;]+;/g) || [];
+assert.equal(grantStatements.length, 2, 'Unexpected grant statement count.');
+assert.ok(grantStatements.every(statement => /^grant select, insert on table public\.[a-z_]+ to service_role;$/i.test(statement)), 'Unexpected grant found; only service_role SELECT/INSERT is allowed.');
+assert.doesNotMatch(compact, /create policy\b/i, 'Client-facing RLS policy must not be introduced.');
+assert.doesNotMatch(compact, /\b(drop table|truncate table|delete from|update public\.)\b/i, 'Destructive or mutation statement found.');
 
 console.log('GROUP_IMPORT_MIGRATION_TABLES_AND_KEYS=PASS');
 console.log('GROUP_IMPORT_MIGRATION_DIGEST_AND_IDENTITY_CONSTRAINTS=PASS');
