@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 8 Learning & Evolution Integration
 
-Status: PROJECT-ISOLATED PROPOSAL BRIDGE, LOCAL DEVELOPMENT STORE, SUPABASE STORE CONTRACT, ADMIN API, PUBLIC-RETRIEVAL AND LEGACY-LEARNING EVIDENCE ADAPTERS, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR AND OFFLINE TESTS IMPLEMENTED. LIVE SUPABASE MIGRATION, DEPLOYMENT AND AUTOMATED GENERATION-CYCLE ORCHESTRATION NOT CERTIFIED.
+Status: PROJECT-ISOLATED PROPOSAL BRIDGE, LOCAL DEVELOPMENT STORE, SUPABASE STORE CONTRACT, NAMED-ADMIN IMMUTABLE REVIEW, ADMIN API, PUBLIC-RETRIEVAL AND LEGACY-LEARNING EVIDENCE ADAPTERS, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR AND OFFLINE TESTS IMPLEMENTED. LIVE SUPABASE MIGRATION, DEPLOYMENT, UI AND AUTOMATED GENERATION-CYCLE ORCHESTRATION NOT CERTIFIED.
 
 ## Objective
 
@@ -30,7 +30,7 @@ Connect existing Mira Learning and HFM evidence to a controlled learning/evoluti
 - Trust labels are provenance states, not instructions or proof that evidence is true.
 - Retrieved web/Facebook and legacy learning content remains untrusted evidence. Prompt-like text inside evidence must never override system, developer, project or user policy.
 - A proposal is a hypothesis for review, not a learned fact, approved policy, executable task or code patch.
-- The current bridge exposes no approve, promote, execute, merge or apply method. A future governance phase must add a separate authenticated approval/review record before any controlled downstream application.
+- The bridge exposes one named-admin immutable review operation. `APPROVE_FOR_MANUAL_HANDOFF` records permission for a human to perform a separately controlled follow-up; it is not an autonomous approve/apply, promote, execute, merge or code-change operation. Any downstream application requires a separately scoped governance design and independent verification.
 - Digests detect content changes; they do not authenticate the original source or prove factual correctness.
 - Supabase service-role credentials are never returned to clients, written into proposal payloads, or logged by the adapter.
 
@@ -55,8 +55,8 @@ The migration has been committed to the branch only. It has NOT been applied to 
 1. Apply the SQL migration in the approved Supabase project and verify RLS, grants, primary-key uniqueness and foreign-key behavior.
 2. Run an authorized live integration test: insert, duplicate conflict, cross-project isolation, audit readback, restart/reconnect recovery and fail-closed behavior. This has not been done.
 3. Wire proposal intake into the actual Mira generation/retrieval cycle under explicit governance, instead of requiring a trusted caller to submit the evidence payload.
-4. Wire the approved manual handoff into the existing learning/evolution orchestration only after a separately scoped governance review; do not automatically apply canonical Memory changes.
-5. Add UI visibility and independent end-to-end verification for the complete HFM → evidence → proposal → review → controlled learning path.
+4. Add a dedicated orchestration adapter that consumes verified HFM retrieval reports from the actual generation/retrieval cycle; current intake is an explicit admin API call and does not automatically run after retrieval.
+5. Add UI visibility and independent end-to-end verification for the complete HFM → evidence → proposal → review → human-controlled handoff path.
 6. Verify Render instance/restart behavior and Supabase free-tier capacity without exceeding the $0/month constraint.
 
 ## Offline verification
@@ -69,7 +69,7 @@ The migration has been committed to the branch only. It has NOT been applied to 
 The Supabase adapter test uses an injected mock PostgREST request. It does not contact Supabase. Local filesystem tests use a temporary directory. No production data is accessed.
 
 VERSION=v0.2
-PHASE8=PROPOSAL_BRIDGE_AND_SUPABASE_ADAPTER_IMPLEMENTED
+PHASE8=PROPOSAL_BRIDGE_SUPABASE_ADAPTER_AND_IMMUTABLE_REVIEW_IMPLEMENTED
 CANONICAL_MEMORY_WRITES=0
 AUTOMATIC_PROMOTION=0
 AUTOMATIC_EXECUTION=0
