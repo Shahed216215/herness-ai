@@ -88,6 +88,7 @@ function reviewers() {
 function state(overrides = {}) {
   return {
     authorityId: 'independent-policy-state-authority',
+    trustAnchorSha256: 'f'.repeat(64),
     authenticated: true,
     durable: true,
     atomic: true,
