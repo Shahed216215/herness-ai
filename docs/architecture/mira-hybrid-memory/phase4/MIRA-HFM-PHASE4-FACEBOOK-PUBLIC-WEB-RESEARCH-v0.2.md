@@ -18,6 +18,7 @@ Provide a no-Meta-token fallback so Mira can discover publicly indexed informati
 5. Accept only a Page root profile path or supported Page post permalink shape. Exclude groups, personal profiles and unrelated Facebook URLs.
 6. Deduplicate results, cap result count and snippet length, and preserve source URL and observation time.
 7. Return an evidence context suitable for a downstream answer generator. Every item remains SOURCE_RECORDED / UNVERIFIED / PENDING_REVIEW.
+8. Expose the workflow as the read-only Mira tool facebook_page_public_research, defaulting to the selected Page ID and name.
 
 ## Hard boundaries
 
@@ -39,7 +40,7 @@ It must not state that it read the full Facebook profile or all Page posts when 
 | Requirement | Status |
 |---|---|
 | Numeric Page ID validation | Implemented in isolated service |
-| Search-provider injection | Implemented in isolated service |
+| Search-provider injection | Implemented in isolated service and registered Mira tool |
 | Exact Page-ID result binding | Implemented |
 | Facebook HTTPS host allowlist | Implemented |
 | Page-root and Page-post path filtering | Implemented |
@@ -50,6 +51,7 @@ It must not state that it read the full Facebook profile or all Page posts when 
 | Meta API token dependency | None |
 | Canonical HFM Memory write | Not implemented / prohibited in this mode |
 | Live search-provider execution | Not run by offline tests |
+| Mira tool registration and read-only policy | Implemented; offline CI verified |
 | End-to-end answer integration | Pending separate integration and verification |
 
 VERSION=v0.2
