@@ -79,3 +79,20 @@ Status: SOURCE_AUDIT_COMPLETE_FOR_SELECTED_MODULES / IMPLEMENTATION_BLOCKED_PEND
 - Earlier run #376 failed only because a test expected host DENY to return an empty result; the authorization contract correctly throws on LIST denial. Test was corrected to assert fail-closed denial and run #377 passed.
 - P8-E: PASS_CI_SYNTHETIC. Runtime source integration and production authorization are NOT_IMPLEMENTED / NOT_APPROVED.
 - Phase 8 remains IN_PROGRESS. P8-D derived projection lineage and P8-F Evolution governance bridge remain open.
+
+
+## Entry 004 — P8-B signed staging source, P8-C end-to-end mapping, P8-F Evolution prepare-only
+
+- Added `services/mira-hfm-work-learning-staging-source.js` and `tests/mira-hfm-work-learning-staging-source.test.js`.
+- Staging source pins its root directory descriptor, enforces directory 0700/owner-group policy and source file 0600/owner-group/single-link policy, opens via `O_NOFOLLOW`, checks descriptor and named-file identity/metadata around reads, enforces 25 MiB and 5,000-record limits, validates store schema, unique learningId/taskId, and rejects secret-like fields.
+- Source requires signed `backup:read` authorization, independently pinned issuer trust, replay guard, staging-only Ed25519 signer and six explicit provenance dimensions. It signs source revision, exact payload digest, record count, request/nonce/actor/project context and authorization issuer evidence.
+- The captured Work Learning store remains raw and unassigned to any project. The request project is authorization context only; record ownership is established later through owner-approved mapping.
+- Added an end-to-end test that calls `captureAuthorizedSnapshot`, takes the exact captured `sourceFileDigest` and raw record array, verifies an owner-registry-approved mapping, and creates a full-payload canonical lesson candidate in `PENDING_REVIEW` / `UNVERIFIED` / `SOURCE_RECORDED`. No canonical write is performed.
+- Added `services/mira-hfm-evolution-prepare.js` and tests. It accepts only an HFM-authorized active verified Work Learning lesson, binds expected revision/digest and a separately verified backup recovery point, and emits `PREPARED_NOT_COMMITTED` with approval, audit and atomic idempotency plans. It cannot apply, execute or persist Evolution changes.
+- P8-D projection service and P8-E retrieval service are read-only, rebuildable and project-scoped. Projection IDs bind source digest/revision/algorithm; retrieval filters project, host authorization, trust, integrity and quarantine before relevance ranking. Secret-bearing learning payloads are excluded.
+- CI run #392, ID `42048984664`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42048984664, commit `97136cc43c50dba92d1956d42119a7bd35b19443`, push event, conclusion SUCCESS. Job `phase8-learning-scope-contract` SUCCESS.
+- Verified end-to-end marker: `WORK_LEARNING_SIGNED_SNAPSHOT_TO_OWNER_APPROVED_CANDIDATE_E2E_PASS`; staging source markers: signed snapshot capture, no project inference, replay block, auth denial before file read, duplicate ID block, secret field block, root/file permission blocks, production environment block; Evolution markers: approval/recovery gate, stale revision block, digest mismatch block, unverified/expired recovery block, cross-project block and idempotency requirement.
+- Logs confirm `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `EVOLUTION_APPLIED=NO`.
+- P8-B/P8-C/P8-D/P8-E/P8-F/P8-G synthetic contracts: PASS_CI. Phase 8 synthetic contract gate: PASS.
+- Runtime integration remains NOT_APPROVED: no production host-issued owner registry, no production snapshot issuer/KMS custody, no durable shared replay guard, no actual canonical storage adapter/CAS/audit integration, and no Evolution apply path approval.
+- Phase 8 overall: SYNTHETIC_CONTRACTS_COMPLETE / RUNTIME_INTEGRATION_NOT_APPROVED / PRODUCTION_NOT_CERTIFIED.
