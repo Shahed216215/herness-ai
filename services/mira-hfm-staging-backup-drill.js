@@ -9,7 +9,7 @@ function validateStagingDirectory(directory,directoryPolicy={}){
  if(typeof directory!=='string'||!path.isAbsolute(directory))fail('An explicit absolute staging backup directory is required.','HFM_STAGING_BACKUP_DIRECTORY_REQUIRED');
  let stat;try{stat=fs.lstatSync(directory);}catch{fail('Staging backup directory must already exist.','HFM_STAGING_BACKUP_DIRECTORY_MISSING');}
  if(stat.isSymbolicLink()||!stat.isDirectory()||fs.realpathSync(directory)!==path.resolve(directory))fail('Staging backup directory must be a real, non-symlink directory.','HFM_STAGING_BACKUP_DIRECTORY_UNSAFE');
- try{const pinned=openPinnedDirectory(directory);try{assertPrivateDirectory(pinned,directoryPolicy);return pinned;}catch(e){pinned.close();throw e;}}catch(e){if(e.code==='HFM_PINNED_DIRECTORY_UNSUPPORTED')throw e;fail('Staging backup directory could not be pinned safely.','HFM_STAGING_BACKUP_DIRECTORY_UNSAFE');}
+ try{const pinned=openPinnedDirectory(directory);try{assertPrivateDirectory(pinned,directoryPolicy);return pinned;}catch(e){pinned.close();throw e;}}catch(e){if(e.code==='HFM_PINNED_DIRECTORY_UNSUPPORTED'||(typeof e.code==='string'&&e.code.startsWith('HFM_BACKUP_DIRECTORY_')))throw e;fail('Staging backup directory could not be pinned safely.','HFM_STAGING_BACKUP_DIRECTORY_UNSAFE');}
 }
 function validateBackupFileName(name){
  if(typeof name!=='string'||!/^mira-hfm-staging-[a-zA-Z0-9][a-zA-Z0-9._-]{0,100}\.mira-hfm\.enc\.json$/.test(name))
