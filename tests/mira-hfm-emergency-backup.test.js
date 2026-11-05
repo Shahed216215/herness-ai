@@ -48,6 +48,19 @@ const keyProvider = {
     supportedSchemaVersions: ['1.0.0'] });
   assert.deepEqual(restored.snapshot, snapshot);
   assert.equal(restored.status, 'VERIFIED');
+  const failingUnwrapProvider = {
+    ...keyProvider,
+    async unwrapDataKey() {
+      const error = new Error('PRIVATE_KMS_UNWRAP_DETAILS');
+      error.code = 'PRIVATE_KMS_ERROR';
+      throw error;
+    }
+  };
+  await assert.rejects(() => backup.decryptBackup({
+    backup: encrypted.bytes, keyProvider: failingUnwrapProvider,
+    expectedProjectId: 'project-fixture', supportedSchemaVersions: ['1.0.0']
+  }), error => error.code === 'BACKUP_KEY_UNWRAP_FAILED' &&
+    !error.message.includes('PRIVATE_KMS_UNWRAP_DETAILS'));
   await assert.rejects(() => backup.encryptSnapshot({ snapshot, metadata: { ...metadata, recordCount: 2 }, keyProvider }), /record count/);
   await assert.rejects(() => backup.decryptBackup({ backup: encrypted.bytes, keyProvider: {}, expectedProjectId: 'project-fixture' }),
     error => error.code === 'BACKUP_KEY_PROVIDER_UNAVAILABLE');
