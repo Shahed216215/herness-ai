@@ -63,7 +63,8 @@ function hasProductionIntegrationCapabilities({ proposalStore, auditWriter, prod
     typeof proposalStore.putReviewIfAbsent === 'function' &&
     typeof proposalStore.getReview === 'function' &&
     typeof auditWriter === 'function' &&
-    auditWriter.durable === true;
+    auditWriter.durable === true &&
+    auditWriter.idempotent === true;
 }
 
 function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
