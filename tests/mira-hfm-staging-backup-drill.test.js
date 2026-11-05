@@ -39,6 +39,14 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   const publicKeyPem = pair.publicKey.export({ type: 'spki', format: 'pem' });
   const signingKeyId = sourceId + '-key-v1';
   const signingProvider = makeSnapshotSigningProvider(pair.privateKey, signingKeyId);
+  const provenance = {
+    storageSystemId: sourceId + '-storage-system',
+    storageInstanceId: sourceId + '-storage-instance',
+    securityPrincipalId: sourceId + '-workload-principal',
+    trustDomainId: sourceId + '-trust-domain',
+    sourceSystemId: sourceId + '-source-system',
+    authorizationIssuerId: 'synthetic-policy-mira-staging'
+  };
   const policyPair = crypto.generateKeyPairSync('ed25519');
   const policyPublicPem = policyPair.publicKey.export({ type: 'spki', format: 'pem' });
   const policyPublic = crypto.createPublicKey(policyPublicPem);
@@ -62,6 +70,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
     sourceId,
     signingKeyId,
     signingProvider,
+    provenance,
     rootDir,
     memoryFile,
     knowledgeFile,
@@ -74,6 +83,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   const publicKey = crypto.createPublicKey(publicKeyPem);
   const trusted = {
     publicKeyPem,
+    provenance,
     keyId: signingKeyId,
     keyVersion: '1',
     publicKeySha256: crypto.createHash('sha256')
@@ -147,6 +157,9 @@ async function run() {
         [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
       },
       keyProvider: testKeyProvider(),
+      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
+      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
+      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
       backupDirectory,
       backupFileName: 'mira-hfm-staging-drill-001.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
