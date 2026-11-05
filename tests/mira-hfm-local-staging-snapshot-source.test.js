@@ -177,7 +177,7 @@ async function run() {
     assert.equal(Object.isFrozen(provenanceSource.descriptor.provenance.nested), true);
     assert.throws(() => { provenanceSource.descriptor.provenance.nested.region = 'mutation'; }, TypeError);
     provenanceSource.close();
-    process.stdout.write('MIRA_HFM_PHASE7_STAGING_PROVENANCE_IMMUTABLE_PASS\\n');
+    process.stdout.write('MIRA_HFM_PHASE7_STAGING_PROVENANCE_IMMUTABLE_PASS\n');
 
     assert.throws(() => createLocalStagingSnapshotSource({
       environment: 'staging', sourceId: 'same-file', signingKeyId: 'same-file-key',
@@ -185,7 +185,7 @@ async function run() {
       rootDir: f.rootDir, memoryFile: f.memoryFile, knowledgeFile: f.memoryFile,
       authorizationTrust: f.auth.trust, replayGuard: makeReplayGuard(), authorize: async () => true
     }), error => error.code === 'HFM_STAGING_SOURCE_FILES_COLLIDE');
-    process.stdout.write('MIRA_HFM_PHASE7_STAGING_SAME_FILE_REJECT_PASS\\n');
+    process.stdout.write('MIRA_HFM_PHASE7_STAGING_SAME_FILE_REJECT_PASS\n');
 
     assert.throws(() => createLocalStagingSnapshotSource({
       environment: 'staging', sourceId: 'invalid-provenance', signingKeyId: 'invalid-provenance-key',
@@ -194,7 +194,7 @@ async function run() {
       authorizationTrust: f.auth.trust, replayGuard: makeReplayGuard(), authorize: async () => true,
       provenance: []
     }), error => error.code === 'HFM_STAGING_PROVENANCE_INVALID');
-    process.stdout.write('MIRA_HFM_PHASE7_STAGING_PROVENANCE_SCHEMA_BLOCK_PASS\\n');
+    process.stdout.write('MIRA_HFM_PHASE7_STAGING_PROVENANCE_SCHEMA_BLOCK_PASS\n');
 
     const outsideFile = path.join(path.dirname(f.rootDir), path.basename(f.rootDir) + '-outside.json');
     fs.writeFileSync(outsideFile, '[]');
