@@ -3,6 +3,7 @@
 // Deterministic in-memory test double only. It does not provide real durability,
 // distributed atomicity, infrastructure independence, or production guarantees.
 const crypto = require('node:crypto');
+const { canonicalizeProvenancePolicy } = require('./mira-hfm-signed-provenance-policy');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
