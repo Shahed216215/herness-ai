@@ -197,6 +197,12 @@ assert.equal(hasProductionIntegrationCapabilities({
    const restored=await reopened.get('project-alpha','proposal-durable-001');
    assert.equal(restored.proposalDigest,durableResult.proposalDigest);
    assert.equal((await reopened.putIfAbsent('project-alpha','proposal-durable-001',restored)).created,false);
+   const localReview=await durableBridge.review('project-alpha','proposal-durable-001',
+     {decision:'REJECT',reason:'Synthetic local review test.'},{actorRole:'admin',actorId:'local-test-admin'});
+   assert.equal(localReview.status,'REJECTED');
+   assert.equal((await reopened.getReview('project-alpha','proposal-durable-001')).reviewDigest,localReview.reviewDigest);
+   assert.equal((await createLearningEvolutionBridge({proposalStore:reopened,auditWriter:async()=>{}})
+     .get('project-alpha','proposal-durable-001')).review.decision,'REJECT');
    assert.equal(await reopened.get('project-beta','proposal-durable-001'),null);
    const verified=await createLearningEvolutionBridge({proposalStore:reopened,auditWriter:async()=>{}}).get('project-alpha','proposal-durable-001');
    assert.equal(verified.proposalDigest,durableResult.proposalDigest);
