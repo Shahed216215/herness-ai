@@ -7,8 +7,28 @@ const os = require('node:os');
 const path = require('node:path');
 const { createLocalStagingSnapshotSource } = require('../services/mira-hfm-local-staging-snapshot-source');
 const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
+const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
 const { runStagingBackupDrill } = require('../services/mira-hfm-staging-backup-drill');
 
+function makeAuthorization(privateKey, request) {
+  const issued = Date.now();
+  const decision = {
+    issuerId: 'synthetic-policy-' + request.projectId,
+    keyId: 'synthetic-policy-key-v1',
+    decisionId: 'decision-' + request.requestId,
+    policyVersion: 'synthetic-policy-v1',
+    decision: 'ALLOW',
+    projectId: request.projectId,
+    actorId: request.actorId,
+    scope: request.scope,
+    requestId: request.requestId,
+    nonce: request.nonce,
+    issuedAt: new Date(issued).toISOString(),
+    expiresAt: new Date(issued + 60000).toISOString()
+  };
+  decision.signature = crypto.sign(null, Buffer.from(canonicalize(decision), 'utf8'), privateKey).toString('base64');
+  return decision;
+}
 function makeAuthorization(privateKey, request) {
   const issued = Date.now();
   const decision = {
