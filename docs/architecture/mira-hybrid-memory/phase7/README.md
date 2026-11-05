@@ -211,3 +211,12 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Phase 10 independent verification run #65 (ID `42067928501`) completed SUCCESS on the same exact commit.
 - The same run confirms authorization decision negative tests and local fake provider tests passed. Safety markers confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
 - These tests verify synthetic signature, digest, scope, issuer, freshness and resolver-failure handling only. They do not establish that evidence records originate from truthful provider control planes or that trust roles are independent in real infrastructure. F7-SR-05 remains PARTIALLY_REMEDIATED / OPEN; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
+
+
+## Snapshot signing provider secret-boundary hardening — 2026-11-05
+
+- Hardened `validateSnapshotSigningProvider()` so `privateKeyPem`, `privateKey`, and `privateKeyBytes` are rejected both on the provider object and inside its descriptor. This prevents the metadata descriptor from becoming an accidental private-key transport channel.
+- Expanded negative tests for production environment, wrong algorithm, wrong key purpose, expected key-ID mismatch, and private-key material on both provider and descriptor surfaces.
+- Phase 7 run #196 (ID `42068235723`) completed SUCCESS on exact commit `d9205897148f954aff6dffac0dbc91fbe60e676e`; Phase 10 independent verification run #70 (ID `42068229797`) also completed SUCCESS on the same commit.
+- Added the snapshot signing provider service to both Phase 7 push and pull-request path filters so future edits to the contract itself trigger the dedicated Phase 7 workflow.
+- These checks validate the adapter's declared interface only. They do not prove provider identity, non-exportable custody, KMS/HSM controls, key rotation/revocation, workload identity, or provider audit evidence. F7-SR-02 remains PARTIALLY_REMEDIATED / OPEN; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
