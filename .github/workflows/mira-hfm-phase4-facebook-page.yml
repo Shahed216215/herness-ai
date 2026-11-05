@@ -7,13 +7,24 @@ on:
       - work/mira-hfm-v02-phase4-public-web-research
     paths:
       - 'services/mira-facebook-page-memory-connector.js'
+      - 'services/mira-facebook-research-memory.js'
+      - 'services/mira-facebook-research-memory-provider.js'
+      - 'services/mira-facebook-public-web-research.js'
+      - 'tools/facebook-page-research.js'
+      - 'tools/facebook-research-lookup.js'
+      - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-facebook-research-supabase-provider.test.js'
+      - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase4/**'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
+      - 'services/mira-facebook-research-memory-provider.js'
       - 'services/mira-tool-execution-policy.js'
       - 'tools/facebook-page-research.js'
       - 'tools/facebook-research-lookup.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
       - 'tests/mira-facebook-public-web-research.test.js'
+      - 'tests/mira-facebook-research-supabase-provider.test.js'
       - 'tests/mira-hfm-tool-registry-policy-parity.test.js'
       - 'services/mira-facebook-page-hfm-adapter.js'
       - 'services/mira-facebook-page-import-review-registry.js'
@@ -78,6 +89,7 @@ jobs:
           set -euo pipefail
           node tests/mira-facebook-page-memory-connector.test.js
           node tests/mira-facebook-public-web-research.test.js
+          node tests/mira-facebook-research-supabase-provider.test.js
           node tests/mira-facebook-page-hfm-adapter.test.js
           node tests/mira-facebook-page-import-review-registry.test.js
           node tests/mira-facebook-page-operation-recovery.test.js
