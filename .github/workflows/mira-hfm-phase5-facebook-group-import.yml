@@ -9,6 +9,7 @@ on:
       - 'services/mira-facebook-group-memory-supabase-store.js'
       - 'services/mira-memory-conflict-assessment.js'
       - 'routes/mira-facebook-group-memory-import.js'
+      - 'server.js'
       - 'supabase/migrations/**'
       - 'tests/mira-facebook-group-memory-import.test.js'
       - 'tests/mira-facebook-group-memory-supabase-store.test.js'
