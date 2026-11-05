@@ -139,4 +139,4 @@ function buildEvidenceContext(report) {
     trustStatus: item.trustStatus, integrityStatus: item.integrityStatus
   }));
 }
-module.exports = { validatePageId, validateFacebookUrl, buildFacebookPageResearchQueries, collectPublicFacebookPageEvidence, buildEvidenceContext };
+module.exports = { validatePageId, validateFacebookUrl, buildFacebookPageResearchQueries, normalizeResult, collectPublicFacebookPageEvidence, buildEvidenceContext };
