@@ -149,7 +149,7 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
       if (!page || !Array.isArray(page.items) || typeof page.complete !== 'boolean' ||
           page.items.length > input.limit ||
           (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor ||
-            page.nextCursor.length > 1024 || /[\\u0000-\\u001f]/.test(page.nextCursor))) ||
+            page.nextCursor.length > 1024 || /[\u0000-\u001f]/.test(page.nextCursor))) ||
           (page.complete && page.nextCursor != null)) {
         reject('Google Drive listing page is malformed or incomplete.',
           'HFM_DRIVE_LIST_INVALID');
@@ -176,7 +176,10 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
     }
     let raw;
     try { raw = await provider.getQuota({ projectId: project }); }
-    catch (_) { return { status: 'NOT_REPORTED', providerQuotaAvailable: false }; }
+    catch (error) {
+      if (error && error.code === 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE') throw error;
+      return { status: 'NOT_REPORTED', providerQuotaAvailable: false };
+    }
     const timestamp = raw && typeof raw.measuredAt === 'string' ? Date.parse(raw.measuredAt) : NaN;
     if (!raw || typeof raw.providerId !== 'string' ||
         !/^[A-Za-z0-9._-]{2,80}$/.test(raw.providerId) ||
