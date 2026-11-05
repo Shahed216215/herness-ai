@@ -69,10 +69,11 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
     }
   }
 
-  return Object.freeze({
+  const supportsList = typeof provider.listPage === 'function';
+  const adapter = {
     capabilities: Object.freeze({
       encryptedOnly: true, projectIsolated: true, createOnly: true, readAfterWrite: true,
-      journaledGeneratedId: true, exactByteReadback: true
+      journaledGeneratedId: true, exactByteReadback: true, list: supportsList
     }),
 
     async putIfAbsent(input = {}) {
@@ -133,6 +134,69 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
         })
       });
     }
-  });
+  };
+  if (supportsList) {
+    adapter.list = async (input = {}) => {
+      if (input.projectId !== project || input.prefix !== prefix ||
+          !Number.isInteger(input.limit) || input.limit < 1 || input.limit > 500) {
+        reject('Journaled Drive listing is outside the configured project/page boundary.',
+          'HFM_DRIVE_PROJECT_SCOPE');
+      }
+      const page = await provider.listPage({
+        projectId: project, prefix, cursor: input.cursor == null ? null : input.cursor,
+        limit: input.limit
+      });
+      if (!page || !Array.isArray(page.items) || typeof page.complete !== 'boolean' ||
+          page.items.length > input.limit ||
+          (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor ||
+            page.nextCursor.length > 1024 || /[\\u0000-\\u001f]/.test(page.nextCursor))) ||
+          (page.complete && page.nextCursor != null)) {
+        reject('Google Drive listing page is malformed or incomplete.',
+          'HFM_DRIVE_LIST_INVALID');
+      }
+      const items = page.items.map(item => {
+        const m = item && item.metadata;
+        if (!m || m.projectId !== project || typeof m.backupId !== 'string' ||
+            m.objectKey !== prefix + m.backupId + '.mhe') {
+          reject('Google Drive listing item failed project/object binding.',
+            'HFM_DRIVE_OBJECT_INVALID');
+        }
+        return {
+          projectId: m.projectId, backupId: m.backupId, objectKey: m.objectKey,
+          createdAt: m.createdAt, bytes: m.bytes
+        };
+      });
+      return { items, complete: page.complete,
+        nextCursor: page.complete ? undefined : page.nextCursor };
+    };
+  }
+  adapter.getProviderQuota = async () => {
+    if (typeof provider.getQuota !== 'function') {
+      return { status: 'NOT_REPORTED', providerQuotaAvailable: false };
+    }
+    let raw;
+    try { raw = await provider.getQuota({ projectId: project }); }
+    catch (_) { return { status: 'NOT_REPORTED', providerQuotaAvailable: false }; }
+    const timestamp = raw && typeof raw.measuredAt === 'string' ? Date.parse(raw.measuredAt) : NaN;
+    if (!raw || typeof raw.providerId !== 'string' ||
+        !/^[A-Za-z0-9._-]{2,80}$/.test(raw.providerId) ||
+        !['account', 'project'].includes(raw.scope) ||
+        (raw.scope === 'account' && raw.projectId !== null) ||
+        (raw.scope === 'project' && raw.projectId !== project) ||
+        !Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== raw.measuredAt ||
+        !Number.isSafeInteger(raw.quotaBytes) || raw.quotaBytes < 1 ||
+        !Number.isSafeInteger(raw.usedBytes) || raw.usedBytes < 0 ||
+        raw.usedBytes > raw.quotaBytes) {
+      reject('Google Drive quota report failed schema or scope validation.',
+        'HFM_DRIVE_QUOTA_INVALID');
+    }
+    return {
+      status: 'REPORTED', providerQuotaAvailable: true,
+      providerId: raw.providerId, scope: raw.scope, projectId: raw.projectId,
+      measuredAt: raw.measuredAt, quotaBytes: raw.quotaBytes,
+      usedBytes: raw.usedBytes, availableBytes: raw.quotaBytes - raw.usedBytes
+    };
+  };
+  return Object.freeze(adapter);
 }
 module.exports = { createJournaledDriveCloudAdapter };
