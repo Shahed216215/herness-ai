@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 
 const DEFAULT_MAX_VALIDITY_MS = 300000;
 const DEFAULT_FUTURE_SKEW_MS = 30000;
+const MAX_CONFIGURED_VALIDITY_MS = DEFAULT_MAX_VALIDITY_MS;
 
 function fail(message, code) {
   const error = new Error(message);
@@ -40,6 +41,14 @@ async function verifyAuthorizationDecision({
   decision, request, trustedIssuers, replayGuard, now = Date.now(),
   maxValidityMs = DEFAULT_MAX_VALIDITY_MS, maxFutureSkewMs = DEFAULT_FUTURE_SKEW_MS
 }) {
+  if (!Number.isSafeInteger(now) ||
+      !Number.isSafeInteger(maxValidityMs) || maxValidityMs < 1 ||
+      maxValidityMs > MAX_CONFIGURED_VALIDITY_MS ||
+      !Number.isSafeInteger(maxFutureSkewMs) || maxFutureSkewMs < 0 ||
+      maxFutureSkewMs > DEFAULT_FUTURE_SKEW_MS) {
+    fail('Authorization verifier time configuration is invalid or exceeds its fixed safety limits.',
+      'HFM_AUTHZ_CONFIG_INVALID');
+  }
   if (!isPlainObject(decision) || !isPlainObject(request) || !isPlainObject(trustedIssuers) ||
       !isPlainObject(replayGuard) || typeof replayGuard.consume !== 'function') {
     fail('A signed authorization decision, independent issuer trust store, request and replay guard are required.',
@@ -63,7 +72,11 @@ async function verifyAuthorizationDecision({
       typeof trusted.publicKeySha256 !== 'string' || !/^[a-f0-9]{64}$/.test(trusted.publicKeySha256)) {
     fail('Authorization decision issuer is not independently trusted.', 'HFM_AUTHZ_ISSUER_UNTRUSTED');
   }
-  const publicKey = crypto.createPublicKey(trusted.publicKeyPem);
+  let publicKey;
+  try { publicKey = crypto.createPublicKey(trusted.publicKeyPem); }
+  catch {
+    fail('Authorization issuer trust anchor is malformed.', 'HFM_AUTHZ_TRUST_ANCHOR_INVALID');
+  }
   if (publicKey.asymmetricKeyType !== 'ed25519') {
     fail('Authorization issuer trust anchor must be Ed25519.', 'HFM_AUTHZ_TRUST_ANCHOR_INVALID');
   }
@@ -79,7 +92,8 @@ async function verifyAuthorizationDecision({
     fail('Authorization decision is expired, future-dated, or exceeds its maximum validity.',
       'HFM_AUTHZ_DECISION_EXPIRED_OR_INVALID');
   }
-  if (!/^[A-Za-z0-9+/]+=*$/.test(decision.signature)) {
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(decision.signature) ||
+      Buffer.from(decision.signature, 'base64').toString('base64') !== decision.signature) {
     fail('Authorization decision signature encoding is invalid.', 'HFM_AUTHZ_SIGNATURE_INVALID');
   }
   let valid = false;
