@@ -9,7 +9,7 @@ function signedFixture({ privateKey, snapshot, request, sourceId = 'fixture-sour
   keyId = 'fixture-signing-key', capturedAt = new Date().toISOString(),
   authorizationDecision = 'ALLOW', nonce = request.nonce } = {}) {
   const attestation = {
-    sourceId, signingKeyId: keyId, projectId: request.projectId, actorId: request.actorId,
+    sourceId, signingKeyId: keyId, signingKeyVersion: '1', projectId: request.projectId, actorId: request.actorId,
     authorizationDecision, authorizationScope: request.scope, authorizationIssuerId: 'fixture-policy-issuer',
     authorizationDecisionId: 'fixture-policy-decision-001', authorizationPolicyVersion: 'fixture-policy-v1',
     authorizationExpiresAt: new Date(Date.parse(capturedAt) + 60000).toISOString(), requestId: request.requestId, nonce,
@@ -22,7 +22,7 @@ function signedFixture({ privateKey, snapshot, request, sourceId = 'fixture-sour
 }
 function createSource({ request, snapshot, privateKey, alter } = {}) {
   return {
-    descriptor: { contractVersion: '1', sourceId: 'fixture-source', signingKeyId: 'fixture-signing-key',
+    descriptor: { contractVersion: '1', sourceId: 'fixture-source', signingKeyId: 'fixture-signing-key', signingKeyVersion: '1',
       mode: 'read-only', environment: 'test' },
     async readSnapshot(received) {
       assert.equal(received.scope, 'backup:read');
@@ -33,7 +33,7 @@ function createSource({ request, snapshot, privateKey, alter } = {}) {
 }
 function trust(publicKey) {
   const der = publicKey.export({ type: 'spki', format: 'der' });
-  return { 'fixture-source': { keyId: 'fixture-signing-key', publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
+  return { 'fixture-source': { keyId: 'fixture-signing-key', keyVersion: '1', publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
     publicKeySha256: sha256(der) } };
 }
 function testKeyProvider() {
