@@ -1,0 +1,56 @@
+name: Mira HFM Phase 9 Retrieval and Indexing
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase7-emergency-backup
+    paths:
+      - 'services/mira-hfm-retrieval-index.js'
+      - 'services/mira-hfm-work-learning-retrieval.js'
+      - 'services/mira-memory-unified-facade.js'
+      - 'services/mira-conflict-quarantine-registry.js'
+      - 'tests/mira-hfm-retrieval-index.test.js'
+      - 'tests/mira-hfm-work-learning-retrieval.test.js'
+      - 'tests/mira-memory-unified-facade.test.js'
+      - 'tests/mira-memory-conflict-assessment.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase9/**'
+      - '.github/workflows/mira-hfm-phase9-retrieval-index.yml'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase7-emergency-backup
+    paths:
+      - 'services/mira-hfm-retrieval-index.js'
+      - 'services/mira-hfm-work-learning-retrieval.js'
+      - 'services/mira-memory-unified-facade.js'
+      - 'services/mira-conflict-quarantine-registry.js'
+      - 'tests/mira-hfm-retrieval-index.test.js'
+      - 'tests/mira-hfm-work-learning-retrieval.test.js'
+      - 'tests/mira-memory-unified-facade.test.js'
+      - 'tests/mira-memory-conflict-assessment.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase9/**'
+      - '.github/workflows/mira-hfm-phase9-retrieval-index.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase9-ephemeral-retrieval-index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run retrieval authorization, index and regression tests
+        run: |
+          set -euo pipefail
+          node tests/mira-memory-conflict-assessment.test.js
+          node tests/mira-memory-unified-facade.test.js
+          node tests/mira-hfm-work-learning-retrieval.test.js
+          node tests/mira-hfm-retrieval-index.test.js
+          echo "NETWORK_REQUESTS=0"
+          echo "PERSISTENT_INDEX_WRITES=0"
+          echo "CANONICAL_MEMORY_WRITTEN=NO"
+          echo "CANONICAL_KNOWLEDGE_WRITTEN=NO"
+          echo "RESULT=MIRA_HFM_PHASE9_RETRIEVAL_INDEX_COMPLETE"
