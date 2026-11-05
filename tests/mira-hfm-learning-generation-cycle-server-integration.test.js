@@ -29,7 +29,7 @@ assert.ok(agent.includes('learningProposalHandoffAttempted'));
 assert.ok(agent.includes('toolResult,'));
 assert.ok(agent.includes('req,'));
 
-assert.match(server, /const \{ stageAgentGenerationProposal \ } =/);
+assert.ok(server.includes('const { stageAgentGenerationProposal } ='));
 assert.match(server, /require\("\.\/services\/mira-hfm-learning-generation-cycle-request"\)/);
 assert.match(requestAdapter, /function stageAgentGenerationProposal\(/);
 assert.match(requestAdapter, /toolName !== 'mira_hfm_public_web_retrieval'/);
