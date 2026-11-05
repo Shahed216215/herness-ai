@@ -186,6 +186,7 @@ function adaptApprovedWorkLearningEntries({
 module.exports = {
   DOMAIN,
   SOURCE_SYSTEM,
+  assertNoSecretFields,
   buildWorkLearningCanonicalCandidate,
   adaptApprovedWorkLearningEntry,
   adaptApprovedWorkLearningEntries
