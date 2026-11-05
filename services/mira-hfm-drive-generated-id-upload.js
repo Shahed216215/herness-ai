@@ -10,6 +10,8 @@ const {
 const DRIVE_FILE_ID_RE = /^[A-Za-z0-9_-]{10,256}$/;
 const MAX_OBJECT_BYTES = 64 * 1024 * 1024;
 const CONTENT_TYPE = 'application/vnd.mira.hfm-encrypted-backup';
+const BACKUP_SCHEMA = 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP';
+const BACKUP_VERSION = '1.0.0';
 
 function reject(message, code = 'HFM_DRIVE_GENERATED_UPLOAD_REJECTED') {
   const error = new Error(message);
@@ -55,13 +57,27 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
         input.contentType !== CONTENT_TYPE || input.encryption !== 'AES-256-GCM') {
       reject('Upload must be bound to the encrypted envelope content type, algorithm and digest.');
     }
+    let envelope;
+    try { envelope = JSON.parse(bytes.toString('utf8')); }
+    catch { reject('Upload bytes are not a valid encrypted HFM envelope.'); }
+    const backupTime = new Date(envelope && envelope.createdAt);
+    if (!envelope || envelope.schema !== BACKUP_SCHEMA || envelope.version !== BACKUP_VERSION ||
+        envelope.algorithm !== 'aes-256-gcm' || envelope.backupId !== backupId ||
+        !envelope.metadata || envelope.metadata.projectId !== project ||
+        !Number.isFinite(backupTime.getTime()) || backupTime.toISOString() !== envelope.createdAt ||
+        typeof envelope.ciphertext !== 'string' || typeof envelope.tag !== 'string' ||
+        typeof envelope.salt !== 'string' || typeof envelope.iv !== 'string') {
+      reject('Encrypted HFM envelope identity/schema/timestamp does not match the upload request.');
+    }
+    const backupCreatedAt = envelope.createdAt;
 
     let journal;
     try {
       journal = readBackupIdJournal({
         directory: journalDirectory, operationId,
         expected: { accountBinding: account, driveSpace, projectId: project,
-          backupId, ciphertextSha256: digest, bytes: bytes.length }
+          backupId, backupSchema: BACKUP_SCHEMA, backupVersion: BACKUP_VERSION,
+          backupCreatedAt, ciphertextSha256: digest, bytes: bytes.length }
       });
     } catch (error) {
       if (error.code !== 'HFM_DRIVE_JOURNAL_MISSING') throw error;
@@ -73,6 +89,7 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
       journal = createBackupIdJournal({
         directory: journalDirectory, operationId, accountBinding: account, driveSpace,
         projectId: project, backupId, generatedFileId,
+        backupSchema: BACKUP_SCHEMA, backupVersion: BACKUP_VERSION, backupCreatedAt,
         ciphertextSha256: digest, bytes: bytes.length
       });
     }
@@ -80,6 +97,7 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
     const fileId = validateFileId(journal.generatedFileId);
     const metadata = Object.freeze({
       accountBinding: account, driveSpace, projectId: project, backupId,
+      backupSchema: BACKUP_SCHEMA, backupVersion: BACKUP_VERSION, backupCreatedAt,
       ciphertextSha256: digest, bytes: bytes.length, contentType: CONTENT_TYPE,
       encryption: 'AES-256-GCM', parentId: parent
     });
@@ -88,7 +106,8 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
     try {
       createResponse = await provider.createFile({
         id: fileId, parents: [parent], appProperties: {
-          projectId: project, backupId, ciphertextSha256: digest,
+          projectId: project, backupId, schema: BACKUP_SCHEMA, version: BACKUP_VERSION,
+          createdAt: backupCreatedAt, ciphertextSha256: digest,
           bytes: String(bytes.length), encryption: 'AES-256-GCM'
         },
         mimeType: CONTENT_TYPE, bytes: Buffer.from(bytes),
@@ -111,6 +130,9 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
       remoteMetadata.driveSpace === metadata.driveSpace &&
       remoteMetadata.projectId === metadata.projectId &&
       remoteMetadata.backupId === metadata.backupId &&
+      remoteMetadata.backupSchema === metadata.backupSchema &&
+      remoteMetadata.backupVersion === metadata.backupVersion &&
+      remoteMetadata.backupCreatedAt === metadata.backupCreatedAt &&
       remoteMetadata.ciphertextSha256 === metadata.ciphertextSha256 &&
       remoteMetadata.bytes === metadata.bytes &&
       remoteMetadata.contentType === metadata.contentType &&
