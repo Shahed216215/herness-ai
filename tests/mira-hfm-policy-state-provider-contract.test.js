@@ -218,14 +218,14 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
   }), 'HFM_POLICY_STATE_PROVIDER_REQUIRED');
 
-  process.stdout.write('MIRA_HFM_POLICY_STATE_SIGNED_AUTHORITY_PASS\\n');
-  process.stdout.write('MIRA_HFM_POLICY_STATE_FRESHNESS_AND_REVOCATION_PASS\\n');
-  process.stdout.write('MIRA_HFM_POLICY_STATE_DURABLE_ATOMIC_CAPABILITY_CLAIMS_PASS\\n');
-  process.stdout.write('MIRA_HFM_POLICY_STATE_COMPARE_AND_SWAP_PASS\\n');
-  process.stdout.write('MIRA_HFM_POLICY_STATE_COMMIT_RECEIPT_BINDING_PASS\\n');
-  process.stdout.write('MIRA_HFM_POLICY_STATE_CONFLICT_FAIL_CLOSED_PASS\\n');
-  process.stdout.write('MIRA_HFM_POLICY_STATE_NOT_INFRASTRUCTURE_CERTIFIED_PASS\\n');
-  process.stdout.write('MIRA_HFM_POLICY_STATE_PROVIDER_CONTRACT_COMPLETE\\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_SIGNED_AUTHORITY_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_FRESHNESS_AND_REVOCATION_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_DURABLE_ATOMIC_CAPABILITY_CLAIMS_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_COMPARE_AND_SWAP_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_COMMIT_RECEIPT_BINDING_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_CONFLICT_FAIL_CLOSED_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_NOT_INFRASTRUCTURE_CERTIFIED_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_PROVIDER_CONTRACT_COMPLETE\n');
 })().catch(error => {
   process.stderr.write((error && error.stack) || String(error));
   process.exitCode = 1;
