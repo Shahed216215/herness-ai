@@ -526,6 +526,45 @@ async function run() {
     ];
     assert.deepEqual(after, before);
     process.stdout.write('MIRA_HFM_PHASE7_STAGING_SOURCE_IMMUTABLE_PASS\n');
+    const mutatingPolicy = makePolicyAcceptance(backupSource, baselineSource);
+    const mutableTrustMap = {
+      [backupSource.source.descriptor.sourceId]: {
+        ...backupSource.trusted, provenance: { ...backupSource.trusted.provenance }
+      },
+      [baselineSource.source.descriptor.sourceId]: {
+        ...baselineSource.trusted, provenance: { ...baselineSource.trusted.provenance }
+      }
+    };
+    const mutableKeyProvider = testKeyProvider();
+    const baseMutatingProvider = mutatingPolicy.policyStateProvider;
+    mutatingPolicy.policyStateProvider = {
+      async readState(input) {
+        mutableTrustMap[backupSource.source.descriptor.sourceId].provenance.storageSystemId =
+          'mutated-after-staging-input-snapshot';
+        mutableKeyProvider.descriptor.keyId = 'mutated-key-after-snapshot';
+        mutableKeyProvider.wrapDataKey = async () => { throw new Error('mutated key method must not be used'); };
+        return baseMutatingProvider.readState(input);
+      },
+      async compareAndSwap(input) { return baseMutatingProvider.compareAndSwap(input); },
+      async getCommitReceipt(input) { return baseMutatingProvider.getCommitReceipt(input); }
+    };
+    const stableStagingResult = await runStagingBackupDrill({
+      source: backupSource.source,
+      baselineSource: baselineSource.source,
+      request: request('staging-operator-backup', 'stable-input-request-0001', 'stable-input-nonce-000001'),
+      baselineRequest: request('staging-operator-baseline', 'stable-input-base-0001', 'stable-input-base-nonce-01'),
+      trustedSources: mutableTrustMap,
+      keyProvider: mutableKeyProvider,
+      ...mutatingPolicy,
+      backupDirectory,
+      backupFileName: 'mira-hfm-staging-stable-input-snapshot.mira-hfm.enc.json',
+      supportedSchemaVersions: ['1.0.0']
+    });
+    assert.equal(stableStagingResult.status, 'STAGING_BACKUP_AND_RECOVERY_PREVIEW_VERIFIED');
+    assert.equal(stableStagingResult.recovery.status, 'RECOVERY_VERIFIED_PREVIEW_ONLY');
+    process.stdout.write('MIRA_HFM_PHASE7_STAGING_INPUT_TOCTOU_SNAPSHOT_PASS\n');
+
+
 
     await assert.rejects(() => runStagingBackupDrill({
       source: backupSource.source,
