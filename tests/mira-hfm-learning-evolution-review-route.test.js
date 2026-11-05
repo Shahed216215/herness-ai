@@ -43,6 +43,11 @@ async function main() {
   const app={ use(...args) { registered.push(args); } };
   const calls=[];
   const bridge={
+    async submit(proposalInput, context) {
+      calls.push({proposalInput,context});
+      return { status:'PENDING_HUMAN_REVIEW', trustState:'UNTRUSTED',
+        canonicalMemoryWrites:0, automaticExecution:false };
+    },
     async review(projectId,proposalId,input,actor) {
       calls.push({projectId,proposalId,input,actor});
       if(input.decision==='CONFLICT') {
@@ -55,8 +60,31 @@ async function main() {
         canonicalMemoryWrites:0,automaticExecution:false };
     }
   };
+  const previousHookFlag = process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED;
+  process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED = 'true';
   registerRoutes(app,()=>((req,res,next)=>next()),{SYSTEM_ADMIN:'system_admin'},
     {proposalStore:{},auditWriter:async()=>{},bridge});
+  if (previousHookFlag === undefined) delete process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED;
+  else process.env.MIRA_HFM_LEARNING_GENERATION_HOOK_ENABLED = previousHookFlag;
+  assert.equal(typeof app.locals.miraHfmLearningGenerationCycle.stage, 'function');
+  const staged = await app.locals.miraHfmLearningGenerationCycle.stage({
+    explicitOptIn:true, actor:{authenticated:true,role:'admin',actorId:'named-admin'},
+    projectId:'project-alpha', proposalId:'proposal-route-001', title:'Candidate',
+    rationale:'Review source', proposedChange:'Human review only',
+    retrievalResult:{ providerId:'mira-hfm-public-web-retrieval',
+      retrievalMode:'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
+      status:'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED',
+      page:{pageId:'123456789'}, lookup:{projectId:'project-alpha'},
+      limits:{canonicalMemoryWrite:false,trustPromotion:false,directFacebookFetches:0,
+        metaGraphApiCalls:0,loginOrCookieUse:0,privateOrGroupContentAccess:0},
+      evidence:[{evidenceId:'route-evidence-001',pageId:'123456789',
+        sourceUrl:'https://www.facebook.com/123456789/posts/987654321',
+        sourceType:'FACEBOOK_PAGE_POST',identityBinding:'PAGE_ID_PRESENT_IN_INDEXED_RESULT',
+        trustStatus:'SOURCE_RECORDED',integrityStatus:'UNVERIFIED',lifecycle:'PENDING_REVIEW',
+        title:'Public post',snippet:'Untrusted evidence'}] }
+  });
+  assert.equal(staged.status, 'STAGED_FOR_HUMAN_REVIEW');
+  assert.equal(calls[0].context.actorId, 'named-admin');
   assert.equal(registered.length,1);
   const router=registered[0][2];
   const layer=router.stack.find(item=>item.route &&
@@ -88,6 +116,8 @@ async function main() {
   assert.equal(conflict.statusCode,409);
   assert.equal(conflict.body.code,'HFM_LEARNING_REVIEW_CONFLICT');
 
+  console.log('HFM_PHASE8_GENERATION_CYCLE_ROUTE_BRIDGE_EXPOSED=PASS');
+  console.log('HFM_PHASE8_GENERATION_CYCLE_ROUTE_HUMAN_REVIEW_ONLY=PASS');
   console.log('HFM_PHASE8_REVIEW_ROUTE_NAMED_ADMIN_ENFORCEMENT=PASS');
   console.log('HFM_PHASE8_REVIEW_ROUTE_MANUAL_HANDOFF_ONLY=PASS');
   console.log('HFM_PHASE8_REVIEW_ROUTE_CONFLICT_HTTP_MAPPING=PASS');
