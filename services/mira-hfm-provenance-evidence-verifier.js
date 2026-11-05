@@ -130,6 +130,24 @@ async function verifyAllPolicyEvidence({
     fail('Policy payload and independent evidence resolver are required.',
       'HFM_PROVENANCE_EVIDENCE_PROVIDER_REQUIRED');
   }
+  const sourceIds = Object.keys(policyPayload.sources);
+  const evidenceSourceIds = Object.keys(policyPayload.evidence);
+  if (evidenceSourceIds.length !== sourceIds.length ||
+      sourceIds.some(sourceId => !Object.prototype.hasOwnProperty.call(policyPayload.evidence, sourceId))) {
+    fail('Evidence register source keys must exactly match the signed source profiles.',
+      'HFM_PROVENANCE_EVIDENCE_REFERENCE_MISSING');
+  }
+  for (const sourceId of sourceIds) {
+    const profile = policyPayload.sources[sourceId];
+    const refs = policyPayload.evidence[sourceId];
+    if (!isPlainObject(profile) || REQUIRED_FIELDS.some(field =>
+        typeof profile[field] !== 'string' || !profile[field].trim()) ||
+        !isPlainObject(refs) || Object.keys(refs).length !== REQUIRED_FIELDS.length ||
+        Object.keys(refs).some(field => !REQUIRED_FIELDS.includes(field))) {
+      fail('Evidence register must bind exactly six complete provenance values for each source.',
+        'HFM_PROVENANCE_EVIDENCE_REFERENCE_MISSING');
+    }
+  }
   const verified = [];
   const seenEvidenceIds = new Set();
   const issuerFingerprintById = new Map();
