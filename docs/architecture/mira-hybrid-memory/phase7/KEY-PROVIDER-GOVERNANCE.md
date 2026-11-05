@@ -39,3 +39,14 @@ The validator checks declared interface shape and key-reference consistency only
 | Production approval | Explicit owner approval after all prior gates | NOT_APPROVED |
 
 No production KMS, secret manager, Drive API, production Memory, or deployment was accessed while defining this contract.
+
+
+## Separate snapshot-attestation signing key
+Snapshot attestation signing is a different cryptographic purpose from wrapping the backup DEK. The staging source accepts a separate sign-only provider contract:
+- `keyPurpose: "MIRA_HFM_SNAPSHOT_ATTESTATION"`
+- `algorithm: "Ed25519"`
+- exact `keyId`, `keyVersion`, provider ID/version and `environment: "staging"`
+- a `sign({ message, keyId, keyVersion, purpose })` operation only; the source adapter must not receive PEM, private-key objects, or private-key bytes.
+- the independent snapshot trust record pins the matching key ID, key version and public-key fingerprint.
+
+The interface validator returns `SIGNING_PROVIDER_SHAPE_VALID_NOT_CUSTODY_APPROVAL`. It does not authenticate the provider or prove that its key is non-exportable. A provider implemented as an in-process closure around an ordinary software key is suitable only for synthetic tests. Before staging integration, independently select and review a protected signing service, authenticate its workload identity, enforce least privilege, and test wrong identity/version, denied signing, rotation, revocation, outage and audit behavior. Snapshot-signing key rotation must retain historical public-key trust for verification of already-created backups according to a reviewed retirement policy.
