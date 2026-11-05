@@ -256,17 +256,17 @@ SHARED_DRIVE=NOT_CERTIFIED
 
 ## 10. Latest code-change CI evidence
 
-The latest Phase 7 code/test workflow completed GitHub Actions run **42011345391 — SUCCESS**, job **127190879628**, against code/test commit `d774a6451c14a8348f4965c54a5249abfcfe76b1`. The run completed the Node syntax check and all six offline test suites. Logs contain **103 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+The latest Phase 7 code/test workflow completed GitHub Actions run **42011567355 — SUCCESS**, job **127191631723**, against code/test commit `d7e45a970e8db67cd3dcb879cbb2846c2463d72a`. The run completed the Node syntax check and all six offline test suites. Logs contain **104 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
-The Google Drive v3 fake-client suite additionally verifies exact appProperties allowlisting and 124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota mapping and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads are zeroized.
+The Google Drive v3 fake-client suite additionally verifies exact appProperties allowlisting and 124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota mapping and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized.
 
 The Phase 7 branch remains restacked on the latest Phase 6 base; PR #16 remains Draft and unmerged. This is synthetic offline CI evidence only. It does not certify OAuth, live Google Drive operations, production key custody, canonical snapshot completeness or production recovery.
 
 VERSION=v0.2
-OFFLINE_CI_RUN=42011345391_SUCCESS
-OFFLINE_CI_JOB=127190879628
-OFFLINE_CI_CODE_TEST_COMMIT=d774a6451c14a8348f4965c54a5249abfcfe76b1
-OFFLINE_PASS_MARKERS=103
+OFFLINE_CI_RUN=42011567355_SUCCESS
+OFFLINE_CI_JOB=127191631723
+OFFLINE_CI_CODE_TEST_COMMIT=d7e45a970e8db67cd3dcb879cbb2846c2463d72a
+OFFLINE_PASS_MARKERS=104
 OFFLINE_TEST_SUITES=6
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
