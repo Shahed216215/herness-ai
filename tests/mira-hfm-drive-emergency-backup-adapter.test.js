@@ -170,6 +170,27 @@ async function main() {
   await assert.rejects(() => unreadable.putIfAbsent({ ...input, backupId: unreadableId,
     objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + unreadableId + '.mhe' }),
     e => e.code === 'HFM_DRIVE_CREATE_UNCERTAIN');
+  const sizeBound = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async getCapabilities() {
+      return { ...(await transport.getCapabilities()), maxObjectBytes: 8 };
+    } }
+  });
+  await assert.rejects(() => sizeBound.putIfAbsent(input),
+    e => e.code === 'HFM_DRIVE_OBJECT_TOO_LARGE');
+  let negotiatedListLimit = 0;
+  const pageBound = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async getCapabilities() {
+      return { ...(await transport.getCapabilities()), maxPageSize: 1 };
+    }, async listPage(args) {
+      negotiatedListLimit = args.limit;
+      return { items: [], complete: true };
+    } }
+  });
+  await pageBound.list({ projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/',
+    cursor: null, limit: 500 });
+  assert.equal(negotiatedListLimit, 1);
   const unsupported = createEmergencyBackupTransportAdapter({
     projectId,
     transport: { ...transport, async getCapabilities() {
@@ -191,6 +212,7 @@ async function main() {
     projectId, transport: { ...transport, getQuota: undefined }
   });
   assert.equal((await noQuota.getProviderQuota()).status, 'NOT_REPORTED');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_NEGOTIATED_OBJECT_AND_PAGE_LIMITS=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PROVIDER_CAPABILITY_NEGOTIATION=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_UNSUPPORTED_PROVIDER_FAIL_CLOSED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_SCOPED_QUOTA_REPORT=PASS');
