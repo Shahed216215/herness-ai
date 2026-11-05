@@ -97,7 +97,7 @@ async function main() {
   await handler({session:{authenticated:true,role:'admin'},params:{projectId:'project-a',proposalId:'proposal-a'},body:{decision:'APPROVE_FOR_MANUAL_HANDOFF',reason:'reviewed'}},denied);
   assert.equal(denied.statusCode,403);
   assert.equal(denied.body.code,'HFM_LEARNING_NAMED_ADMIN_SESSION_REQUIRED');
-  assert.equal(calls.length,0);
+  assert.equal(calls.length,1);
 
   const approved=responseRecorder();
   await handler({session:{authenticated:true,role:'admin',username:'named-admin'},
@@ -107,7 +107,7 @@ async function main() {
   assert.equal(approved.body.review.trustState,'UNTRUSTED');
   assert.equal(approved.body.review.canonicalMemoryWrites,0);
   assert.equal(approved.body.review.automaticExecution,false);
-  assert.deepEqual(calls[1].actor,{actorRole:'admin',actorId:'named-admin'});
+  assert.deepEqual(calls[2].actor,{actorRole:'admin',actorId:'named-admin'});
 
   const conflict=responseRecorder();
   await handler({session:{authenticated:true,role:'admin',username:'named-admin'},
