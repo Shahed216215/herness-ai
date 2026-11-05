@@ -97,6 +97,31 @@ assert.equal(hasProductionIntegrationCapabilities({
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:{},auditWriter:async()=>{}}),e=>e.code==='HFM_LEARNING_STORE_CAPABILITY_REQUIRED');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:memoryStore}),e=>e.code==='HFM_LEARNING_AUDIT_REQUIRED');
 
+ const retryRecords = new Map();
+ const retryStore = {
+   ...memoryStore,
+   async putIfAbsent(project,id,value) {
+     const k=project+':'+id;
+     if (retryRecords.has(k)) return {created:false};
+     retryRecords.set(k,structuredClone(value));
+     return {created:true};
+   },
+   async get(project,id) { return structuredClone(retryRecords.get(project+':'+id)||null); }
+ };
+ let retryAuditAttempts = 0;
+ const retryAuditWriter = async () => {
+   retryAuditAttempts++;
+   if (retryAuditAttempts === 1) throw new Error('synthetic audit outage before commit');
+ };
+ retryAuditWriter.idempotent = true;
+ const retryBridge = createLearningEvolutionBridge({proposalStore:retryStore,auditWriter:retryAuditWriter});
+ await assert.rejects(()=>retryBridge.submit({...base,proposalId:'proposal-audit-retry-001'}),
+   e=>e.code==='HFM_LEARNING_AUDIT_FAILED'&&e.stateCommitted===true);
+ const reconciled = await retryBridge.submit({...base,proposalId:'proposal-audit-retry-001'});
+ assert.equal(reconciled.idempotentRetry,true);
+ assert.equal(retryAuditAttempts,2);
+ console.log('HFM_PHASE8_AUDIT_FAILURE_IDEMPOTENT_RECONCILIATION=PASS');
+
  const noAudit=createLearningEvolutionBridge({proposalStore:{...memoryStore,async putIfAbsent(project,id,value){
    const k=project+':'+id; if(records.has(k)) return {created:false}; records.set(k,structuredClone(value)); return {created:true};
  }},auditWriter:async()=>{throw new Error('synthetic audit outage');}});
