@@ -161,7 +161,7 @@ async function main() {
   assert.equal(secondPage.items.length, 0);
   await assert.rejects(() => provider.listPage({
     projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/',
-    cursor: 'bad\\npage-token', limit: 1
+    cursor: 'bad\npage-token', limit: 1
   }), error => error.code === 'HFM_GOOGLE_DRIVE_LIST_SCOPE');
   fake.drive.files.list = async () => ({ data: { files: [], incompleteSearch: true } });
   await assert.rejects(() => provider.listPage({
