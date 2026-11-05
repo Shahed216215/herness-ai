@@ -229,6 +229,10 @@ Official API references reviewed:
 - `files.create`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/create
 - Pre-generated ID retries and 409 behavior: https://developers.google.com/workspace/drive/api/guides/manage-uploads#use_a_pre-generated_id_to_upload_files
 - App-specific `appProperties`: https://developers.google.com/workspace/drive/api/guides/properties
+- `about.get` identity and storage quota: https://developers.google.com/workspace/drive/api/reference/rest/v3/about/get
+- `files.list` pagination and `incompleteSearch`: https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list
+- OAuth scope selection and sensitivity: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+- Drive file creation and generated-ID examples: https://developers.google.com/workspace/drive/api/guides/create-file
 
 The documentation supports generated IDs for `drive` and `appDataFolder` spaces and describes duplicate-preventing 409 responses on retry after a successful create. Pre-generated IDs are not supported for ordinary Google Workspace document conversion; HFM must remain an ordinary binary file. This research does not authorize OAuth or certify the injected account-fingerprint callback.
 
