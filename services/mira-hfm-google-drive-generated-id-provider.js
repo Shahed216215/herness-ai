@@ -10,6 +10,11 @@ const FILE_ID_RE = /^[A-Za-z0-9_-]{10,256}$/;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
 const DIGEST_RE = /^[a-f0-9]{64}$/;
 function sha256(bytes) { return crypto.createHash('sha256').update(bytes).digest('hex'); }
+function parseDriveByteCount(value) {
+  if (typeof value !== 'string' || !/^(?:0|[1-9][0-9]*)$/.test(value)) return NaN;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : NaN;
+}
 function validateAppProperties(properties, expectedProjectId, expectedBytes) {
   const required = ['backupId', 'bytes', 'createdAt', 'ciphertextSha256',
     'encryption', 'projectId', 'schema', 'version'];
@@ -29,8 +34,7 @@ function validateAppProperties(properties, expectedProjectId, expectedBytes) {
     properties.version === '1.0.0' &&
     properties.encryption === 'AES-256-GCM' &&
     DIGEST_RE.test(properties.ciphertextSha256) &&
-    Number.isSafeInteger(Number(properties.bytes)) &&
-    Number(properties.bytes) === expectedBytes &&
+    parseDriveByteCount(properties.bytes) === expectedBytes &&
     Number.isFinite(timestamp) &&
     new Date(timestamp).toISOString() === properties.createdAt &&
     timestamp <= Date.now();
@@ -169,7 +173,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       const data = response && response.data;
       if (!data) return null;
       const properties = data.appProperties || {};
-      const size = Number(data.size);
+      const size = parseDriveByteCount(data.size);
       if (data.id !== fileId || !Number.isSafeInteger(size) || size < 1 ||
           size > MAX_OBJECT_BYTES || !validateAppProperties(properties, projectId, size) ||
           !Array.isArray(data.parents) || data.parents.length !== 1 ||
@@ -223,7 +227,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       }
       const items = data.files.map(file => {
         const p = file && file.appProperties || {};
-        const size = Number(file && file.size);
+        const size = parseDriveByteCount(file && file.size);
         const propertyBytes = Number(p.bytes);
         const created = typeof p.createdAt === 'string' ? Date.parse(p.createdAt) : NaN;
         if (!file || !FILE_ID_RE.test(file.id || '') ||
@@ -273,8 +277,8 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
         reject('Google Drive quota identity does not match the configured account.',
           'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
       }
-      const quotaBytes = Number(data.storageQuota && data.storageQuota.limit);
-      const usedBytes = Number(data.storageQuota && data.storageQuota.usage);
+      const quotaBytes = parseDriveByteCount(data.storageQuota && data.storageQuota.limit);
+      const usedBytes = parseDriveByteCount(data.storageQuota && data.storageQuota.usage);
       if (!Number.isSafeInteger(quotaBytes) || quotaBytes < 1 ||
           !Number.isSafeInteger(usedBytes) || usedBytes < 0 || usedBytes > quotaBytes) {
         reject('Google Drive account quota is absent, unlimited, or outside safe numeric bounds.',
