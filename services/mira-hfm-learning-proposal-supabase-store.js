@@ -150,16 +150,18 @@ function createSupabaseLearningProposalStore({ env = process.env, request = secu
       event_digest:eventDigest, payload };
     const inserted = responseRows(await callTable(AUDIT_TABLE, '?on_conflict=event_id', 'POST', [row],
       { Prefer:'resolution=ignore-duplicates,return=representation' }));
-    if (inserted.length !== 1 || inserted[0].event_id !== eventId || inserted[0].event_digest !== eventDigest)
-      fail('HFM_LEARNING_SUPABASE_AUDIT_WRITE_FAILED', 'Supabase did not confirm the proposal audit insert.');
+    if (inserted.length > 1 || (inserted.length === 1 &&
+        (inserted[0].event_id !== eventId || inserted[0].event_digest !== eventDigest)))
+      fail('HFM_LEARNING_SUPABASE_AUDIT_WRITE_FAILED', 'Supabase returned an ambiguous or mismatched proposal audit insert.');
     const verified = responseRows(await callTable(AUDIT_TABLE,
       '?select=event_id,project_id,proposal_id,event_digest,payload&event_id=eq.' + encodeURIComponent(eventId) + '&limit=2','GET'));
-    if (verified.length !== 1 || verified[0].project_id !== event.projectId ||
+    if (verified.length !== 1 || verified[0].event_id !== eventId ||
+        verified[0].project_id !== event.projectId ||
         verified[0].proposal_id !== event.proposalId || verified[0].event_digest !== eventDigest ||
         digest(verified[0].payload) !== eventDigest) {
       fail('HFM_LEARNING_SUPABASE_AUDIT_READBACK_FAILED', 'Supabase proposal audit readback failed.');
     }
-    return { status:'AUDIT_WRITE_READBACK_VERIFIED', eventId, eventDigest };
+    return { status:'AUDIT_WRITE_READBACK_VERIFIED', eventId, eventDigest, created:inserted.length === 1 };
   }
   return Object.freeze({
     projectIsolated:true, createOnly:true, immutableVersions:true, readAfterWrite:true,
