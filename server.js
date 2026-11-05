@@ -81,6 +81,8 @@ const registerCapacityChangeRoutes =
 
 const registerAutonomousLearningRoutes =
   require("./routes/autonomous-learning");
+const registerMiraHfmLearningEvolutionRoutes =
+  require("./routes/mira-hfm-learning-evolution");
 const registerMiraResearchGovernanceRoutes =
   require("./routes/mira-research-governance");
 const registerFacebookPageConnectorRoutes =
@@ -214,6 +216,11 @@ registerCapacityChangeRoutes(
 );
 
 registerAutonomousLearningRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+registerMiraHfmLearningEvolutionRoutes(
   app,
   requireAdminPermission,
   PERMISSIONS
