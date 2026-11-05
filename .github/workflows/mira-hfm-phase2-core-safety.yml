@@ -21,7 +21,7 @@ name: Mira Hybrid Memory Phase 2 Core Safety
 on:
   push:
     branches:
-      - work/mira-hfm-v02-phase2-core-safety
+      - work/mira-hfm-v02-phase2-clean-restack-on-main-20261105
     paths:
       - 'knowledge.js'
       - 'audit-log.js'
