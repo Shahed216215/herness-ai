@@ -63,12 +63,22 @@ function profile(suffix) {
   return Object.fromEntries(REQUIRED_FIELDS.map(field => [field, field + '-' + suffix]));
 }
 function evidence(sourceId) {
-  return Object.fromEntries(REQUIRED_FIELDS.map(field => [field, {
-    evidenceId: sourceId + '-' + field,
-    sha256: crypto.createHash('sha256').update(sourceId + ':' + field).digest('hex'),
-    issuerId: 'independent-evidence-authority',
-    reviewerIds: ['reviewer-a', 'reviewer-b']
-  }]));
+  return Object.fromEntries(REQUIRED_FIELDS.map(field => {
+    const evidenceId = sourceId + '-' + field;
+    const record = { resourceId: sourceId + '-' + field, dimension: field, environment: 'test' };
+    const digest = crypto.createHash('sha256')
+      .update(canonicalizeProvenancePolicy(record)).digest('hex');
+    const payload = {
+      contractVersion: '1', evidenceId, sourceId, dimension: field,
+      issuerId: evidenceIssuer, signerKeyId: 'evidence-key', signerKeyVersion: '1',
+      issuedAt: '2026-11-05T11:59:00.000Z', expiresAt: '2026-11-05T12:30:00.000Z',
+      scope: { environment: 'test', projectId: 'mira-hfm-v02' },
+      reviewerIds: ['reviewer-a', 'reviewer-b'], record
+    };
+    evidenceRecords.set(evidenceId, signed(payload, evidenceKey));
+    return [field, { evidenceId, sha256: digest, issuerId: evidenceIssuer,
+      reviewerIds: ['reviewer-a', 'reviewer-b'] }];
+  }));
 }
 function policyEnvelope() {
   const p = {
@@ -160,7 +170,7 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     operationalIssuerIds,
     now
   });
-  assert.equal(result.stateCommit.committed, true);
+  assert.equal(result.stateCommit.committed, true);\n  assert.equal(result.evidenceVerification.verifiedCount, 12);
   assert.equal(result.stateCommit.nextSequence, 1);
   assert.equal(result.infrastructureIndependentlyCertified, false);
   assert.equal(result.productionApproval, false);
