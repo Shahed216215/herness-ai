@@ -195,6 +195,7 @@ async function verifyAndAcceptSignedProvenancePolicy({
     policyVersion: verified.policyVersion,
     policyDigest: verified.policyDigest,
     stateCommit: commit,
+    evidenceVerification: Object.freeze({ status: evidenceVerification.status, verifiedCount: evidenceVerification.verifiedCount }),
     infrastructureIndependentlyCertified: false,
     productionApproval: false
   });
