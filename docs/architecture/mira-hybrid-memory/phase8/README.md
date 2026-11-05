@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 8 Learning & Evolution Integration
 
-Status: ISOLATED PROPOSAL-ONLY BRIDGE AND SYNTHETIC OFFLINE TESTS ADDED; PRODUCTION HFM/Evolution WIRING NOT CERTIFIED.
+Status: PROJECT-ISOLATED LOCAL PROPOSAL STORE, ADMIN API AND OFFLINE TESTS ADDED; AUTOMATED HFM RETRIEVAL-TO-LEARNING ORCHESTRATION NOT CERTIFIED.
 
 ## Objective
 
@@ -12,8 +12,10 @@ Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflo
 - Requires each evidence item to include evidence ID, project ID, source type, trust state, source reference and content.
 - Enforces strict project isolation and rejects duplicate evidence IDs.
 - Computes SHA-256 digests for evidence and the complete proposal.
-- Stores proposals only through an injected adapter declaring project isolation, create-only semantics, immutable versions and read-after-write.
-- Requires an audit-writer callback; actual durability and tamper resistance remain the host adapter's responsibility and are not certified here.
+- Stores proposals in a project-hash-partitioned local store using create-only file creation, restrictive permissions, fsync and read-after-write.
+- Exposes an admin-only API for staging and reading proposals; the existing global autonomous-learning and Knowledge stores are not modified.
+- Uses Mira's existing audit-log append/integrity path for proposal-staging events; audit failure after persistence is surfaced as committed/reconciliation-required.
+- Requires an audit-writer callback. The production route uses the existing audit-log integrity chain; an HMAC anchor is conditional on the audit key being configured.
 - Marks proposals PENDING_HUMAN_REVIEW and UNTRUSTED.
 - Automatic trust promotion, execution, canonical Memory writes and self-modification are disabled.
 
@@ -27,13 +29,14 @@ Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflo
 
 ## Adapter contract
 
-A production adapter must provide project-scoped atomic create-only writes, immutable proposal versions and read-after-write verification. The host must separately prove durable, tamper-resistant audit emission. Current tests use an in-memory synthetic adapter and an in-memory audit callback only. No production database, durable audit provider or canonical Memory adapter is connected.
+The local adapter provides project-scoped create-only files and immutable proposal IDs on a single filesystem, with read-after-write and content-digest verification. It is not a distributed database and does not establish cross-instance atomicity on Render. The production route calls Mira's existing append-only audit log; its HMAC anchor is conditional on the configured audit key. No Supabase table, multi-instance coordination, canonical Memory adapter or automatic HFM archive reader is connected.
 
 ## Explicit exclusions
 
 - No automatic learning/training, trust promotion, policy mutation, code generation/application, self-repair or self-modification.
 - No canonical Memory writes or changes to existing Memory records.
-- No server route, orchestration, runtime generation-cycle integration, UI or production store wiring in this slice.
+- The admin route is registered in server.js, but no existing AI generation-cycle, retrieval tool, autonomous-learning queue, Knowledge store, or UI is wired to submit automatically.
+- Evidence must be supplied to the admin API by a trusted caller; the API does not independently prove that a claimed public-web retrieval occurred.
 - No live provider, model, network, deployment, migration or secret access.
 - No change to Phase 7 emergency backup or routine Google Drive synchronization.
 
@@ -41,10 +44,10 @@ A production adapter must provide project-scoped atomic create-only writes, immu
 
 Run: node tests/mira-hfm-learning-evolution-bridge.test.js
 
-Tests use synthetic evidence, an in-memory adapter and an in-memory audit callback. They do not establish durable persistence, production audit durability, runtime integration, learning quality or production readiness.
+Tests use synthetic evidence and a temporary local filesystem adapter, including process-level reopen, immutable create-only behavior and stored-tamper detection. They do not establish Render multi-instance durability, Supabase persistence, automated retrieval orchestration, learning quality or production readiness.
 
 VERSION=v0.2
-PHASE8=PROPOSAL_ONLY_BRIDGE_IMPLEMENTED
+PHASE8=LOCAL_PROJECT_ISOLATED_PROPOSAL_API_IMPLEMENTED
 CANONICAL_MEMORY_WRITES=0
 AUTOMATIC_PROMOTION=0
 AUTOMATIC_EXECUTION=0
