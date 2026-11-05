@@ -223,6 +223,7 @@ function verifySignedProvenancePolicy({
     policyIssuerKeyFingerprint: fingerprint,
     policyStateAuthorityId: acceptedPolicyState.authorityId,
     reviewerIds: p.approvals.map(a => a.reviewerId),
+    reviewerKeyFingerprints: Object.freeze(reviewerKeyFingerprints.slice()),
     provenancePolicy: Object.freeze({
       contractVersion: '1',
       policyVersion: p.policyVersion,
