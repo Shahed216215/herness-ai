@@ -21,11 +21,12 @@ async function getGoogleDriveAccountFingerprint(drive) {
     reject('Google Drive about.get is required to verify account identity.');
   }
   let response;
-  try { response = await drive.about.get({ fields: 'user(permissionId)' }); }
+  try { response = await drive.about.get({ fields: 'user(me,permissionId)' }); }
   catch (_) { reject('Google Drive authenticated account identity lookup failed.',
     'HFM_GOOGLE_DRIVE_ACCOUNT_UNVERIFIED'); }
-  const permissionId = response && response.data && response.data.user && response.data.user.permissionId;
-  if (typeof permissionId !== 'string' || !permissionId) {
+  const user = response && response.data && response.data.user;
+  const permissionId = user && user.permissionId;
+  if (!user || user.me !== true || typeof permissionId !== 'string' || !permissionId) {
     reject('Google Drive did not return an authenticated permissionId.',
       'HFM_GOOGLE_DRIVE_ACCOUNT_UNVERIFIED');
   }
@@ -246,7 +247,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       let response;
       try {
         response = await drive.about.get({
-          fields: 'user(permissionId),storageQuota(limit,usage,usageInDrive,usageInDriveTrash)'
+          fields: 'user(me,permissionId),storageQuota(limit,usage,usageInDrive,usageInDriveTrash)'
         });
       } catch (_) {
         reject('Google Drive storage quota is unavailable.',
@@ -254,8 +255,8 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       }
       const data = response && response.data;
       const permissionId = data && data.user && data.user.permissionId;
-      if (typeof permissionId !== 'string' ||
-          sha256(Buffer.from(permissionId, 'utf8')) !== accountBinding) {
+      if (!data.user || data.user.me !== true || typeof permissionId !== 'string' ||
+          sha256(Buffer.from(permissionId, 'utf8')) !== accountBinding {
         reject('Google Drive quota identity does not match the configured account.',
           'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
       }
