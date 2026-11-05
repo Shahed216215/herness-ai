@@ -36,6 +36,7 @@ on:
       - 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'
       - 'tests/mira-hfm-learning-evolution-bridge.test.js'
       - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
+      - 'tests/mira-hfm-learning-evolution-review-route.test.js'
       - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
       - 'tests/mira-hfm-learning-supabase-store.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
