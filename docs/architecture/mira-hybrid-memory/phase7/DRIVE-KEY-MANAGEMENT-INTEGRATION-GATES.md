@@ -18,7 +18,7 @@ This document defines the next safe integration boundary after the provider-neut
 
 A future adapter may be considered only when it exposes the provider-neutral operations already consumed by `mira-hfm-encrypted-emergency-backup-cloud.js`:
 
-- `putIfAbsent({ objectKey, projectId, backupId, bytes, contentType, ciphertextSha256, encryption })`
+- `putIfAbsent({ objectKey, projectId, backupId, bytes, contentType, ciphertextSha256, encryption })`; the injected provider's `atomicCreate` operation must also receive the configured `projectId` explicitly, not rely only on metadata.
 - `get({ objectKey, projectId })`
 - `list({ projectId, prefix, cursor, limit })` returning `{ items, complete, nextCursor }`; every page must explicitly state whether pagination is complete.
 
@@ -119,7 +119,7 @@ PRODUCTION_RESTORE=NOT_CERTIFIED
 The branch adds `services/mira-hfm-drive-emergency-backup-adapter.js` as a provider-neutral boundary around an injected transport. It is not a Google Drive implementation.
 
 - Fixed namespace: `mira-hfm-emergency/v1/{projectId}/{backupId}.mhe`; caller-supplied alternate namespaces are rejected.
-- Required transport methods: `atomicCreate({ objectKey, metadata, bytes })`, `readObject({ objectKey })`, and `listPage({ projectId, prefix, cursor, limit })`.
+- Required transport methods: `atomicCreate({ projectId, objectKey, metadata, bytes })`, `readObject({ projectId, objectKey })`, and `listPage({ projectId, prefix, cursor, limit })`. Every storage operation is explicitly project-scoped.
 - The adapter validates project binding, object key, AES-256-GCM content metadata, SHA-256 format, object metadata/byte length, negotiated read-size and page-item limits, canonical listing timestamps, bounded cursors, encrypted-only listing metadata and explicit bounded pagination. The cloud service additionally binds the authenticated envelope metadata projectId to the requested project on upload, preview and restore.
 - It rejects ambiguous atomic-create results. A future real transport must implement provider-side atomic create-if-absent; a preflight search plus ordinary upload is not acceptable.
 - Fake-transport tests exercise concurrent duplicate create calls (exactly one create result), project/namespace isolation, readback, multi-page listing, malformed create result rejection, and the absence of OAuth/network behavior.
