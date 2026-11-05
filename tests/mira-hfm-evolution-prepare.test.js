@@ -128,7 +128,7 @@ assert.throws(() => prepareGovernedEvolution({
   sourceMemoryId: source.memoryId, expectedSourceRevision: 2,
   expectedSourceDigest: recordDigest, proposal, recoveryPoint,
   now
-}), /Trusted recovery-point verifier is required/);
+}), /trusted recovery-point verifier is required/);
 console.log('HFM_EVOLUTION_UNVERIFIED_RECOVERY_POINT_BLOCK_PASS');
 
 assert.throws(() => prepareGovernedEvolution({
