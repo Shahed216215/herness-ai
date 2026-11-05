@@ -39,7 +39,7 @@ function fakeDatabase() {
     assert.equal(config.headers.apikey, env.SUPABASE_SERVICE_ROLE_KEY);
     assert.equal(config.headers.Authorization, 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY);
     if (config.method === 'POST') {
-      for (const row of config.data) if (!rows.has(row.archive_id)) rows.set(row.archive_id, row);
+      for (const row of config.data) if (!rows.has(row.archive_id)) rows.set(row.archive_id, { ...row, payload: JSON.parse(JSON.stringify(row.payload, Object.keys(row.payload).sort())) });
       return { status: 201, data: [] };
     }
     assert.equal(config.method, 'GET');
@@ -119,6 +119,7 @@ function fakeDatabase() {
   assert.ok(db.calls.every(call => !JSON.stringify(call).includes('Authorization:')));
   console.log('SUPABASE_CONFIG_VALIDATION_PASS=PASS');
   console.log('SUPABASE_IMMUTABLE_WRITE_READBACK_PASS=PASS');
+  console.log('SUPABASE_JSONB_KEY_ORDER_INDEPENDENT_DIGEST_PASS=PASS');
   console.log('SUPABASE_IDEMPOTENT_DUPLICATE_PASS=PASS');
   console.log('SUPABASE_PAGE_ISOLATION_PASS=PASS');
   console.log('SUPABASE_UNTRUSTED_LOOKUP_PASS=PASS');
