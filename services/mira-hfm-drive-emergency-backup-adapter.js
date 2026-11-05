@@ -233,14 +233,19 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
         reject('Listing page size is outside the adapter bounded limit.');
       }
       const effectiveLimit = Math.min(input.limit, provider.maxPageSize);
+      const cursor = input.cursor === undefined ? null : input.cursor;
+      if (cursor !== null && (typeof cursor !== 'string' || !cursor ||
+          cursor.length > 1024 || /[\\u0000-\\u001f]/.test(cursor))) {
+        reject('Listing cursor is malformed or exceeds the bounded cursor size.', 'HFM_DRIVE_LIST_INVALID');
+      }
       const page = await transport.listPage({
-        projectId: project, prefix,
-        cursor: input.cursor === undefined ? null : input.cursor,
-        limit: effectiveLimit
+        projectId: project, prefix, cursor, limit: effectiveLimit
       });
       if (!page || !Array.isArray(page.items) || page.items.length > effectiveLimit ||
           typeof page.complete !== 'boolean' ||
-          (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor)) ||
+          (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor ||
+            page.nextCursor.length > 1024 || /[\\u0000-\\u001f]/.test(page.nextCursor) ||
+            page.nextCursor === cursor)) ||
           (page.complete && page.nextCursor != null)) {
         reject('Transport returned an invalid explicit pagination envelope.', 'HFM_DRIVE_LIST_INVALID');
       }
@@ -251,8 +256,12 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
         const createdAtMs = typeof m.createdAt === 'string' ? Date.parse(m.createdAt) : NaN;
         if (m.projectId !== project || m.objectKey !== key ||
             !Number.isFinite(createdAtMs) || new Date(createdAtMs).toISOString() !== m.createdAt ||
-            !Number.isSafeInteger(m.bytes) || m.bytes < 1) {
-          reject('Listed object metadata is invalid or cross-project.', 'HFM_DRIVE_OBJECT_INVALID');
+            !Number.isSafeInteger(m.bytes) || m.bytes < 1 || m.bytes > provider.maxObjectBytes ||
+            m.contentType !== 'application/vnd.mira.hfm-encrypted-backup' ||
+            m.encryption !== 'AES-256-GCM' ||
+            typeof m.ciphertextSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(m.ciphertextSha256)) {
+          reject('Listed object metadata is invalid, unencrypted, oversized, or cross-project.',
+            'HFM_DRIVE_OBJECT_INVALID');
         }
         return {
           projectId: project, backupId: m.backupId, objectKey: key,
