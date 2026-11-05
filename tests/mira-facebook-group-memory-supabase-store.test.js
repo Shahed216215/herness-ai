@@ -126,6 +126,13 @@ const input = {
   assert.equal(retrieved.resultCount, 1);
   assert.equal(retrieved.results[0].retrievableAsTrustedMemory, false);
 
+  const stored = batches.get(result.batchId);
+  stored.payload.items[0].record.content = 'tampered persisted content';
+  await assert.rejects(
+    () => store.listBatches({ projectId: envelope.projectId, groupId: envelope.groupId }),
+    error => error.code === 'FB_GROUP_STORE_INTEGRITY_FAILED'
+  );
+
   assert.ok(calls.some(call => call.url.includes('/mira_facebook_group_import_batches')));
   assert.ok(calls.some(call => call.url.includes('/mira_facebook_group_import_audit_events')));
   assert.ok(calls.every(call => !call.url.includes('facebook.com')));
