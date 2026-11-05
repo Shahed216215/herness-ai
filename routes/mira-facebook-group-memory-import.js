@@ -43,6 +43,23 @@ function registerFacebookGroupMemoryImportRoutes(
     try {
       actor = actorIdentity(req);
       const body = req.body || {};
+      if (body.authorizedAccess !== true) {
+        return res.status(400).json({
+          success: false,
+          code: 'FB_GROUP_IMPORT_AUTHORIZATION_REQUIRED',
+          status: 'FAILED'
+        });
+      }
+      if (!['json', 'jsonl', 'manual'].includes(body.format) ||
+          typeof body.groupId !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(body.groupId) ||
+          typeof body.projectId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(body.projectId) ||
+          typeof body.content !== 'string' || !body.content.trim()) {
+        return res.status(400).json({
+          success: false,
+          code: 'FB_GROUP_IMPORT_INVALID_INPUT',
+          status: 'FAILED'
+        });
+      }
       const store = createStore();
       const existingBatches = await store.listBatches({
         projectId: body.projectId,
