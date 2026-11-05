@@ -50,7 +50,9 @@ function createProvider(directory) {
       assert.equal(args.bytes.includes(payload), false);
       const journal = readBackupIdJournal({ directory, operationId,
         expected: { accountBinding, driveSpace, projectId, backupId,
-          generatedFileId: fileId, ciphertextSha256: digest, bytes: envelope.length } });
+          generatedFileId: fileId, backupSchema: 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP',
+          backupVersion: '1.0.0', backupCreatedAt: '2026-11-05T00:00:00.000Z',
+          ciphertextSha256: digest, bytes: envelope.length } });
       assert.equal(journal.generatedFileId, fileId);
       if (objects.has(fileId)) {
         const error = new Error('synthetic Drive 409 duplicate ID');
