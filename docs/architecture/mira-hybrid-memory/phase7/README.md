@@ -12,6 +12,9 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - Retention produces a deletion proposal only. It never deletes backup files.
 
 ## CI evidence
+- Latest five-suite workflow run `42027867376` completed SUCCESS on commit `1a630e76591acba674073d174fef241a1f39bc73`.
+- All five offline suites passed: encrypted backup contract, mocked Drive adapter, key-provider contract, authoritative snapshot-source contract, and recovery verification.
+- Logs confirm `PRODUCTION_SOURCE_AUTHENTICATED=NO`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `NETWORK_REQUESTS=0`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
 - Latest Phase 7 workflow run `42027268319` completed SUCCESS on commit `b0ccad200e807876993531f87a6fa23a12455925`.
 - Three isolated suites passed: emergency-backup contract, mocked Google Drive adapter, and key-provider contract conformance.
 - Logs explicitly confirm `PRODUCTION_KEY_CUSTODY=NOT_APPROVED`, `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
