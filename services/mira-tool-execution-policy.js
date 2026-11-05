@@ -181,6 +181,13 @@ const TOOL_POLICIES = Object.freeze({
     autonomous: true,
     humanApprovalRequired: false,
     explicitConfirmation: false
+  },
+
+  facebook_page_public_research: {
+    operation: "read",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
   }
 });
 
