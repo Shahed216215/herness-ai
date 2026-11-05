@@ -163,8 +163,18 @@ async function main() {
   const downloaded = await provider.downloadFile({ id: fileId, accountBinding, driveSpace });
   assert.deepEqual(downloaded, envelope);
   assert.equal(crypto.createHash('sha256').update(downloaded).digest('hex'), digest);
-  assert.deepEqual(fake.calls, { generate: 1, create: 1, metadataGet: 1, mediaGet: 1, list: 0, about: 0 });
+  const savedFile = fake.files.get(fileId);
+  fake.files.set(fileId, { ...savedFile,
+    appProperties: { ...savedFile.appProperties, unexpectedField: 'untrusted' } });
+  await assert.rejects(() => provider.getFile({ id: fileId, accountBinding, driveSpace }),
+    error => error.code === 'HFM_GOOGLE_DRIVE_METADATA_INVALID');
+  fake.files.set(fileId, { ...savedFile, id: 'differentDriveFileId_123' });
+  await assert.rejects(() => provider.getFile({ id: fileId, accountBinding, driveSpace }),
+    error => error.code === 'HFM_GOOGLE_DRIVE_METADATA_INVALID');
+  fake.files.set(fileId, savedFile);
+  assert.deepEqual(fake.calls, { generate: 1, create: 1, metadataGet: 3, mediaGet: 1, list: 0, about: 0 });
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_METADATA_AND_EXACT_MEDIA_READBACK=PASS');
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_METADATA_ALLOWLIST_AND_EXACT_ID=PASS');
 
   const firstPage = await provider.listPage({
     projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 1
