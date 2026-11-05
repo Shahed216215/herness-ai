@@ -9,11 +9,13 @@ on:
       - 'services/mira-memory-project-mapping-owner-approval-adapter.js'
       - 'services/mira-memory-project-owner-registry-contract.js'
       - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'services/mira-hfm-work-learning-adapter.js'
       - 'services/mira-memory-conflict-assessment.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'tests/mira-memory-project-mapping-contract.test.js'
       - 'tests/mira-memory-project-mapping-owner-approval.test.js'
       - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - 'tests/mira-hfm-work-learning-adapter.test.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
@@ -25,11 +27,13 @@ on:
       - 'services/mira-memory-project-mapping-owner-approval-adapter.js'
       - 'services/mira-memory-project-owner-registry-contract.js'
       - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'services/mira-hfm-work-learning-adapter.js'
       - 'services/mira-memory-conflict-assessment.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'tests/mira-memory-project-mapping-contract.test.js'
       - 'tests/mira-memory-project-mapping-owner-approval.test.js'
       - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - 'tests/mira-hfm-work-learning-adapter.test.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
@@ -53,6 +57,7 @@ jobs:
           node tests/mira-memory-project-mapping-contract.test.js
           node tests/mira-memory-project-mapping-owner-approval.test.js
           node tests/mira-legacy-memory-knowledge-adapter.test.js
+          node tests/mira-hfm-work-learning-adapter.test.js
           echo "NETWORK_REQUESTS=0"
           echo "CANONICAL_MEMORY_WRITTEN=NO"
           echo "CANONICAL_KNOWLEDGE_WRITTEN=NO"
