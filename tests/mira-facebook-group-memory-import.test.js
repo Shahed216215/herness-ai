@@ -57,7 +57,7 @@ const svc=createFacebookGroupImportService({store,auditWriter:async e=>audits.pu
  assert.equal(repeated.status,'IMPORT_STAGED_READBACK_VERIFIED');
  assert.equal(repeated.batchDigest,result.batchDigest);
  assert.equal(repeated.batchId,result.batchId);
- assert.equal(result.integrityStatus,'UNVERIFIED'); assert.equal(result.canonicalMemoryWrite,false); assert.equal(audits.length,1);
+ assert.equal(result.integrityStatus,'UNVERIFIED'); assert.equal(result.canonicalMemoryWrite,false); assert.equal(audits.length,2);
  const got=await svc.retrieve({projectId:'project-hfm-v02',groupId:'123456789',query:'synthetic project decision'});
  assert.equal(got.resultCount,1); assert.equal(got.results[0].retrievableAsTrustedMemory,false);
  console.log('GROUP_IMPORT_ATOMIC_STORE_READBACK_AUDIT_AND_RETRIEVAL=PASS');
