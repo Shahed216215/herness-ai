@@ -75,7 +75,8 @@ The future live test must use a disposable test project ID and a small synthetic
 9. List all pages under the dedicated parent and verify every listed item is encrypted, correctly scoped, bounded and timestamp-valid.
 10. Read quota and verify account fingerprint; keep HFM budget accounting separate.
 11. Run authenticated restore preview and restore-to-staging only. Do not write canonical Memory.
-12. Save redacted evidence, request IDs/status codes, test artifact ID, exact digests and recovery result. Do not log tokens or secrets.
+12. In the disposable test environment only, simulate loss of the local generated-ID journal; recover it from the unique project-scoped object using the same account, backup ID and root key. Verify wrong-key and duplicate-match recovery fail closed.
+13. Save redacted evidence, request IDs/status codes, test artifact ID, exact digests and recovery result. Do not log tokens or secrets.
 
 A failed/ambiguous upload remains UNCERTAIN; preserve the journal and use only the same ID. Do not auto-delete or overwrite any Drive object.
 
