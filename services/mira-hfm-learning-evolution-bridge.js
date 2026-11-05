@@ -89,7 +89,8 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     }
     try {
       await auditWriter({ event: 'HFM_LEARNING_PROPOSAL_STAGED', projectId: p.projectId,
-        proposalId: p.proposalId, proposalDigest: p.proposalDigest, status: p.status, canonicalMemoryWrites: 0,
+        proposalId: p.proposalId, proposalDigest: p.proposalDigest, status: p.status,
+        createdAt: p.createdAt, canonicalMemoryWrites: 0,
         actorRole: typeof context.actorRole === 'string' ? context.actorRole.slice(0, 64) : 'unknown',
         actorId: typeof context.actorId === 'string' && context.actorId.trim() ? context.actorId.trim().slice(0, 128) : 'unknown' });
     } catch (cause) {
