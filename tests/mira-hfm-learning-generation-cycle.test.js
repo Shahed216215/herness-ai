@@ -8,6 +8,7 @@ const retrievalResult = {
   retrievalMode: 'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
   status: 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED',
   page: { pageId: '123456789' },
+  lookup: { projectId: 'project-alpha', memoryId: null, query: '' },
   limits: {
     canonicalMemoryWrite: false, trustPromotion: false,
     directFacebookFetches: 0, metaGraphApiCalls: 0,
@@ -62,6 +63,10 @@ const input = {
     'HFM_LEARNING_NAMED_ADMIN_REQUIRED');
   assert.equal((await enabled.stage({ ...input, actor: { authenticated: true, role: 'admin', actorId: '' } })).code,
     'HFM_LEARNING_NAMED_ADMIN_REQUIRED');
+  assert.equal(submitCalls, 0);
+
+  const projectMismatch = await enabled.stage({ ...input, projectId: 'project-beta' });
+  assert.equal(projectMismatch.code, 'HFM_LEARNING_RETRIEVAL_INVALID');
   assert.equal(submitCalls, 0);
 
   const invalid = await enabled.stage({ ...input, retrievalResult: { ...retrievalResult, limits: { canonicalMemoryWrite: true } } });
