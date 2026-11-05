@@ -30,7 +30,6 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
         auditWriter = event => proposalStore.writeAuditEvent(event);
         auditWriter.durable = true;
         auditWriter.idempotent = true;
-        auditWriter.idempotent = true;
       } else if (backend === 'local' && !isProduction) {
         proposalStore = createPersistentProposalStore();
         auditWriter = event => recordAudit({
