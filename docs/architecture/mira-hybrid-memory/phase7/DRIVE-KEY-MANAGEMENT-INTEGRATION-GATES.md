@@ -129,10 +129,15 @@ This prototype cannot establish real provider atomicity, remote durability, quot
 
 ## 10. Latest CI evidence
 
-Branch-head commit `a5c092056800734bc3b1bec1989fed6f9c311a05` completed GitHub Actions run **41981522602** (job **127092457448**) successfully. The existing backup/key-provider suite emitted 20 PASS markers and the new transport adapter suite emitted 6 PASS markers. Both reported `TESTS_FAILED=0`; the existing suite also reported `CANONICAL_WRITES=0` and `PRODUCTION_RESTORE=0`.
+Branch-head commit `309fb9f50f5e9dadfb7814b7d367ce35ca373e9e` completed GitHub Actions run **41988338971** (job **127114317919**) successfully. The combined offline job logs contain **37 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+
+This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
+OFFLINE_CI_RUN=41988338971_SUCCESS
+OFFLINE_CI_HEAD=309fb9f50f5e9dadfb7814b7d367ce35ca373e9e
+OFFLINE_PASS_MARKERS=37
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
