@@ -57,6 +57,68 @@ try {
   assert.deepEqual(fs.readFileSync(staged.path), payload);
   assert.throws(() => restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_RESTORE_STAGING_ONLY=PASS');
+
+  const {
+    uploadEncryptedEmergencyBackup,
+    restoreEncryptedEmergencyBackupFromCloud
+  } = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
+  const objects = new Map();
+  const adapter = {
+    capabilities: { encryptedOnly: true, projectIsolated: true, createOnly: true, readAfterWrite: true },
+    async putIfAbsent(input) {
+      if (objects.has(input.objectKey)) return { created: false };
+      assert.equal(input.contentType, 'application/vnd.mira.hfm-encrypted-backup');
+      assert.equal(input.encryption, 'AES-256-GCM');
+      assert.equal(input.bytes.includes(payload), false);
+      objects.set(input.objectKey, { projectId: input.projectId, backupId: input.backupId, bytes: Buffer.from(input.bytes) });
+      return { created: true };
+    },
+    async get(input) {
+      const item = objects.get(input.objectKey);
+      if (!item || item.projectId !== input.projectId) return null;
+      return { ...item, bytes: Buffer.from(item.bytes) };
+    }
+  };
+  const uploaded = await uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key });
+  assert.equal(uploaded.status, 'ENCRYPTED_CLOUD_BACKUP_VERIFIED');
+  assert.equal(uploaded.rootKeyTransmitted, false);
+  assert.equal(uploaded.plaintextTransmitted, false);
+  assert.equal(objects.size, 1);
+  console.log('HFM_PHASE7_ENCRYPTED_CLOUD_UPLOAD_AND_READBACK=PASS');
+
+  await assert.rejects(() => uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key }),
+    error => error.code === 'HFM_CLOUD_BACKUP_CONFLICT');
+  const cloudStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-cloud-restore-test-'));
+  try {
+    const cloudRestored = await restoreEncryptedEmergencyBackupFromCloud({
+      adapter, projectId: 'mira-project-001', backupId, key,
+      stagingDirectory: cloudStageDir, restoreId: 'cloud-restore-0001'
+    });
+    assert.equal(cloudRestored.status, 'VERIFIED_STAGING_ONLY');
+    assert.equal(cloudRestored.canonicalMemoryWrites, 0);
+    assert.deepEqual(fs.readFileSync(cloudRestored.path), payload);
+    console.log('HFM_PHASE7_ENCRYPTED_CLOUD_RESTORE_STAGING=PASS');
+  } finally {
+    fs.rmSync(cloudStageDir, { recursive: true, force: true });
+  }
+
+  await assert.rejects(() => uploadEncryptedEmergencyBackup({
+    adapter: { capabilities: { encryptedOnly: true }, putIfAbsent() {}, get() {} },
+    projectId: 'mira-project-001', envelope, key
+  }), error => error.code === 'HFM_CLOUD_ADAPTER_CAPABILITY_MISSING');
+  const badProjectAdapter = {
+    ...adapter,
+    async get(input) {
+      const item = objects.get(input.objectKey);
+      return item ? { ...item, projectId: 'other-project', bytes: Buffer.from(item.bytes) } : null;
+    }
+  };
+  await assert.rejects(() => restoreEncryptedEmergencyBackupFromCloud({
+    adapter: badProjectAdapter, projectId: 'mira-project-001', backupId, key,
+    stagingDirectory: restoreDir, restoreId: 'wrong-project-001'
+  }));
+  console.log('HFM_PHASE7_CLOUD_CAPABILITY_AND_PROJECT_ISOLATION=PASS');
+
   console.log('HFM_PHASE7_CANONICAL_WRITES=0');
   console.log('HFM_PHASE7_PRODUCTION_RESTORE=0');
   console.log('TESTS_FAILED=0');
