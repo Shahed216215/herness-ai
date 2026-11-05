@@ -60,6 +60,8 @@ function hasProductionIntegrationCapabilities({ proposalStore, auditWriter, prod
     proposalStore.crossInstanceAtomicCreate === true &&
     typeof proposalStore.putIfAbsent === 'function' &&
     typeof proposalStore.get === 'function' &&
+    typeof proposalStore.putReviewIfAbsent === 'function' &&
+    typeof proposalStore.getReview === 'function' &&
     typeof auditWriter === 'function' &&
     auditWriter.durable === true;
 }
@@ -67,7 +69,8 @@ function hasProductionIntegrationCapabilities({ proposalStore, auditWriter, prod
 function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
   if (!obj(proposalStore) || proposalStore.projectIsolated !== true || proposalStore.createOnly !== true ||
       proposalStore.immutableVersions !== true || proposalStore.readAfterWrite !== true ||
-      typeof proposalStore.putIfAbsent !== 'function' || typeof proposalStore.get !== 'function') {
+      typeof proposalStore.putIfAbsent !== 'function' || typeof proposalStore.get !== 'function' ||
+      typeof proposalStore.putReviewIfAbsent !== 'function' || typeof proposalStore.getReview !== 'function') {
     fail('Proposal store capability contract is not satisfied.', 'HFM_LEARNING_STORE_CAPABILITY_REQUIRED');
   }
   if (typeof auditWriter !== 'function') fail('Durable auditWriter is required.', 'HFM_LEARNING_AUDIT_REQUIRED');
@@ -102,6 +105,77 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
       automaticExecution: false, canonicalMemoryWrites: 0,
       idempotentRetry: put.created === false };
   },
+  async review(projectId, proposalId, input = {}, context = {}) {
+    const safeProjectId = id(projectId, 'projectId');
+    const safeProposalId = id(proposalId, 'proposalId');
+    const proposal = await proposalStore.get(safeProjectId, safeProposalId);
+    if (!proposal) fail('HFM_LEARNING_PROPOSAL_NOT_FOUND', 'Proposal was not found.');
+    const existing = await proposalStore.getReview(safeProjectId, safeProposalId);
+    if (existing) fail('HFM_LEARNING_REVIEW_CONFLICT', 'An immutable human review already exists for this proposal.');
+    if (!obj(input) || !['APPROVE_FOR_MANUAL_HANDOFF', 'REJECT'].includes(input.decision))
+      fail('HFM_LEARNING_REVIEW_INVALID', 'Review decision must be APPROVE_FOR_MANUAL_HANDOFF or REJECT.');
+    if (context.actorRole !== 'admin') fail('HFM_LEARNING_REVIEW_ACTOR_REQUIRED', 'A named system administrator is required.');
+    const actorId = txt(context.actorId, 'actorId', 128);
+    const reason = txt(input.reason, 'reason', 2000);
+    const reviewedAt = input.reviewedAt || new Date().toISOString();
+    const reviewDate = new Date(reviewedAt);
+    if (!Number.isFinite(reviewDate.getTime()) || reviewDate.toISOString() !== reviewedAt)
+      fail('HFM_LEARNING_REVIEW_INVALID', 'reviewedAt must be a canonical ISO timestamp.');
+    const review = {
+      schema: 'MIRA_HFM_LEARNING_PROPOSAL_REVIEW',
+      version: '1.0.0',
+      projectId: safeProjectId,
+      proposalId: safeProposalId,
+      proposalDigest: proposal.proposalDigest,
+      decision: input.decision,
+      status: input.decision === 'REJECT' ? 'REJECTED' : 'APPROVED_FOR_MANUAL_HANDOFF',
+      reason,
+      actorRole: 'admin',
+      actorId,
+      reviewedAt,
+      trustState: 'UNTRUSTED',
+      canonicalMemoryWrites: 0,
+      automaticExecution: false
+    };
+    review.reviewDigest = digest(review);
+    const stored = await proposalStore.putReviewIfAbsent(safeProjectId, safeProposalId, review);
+    if (!stored || stored.created !== true)
+      fail('HFM_LEARNING_REVIEW_CONFLICT', 'A review already exists; review records cannot be overwritten.');
+    const readback = await proposalStore.getReview(safeProjectId, safeProposalId);
+    if (!readback || readback.reviewDigest !== review.reviewDigest ||
+        readback.proposalDigest !== proposal.proposalDigest ||
+        readback.reviewDigest !== digest(Object.fromEntries(Object.entries(readback).filter(([key]) => key !== 'reviewDigest')))) {
+      const error = new Error('Review read-after-write verification failed.');
+      error.code = 'HFM_LEARNING_REVIEW_READBACK_FAILED';
+      error.stateCommitted = true;
+      throw error;
+    }
+    try {
+      await auditWriter({
+        event: 'HFM_LEARNING_PROPOSAL_REVIEWED',
+        projectId: safeProjectId,
+        proposalId: safeProposalId,
+        proposalDigest: proposal.proposalDigest,
+        reviewDigest: review.reviewDigest,
+        decision: review.decision,
+        status: review.status,
+        actorRole: 'admin',
+        actorId,
+        canonicalMemoryWrites: 0,
+        automaticExecution: false
+      });
+    } catch (cause) {
+      const error = new Error('Review persisted but audit emission failed; reconcile before retry.');
+      error.code = 'HFM_LEARNING_REVIEW_AUDIT_FAILED';
+      error.stateCommitted = true;
+      error.cause = cause;
+      throw error;
+    }
+    return { projectId: safeProjectId, proposalId: safeProposalId,
+      proposalDigest: proposal.proposalDigest, reviewDigest: review.reviewDigest,
+      decision: review.decision, status: review.status, trustState: 'UNTRUSTED',
+      canonicalMemoryWrites: 0, automaticExecution: false };
+  },
   async get(projectId, proposalId) {
     const safeProjectId = id(projectId, 'projectId');
     const safeProposalId = id(proposalId, 'proposalId');
@@ -112,7 +186,16 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
         stored.proposalDigest !== digest(Object.fromEntries(Object.entries(stored).filter(([key]) => key !== 'proposalDigest')))) {
       fail('Stored proposal integrity verification failed.', 'HFM_LEARNING_STORED_INTEGRITY_FAILED');
     }
-    return stored;
+    const review = await proposalStore.getReview(safeProjectId, safeProposalId);
+    if (review) {
+      if (review.proposalDigest !== stored.proposalDigest ||
+          review.reviewDigest !== digest(Object.fromEntries(Object.entries(review).filter(([key]) => key !== 'reviewDigest'))) ||
+          review.trustState !== 'UNTRUSTED' || review.canonicalMemoryWrites !== 0 ||
+          review.automaticExecution !== false) {
+        fail('HFM_LEARNING_STORED_REVIEW_INTEGRITY_FAILED', 'Stored human review failed integrity or governance checks.');
+      }
+    }
+    return Object.freeze({ ...stored, review: review || null });
   } });
 }
 module.exports = { buildProposal, createLearningEvolutionBridge, hasProductionIntegrationCapabilities, SCHEMA, VERSION, MAX_EVIDENCE };
