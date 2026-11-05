@@ -121,6 +121,29 @@ try {
   assert.equal(verified.plaintextSha256, crypto.createHash('sha256').update(payload).digest('hex'));
   console.log('HFM_PHASE7_ENCRYPT_DECRYPT_AND_AUTHENTICATE=PASS');
 
+  let unauthenticatedPlaintextChunk;
+  const originalCreateDecipherForFailure = crypto.createDecipheriv;
+  try {
+    crypto.createDecipheriv = function (algorithm, derivedKey, ...args) {
+      const decipher = originalCreateDecipherForFailure.call(this, algorithm, derivedKey, ...args);
+      const originalUpdate = decipher.update.bind(decipher);
+      decipher.update = function (data, ...updateArgs) {
+        unauthenticatedPlaintextChunk = originalUpdate(data, ...updateArgs);
+        return unauthenticatedPlaintextChunk;
+      };
+      return decipher;
+    };
+    assert.throws(
+      () => decryptAndVerifyBackup(envelope, crypto.randomBytes(32)),
+      error => error.code === 'HFM_BACKUP_AUTH_FAILED'
+    );
+  } finally {
+    crypto.createDecipheriv = originalCreateDecipherForFailure;
+  }
+  assert.ok(Buffer.isBuffer(unauthenticatedPlaintextChunk));
+  assert.equal(unauthenticatedPlaintextChunk.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_UNAUTHENTICATED_GCM_PLAINTEXT_ZEROIZED=PASS');
+
   assert.throws(() => decryptAndVerifyBackup(envelope, crypto.randomBytes(32)), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
   const tampered = Buffer.from(envelope);
   const parsed = JSON.parse(tampered.toString('utf8'));
