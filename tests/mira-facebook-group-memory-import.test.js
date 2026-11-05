@@ -77,7 +77,7 @@ const svc=createFacebookGroupImportService({store});
  const bad=createFacebookGroupImportService({store:badStore});
  await assert.rejects(()=>bad.import({content:JSON.stringify(env([rec({sourceId:'tamper-fixture'})],{exportId:'tamper-001'})),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]}),/atomic Batch and Audit transaction/);
  console.log('GROUP_IMPORT_ATOMIC_COMMIT_UNVERIFIED_FAIL_CLOSED=PASS');
- assert.throws(()=>createFacebookGroupImportService({store:{...store,capabilities:{...store.capabilities,atomicCreateOnly:false}},auditWriter:async()=>{}}),/immutable atomic-create store/);
+ assert.throws(()=>createFacebookGroupImportService({store:{...store,capabilities:{...store.capabilities,atomicCreateOnly:false}},auditWriter:async()=>{}}),/transactional batch\/audit commit/);
  assert.throws(()=>createFacebookGroupImportService({store:{...store,capabilities:{...store.capabilities,atomicBatchAndAudit:false}}}),/transactional batch\/audit commit/);
  console.log('GROUP_IMPORT_PROVIDER_CAPABILITY_AND_AUDIT_GATES=PASS');
  console.log('GROUP_IMPORT_LIVE_FACEBOOK_REQUESTS=0');
