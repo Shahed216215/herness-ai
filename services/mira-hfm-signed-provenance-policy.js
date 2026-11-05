@@ -149,7 +149,7 @@ function verifySignedProvenancePolicy({
   const profiles = {};
   for (const sourceId of sourceIds) {
     if (!validText(sourceId)) fail('Policy source ID is invalid.', 'HFM_PROVENANCE_POLICY_SOURCES_INVALID');
-    profiles[sourceId] = validateProfile(p.sources[sourceId], sourceId);
+    profiles[sourceId] = Object.freeze(validateProfile(p.sources[sourceId], sourceId));
     validateEvidence(p.evidence[sourceId], sourceId, sourceId);
   }
   for (const field of REQUIRED_FIELDS) {
