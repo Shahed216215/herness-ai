@@ -255,8 +255,16 @@ function makePolicyAcceptance(backupSource, baselineSource) {
     revokedPolicyIds: []
   };
   let currentState = signPolicyPayload(statePayload, stateKey);
+  const committedReceipts = new Map();
   const policyStateProvider = {
     async readState() { return currentState; },
+    async getCommitReceipt({ authorityId, idempotencyKey, requestDigest }) {
+      if (authorityId !== stateAuthority) throw new Error('wrong state authority');
+      const entry = committedReceipts.get(idempotencyKey);
+      if (!entry) return null;
+      if (entry.requestDigest !== requestDigest) throw new Error('receipt request digest mismatch');
+      return entry.receipt;
+    },
     async compareAndSwap(input) {
       if (input.expectedSequence !== currentState.payload.highestAcceptedSequence ||
           input.expectedDigest !== currentState.payload.lastAcceptedPolicyDigest) {
@@ -280,8 +288,13 @@ function makePolicyAcceptance(backupSource, baselineSource) {
         previousSequence: input.expectedSequence,
         nextSequence: input.nextState.highestAcceptedSequence,
         policyId: input.nextState.lastAcceptedPolicyId,
-        policyDigest: input.nextState.lastAcceptedPolicyDigest
-      }, stateKey);
+        policyDigest: input.nextState.lastAcceptedPolicyDigest,
+        idempotencyKey: input.idempotencyKey,
+        requestDigest
+      };
+      const receipt = signPolicyPayload(receiptPayload, stateKey);
+      committedReceipts.set(input.idempotencyKey, { requestDigest, receipt });
+      return receipt;
     }
   };
 
