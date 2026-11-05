@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Emergency Backup
 
-Status: SIGNED STAGING AUTHORIZATION CONTRACT IMPLEMENTED; CI PENDING; KEY CUSTODY, FILESYSTEM HARDENING, SOURCE PROVENANCE AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
+Status: SIGNED STAGING AUTHORIZATION AND SIGN-ONLY SNAPSHOT PROVIDER CONTRACTS IMPLEMENTED; LATEST CI PENDING; REAL KEY CUSTODY, FILESYSTEM HARDENING, SOURCE PROVENANCE AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
 
 ## Implemented
 - Per-backup random 256-bit data-encryption key (DEK), AES-256-GCM payload encryption, and external key-provider wrapping/unwrapping of the DEK (KEK boundary).
@@ -34,7 +34,7 @@ Status: SIGNED STAGING AUTHORIZATION CONTRACT IMPLEMENTED; CI PENDING; KEY CUSTO
 - It requires explicit absolute file paths, a non-symlink staging root, `environment: staging`, an injected Ed25519 private signing key, a separately pinned authorization-issuer trust store, a signed short-lived request-bound ALLOW decision, and a mandatory one-time replay-guard interface. It has no default production path and rejects `environment: production`.
 - It reads the two files through bounded regular-file descriptors, checks file identity/size/mtime across the read, parses JSON arrays, flattens records with store identifiers, and signs a request-bound attestation.
 - The adapter does not call `readMemory()` or `createKnowledgeBackup()`. This is intentional: inspection found that the former may create an initialization marker, while the latter writes backup/audit state.
-- The adapter does not write, migrate, restore, publish, upload, or delete anything. Its source signing key, authorization issuer trust store, decision provider and replay guard are injected. Real issuer policy governance, durable distributed replay protection and source signing-key custody remain deployment responsibilities.
+- The adapter does not write, migrate, restore, publish, upload, or delete anything. Its source signing provider, authorization issuer trust store, decision provider and replay guard are injected. The adapter receives only a sign operation; private-key PEM/bytes are not part of its configuration contract. Real issuer policy governance, durable distributed replay protection and source signing-key custody remain deployment responsibilities.
 - Synthetic tests cover successful signed staging capture, denial, expired decisions, actor mismatch, replay rejection, production-environment rejection, path pinning, and source-file immutability. CI execution is pending until the workflow run completes.
 - This adapter is not a production integration and must not be pointed at production data.
 
@@ -82,3 +82,11 @@ Status: SIGNED STAGING AUTHORIZATION CONTRACT IMPLEMENTED; CI PENDING; KEY CUSTO
 - This is a contract implementation, not a production policy service or durable replay store. CI verification is pending; F7-SR-01 remains partially remediated/open until provider governance and durable replay-store review.
 
 - Authorization governance and replay-store requirements: `AUTHORIZATION-PROVIDER-GOVERNANCE.md`. Policy version is pinned to the issuer trust record; production issuer and durable replay store are not selected or approved.
+
+
+## Snapshot signing-provider boundary update (2026-11-05)
+- Added `services/mira-hfm-snapshot-signing-provider-contract.js` with a sign-only Ed25519 interface, explicit key ID/version, purpose, algorithm and staging-environment checks.
+- `services/mira-hfm-local-staging-snapshot-source.js` no longer imports or constructs a private KeyObject from PEM. It delegates signing to the injected provider and fails closed on provider errors or malformed signatures.
+- Snapshot attestation includes signing-key version; independent source trust must pin the matching key ID, key version and public-key fingerprint.
+- Synthetic fixtures keep private key objects inside provider closures and pass only the signing interface to the source adapter.
+- This is not proof of non-exportable keys, provider identity, KMS/HSM custody, workload identity, rotation/revocation or production approval. The HIGH finding F7-SR-02 remains partially remediated/open pending real provider integration and independent review.
