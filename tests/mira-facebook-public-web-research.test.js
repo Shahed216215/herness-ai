@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const {
   validatePageId, validateFacebookUrl, buildFacebookPageResearchQueries,
-  collectPublicFacebookPageEvidence, buildEvidenceContext
+  collectPublicFacebookPageEvidence, buildEvidenceContext, normalizeResult
 } = require('../services/mira-facebook-public-web-research');
 const { createTool } = require('../tools/facebook-page-research');
 const { checkToolSafety } = require('../services/mira-tool-execution-policy');
@@ -26,6 +26,21 @@ const lookupTool = require('../tools/facebook-research-lookup');
   assert.ok(queries.every(query => query.includes(pageId)));
   const urlQueries = buildFacebookPageResearchQueries({ pageId, pageName: 'Online canel', pageUrl: 'https://www.facebook.com/' + pageId });
   assert.equal(urlQueries.length, 3);
+  const indexedAt = '2026-11-05T00:00:00.000Z';
+  const profilePhp = normalizeResult({
+    title: 'Online canel Facebook Page ' + pageId,
+    url: 'https://www.facebook.com/profile.php?id=' + pageId,
+    snippet: 'Public indexed Page profile information ' + pageId
+  }, pageId, indexedAt);
+  const pagesDirectoryPost = normalizeResult({
+    title: 'Online canel Page post ' + pageId,
+    url: 'https://www.facebook.com/pages/Online-canel/' + pageId + '/posts/987654',
+    snippet: 'Public indexed Page post information ' + pageId
+  }, pageId, indexedAt);
+  assert.equal(profilePhp.sourceType, 'FACEBOOK_PAGE_PROFILE');
+  assert.equal(profilePhp.sourceUrl, 'https://www.facebook.com/profile.php?id=' + pageId);
+  assert.equal(pagesDirectoryPost.sourceType, 'FACEBOOK_PAGE_POST');
+
   const calls = [];
   const report = await collectPublicFacebookPageEvidence({
     pageId, pageName: 'Online canel', observedAt: '2026-11-05T00:00:00.000Z',
@@ -58,26 +73,30 @@ const lookupTool = require('../tools/facebook-research-lookup');
   assert.equal(archived.status, 'ARCHIVE_WRITE_VERIFIED');
   assert.equal(archived.storedCount, 2);
   assert.equal(archived.canonicalMemoryWrite, false);
+  const alternateUrlsArchived = archiveFacebookResearchEvidence({
+    pageId, pageName: 'Online canel', evidence: [profilePhp, pagesDirectoryPost], directory: archiveDir
+  });
+  assert.equal(alternateUrlsArchived.storedCount, 2);
   const repeated = archiveFacebookResearchEvidence({ pageId, pageName: 'Online canel', evidence: report.evidence, directory: archiveDir });
   assert.equal(repeated.storedCount, 0);
   assert.equal(repeated.duplicateCount, 2);
   const retrieved = searchFacebookResearchMemory({ pageId, query: 'public indexed', limit: 5, directory: archiveDir });
   assert.equal(retrieved.status, 'RESEARCH_MEMORY_FOUND');
-  assert.equal(retrieved.resultCount, 2);
+  assert.equal(retrieved.resultCount, 4);
   assert.ok(retrieved.results.every(item => item.integrityStatus === 'UNVERIFIED'));
   assert.ok(retrieved.results.every(item => item.canonicalMemoryWrite === false));
   assert.ok(retrieved.results.every(item => item.sourceUrl.startsWith('https://www.facebook.com/')));
   const otherPage = searchFacebookResearchMemory({ pageId: '999999999', query: '', directory: archiveDir });
   assert.equal(otherPage.status, 'NO_RESEARCH_MEMORY_MATCH');
   const files = fs.readdirSync(archiveDir).filter(name => name.endsWith('.json'));
-  assert.equal(files.length, 2);
+  assert.equal(files.length, 4);
   assert.ok(files.every(name => (fs.statSync(path.join(archiveDir, name)).mode & 0o077) === 0));
   const previousEnv = process.env.MIRA_FACEBOOK_RESEARCH_MEMORY_DIR;
   process.env.MIRA_FACEBOOK_RESEARCH_MEMORY_DIR = archiveDir;
   try {
     const lookup = JSON.parse(await lookupTool.execute({ pageId, query: 'public indexed' }));
     assert.equal(lookup.status, 'RESEARCH_MEMORY_FOUND');
-    assert.equal(lookup.resultCount, 2);
+    assert.equal(lookup.resultCount, 4);
   } finally {
     if (previousEnv === undefined) delete process.env.MIRA_FACEBOOK_RESEARCH_MEMORY_DIR;
     else process.env.MIRA_FACEBOOK_RESEARCH_MEMORY_DIR = previousEnv;
