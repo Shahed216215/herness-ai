@@ -11,7 +11,7 @@ const {
 function base(overrides = {}) {
   return {
     operationId: 'drive-operation-0001',
-    accountBinding: 'google-subject-123456',
+    accountBinding: 'b'.repeat(64),
     driveSpace: 'drive',
     projectId: 'mira-project-001',
     backupId: 'backup-journal-0001',
