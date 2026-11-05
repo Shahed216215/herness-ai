@@ -162,6 +162,40 @@ async function run() {
     }), error => error.code === 'HFM_STAGING_ENVIRONMENT_REQUIRED');
     process.stdout.write('MIRA_HFM_PHASE7_PRODUCTION_ENV_BLOCK_PASS\n');
 
+    const provenancePair = crypto.generateKeyPairSync('ed25519');
+    const provenanceInput = { storageSystemId: 'storage-A', nested: { region: 'local-staging' } };
+    const provenanceSource = createLocalStagingSnapshotSource({
+      environment: 'staging', sourceId: 'provenance-freeze-test', signingKeyId: 'provenance-freeze-key',
+      signingProvider: makeSigningProvider(provenancePair.privateKey, 'provenance-freeze-key'),
+      rootDir: f.rootDir, memoryFile: f.memoryFile, knowledgeFile: f.knowledgeFile,
+      authorizationTrust: f.auth.trust, replayGuard: makeReplayGuard(),
+      authorize: async r => signDecision(r, f.auth.privateKey),
+      provenance: provenanceInput
+    });
+    provenanceInput.nested.region = 'mutated-after-construction';
+    assert.equal(provenanceSource.descriptor.provenance.nested.region, 'local-staging');
+    assert.equal(Object.isFrozen(provenanceSource.descriptor.provenance.nested), true);
+    assert.throws(() => { provenanceSource.descriptor.provenance.nested.region = 'mutation'; }, TypeError);
+    provenanceSource.close();
+    process.stdout.write('MIRA_HFM_PHASE7_STAGING_PROVENANCE_IMMUTABLE_PASS\\n');
+
+    assert.throws(() => createLocalStagingSnapshotSource({
+      environment: 'staging', sourceId: 'same-file', signingKeyId: 'same-file-key',
+      signingProvider: makeSigningProvider(crypto.generateKeyPairSync('ed25519').privateKey, 'same-file-key'),
+      rootDir: f.rootDir, memoryFile: f.memoryFile, knowledgeFile: f.memoryFile,
+      authorizationTrust: f.auth.trust, replayGuard: makeReplayGuard(), authorize: async () => true
+    }), error => error.code === 'HFM_STAGING_SOURCE_FILES_COLLIDE');
+    process.stdout.write('MIRA_HFM_PHASE7_STAGING_SAME_FILE_REJECT_PASS\\n');
+
+    assert.throws(() => createLocalStagingSnapshotSource({
+      environment: 'staging', sourceId: 'invalid-provenance', signingKeyId: 'invalid-provenance-key',
+      signingProvider: makeSigningProvider(crypto.generateKeyPairSync('ed25519').privateKey, 'invalid-provenance-key'),
+      rootDir: f.rootDir, memoryFile: f.memoryFile, knowledgeFile: f.knowledgeFile,
+      authorizationTrust: f.auth.trust, replayGuard: makeReplayGuard(), authorize: async () => true,
+      provenance: []
+    }), error => error.code === 'HFM_STAGING_PROVENANCE_INVALID');
+    process.stdout.write('MIRA_HFM_PHASE7_STAGING_PROVENANCE_SCHEMA_BLOCK_PASS\\n');
+
     const outsideFile = path.join(path.dirname(f.rootDir), path.basename(f.rootDir) + '-outside.json');
     fs.writeFileSync(outsideFile, '[]');
     try {
