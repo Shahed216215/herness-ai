@@ -26,6 +26,11 @@ function verifyEvidenceEnvelope({
     fail('Provenance evidence verifier clock configuration is invalid.',
       'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
   }
+  if (!Array.isArray(excludedKeyFingerprints) ||
+      excludedKeyFingerprints.some(value => !/^[a-f0-9]{64}$/.test(value))) {
+    fail('Excluded evidence trust-role fingerprints are invalid.',
+      'HFM_PROVENANCE_EVIDENCE_CONFIG_INVALID');
+  }
   if (!isPlainObject(envelope) || !isPlainObject(envelope.payload) ||
       typeof envelope.signature !== 'string' || !isPlainObject(reference)) {
     fail('Independent provenance evidence envelope or policy reference is missing.',
