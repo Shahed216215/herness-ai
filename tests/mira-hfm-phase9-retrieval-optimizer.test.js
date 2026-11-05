@@ -21,6 +21,13 @@ async function run(){
  assert.ok(estimateTokens('বাংলা memory')>=1);
  assert.equal(measureCapacity({observedRecords:10000,baselineCapacity:100}).targetStatus,'MEASURED_TARGET_MET');
  assert.equal(measureCapacity({observedRecords:9999,baselineCapacity:100}).targetStatus,'NOT_MET');
+
+ const syntheticSources=Array.from({length:10},(_,s)=>({id:'bench-source-'+s,type:'SYNTHETIC_BENCHMARK',retrieve:async()=>Array.from({length:1000},(_,i)=>{const n=s*1000+i;return {memoryId:'bench-memory-'+String(n).padStart(6,'0'),projectId:project,version:1,title:'Mira memory retrieval scale benchmark',content:'Synthetic corpus item '+n+' contains retrieval scale benchmark terms.',trustState:'VERIFIED',lifecycle:'ACTIVE',recordDigest:n.toString(16).padStart(64,'0')};})}));
+ const scaled=await retrieveOptimized({query:'Mira memory retrieval scale benchmark',projectId:project,sources:syntheticSources,tokenBudget:1000,maxResults:10,maxCandidatesPerSource:1000});
+ assert.equal(scaled.metrics.candidateCount,10000);
+ assert.equal(scaled.results.length,10);
+ assert.ok(scaled.metrics.estimatedTokensUsed<=1000);
+ assert.equal(measureCapacity({observedRecords:scaled.metrics.candidateCount,baselineCapacity:100}).targetStatus,'MEASURED_TARGET_MET');
  await assert.rejects(()=>retrieveOptimized({query:'ok',projectId:project,sources:[],tokenBudget:100}),/sources/i);
  console.log('HFM_PHASE9_TOKEN_AWARE_BUDGET=PASS');
  console.log('HFM_PHASE9_MULTI_SOURCE_DEGRADATION=PASS');
@@ -28,7 +35,7 @@ async function run(){
  console.log('HFM_PHASE9_RELEVANCE_RANKING=PASS');
  console.log('HFM_PHASE9_DUPLICATE_AND_CONFLICT_HANDLING=PASS');
  console.log('HFM_PHASE9_UNVERIFIED_EVIDENCE_BOUNDARY=PASS');
- console.log('HFM_PHASE9_CAPACITY_RATIO_MEASUREMENT=PASS');
+ console.log('HFM_PHASE9_CAPACITY_RATIO_MEASUREMENT=PASS');\n console.log('HFM_PHASE9_SYNTHETIC_100X_CORPUS=PASS');
  console.log('HFM_PHASE9_READ_ONLY_GOVERNANCE=PASS');
 }
 run().catch(e=>{console.error(e.stack||e);process.exitCode=1;});
