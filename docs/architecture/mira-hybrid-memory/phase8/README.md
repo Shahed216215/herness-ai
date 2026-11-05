@@ -1,73 +1,76 @@
 # Mira HFM v0.2 — Phase 8 Learning & Evolution Integration
 
-Status: PROJECT-ISOLATED PROPOSAL BRIDGE, ADMIN API, PUBLIC-RETRIEVAL EVIDENCE GATE, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR AND OFFLINE TESTS IMPLEMENTED; DURABLE PRODUCTION INTEGRATION AND AUTOMATED ORCHESTRATION NOT CERTIFIED.
+Status: PROJECT-ISOLATED PROPOSAL BRIDGE, LOCAL DEVELOPMENT STORE, SUPABASE STORE CONTRACT, ADMIN API, PUBLIC-RETRIEVAL AND LEGACY-LEARNING EVIDENCE ADAPTERS, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR AND OFFLINE TESTS IMPLEMENTED. LIVE SUPABASE MIGRATION, DEPLOYMENT AND AUTOMATED GENERATION-CYCLE ORCHESTRATION NOT CERTIFIED.
 
 ## Objective
 
-Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflow without silently converting retrieved information into trusted knowledge or allowing autonomous self-modification.
+Connect existing Mira Learning and HFM evidence to a controlled learning/evolution proposal workflow without silently converting retrieved information into trusted knowledge or allowing autonomous self-modification.
 
-## First implementation slice
+## Implemented in this branch
 
-- Builds a bounded, versioned learning/evolution proposal from explicitly supplied evidence.
-- Requires each evidence item to include evidence ID, project ID, source type, trust state, source reference and content.
-- Enforces strict project isolation and rejects duplicate evidence IDs.
-- Computes SHA-256 digests for evidence and the complete proposal.
-- Stores proposals in a project-hash-partitioned local store using create-only file creation, restrictive permissions, fsync and read-after-write.
-- Exposes an admin-only API for staging and reading proposals; the existing global autonomous-learning and Knowledge stores are not modified.
-- Includes an adapter for the existing HFM public Facebook search-retrieval result format. It validates successful/degraded-evidence status, provider/mode/zero-canonical-write declarations, exact Page-ID-bound Facebook profile/post paths, source type, provenance state and credential-free HTTPS URLs, then forces every imported item to UNVERIFIED.
-- Adds a read-only compatibility inspector for the existing Learning Engine, Experience Memory, Experience Retrieval, Knowledge Consolidation, and Evolution Snapshot/rollback interfaces. It checks legacy record integrity and snapshot verification without migrating, rewriting, deleting, rolling back, or calling Drive/network services. It also checks the indexed Facebook URL is bound to the reported numeric Page ID.
-- Uses Mira's existing audit-log append/integrity path for non-production proposal-staging events; audit failure after persistence is surfaced as committed/reconciliation-required.
-- Requires a named authenticated administrator browser session and records the actor ID in the audit event.
-- Production mode fails closed: the local single-instance proposal store and local audit callback are never used as production fallbacks. Production requires an explicitly marked durable, cross-instance, project-isolated create-only store and a durable audit writer.
-- Marks proposals PENDING_HUMAN_REVIEW and UNTRUSTED.
-- Automatic trust promotion, execution, canonical Memory writes and self-modification are disabled.
+- Bounded, versioned evidence-backed proposal schema with SHA-256 evidence and proposal digests.
+- Strict project isolation, duplicate evidence rejection and immutable proposal IDs.
+- Local development store with create-only files, restrictive permissions, fsync, read-after-write and tamper detection. It explicitly declares `durable=false` and `crossInstanceAtomicCreate=false`; it is not a production/Render multi-instance store.
+- Supabase PostgREST store using the existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` server-side environment variables. It uses a project-scoped primary key, insert-ignore/readback verification, content digests and a separate append-only audit-event table.
+- SQL migration `supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql`. RLS is enabled; only the service role receives SELECT/INSERT grants. No UPDATE or DELETE grant is provided.
+- Production activation is fail-closed. It requires:
+  - `MIRA_HFM_LEARNING_PROPOSAL_BACKEND=supabase`
+  - `MIRA_HFM_LEARNING_PROPOSAL_PRODUCTION_READY=true`
+  - Valid existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` secrets
+  - The migration to be applied and independently verified before setting the production-ready flag
+- The production audit writer records proposal staging in Supabase and performs readback verification. Audit failure after proposal persistence is reported as committed/reconciliation-required.
+- Admin-only API requires a named authenticated administrator browser session. It supports explicit evidence submission, HFM public retrieval evidence intake, legacy Learning Engine evidence intake, and proposal readback.
+- HFM public retrieval adapter validates the provider/mode, successful or degraded-evidence status, zero-canonical-write declarations, exact numeric Page-ID-bound Facebook paths, declared source type, provenance and credential-free HTTPS URL. Imported evidence is forced to UNVERIFIED.
+- Legacy Learning Engine adapter reads one requested record through the existing read/verify interfaces, requires matching successful integrity evidence, screens candidate text for likely secrets, and maps lesson/improvement candidates into UNVERIFIED HFM evidence. It does not modify the legacy record.
+- Read-only compatibility inspector checks Learning Engine, Experience Memory, Experience Retrieval, Knowledge Consolidation and Evolution Snapshot/rollback interfaces without migration, rewrite, deletion, rollback or Drive/network calls.
+- Every proposal remains `PENDING_HUMAN_REVIEW` and `UNTRUSTED`. Automatic promotion, execution, canonical Memory writes and self-modification remain disabled.
 
 ## Trust and governance
 
 - Trust labels are provenance states, not instructions or proof that evidence is true.
-- Retrieved web/Facebook/imported content remains untrusted evidence. Prompt-like text inside evidence must never override system, developer, project or user policy.
+- Retrieved web/Facebook and legacy learning content remains untrusted evidence. Prompt-like text inside evidence must never override system, developer, project or user policy.
 - A proposal is a hypothesis for review, not a learned fact, approved policy, executable task or code patch.
-- Human approval must be a separate authenticated governance action. This bridge exposes no approve, promote, execute, merge or apply method.
-- Digests detect content changes; they do not authenticate the source or validate factual correctness.
+- The current bridge exposes no approve, promote, execute, merge or apply method. A future governance phase must add a separate authenticated approval/review record before any controlled downstream application.
+- Digests detect content changes; they do not authenticate the original source or prove factual correctness.
+- Supabase service-role credentials are never returned to clients, written into proposal payloads, or logged by the adapter.
 
-## Adapter contract
+## API
 
-The local adapter provides project-scoped create-only files and immutable proposal IDs on a single filesystem, with read-after-write and content-digest verification. It is not a distributed database and does not establish cross-instance atomicity on Render. The production route calls Mira's existing append-only audit log; its HMAC anchor is conditional on the configured audit key. No Supabase table, multi-instance coordination, canonical Memory adapter or automatic HFM archive reader is connected.
+Base: `/api/admin/mira-hfm-learning-evolution`
 
-## Explicit exclusions
+- `POST /proposals` — stage explicitly supplied evidence.
+- `POST /proposals/from-public-retrieval` — adapt an already-produced HFM public retrieval result. It does not perform a search and cannot cryptographically prove the submitted report came from the provider.
+- `POST /proposals/from-legacy-learning` — read and verify a requested legacy Learning Engine record, then stage its eligible candidates as untrusted evidence.
+- `GET /proposals/:projectId/:proposalId` — read and re-verify a stored proposal.
 
-- No automatic learning/training, trust promotion, policy mutation, code generation/application, self-repair or self-modification.
-- No canonical Memory writes or changes to existing Memory records.
-- The admin route is registered in server.js. The `/proposals/from-public-retrieval` endpoint accepts an already-produced HFM public retrieval result; it does not execute a search itself and does not cryptographically attest that the supplied result came from the provider.
-- No existing AI generation-cycle, retrieval tool, autonomous-learning queue, Knowledge store, or UI is wired to submit automatically.
-- The legacy compatibility inspector is an explicit read-only audit utility; it is not a live route and does not automatically import legacy records into HFM proposals.
-- Evidence must be supplied to the admin API by a trusted caller; the API does not independently prove that a claimed public-web retrieval occurred.
-- No live provider, model, network, deployment, migration or secret access.
-- No change to Phase 7 emergency backup or routine Google Drive synchronization.
+## Deployment and cost boundary
+
+The implementation reuses the existing Supabase Free project and existing server-side Supabase environment variables; it introduces no paid vendor or paid API. The design target remains $0/month while usage stays within the existing free-tier quotas. Free-tier capacity, inactivity/pause behavior and storage limits still apply; exceeding a quota must not trigger a paid upgrade automatically.
+
+The migration has been committed to the branch only. It has NOT been applied to the live Supabase project. No Supabase request, OAuth, credential read, deployment or live persistence/restart test was performed in this work. Do not set the production-ready flag until migration and live verification are explicitly authorized and completed.
+
+## Remaining Phase 8 work
+
+1. Apply the SQL migration in the approved Supabase project and verify RLS, grants, primary-key uniqueness and foreign-key behavior.
+2. Run an authorized live integration test: insert, duplicate conflict, cross-project isolation, audit readback, restart/reconnect recovery and fail-closed behavior. This has not been done.
+3. Wire proposal intake into the actual Mira generation/retrieval cycle under explicit governance, instead of requiring a trusted caller to submit the evidence payload.
+4. Add an authenticated human review/decision record and controlled downstream handoff. Approval must not itself apply canonical Memory changes.
+5. Add UI visibility and independent end-to-end verification for the complete HFM → evidence → proposal → review → controlled learning path.
+6. Verify Render instance/restart behavior and Supabase free-tier capacity without exceeding the $0/month constraint.
 
 ## Offline verification
 
-Run: node tests/mira-hfm-learning-evolution-bridge.test.js
+- `node tests/mira-hfm-learning-evolution-bridge.test.js`
+- `node tests/mira-hfm-learning-evolution-route-contract.test.js`
+- `node tests/mira-hfm-learning-legacy-compatibility.test.js`
+- `node tests/mira-hfm-learning-supabase-store.test.js`
 
-Admin API base: `/api/admin/mira-hfm-learning-evolution`
-- `POST /proposals` stages explicitly supplied evidence.
-- `POST /proposals/from-public-retrieval` adapts an existing HFM public retrieval result.
-- `GET /proposals/:projectId/:proposalId` reads and re-verifies a stored proposal.
-
-Tests use synthetic evidence and a temporary local filesystem adapter, including process-level reopen, immutable create-only behavior and stored-tamper detection. Additional offline tests verify the production fail-closed gate, named-admin attribution, public source/Page-ID binding, and read-only compatibility/integrity inspection of Learning, Experience, Knowledge Consolidation and Evolution snapshots.
-
-Latest GitHub Actions run **41967451926: SUCCESS** (Node.js 24). The syntax gate and all three test suites passed. Logs report TESTS_FAILED=0, LIVE_NETWORK_CALLS=0, PRODUCTION_DATABASE_ADAPTER=0, no migration, no rollback, and zero canonical Memory writes. These are synthetic contract tests, not production data verification.
+The Supabase adapter test uses an injected mock PostgREST request. It does not contact Supabase. Local filesystem tests use a temporary directory. No production data is accessed.
 
 VERSION=v0.2
-PHASE8=PROPOSAL_BRIDGE_AND_READ_ONLY_LEGACY_COMPATIBILITY_IMPLEMENTED
+PHASE8=PROPOSAL_BRIDGE_AND_SUPABASE_ADAPTER_IMPLEMENTED
 CANONICAL_MEMORY_WRITES=0
 AUTOMATIC_PROMOTION=0
 AUTOMATIC_EXECUTION=0
+LIVE_SUPABASE_MIGRATION=NOT_APPLIED
 PRODUCTION_INTEGRATION=NOT_CERTIFIED
-
-
-## Production readiness gate
-
-The local proposal store explicitly advertises `durable=false` and `crossInstanceAtomicCreate=false`. In `NODE_ENV=production`, routes return `HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED` unless an injected provider is explicitly marked production-ready and satisfies project isolation, create-only, immutable-version, read-after-write, durable, cross-instance atomic-create and durable-audit capabilities. The production fallback to ephemeral local files is prohibited.
-
-The current branch contains no production HFM proposal database adapter or durable audit provider. Therefore the production route remains intentionally unavailable until those adapters are independently implemented and verified.
