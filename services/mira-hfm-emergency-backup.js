@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { validateKeyProviderContract } = require('./mira-hfm-key-provider-contract');
+const { openPinnedDirectory, pinnedChildPath, readPinnedChildFile } = require('./mira-hfm-pinned-directory');
 
 const BACKUP_FORMAT_VERSION = 1;
 const ENCRYPTION_PROFILE = 'MIRA_HFM_ENVELOPE_AES_256_GCM_V1';
@@ -182,41 +183,25 @@ async function decryptBackup({ backup, keyProvider, expectedProjectId, supported
     if (Buffer.isBuffer(dataKey)) dataKey.fill(0);
   }
 }
-function writeBackupAtomic(filePath, bytes) {
-  if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) throw new Error('Backup destination must be an absolute path.');
-  if (!Buffer.isBuffer(bytes) || bytes.length === 0 || bytes.length > MAX_BACKUP_BYTES) throw new Error('Backup bytes are invalid or exceed the size limit.');
-  const directory = path.dirname(filePath);
-  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const dirStat = fs.lstatSync(directory);
-  if (dirStat.isSymbolicLink() || !dirStat.isDirectory()) throw new Error('Backup directory is unsafe.');
+function writeBackupAtomicAt(pinnedDirectory,fileName,bytes) {
+  if(!Buffer.isBuffer(bytes)||bytes.length===0||bytes.length>MAX_BACKUP_BYTES) throw new Error('Backup bytes are invalid or exceed the size limit.');
+  const target=pinnedChildPath(pinnedDirectory,fileName), temp=pinnedChildPath(pinnedDirectory,'.'+fileName+'.tmp-'+process.pid+'-'+crypto.randomBytes(8).toString('hex'));
   try {
-    const existing = fs.lstatSync(filePath);
-    if (existing.isSymbolicLink() || !existing.isFile()) throw new Error('Backup destination is unsafe.');
-    const error = new Error('Immutable backup already exists; refusing overwrite.');
-    error.code = 'BACKUP_ALREADY_EXISTS';
-    throw error;
-  } catch (error) { if (error.code !== 'ENOENT') throw error; }
-  const temp = path.join(directory, '.' + path.basename(filePath) + '.tmp-' + process.pid + '-' + crypto.randomBytes(8).toString('hex'));
-  let fd;
-  try {
-    fd = fs.openSync(temp, 'wx', 0o600);
-    fs.writeFileSync(fd, bytes);
-    fs.fsyncSync(fd);
-    fs.closeSync(fd); fd = undefined;
-    fs.linkSync(temp, filePath);
-    fs.unlinkSync(temp);
-    const dirFd = fs.openSync(directory, 'r');
-    try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
-    const stat = fs.lstatSync(filePath);
-    if (stat.isSymbolicLink() || !stat.isFile() || (stat.mode & 0o077) !== 0) throw new Error('Backup file permissions or type failed readback validation.');
-    const readback = fs.readFileSync(filePath);
-    if (!readback.equals(bytes)) throw new Error('Backup byte-for-byte readback failed.');
-    return { status: 'LOCAL_WRITE_VERIFIED', sizeBytes: stat.size, sha256: sha256(readback) };
-  } catch (error) {
-    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
-    try { fs.unlinkSync(temp); } catch {}
-    throw error;
-  }
+    try { const existing=fs.lstatSync(target); if(existing.isSymbolicLink()||!existing.isFile()) throw new Error('Backup destination is unsafe.'); const e=new Error('Immutable backup already exists; refusing overwrite.'); e.code='BACKUP_ALREADY_EXISTS'; throw e; }
+    catch(e){if(e.code!=='ENOENT')throw e;}
+    let fd;
+    try { fd=fs.openSync(temp,'wx',0o600); fs.writeFileSync(fd,bytes); fs.fsyncSync(fd); fs.closeSync(fd); fd=undefined; fs.linkSync(temp,target); fs.unlinkSync(temp); fs.fsyncSync(pinnedDirectory.fd); }
+    finally {if(fd!==undefined){try{fs.closeSync(fd);}catch{}}}
+    const readback=readPinnedChildFile(pinnedDirectory,fileName,MAX_BACKUP_BYTES);
+    if((readback.stat.mode&0o077)!==0||!readback.bytes.equals(bytes)) throw new Error('Pinned backup byte-for-byte or permission verification failed.');
+    return {status:'LOCAL_WRITE_VERIFIED',sizeBytes:readback.stat.size,sha256:sha256(readback.bytes),readbackBytes:readback.bytes};
+  } catch(e) {try{fs.unlinkSync(temp);}catch{} throw e;}
+}
+function writeBackupAtomic(filePath,bytes) {
+  if(typeof filePath!=='string'||!path.isAbsolute(filePath)) throw new Error('Backup destination must be an absolute path.');
+  const directory=path.dirname(filePath); fs.mkdirSync(directory,{recursive:true,mode:0o700});
+  const pinned=openPinnedDirectory(directory);
+  try{return writeBackupAtomicAt(pinned,path.basename(filePath),bytes);}finally{pinned.close();}
 }
 function inspectBackupDirectory(directory) {
   const stat = fs.lstatSync(directory);
@@ -264,4 +249,4 @@ function assessDriveQuota(quota, allocatedLimitBytes = 5 * 1024 ** 3) {
     overLimit: quota.usageBytes > effectiveLimit };
 }
 module.exports = { BACKUP_FORMAT_VERSION, ENCRYPTION_PROFILE, MAX_BACKUP_BYTES, encryptSnapshot,
-  decryptBackup, writeBackupAtomic, inspectBackupDirectory, buildRetentionPlan, assessDriveQuota, parseEnvelope };
+  decryptBackup, writeBackupAtomic, writeBackupAtomicAt, inspectBackupDirectory, buildRetentionPlan, assessDriveQuota, parseEnvelope };
