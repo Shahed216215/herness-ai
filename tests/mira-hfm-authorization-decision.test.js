@@ -75,6 +75,24 @@ async function rejectsCode(promise, code) {
   assert.equal(valid.replayGuardConsumed, true);
   assert.equal(valid.policyCorrectnessIndependentlyAudited, false);
 
+  const mutableDecision = f.sign();
+  const mutableTrust = JSON.parse(JSON.stringify(f.trustedIssuers));
+  const mutatingReplayGuard = {
+    async consume() {
+      mutableDecision.decisionId = 'mutated-after-signature-check';
+      mutableTrust['policy-issuer'].publicKeySha256 = '0'.repeat(64);
+      return true;
+    }
+  };
+  const immutableDecisionResult = await verifyAuthorizationDecision({
+    decision: mutableDecision, request: f.request,
+    trustedIssuers: mutableTrust, replayGuard: mutatingReplayGuard, now: f.now
+  });
+  assert.equal(immutableDecisionResult.decisionId, 'decision-001');
+  assert.equal(mutableDecision.decisionId, 'mutated-after-signature-check');
+
+
+
   const tamperedSignature = f.sign();
   tamperedSignature.signature = Buffer.from('forged').toString('base64');
   await rejectsCode(verifyAuthorizationDecision({
@@ -207,6 +225,7 @@ async function rejectsCode(promise, code) {
   }), 'HFM_AUTHZ_TRUST_ANCHOR_INVALID');
 
   console.log('MIRA_HFM_AUTHORIZATION_DECISION_NEGATIVE_TESTS=PASS');
+  console.log('MIRA_HFM_AUTHORIZATION_DECISION_INPUT_SNAPSHOT_PASS');
   console.log('CASES=valid_signature,signature_tamper,project_actor_scope_request_nonce_binding,trust_fingerprint_mismatch,key_id_mismatch,deny,expired,overlong,future_dated,replay_duplicate,replay_store_unavailable,non_ed25519_anchor');
   console.log('POLICY_CORRECTNESS_INDEPENDENTLY_AUDITED=NO');
   console.log('DURABLE_REPLAY_GUARD=NOT_PROVEN');
