@@ -127,8 +127,8 @@ function verifyPolicyStateCommitReceipt({
  */
 async function verifyAndAcceptSignedProvenancePolicy({
   envelope, provider, trustedStateAuthorities, expectedStateAuthorityId,
-  trustedPolicyIssuers, trustedPolicyReviewers, expectedEnvironment, expectedProjectId,
-  operationalIssuerIds = [], now = Date.now()
+  trustedPolicyIssuers, trustedPolicyReviewers, evidenceProvider, trustedEvidenceIssuers,
+  expectedEnvironment, expectedProjectId, operationalIssuerIds = [], now = Date.now()
 }) {
   if (!isPlainObject(provider) || typeof provider.readState !== 'function' ||
       typeof provider.compareAndSwap !== 'function') {
