@@ -29,17 +29,20 @@ const keyProvider = {
       recordCount: 1, keyId: 'test-kek', keyVersion: '1' }, keyProvider
   });
   let stored = null;
+  let storedFile = null;
   let creates = 0;
   const drive = {
     about: { get: async () => ({ data: { storageQuota: { usage: '100', limit: '10000000000' } } }) },
     files: {
-      list: async () => ({ data: { files: stored ? [{ id: 'remote-1', name: 'existing' }] : [] } }),
+      list: async () => ({ data: { files: storedFile ? [storedFile] : [] } }),
       create: async args => {
         creates++;
         const chunks = [];
         for await (const chunk of args.media.body) chunks.push(Buffer.from(chunk));
         stored = Buffer.concat(chunks);
-        return { data: { id: 'remote-1', name: args.requestBody.name } };
+        storedFile = { id: 'remote-1', name: args.requestBody.name, parents: args.requestBody.parents,
+          appProperties: args.requestBody.appProperties };
+        return { data: storedFile };
       },
       get: async () => ({ data: Buffer.from(stored) })
     }
@@ -50,6 +53,49 @@ const keyProvider = {
   });
   assert.equal(uploaded.status, 'VERIFIED');
   assert.equal(creates, 1);
+
+  const malformedListDrive = {
+    ...drive,
+    files: { ...drive.files, list: async () => ({ data: { files: 'not-an-array' } }) }
+  };
+  await assert.rejects(() => driveBackup.uploadEncryptedBackup({
+    drive: malformedListDrive, folderId: 'folder_123',
+    fileName: 'mira-hfm-project-1-20261105T120001Z.mira-hfm.enc.json',
+    bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
+  }), error => error.code === 'DRIVE_BACKUP_DUPLICATE_CHECK_UNVERIFIED');
+  assert.equal(creates, 1);
+
+  const ambiguousDrive = {
+    about: drive.about,
+    files: {
+      list: async () => ({ data: { files: [] } }),
+      create: async () => { throw new Error('PRIVATE_REMOTE_CREATE_ERROR'); },
+      get: async () => { throw new Error('must not read without a confirmed file ID'); }
+    }
+  };
+  await assert.rejects(() => driveBackup.uploadEncryptedBackup({
+    drive: ambiguousDrive, folderId: 'folder_123',
+    fileName: 'mira-hfm-project-1-20261105T120002Z.mira-hfm.enc.json',
+    bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
+  }), error => error.code === 'DRIVE_BACKUP_CREATE_OUTCOME_UNKNOWN' &&
+    error.stateCommitted === true && error.outcome === 'REVIEW_REQUIRED' &&
+    !error.message.includes('PRIVATE_REMOTE_CREATE_ERROR'));
+
+  const unverifiedCreateDrive = {
+    about: drive.about,
+    files: {
+      list: async () => ({ data: { files: [] } }),
+      create: async () => ({ data: { id: 'remote-unverified', name: 'wrong-name', parents: ['other-folder'], appProperties: {} } }),
+      get: async () => { throw new Error('must not read unverified object'); }
+    }
+  };
+  await assert.rejects(() => driveBackup.uploadEncryptedBackup({
+    drive: unverifiedCreateDrive, folderId: 'folder_123',
+    fileName: 'mira-hfm-project-1-20261105T120003Z.mira-hfm.enc.json',
+    bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
+  }), error => error.code === 'DRIVE_BACKUP_CREATE_RESPONSE_UNVERIFIED' &&
+    error.stateCommitted === true && error.outcome === 'REVIEW_REQUIRED');
+
   const downloaded = await driveBackup.downloadEncryptedBackup({
     drive, fileId: uploaded.fileId, expectedSha256: encrypted.sha256
   });
