@@ -112,6 +112,31 @@ async function rejects(promise, code) {
     expectedProjectId: 'mira-hfm-v02', now
   }), 'HFM_PROVENANCE_EVIDENCE_STALE');
 
+  const malformedSignature = fixture();
+  malformedSignature.records.get('baseline-storageSystemId').signature = '%%%';
+  await rejects(verifyAllPolicyEvidence({
+    ...malformedSignature, trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', now
+  }), 'HFM_PROVENANCE_EVIDENCE_SIGNATURE_INVALID');
+
+  const wrongKeyFingerprint = fixture();
+  await rejects(verifyAllPolicyEvidence({
+    ...wrongKeyFingerprint,
+    trustedEvidenceIssuers: {
+      [issuerId]: { ...trustedEvidenceIssuers[issuerId], publicKeySha256: '0'.repeat(64) }
+    },
+    expectedEnvironment: 'test', expectedProjectId: 'mira-hfm-v02', now
+  }), 'HFM_PROVENANCE_EVIDENCE_KEY_INVALID');
+
+  const unavailableResolver = fixture();
+  unavailableResolver.evidenceProvider = {
+    async resolve() { throw new Error('synthetic evidence store outage'); }
+  };
+  await rejects(verifyAllPolicyEvidence({
+    ...unavailableResolver, trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', now
+  }), 'HFM_PROVENANCE_EVIDENCE_UNAVAILABLE');
+
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_SIGNED_ISSUER_PASS\n');
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_SCOPE_BINDING_PASS\n');
   process.stdout.write('MIRA_HFM_PROVENANCE_EVIDENCE_DIGEST_BINDING_PASS\n');
