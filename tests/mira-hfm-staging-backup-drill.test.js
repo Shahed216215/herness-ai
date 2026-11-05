@@ -6,8 +6,28 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { createLocalStagingSnapshotSource } = require('../services/mira-hfm-local-staging-snapshot-source');
+const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
 const { runStagingBackupDrill } = require('../services/mira-hfm-staging-backup-drill');
 
+function makeAuthorization(privateKey, request) {
+  const issued = Date.now();
+  const decision = {
+    issuerId: 'synthetic-policy-' + request.projectId,
+    keyId: 'synthetic-policy-key-v1',
+    decisionId: 'decision-' + request.requestId,
+    policyVersion: 'synthetic-policy-v1',
+    decision: 'ALLOW',
+    projectId: request.projectId,
+    actorId: request.actorId,
+    scope: request.scope,
+    requestId: request.requestId,
+    nonce: request.nonce,
+    issuedAt: new Date(issued).toISOString(),
+    expiresAt: new Date(issued + 60000).toISOString()
+  };
+  decision.signature = crypto.sign(null, Buffer.from(canonicalize(decision), 'utf8'), privateKey).toString('base64');
+  return decision;
+}
 function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-drill-source-'));
   const memoryFile = path.join(rootDir, 'memory.json');
@@ -18,6 +38,23 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   const publicKeyPem = pair.publicKey.export({ type: 'spki', format: 'pem' });
   const privateKeyPem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' });
   const signingKeyId = sourceId + '-key-v1';
+  const policyPair = crypto.generateKeyPairSync('ed25519');
+  const policyPublicPem = policyPair.publicKey.export({ type: 'spki', format: 'pem' });
+  const policyPublic = crypto.createPublicKey(policyPublicPem);
+  const authorizationTrust = {
+    ['synthetic-policy-mira-staging']: {
+      keyId: 'synthetic-policy-key-v1',
+      publicKeyPem: policyPublicPem,
+      publicKeySha256: crypto.createHash('sha256').update(policyPublic.export({ type: 'spki', format: 'der' })).digest('hex')
+    }
+  };
+  const replayed = new Set();
+  const replayGuard = { async consume(item) {
+    const key = item.issuerId + ':' + item.decisionId;
+    if (replayed.has(key)) return false;
+    replayed.add(key);
+    return true;
+  }};
   const source = createLocalStagingSnapshotSource({
     environment: 'staging',
     sourceId,
@@ -26,8 +63,11 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
     rootDir,
     memoryFile,
     knowledgeFile,
+    authorizationTrust,
+    replayGuard,
     authorize: async request => request.projectId === 'mira-staging' &&
       request.actorId.startsWith('staging-operator-') && request.scope === 'backup:read'
+        ? makeAuthorization(policyPair.privateKey, request) : makeAuthorization(policyPair.privateKey, { ...request, actorId: 'denied-actor' })
   });
   const publicKey = crypto.createPublicKey(publicKeyPem);
   const trusted = {
@@ -36,7 +76,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
     publicKeySha256: crypto.createHash('sha256')
       .update(publicKey.export({ type: 'spki', format: 'der' })).digest('hex')
   };
-  return { rootDir, memoryFile, knowledgeFile, source, trusted };
+  return { rootDir, memoryFile, knowledgeFile, source, trusted, authorizationTrust, replayGuard };
 }
 
 function testKeyProvider() {
