@@ -131,6 +131,11 @@ function verifySignedProvenancePolicy({
   if (fingerprint !== trusted.publicKeySha256) {
     fail('Policy issuer public-key fingerprint mismatch.', 'HFM_PROVENANCE_POLICY_KEY_MISMATCH');
   }
+  if (!/^[a-f0-9]{64}$/.test(acceptedPolicyState.trustAnchorSha256 || '') ||
+      acceptedPolicyState.trustAnchorSha256 === fingerprint) {
+    fail('Policy signer and policy-state authority must have distinct pinned key material.',
+      'HFM_PROVENANCE_POLICY_ISSUER_COLLISION');
+  }
   let signatureBytes;
   try {
     signatureBytes = Buffer.from(envelope.signature, 'base64');
