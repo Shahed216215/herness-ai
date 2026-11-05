@@ -149,7 +149,7 @@ async function run() {
     assert.equal(captured.snapshot.records.length, 1);
     assert.equal(captured.snapshot.records[0].learningId, 'learning-source-001');
     assert.equal(Object.prototype.hasOwnProperty.call(captured.snapshot.records[0], 'projectId'), false);
-    assert.equal(captured.attestation.provenance.sourceSystemId, 'mira-work-learning-fixture');
+    assert.equal(captured.evidence.provenance.sourceSystemId, 'mira-work-learning-fixture');
     assert.equal(before, sha256(fs.readFileSync(f.learningFile)));
     console.log('WORK_LEARNING_SIGNED_STAGING_SNAPSHOT_CAPTURE_PASS');
     console.log('WORK_LEARNING_SOURCE_SNAPSHOT_DOES_NOT_INFER_PROJECT_PASS');
