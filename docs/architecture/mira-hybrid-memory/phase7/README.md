@@ -34,7 +34,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 ## Offline injected transport adapter
 
 - `services/mira-hfm-drive-emergency-backup-adapter.js` provides a provider-neutral adapter around an injected `atomicCreate`, `readObject`, and `listPage` transport.
-- It fixes a project-scoped namespace, validates encrypted-envelope content metadata and SHA-256 format, rejects cross-project/path traversal access, enforces negotiated object-size and per-page item limits, validates canonical listing timestamps, and rejects ambiguous create results.
+- It fixes a project-scoped namespace, validates encrypted-envelope content metadata and SHA-256 format, rejects cross-project/path traversal access, enforces negotiated object-size and per-page item limits, validates canonical listing timestamps, bounded cursors, encrypted-only listing metadata and negotiated object sizes, and rejects ambiguous create results.
 - Before operations it negotiates provider capabilities and fails closed unless atomic create-if-absent, read-after-write consistency, project isolation, encrypted object storage, paginated listing, and bounded object/page limits are explicitly declared.
 - Optional provider quota reports are strictly scope- and timestamp-validated. Capacity output separates provider-reported quota from the configured 5 GB HFM emergency-backup budget; no quota is inferred when the provider does not report it.
 - The transport's `atomicCreate` must be a true provider-side atomic create-if-absent operation. The adapter cannot prove that a future real provider implements this correctly.
@@ -44,9 +44,9 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 ## Verification
 
 - Latest code-change CI: run **41990607983 — SUCCESS**, job **127121672506**, code commit **77cf0f0deaa8101cac0e60bd3e7c0b2520a48435**.
-- Latest code-change CI: run **41992225019 — SUCCESS**, job **127126894375**, commit **b426ac0f7cb88655312bbc1abb82254cf2137436**.
-- Combined offline job logs: **46 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
-- New assertions cover failed-auth restore leaving no stage artifact, provider quota report schema and future timestamps, canonical capacity-list timestamps, and authenticated project binding across cloud upload, preview, and restore.
+- Latest code-change CI: run **41992481568 — SUCCESS**, job **127127731565**, commit **616178c346e38637c3d6d24358f81ce3d5909a5d**.
+- Combined offline job logs: **49 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
+- New assertions cover bounded pagination cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaving no stage artifact, strict provider quota/timestamp validation, and authenticated project binding across cloud upload, preview, and restore.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - This is synthetic offline CI evidence, not a live-provider or production recovery certification.
 
@@ -60,9 +60,9 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 VERSION=v0.2
 PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
-LATEST_CI=41992225019_SUCCESS
-LATEST_CI_HEAD=b426ac0f7cb88655312bbc1abb82254cf2137436
-OFFLINE_PASS_MARKERS=46
+LATEST_CI=41992481568_SUCCESS
+LATEST_CI_HEAD=616178c346e38637c3d6d24358f81ce3d5909a5d
+OFFLINE_PASS_MARKERS=49
 PROVIDER_CAPABILITY_NEGOTIATION=PASS
 PROVIDER_QUOTA_REPORTING_CONTRACT=PASS
 NEGOTIATED_LIMIT_ENFORCEMENT=PASS
