@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const { createLocalFakePolicyStateProvider } = require('../services/mira-hfm-local-fake-policy-state-provider');
 
 const authorityId = 'fake-state-authority';
@@ -19,6 +20,14 @@ function request({ sequence = 0, previousDigest = null, id = 'policy-1', policyD
     }
   };
 }
+function requestDigest(value) {
+  return crypto.createHash('sha256').update(JSON.stringify({
+    authorityId: value.authorityId,
+    expectedSequence: value.expectedSequence,
+    expectedDigest: value.expectedDigest,
+    nextState: value.nextState
+  })).digest('hex');
+}
 async function rejectsCode(promise, code) {
   await assert.rejects(promise, error => error && error.code === code);
 }
@@ -31,6 +40,12 @@ async function rejectsCode(promise, code) {
   const first = request();
   const receipt = await provider.compareAndSwap(first);
   assert.equal(receipt.nextSequence, 1);
+  assert.deepEqual(await provider.getCommitReceipt({
+    authorityId, idempotencyKey: first.idempotencyKey, requestDigest: receipt.requestDigest
+  }), receipt);
+  await rejectsCode(provider.getCommitReceipt({
+    authorityId, idempotencyKey: first.idempotencyKey, requestDigest: '0'.repeat(64)
+  }), 'HFM_POLICY_STATE_IDEMPOTENCY_MISMATCH');
   assert.equal((await provider.readState()).lastAcceptedPolicyId, 'policy-1');
 
   // A stale expected sequence/digest must conflict.
@@ -99,12 +114,16 @@ async function rejectsCode(promise, code) {
   await rejectsCode(ambiguous.compareAndSwap(ambiguousRequest), 'HFM_POLICY_STATE_AMBIGUOUS_COMMIT');
   const committedState = await ambiguous.readState();
   assert.equal(committedState.highestAcceptedSequence, 1);
-  const reconciledReceipt = await ambiguous.compareAndSwap(ambiguousRequest);
+  const ambiguousDigest = requestDigest(ambiguousRequest);
+  const reconciledReceipt = await ambiguous.getCommitReceipt({
+    authorityId, idempotencyKey: ambiguousRequest.idempotencyKey, requestDigest: ambiguousDigest
+  });
   assert.equal(reconciledReceipt.nextSequence, 1);
+  assert.deepEqual(await ambiguous.compareAndSwap(ambiguousRequest), reconciledReceipt);
   assert.equal((await ambiguous.readState()).highestAcceptedSequence, 1);
 
   console.log('LOCAL_FAKE_PROVIDER_TESTS=PASS');
-  console.log('CASES=read_state,cas_conflict,concurrent_writers,idempotent_retry,key_reuse_rejection,restart_snapshot,outage_fail_closed,request_loss_before_commit,ambiguous_commit_reconciliation,defensive_copy_isolation');
+  console.log('CASES=read_state,cas_conflict,concurrent_writers,idempotent_retry,key_reuse_rejection,receipt_lookup_and_digest_binding,restart_snapshot,outage_fail_closed,request_loss_before_commit,ambiguous_commit_receipt_reconciliation,defensive_copy_isolation');
   console.log('REAL_DURABILITY=NOT_PROVEN');
   console.log('DISTRIBUTED_ATOMICITY=NOT_PROVEN');
   console.log('INFRASTRUCTURE_INDEPENDENCE=NOT_PROVEN');
