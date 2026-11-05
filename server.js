@@ -83,6 +83,8 @@ const registerAutonomousLearningRoutes =
   require("./routes/autonomous-learning");
 const registerMiraHfmLearningEvolutionRoutes =
   require("./routes/mira-hfm-learning-evolution");
+const { stageAgentGenerationProposal } =
+  require("./services/mira-hfm-learning-generation-cycle-request");
 const registerMiraResearchGovernanceRoutes =
   require("./routes/mira-research-governance");
 const registerFacebookPageConnectorRoutes =
@@ -1849,51 +1851,15 @@ app.post(
             !learningProposalHandoffAttempted
           ) {
             learningProposalHandoffAttempted = true;
-            const proposalInput = req.body.learningProposal;
-            const session = req.session;
-            const namedAdmin = req.role === "admin" && session &&
-              session.authenticated === true && session.role === "admin" &&
-              typeof session.username === "string" && session.username.trim().length > 0;
-            let retrievalReport = null;
-            try {
-              retrievalReport = typeof toolResult === "string"
-                ? JSON.parse(toolResult)
-                : toolResult;
-            } catch {
-              retrievalReport = null;
-            }
             const stage = app.locals && app.locals.miraHfmLearningGenerationCycle &&
               app.locals.miraHfmLearningGenerationCycle.stage;
-            if (!namedAdmin) {
-              learningProposalHandoff = {
-                success:false, status:"BLOCKED",
-                code:"HFM_LEARNING_NAMED_ADMIN_REQUIRED",
-                canonicalMemoryWrites:0, automaticExecution:false
-              };
-            } else if (!proposalInput || typeof proposalInput !== "object" || Array.isArray(proposalInput)) {
-              learningProposalHandoff = {
-                success:false, status:"BLOCKED",
-                code:"HFM_LEARNING_PROPOSAL_INPUT_REQUIRED",
-                canonicalMemoryWrites:0, automaticExecution:false
-              };
-            } else if (typeof stage !== "function") {
-              learningProposalHandoff = {
-                success:false, status:"NOT_CERTIFIED",
-                code:"HFM_LEARNING_GENERATION_BRIDGE_UNAVAILABLE",
-                canonicalMemoryWrites:0, automaticExecution:false
-              };
-            } else {
-              learningProposalHandoff = await stage({
-                explicitOptIn:true,
-                actor:{authenticated:true,role:"admin",actorId:session.username.trim()},
-                projectId:proposalInput.projectId,
-                proposalId:proposalInput.proposalId,
-                title:proposalInput.title,
-                rationale:proposalInput.rationale,
-                proposedChange:proposalInput.proposedChange,
-                retrievalResult:retrievalReport
-              });
-            }
+            const handoff = await stageAgentGenerationProposal({
+              req,
+              toolName,
+              toolResult,
+              stage
+            });
+            learningProposalHandoff = handoff.result;
           }
 
           if (
