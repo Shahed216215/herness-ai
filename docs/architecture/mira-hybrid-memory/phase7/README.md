@@ -167,3 +167,16 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - Phase 7 fake-provider marker: `LOCAL_FAKE_PROVIDER_TESTS=PASS`; test case list includes all eight scenarios above.
 - Safety boundary: no network request from the fake provider, no production Memory/Knowledge access, no live Drive call, no backup deletion, no staging integration, and no production runtime wiring.
 - Disposition: LOCAL_FAKE_PROVIDER_CONFORMANCE=PASS_CI (synthetic test double only). F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent review and real operational evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
+
+
+## Fake provider fault-injection extension — 2026-11-05
+
+- Extended the isolated local fake provider with a deterministic request-loss-before-commit fault. The injected failure leaves state and idempotency records unchanged; retrying the same request/key then commits once.
+- Added tests for pre-commit request loss/retry and defensive-copy isolation of state/snapshot exports. The fake provider's returned read-state object is frozen; exported snapshots are detached copies.
+- Corrected the Phase 7 pull-request workflow path filters so changes to both fake-provider service and test trigger the offline contract workflow on pull requests as well as pushes.
+- An intermediate CI attempt (#177, ID `42066854634`) failed because the new test attempted to mutate a frozen read-state object in strict mode. The assertion was corrected to explicitly expect `TypeError`; this was a test assertion issue. An intermediate workflow-only run (#178, ID `42066861818`) also failed because it included the same test before the correction.
+- Final Phase 7 run #179 (ID `42066941166`) completed SUCCESS on exact commit `9bc3c549342a25273471112eed4e74e52b4a44df`; job `phase7-offline-contract` SUCCESS and marker `LOCAL_FAKE_PROVIDER_TESTS=PASS` confirmed.
+- Phase 10 independent verification run #53 (ID `42066940999`) completed SUCCESS on the same exact commit.
+- Retrieved logs confirm `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
+- Expanded synthetic cases now include: read state, stale CAS, concurrent writers, idempotent retry, idempotency-key reuse rejection, snapshot restart simulation, outage fail-closed, request loss before commit, response loss after commit with reconciliation, and defensive-copy isolation.
+- Disposition remains LOCAL_FAKE_PROVIDER_CONFORMANCE=PASS_CI (test double only). F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent review and real operational evidence; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
