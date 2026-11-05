@@ -95,6 +95,7 @@ async function mockRequest(rawUrl, config) {
 
 const store = createSupabaseFacebookGroupImportStore({ env, request: mockRequest });
 const service = createFacebookGroupImportService({ store });
+assert.equal(store.reconcileBatchAudit, store.stageBatchAndAudit);
 const record = {
   memoryId: 'memory-group-supabase-001',
   sourceId: 'group-post-202',
