@@ -53,13 +53,14 @@ assert.throws(() => prepareFacebookGroupImport({content:'Missing observed time',
 console.log('GROUP_IMPORT_JSON_JSONL_AND_MANUAL_TEXT_INPUT=PASS');
 const db=new Map();
 const store={
- capabilities:{atomicCreateOnly:true,immutableVersions:true,projectIsolation:true,readAfterWrite:true},
+ capabilities:{atomicCreateOnly:true,immutableVersions:true,projectIsolation:true,readAfterWrite:true,durableQuarantine:true,durableAudit:true},
  async stageBatch(b){const old=db.get(b.batchId);if(old){if(old.batchDigest!==b.batchDigest)throw Error('immutable conflict');return {status:'ALREADY_EXISTS',batchId:b.batchId};}db.set(b.batchId,JSON.parse(JSON.stringify(b)));return {status:'CREATED',batchId:b.batchId};},
  async readBatch(id,p){const b=db.get(id);if(!b||b.projectId!==p)throw Error('not found');return JSON.parse(JSON.stringify(b));},
- async listBatches({projectId,groupId}){return [...db.values()].filter(b=>b.projectId===projectId&&b.groupId===groupId).map(b=>JSON.parse(JSON.stringify(b)));}
+ async listBatches({projectId,groupId}){return [...db.values()].filter(b=>b.projectId===projectId&&b.groupId===groupId).map(b=>JSON.parse(JSON.stringify(b)));},
+ async writeAuditEvent(e){audits.push(e);return {status:'AUDIT_WRITE_READBACK_VERIFIED'};}
 };
 const audits=[];
-const svc=createFacebookGroupImportService({store,auditWriter:async e=>audits.push(e)});
+const svc=createFacebookGroupImportService({store,auditWriter:e=>store.writeAuditEvent(e)});
 (async()=>{
  const result=await svc.import({content:JSON.stringify(env([rec()])),format:'json',groupId:'123456789',projectId:'project-hfm-v02',actorId:'human-fixture',authorizedAccess:true,existingRecords:[]});
  assert.equal(result.status,'IMPORT_STAGED_READBACK_VERIFIED');
