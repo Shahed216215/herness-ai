@@ -160,3 +160,22 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - A Node.js `punycode` deprecation warning and GitHub Actions Node 20 deprecation warning appeared in cleanup logs; neither failed the job.
 - Disposition: PHASE7_OFFLINE_CONTRACT_CI=PASS for the exact commit above. This is synthetic/offline contract evidence only. Production KMS/HSM custody, real independent infrastructure provenance, authorization issuer governance, live Drive behavior, host/container ACL policy, and real restore/migration remain REVIEW_REQUIRED / NOT_APPROVED / NOT_RUN as applicable.
 - Phase 7 overall production certification remains NOT_CERTIFIED. This CI result does not authorize deployment, migration, restore, deletion, or live API use.
+
+
+## Signed provenance policy verifier addendum — 2026-11-05
+
+- Later branch commits added `services/mira-hfm-signed-provenance-policy.js` and its contract tests, separating policy-state authority from the snapshot signer and requiring independently pinned issuer/reviewer trust.
+- The signed policy contract covers valid signature, issuer pinning, project/source scope and time window, anti-rollback/revocation, evidence binding, independent reviewer signatures and fail-closed behavior.
+- Latest Phase 7 workflow run #139, ID `42050373565`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42050373565, tested commit `017c6c244fe56665bf5d8c5a974892a6ae1774c1`: SUCCESS. Job `phase7-offline-contract` SUCCESS.
+- Retrieved logs confirm the signed provenance policy markers:
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_VALID_SIGNATURE_PASS`
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_ISSUER_PINNING_PASS`
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_SCOPE_AND_TIME_PASS`
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_ANTI_ROLLBACK_AND_REVOCATION_PASS`
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_EVIDENCE_BINDING_PASS`
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_REVIEW_SIGNATURES_PASS`
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_FAIL_CLOSED_PASS`
+  - `MIRA_HFM_SIGNED_PROVENANCE_POLICY_NOT_INFRASTRUCTURE_CERTIFIED_PASS`
+- The same run confirms the 10 Phase 7 offline suites passed, including encrypted backup, Drive adapter mock, signed snapshot, authorization replay, staging backup drill, provenance independence and recovery verification.
+- Safety markers: `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `BACKUP_DELETION=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- Disposition remains: Phase 7 offline contract CI PASS. The policy contract authenticates the supplied signed policy/reviewer evidence but explicitly does not certify real storage/account separation, workload identity, administrative trust domain, KMS/HSM custody, production source truth or live Drive/restore. Production readiness remains NOT_CERTIFIED.
