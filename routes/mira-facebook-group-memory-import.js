@@ -34,7 +34,6 @@ function registerFacebookGroupMemoryImportRoutes(
 ) {
   const router = express.Router();
   const createStore = options.createStore || createSupabaseFacebookGroupImportStore;
-  const audit = options.auditWriter || ((event, store) => store.writeAuditEvent(event));
 
   // The global JSON parser skips this endpoint; parse up to 1 MiB only
   // after the SYSTEM_ADMIN guard has authenticated the request.
@@ -103,10 +102,7 @@ function registerFacebookGroupMemoryImportRoutes(
           status: 'INCONCLUSIVE'
         });
       }
-      const service = createFacebookGroupImportService({
-        store,
-        auditWriter: event => audit({ ...event, actorId: actor.id }, store)
-      });
+      const service = createFacebookGroupImportService({ store });
       const result = await service.import({
         ...baseInput,
         existingRecords
@@ -132,10 +128,7 @@ function registerFacebookGroupMemoryImportRoutes(
   router.get('/retrieve', async (req, res) => {
     try {
       const store = createStore();
-      const service = createFacebookGroupImportService({
-        store,
-        auditWriter: async () => {}
-      });
+      const service = createFacebookGroupImportService({ store });
       const result = await service.retrieve({
         projectId: req.query && req.query.projectId,
         groupId: req.query && req.query.groupId,
