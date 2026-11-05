@@ -67,7 +67,7 @@ async function uploadEncryptedEmergencyBackup({ adapter, projectId, envelope, ke
     ciphertextSha256: digest,
     encryption: 'AES-256-GCM'
   });
-  if (!result || result.created !== true) fail('Cloud backup object already exists or create-only status is uncertain.', 'HFM_CLOUD_BACKUP_CONFLICT');
+  if (!result || (result.created !== true && !(result.reconciled === true && result.verified === true))) fail('Cloud backup object already exists or create-only status is uncertain.', 'HFM_CLOUD_BACKUP_CONFLICT');
   const readback = await adapter.get({ objectKey: keyPath, projectId: project });
   const stored = readback && (Buffer.isBuffer(readback.bytes) ? readback.bytes : Buffer.from(readback.bytes || ''));
   if (!stored || !stored.equals(bytes) || sha256(stored) !== digest) {
