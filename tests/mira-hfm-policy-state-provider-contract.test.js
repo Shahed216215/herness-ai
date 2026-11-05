@@ -69,7 +69,11 @@ function profile(suffix) {
 function evidence(sourceId) {
   return Object.fromEntries(REQUIRED_FIELDS.map(field => {
     const evidenceId = sourceId + '-' + field;
-    const record = { resourceId: sourceId + '-' + field, dimension: field, environment: 'test' };
+    const record = {
+      resourceId: sourceId + '-' + field, sourceId, dimension: field,
+      observedValue: field + (sourceId === sourceIds[0] ? '-baseline' : '-backup'),
+      environment: 'test', projectId: 'mira-hfm-v02'
+    };
     const digest = crypto.createHash('sha256')
       .update(canonicalizeProvenancePolicy(record)).digest('hex');
     const payload = {
