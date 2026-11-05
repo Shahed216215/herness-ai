@@ -22,13 +22,20 @@ function sign(payload) {
   };
 }
 function fixture() {
-  const sources = { baseline: {}, backup: {} };
+  const sources = {
+    baseline: Object.fromEntries(REQUIRED_FIELDS.map(field => [field, field + '-baseline'])),
+    backup: Object.fromEntries(REQUIRED_FIELDS.map(field => [field, field + '-backup']))
+  };
   const evidence = { baseline: {}, backup: {} };
   const records = new Map();
   for (const sourceId of Object.keys(sources)) {
     for (const dimension of REQUIRED_FIELDS) {
       const evidenceId = sourceId + '-' + dimension;
-      const record = { resourceId: evidenceId, dimension, project: 'mira-hfm-v02' };
+      const record = {
+        resourceId: evidenceId, sourceId, dimension,
+        observedValue: sources[sourceId][dimension],
+        environment: 'test', projectId: 'mira-hfm-v02'
+      };
       const digest = crypto.createHash('sha256')
         .update(canonicalizeProvenancePolicy(record)).digest('hex');
       const payload = {
@@ -70,6 +77,27 @@ async function rejects(promise, code) {
     expectedProjectId: 'mira-hfm-v02', now
   });
   assert.equal(valid.verifiedCount, 12);
+
+  for (const [field, changed] of [
+    ['sourceId', 'unrelated-source'],
+    ['dimension', 'unrelated-dimension'],
+    ['observedValue', 'unrelated-value'],
+    ['environment', 'production'],
+    ['projectId', 'unrelated-project']
+  ]) {
+    const mismatched = fixture();
+    const reference = mismatched.policyPayload.evidence.baseline.storageSystemId;
+    const original = mismatched.records.get(reference.evidenceId);
+    const alteredRecord = { ...original.payload.record, [field]: changed };
+    const alteredPayload = { ...original.payload, record: alteredRecord };
+    mismatched.records.set(reference.evidenceId, sign(alteredPayload));
+    reference.sha256 = crypto.createHash('sha256')
+      .update(canonicalizeProvenancePolicy(alteredRecord)).digest('hex');
+    await rejects(verifyAllPolicyEvidence({
+      ...mismatched, trustedEvidenceIssuers, expectedEnvironment: 'test',
+      expectedProjectId: 'mira-hfm-v02', now
+    }), 'HFM_PROVENANCE_EVIDENCE_BINDING_MISMATCH');
+  }
 
   const duplicate = fixture();
   duplicate.policyPayload.evidence.backup.storageInstanceId.evidenceId =
