@@ -104,6 +104,7 @@ async function verifyAllPolicyEvidence({
       'HFM_PROVENANCE_EVIDENCE_PROVIDER_REQUIRED');
   }
   const verified = [];
+  const seenEvidenceIds = new Set();
   for (const sourceId of Object.keys(policyPayload.sources)) {
     const refs = policyPayload.evidence[sourceId];
     if (!isPlainObject(refs)) fail('Policy evidence references are incomplete.',
@@ -115,6 +116,11 @@ async function verifyAllPolicyEvidence({
         fail('Policy evidence reference is missing or malformed: ' + sourceId + '/' + dimension,
           'HFM_PROVENANCE_EVIDENCE_REFERENCE_MISSING');
       }
+      if (seenEvidenceIds.has(reference.evidenceId)) {
+        fail('An evidence ID must be unique across every source and provenance dimension.',
+          'HFM_PROVENANCE_EVIDENCE_DUPLICATE_ID');
+      }
+      seenEvidenceIds.add(reference.evidenceId);
       let envelope;
       try { envelope = await evidenceProvider.resolve({ evidenceId: reference.evidenceId }); }
       catch {
