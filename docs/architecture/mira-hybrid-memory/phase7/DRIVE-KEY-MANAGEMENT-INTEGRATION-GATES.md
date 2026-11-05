@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Drive and Key-Management Integration Gates
 
-Status: DESIGN CONTRACT ONLY — NO PROVIDER IMPLEMENTATION, OAUTH, NETWORK CALL, OR SECRET ACCESS.
+Status: OFFLINE KEY-PROVIDER CONTRACT PROTOTYPE IMPLEMENTED — NO PRODUCTION KEY PROVIDER, OAUTH, NETWORK CALL, OR SECRET ACCESS.
 
 ## 1. Purpose
 
@@ -52,6 +52,20 @@ A future provider must:
 
 Key rotation acceptance requires: create backup with key version A; verify restore with A; create version B; verify new backup with B; verify old backup still restores with A; prove retirement of A is blocked until a separately approved migration/re-encryption and recovery test is complete.
 
+### 4.1 Offline key-provider contract prototype (v0.2)
+
+The Phase 7 branch now includes `services/mira-hfm-backup-key-provider.js`. This is a provider-injected contract wrapper, not a production key store or KMS integration.
+
+- Provider interface: `getKey({ keyId })` returns `{ keyId, key }`; the returned key must be a Buffer of exactly 32 bytes and the ID must match the requested opaque version ID.
+- `withBackupKey` passes a short-lived copy to a callback and zeroes that copy in a `finally` block. Provider-owned Buffer memory is not mutated. JavaScript zeroization is best-effort memory hygiene, not a guarantee that all runtime/GC copies are erased.
+- `createEncryptedBackupWithKeyProvider` writes `metadata.keyVersionId` into the authenticated envelope metadata. The core envelope metadata allowlist now accepts this field, so changing the key-version label invalidates authentication.
+- `decryptBackupWithKeyProvider` reads the authenticated envelope's key version and requests that exact historical version; it does not fall back to a different key or generate a replacement.
+- Provider failures are normalized to distinct non-secret-bearing codes: `HFM_KEY_NOT_FOUND`, `HFM_KEY_ACCESS_DENIED`, `HFM_KEY_VERSION_RETIRED`, `HFM_PROVIDER_UNAVAILABLE`, and `HFM_INVALID_KEY_MATERIAL`.
+- `assertKeyVersionRetirementAllowed` blocks retirement while backups still reference a version unless migration and recovery evidence are both true. This is a policy guard only; it does not retire keys or prove those external evidence claims.
+- Synthetic offline tests cover key versions A/B, historical A decryption after B exists, ephemeral-copy zeroization, provider failure taxonomy, and the retirement evidence gate.
+
+The fake provider and random test keys are test-only. No real key vault, OS keystore, KMS, escrow, key rotation operation, or production key custody is implemented or certified.
+
 ## 5. Canonical snapshot-exporter dependency
 
 A canonical HFM snapshot exporter is intentionally not implemented in this Phase 7 slice. Before implementation, Phases 1–3 must identify and freeze:
@@ -75,7 +89,7 @@ The exporter must produce a bounded, schema-validated snapshot payload and manif
 - Readback byte mismatch and authenticated-envelope mismatch are rejected.
 - Multi-page listing is aggregated to completion; pagination truncation, repeated cursors, malformed page envelopes, duplicate IDs, invalid timestamps, and cross-project records are rejected.
 - Quota unknown/permission denied is reported as INCONCLUSIVE, not zero usage.
-- Key provider unavailable, denied, missing key, retired version, and malformed key are distinct failures.
+- Key provider unavailable, denied, missing key, retired version, and malformed key are distinct failures (offline wrapper contract tests cover the taxonomy).
 - Rotation preserves decryptability of historical backups.
 - Failed authentication creates no restore-stage artifact.
 - Every test uses synthetic data and a fake adapter; no OAuth, network, real user data, or secrets.
@@ -88,13 +102,13 @@ A live Google Drive test is NOT AUTHORIZED by this document. Before any live tes
 
 - Provider-neutral encrypted backup and fake-adapter offline tests: implemented and CI-verified in the Phase 7 PR.
 - Actual Google Drive adapter/OAuth/live upload/download: NOT_IMPLEMENTED / NOT_TESTED.
-- Production key provider, rotation, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
+- Offline provider-injected wrapper and key-version metadata binding: IMPLEMENTED; production key provider, rotation execution, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
 - Canonical HFM snapshot exporter: BLOCKED pending authoritative schema/store reconciliation in Phases 1–3.
 - Production restore drill: NOT_TESTED.
 - Routine Google Drive synchronization: UNCHANGED.
 
 VERSION=v0.2
-PHASE7_DRIVE_KEY_INTEGRATION=DESIGN_GATE_ONLY
+PHASE7_DRIVE_KEY_INTEGRATION=OFFLINE_CONTRACT_PROTOTYPE_ONLY
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
 PRODUCTION_RESTORE=NOT_CERTIFIED
