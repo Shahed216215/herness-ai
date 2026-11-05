@@ -14,6 +14,22 @@ const {
 const DOMAIN = 'work_learning';
 const SOURCE_SYSTEM = 'mira_work_learning';
 const CLASSIFICATIONS = new Set(['PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED']);
+const SECRET_KEY_PATTERN = /(password|passwd|secret|token|api[_-]?key|authorization|cookie|private[_-]?key|credential)/i;
+function assertNoSecretFields(value, path = 'record', depth = 0, seen = new WeakSet(), budget = { nodes: 0 }) {
+  if (depth > 32 || ++budget.nodes > 20000) {
+    fail('Work Learning source exceeds the bounded secret-scan budget.');
+  }
+  if (!value || typeof value !== 'object') return;
+  if (seen.has(value)) fail('Work Learning source must be a plain acyclic JSON value.');
+  seen.add(value);
+  for (const [key, child] of Object.entries(value)) {
+    if (SECRET_KEY_PATTERN.test(key)) {
+      fail('Work Learning source contains a prohibited secret-like field at ' + path + '.' + key + '.');
+    }
+    assertNoSecretFields(child, path + '.' + key, depth + 1, seen, budget);
+  }
+  seen.delete(value);
+}
 function fail(message, code = 'HFM_WORK_LEARNING_MAPPING_INVALID') {
   const error = new Error(message);
   error.code = code;
@@ -34,6 +50,7 @@ function buildWorkLearningCanonicalCandidate({ entry, mapping, observedAt }) {
     fail('A raw Work Learning source record is required.');
   }
   text(entry.learningId, 'learningId', 256);
+  assertNoSecretFields(entry);
   text(mapping?.memoryId, 'mapping.memoryId', 128);
   text(mapping?.projectId, 'mapping.projectId', 128);
   if (!CLASSIFICATIONS.has(mapping?.classification)) {
