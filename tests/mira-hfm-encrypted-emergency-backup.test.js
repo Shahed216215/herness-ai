@@ -17,6 +17,7 @@ const createdAt = '2026-11-05T00:00:00.000Z';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-backup-test-'));
 const restoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-restore-test-'));
 
+async function main() {
 try {
   const envelope = createEncryptedBackup({ payload, key, backupId, createdAt, metadata });
   const env = JSON.parse(envelope.toString('utf8'));
@@ -126,3 +127,9 @@ try {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(restoreDir, { recursive: true, force: true });
 }
+}
+
+main().catch(error => {
+  console.error(error && error.stack ? error.stack : error);
+  process.exitCode = 1;
+});
