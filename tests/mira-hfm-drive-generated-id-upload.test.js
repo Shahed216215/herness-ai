@@ -8,12 +8,16 @@ const path = require('node:path');
 const { createJournaledDriveUpload, CONTENT_TYPE } = require('../services/mira-hfm-drive-generated-id-upload');
 const { readBackupIdJournal } = require('../services/mira-hfm-drive-backup-id-journal');
 const { createJournaledDriveUpload } = require('../services/mira-hfm-drive-generated-id-upload');
+const { createEncryptedBackup } = require('../services/mira-hfm-encrypted-emergency-backup');
 
 const projectId = 'mira-project-001';
 const accountBinding = 'b'.repeat(64);
 const driveSpace = 'drive';
 const parentId = 'dedicated-folder-123456';
-const bytes = Buffer.from('synthetic AES-256-GCM encrypted envelope bytes');
+const bytes = createEncryptedBackup({ payload: Buffer.from('synthetic encrypted payload'), key: Buffer.alloc(32, 9),
+  backupId: 'backup-upload-0001', createdAt: '2026-11-05T00:00:00.000Z',
+  metadata: { projectId: 'mira-project-001' } });
+const envelopeHeader = JSON.parse(bytes.toString('utf8'));
 const digest = crypto.createHash('sha256').update(bytes).digest('hex');
 
 function fixture(directory, behavior = {}) {
@@ -36,7 +40,8 @@ function fixture(directory, behavior = {}) {
       const journal = readBackupIdJournal({
         directory, operationId: behavior.operationId || 'drive-upload-operation-001',
         expected: { accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
-          generatedFileId: fileId, ciphertextSha256: digest, bytes: bytes.length }
+          generatedFileId: fileId, backupSchema: envelopeHeader.schema, backupVersion: envelopeHeader.version,
+          backupCreatedAt: envelopeHeader.createdAt, ciphertextSha256: digest, bytes: bytes.length }
       });
       assert.equal(journal.generatedFileId, fileId);
       if (behavior.beforeCommitTimeout && counts.create === 1) {
@@ -51,6 +56,8 @@ function fixture(directory, behavior = {}) {
       }
       const metadata = {
         accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
+        backupSchema: args.appProperties.schema, backupVersion: args.appProperties.version,
+        backupCreatedAt: args.appProperties.createdAt,
         ciphertextSha256: digest, bytes: bytes.length, contentType: CONTENT_TYPE,
         encryption: 'AES-256-GCM', parentId
       };
