@@ -200,7 +200,10 @@ const keyProvider = {
   assert.equal(creates, 1);
 
 
-  const fullDrive = { ...drive, about: { get: async () => ({ data: { storageQuota: { usage: '999999', limit: '10000000' } } }) } };
+  const fullDrive = { ...drive,
+    about: { get: async () => ({ data: { storageQuota: { usage: '999999', limit: '10000000' } } }) },
+    files: { ...drive.files, list: async () => ({ data: { files: [] } }) }
+  };
   await assert.rejects(() => driveBackup.uploadEncryptedBackup({
     drive: fullDrive, folderId: 'folder_123', fileName: 'mira-hfm-project-1-20261106T120000Z.mira-hfm.enc.json',
     bytes: encrypted.bytes, projectId: 'project-1', allocatedLimitBytes: 1000000
