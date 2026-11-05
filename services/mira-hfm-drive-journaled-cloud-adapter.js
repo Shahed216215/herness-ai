@@ -174,8 +174,19 @@ function createJournaledDriveCloudAdapter({ provider, journalDirectory, accountB
           'HFM_DRIVE_JOURNAL_RECOVERY_INCOMPLETE');
         for (const item of page.items) {
           const m = item && item.metadata;
-          if (!m || m.projectId !== project) {
-            reject('Journal recovery encountered an invalid or cross-project listing item.',
+          const itemCreated = m && typeof m.backupCreatedAt === 'string'
+            ? Date.parse(m.backupCreatedAt) : NaN;
+          if (!m || m.projectId !== project ||
+              typeof m.fileId !== 'string' || !DRIVE_FILE_ID_RE.test(m.fileId) ||
+              typeof m.backupId !== 'string' || !ID_RE.test(m.backupId) ||
+              m.objectKey !== prefix + m.backupId + '.mhe' ||
+              m.backupSchema !== BACKUP_SCHEMA || m.backupVersion !== BACKUP_VERSION ||
+              !Number.isFinite(itemCreated) || new Date(itemCreated).toISOString() !== m.backupCreatedAt ||
+              itemCreated > Date.now() || m.createdAt !== m.backupCreatedAt ||
+              !Number.isSafeInteger(m.bytes) || m.bytes < 1 || m.bytes > 64 * 1024 * 1024 ||
+              m.contentType !== CONTENT_TYPE || m.encryption !== 'AES-256-GCM' ||
+              typeof m.ciphertextSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(m.ciphertextSha256)) {
+            reject('Journal recovery encountered invalid, incomplete or cross-project listing metadata.',
               'HFM_DRIVE_OBJECT_INVALID');
           }
           if (m.backupId !== backupId) continue;
