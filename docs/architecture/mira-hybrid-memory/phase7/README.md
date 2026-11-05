@@ -74,7 +74,7 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 - Latest verified CI: run **42001767982 — SUCCESS**, job **127158482183**, commit `d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf`.
 - That run executed four offline suites (encrypted backup/key provider, injected transport adapter, durable ID journal, generated-ID upload orchestration): **66 explicit Phase 7 PASS markers** and all four commands reported `TESTS_FAILED=0`.
-- The later journaled cloud adapter end-to-end suite, its tampered-byte/no-stage regression, and SHA-256 account-fingerprint enforcement were added after that run. Their current-head CI evidence is **PENDING / INCONCLUSIVE**, not PASS.
+- The later journaled cloud adapter end-to-end suite, tampered-byte/no-stage regression, SHA-256 account-fingerprint enforcement, envelope schema/version/timestamp binding, and injected Google Drive v3 provider mapper/fake-client suite were added after that run. Their current-head CI evidence is **PENDING / INCONCLUSIVE**, not PASS.
 - The verified run confirms `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - This is synthetic offline CI evidence only, not a live-provider or production recovery certification.
 
