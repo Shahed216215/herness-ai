@@ -18,7 +18,9 @@ const files = [
   "audit-log.js",
   "mira-storage.js",
   "services/mira-provider-evolution.js"
-  , "services/provider-credential-store.js"
+  , "services/provider-credential-store.js",
+  "services/mira-json-state-store.js",
+  "services/mira-store-initialization-guard.js"
 ];
 
 function prepareCopy(root) {
