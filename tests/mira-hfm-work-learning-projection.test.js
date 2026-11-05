@@ -71,6 +71,8 @@ assert.ok(result.projections.every(x => x.sourceLineage.memoryId === 'learning-s
 assert.ok(result.projections.every(x => x.status === 'DERIVED_READ_ONLY_NOT_CANONICAL'));
 assert.ok(result.projections.every(x => x.mayEnterCanonicalMemory === false));
 assert.ok(result.projections.every(verifyLearningProjection));
+assert.equal(Object.isFrozen(result.projections[0].data.lessons), true);
+assert.equal(Object.isFrozen(result.projections[0].data.task.requirements), true);
 assert.equal(result.governance.persistence, false);
 assert.equal(result.governance.crossProjectTransferAllowed, false);
 console.log('WORK_LEARNING_DERIVED_PROJECTIONS_INHERIT_VERIFIED_PROJECT_SCOPE_PASS');
