@@ -358,7 +358,8 @@ async function run() {
     const outagePolicy = makePolicyAcceptance(backupSource, baselineSource);
     outagePolicy.policyStateProvider = {
       async readState() { throw new Error('synthetic state authority outage'); },
-      async compareAndSwap() { throw new Error('must not commit'); }
+      async compareAndSwap() { throw new Error('must not commit'); },
+      async getCommitReceipt() { throw new Error('must not look up receipt before a state read'); }
     };
     await assert.rejects(() => runStagingBackupDrill({
       source: { descriptor: backupSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
