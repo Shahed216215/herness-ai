@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 9 Retrieval & Capacity Optimization
 
-Status: ISOLATED RETRIEVAL OPTIMIZER AND OFFLINE CONTRACT TEST ADDED; LIVE PROVIDER INTEGRATION, MODEL TOKENIZER CALIBRATION, LOAD TESTING AND 100x END-TO-END CAPACITY NOT CERTIFIED.
+Status: ISOLATED RETRIEVAL OPTIMIZER, READ-ONLY ADAPTER CONTRACTS FOR EXISTING HFM CANONICAL/PUBLIC ARCHIVE/GROUP IMPORT INTERFACES, INJECTABLE MODEL TOKENIZER COUNTER AND SYNTHETIC 1x/10x/100x BENCHMARKS ADDED; LIVE PROVIDER EXECUTION, DEPLOYED TOKENIZER CALIBRATION AND PRODUCTION CAPACITY NOT CERTIFIED.
 Parent: Phase 8 learning/evolution integration branch.
 Version: v0.2 only.
 
@@ -12,6 +12,11 @@ Phase 9 adds an opt-in, dependency-injected, read-only retrieval optimizer. Exis
 
 - Token-aware context selection uses a conservative UTF-8 byte heuristic (ceil(bytes / 3) + 4). This is not a model tokenizer and must be calibrated against the deployed model before production use.
 - Multi-source retrieval uses caller-injected adapters. Each adapter receives only query, project scope, result limit and readOnly=true.
+- `mira-hfm-retrieval-provider-adapters.js` supplies read-only wrappers for the existing authorized canonical HFM facade report, Facebook Public Research Archive lookup and manual Facebook Group Import retrieval service. Callers must inject the existing facade/service methods; the module creates no clients, reads no credentials and registers no automatic runtime hook.
+- Canonical records are admitted only when the supplied facade report includes exactly one matching provenance item and `ELIGIBLE/AUTHORIZED_READ` decision, with `integrity.status=VERIFIED` and `lifecycle=ACTIVE`.
+- Public archive results are restricted to the configured Page ID, exact project-ID token matches in source-linked public metadata, and HTTPS source URLs. They remain UNVERIFIED.
+- Group results must match project and group scope and retain `SOURCE_RECORDED`, `UNVERIFIED`, `PENDING_REVIEW` boundaries. They remain untrusted.
+- `createModelTokenizerCounter` accepts a synchronous encoder from the deployed model tokenizer. The optimizer can use this injected counter and reports the tokenizer model ID. The default remains an explicitly labelled UTF-8 heuristic.
 - Project ID equality is mandatory. Foreign-project results are discarded.
 - Lexical relevance ranking uses inverse-document-frequency weighting, title boost, query coverage and deterministic tie-breaks.
 - Duplicate reduction uses project/memory identity, digest and normalized HTTPS source URL.
@@ -23,7 +28,7 @@ Phase 9 adds an opt-in, dependency-injected, read-only retrieval optimizer. Exis
 
 ## Governance boundary
 
-- No storage writes, provider network calls, Facebook API calls, canonical Memory mutation, trust promotion, learning execution or self-modification.
+- The adapters are read-only wrappers. Invoking an injected Supabase archive lookup may perform a read-only network request; the adapter tests use in-memory mocks and make no live requests. No Facebook API call, storage write, canonical Memory mutation, trust promotion, learning execution or self-modification is performed by the adapters.
 - Source adapters are injected by the caller; no default connector or automatic runtime hook is registered.
 - External snippets remain untrusted evidence. Text found in a Memory record is data, never an instruction to override system, developer, project or user policy.
 - Search failure is not evidence of deletion or data loss.
@@ -31,26 +36,29 @@ Phase 9 adds an opt-in, dependency-injected, read-only retrieval optimizer. Exis
 
 ## Capacity measurement
 
-measureCapacity reports the ratio of observed record count to a declared baseline capacity. A 100x result is only a record-count ratio. It does not establish 100x latency, throughput, durability, storage capacity, token efficiency or production scalability. Those require separate reproducible benchmarks using the target provider, deployed runtime, dataset distribution, concurrency, latency percentiles, failure/recovery tests and actual tokenizer.
+`measureCapacity` reports the ratio of observed record count to a declared baseline. The provider-adapter benchmark exercises synthetic 100-record (1x), 1,000-record (10x), and 10,000-record (100x) corpora, with three in-process samples per size and p50/p95 elapsed time reporting. This is a reproducible local algorithm benchmark only. It does not establish provider latency, production throughput, durability, storage quota, concurrency behavior, recall quality, failure/recovery behavior or 100x end-to-end capacity. The synthetic tokenizer used by tests is not the deployed model tokenizer.
 
 ## Offline verification
 
-Run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js
+Run:
+- `node tests/mira-hfm-phase9-retrieval-optimizer.test.js`
+- `node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js`
 
-The test uses synthetic in-memory adapters, including a 10,000-record corpus against a 100-record declared baseline (a 100x synthetic record-count ratio). It checks bounded output and retrieval completion, not production performance or capacity. It does not access local user data, Facebook, Google Drive, Supabase, Render, external APIs or production storage.
+The tests use mock facade/archive/group services and synthetic in-memory adapters, including 100/1,000/10,000-record scale cases. They do not access local user data, Facebook, Google Drive, Supabase, Render, external APIs or production storage.
 
 ## Remaining work
 
-1. Connect real provider adapters only after their read authorization and project-isolation contracts are independently verified.
-2. Calibrate token estimation against the actual model tokenizer and reserve prompt/system/tool overhead.
-3. Add representative corpus benchmarks at 1x/10x/100x and measure p50/p95 latency, memory, candidate recall, token use and failure behavior.
+1. Execute the adapters against the actual authorized local/HFM and Supabase provider instances only after explicit live-test authorization; the current tests use mocks.
+2. Supply the exact deployed model tokenizer encoder and reserve prompt/system/tool overhead in the generation layer.
+3. Run representative provider benchmarks at 1x/10x/100x and measure p50/p95 latency, memory, candidate recall, token use, concurrency and failure/recovery behavior.
 4. Add independent retrieval relevance and adversarial prompt-injection regression tests.
-5. Integrate into the Mira generation lifecycle only after Phase 8 live integration and governance gates are completed.
-6. Do not certify 100x capacity until end-to-end measured evidence exists.
+5. Integrate into the Mira generation lifecycle only after Phase 8 live Supabase integration and governance gates are completed.
+6. Do not certify 100x end-to-end capacity until provider/runtime measured evidence exists.
 
 VERSION=v0.2
-PHASE9=ISOLATED_RETRIEVAL_OPTIMIZER_IMPLEMENTED
-LIVE_PROVIDER_INTEGRATION=NOT_CERTIFIED
-MODEL_TOKENIZER_CALIBRATION=NOT_DONE
-CAPACITY_100X=NOT_VERIFIED
+PHASE9=RETRIEVAL_OPTIMIZER_AND_READ_ONLY_PROVIDER_ADAPTER_CONTRACTS_IMPLEMENTED
+LIVE_PROVIDER_EXECUTION=NOT_CERTIFIED
+DEPLOYED_MODEL_TOKENIZER=NOT_CONFIGURED
+SYNTHETIC_1X_10X_100X_BENCHMARK=ADDED
+CAPACITY_100X_END_TO_END=NOT_VERIFIED
 PRODUCTION=NOT_APPROVED
