@@ -5,6 +5,7 @@ on:
     branches:
       - work/mira-hfm-v02-phase7-emergency-backup
     paths:
+      - 'services/mira-hfm-pinned-directory.js'
       - 'services/mira-hfm-emergency-backup.js'
       - 'services/mira-hfm-google-drive-backup-adapter.js'
       - 'services/mira-hfm-authoritative-snapshot.js'
@@ -12,7 +13,12 @@ on:
       - 'services/mira-hfm-authorization-decision.js'
       - 'services/mira-hfm-staging-backup-drill.js'
       - 'services/mira-hfm-recovery-verification.js'
+      - 'services/mira-hfm-staging-backup-drill.js'
       - 'services/mira-hfm-key-provider-contract.js'
+      - 'services/mira-hfm-pinned-directory.js'
+      - 'tests/mira-hfm-pinned-backup-directory.test.js'
+      - 'tests/mira-hfm-staging-backup-drill.test.js'
+      - 'tests/mira-hfm-pinned-backup-directory.test.js'
       - 'tests/mira-hfm-emergency-backup.test.js'
       - 'tests/mira-hfm-google-drive-backup-adapter.test.js'
       - 'tests/mira-hfm-key-provider-contract.test.js'
@@ -57,6 +63,7 @@ jobs:
       - name: Run isolated emergency-backup contract tests
         run: |
           set -euo pipefail
+          node tests/mira-hfm-pinned-backup-directory.test.js
           node tests/mira-hfm-emergency-backup.test.js
           node tests/mira-hfm-google-drive-backup-adapter.test.js
           node tests/mira-hfm-key-provider-contract.test.js
