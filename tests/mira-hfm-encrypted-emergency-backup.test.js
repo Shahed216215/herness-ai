@@ -112,6 +112,11 @@ try {
 
   const capacityAdapter = {
     capabilities: { ...adapter.capabilities, list: true },
+    async getProviderQuota() {
+      return { status: 'REPORTED', providerQuotaAvailable: true, providerId: 'synthetic-drive',
+        scope: 'account', projectId: null, measuredAt: '2026-11-05T00:00:00.000Z',
+        quotaBytes: 9000000000, usedBytes: 2000000000, availableBytes: 7000000000 };
+    },
     async list(input) {
       assert.equal(input.projectId, 'mira-project-001');
       assert.equal(input.prefix, 'mira-hfm-emergency/v1/mira-project-001/');
@@ -141,6 +146,10 @@ try {
   });
   assert.equal(capacity.status, 'WITHIN_BUDGET');
   assert.equal(capacity.budgetBytes, 5000000000);
+  assert.equal(capacity.budgetSource, 'HFM_CONFIGURED_PROJECT_EMERGENCY_BUDGET');
+  assert.equal(capacity.providerQuota.status, 'REPORTED');
+  assert.equal(capacity.providerQuota.scope, 'account');
+  assert.equal(capacity.providerQuota.quotaBytes, 9000000000);
   assert.equal(capacity.usedBytes, envelope.length + 100);
   assert.equal(capacity.backupCount, 2);
   assert.equal(capacity.deletionPerformed, false);
@@ -185,6 +194,7 @@ try {
   }), error => error.code === 'HFM_CLOUD_LIST_INVALID');
   console.log('HFM_PHASE7_PAGINATION_COMPLETE_AND_INCOMPLETE_REJECTED=PASS');
   console.log('HFM_PHASE7_5GB_CAPACITY_MONITOR_AND_PROJECT_SCOPE=PASS');
+  console.log('HFM_PHASE7_CONFIGURED_BUDGET_DISTINCT_FROM_PROVIDER_QUOTA=PASS');
   console.log('HFM_PHASE7_RETENTION_PREVIEW_NO_AUTOMATIC_DELETION=PASS');
 
   await assert.rejects(() => uploadEncryptedEmergencyBackup({ adapter, projectId: 'mira-project-001', envelope, key }),
