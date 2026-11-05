@@ -3,7 +3,7 @@ name: Mira HFM Phase 4 Facebook Page Connector
 on:
   push:
     branches:
-      - work/mira-hfm-v02-phase4-facebook-page-connector
+      - work/mira-hfm-v02-phase4-clean-restack-on-phase3-20261105
     paths:
       - 'services/mira-facebook-page-memory-connector.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
@@ -22,7 +22,7 @@ on:
       - 'docs/architecture/mira-hybrid-memory/phase4/**'
   pull_request:
     branches:
-      - work/mira-hfm-v02-phase3-unified-memory-contract-core
+      - work/mira-hfm-v02-phase3-clean-restack-on-phase2-20261105
     paths:
       - 'services/mira-facebook-page-memory-connector.js'
       - 'tests/mira-facebook-page-memory-connector.test.js'
