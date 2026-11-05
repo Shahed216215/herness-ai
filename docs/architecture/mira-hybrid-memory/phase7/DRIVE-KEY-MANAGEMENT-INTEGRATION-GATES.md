@@ -194,6 +194,22 @@ STATUS=OFFLINE_JOURNALED_UPLOAD_ORCHESTRATION_PROTOTYPE
 GOOGLE_DRIVE_SDK=NOT_IMPLEMENTED
 LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
+## 9.4 Journaled cloud adapter integration (offline prototype)
+
+The branch now includes `services/mira-hfm-drive-journaled-cloud-adapter.js`, which exposes the existing cloud-backup service contract over the generated-ID journal and injected provider.
+
+- `putIfAbsent` derives a deterministic operation ID from project and backup identity, validates the exact object namespace and encrypted bytes, then delegates to journal-before-upload orchestration.
+- It returns a reconciliation result only when the generated-ID uploader has verified remote metadata and exact ciphertext bytes. The cloud service now accepts this narrowly defined `reconciled + verified` result and performs its own readback and authenticated-envelope verification again.
+- `get` resolves the exact generated ID from the journal, verifies account/space/project/backup/digest/size/encryption/parent metadata, downloads exact bytes and rechecks size/SHA-256. It never searches by file name.
+- Missing journal returns no object; corrupt or mismatched journal fails closed. The adapter intentionally does not provide list/quota/delete/move/permission APIs; the existing capacity/listing adapter remains separate.
+- End-to-end synthetic tests exercise encrypted backup upload, repeated upload with HTTP 409 reconciliation, authenticated cloud preview, restore to staging only, project isolation, and no network/OAuth/canonical writes.
+
+This proves only the injected fake-provider contract. It does not establish Google Drive API field mapping, account identity, remote consistency, OAuth scope, quota or production durability.
+
+STATUS=OFFLINE_JOURNALED_CLOUD_ADAPTER_INTEGRATION
+GOOGLE_DRIVE_SDK=NOT_IMPLEMENTED
+LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
+
 ## 10. Latest code-change CI evidence
 
 The Phase 7 workflow completed GitHub Actions run **42001767982 — SUCCESS**, job **127158482183**, against branch commit `d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf`. The job ran four offline test suites: encrypted backup/key-provider, injected transport adapter, durable generated-ID journal, and journaled generated-ID upload. Logs contain **66 explicit Phase 7 PASS markers**; all four commands report `TESTS_FAILED=0`. The new generated-ID upload suite verifies journal-before-upload ordering, HTTP 409 duplicate reconciliation, timeout-after-commit reconciliation, timeout-before-commit retry with the same ID, remote metadata conflict rejection, exact ciphertext mismatch rejection, and cross-account journal binding. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
