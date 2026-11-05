@@ -54,7 +54,7 @@ Each uploaded item must be:
 - AES-256-GCM envelope bytes only; no plaintext snapshot or root key.
 - Created with one ID from files.generateIds for the selected Drive space.
 - Journaled and fsynced locally before files.create starts.
-- Bound through private appProperties to projectId, backupId, envelope schema/version/createdAt, ciphertext SHA-256, byte length and encryption algorithm.
+- Bound through a strict private appProperties allowlist to projectId, backupId, envelope schema/version/createdAt, ciphertext SHA-256, byte length and encryption algorithm; every key/value pair is bounded to Google's 124-byte property limit and future timestamps are rejected.
 - Uploaded resumably; after success, timeout, or 409, retrieved by the same exact file ID and checked for metadata equality and exact ciphertext byte equality.
 - Listed only under the configured parent and project namespace. An incomplete Drive listing must never be treated as a complete inventory.
 
