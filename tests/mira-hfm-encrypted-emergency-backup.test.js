@@ -6,9 +6,10 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const backupModule = require('../services/mira-hfm-encrypted-emergency-backup');
 const {
   createEncryptedBackup, decryptAndVerifyBackup, previewEncryptedBackup, writeImmutableBackup, restoreToStaging
-} = require('../services/mira-hfm-encrypted-emergency-backup');
+} = backupModule;
 
 const key = crypto.randomBytes(32);
 const payload = Buffer.from(JSON.stringify({ schemaVersion: '1.0.0', memories: [{ id: 'mem-001', content: 'synthetic test memory' }] }));
@@ -90,6 +91,15 @@ try {
   }
   console.log('HFM_PHASE7_RESTORE_AUTH_FAILURE_NO_STAGE_ARTIFACT=PASS');
 
+  const capturedCloudPlaintextBuffers = [];
+  const originalCloudDecrypt = backupModule.decryptAndVerifyBackup;
+  backupModule.decryptAndVerifyBackup = (...args) => {
+    const result = originalCloudDecrypt(...args);
+    capturedCloudPlaintextBuffers.push(result.payload);
+    return result;
+  };
+  const cloudBackupModule = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
+  backupModule.decryptAndVerifyBackup = originalCloudDecrypt;
   const {
     uploadEncryptedEmergencyBackup,
     previewEncryptedEmergencyBackupFromCloud,
@@ -97,7 +107,7 @@ try {
     inspectEncryptedEmergencyBackupCapacity,
     planBackupRetention,
     DEFAULT_BACKUP_BUDGET_BYTES
-  } = require('../services/mira-hfm-encrypted-emergency-backup-cloud');
+  } = cloudBackupModule;
   const objects = new Map();
   const adapter = {
     capabilities: { encryptedOnly: true, projectIsolated: true, createOnly: true, readAfterWrite: true },
@@ -120,6 +130,10 @@ try {
   assert.equal(uploaded.rootKeyTransmitted, false);
   assert.equal(uploaded.plaintextTransmitted, false);
   assert.equal(objects.size, 1);
+  assert.equal(capturedCloudPlaintextBuffers.length, 2);
+  assert.equal(capturedCloudPlaintextBuffers.every(buffer =>
+    Buffer.isBuffer(buffer) && buffer.every(byte => byte === 0)), true);
+  console.log('HFM_PHASE7_CLOUD_UPLOAD_VERIFICATION_PLAINTEXT_ZEROIZED=PASS');
   console.log('HFM_PHASE7_ENCRYPTED_CLOUD_UPLOAD_AND_READBACK=PASS');
 
   const crossProjectBackupId = 'backup-cross-project-001';
@@ -280,10 +294,15 @@ try {
 
   const cloudStageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-cloud-restore-test-'));
   try {
+    const capturedBeforeCloudRestore = capturedCloudPlaintextBuffers.length;
     const cloudRestored = await restoreEncryptedEmergencyBackupFromCloud({
       adapter, projectId: 'mira-project-001', backupId, key,
       stagingDirectory: cloudStageDir, restoreId: 'cloud-restore-0001'
     });
+    assert.equal(capturedCloudPlaintextBuffers.length, capturedBeforeCloudRestore + 1);
+    assert.equal(capturedCloudPlaintextBuffers[capturedCloudPlaintextBuffers.length - 1]
+      .every(byte => byte === 0), true);
+    console.log('HFM_PHASE7_CLOUD_RESTORE_VERIFICATION_PLAINTEXT_ZEROIZED=PASS');
     assert.equal(cloudRestored.status, 'VERIFIED_STAGING_ONLY');
     assert.equal(cloudRestored.canonicalMemoryWrites, 0);
     assert.deepEqual(fs.readFileSync(cloudRestored.path), payload);
