@@ -115,6 +115,10 @@ function rejects(fn, code) {
   assert.throws(fn, error => error && error.code === code);
 }
 
+rejects(() => verify(signed(), { now: NaN }), 'HFM_PROVENANCE_POLICY_CONFIG_INVALID');
+rejects(() => verify(signed(), { maxFutureSkewMs: Infinity }), 'HFM_PROVENANCE_POLICY_CONFIG_INVALID');
+rejects(() => verify(signed(), { maxFutureSkewMs: 30001 }), 'HFM_PROVENANCE_POLICY_CONFIG_INVALID');
+
 const result = verify();
 assert.equal(result.status, 'PROVENANCE_POLICY_SIGNATURE_AND_STATE_VERIFIED_NOT_INFRASTRUCTURE_CERTIFIED');
 assert.equal(result.infrastructureIndependentlyCertified, false);
