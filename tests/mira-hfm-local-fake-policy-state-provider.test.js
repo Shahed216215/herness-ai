@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { createLocalFakePolicyStateProvider } = require('../services/mira-hfm-local-fake-policy-state-provider');
+const { canonicalizeProvenancePolicy } = require('../services/mira-hfm-signed-provenance-policy');
 
 const authorityId = 'fake-state-authority';
 const digest1 = '1'.repeat(64);
