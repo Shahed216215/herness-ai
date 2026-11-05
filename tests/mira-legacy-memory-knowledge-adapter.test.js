@@ -7,7 +7,7 @@ const {
 } = require('../services/mira-legacy-memory-knowledge-adapter');
 
 const authorizeAccess = () => true;
-const actorContext = { actorId: 'fixture-actor', purpose: 'isolated-adapter-test', requestId: 'adapter-request-001' };
+const actorContext = { actorId: 'fixture-actor', projectId: 'project-alpha', purpose: 'isolated-adapter-test', requestId: 'adapter-request-001' };
 
 const sourceFileDigest = 'a'.repeat(64);
 function makeCanonical(domain, legacyId, entry, memoryId = 'memory-0001', projectId = 'project-alpha', classification = 'PROJECT_PRIVATE') {
@@ -123,11 +123,6 @@ assert.deepEqual(filterAdaptedLegacyEntries({
   adaptedEntries: [adaptedKnowledge], pendingConflicts: [], projectId: 'project-alpha', authorizeAccess, actorContext
 }), []);
 console.log('MIGRATION_PENDING_REVIEW_NOT_RETRIEVABLE=PASS');
-assert.throws(() => filterAdaptedLegacyEntries({
-  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-alpha'
-}), /authenticated access authorizer is required/i);
-console.log('ADAPTER_ACCESS_AUTHORIZER_REQUIRED=PASS');
-
 
 const activeKnowledge = {
   ...adaptedKnowledge,
@@ -137,6 +132,11 @@ const activeKnowledge = {
     lifecycle: 'ACTIVE'
   }
 };
+
+assert.throws(() => filterAdaptedLegacyEntries({
+  adaptedEntries: [activeKnowledge], pendingConflicts: [], projectId: 'project-alpha'
+}), /authenticated access authorizer is required/i);
+console.log('ADAPTER_ACCESS_AUTHORIZER_REQUIRED=PASS');
 
 const crm = {
   messageId: 'crm-msg-001', conversationId: 'conv-001',
@@ -176,7 +176,7 @@ assert.deepEqual(filterAdaptedLegacyEntries({
     projectId: 'project-alpha', status: 'QUARANTINED',
     originalMemoryIds: ['memory-0001']
   }],
-  projectId: 'project-alpha'
+  projectId: 'project-alpha', authorizeAccess, actorContext
 }), []);
 console.log('QUARANTINED_RECORD_EXCLUDED=PASS');
 
@@ -186,7 +186,7 @@ assert.equal(filterAdaptedLegacyEntries({
     projectId: 'project-beta', status: 'QUARANTINED',
     originalMemoryIds: ['memory-0001']
   }],
-  projectId: 'project-alpha'
+  projectId: 'project-alpha', authorizeAccess, actorContext
 }).length, 1);
 console.log('CROSS_PROJECT_CONFLICT_ISOLATION=PASS');
 
