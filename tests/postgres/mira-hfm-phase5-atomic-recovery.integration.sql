@@ -88,6 +88,16 @@ BEGIN
     RAISE EXCEPTION 'idempotency count mismatch: batches %, audits %', batch_count, audit_count;
   END IF;
 
+  -- Reusing the same operation key for different audit semantics must be rejected.
+  retry_event := jsonb_set(e,'{eventId}',to_jsonb('10000000-0000-4000-8000-000000000003'::text));
+  retry_event := jsonb_set(retry_event,'{eventDigest}',to_jsonb(repeat('9',64)));
+  BEGIN
+    PERFORM * FROM public.mira_stage_facebook_group_import_v1(b,retry_event,op);
+    RAISE EXCEPTION 'expected operation-key audit identity conflict was not raised';
+  EXCEPTION WHEN unique_violation THEN
+    NULL;
+  END;
+
   -- Same batch identity with a different digest must be rejected.
   conflict_batch := jsonb_set(b,'{batchDigest}',to_jsonb(repeat('c',64)));
   conflict_batch := jsonb_set(conflict_batch,'{exportId}',to_jsonb('pg-integration-export-conflict'::text));
@@ -143,6 +153,7 @@ BEGIN
 
   RAISE NOTICE 'POSTGRES_ATOMIC_BATCH_AUDIT_CREATE=PASS';
   RAISE NOTICE 'POSTGRES_IDEMPOTENT_RETRY_NO_DUPLICATE=PASS';
+  RAISE NOTICE 'POSTGRES_OPERATION_KEY_AUDIT_IDENTITY_CONFLICT=PASS';
   RAISE NOTICE 'POSTGRES_IMMUTABLE_BATCH_CONFLICT=PASS';
   RAISE NOTICE 'POSTGRES_BATCH_ROLLBACK_ON_AUDIT_FAILURE=PASS';
 END
