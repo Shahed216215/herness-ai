@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { validateKeyProviderContract } = require('./mira-hfm-key-provider-contract');
 
 const BACKUP_FORMAT_VERSION = 1;
 const ENCRYPTION_PROFILE = 'MIRA_HFM_ENVELOPE_AES_256_GCM_V1';
@@ -32,12 +33,13 @@ function validateMetadata(metadata) {
     throw new Error('recordCount must be a non-negative safe integer.');
   }
 }
-function assertKeyProvider(provider, method) {
+function assertKeyProvider(provider, method, metadata) {
   if (!isPlainObject(provider) || typeof provider[method] !== 'function') {
-    const error = new Error('An approved external key provider with ' + method + ' is required.');
+    const error = new Error('An external key provider with ' + method + ' is required.');
     error.code = 'BACKUP_KEY_PROVIDER_UNAVAILABLE';
     throw error;
   }
+  validateKeyProviderContract(provider, metadata, method);
 }
 function makeManifest(snapshot, metadata, nonce, wrappedDataKey) {
   if (!isPlainObject(snapshot) || !Array.isArray(snapshot.records)) throw new Error('Snapshot must contain a records array.');
@@ -62,13 +64,17 @@ function makeManifest(snapshot, metadata, nonce, wrappedDataKey) {
   return { manifest: { ...base, manifestHash: sha256(canonicalize(base)) }, payload };
 }
 async function encryptSnapshot({ snapshot, metadata, keyProvider }) {
-  assertKeyProvider(keyProvider, 'wrapDataKey');
+  assertKeyProvider(keyProvider, 'wrapDataKey', metadata);
   validateMetadata(metadata);
   const dataKey = crypto.randomBytes(32);
   try {
-    const wrappedDataKey = await keyProvider.wrapDataKey({
-      dataKey: Buffer.from(dataKey), keyId: metadata.keyId, keyVersion: metadata.keyVersion
-    });
+    const providerKeyCopy = Buffer.from(dataKey);
+    let wrappedDataKey;
+    try {
+      wrappedDataKey = await keyProvider.wrapDataKey({
+        dataKey: providerKeyCopy, keyId: metadata.keyId, keyVersion: metadata.keyVersion
+      });
+    } finally { providerKeyCopy.fill(0); }
     if (typeof wrappedDataKey !== 'string' || !wrappedDataKey || wrappedDataKey.length > 16384) {
       throw new Error('Key provider returned an invalid wrapped data key.');
     }
@@ -128,7 +134,7 @@ function parseEnvelope(input) {
   return envelope;
 }
 async function decryptBackup({ backup, keyProvider, expectedProjectId, supportedSchemaVersions = [] }) {
-  assertKeyProvider(keyProvider, 'unwrapDataKey');
+  assertKeyProvider(keyProvider, 'unwrapDataKey', parseEnvelope(backup).manifest);
   const envelope = parseEnvelope(backup);
   const manifest = envelope.manifest;
   if (expectedProjectId && manifest.projectId !== expectedProjectId) {
