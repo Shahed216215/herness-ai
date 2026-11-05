@@ -256,3 +256,14 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - Phase 7 run #196 (ID `42068235723`) completed SUCCESS on exact commit `d9205897148f954aff6dffac0dbc91fbe60e676e`; Phase 10 independent verification run #70 (ID `42068229797`) also completed SUCCESS on the same commit.
 - Added the snapshot signing provider service to both Phase 7 push and pull-request path filters so future edits to the contract itself trigger the dedicated Phase 7 workflow.
 - These checks validate the adapter's declared interface only. They do not prove provider identity, non-exportable custody, KMS/HSM controls, key rotation/revocation, workload identity, or provider audit evidence. F7-SR-02 remains PARTIALLY_REMEDIATED / OPEN; staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
+
+
+## Additional offline hardening checkpoint — 2026-11-05
+
+- Latest code/test commit at this checkpoint: `ec92874181b7e36c831a5dff32dfe8536bf3364c`.
+- F7-SR-01: authorization verifier now rejects non-safe-integer, non-positive, non-finite, or over-limit validity/skew/clock configuration; malformed Ed25519 trust-anchor parsing is normalized to a stable fail-closed error; signatures must use canonical base64 encoding. Dedicated negative tests cover these inputs.
+- F7-SR-05: staging source provenance is cloned from canonical JSON and recursively frozen before being exposed or signed. Non-object/non-canonical provenance is rejected. Same-file Memory/Knowledge source collisions close the pinned directory descriptor before rejection. Tests cover nested mutation, invalid provenance shape, and same-file rejection.
+- F7-SR-03: pinned child reads now use a no-follow file descriptor and reject non-regular files, hard links, oversized files, and inode/size/timestamp/link-count changes during read. Tests cover a valid single-link file, hard-link rejection, and symlink rejection.
+- The changed services and tests are already covered by the Phase 7 workflow path filters.
+- Verification disposition for this checkpoint: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. The available linked GitHub workflow-run lookup returns pull-request-triggered runs only and returned no PR runs for this branch commit. No local execution evidence is claimed; do not mark these new tests PASS until the matching push workflow logs are inspected.
+- These changes are offline contract hardening only. No live KMS/HSM, live Drive, staging deployment, production Memory/Knowledge, or production infrastructure was accessed.
