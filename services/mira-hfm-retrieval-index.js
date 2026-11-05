@@ -31,19 +31,17 @@ function tokenize(value) {
   return String(value || '').normalize('NFKC').toLowerCase()
     .match(/[\p{L}\p{N}][\p{L}\p{N}_-]{1,}/gu) || [];
 }
-function flattenJson(value, state = { depth: 0, nodes: 0, parts: [] }) {
-  if (++state.nodes > 10000 || state.depth > 16) {
+function flattenJson(value, state = { nodes: 0, parts: [] }, depth = 0) {
+  if (++state.nodes > 10000 || depth > 16) {
     fail('JSON content exceeds the bounded retrieval-index traversal budget.',
       'HFM_RETRIEVAL_INDEX_BUDGET_EXCEEDED');
   }
   if (typeof value === 'string') {
     state.parts.push(value);
   } else if (Array.isArray(value)) {
-    for (const item of value) flattenJson(item, { ...state, depth: state.depth + 1 });
+    for (const item of value) flattenJson(item, state, depth + 1);
   } else if (value && typeof value === 'object') {
-    for (const item of Object.values(value)) {
-      flattenJson(item, { ...state, depth: state.depth + 1 });
-    }
+    for (const item of Object.values(value)) flattenJson(item, state, depth + 1);
   }
   return state.parts.join(' ');
 }
@@ -135,7 +133,7 @@ function searchProjectScopedMemory({
   const avgLength = documents.length
     ? documents.reduce((sum, doc) => sum + doc.length, 0) / documents.length
     : 0;
-  const results = [];
+  const scoreByDocument = new Map();
   for (const term of queryTerms) {
     const list = postings.get(term) || [];
     const df = list.length;
@@ -145,19 +143,16 @@ function searchProjectScopedMemory({
       const doc = documents[posting.docIndex];
       const k = 1.2 * (0.25 + 0.75 * (avgLength ? doc.length / avgLength : 1));
       const score = idf * ((posting.frequency * 2.2) / (posting.frequency + k));
-      let item = results.find(x => x.memoryId === doc.record.memoryId);
+      let item = scoreByDocument.get(posting.docIndex);
       if (!item) {
-        item = {
-          record: doc.record,
-          score: 0,
-          matchedTerms: []
-        };
-        results.push(item);
+        item = { record: doc.record, score: 0, matchedTerms: [] };
+        scoreByDocument.set(posting.docIndex, item);
       }
       item.score += score;
       item.matchedTerms.push(term);
     }
   }
+  const results = [...scoreByDocument.values()];
   const provenanceById = new Map(report.provenance.map(item => [item.memoryId, item]));
   results.sort((a, b) =>
     b.score - a.score || a.record.memoryId.localeCompare(b.record.memoryId)
