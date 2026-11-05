@@ -29,7 +29,7 @@ function sha256(value) {
 }
 function tokenize(value) {
   return String(value || '').normalize('NFKC').toLowerCase()
-    .match(/[\p{L}\p{N}][\p{L}\p{N}_-]{1,}/gu) || [];
+    .match(/[\p{L}\p{N}][\p{L}\p{M}\p{N}_-]{1,}/gu) || [];
 }
 function flattenJson(value, state = { nodes: 0, parts: [] }, depth = 0) {
   if (++state.nodes > 10000 || depth > 16) {
