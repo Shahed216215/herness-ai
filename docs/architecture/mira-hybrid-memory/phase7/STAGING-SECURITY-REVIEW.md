@@ -46,6 +46,15 @@ The seven-suite CI success demonstrates the tested synthetic contracts. It does 
 - Platform boundary: this is POSIX mode/UID/GID enforcement on the Linux procfs-backed path. It does not independently enumerate or certify every platform-specific ACL mechanism (including Windows DACLs and non-POSIX ACL extensions). Production provisioning must verify ACLs and mount/storage policy separately. The application cannot establish that the host administrator or container runtime is trustworthy.
 - Gate: BLOCKS REAL STAGING BACKUP DIRECTORY USE until CI and independent security review pass; ACL/host governance remains an operational requirement.
 
+### F7-SR-05 — Baseline provenance claims do not independently certify infrastructure
+
+- Severity: HIGH
+- Evidence: `services/mira-hfm-source-provenance-contract.js`, `services/mira-hfm-authoritative-snapshot.js`, and `services/mira-hfm-staging-backup-drill.js`.
+- Impact: Distinct source IDs, signing keys, and caller-supplied provenance labels can still describe the same storage account, workload principal, administrative plane, or trust domain. A signature authenticates the claim, not the truth of the infrastructure inventory.
+- Remediation progress (2026-11-05): Added a versioned, pinned two-source provenance policy. The contract requires six distinct dimensions: storage system, storage instance, security principal, trust domain, source system, and snapshot-signing trust issuer. Signed claims are compared with each source's pinned trust record; shared dimensions, duplicate IDs, missing profiles, and pin mismatches fail closed before publication. The authorization-decision issuer is a separate trust purpose and must not be conflated with the snapshot-signing issuer. Synthetic negative tests cover every shared dimension and malformed/unpinned policy cases.
+- Additional correction: the dedicated test now uses the contract's exact `snapshotIssuerId` field, and the Phase 7 workflow pull-request path filters include both the provenance service and its test. Production infrastructure inventory, independently governed policy distribution, storage/account separation, workload identity, and signer/issuer governance remain unverified. The production key-provider contract also now rejects `environment: production` until a separate approval design is implemented.
+- Gate: BLOCKS REAL STAGING INTEGRATION AND PRODUCTION. F7-SR-05 remains PARTIALLY_REMEDIATED / OPEN; CI for the latest changes is INCONCLUSIVE until commit-matched logs are inspected.
+
 ## Positive controls observed
 
 - Production environment is explicitly rejected by the local staging source adapter.
