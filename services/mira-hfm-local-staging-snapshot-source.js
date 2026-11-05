@@ -77,7 +77,7 @@ function createLocalStagingSnapshotSource(config) {
   if (typeof config.sourceId !== 'string' || !config.sourceId.trim() ||
       typeof config.signingKeyId !== 'string' || !config.signingKeyId.trim() ||
       !config.signingProvider ||
-      typeof config.authorize !== 'function' || !config.authorizationTrust ||
+      typeof config.authorize !== 'function' || !isPlainObject(config.authorizationTrust) ||
       !config.replayGuard || typeof config.replayGuard.consume !== 'function') {
     fail('Source identity/key, signed authorization provider, independent authorization trust store and replay guard are required.',
       'HFM_STAGING_SOURCE_CONFIG_INVALID');
@@ -138,6 +138,7 @@ function createLocalStagingSnapshotSource(config) {
   const descriptor = Object.freeze({
     contractVersion: '1', sourceId: config.sourceId, signingKeyId: config.signingKeyId,
     signingKeyVersion, signingProviderId: signingProvider.descriptor.providerId,
+    authorizationIssuerIds: Object.freeze(Object.keys(config.authorizationTrust).sort()),
     ...(provenance !== undefined ? { provenance } : {}),
     mode: 'read-only', environment: 'staging'
   });
