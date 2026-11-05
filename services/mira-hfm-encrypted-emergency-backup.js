@@ -11,6 +11,8 @@ const ALGORITHM = 'aes-256-gcm';
 const MAX_PAYLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_ENVELOPE_BYTES = 36 * 1024 * 1024;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{7,95}$/;
+const ENVELOPE_KEYS = ['schema','version','algorithm','backupId','createdAt','payloadBytes',
+  'plaintextSha256','metadata','kdf','salt','iv','tag','ciphertext','ciphertextSha256'].sort();
 
 function fail(message, code = 'HFM_BACKUP_INVALID') {
   const error = new Error(message);
@@ -110,8 +112,14 @@ function decryptAndVerifyBackup(envelopeBytes, key) {
   const bytes = Buffer.isBuffer(envelopeBytes) ? envelopeBytes : Buffer.from(String(envelopeBytes), 'utf8');
   if (bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Backup envelope exceeds the size limit.');
   let env;
-  try { env = JSON.parse(bytes.toString('utf8')); } catch { fail('Backup envelope is not valid JSON.'); }
-  if (!isObject(env) || env.schema !== SCHEMA || env.version !== VERSION || env.algorithm !== ALGORITHM ||
+  const serialized = bytes.toString('utf8');
+  try { env = JSON.parse(serialized); } catch { fail('Backup envelope is not valid JSON.'); }
+  if (!isObject(env) || Object.keys(env).sort().length !== ENVELOPE_KEYS.length ||
+      Object.keys(env).sort().some((key, index) => key !== ENVELOPE_KEYS[index]) ||
+      JSON.stringify(env) + '\n' !== serialized) {
+    fail('Backup envelope contains unknown fields or is not canonical JSON.');
+  }
+  if (env.schema !== SCHEMA || env.version !== VERSION || env.algorithm !== ALGORITHM ||
       env.kdf !== 'HKDF-SHA256' || !ID_RE.test(env.backupId || '') || !Number.isInteger(env.payloadBytes) ||
       env.payloadBytes < 1 || env.payloadBytes > MAX_PAYLOAD_BYTES || !/^[a-f0-9]{64}$/.test(env.plaintextSha256 || '') ||
       !/^[a-f0-9]{64}$/.test(env.ciphertextSha256 || '') || !isObject(env.metadata)) fail('Backup envelope schema is invalid.');
