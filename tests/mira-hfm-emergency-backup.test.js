@@ -31,7 +31,7 @@ const keyProvider = {
     supportedSchemaVersions: ['1.0.0'] });
   assert.deepEqual(restored.snapshot, snapshot);
   assert.equal(restored.status, 'VERIFIED');
-  assert.throws(() => backup.encryptSnapshot({ snapshot, metadata: { ...metadata, recordCount: 2 }, keyProvider }), /record count/);
+  await assert.rejects(() => backup.encryptSnapshot({ snapshot, metadata: { ...metadata, recordCount: 2 }, keyProvider }), /record count/);
   await assert.rejects(() => backup.decryptBackup({ backup: encrypted.bytes, keyProvider: {}, expectedProjectId: 'project-fixture' }),
     error => error.code === 'BACKUP_KEY_PROVIDER_UNAVAILABLE');
   await assert.rejects(() => backup.decryptBackup({ backup: encrypted.bytes, keyProvider, expectedProjectId: 'another-project' }),
