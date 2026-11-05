@@ -5,6 +5,7 @@ const {
   collectPublicFacebookPageEvidence, buildEvidenceContext
 } = require('../services/mira-facebook-public-web-research');
 const { createTool } = require('../tools/facebook-page-research');
+const { checkToolSafety } = require('../services/mira-tool-execution-policy');
 
 (async () => {
   const pageId = '118056109579206';
@@ -49,6 +50,7 @@ const { createTool } = require('../tools/facebook-page-research');
   const unavailable = await collectPublicFacebookPageEvidence({ pageId, searchWeb: async () => 'Tavily API key is missing.' });
   assert.equal(unavailable.status, 'SEARCH_PROVIDER_UNAVAILABLE');
   assert.equal(unavailable.limits.canonicalMemoryWrite, false);
+  assert.equal(checkToolSafety('facebook_page_public_research', {}).passed, true);
   const toolCalls = [];
   const tool = createTool({ searchWeb: async query => {
     toolCalls.push(query);
