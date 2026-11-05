@@ -150,11 +150,30 @@ async function verifyAndAcceptSignedProvenancePolicy({
     fail('An authenticated policy-state provider with read and atomic compare-and-swap is required.',
       'HFM_POLICY_STATE_PROVIDER_REQUIRED');
   }
-  if (!isPlainObject(trustedStateAuthorities) ||
+  if (!isPlainObject(envelope) || !isPlainObject(envelope.payload) ||
+      !isPlainObject(trustedStateAuthorities) || !isPlainObject(trustedPolicyIssuers) ||
+      !isPlainObject(trustedPolicyReviewers) || !isPlainObject(trustedEvidenceIssuers) ||
+      !Array.isArray(operationalIssuerIds) ||
+      operationalIssuerIds.some(id => typeof id !== 'string' || !id.trim()) ||
+      typeof expectedStateAuthorityId !== 'string' || !expectedStateAuthorityId.trim() ||
       operationalIssuerIds.includes(expectedStateAuthorityId)) {
-    fail('A separately pinned policy-state authority is required.',
+    fail('A signed policy and separately pinned trust configuration are required.',
       'HFM_POLICY_STATE_AUTHORITY_UNTRUSTED');
   }
+  // Snapshot all caller-controlled signed material and trust maps before awaiting
+  // any provider. Adapters must not be able to mutate what was authenticated.
+  let stableEnvelope, stableStateTrust, stablePolicyTrust, stableReviewerTrust, stableEvidenceTrust;
+  try {
+    stableEnvelope = JSON.parse(canonicalizeProvenancePolicy(envelope));
+    stableStateTrust = JSON.parse(canonicalizeProvenancePolicy(trustedStateAuthorities));
+    stablePolicyTrust = JSON.parse(canonicalizeProvenancePolicy(trustedPolicyIssuers));
+    stableReviewerTrust = JSON.parse(canonicalizeProvenancePolicy(trustedPolicyReviewers));
+    stableEvidenceTrust = JSON.parse(canonicalizeProvenancePolicy(trustedEvidenceIssuers));
+  } catch {
+    fail('Signed policy or trust configuration cannot be snapshotted as canonical JSON.',
+      'HFM_POLICY_STATE_TRUST_CONFIG_INVALID');
+  }
+  const stableOperationalIssuerIds = Object.freeze(operationalIssuerIds.slice());
   let stateEnvelope;
   try {
     stateEnvelope = await provider.readState({ authorityId: expectedStateAuthorityId });
@@ -164,25 +183,25 @@ async function verifyAndAcceptSignedProvenancePolicy({
   }
   const acceptedPolicyState = verifyPolicyStateEnvelope({
     envelope: stateEnvelope,
-    trustedStateAuthorities,
+    trustedStateAuthorities: stableStateTrust,
     expectedAuthorityId: expectedStateAuthorityId,
-    operationalIssuerIds,
+    operationalIssuerIds: stableOperationalIssuerIds,
     now
   });
   const verified = verifySignedProvenancePolicy({
-    envelope,
-    trustedPolicyIssuers,
-    trustedPolicyReviewers,
+    envelope: stableEnvelope,
+    trustedPolicyIssuers: stablePolicyTrust,
+    trustedPolicyReviewers: stableReviewerTrust,
     acceptedPolicyState,
     expectedEnvironment,
     expectedProjectId,
-    operationalIssuerIds,
+    operationalIssuerIds: stableOperationalIssuerIds,
     now
   });
-  const policySignerId = envelope.payload && envelope.payload.signer &&
+  const policySignerId = stableEnvelope.payload && stableEnvelope.payload.signer &&
     envelope.payload.signer.issuerId;
-  const policyReviewerIds = Array.isArray(envelope.payload && envelope.payload.approvals)
-    ? envelope.payload.approvals.map(approval => approval && approval.reviewerId).filter(Boolean)
+  const policyReviewerIds = Array.isArray(stableEnvelope.payload && stableEnvelope.payload.approvals)
+    ? stableEnvelope.payload.approvals.map(approval => approval && approval.reviewerId).filter(Boolean)
     : [];
   const evidenceIssuerExclusions = [...new Set([
     ...operationalIssuerIds,
@@ -191,9 +210,9 @@ async function verifyAndAcceptSignedProvenancePolicy({
     ...policyReviewerIds
   ].filter(Boolean))];
   const evidenceVerification = await verifyAllPolicyEvidence({
-    policyPayload: envelope.payload,
+    policyPayload: stableEnvelope.payload,
     evidenceProvider,
-    trustedEvidenceIssuers,
+    trustedEvidenceIssuers: stableEvidenceTrust,
     expectedEnvironment,
     expectedProjectId,
     operationalIssuerIds: evidenceIssuerExclusions,
