@@ -86,6 +86,7 @@ function verifyPolicyStateEnvelope({
   }
   return Object.freeze({
     authorityId: expectedAuthorityId,
+    trustAnchorSha256: anchor.publicKeySha256,
     authenticated: true,
     durable: p.durable,
     atomic: p.atomic,
