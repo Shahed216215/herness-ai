@@ -9,12 +9,16 @@ on:
       - 'services/mira-facebook-research-archive-approval.js'
       - 'services/ai.js'
       - 'server.js'
+      - 'services/mira-server-bind-host.js'
+      - 'tests/mira-server-bind-host.test.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
       - 'services/mira-tool-execution-policy.js'
       - 'routes/mira-facebook-research-archive.js'
       - 'server.js'
+      - 'services/mira-server-bind-host.js'
+      - 'tests/mira-server-bind-host.test.js'
       - 'tools/mira-hfm-public-web-retrieval.js'
       - 'tools/web-search.js'
       - 'tests/mira-hfm-public-web-retrieval.test.js'
@@ -34,12 +38,16 @@ on:
       - 'services/mira-facebook-research-archive-approval.js'
       - 'services/ai.js'
       - 'server.js'
+      - 'services/mira-server-bind-host.js'
+      - 'tests/mira-server-bind-host.test.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
       - 'services/mira-tool-execution-policy.js'
       - 'routes/mira-facebook-research-archive.js'
       - 'server.js'
+      - 'services/mira-server-bind-host.js'
+      - 'tests/mira-server-bind-host.test.js'
       - 'tools/mira-hfm-public-web-retrieval.js'
       - 'tools/web-search.js'
       - 'tests/mira-hfm-public-web-retrieval.test.js'
@@ -71,6 +79,7 @@ jobs:
           node tests/mira-facebook-public-web-research.test.js
           node tests/mira-hfm-phase6-live-provider-smoke.test.js
           node tests/mira-facebook-research-archive-approval.test.js
+          node tests/mira-server-bind-host.test.js
           node tests/mira-hfm-tool-registry-policy-parity.test.js
       - name: Confirm external action boundary
         run: |
