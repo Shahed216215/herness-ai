@@ -331,6 +331,29 @@ async function run() {
     }), error => error.code === 'HFM_STAGING_POLICY_ACCEPTANCE_REQUIRED');
     assert.equal(blockedSourceReads, 0);
     process.stdout.write('MIRA_HFM_PHASE7_UNSIGNED_POLICY_BLOCKED_BEFORE_SOURCE_READ_PASS\\n');
+    const outagePolicy = makePolicyAcceptance(backupSource, baselineSource);
+    outagePolicy.policyStateProvider = {
+      async readState() { throw new Error('synthetic state authority outage'); },
+      async compareAndSwap() { throw new Error('must not commit'); }
+    };
+    await assert.rejects(() => runStagingBackupDrill({
+      source: { descriptor: backupSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      baselineSource: { descriptor: baselineSource.source.descriptor, async readSnapshot() { blockedSourceReads += 1; } },
+      request: request('staging-operator-backup', 'state-outage-request-0001', 'state-outage-nonce-0001'),
+      baselineRequest: request('staging-operator-baseline', 'state-outage-baseline-0001', 'state-outage-baseline-nonce-01'),
+      trustedSources: {
+        [backupSource.source.descriptor.sourceId]: backupSource.trusted,
+        [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
+      },
+      keyProvider: testKeyProvider(),
+      ...outagePolicy,
+      backupDirectory,
+      backupFileName: 'mira-hfm-staging-state-outage.mira-hfm.enc.json',
+      supportedSchemaVersions: ['1.0.0']
+    }), error => error.code === 'HFM_POLICY_STATE_UNAVAILABLE');
+    assert.equal(blockedSourceReads, 0);
+    process.stdout.write('MIRA_HFM_PHASE7_POLICY_STATE_OUTAGE_BLOCKED_BEFORE_SOURCE_READ_PASS\\n');
+
 
     const eventOrder = [];
     const policyAcceptance = makePolicyAcceptance(backupSource, baselineSource);
