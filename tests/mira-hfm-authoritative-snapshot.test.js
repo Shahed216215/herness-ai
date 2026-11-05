@@ -65,6 +65,12 @@ function testKeyProvider() {
     requestId: 'request-unique-001', nonce: crypto.randomBytes(24).toString('base64url') };
   const trustedSources = trust(publicKey);
   const source = createSource({ request, snapshot, privateKey });
+  await assert.rejects(() => captureAuthorizedSnapshot({ source, request, trustedSources, now: NaN }),
+    error => error.code === 'HFM_SNAPSHOT_TIME_CONFIG_INVALID');
+  await assert.rejects(() => captureAuthorizedSnapshot({ source, request, trustedSources, now, maxFutureSkewMs: Infinity }),
+    error => error.code === 'HFM_SNAPSHOT_TIME_CONFIG_INVALID');
+  await assert.rejects(() => captureAuthorizedSnapshot({ source, request, trustedSources, now, maxAttestationAgeMs: 300001 }),
+    error => error.code === 'HFM_SNAPSHOT_TIME_CONFIG_INVALID');
   const captured = await captureAuthorizedSnapshot({ source, request, trustedSources, now });
   assert.equal(captured.status, 'SNAPSHOT_SOURCE_SIGNATURE_VERIFIED_AUTHORIZATION_CLAIM');
   assert.equal(captured.evidence.signatureVerified, true);
