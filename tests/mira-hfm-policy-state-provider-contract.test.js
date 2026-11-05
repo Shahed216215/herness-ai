@@ -133,6 +133,8 @@ function makeProvider(options = {}) {
       return options.badState ? options.badState : current;
     },
     async getCommitReceipt({ authorityId, idempotencyKey, requestDigest: expectedDigest }) {
+      if (options.receiptLookupError) throw new Error('synthetic receipt lookup outage');
+      if (options.missingReceipt) return null;
       if (authorityId !== stateAuthority || typeof idempotencyKey !== 'string') {
         throw new Error('invalid receipt lookup');
       }
@@ -267,7 +269,8 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
   const revokedState = signed(statePayload({ revokedPolicyIds: ['synthetic-policy-01'] }), stateKey);
   const revokedProvider = {
     async readState() { return revokedState; },
-    async compareAndSwap() { throw new Error('must not commit revoked policy'); }
+    async compareAndSwap() { throw new Error('must not commit revoked policy'); },
+    async getCommitReceipt() { return null; }
   };
   await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(), provider: revokedProvider,
@@ -291,7 +294,8 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     envelope: policyEnvelope(),
     provider: {
       async readState() { throw new Error('synthetic policy-state read outage'); },
-      async compareAndSwap() { throw new Error('must not commit when state cannot be read'); }
+      async compareAndSwap() { throw new Error('must not commit when state cannot be read'); },
+      async getCommitReceipt() { return null; }
     },
     trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
     trustedPolicyIssuers, trustedPolicyReviewers,
@@ -320,6 +324,24 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
   });
   assert.equal(retriedBeforeCommit.stateCommit.committed, true);
+
+  await rejects(verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(), provider: makeProvider({ badRequestDigest: true }),
+    trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers, trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+  }), 'HFM_POLICY_STATE_COMMIT_MISMATCH');
+
+  await rejects(verifyAndAcceptSignedProvenancePolicy({
+    envelope: policyEnvelope(), provider: makeProvider({ ambiguousResponse: true, missingReceipt: true }),
+    trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+    trustedPolicyIssuers, trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers, expectedEnvironment: 'test',
+    expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+  }), 'HFM_POLICY_STATE_COMMIT_UNRESOLVED');
 
   await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(), provider: makeProvider({ badReceipt: true }),
