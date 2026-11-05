@@ -76,14 +76,11 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
   }
   if (typeof auditWriter !== 'function') fail('Durable auditWriter is required.', 'HFM_LEARNING_AUDIT_REQUIRED');
   return Object.freeze({ async submit(input, context = {}) {
-    if (!obj(input)) fail('input must be an object.');
-    const safeProjectId = id(input.projectId, 'projectId');
-    const safeProposalId = id(input.proposalId, 'proposalId');
-    const existingBeforeCreate = await proposalStore.get(safeProjectId, safeProposalId);
-    const p = buildProposal({
-      ...input,
-      createdAt: input.createdAt || (existingBeforeCreate && existingBeforeCreate.createdAt)
-    });
+    const initial = buildProposal(input);
+    const existingBeforeCreate = await proposalStore.get(initial.projectId, initial.proposalId);
+    const p = !input.createdAt && existingBeforeCreate
+      ? buildProposal({ ...input, createdAt: existingBeforeCreate.createdAt })
+      : initial;
     const put = await proposalStore.putIfAbsent(p.projectId, p.proposalId, p);
     if (!put || typeof put.created !== 'boolean') {
       fail('Proposal store returned an invalid create-only result.', 'HFM_LEARNING_STORE_RESULT_INVALID');
