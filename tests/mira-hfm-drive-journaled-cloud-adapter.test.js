@@ -152,6 +152,22 @@ async function main() {
     assert.equal(capacity.deletionPerformed, false);
     console.log('HFM_PHASE7_JOURNALED_CLOUD_LISTING_AND_QUOTA_CAPACITY=PASS');
 
+    const identityFailureProvider = {
+      ...provider,
+      async getQuota() {
+        const error = new Error('synthetic authenticated account mismatch');
+        error.code = 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE';
+        throw error;
+      }
+    };
+    const identityFailureAdapter = createJournaledDriveCloudAdapter({
+      provider: identityFailureProvider, journalDirectory, accountBinding,
+      driveSpace, projectId, parentId
+    });
+    await assert.rejects(() => identityFailureAdapter.getProviderQuota(),
+      error => error.code === 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
+    console.log('HFM_PHASE7_JOURNALED_CLOUD_QUOTA_ACCOUNT_MISMATCH_FAILS_CLOSED=PASS');
+
     const preview = await previewEncryptedEmergencyBackupFromCloud({
       adapter, projectId, backupId, key
     });
