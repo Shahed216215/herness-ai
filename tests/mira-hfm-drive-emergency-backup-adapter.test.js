@@ -74,7 +74,10 @@ async function main() {
     projectId,
     transport: { ...transport, async atomicCreate() { return {}; } }
   });
-  await assert.rejects(() => broken.putIfAbsent(input), e => e.code === 'HFM_DRIVE_CREATE_UNCERTAIN');
+  const brokenId = 'backup-uncertain-0001';
+  await assert.rejects(() => broken.putIfAbsent({ ...input, backupId: brokenId,
+    objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + brokenId + '.mhe' }),
+    e => e.code === 'HFM_DRIVE_CREATE_UNCERTAIN');
 
   // Timeout after provider commit: reconcile by exact-byte read, never blindly retry create.
   let timeoutAfterCommitCalls = 0;
