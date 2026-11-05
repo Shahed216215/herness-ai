@@ -4,10 +4,11 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { createEncryptedBackup } = require('../services/mira-hfm-encrypted-emergency-backup');
-const { createGoogleDriveGeneratedIdProvider } = require('../services/mira-hfm-google-drive-generated-id-provider');
+const { createGoogleDriveGeneratedIdProvider, getGoogleDriveAccountFingerprint } = require('../services/mira-hfm-google-drive-generated-id-provider');
 const { CONTENT_TYPE } = require('../services/mira-hfm-drive-generated-id-upload');
 
-const accountBinding = 'b'.repeat(64);
+const permissionId = 'synthetic-google-drive-permission-001';
+const accountBinding = crypto.createHash('sha256').update(permissionId).digest('hex');
 const driveSpace = 'drive';
 const parentId = 'dedicated-folder-123456';
 const projectId = 'mira-project-001';
@@ -27,7 +28,7 @@ async function collect(stream) {
   return Buffer.concat(chunks);
 }
 function fakeDrive() {
-  const calls = { generate: 0, create: 0, metadataGet: 0, mediaGet: 0 };
+  const calls = { generate: 0, create: 0, metadataGet: 0, mediaGet: 0, list: 0, about: 0 };
   const files = new Map();
   const drive = { files: {
     async generateIds(args) {
@@ -54,6 +55,21 @@ function fakeDrive() {
       });
       return { data: { id: fileId } };
     },
+    async list(args) {
+      calls.list += 1;
+      assert.equal(args.q, "'" + parentId + "' in parents and trashed = false");
+      assert.equal(args.spaces, driveSpace);
+      assert.equal(args.pageSize, 1);
+      const item = files.get(fileId);
+      if (args.pageToken == null) return { data: {
+        files: item ? [{
+          id: item.id, mimeType: item.mimeType, parents: item.parents,
+          appProperties: item.appProperties, size: item.size, createdTime: item.createdTime
+        }] : [], nextPageToken: 'page-2'
+      } };
+      assert.equal(args.pageToken, 'page-2');
+      return { data: { files: [] } };
+    },
     async get(args, options) {
       const item = files.get(args.fileId);
       if (!item) {
@@ -73,6 +89,17 @@ function fakeDrive() {
       } };
     }
   } };
+  drive.about = {
+    async get(args) {
+      calls.about += 1;
+      assert.ok(args.fields.includes('user(permissionId)'));
+      return { data: {
+        user: { permissionId },
+        storageQuota: { limit: '15000000000', usage: '6000000000',
+          usageInDrive: '3000000000', usageInDriveTrash: '1000000' }
+      } };
+    }
+  };
   return { drive, calls, files };
 }
 
@@ -118,8 +145,29 @@ async function main() {
   const downloaded = await provider.downloadFile({ id: fileId, accountBinding, driveSpace });
   assert.deepEqual(downloaded, envelope);
   assert.equal(crypto.createHash('sha256').update(downloaded).digest('hex'), digest);
-  assert.deepEqual(fake.calls, { generate: 1, create: 1, metadataGet: 1, mediaGet: 1 });
+  assert.deepEqual(fake.calls, { generate: 1, create: 1, metadataGet: 1, mediaGet: 1, list: 0, about: 0 });
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_METADATA_AND_EXACT_MEDIA_READBACK=PASS');
+
+  const firstPage = await provider.listPage({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 1
+  });
+  assert.equal(firstPage.complete, false);
+  assert.equal(firstPage.items[0].metadata.backupId, backupId);
+  const secondPage = await provider.listPage({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/',
+    cursor: firstPage.nextCursor, limit: 1
+  });
+  assert.equal(secondPage.complete, true);
+  assert.equal(secondPage.items.length, 0);
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_PROJECT_SCOPED_PAGINATION=PASS');
+
+  const quota = await provider.getQuota({ projectId });
+  assert.equal(quota.providerId, 'google-drive-v3');
+  assert.equal(quota.scope, 'account');
+  assert.equal(quota.quotaBytes, 15000000000);
+  assert.equal(quota.usedBytes, 6000000000);
+  assert.equal(await getGoogleDriveAccountFingerprint(fake.drive), accountBinding);
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_ACCOUNT_IDENTITY_AND_QUOTA=PASS');
 
   assert.equal(await provider.getFile({
     id: 'missingFileId_123456', accountBinding, driveSpace
