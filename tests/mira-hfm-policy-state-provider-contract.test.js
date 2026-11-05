@@ -23,6 +23,10 @@ const policyKey = makeKey();
 const stateKey = makeKey();
 const reviewerA = makeKey();
 const reviewerB = makeKey();
+const evidenceKey = makeKey();
+const evidenceIssuer = 'synthetic-evidence-issuer';
+const evidenceRecords = new Map();
+const trustedEvidenceIssuers = { [evidenceIssuer]: trust(evidenceKey, 'evidence-key') };
 const policyIssuer = 'synthetic-policy-issuer';
 const stateAuthority = 'synthetic-policy-state-authority';
 const sourceIds = ['baseline-source', 'backup-source'];
@@ -165,6 +169,8 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     expectedStateAuthorityId: stateAuthority,
     trustedPolicyIssuers,
     trustedPolicyReviewers,
+    evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+    trustedEvidenceIssuers,
     expectedEnvironment: 'test',
     expectedProjectId: 'mira-hfm-v02',
     operationalIssuerIds,
