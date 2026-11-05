@@ -24,7 +24,7 @@ function validateGroupUrl(value, groupId) {
 }
 function validTimestamp(v, label) {
   const raw = text(v, label, 64);
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d{1,9})?(Z|[+-]\\d{2}:\\d{2})$/.exec(raw);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/.exec(raw);
   if (!match) fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' must be an ISO-8601 timestamp with an explicit timezone.');
   const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
   const calendar = new Date(0);
