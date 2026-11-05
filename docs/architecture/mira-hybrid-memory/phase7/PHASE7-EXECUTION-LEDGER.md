@@ -100,3 +100,39 @@
 - F7-SR-01: PARTIALLY_REMEDIATED / OPEN. Real staging remains NOT_APPROVED.
 
 - Added `docs/architecture/mira-hybrid-memory/phase7/AUTHORIZATION-PROVIDER-GOVERNANCE.md` specifying separate issuer trust, exact policy-version pinning, decision claims, and durable atomic replay-store requirements. No production issuer or replay-store provider is selected.
+
+
+## Consolidated engineering checkpoint — 2026-11-05
+
+This checkpoint supersedes earlier pending notes where later implementation and CI configuration have changed.
+
+### Offline implementation and test configuration
+- Nine isolated Node 24 suites are configured in `.github/workflows/mira-hfm-phase7-emergency-backup.yml`: pinned backup directory, encrypted backup, mocked Drive adapter, key-provider contract, authoritative snapshot, local staging snapshot source, staging backup/recovery drill, source-provenance independence, and recovery verification.
+- F7-SR-05 provenance contract requires six independently pinned dimensions: `storageSystemId`, `storageInstanceId`, `securityPrincipalId`, `trustDomainId`, `sourceSystemId`, and `snapshotIssuerId`.
+- `snapshotIssuerId` is the snapshot-attestation signing trust issuer. It is distinct from `authorizationIssuerId`, the signed backup:read decision issuer.
+- Corrected the provenance contract test fixture to use `snapshotIssuerId`; added the provenance service and test to the pull-request workflow path filters as well as the push filters.
+- The key-provider contract now rejects `environment: production` with `BACKUP_PRODUCTION_KEY_PROVIDER_NOT_APPROVED`. A test asserts this fail-closed behavior. No production key provider is selected or approved.
+- F7-SR-05 was added to the staging security review with its evidence boundary and explicit staging/production gate.
+
+### Latest verification state
+- Latest inspected commit: `7c69968a3d32de1269c0d7b564d7822a2ff7c1ff`.
+- Combined commit status response: empty.
+- PR-triggered workflow-run lookup: no runs returned.
+- The connected GitHub action surface used for this review does not expose repository-wide push-run listing. Therefore the push-triggered workflow and test logs have not been verified for this commit.
+- CI status for the latest Phase 7 changes: INCONCLUSIVE. Do not infer success from earlier commits or from the workflow file.
+- Required test markers from the provenance suite remain: `MIRA_HFM_PROVENANCE_FULLY_INDEPENDENT_PROFILE_PASS`, `MIRA_HFM_PROVENANCE_SHARED_BOUNDARY_BLOCK_PASS`, `MIRA_HFM_PROVENANCE_DUPLICATE_ID_BLOCK_PASS`, `MIRA_HFM_PROVENANCE_FORGED_CLAIM_BLOCK_PASS`, `MIRA_HFM_PROVENANCE_UNPINNED_POLICY_BLOCK_PASS`, and `MIRA_HFM_PROVENANCE_CONTRACT_COMPLETE`.
+
+### Remaining external gates — intentionally deferred to the final live-test window
+- Production KMS/HSM or equivalent KEK custody, workload identity, least privilege, rotation, escrow/recovery, provider audit and independent approval: REVIEW_REQUIRED / NOT_APPROVED.
+- Production snapshot source authority and independently enforced authorization policy: NOT_INTEGRATED.
+- Durable atomic cross-instance replay-store implementation and issuer policy governance: REVIEW_REQUIRED.
+- Independent infrastructure evidence for baseline provenance (storage/account, security principal/workload identity, trust domain, administrative control plane, and policy distribution): REVIEW_REQUIRED.
+- Host/container ACL, mount, runtime and privileged-administrator trust review for backup directories: REVIEW_REQUIRED.
+- Live Google Drive quota, permission, upload, download and recovery verification: NOT_RUN.
+- Production restore/migration and retention deletion: NOT_APPROVED; preview and deletion-plan-only behavior remain the safe boundary.
+
+### Phase 7 disposition
+- Offline implementation: IMPLEMENTED; latest commit-matched CI verification is INCONCLUSIVE.
+- Real staging integration: NOT_APPROVED until the external gates above are independently evidenced and reviewed.
+- Production readiness: NOT_CERTIFIED.
+- Phase 7 must not be labelled fully certified or production-ready on synthetic CI alone. The offline engineering track can proceed to Phase 8 only after the configured Phase 7 suites have commit-matched PASS logs; external provider/infrastructure gates remain reserved for the agreed final live-test window.
