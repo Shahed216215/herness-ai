@@ -180,6 +180,26 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
     }
   });
 
+  router.post('/proposals/:projectId/:proposalId/review', async (req, res) => {
+    const actorId = requireNamedAdminSession(req, res);
+    if (!actorId) return;
+    if (!requireBridge(res)) return;
+    try {
+      const result = await bridge.review(req.params.projectId, req.params.proposalId,
+        req.body || {}, { actorRole: 'admin', actorId });
+      return res.status(201).json({ success: true, review: result });
+    } catch (error) {
+      const code = String(error && error.code || 'HFM_LEARNING_REVIEW_FAILED').slice(0, 80);
+      const status = code === 'HFM_LEARNING_REVIEW_CONFLICT' ? 409
+        : code === 'HFM_LEARNING_PROPOSAL_NOT_FOUND' ? 404
+        : code === 'HFM_LEARNING_REVIEW_INVALID' || code === 'HFM_LEARNING_REVIEW_ACTOR_REQUIRED' ? 400
+        : 503;
+      return res.status(status).json({ success: false, code,
+        committed: error && error.stateCommitted === true,
+        reconciliationRequired: error && error.stateCommitted === true });
+    }
+  });
+
   router.get('/proposals/:projectId/:proposalId', async (req, res) => {
     const actorId = requireNamedAdminSession(req, res);
     if (!actorId) return;
