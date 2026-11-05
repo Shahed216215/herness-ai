@@ -114,7 +114,7 @@ async function run() {
       await assert.rejects(() => deniedSource.readSnapshot(deniedReq),
         error => error.code === 'HFM_AUTHZ_DECISION_MISMATCH');
       assert.equal(fs.readFileSync(denied.memoryFile, 'utf8'), 'INVALID_JSON_MUST_NOT_BE_READ');
-      process.stdout.write('MIRA_HFM_PHASE7_AUTH_DENIAL_BEFORE_FILE_READ_PASS\\n');
+      process.stdout.write('MIRA_HFM_PHASE7_AUTH_DENIAL_BEFORE_FILE_READ_PASS\n');
     } finally { fs.rmSync(denied.rootDir, { recursive: true, force: true }); }
     process.stdout.write('MIRA_HFM_PHASE7_LOCAL_STAGING_AUTH_DENY_PASS\n');
 
