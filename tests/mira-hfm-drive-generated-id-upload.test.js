@@ -7,12 +7,16 @@ const os = require('node:os');
 const path = require('node:path');
 const { createJournaledDriveUpload, CONTENT_TYPE } = require('../services/mira-hfm-drive-generated-id-upload');
 const { readBackupIdJournal } = require('../services/mira-hfm-drive-backup-id-journal');
+const { createEncryptedBackup } = require('../services/mira-hfm-encrypted-emergency-backup');
 
 const projectId = 'mira-project-001';
-const accountBinding = 'google-subject-123456';
+const accountBinding = 'b'.repeat(64);
 const driveSpace = 'drive';
 const parentId = 'dedicated-folder-123456';
-const bytes = Buffer.from('synthetic AES-256-GCM encrypted envelope bytes');
+const bytes = createEncryptedBackup({ payload: Buffer.from('synthetic encrypted payload'), key: Buffer.alloc(32, 9),
+  backupId: 'backup-upload-0001', createdAt: '2026-11-05T00:00:00.000Z',
+  metadata: { projectId: 'mira-project-001' } });
+const envelopeHeader = JSON.parse(bytes.toString('utf8'));
 const digest = crypto.createHash('sha256').update(bytes).digest('hex');
 
 function fixture(directory, behavior = {}) {
@@ -35,7 +39,8 @@ function fixture(directory, behavior = {}) {
       const journal = readBackupIdJournal({
         directory, operationId: behavior.operationId || 'drive-upload-operation-001',
         expected: { accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
-          generatedFileId: fileId, ciphertextSha256: digest, bytes: bytes.length }
+          generatedFileId: fileId, backupSchema: envelopeHeader.schema, backupVersion: envelopeHeader.version,
+          backupCreatedAt: envelopeHeader.createdAt, ciphertextSha256: digest, bytes: bytes.length }
       });
       assert.equal(journal.generatedFileId, fileId);
       if (behavior.beforeCommitTimeout && counts.create === 1) {
@@ -50,6 +55,8 @@ function fixture(directory, behavior = {}) {
       }
       const metadata = {
         accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
+        backupSchema: args.appProperties.schema, backupVersion: args.appProperties.version,
+        backupCreatedAt: args.appProperties.createdAt,
         ciphertextSha256: digest, bytes: bytes.length, contentType: CONTENT_TYPE,
         encryption: 'AES-256-GCM', parentId
       };
@@ -65,6 +72,11 @@ function fixture(directory, behavior = {}) {
     },
     async getFile({ id }) {
       counts.get += 1;
+      if (behavior.getOutage) {
+        const error = new Error('synthetic metadata lookup outage');
+        error.code = 'EHOSTUNREACH';
+        throw error;
+      }
       const value = objects.get(id);
       return value ? { id: value.id, metadata: { ...value.metadata } } : null;
     },
@@ -87,6 +99,17 @@ function input(operationId = 'drive-upload-operation-001') {
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-generated-id-upload-'));
   try {
+    const untrustedMetadata = JSON.parse(bytes.toString('utf8'));
+    untrustedMetadata.metadata.untrustedField = 'plaintext-must-not-enter-backup';
+    const untrustedBytes = Buffer.from(JSON.stringify(untrustedMetadata) + '\n');
+    const untrustedDigest = crypto.createHash('sha256').update(untrustedBytes).digest('hex');
+    const rejectedMetadata = fixture(path.join(root, 'untrusted-metadata'));
+    await assert.rejects(() => rejectedMetadata.uploader.upload({
+      ...input(), bytes: untrustedBytes, ciphertextSha256: untrustedDigest
+    }), /Encrypted HFM envelope identity\/schema\/timestamp/);
+    assert.deepEqual(rejectedMetadata.counts, { generate: 0, create: 0, get: 0, download: 0 });
+    console.log('HFM_PHASE7_GENERATED_UPLOAD_ENVELOPE_METADATA_ALLOWLIST=PASS');
+
     const normalDir = path.join(root, 'normal');
     const normal = fixture(normalDir);
     const created = await normal.uploader.upload(input());
@@ -143,16 +166,43 @@ async function main() {
     await binding.uploader.upload(input());
     const wrongAccount = createJournaledDriveUpload({
       provider: binding.provider, journalDirectory: bindingDir,
-      accountBinding: 'different-google-subject-123', driveSpace, projectId, parentId
+      accountBinding: 'c'.repeat(64), driveSpace, projectId, parentId
     });
     await assert.rejects(() => wrongAccount.upload(input()),
       error => error.code === 'HFM_DRIVE_JOURNAL_BINDING_MISMATCH');
     assert.equal(binding.counts.generate, 1);
     console.log('HFM_PHASE7_GENERATED_ID_CROSS_ACCOUNT_REUSE_REJECTED=PASS');
 
-    // Force two callers past the initial missing-journal read before either
-    // can publish its generated-ID record. Both must adopt the durable winner.
-    const concurrentDir = path.join(root, 'concurrent');
+    const outageId = 'drive-upload-operation-outage-001';
+    const outageDir = path.join(root, 'metadata-outage');
+    const outage = fixture(outageDir, { operationId: outageId, getOutage: true });
+    await assert.rejects(() => outage.uploader.upload(input(outageId)),
+      error => error.code === 'HFM_DRIVE_GENERATED_UPLOAD_UNCERTAIN');
+    assert.equal(readBackupIdJournal({ directory: outageDir, operationId: outageId }).generatedFileId,
+      outage.fileId);
+    assert.equal(outage.counts.generate, 1);
+    assert.equal(outage.counts.create, 1);
+    console.log('HFM_PHASE7_GENERATED_ID_READBACK_OUTAGE_PRESERVES_JOURNAL=PASS');
+
+    const invalidDir = path.join(root, 'invalid-generated-id');
+    const invalid = fixture(invalidDir);
+    invalid.provider.generateFileId = async () => {
+      invalid.counts.generate += 1;
+      return { id: '../not-a-drive-id' };
+    };
+    const invalidUploader = createJournaledDriveUpload({
+      provider: invalid.provider, journalDirectory: invalidDir, accountBinding,
+      driveSpace, projectId, parentId
+    });
+    await assert.rejects(() => invalidUploader.upload(input('drive-upload-invalid-id-001')),
+      error => error.code === 'HFM_DRIVE_GENERATED_ID_INVALID');
+    assert.equal(invalid.counts.create, 0);
+    console.log('HFM_PHASE7_GENERATED_ID_INVALID_ID_BLOCKS_UPLOAD=PASS');
+
+    // Both callers pass the missing-journal read before publishing different
+    // candidate IDs. The durable create-only journal winner must be reused.
+    const concurrentId = 'drive-upload-concurrent-001';
+    const concurrentDir = path.join(root, 'concurrent-journal');
     const concurrentObjects = new Map();
     const concurrentCounts = { generate: 0, create: 0 };
     let releaseGeneration;
@@ -163,21 +213,25 @@ async function main() {
         const ordinal = concurrentCounts.generate;
         if (ordinal === 2) releaseGeneration();
         await generationBarrier;
-        return { id: ordinal === 1 ? 'generatedFileIdA_123456' : 'generatedFileIdB_123456' };
+        return { id: ordinal === 1 ? 'concurrentFileIdA_123456' : 'concurrentFileIdB_123456' };
       },
       async createFile(args) {
         concurrentCounts.create += 1;
         if (concurrentObjects.has(args.id)) {
-          const error = new Error('concurrent duplicate create');
+          const error = new Error('concurrent duplicate generated ID');
           error.code = '409';
           throw error;
         }
+        const app = args.appProperties;
         concurrentObjects.set(args.id, {
           id: args.id,
           metadata: {
-            accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
-            ciphertextSha256: digest, bytes: bytes.length, contentType: CONTENT_TYPE,
-            encryption: 'AES-256-GCM', parentId
+            accountBinding: args.accountBinding, driveSpace: args.driveSpace,
+            projectId: app.projectId, backupId: app.backupId,
+            backupSchema: app.schema, backupVersion: app.version,
+            backupCreatedAt: app.createdAt, ciphertextSha256: app.ciphertextSha256,
+            bytes: Number(app.bytes), contentType: args.mimeType,
+            encryption: app.encryption, parentId: args.parents[0]
           },
           bytes: Buffer.from(args.bytes)
         });
@@ -197,8 +251,8 @@ async function main() {
       accountBinding, driveSpace, projectId, parentId
     });
     const concurrentResults = await Promise.all([
-      concurrentUploader.upload(input('concurrent-upload-operation-001')),
-      concurrentUploader.upload(input('concurrent-upload-operation-001'))
+      concurrentUploader.upload(input(concurrentId)),
+      concurrentUploader.upload(input(concurrentId))
     ]);
     assert.equal(concurrentCounts.generate, 2);
     assert.equal(concurrentObjects.size, 1);
@@ -209,9 +263,10 @@ async function main() {
       ['CREATED_VERIFIED', 'RECONCILED_VERIFIED']
     );
     const concurrentJournal = readBackupIdJournal({
-      directory: concurrentDir, operationId: 'concurrent-upload-operation-001',
+      directory: concurrentDir, operationId: concurrentId,
       expected: { accountBinding, driveSpace, projectId, backupId: 'backup-upload-0001',
-        ciphertextSha256: digest, bytes: bytes.length }
+        backupSchema: envelopeHeader.schema, backupVersion: envelopeHeader.version,
+        backupCreatedAt: envelopeHeader.createdAt, ciphertextSha256: digest, bytes: bytes.length }
     });
     assert.equal(concurrentJournal.generatedFileId, concurrentResults[0].fileId);
     console.log('HFM_PHASE7_GENERATED_ID_CONCURRENT_JOURNAL_WINNER_REUSED=PASS');
