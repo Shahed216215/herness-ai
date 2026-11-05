@@ -20,8 +20,21 @@ function validId(value, label) {
   return value;
 }
 function envelopeBytes(value) {
-  const bytes = Buffer.isBuffer(value) ? Buffer.from(value) : (typeof value === 'string' ? Buffer.from(value, 'utf8') : null);
-  if (!bytes || bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Encrypted envelope is missing or exceeds the size limit.');
+  let bytes;
+  if (Buffer.isBuffer(value)) {
+    if (value.length < 1 || value.length > MAX_ENVELOPE_BYTES) {
+      fail('Encrypted envelope is missing or exceeds the size limit.');
+    }
+    bytes = Buffer.from(value);
+  } else if (typeof value === 'string') {
+    const length = Buffer.byteLength(value, 'utf8');
+    if (length < 1 || length > MAX_ENVELOPE_BYTES) {
+      fail('Encrypted envelope is missing or exceeds the size limit.');
+    }
+    bytes = Buffer.from(value, 'utf8');
+  } else {
+    fail('Encrypted envelope must be a Buffer or UTF-8 string.');
+  }
   let parsed;
   try { parsed = JSON.parse(bytes.toString('utf8')); } catch { fail('Encrypted envelope is not valid JSON.'); }
   if (!parsed || parsed.schema !== 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' ||
@@ -72,7 +85,21 @@ async function uploadEncryptedEmergencyBackup({ adapter, projectId, envelope, ke
   });
   if (!result || (result.created !== true && !(result.reconciled === true && result.verified === true))) fail('Cloud backup object already exists or create-only status is uncertain.', 'HFM_CLOUD_BACKUP_CONFLICT');
   const readback = await adapter.get({ objectKey: keyPath, projectId: project });
-  const stored = readback && (Buffer.isBuffer(readback.bytes) ? readback.bytes : Buffer.from(readback.bytes || ''));
+  let stored;
+  if (readback && Buffer.isBuffer(readback.bytes)) {
+    if (readback.bytes.length < 1 || readback.bytes.length > MAX_ENVELOPE_BYTES) {
+      fail('Cloud backup readback is outside the encrypted envelope size limit.',
+        'HFM_CLOUD_BACKUP_READBACK_FAILED');
+    }
+    stored = readback.bytes;
+  } else if (readback && typeof readback.bytes === 'string') {
+    const readbackLength = Buffer.byteLength(readback.bytes, 'utf8');
+    if (readbackLength < 1 || readbackLength > MAX_ENVELOPE_BYTES) {
+      fail('Cloud backup readback is outside the encrypted envelope size limit.',
+        'HFM_CLOUD_BACKUP_READBACK_FAILED');
+    }
+    stored = Buffer.from(readback.bytes, 'utf8');
+  }
   if (!stored || !stored.equals(bytes) || sha256(stored) !== digest) {
     fail('Cloud backup read-after-write verification failed.', 'HFM_CLOUD_BACKUP_READBACK_FAILED');
   }
