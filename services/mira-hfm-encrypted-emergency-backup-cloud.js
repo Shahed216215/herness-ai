@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const {
   decryptAndVerifyBackup,
+  previewEncryptedBackup,
   restoreToStaging,
   MAX_ENVELOPE_BYTES
 } = require('./mira-hfm-encrypted-emergency-backup');
@@ -77,6 +78,26 @@ async function uploadEncryptedEmergencyBackup({ adapter, projectId, envelope, ke
     ciphertextSha256: digest, status: 'ENCRYPTED_CLOUD_BACKUP_VERIFIED',
     rootKeyTransmitted: false, plaintextTransmitted: false };
 }
+async function previewEncryptedEmergencyBackupFromCloud({ adapter, projectId, backupId, key } = {}) {
+  validateAdapter(adapter);
+  const project = validId(projectId, 'projectId');
+  const id = validId(backupId, 'backupId');
+  const object = await adapter.get({ objectKey: objectKey(project, id), projectId: project });
+  if (!object || object.projectId !== project || object.backupId !== id || !object.bytes) {
+    fail('Cloud backup object is missing or its project/identity binding is invalid.', 'HFM_CLOUD_BACKUP_NOT_FOUND');
+  }
+  const { bytes, parsed } = envelopeBytes(object.bytes);
+  if (parsed.backupId !== id) fail('Cloud object and encrypted envelope identities do not match.');
+  const preview = previewEncryptedBackup({ envelope: bytes, key });
+  return Object.freeze({
+    ...preview,
+    projectId: project,
+    source: 'ENCRYPTED_CLOUD_OBJECT',
+    restoreApplied: false,
+    canonicalMemoryWrites: 0
+  });
+}
+
 async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, backupId, key, stagingDirectory, restoreId } = {}) {
   validateAdapter(adapter);
   const project = validId(projectId, 'projectId');
@@ -87,7 +108,7 @@ async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
   }
   const { bytes, parsed } = envelopeBytes(object.bytes);
   if (parsed.backupId !== id) fail('Cloud object and encrypted envelope identities do not match.');
-  const verified = decryptAndVerifyBackup(bytes, key);
+  decryptAndVerifyBackup(bytes, key);
   return restoreToStaging({ envelope: bytes, key, directory: stagingDirectory,
     restoreId: restoreId || ('restore-' + id) });
 }
@@ -196,4 +217,4 @@ async function inspectEncryptedEmergencyBackupCapacity({
   });
 }
 
-module.exports = { uploadEncryptedEmergencyBackup, restoreEncryptedEmergencyBackupFromCloud, inspectEncryptedEmergencyBackupCapacity, planBackupRetention, DEFAULT_BACKUP_BUDGET_BYTES, objectKey };
+module.exports = { uploadEncryptedEmergencyBackup, previewEncryptedEmergencyBackupFromCloud, restoreEncryptedEmergencyBackupFromCloud, inspectEncryptedEmergencyBackupCapacity, planBackupRetention, DEFAULT_BACKUP_BUDGET_BYTES, objectKey };
