@@ -66,9 +66,21 @@ function deriveKey(rootKey, salt) {
 function createEncryptedBackup({ payload, key, backupId, createdAt = new Date().toISOString(), metadata = {} } = {}) {
   validateId(backupId);
   validateKey(key);
-  const plain = Buffer.isBuffer(payload) ? Buffer.from(payload) :
-    (typeof payload === 'string' ? Buffer.from(payload, 'utf8') : null);
-  if (!plain || plain.length < 1 || plain.length > MAX_PAYLOAD_BYTES) fail('payload must be non-empty bytes/string within the size limit.');
+  let plain;
+  if (Buffer.isBuffer(payload)) {
+    if (payload.length < 1 || payload.length > MAX_PAYLOAD_BYTES) {
+      fail('payload must be non-empty bytes/string within the size limit.');
+    }
+    plain = Buffer.from(payload);
+  } else if (typeof payload === 'string') {
+    const payloadBytes = Buffer.byteLength(payload, 'utf8');
+    if (payloadBytes < 1 || payloadBytes > MAX_PAYLOAD_BYTES) {
+      fail('payload must be non-empty bytes/string within the size limit.');
+    }
+    plain = Buffer.from(payload, 'utf8');
+  } else {
+    fail('payload must be non-empty bytes/string within the size limit.');
+  }
   const timestamp = new Date(createdAt);
   if (!Number.isFinite(timestamp.getTime()) || timestamp.toISOString() !== createdAt) fail('createdAt must be a canonical ISO timestamp.');
   const header = {
@@ -109,8 +121,21 @@ function decodeBase64(value, length, label) {
 }
 function decryptAndVerifyBackup(envelopeBytes, key) {
   validateKey(key);
-  const bytes = Buffer.isBuffer(envelopeBytes) ? envelopeBytes : Buffer.from(String(envelopeBytes), 'utf8');
-  if (bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Backup envelope exceeds the size limit.');
+  let bytes;
+  if (Buffer.isBuffer(envelopeBytes)) {
+    if (envelopeBytes.length < 1 || envelopeBytes.length > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = envelopeBytes;
+  } else if (typeof envelopeBytes === 'string') {
+    const envelopeLength = Buffer.byteLength(envelopeBytes, 'utf8');
+    if (envelopeLength < 1 || envelopeLength > MAX_ENVELOPE_BYTES) {
+      fail('Backup envelope exceeds the size limit.');
+    }
+    bytes = Buffer.from(envelopeBytes, 'utf8');
+  } else {
+    fail('Backup envelope must be a Buffer or UTF-8 string.');
+  }
   let env;
   const serialized = bytes.toString('utf8');
   try { env = JSON.parse(serialized); } catch { fail('Backup envelope is not valid JSON.'); }
