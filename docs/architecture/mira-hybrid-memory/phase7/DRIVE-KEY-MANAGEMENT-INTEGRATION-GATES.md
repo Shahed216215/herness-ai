@@ -256,17 +256,17 @@ SHARED_DRIVE=NOT_CERTIFIED
 
 ## 10. Latest code-change CI evidence
 
-The latest Phase 7 code/test workflow completed GitHub Actions run **42018583267 — SUCCESS**, job **127215246547**, against code/test commit `0f26022d960ab9ed2a5613e65d7e51fa935e1ceb`. The run completed the Node syntax check and all six offline test suites. Logs contain **112 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
+The latest Phase 7 clean-restack workflow completed GitHub Actions run **42021674679 — SUCCESS**, job **127225699641**, against exact head `2c0d177904f37f86a79dacf8bcb6740de0399ae9`. The run completed the Node syntax check and all six offline test suites, including the restored journaled cloud adapter and injected Google Drive v3 provider tests. Logs contain **113 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`. Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
 The Google Drive v3 fake-client suite additionally verifies exact appProperties allowlisting and 124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota mapping and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings. Payload/envelope type and size limits are checked before buffer allocation; arbitrary objects are not coerced to strings. Bounded envelope buffers are snapshotted before verification. Temporary plaintext is also zeroized when timestamp/metadata validation fails before encryption begins. Google Drive media chunks are type- and size-checked before allocation; Drive file sizes, appProperties byte counts and quota values require canonical decimal integer strings. Newly created backup/journal directories now fsync their parent directory entries before proceeding. Key-provider tests verify ephemeral key-copy zeroization on both successful and throwing operations without mutating provider-owned key material.
 
-The Phase 7 branch remains restacked on the latest Phase 6 base; PR #16 remains Draft and unmerged. This is synthetic offline CI evidence only. It does not certify OAuth, live Google Drive operations, production key custody, canonical snapshot completeness or production recovery.
+The Phase 7 clean-restack branch remains stacked on the corrected Phase 6 base; PR #35 remains Draft and unmerged. This is synthetic offline CI evidence only. It does not certify OAuth, live Google Drive operations, production key custody, canonical snapshot completeness or production recovery.
 
 VERSION=v0.2
-OFFLINE_CI_RUN=42018583267_SUCCESS
-OFFLINE_CI_JOB=127215246547
-OFFLINE_CI_CODE_TEST_COMMIT=0f26022d960ab9ed2a5613e65d7e51fa935e1ceb
-OFFLINE_PASS_MARKERS=112
+OFFLINE_CI_RUN=42021674679_SUCCESS
+OFFLINE_CI_JOB=127225699641
+OFFLINE_CI_CODE_TEST_COMMIT=2c0d177904f37f86a79dacf8bcb6740de0399ae9
+OFFLINE_PASS_MARKERS=113
 OFFLINE_TEST_SUITES=6
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
