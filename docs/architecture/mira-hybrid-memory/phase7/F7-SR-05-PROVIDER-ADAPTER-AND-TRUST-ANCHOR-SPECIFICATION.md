@@ -273,3 +273,12 @@ The backup wrapping/unwrapping adapter accepts only the declared wrap/unwrap int
 Exceptions from external `wrapDataKey` and `unwrapDataKey` calls are normalized to generic `BACKUP_KEY_WRAP_FAILED` and `BACKUP_KEY_UNWRAP_FAILED` errors; upstream exception text and provider-specific codes are not exposed to the caller. Temporary copied DEK buffers are zeroed after wrap attempts, including failure paths.
 
 These controls reduce accidental secret transport and error-detail leakage. They do not prove KMS/HSM non-exportability, workload identity, IAM separation, key rotation/revocation, or provider auditability. Production key custody remains NOT_APPROVED pending independent evidence.
+
+
+## 13. Authorization replay guard contract
+
+The authorization verifier calls `replayGuard.consume({issuerId, decisionId, requestId, nonce, expiresAt})` only after signature, issuer, request binding, and freshness checks succeed. The call must atomically claim the exact one-time decision tuple and return literal `true` only to the first claimant. Duplicate claims, expired entries, unavailable stores, exceptions, or any result other than literal `true` fail closed as `HFM_AUTHZ_REPLAY_REJECTED`.
+
+The verifier snapshots the signed decision, request, and issuer trust map before awaiting the replay guard, and captures the consume method reference before the await. This prevents a callback from changing the decision reported after signature verification.
+
+A local fake replay guard and concurrency test demonstrate one winner among simultaneous duplicate claims and a restart simulation using an exported digest snapshot. The fake is explicitly process-local and NOT durable. Real acceptance requires an independently administered atomic durable store, multi-process/multi-replica concurrency evidence, restart and failover recovery, expiry/retention behavior, and audit records. No production replay store is implemented or certified by the fake.
