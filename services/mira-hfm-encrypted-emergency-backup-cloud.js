@@ -114,6 +114,8 @@ async function restoreEncryptedEmergencyBackupFromCloud({ adapter, projectId, ba
 }
 const DEFAULT_BACKUP_BUDGET_BYTES = 5000000000;
 const MAX_BACKUP_LIST_ITEMS = 10000;
+const MAX_BACKUP_LIST_PAGES = 100;
+const BACKUP_LIST_PAGE_SIZE = 500;
 
 function planBackupRetention({ backups, projectId, keepLast, maxAgeDays, now = new Date().toISOString() } = {}) {
   const project = validId(projectId, 'projectId');
@@ -174,9 +176,42 @@ async function inspectEncryptedEmergencyBackupCapacity({
     fail('Backup budget must be a bounded positive byte count.');
   }
   const prefix = 'mira-hfm-emergency/v1/' + project + '/';
-  const listing = await adapter.list({ projectId: project, prefix });
-  if (!Array.isArray(listing) || listing.length > MAX_BACKUP_LIST_ITEMS) {
-    fail('Cloud backup listing is invalid or exceeds the item limit.', 'HFM_CLOUD_LIST_INVALID');
+  const listing = [];
+  const cursors = new Set();
+  let cursor = null;
+  let pageCount = 0;
+  while (true) {
+    pageCount += 1;
+    if (pageCount > MAX_BACKUP_LIST_PAGES) {
+      fail('Cloud backup listing exceeded the bounded page limit; capacity is INCONCLUSIVE.',
+        'HFM_CLOUD_LIST_INCOMPLETE');
+    }
+    const page = await adapter.list({
+      projectId: project, prefix, cursor, limit: BACKUP_LIST_PAGE_SIZE
+    });
+    if (!page || typeof page !== 'object' || Array.isArray(page) ||
+        !Array.isArray(page.items) || typeof page.complete !== 'boolean') {
+      fail('Cloud adapter must return an explicit paginated listing page.',
+        'HFM_CLOUD_LIST_INVALID');
+    }
+    if (listing.length + page.items.length > MAX_BACKUP_LIST_ITEMS) {
+      fail('Cloud backup listing exceeds the item limit; capacity is INCONCLUSIVE.',
+        'HFM_CLOUD_LIST_INCOMPLETE');
+    }
+    listing.push(...page.items);
+    if (page.complete) {
+      if (page.nextCursor !== undefined && page.nextCursor !== null) {
+        fail('A completed listing page must not provide a next cursor.', 'HFM_CLOUD_LIST_INVALID');
+      }
+      break;
+    }
+    if (typeof page.nextCursor !== 'string' || !page.nextCursor ||
+        page.nextCursor === cursor || cursors.has(page.nextCursor)) {
+      fail('Cloud backup listing pagination is incomplete or repeated a cursor.',
+        'HFM_CLOUD_LIST_INCOMPLETE');
+    }
+    cursors.add(page.nextCursor);
+    cursor = page.nextCursor;
   }
   const seen = new Set();
   let usedBytes = 0;
