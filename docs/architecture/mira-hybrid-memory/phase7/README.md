@@ -72,9 +72,9 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest code/test CI: run **42010780489 — SUCCESS**, job **127188957972**, tested code/test head commit `c37a71900eba330eea0a9b84e91bdd3303efcef9`.
-- Node syntax check and all six offline test suites completed successfully. Logs contain **97 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
-- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption key and derived decryption key buffers are zeroized.
+- Latest code/test CI: run **42011068132 — SUCCESS**, job **127189952783**, tested code/test head commit `1074eda511fefd0c394633e79aeb105f5c04decf`.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **100 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, preview payloads, local-backup verification payloads and restore-staging in-memory payloads are zeroized.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
 - This is synthetic/offline CI evidence, not live Google Drive or production recovery certification.
@@ -95,11 +95,11 @@ The exporter is not blocked by encryption code; it is blocked by source authorit
 VERSION=v0.2
 PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
-CURRENT_HEAD_CI_RUN=42010780489
-CURRENT_HEAD_CI_JOB=127188957972
-CURRENT_HEAD_CODE_TEST_COMMIT=c37a71900eba330eea0a9b84e91bdd3303efcef9
+CURRENT_HEAD_CI_RUN=42011068132
+CURRENT_HEAD_CI_JOB=127189952783
+CURRENT_HEAD_CODE_TEST_COMMIT=1074eda511fefd0c394633e79aeb105f5c04decf
 CURRENT_HEAD_TEST_SUITES=6
-OFFLINE_PASS_MARKERS=97
+OFFLINE_PASS_MARKERS=100
 OFFLINE_TESTS_FAILED=0
 GOOGLE_DRIVE_V3_MAPPER=IMPLEMENTED_OFFLINE_CI_VERIFIED
 JOURNAL_RECOVERY=AUTHENTICATED_PROVIDER_OBJECT_RECONSTRUCTION_IMPLEMENTED_OFFLINE
