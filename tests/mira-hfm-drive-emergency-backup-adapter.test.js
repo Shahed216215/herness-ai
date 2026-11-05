@@ -191,6 +191,40 @@ async function main() {
   await pageBound.list({ projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/',
     cursor: null, limit: 500 });
   assert.equal(negotiatedListLimit, 1);
+
+  const oversizedRead = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async getCapabilities() {
+      return { ...(await transport.getCapabilities()), maxObjectBytes: 8 };
+    } }
+  });
+  await assert.rejects(() => oversizedRead.get({ projectId, objectKey: input.objectKey }),
+    e => e.code === 'HFM_DRIVE_OBJECT_INVALID');
+
+  const oversizedPage = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async getCapabilities() {
+      return { ...(await transport.getCapabilities()), maxPageSize: 1 };
+    }, async listPage() {
+      const metadata = [...store.values()][0].metadata;
+      return { items: [{ metadata }, { metadata }], complete: true };
+    } }
+  });
+  await assert.rejects(() => oversizedPage.list({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 2
+  }), e => e.code === 'HFM_DRIVE_LIST_INVALID');
+
+  const malformedTimestamp = createEmergencyBackupTransportAdapter({
+    projectId,
+    transport: { ...transport, async listPage() {
+      return { items: [{ metadata: { projectId, backupId: 'backup-invalid-time-001',
+        objectKey: 'mira-hfm-emergency/v1/' + projectId + '/backup-invalid-time-001.mhe',
+        createdAt: 'not-a-date', bytes: 12 } }], complete: true };
+    } }
+  });
+  await assert.rejects(() => malformedTimestamp.list({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 2
+  }), e => e.code === 'HFM_DRIVE_OBJECT_INVALID');
   const unsupported = createEmergencyBackupTransportAdapter({
     projectId,
     transport: { ...transport, async getCapabilities() {
@@ -213,6 +247,9 @@ async function main() {
   });
   assert.equal((await noQuota.getProviderQuota()).status, 'NOT_REPORTED');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_NEGOTIATED_OBJECT_AND_PAGE_LIMITS=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_READ_LIMIT_ENFORCED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PAGE_ITEM_LIMIT_ENFORCED=PASS');
+  console.log('HFM_PHASE7_TRANSPORT_ADAPTER_LIST_TIMESTAMP_VALIDATED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_PROVIDER_CAPABILITY_NEGOTIATION=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_UNSUPPORTED_PROVIDER_FAIL_CLOSED=PASS');
   console.log('HFM_PHASE7_TRANSPORT_ADAPTER_SCOPED_QUOTA_REPORT=PASS');
