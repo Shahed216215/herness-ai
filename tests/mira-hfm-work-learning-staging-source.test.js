@@ -128,7 +128,7 @@ function request(id = 'work-learning-request-001', actorId = 'fixture-owner') {
   return {
     projectId: 'mira-staging-snapshot',
     actorId,
-    scope: 'work_learning:store:snapshot:read',
+    scope: 'backup:read',
     requestId: id,
     nonce: 'work-learning-nonce-' + id.padEnd(16, '0')
   };
