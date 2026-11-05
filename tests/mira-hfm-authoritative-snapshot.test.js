@@ -10,7 +10,9 @@ function signedFixture({ privateKey, snapshot, request, sourceId = 'fixture-sour
   authorizationDecision = 'ALLOW', nonce = request.nonce } = {}) {
   const attestation = {
     sourceId, signingKeyId: keyId, projectId: request.projectId, actorId: request.actorId,
-    authorizationDecision, authorizationScope: request.scope, requestId: request.requestId, nonce,
+    authorizationDecision, authorizationScope: request.scope, authorizationIssuerId: 'fixture-policy-issuer',
+    authorizationDecisionId: 'fixture-policy-decision-001', authorizationPolicyVersion: 'fixture-policy-v1',
+    authorizationExpiresAt: new Date(Date.parse(capturedAt) + 60000).toISOString(), requestId: request.requestId, nonce,
     sourceRevision: 'revision-17', schemaVersion: '1.0.0', capturedAt,
     recordCount: snapshot.records.length,
     payloadSha256: sha256(Buffer.from(canonicalize(snapshot), 'utf8'))
