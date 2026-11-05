@@ -1,6 +1,10 @@
 'use strict';
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { buildProposal, createLearningEvolutionBridge } = require('../services/mira-hfm-learning-evolution-bridge');
+const { createPersistentProposalStore } = require('../services/mira-hfm-learning-proposal-store');
 const evidence = [{ evidenceId:'evidence-001', projectId:'project-alpha', sourceType:'web_research',
   trustState:'UNVERIFIED', sourceRef:'https://example.invalid/source/1', content:'Synthetic untrusted evidence.' }];
 const base = { projectId:'project-alpha', proposalId:'proposal-001', title:'Candidate learning improvement',
@@ -16,29 +20,59 @@ assert.equal(p.selfModificationAllowed,false);
 assert.throws(()=>buildProposal({...base,evidence:[{...evidence[0],projectId:'project-beta'}]}),e=>e.code==='HFM_LEARNING_PROJECT_MISMATCH');
 assert.throws(()=>buildProposal({...base,evidence:[evidence[0],evidence[0]]}));
 assert.throws(()=>buildProposal({...base,evidence:[]}));
+
 const records = new Map();
-const store = { projectIsolated:true, createOnly:true, immutableVersions:true, readAfterWrite:true,
+const memoryStore = { projectIsolated:true, createOnly:true, immutableVersions:true, readAfterWrite:true,
   async putIfAbsent(project,id,value) { const k=project+':'+id; if(records.has(k)) return {created:false}; records.set(k,structuredClone(value)); return {created:true}; },
   async get(project,id) { return structuredClone(records.get(project+':'+id)||null); } };
 const audit=[];
-const bridge=createLearningEvolutionBridge({proposalStore:store,auditWriter:async e=>audit.push(e)});
+const bridge=createLearningEvolutionBridge({proposalStore:memoryStore,auditWriter:async e=>audit.push(e)});
 (async()=>{
- const result=await bridge.submit(base);
+ const result=await bridge.submit(base,{actorRole:'admin'});
  assert.equal(result.status,'PENDING_HUMAN_REVIEW');
  assert.equal(result.trustState,'UNTRUSTED');
  assert.equal(result.approvalRequired,true);
  assert.equal(result.canonicalMemoryWrites,0);
  assert.equal(audit.length,1);
+ assert.equal(audit[0].actorRole,'admin');
  await assert.rejects(()=>bridge.submit(base),e=>e.code==='HFM_LEARNING_PROPOSAL_CONFLICT');
  assert.throws(()=>createLearningEvolutionBridge({proposalStore:{},auditWriter:async()=>{}}),e=>e.code==='HFM_LEARNING_STORE_CAPABILITY_REQUIRED');
- assert.throws(()=>createLearningEvolutionBridge({proposalStore:store}),e=>e.code==='HFM_LEARNING_AUDIT_REQUIRED');
- const noAudit=createLearningEvolutionBridge({proposalStore:{...store,async putIfAbsent(project,id,value){
+ assert.throws(()=>createLearningEvolutionBridge({proposalStore:memoryStore}),e=>e.code==='HFM_LEARNING_AUDIT_REQUIRED');
+
+ const noAudit=createLearningEvolutionBridge({proposalStore:{...memoryStore,async putIfAbsent(project,id,value){
    const k=project+':'+id; if(records.has(k)) return {created:false}; records.set(k,structuredClone(value)); return {created:true};
  }},auditWriter:async()=>{throw new Error('synthetic audit outage');}});
- await assert.rejects(()=>noAudit.submit({...base,proposalId:'proposal-002'}),e=>e.code==='HFM_LEARNING_AUDIT_FAILED'&&e.stateCommitted===true);
+ await assert.rejects(()=>noAudit.submit({...base,proposalId:'proposal-002'}),
+   e=>e.code==='HFM_LEARNING_AUDIT_FAILED'&&e.stateCommitted===true);
+
+ const tempRoot=fs.mkdtempSync(path.join(os.tmpdir(),'mira-hfm-phase8-'));
+ try {
+   const persistent=createPersistentProposalStore({baseDirectory:tempRoot});
+   const durableBridge=createLearningEvolutionBridge({proposalStore:persistent,auditWriter:async()=>{}});
+   const durableResult=await durableBridge.submit({...base,proposalId:'proposal-durable-001'});
+   assert.equal(durableResult.status,'PENDING_HUMAN_REVIEW');
+   const reopened=createPersistentProposalStore({baseDirectory:tempRoot});
+   const restored=await reopened.get('project-alpha','proposal-durable-001');
+   assert.equal(restored.proposalDigest,durableResult.proposalDigest);
+   assert.equal((await reopened.putIfAbsent('project-alpha','proposal-durable-001',restored)).created,false);
+   assert.equal(await reopened.get('project-beta','proposal-durable-001'),null);
+   const verified=await createLearningEvolutionBridge({proposalStore:reopened,auditWriter:async()=>{}}).get('project-alpha','proposal-durable-001');
+   assert.equal(verified.proposalDigest,durableResult.proposalDigest);
+   const tamperedPath=path.join(tempRoot,require('node:crypto').createHash('sha256').update('project-alpha').digest('hex'),
+     require('node:crypto').createHash('sha256').update('proposal-durable-001').digest('hex')+'.json');
+   const tampered=JSON.parse(fs.readFileSync(tamperedPath,'utf8'));
+   tampered.evidence[0].content='tampered';
+   fs.writeFileSync(tamperedPath,JSON.stringify(tampered));
+   await assert.rejects(()=>createLearningEvolutionBridge({proposalStore:reopened,auditWriter:async()=>{}}).get('project-alpha','proposal-durable-001'),
+     e=>e.code==='HFM_LEARNING_STORED_INTEGRITY_FAILED');
+ } finally {
+   fs.rmSync(tempRoot,{recursive:true,force:true});
+ }
+
  process.stdout.write(['HFM_PHASE8_PROPOSAL_SCHEMA_AND_TRUST_GATE=PASS','HFM_PHASE8_PROJECT_ISOLATION=PASS',
  'HFM_PHASE8_CREATE_ONLY_AND_READBACK=PASS','HFM_PHASE8_HUMAN_APPROVAL_REQUIRED=PASS',
  'HFM_PHASE8_NO_AUTOMATIC_PROMOTION_OR_EXECUTION=PASS','HFM_PHASE8_NO_CANONICAL_MEMORY_WRITES=PASS',
- 'HFM_PHASE8_AUDIT_FAILURE_RECONCILIATION=PASS','HFM_PHASE8_LIVE_NETWORK_CALLS=0',
- 'HFM_PHASE8_PRODUCTION_ADAPTER=0','TESTS_FAILED=0'].join('\n')+'\n');
+ 'HFM_PHASE8_AUDIT_FAILURE_RECONCILIATION=PASS','HFM_PHASE8_DURABLE_STORE_REOPEN_AND_IMMUTABILITY=PASS',
+ 'HFM_PHASE8_STORED_TAMPER_DETECTION=PASS','HFM_PHASE8_LIVE_NETWORK_CALLS=0',
+ 'HFM_PHASE8_PRODUCTION_DATABASE_ADAPTER=0','TESTS_FAILED=0'].join('\n')+'\n');
 })().catch(e=>{process.stderr.write(String(e.stack||e)+'\n');process.exitCode=1;});
