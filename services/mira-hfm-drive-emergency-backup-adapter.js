@@ -159,12 +159,13 @@ function createEmergencyBackupTransportAdapter({ transport, projectId, namespace
       if (input.projectId !== project || input.prefix !== prefix) {
         reject('Listing is restricted to the configured project prefix.', 'HFM_DRIVE_PROJECT_SCOPE');
       }
-      if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > Math.min(MAX_PAGE_SIZE, provider.maxPageSize)) {
-        reject('Listing page size is outside the bounded limit.');
+      if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > MAX_PAGE_SIZE) {
+        reject('Listing page size is outside the adapter bounded limit.');
       }
+      const effectiveLimit = Math.min(input.limit, provider.maxPageSize);
       const page = await transport.listPage({
         projectId: project, prefix, cursor: input.cursor === undefined ? null : input.cursor,
-        limit: input.limit
+        limit: effectiveLimit
       });
       if (!page || !Array.isArray(page.items) || typeof page.complete !== 'boolean' ||
           (!page.complete && (typeof page.nextCursor !== 'string' || !page.nextCursor)) ||
