@@ -132,7 +132,7 @@ function createJournaledDriveUpload({ provider, journalDirectory, accountBinding
       'HFM_DRIVE_GENERATED_UPLOAD_CONFLICT');
 
     return Object.freeze({
-      status: createError || (createResponse && createResponse.created === false)
+      status: createError || !createResponse || createResponse.created !== true
         ? 'RECONCILED_VERIFIED' : 'CREATED_VERIFIED',
       operationId, fileId, projectId: project, backupId,
       ciphertextSha256: digest, bytes: bytes.length,
