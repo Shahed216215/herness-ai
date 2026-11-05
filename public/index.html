@@ -1617,6 +1617,24 @@
             </div>
             <p id="miraHfmBridgeStatus" class="muted" role="status">Status not loaded. Press Refresh status.</p>
             <p id="miraHfmBridgeError" class="error-box hidden" role="alert"></p>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;">
+              <input id="miraHfmAgentProposalOptIn" type="checkbox">
+              <span>Explicitly opt in to stage one HFM proposal during the next Run Agent request only. Requires the server feature flag and a named Admin session.</span>
+            </label>
+            <div class="grid-2" style="margin-top:10px;">
+              <div>
+                <label for="miraHfmStageTitle">Proposal title</label>
+                <input id="miraHfmStageTitle" type="text" maxlength="240" style="width:100%;" placeholder="Human-reviewable learning candidate">
+              </div>
+              <div>
+                <label for="miraHfmStageRationale">Proposal rationale</label>
+                <input id="miraHfmStageRationale" type="text" maxlength="4000" style="width:100%;" placeholder="Why should this evidence be reviewed?">
+              </div>
+            </div>
+            <div style="margin-top:10px;">
+              <label for="miraHfmStageChange">Proposed change (review only)</label>
+              <textarea id="miraHfmStageChange" rows="2" maxlength="8000" style="width:100%;resize:vertical;" placeholder="Describe a candidate change; it will not be applied automatically."></textarea>
+            </div>
             <div class="grid-2" style="margin-top:12px;">
               <div>
                 <label for="miraHfmProjectId">Project ID</label>
@@ -3931,6 +3949,10 @@ CUSTOM_PROVIDER selects the active custom slot (defaults to provider1).</pre>
     const miraHfmReviewReason = document.getElementById("miraHfmReviewReason");
     const miraHfmApproveHandoff = document.getElementById("miraHfmApproveHandoff");
     const miraHfmRejectProposal = document.getElementById("miraHfmRejectProposal");
+    const miraHfmAgentProposalOptIn = document.getElementById("miraHfmAgentProposalOptIn");
+    const miraHfmStageTitle = document.getElementById("miraHfmStageTitle");
+    const miraHfmStageRationale = document.getElementById("miraHfmStageRationale");
+    const miraHfmStageChange = document.getElementById("miraHfmStageChange");
     let currentMiraHfmProposal = null;
 
     const autonomousTotal =
@@ -10893,9 +10915,20 @@ document.querySelectorAll(
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-              command: value
-            })
+            body: JSON.stringify((() => {
+              const payload = { command: value };
+              if (miraHfmAgentProposalOptIn && miraHfmAgentProposalOptIn.checked) {
+                payload.learningProposalOptIn = true;
+                payload.learningProposal = {
+                  projectId: miraHfmProjectId.value.trim(),
+                  proposalId: miraHfmProposalId.value.trim(),
+                  title: miraHfmStageTitle.value.trim(),
+                  rationale: miraHfmStageRationale.value.trim(),
+                  proposedChange: miraHfmStageChange.value.trim()
+                };
+              }
+              return payload;
+            })())
           });
 
         agentOutput.textContent =
@@ -10906,6 +10939,14 @@ document.querySelectorAll(
                 null,
                 2
               );
+
+        if (miraHfmAgentProposalOptIn) miraHfmAgentProposalOptIn.checked = false;
+        if (data && data.learningProposalHandoff && data.learningProposalHandoff.success === true &&
+            data.learningProposalHandoff.proposal) {
+          miraHfmProjectId.value = data.learningProposalHandoff.proposal.projectId || "";
+          miraHfmProposalId.value = data.learningProposalHandoff.proposal.proposalId || "";
+          await loadMiraHfmProposal();
+        }
 
         await loadAdminDashboard();
 
