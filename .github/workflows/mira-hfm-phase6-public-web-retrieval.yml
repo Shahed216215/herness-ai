@@ -10,7 +10,9 @@ on:
       - 'services/ai.js'
       - 'server.js'
       - 'services/mira-server-bind-host.js'
+      - 'scripts/mira-hfm-phase6-deployment-preflight.js'
       - 'tests/mira-server-bind-host.test.js'
+      - 'tests/mira-hfm-phase6-deployment-preflight.test.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
@@ -18,7 +20,9 @@ on:
       - 'routes/mira-facebook-research-archive.js'
       - 'server.js'
       - 'services/mira-server-bind-host.js'
+      - 'scripts/mira-hfm-phase6-deployment-preflight.js'
       - 'tests/mira-server-bind-host.test.js'
+      - 'tests/mira-hfm-phase6-deployment-preflight.test.js'
       - 'tools/mira-hfm-public-web-retrieval.js'
       - 'tools/web-search.js'
       - 'tests/mira-hfm-public-web-retrieval.test.js'
@@ -39,7 +43,9 @@ on:
       - 'services/ai.js'
       - 'server.js'
       - 'services/mira-server-bind-host.js'
+      - 'scripts/mira-hfm-phase6-deployment-preflight.js'
       - 'tests/mira-server-bind-host.test.js'
+      - 'tests/mira-hfm-phase6-deployment-preflight.test.js'
       - 'services/mira-facebook-public-web-research.js'
       - 'services/mira-facebook-research-memory.js'
       - 'services/mira-facebook-research-memory-provider.js'
@@ -47,7 +53,9 @@ on:
       - 'routes/mira-facebook-research-archive.js'
       - 'server.js'
       - 'services/mira-server-bind-host.js'
+      - 'scripts/mira-hfm-phase6-deployment-preflight.js'
       - 'tests/mira-server-bind-host.test.js'
+      - 'tests/mira-hfm-phase6-deployment-preflight.test.js'
       - 'tools/mira-hfm-public-web-retrieval.js'
       - 'tools/web-search.js'
       - 'tests/mira-hfm-public-web-retrieval.test.js'
@@ -80,6 +88,7 @@ jobs:
           node tests/mira-hfm-phase6-live-provider-smoke.test.js
           node tests/mira-facebook-research-archive-approval.test.js
           node tests/mira-server-bind-host.test.js
+          node tests/mira-hfm-phase6-deployment-preflight.test.js
           node tests/mira-hfm-tool-registry-policy-parity.test.js
       - name: Confirm external action boundary
         run: |
