@@ -40,7 +40,7 @@ async function run(){
  assert.equal(result.results.find(x=>x.memoryId==='archive-001').trustState,'UNVERIFIED');
  assert.equal(result.results.find(x=>x.memoryId==='group-memory-001').trustState,'UNVERIFIED');
  await assert.rejects(()=>retrieveOptimized({query:'Mira',projectId:project,sources:[canonical],tokenBudget:500,tokenCounter:()=>NaN}),/tokenCounter/i);
- await assert.rejects(()=>createModelTokenizerCounter({modelId:'bad'}),/encode/i);
+ assert.throws(()=>createModelTokenizerCounter({modelId:'bad'}),/encode/i);
  const benchmark=[];
  for(const size of [100,1000,10000]){
   const times=[];let last;
