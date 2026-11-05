@@ -362,11 +362,11 @@ PRODUCTION_DEPLOYMENT=NOT_APPROVED
 
 - Unified workflow: `.github/workflows/mira-hfm-v02-unified-offline.yml`.
 - Pull request: #27, draft and unmerged.
-- Workflow run `42004933460`: completed SUCCESS on the PR merge candidate before this report-only update.
+- Workflow run `42005065884`: completed SUCCESS for the report-updated PR head `7335a73c37a25587d754249557981c3e5738db64`; job `unified-offline` completed SUCCESS.
 - Job `unified-offline`: SUCCESS.
 - Successful steps: Node 24 setup, `npm ci`, integrated runtime syntax checks, Phase 5 Group import tests, Phase 6 public retrieval/archive-boundary tests, Phase 7 encrypted backup/restore-staging tests, Phase 8 learning/evolution tests, Phase 9 retrieval-optimizer tests, and external-boundary recording.
 - The workflow explicitly records zero live Facebook, Tavily, model, and Google Drive requests; zero Supabase writes, production migrations, and canonical Memory writes.
-- The only subsequent change to the PR head is this report update; application source and test files are unchanged. A fresh workflow run is required for the updated head before treating the updated PR check as green.
+- The successful run above includes dependency installation, integrated runtime syntax checks, and all 28 configured Phase 5–9 offline test commands; application source and test files were unchanged by the report-only commit.
 
 ### Updated decision
 
