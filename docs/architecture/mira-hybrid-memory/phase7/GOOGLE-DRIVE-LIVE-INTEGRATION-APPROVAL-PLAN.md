@@ -83,7 +83,7 @@ A failed/ambiguous upload remains UNCERTAIN; preserve the journal and use only t
 
 - No paid service or billing change is authorized by this plan.
 - Google Drive storage usage is charged against the user's available account storage; Drive API rate limits and account policies still apply.
-- The journal is currently owner-only but not encrypted or MAC-authenticated. Its device-loss/backup strategy must be resolved before relying on it as the only record of a generated file ID.
+- The journal is currently owner-only but not encrypted or MAC-authenticated. A lost journal can be reconstructed only when the user still has the correct Drive account, backup ID and root key and the remote object remains intact; automatic cross-device journal replication and recovery without those inputs remain unresolved.
 - The root encryption key must remain outside Drive and outside the journal. Production key custody/rotation/recovery is a separate unresolved gate.
 - OAuth tokens and secrets must be held only in an approved secret store; never commit them, print them, or place them in logs.
 - Shared Drives, permission changes, link sharing, folder creation, deletion and retention deletion are outside the current provider mapper.
