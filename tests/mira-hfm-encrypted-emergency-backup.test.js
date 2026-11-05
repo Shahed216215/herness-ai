@@ -28,7 +28,21 @@ try {
   assert.equal(env.metadata.projectId, metadata.projectId);
   assert.equal(envelope.includes(payload), false);
   const verified = decryptAndVerifyBackup(envelope, key);
-  const preview = previewEncryptedBackup({ envelope, key });
+  let previewPlainBuffer;
+  let preview;
+  const originalBufferConcat = Buffer.concat;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      previewPlainBuffer = output;
+      return output;
+    };
+    preview = previewEncryptedBackup({ envelope, key });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.ok(Buffer.isBuffer(previewPlainBuffer));
+  assert.equal(previewPlainBuffer.every(byte => byte === 0), true);
   assert.equal(preview.status, 'VERIFIED_RESTORE_PREVIEW');
   assert.equal(preview.backupId, backupId);
   assert.equal(preview.integrityVerified, true);
@@ -81,6 +95,7 @@ try {
   console.log('HFM_PHASE7_DERIVED_ENCRYPTION_KEY_ZEROIZED=PASS');
   console.log('HFM_PHASE7_TEMPORARY_PLAINTEXT_BUFFER_ZEROIZED=PASS');
   console.log('HFM_PHASE7_DERIVED_DECRYPTION_KEY_ZEROIZED=PASS');
+  console.log('HFM_PHASE7_PREVIEW_DECRYPTED_PAYLOAD_ZEROIZED=PASS');
   console.log('HFM_PHASE7_AUTHENTICATED_RESTORE_PREVIEW_NO_WRITE=PASS');
   assert.equal(verified.plaintextSha256, crypto.createHash('sha256').update(payload).digest('hex'));
   console.log('HFM_PHASE7_ENCRYPT_DECRYPT_AND_AUTHENTICATE=PASS');
@@ -100,7 +115,21 @@ try {
   assert.throws(() => createEncryptedBackup({ payload: '', key, backupId, createdAt }));
   console.log('HFM_PHASE7_INPUT_AND_KEY_GATES=PASS');
 
-  const stored = writeImmutableBackup({ envelope, key, directory: dir, backupId });
+  let writeVerifiedPlain;
+  let stored;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      writeVerifiedPlain = output;
+      return output;
+    };
+    stored = writeImmutableBackup({ envelope, key, directory: dir, backupId });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.ok(Buffer.isBuffer(writeVerifiedPlain));
+  assert.equal(writeVerifiedPlain.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_LOCAL_BACKUP_VERIFICATION_PAYLOAD_ZEROIZED=PASS');
   assert.equal(fs.readFileSync(stored.path).toString('utf8'), envelope.toString('utf8'));
   const invalidLocalDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-local-backup-test-'));
   try {
@@ -115,7 +144,21 @@ try {
   assert.throws(() => writeImmutableBackup({ envelope, key, directory: dir, backupId }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_IMMUTABLE_BACKUP_AND_READBACK=PASS');
 
-  const staged = restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' });
+  let restorePlainBuffer;
+  let staged;
+  try {
+    Buffer.concat = function (chunks, ...args) {
+      const output = originalBufferConcat.call(this, chunks, ...args);
+      restorePlainBuffer = output;
+      return output;
+    };
+    staged = restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' });
+  } finally {
+    Buffer.concat = originalBufferConcat;
+  }
+  assert.ok(Buffer.isBuffer(restorePlainBuffer));
+  assert.equal(restorePlainBuffer.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_RESTORE_STAGING_PAYLOAD_ZEROIZED=PASS');
   assert.equal(staged.status, 'VERIFIED_STAGING_ONLY');
   assert.equal(staged.canonicalMemoryWrites, 0);
   assert.equal(staged.productionRestore, false);
