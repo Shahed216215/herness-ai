@@ -72,8 +72,8 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Verification
 
-- Latest code/test CI: run **42013352093 — SUCCESS**, job **127197617674**, tested code/test head commit `41514ea9fdfaa2d76ec847a7cc83fa0905ea281f`.
-- Node syntax check and all six offline test suites completed successfully. Logs contain **108 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
+- Latest code/test CI: run **42013598769 — SUCCESS**, job **127198451866**, tested code/test head commit `2bd54dde534e9c2179fbfc422668019614e8828e`.
+- Node syntax check and all six offline test suites completed successfully. Logs contain **109 explicit Phase 7 PASS markers**; all six test commands report `TESTS_FAILED=0`.
 - Google Drive v3 fake-client regressions include exact appProperties allowlist/124-byte property bounds, future timestamp rejection, exact requested file-ID binding, project-scoped pagination, incomplete-search rejection, account identity/quota validation and exact media readback. Cryptographic tests verify temporary plaintext, derived encryption/decryption keys, local/cloud upload verification payloads, preview payloads, local-backup verification payloads and local/cloud restore-staging in-memory payloads and the plaintext staging readback buffer are zeroized. Envelope parsing rejects unknown top-level fields and noncanonical JSON encodings. Payload/envelope type and size limits are checked before buffer allocation; arbitrary objects are not coerced to strings. Bounded envelope buffers are snapshotted before verification. Temporary plaintext is also zeroized when timestamp/metadata validation fails before encryption begins. Google Drive media chunks are type- and size-checked before allocation; Drive file sizes, appProperties byte counts and quota values require canonical decimal integer strings. Newly created backup/journal directories now fsync their parent directory entries before proceeding.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - PR #16 is Draft and unmerged; the branch is ahead of Phase 6 with behind=0.
@@ -95,9 +95,9 @@ The exporter is not blocked by encryption code; it is blocked by source authorit
 VERSION=v0.2
 PHASE7=OFFLINE_IMPLEMENTATION_AND_VERIFICATION_PASS_PRODUCTION_GATES_BLOCKED
 CURRENT_HEAD_CI=PASS_OFFLINE_SYNTHETIC
-CURRENT_HEAD_CI_RUN=42013352093
-CURRENT_HEAD_CI_JOB=127197617674
-CURRENT_HEAD_CODE_TEST_COMMIT=41514ea9fdfaa2d76ec847a7cc83fa0905ea281f
+CURRENT_HEAD_CI_RUN=42013598769
+CURRENT_HEAD_CI_JOB=127198451866
+CURRENT_HEAD_CODE_TEST_COMMIT=2bd54dde534e9c2179fbfc422668019614e8828e
 CURRENT_HEAD_TEST_SUITES=6
 OFFLINE_PASS_MARKERS=108
 OFFLINE_TESTS_FAILED=0
