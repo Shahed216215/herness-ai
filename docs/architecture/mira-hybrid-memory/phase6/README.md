@@ -58,3 +58,9 @@ Status handling distinguishes:
 A search miss or provider failure is never interpreted as deletion or data loss. Query-attempt counts reflect actual executed queries, including early termination when the result limit is reached.
 
 Offline contract verification does not establish live search quality, production archive durability, a real model answer cycle, Render deployment, or independent source authorship.
+
+## Archive-write authority correction (2026-11-05)
+
+The inherited facebook_page_public_research tool previously performed automatic writes to the separate untrusted research archive and was classified as autonomous. This conflicted with the Phase 6 decision that archive writes require a separately governed human-approved workflow. The Phase 6 branch now fails closed: the legacy archive-writing tool is marked non-autonomous and human-approval-required in the shared tool policy, and its own execute entrypoint enforces that policy before making a provider search or archive call. Direct archive service functions remain available to a future separately authenticated/approved workflow; no such workflow is exposed by this change. Regression coverage asserts the tool returns BLOCKED and performs zero search/archive calls. The new mira_hfm_public_web_retrieval remains autonomous read-only.
+
+Verification for this correction is pending a fresh Phase 6 CI run. No live search, Supabase, Render, Facebook, archive write, or canonical Memory write was performed.
