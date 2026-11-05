@@ -196,17 +196,17 @@ LIVE_OAUTH_OR_NETWORK=NOT_AUTHORIZED
 
 ## 10. Latest code-change CI evidence
 
-Restacked code/test commit `e02b32e16c3503479a4bc37f3d9d06f3be0beee6` completed GitHub Actions run **41994278556** (job **127133573967**) successfully. The combined offline job logs contain **49 Phase 7 PASS markers** across the encrypted-backup/key-provider and injected-transport suites; both test commands report `TESTS_FAILED=0`. Provider read operations now carry the fixed projectId explicitly, and the fake transport asserts the project binding. New assertions verify bounded cursors, encrypted-only listing metadata, negotiated listed-object size, failed-auth restore leaves no staging artifact, provider quota reports are schema/scope/arithmetic validated, future quota and backup timestamps are rejected, capacity listing timestamps are canonical, and authenticated cloud envelope project binding is enforced on upload/preview/restore. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
-
-This run verifies the restacked code and regression tests. Subsequent commits only refresh documentation and have not changed application or test source.
+The Phase 7 workflow completed GitHub Actions run **42001767982 — SUCCESS**, job **127158482183**, against branch commit `d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf`. The job ran four offline test suites: encrypted backup/key-provider, injected transport adapter, durable generated-ID journal, and journaled generated-ID upload. Logs contain **66 explicit Phase 7 PASS markers**; all four commands report `TESTS_FAILED=0`. The new generated-ID upload suite verifies journal-before-upload ordering, HTTP 409 duplicate reconciliation, timeout-after-commit reconciliation, timeout-before-commit retry with the same ID, remote metadata conflict rejection, exact ciphertext mismatch rejection, and cross-account journal binding. Logs also confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 
 This is synthetic offline CI evidence only. It does not certify a live Google Drive provider, production key custody, canonical snapshot completeness, or production recovery.
 
 VERSION=v0.2
 OFFLINE_TRANSPORT_ADAPTER=PASS
-OFFLINE_CI_RUN=41994278556_SUCCESS
-OFFLINE_CI_CODE_TEST_COMMIT=e02b32e16c3503479a4bc37f3d9d06f3be0beee6
-OFFLINE_PASS_MARKERS=49
+OFFLINE_CI_RUN=42001767982_SUCCESS
+OFFLINE_CI_JOB=127158482183
+OFFLINE_CI_COMMIT=d05d50a0fe3603c1d3654fa52ff72a9dd9eb3abf
+OFFLINE_PASS_MARKERS=66
+OFFLINE_TEST_SUITES=4
 LIVE_GOOGLE_DRIVE=NOT_IMPLEMENTED
 LIVE_NETWORK=NOT_AUTHORIZED
 ROUTINE_DRIVE_SYNC=UNCHANGED
