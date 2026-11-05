@@ -96,7 +96,7 @@ begin
     (batch_id, project_id, group_id, export_id, batch_digest, payload)
   values
     (v_batch_id, v_project_id, v_group_id, v_export_id, v_batch_digest, p_batch)
-  on conflict (batch_id) do nothing;
+  on conflict on constraint mira_facebook_group_import_batches_pkey do nothing;
   get diagnostics v_inserted = row_count;
   v_batch_status := case when v_inserted = 1 then 'CREATED' else 'ALREADY_EXISTS' end;
 
