@@ -145,20 +145,32 @@ try {
   console.log('HFM_PHASE7_IMMUTABLE_BACKUP_AND_READBACK=PASS');
 
   let restorePlainBuffer;
+  let stageReadbackBuffer;
   let staged;
+  const originalReadFileSync = fs.readFileSync;
+  const stagedTargetPath = path.join(restoreDir, 'restore-restore-test-0001.verified-stage');
   try {
     Buffer.concat = function (chunks, ...args) {
       const output = originalBufferConcat.call(this, chunks, ...args);
       restorePlainBuffer = output;
       return output;
     };
+    fs.readFileSync = function (filePath, ...args) {
+      const output = originalReadFileSync.call(this, filePath, ...args);
+      if (path.resolve(String(filePath)) === path.resolve(stagedTargetPath)) stageReadbackBuffer = output;
+      return output;
+    };
     staged = restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' });
   } finally {
     Buffer.concat = originalBufferConcat;
+    fs.readFileSync = originalReadFileSync;
   }
   assert.ok(Buffer.isBuffer(restorePlainBuffer));
   assert.equal(restorePlainBuffer.every(byte => byte === 0), true);
+  assert.ok(Buffer.isBuffer(stageReadbackBuffer));
+  assert.equal(stageReadbackBuffer.every(byte => byte === 0), true);
   console.log('HFM_PHASE7_RESTORE_STAGING_PAYLOAD_ZEROIZED=PASS');
+  console.log('HFM_PHASE7_RESTORE_STAGING_READBACK_BUFFER_ZEROIZED=PASS');
   assert.equal(staged.status, 'VERIFIED_STAGING_ONLY');
   assert.equal(staged.canonicalMemoryWrites, 0);
   assert.equal(staged.productionRestore, false);
