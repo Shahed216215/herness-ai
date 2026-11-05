@@ -66,7 +66,9 @@ async function retrievePublicFacebookMemory({
   const queries = buildQueries({ pageId:id, pageName, pageUrl, query:query.trim(), memoryId:safeMemoryId, projectId:safeProjectId });
   const evidence = [], errors = [], seen = new Set();
   let successfulQueries = 0;
+  let attemptedQueries = 0;
   for (const searchQuery of queries) {
+    attemptedQueries++;
     try {
       const response = await searchWeb(searchQuery);
       const items = parseResults(response);
@@ -101,13 +103,17 @@ async function retrievePublicFacebookMemory({
   }
   const status = evidence.length
     ? (errors.length ? 'DEGRADED_WITH_UNTRUSTED_EVIDENCE' : 'PUBLIC_WEB_EVIDENCE_COLLECTED_UNTRUSTED')
-    : (successfulQueries === 0 ? 'SEARCH_PROVIDER_UNAVAILABLE' : 'NOT_FOUND_BY_PUBLIC_SEARCH');
+    : (successfulQueries === 0
+      ? 'SEARCH_PROVIDER_UNAVAILABLE'
+      : errors.length
+        ? 'DEGRADED_SEARCH_NO_EVIDENCE'
+        : 'NOT_FOUND_BY_PUBLIC_SEARCH');
   return Object.freeze({
     schemaVersion:'1.0.0', providerId:'mira-hfm-public-web-retrieval',
     page:{pageId:id,pageName:pageName || null},
     lookup:{query:query.trim(),memoryId:safeMemoryId,projectId:safeProjectId},
     retrievalMode:'PUBLIC_FACEBOOK_SEARCH_INDEX_ONLY',
-    status, queriesAttempted:queries.length, queriesSucceeded:successfulQueries,
+    status, queriesAttempted:attemptedQueries, queriesSucceeded:successfulQueries,
     evidence:Object.freeze(evidence), errors:Object.freeze(errors), archive,
     limits:Object.freeze({
       directFacebookFetches:0, metaGraphApiCalls:0, loginOrCookieUse:0,
