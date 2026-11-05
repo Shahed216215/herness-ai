@@ -100,7 +100,7 @@ function verifyPolicyStateEnvelope({
 
 function verifyPolicyStateCommitReceipt({
   receipt, trustedStateAuthorities, expectedAuthorityId, expectedPreviousSequence,
-  expectedNextState, now = Date.now()
+  expectedNextState, expectedIdempotencyKey, expectedRequestDigest, now = Date.now()
 }) {
   const p = verifySignedRecord(receipt, trustedStateAuthorities, expectedAuthorityId, now,
     'HFM_POLICY_STATE_COMMIT');
@@ -109,6 +109,9 @@ function verifyPolicyStateCommitReceipt({
       p.nextSequence !== expectedNextState.highestAcceptedSequence ||
       p.policyId !== expectedNextState.lastAcceptedPolicyId ||
       p.policyDigest !== expectedNextState.lastAcceptedPolicyDigest ||
+      p.idempotencyKey !== expectedIdempotencyKey ||
+      p.requestDigest !== expectedRequestDigest ||
+      !/^[a-f0-9]{64}$/.test(p.requestDigest || '') ||
       p.nextSequence !== p.previousSequence + 1) {
     fail('Policy-state commit receipt does not match the exact compare-and-swap request.',
       'HFM_POLICY_STATE_COMMIT_MISMATCH');
@@ -119,7 +122,9 @@ function verifyPolicyStateCommitReceipt({
     previousSequence: p.previousSequence,
     nextSequence: p.nextSequence,
     policyId: p.policyId,
-    policyDigest: p.policyDigest
+    policyDigest: p.policyDigest,
+    idempotencyKey: p.idempotencyKey,
+    requestDigest: p.requestDigest
   });
 }
 
@@ -137,7 +142,7 @@ async function verifyAndAcceptSignedProvenancePolicy({
     fail('Policy acceptance clock configuration is invalid.', 'HFM_POLICY_STATE_CONFIG_INVALID');
   }
   if (!isPlainObject(provider) || typeof provider.readState !== 'function' ||
-      typeof provider.compareAndSwap !== 'function') {
+      typeof provider.compareAndSwap !== 'function' || typeof provider.getCommitReceipt !== 'function') {
     fail('An authenticated policy-state provider with read and atomic compare-and-swap is required.',
       'HFM_POLICY_STATE_PROVIDER_REQUIRED');
   }
@@ -191,19 +196,62 @@ async function verifyAndAcceptSignedProvenancePolicy({
     operationalIssuerIds: evidenceIssuerExclusions,
     now
   });
+  const casRequest = {
+    authorityId: expectedStateAuthorityId,
+    expectedSequence: acceptedPolicyState.highestAcceptedSequence,
+    expectedDigest: acceptedPolicyState.lastAcceptedPolicyDigest,
+    nextState: verified.nextAcceptedState,
+    idempotencyKey: 'mira-hfm-policy-acceptance-v1:' + verified.policyId + ':' + verified.policyDigest
+  };
+  const requestDigest = sha256(JSON.stringify({
+    authorityId: casRequest.authorityId,
+    expectedSequence: casRequest.expectedSequence,
+    expectedDigest: casRequest.expectedDigest,
+    nextState: casRequest.nextState
+  }));
   let receipt;
+  async function reconcileAmbiguousCommit() {
+    try {
+      receipt = await provider.getCommitReceipt({
+        authorityId: expectedStateAuthorityId,
+        idempotencyKey: casRequest.idempotencyKey,
+        requestDigest
+      });
+    } catch {
+      fail('Ambiguous policy-state commit could not be reconciled from the authoritative receipt store.',
+        'HFM_POLICY_STATE_COMMIT_UNRESOLVED');
+    }
+    if (!receipt) {
+      fail('No authoritative receipt exists for the ambiguous policy-state commit.',
+        'HFM_POLICY_STATE_COMMIT_UNRESOLVED');
+    }
+  }
   try {
-    receipt = await provider.compareAndSwap({
-      authorityId: expectedStateAuthorityId,
-      expectedSequence: acceptedPolicyState.highestAcceptedSequence,
-      expectedDigest: acceptedPolicyState.lastAcceptedPolicyDigest,
-      nextState: verified.nextAcceptedState
-    });
+    receipt = await provider.compareAndSwap({ ...casRequest });
   } catch (error) {
-    if (error && (error.code === 'HFM_POLICY_STATE_CAS_CONFLICT' ||
-        error.code === 'HFM_POLICY_STATE_UNAVAILABLE')) throw error;
-    fail('Policy-state compare-and-swap did not complete; policy remains unaccepted.',
-      'HFM_POLICY_STATE_COMMIT_FAILED');
+    if (error && error.code === 'HFM_POLICY_STATE_AMBIGUOUS_COMMIT') {
+      await reconcileAmbiguousCommit();
+    } else if (error && error.code === 'HFM_POLICY_STATE_REQUEST_NOT_COMMITTED') {
+      try {
+        receipt = await provider.compareAndSwap({ ...casRequest });
+      } catch (retryError) {
+        if (retryError && retryError.code === 'HFM_POLICY_STATE_AMBIGUOUS_COMMIT') {
+          await reconcileAmbiguousCommit();
+        } else if (retryError && (retryError.code === 'HFM_POLICY_STATE_CAS_CONFLICT' ||
+            retryError.code === 'HFM_POLICY_STATE_UNAVAILABLE')) {
+          throw retryError;
+        } else {
+          fail('Policy-state retry did not complete; policy acceptance remains unresolved.',
+            'HFM_POLICY_STATE_COMMIT_FAILED');
+        }
+      }
+    } else if (error && (error.code === 'HFM_POLICY_STATE_CAS_CONFLICT' ||
+        error.code === 'HFM_POLICY_STATE_UNAVAILABLE')) {
+      throw error;
+    } else {
+      fail('Policy-state compare-and-swap did not complete; policy remains unaccepted.',
+        'HFM_POLICY_STATE_COMMIT_FAILED');
+    }
   }
   const commit = verifyPolicyStateCommitReceipt({
     receipt,
@@ -211,6 +259,8 @@ async function verifyAndAcceptSignedProvenancePolicy({
     expectedAuthorityId: expectedStateAuthorityId,
     expectedPreviousSequence: acceptedPolicyState.highestAcceptedSequence,
     expectedNextState: verified.nextAcceptedState,
+    expectedIdempotencyKey: casRequest.idempotencyKey,
+    expectedRequestDigest: requestDigest,
     now
   });
   return Object.freeze({
