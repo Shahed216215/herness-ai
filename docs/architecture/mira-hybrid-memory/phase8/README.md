@@ -14,6 +14,7 @@ Connect evidence held by Mira Hybrid Memory to Mira's learning/evolution workflo
 - Computes SHA-256 digests for evidence and the complete proposal.
 - Stores proposals in a project-hash-partitioned local store using create-only file creation, restrictive permissions, fsync and read-after-write.
 - Exposes an admin-only API for staging and reading proposals; the existing global autonomous-learning and Knowledge stores are not modified.
+- Includes an adapter for the existing HFM public Facebook search-retrieval result format. It validates the provider/mode/zero-canonical-write declarations, page binding and HTTPS Facebook source URLs, then forces every imported item to UNVERIFIED.
 - Uses Mira's existing audit-log append/integrity path for proposal-staging events; audit failure after persistence is surfaced as committed/reconciliation-required.
 - Requires an audit-writer callback. The production route uses the existing audit-log integrity chain; an HMAC anchor is conditional on the audit key being configured.
 - Marks proposals PENDING_HUMAN_REVIEW and UNTRUSTED.
@@ -35,7 +36,8 @@ The local adapter provides project-scoped create-only files and immutable propos
 
 - No automatic learning/training, trust promotion, policy mutation, code generation/application, self-repair or self-modification.
 - No canonical Memory writes or changes to existing Memory records.
-- The admin route is registered in server.js, but no existing AI generation-cycle, retrieval tool, autonomous-learning queue, Knowledge store, or UI is wired to submit automatically.
+- The admin route is registered in server.js. The `/proposals/from-public-retrieval` endpoint accepts an already-produced HFM public retrieval result; it does not execute a search itself and does not cryptographically attest that the supplied result came from the provider.
+- No existing AI generation-cycle, retrieval tool, autonomous-learning queue, Knowledge store, or UI is wired to submit automatically.
 - Evidence must be supplied to the admin API by a trusted caller; the API does not independently prove that a claimed public-web retrieval occurred.
 - No live provider, model, network, deployment, migration or secret access.
 - No change to Phase 7 emergency backup or routine Google Drive synchronization.
@@ -43,6 +45,11 @@ The local adapter provides project-scoped create-only files and immutable propos
 ## Offline verification
 
 Run: node tests/mira-hfm-learning-evolution-bridge.test.js
+
+Admin API base: `/api/admin/mira-hfm-learning-evolution`
+- `POST /proposals` stages explicitly supplied evidence.
+- `POST /proposals/from-public-retrieval` adapts an existing HFM public retrieval result.
+- `GET /proposals/:projectId/:proposalId` reads and re-verifies a stored proposal.
 
 Tests use synthetic evidence and a temporary local filesystem adapter, including process-level reopen, immutable create-only behavior and stored-tamper detection. They do not establish Render multi-instance durability, Supabase persistence, automated retrieval orchestration, learning quality or production readiness.
 
