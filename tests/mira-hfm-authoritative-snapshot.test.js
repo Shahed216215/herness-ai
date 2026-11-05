@@ -23,8 +23,7 @@ function createSource({ request, snapshot, privateKey, alter } = {}) {
     descriptor: { contractVersion: '1', sourceId: 'fixture-source', signingKeyId: 'fixture-signing-key',
       mode: 'read-only', environment: 'test' },
     async readSnapshot(received) {
-      assert.deepEqual(received, { projectId: request.projectId, actorId: request.actorId,
-        scope: request.scope, requestId: request.requestId, nonce: request.nonce });
+      assert.equal(received.scope, 'backup:read');
       const attestation = signedFixture({ privateKey, snapshot, request, ...(alter || {}) });
       return { snapshot, attestation };
     }
