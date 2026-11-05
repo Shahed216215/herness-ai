@@ -37,7 +37,7 @@ measureCapacity reports the ratio of observed record count to a declared baselin
 
 Run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js
 
-The test uses synthetic in-memory adapters. It does not access local user data, Facebook, Google Drive, Supabase, Render, external APIs or production storage.
+The test uses synthetic in-memory adapters, including a 10,000-record corpus against a 100-record declared baseline (a 100x synthetic record-count ratio). It checks bounded output and retrieval completion, not production performance or capacity. It does not access local user data, Facebook, Google Drive, Supabase, Render, external APIs or production storage.
 
 ## Remaining work
 
