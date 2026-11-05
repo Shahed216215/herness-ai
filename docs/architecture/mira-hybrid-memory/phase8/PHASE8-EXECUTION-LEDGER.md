@@ -65,3 +65,17 @@ Status: SOURCE_AUDIT_COMPLETE_FOR_SELECTED_MODULES / IMPLEMENTATION_BLOCKED_PEND
 - First adapter CI run #372 failed at the test's case-sensitive expected-error regex only; implementation threw the expected `Mapping digest mismatch.` error. Test assertion corrected; run #373 verified the correction. No code failure was observed in the failing run.
 - P8-A/P8-B: PASS_CI_SYNTHETIC. Phase 8 overall: IN_PROGRESS.
 - Remaining: authenticated snapshot file capture, trusted task/work-item-to-project authority source, Work Knowledge/Experience projection lineage, project-scoped retrieval, HFM Evolution prepare-only bridge, full bypass tests and independent review.
+
+
+## Entry 003 — P8-E project-scoped retrieval contract and CI
+
+- Added `services/mira-hfm-work-learning-retrieval.js` over `retrieveCanonicalRecordsWithReport`.
+- The facade performs LIST authorization and per-record READ authorization, project/access checks, ACTIVE + VERIFIED + retrievable trust-state checks, and unresolved conflict exclusion before the retrieval adapter calculates relevance.
+- Adapter admits only canonical `lesson` records whose serialized payload declares `domain=work_learning` and whose payload learningId matches canonical sourceId. It excludes the current task, returns source provenance and revision, and marks all output read-only/non-executable.
+- Test fixture proves same-task exclusion, cross-project isolation, pending-review exclusion, quarantine exclusion, non-learning record exclusion, host denial, missing authorization, bounded limit, provenance retention and immutable output.
+- CI run #377, ID `42046629438`, URL https://github.com/Shahed216215/herness-ai/actions/runs/42046629438, commit `f5b013f2c03177fb3cd9526f73971880bc194d81`, push event, conclusion SUCCESS. Job `phase8-learning-scope-contract` SUCCESS.
+- Verified markers: `WORK_LEARNING_PROJECT_SCOPED_FILTER_BEFORE_RANKING_PASS`, `WORK_LEARNING_CROSS_PROJECT_REQUEST_CONTEXT_BLOCK_PASS`, `WORK_LEARNING_MISSING_HOST_AUTHORIZATION_BLOCK_PASS`, `WORK_LEARNING_RETRIEVAL_LIMIT_BOUND_PASS`, `WORK_LEARNING_HOST_DENY_BLOCKS_RETRIEVAL_PASS`, `WORK_LEARNING_RETRIEVAL_PROVENANCE_AND_IMMUTABILITY_PASS`.
+- Logs confirm `TESTS_FAILED=0`, `NETWORK_REQUESTS=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- Earlier run #376 failed only because a test expected host DENY to return an empty result; the authorization contract correctly throws on LIST denial. Test was corrected to assert fail-closed denial and run #377 passed.
+- P8-E: PASS_CI_SYNTHETIC. Runtime source integration and production authorization are NOT_IMPLEMENTED / NOT_APPROVED.
+- Phase 8 remains IN_PROGRESS. P8-D derived projection lineage and P8-F Evolution governance bridge remain open.
