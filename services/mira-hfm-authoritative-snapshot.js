@@ -31,6 +31,12 @@ async function captureAuthorizedSnapshot({
   source, request, trustedSources, now = Date.now(),
   maxAttestationAgeMs = 300000, maxFutureSkewMs = 30000
 }) {
+  if (!Number.isSafeInteger(now) ||
+      !Number.isSafeInteger(maxAttestationAgeMs) || maxAttestationAgeMs < 1 || maxAttestationAgeMs > 300000 ||
+      !Number.isSafeInteger(maxFutureSkewMs) || maxFutureSkewMs < 0 || maxFutureSkewMs > 30000) {
+    fail('Snapshot attestation time configuration is invalid or exceeds fixed safety limits.',
+      'HFM_SNAPSHOT_TIME_CONFIG_INVALID');
+  }
   if (!isPlainObject(source) || !isPlainObject(source.descriptor) ||
       typeof source.readSnapshot !== 'function' || !isPlainObject(request) ||
       typeof request.projectId !== 'string' || !request.projectId.trim() ||
