@@ -24,6 +24,9 @@
 - .github/workflows/mira-hfm-phase7-emergency-backup.yml: isolated Node 24 contract workflow.
 
 ## CI evidence
+- Latest five-suite run `42028283552` completed SUCCESS on commit `5994c8eb372edcbd46ee1021dd45f3af19afba10`; signed snapshot-source, source-to-encrypted-backup, and recovery verification test markers all passed.
+- Snapshot source now requires an independently pinned Ed25519 public-key trust anchor and fingerprint, verifies signed attestation, binds project/actor/scope/request ID/nonce, enforces an attestation freshness window, and checks source revision/count/payload digest. This authenticates the attestation signer against the configured trust anchor; it does not independently enforce the source's authorization policy or certify the production store.
+- `createEncryptedBackupFromSource` connects the verified snapshot contract to envelope encryption, but returns prepared encrypted bytes only; no local publication, Drive upload, or canonical Memory write occurs.
 - Latest five-suite workflow run `42027867376` completed SUCCESS on commit `1a630e76591acba674073d174fef241a1f39bc73`.
 - All five offline suites passed: encrypted backup contract, mocked Drive adapter, key-provider contract, authoritative snapshot-source contract, and recovery verification.
 - Logs confirm `PRODUCTION_SOURCE_AUTHENTICATED=NO`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`, `NETWORK_REQUESTS=0`, `LIVE_DRIVE_API_CALLS=0`, and `BACKUP_DELETION=0`.
