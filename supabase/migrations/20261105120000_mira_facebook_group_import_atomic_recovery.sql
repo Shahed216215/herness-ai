@@ -87,6 +87,11 @@ begin
     raise exception 'atomic import identity or policy validation failed' using errcode = '22023';
   end if;
 
+  -- Transaction-scoped advisory locks serialize immutable identity checks without UPDATE grants.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('mira-fb-group-batch:' || v_batch_id, 0)
+  );
+
   insert into public.mira_facebook_group_import_batches
     (batch_id, project_id, group_id, export_id, batch_digest, payload)
   values
@@ -97,8 +102,7 @@ begin
 
   select * into v_batch
   from public.mira_facebook_group_import_batches
-  where mira_facebook_group_import_batches.batch_id = v_batch_id
-  for update;
+  where mira_facebook_group_import_batches.batch_id = v_batch_id;
 
   if not found or v_batch.project_id <> v_project_id
      or v_batch.group_id <> v_group_id
@@ -110,6 +114,10 @@ begin
   v_payload := p_event - 'eventId' - 'eventDigest';
   v_payload := v_payload || jsonb_build_object('recordedAt', clock_timestamp());
 
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('mira-fb-group-audit:' || p_operation_key, 0)
+  );
+
   insert into public.mira_facebook_group_import_audit_events
     (event_id, operation_key, project_id, group_id, batch_id, event_digest, payload)
   values
@@ -120,8 +128,7 @@ begin
 
   select * into v_audit
   from public.mira_facebook_group_import_audit_events
-  where mira_facebook_group_import_audit_events.operation_key = p_operation_key
-  for update;
+  where mira_facebook_group_import_audit_events.operation_key = p_operation_key;
 
   if not found or v_audit.project_id <> v_project_id
      or v_audit.group_id <> v_group_id
