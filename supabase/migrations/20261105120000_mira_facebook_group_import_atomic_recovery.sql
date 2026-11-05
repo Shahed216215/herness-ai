@@ -75,7 +75,13 @@ begin
      or v_event_id is null or v_event_digest is null
      or v_event_digest !~ '^[a-f0-9]{64}$'
      or nullif(btrim(p_event ->> 'actorId'), '') is null
+     or p_batch ->> 'schemaVersion' IS DISTINCT FROM '1.0.0'
+     or p_batch ->> 'sourceType' IS DISTINCT FROM 'facebook_group'
+     or p_batch ->> 'sourceAuthorization' IS DISTINCT FROM 'USER_ATTESTED_AUTHORIZED_GROUP_ACCESS'
+     or p_batch ->> 'trustPolicy' IS DISTINCT FROM 'UNTRUSTED_USER_SUPPLIED_GROUP_CONTENT'
+     or p_event ->> 'schemaVersion' IS DISTINCT FROM '1.0.0'
      or p_event ->> 'eventType' IS DISTINCT FROM 'FACEBOOK_GROUP_MEMORY_IMPORT_STAGED'
+     or p_event ->> 'outcome' IS DISTINCT FROM 'ATOMIC_STAGED'
      or p_event ->> 'projectId' IS DISTINCT FROM v_project_id
      or p_event ->> 'groupId' IS DISTINCT FROM v_group_id
      or p_event ->> 'batchId' IS DISTINCT FROM v_batch_id
