@@ -17,7 +17,7 @@ function reject(message, code = 'HFM_GOOGLE_DRIVE_PROVIDER_INVALID') {
   throw error;
 }
 function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccountFingerprint,
-  driveSpace, parentId } = {}) {
+  driveSpace, projectId, parentId } = {}) {
   if (!drive || !drive.files || typeof drive.files.generateIds !== 'function' ||
       typeof drive.files.create !== 'function' || typeof drive.files.get !== 'function') {
     reject('An injected Google Drive v3 files client is required.');
@@ -28,6 +28,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
   if (typeof getAccountFingerprint !== 'function') {
     reject('A verified authenticated-account fingerprint callback is required.');
   }
+  if (typeof projectId !== 'string' || !ID_RE.test(projectId)) reject('projectId is invalid.');
   if (!['drive', 'appDataFolder'].includes(driveSpace)) reject('driveSpace is unsupported.');
   if (typeof parentId !== 'string' || !parentId.trim() || /[\r\n\u0000-\u001f]/.test(parentId)) {
     reject('A dedicated Drive parent ID is required.');
@@ -83,7 +84,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
           !input.appProperties || input.appProperties.encryption !== 'AES-256-GCM' ||
           input.appProperties.ciphertextSha256 == null ||
           !DIGEST_RE.test(input.appProperties.ciphertextSha256) ||
-          !ID_RE.test(input.appProperties.projectId || '') ||
+          input.appProperties.projectId !== projectId ||
           !ID_RE.test(input.appProperties.backupId || '') ||
           input.appProperties.schema !== 'MIRA_HFM_ENCRYPTED_EMERGENCY_BACKUP' ||
           input.appProperties.version !== '1.0.0' ||
