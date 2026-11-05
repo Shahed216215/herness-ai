@@ -282,3 +282,10 @@ The authorization verifier calls `replayGuard.consume({issuerId, decisionId, req
 The verifier snapshots the signed decision, request, and issuer trust map before awaiting the replay guard, and captures the consume method reference before the await. This prevents a callback from changing the decision reported after signature verification.
 
 A local fake replay guard and concurrency test demonstrate one winner among simultaneous duplicate claims and a restart simulation using an exported digest snapshot. The fake is explicitly process-local and NOT durable. Real acceptance requires an independently administered atomic durable store, multi-process/multi-replica concurrency evidence, restart and failover recovery, expiry/retention behavior, and audit records. No production replay store is implemented or certified by the fake.
+
+
+## 14. Adapter method-reference stability
+
+The policy-state orchestrator captures `readState`, `compareAndSwap`, and `getCommitReceipt` method references before its first provider await. The evidence verifier captures `resolve` before the first evidence lookup. The staging drill captures source `readSnapshot` and key-provider wrap/unwrap method references before policy-provider interaction. The Google Drive adapter similarly captures list/create/get/quota methods before its first list await.
+
+These controls prevent a callback from replacing methods on the original caller-owned adapter object midway through an authenticated operation. They do not make a malicious adapter truthful, authenticate a provider, or prove its real storage/cryptographic guarantees.
