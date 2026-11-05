@@ -95,4 +95,4 @@ Status: SIGNED STAGING AUTHORIZATION AND SIGN-ONLY SNAPSHOT PROVIDER CONTRACTS I
 ## Verification checkpoint — snapshot signing provider
 - The existing `tests/mira-hfm-key-provider-contract.test.js` suite now includes sign-only snapshot provider contract assertions; the local staging-source and staging-drill fixtures use private keys only inside synthetic provider closures.
 - The Phase 7 workflow already runs the modified key-provider test and staging-source/drill tests on branch pushes. The new contract module is exercised through those tests and the staging source imports it.
-- Latest implementation commit: `b5ee6b31bb6b313de6cad9732d40fcf88b6a6ee3`. A matching completed CI run and job logs have not yet been retrieved; verification remains INCONCLUSIVE until commit-matched workflow evidence is inspected.
+- Latest implementation/test commit: `c0d4a4b682cf8024537b1874e6e4cbd428c12f58`. A matching completed CI run and job logs have not yet been retrieved; verification remains INCONCLUSIVE until commit-matched workflow evidence is inspected.
