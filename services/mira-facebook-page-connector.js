@@ -143,15 +143,15 @@ function createFacebookPageConnector(options = {}) {
     if (url.username || url.password || url.hash ||
         ["access_token", "token", "appsecret_proof"].some(key => url.searchParams.has(key)))
       fail("FACEBOOK_POST_URL_INVALID", "Facebook post URL contains forbidden components.");
-    const pathMatch = url.pathname.match(/\\/([0-9]{1,32})\\/(?:posts|permalink)\\/([0-9]{1,32})\\/?$/);
+    const pathMatch = url.pathname.match(/\/([0-9]{1,32})\/(?:posts|permalink)\/([0-9]{1,32})\/?$/);
     const storyId = url.searchParams.get("story_fbid") || url.searchParams.get("fbid");
     const queryPageId = url.searchParams.get("id");
     const id = pathMatch
       ? pathMatch[1] + "_" + pathMatch[2]
-      : storyId && queryPageId && /^\\d{1,32}$/.test(queryPageId)
+      : storyId && queryPageId && /^\d{1,32}$/.test(queryPageId)
         ? queryPageId + "_" + storyId
-        : storyId || (url.pathname.match(/\\/permalink\\/([0-9]+)/) || [])[1];
-    if (!id || !/^\\d{1,32}(?:_\\d{1,32})?$/.test(id))
+        : storyId || (url.pathname.match(/\/permalink\/([0-9]+)/) || [])[1];
+    if (!id || !/^\d{1,32}(?:_\d{1,32})?$/.test(id))
       fail("FACEBOOK_POST_URL_UNSUPPORTED", "The URL does not contain a supported numeric post ID.");
     const safeUrl = new URL(url.origin + url.pathname);
     for (const key of ["story_fbid", "fbid", "id"])
