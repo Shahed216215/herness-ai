@@ -15,6 +15,11 @@ function fail(message, code) {
   error.code = code;
   throw error;
 }
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
 function isWithin(root, target) {
   const relative = path.relative(root, target);
   return relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative));
@@ -108,7 +113,10 @@ function createLocalStagingSnapshotSource(config) {
     if (error.code === 'HFM_PINNED_DIRECTORY_CHILD_REQUIRED') error.code = 'HFM_STAGING_PATH_OUTSIDE_ROOT';
     throw error;
   }
-  if (memoryFile === knowledgeFile) fail('Memory and Knowledge source files must be distinct.', 'HFM_STAGING_SOURCE_FILES_COLLIDE');
+  if (memoryFile === knowledgeFile) {
+    pinnedRoot.close();
+    fail('Memory and Knowledge source files must be distinct.', 'HFM_STAGING_SOURCE_FILES_COLLIDE');
+  }
 
   const signingProvider = config.signingProvider;
   const signingProviderResult = validateSnapshotSigningProvider(signingProvider, {
@@ -116,10 +124,21 @@ function createLocalStagingSnapshotSource(config) {
   });
   const signingKeyVersion = signingProvider.descriptor.keyVersion;
 
+  let provenance;
+  try {
+    provenance = config.provenance === undefined ? undefined :
+      deepFreeze(JSON.parse(canonicalize(config.provenance)));
+    if (provenance !== undefined && (!provenance || Array.isArray(provenance) || typeof provenance !== 'object')) {
+      fail('Source provenance must be a canonical JSON object.', 'HFM_STAGING_PROVENANCE_INVALID');
+    }
+  } catch (error) {
+    if (error && error.code === 'HFM_STAGING_PROVENANCE_INVALID') throw error;
+    fail('Source provenance must contain only canonical JSON values.', 'HFM_STAGING_PROVENANCE_INVALID');
+  }
   const descriptor = Object.freeze({
     contractVersion: '1', sourceId: config.sourceId, signingKeyId: config.signingKeyId,
     signingKeyVersion, signingProviderId: signingProvider.descriptor.providerId,
-    ...(config.provenance && typeof config.provenance === 'object' ? { provenance: Object.freeze({ ...config.provenance }) } : {}),
+    ...(provenance !== undefined ? { provenance } : {}),
     mode: 'read-only', environment: 'staging'
   });
 
