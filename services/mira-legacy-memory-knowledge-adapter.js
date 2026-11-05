@@ -123,15 +123,33 @@ function filterAdaptedLegacyEntries({ adaptedEntries, pendingConflicts, projectI
     throw new Error('Adapted entries and conflicts must be arrays.');
   }
   text(projectId, 'Explicit projectId');
-  if (adaptedEntries.some(item => item.projectId !== projectId || item.canonicalRecord.projectId !== projectId)) {
-    throw new Error('Cross-project adapted record rejected.');
+  const seenMemoryIds = new Set();
+  for (const item of adaptedEntries) {
+    if (!item || typeof item !== 'object' || !item.canonicalRecord ||
+        typeof item.canonicalRecord !== 'object' || Array.isArray(item.canonicalRecord)) {
+      throw new Error('Malformed adapted legacy entry rejected.');
+    }
+    if (item.projectId !== projectId || item.canonicalRecord.projectId !== projectId) {
+      throw new Error('Cross-project adapted record rejected.');
+    }
+    if (typeof item.memoryId !== 'string' || !item.memoryId ||
+        item.canonicalRecord.memoryId !== item.memoryId) {
+      throw new Error('Adapted and canonical memory identity mismatch.');
+    }
+    if (seenMemoryIds.has(item.memoryId)) {
+      throw new Error('Duplicate adapted canonical memory identity rejected.');
+    }
+    seenMemoryIds.add(item.memoryId);
   }
   const visible = filterTrustedRecords(
     adaptedEntries.map(item => item.canonicalRecord), pendingConflicts, projectId,
     authorizeAccess, actorContext
   );
-  const ids = new Set(visible.map(item => item.memoryId));
-  return adaptedEntries.filter(item => ids.has(item.memoryId));
+  // Keep the exact canonical objects returned by the trusted filter. Matching by
+  // memoryId alone could accidentally re-admit a second, untrusted wrapper with
+  // the same ID as an eligible record.
+  const visibleRecords = new Set(visible);
+  return adaptedEntries.filter(item => visibleRecords.has(item.canonicalRecord));
 }
 module.exports = {
   adaptLegacyEntry, adaptLegacyEntries, filterAdaptedLegacyEntries,
