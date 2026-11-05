@@ -45,7 +45,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
     securityPrincipalId: sourceId + '-workload-principal',
     trustDomainId: sourceId + '-trust-domain',
     sourceSystemId: sourceId + '-source-system',
-    authorizationIssuerId: 'synthetic-policy-mira-staging'
+    snapshotIssuerId: sourceId + '-snapshot-issuer'
   };
   const policyPair = crypto.generateKeyPairSync('ed25519');
   const policyPublicPem = policyPair.publicKey.export({ type: 'spki', format: 'pem' });
