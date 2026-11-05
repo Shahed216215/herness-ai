@@ -75,3 +75,24 @@ AUTOMATIC_PROMOTION=0
 AUTOMATIC_EXECUTION=0
 LIVE_SUPABASE_MIGRATION=NOT_APPLIED
 PRODUCTION_INTEGRATION=NOT_CERTIFIED
+
+
+## Supabase production adapter
+
+Migration source: `supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql`.
+
+Tables:
+- `mira_hfm_learning_proposals`: immutable project-scoped proposal payloads.
+- `mira_hfm_learning_proposal_reviews`: immutable one-review-per-proposal human decisions.
+- `mira_hfm_learning_proposal_audit_events`: append-only stage/review audit records.
+
+RLS is enabled. Public/anon/authenticated roles have no grants or policies. The service role receives SELECT/INSERT only; no UPDATE/DELETE is granted. The migration is source code only and has not been applied.
+
+Production configuration selects the backend with `MIRA_HFM_LEARNING_PROPOSAL_BACKEND=supabase` and requires `MIRA_HFM_LEARNING_PROPOSAL_PRODUCTION_READY=true`, plus the existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the host's secret settings. Do not place secrets in source control or chat. The local backend is prohibited in production.
+
+## Immutable human review
+
+- Admin browser session must be authenticated, have role `admin`, and include a named username.
+- `POST /proposals/:projectId/:proposalId/review` accepts only `APPROVE_FOR_MANUAL_HANDOFF` or `REJECT`, with a reason.
+- A second different review is rejected. Identical retries can reconcile the audit event when the writer is idempotent.
+- Review status never changes proposal trust state; `trustState=UNTRUSTED`, `canonicalMemoryWrites=0`, and `automaticExecution=false` remain enforced.
