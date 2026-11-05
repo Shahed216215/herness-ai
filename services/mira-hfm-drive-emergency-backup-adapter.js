@@ -17,7 +17,9 @@ function validId(value, label) {
   return value;
 }
 function bytesCopy(value) {
-  if (!Buffer.isBuffer(value) || value.length < 1) reject('Encrypted object bytes are required.');
+  if (!Buffer.isBuffer(value) || value.length < 1 || value.length > MAX_ENVELOPE_BYTES) {
+    reject('Encrypted object bytes are missing or exceed the absolute object limit.');
+  }
   return Buffer.from(value);
 }
 function sha256(value) {
