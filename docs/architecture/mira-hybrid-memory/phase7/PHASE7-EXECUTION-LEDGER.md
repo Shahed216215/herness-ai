@@ -267,3 +267,16 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - The changed services and tests are already covered by the Phase 7 workflow path filters.
 - Verification disposition for this checkpoint: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. The available linked GitHub workflow-run lookup returns pull-request-triggered runs only and returned no PR runs for this branch commit. No local execution evidence is claimed; do not mark these new tests PASS until the matching push workflow logs are inspected.
 - These changes are offline contract hardening only. No live KMS/HSM, live Drive, staging deployment, production Memory/Knowledge, or production infrastructure was accessed.
+
+
+## Signed provenance policy integration hardening — 2026-11-05
+
+- Latest implementation/test commit before this documentation checkpoint: `967f21bae97ced892a1f7dad33c805982a953eed`.
+- Closed an offline end-to-end integration gap in F7-SR-05: the staging backup drill no longer accepts a caller-supplied unsigned `provenancePolicy` object as its authority. It now requires a signed policy envelope, separately pinned policy issuer/reviewer/state-authority trust, an evidence resolver and trusted evidence issuers.
+- Before either baseline or backup source is read, the drill now verifies the signed policy, verifies the accepted signed policy-state envelope, validates all evidence references/signatures/digests, and verifies the signed compare-and-swap commit receipt. The drill then uses only the provenance profiles returned by that verified policy.
+- Operational issuer exclusions now include source IDs, snapshot issuer IDs, authorization issuer IDs, snapshot signing-provider IDs and backup key-provider identity. The signed policy verifier returns the verified provenance profiles as immutable source objects.
+- Added synthetic end-to-end tests for unsigned-policy rejection before source reads, 12 evidence records, signed policy-state commit receipt, correct verification-before-source-read ordering, and policy-state read outage blocking all source reads.
+- Hardened policy-state provider read failure handling: unexpected read outages now fail closed with `HFM_POLICY_STATE_UNAVAILABLE`; a regression test verifies no compare-and-swap occurs after a failed read.
+- These changes use synthetic Ed25519 keys and an in-memory fake policy-state provider only. The provider's `durable`/`atomic` claims are not proof of real durability or atomicity; real policy governance, out-of-band trust provisioning, evidence collection, and infrastructure independence remain unverified.
+- Verification disposition: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. No new CI PASS is claimed until the exact push workflow logs for the implementation commit are inspected.
+- Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; all work remains within v0.2.
