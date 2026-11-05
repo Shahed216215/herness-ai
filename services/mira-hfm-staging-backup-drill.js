@@ -4,6 +4,7 @@ const {captureAuthorizedSnapshot,canonicalize,sha256}=require('./mira-hfm-author
 const {encryptSnapshot,writeBackupAtomicAt}=require('./mira-hfm-emergency-backup');
 const {verifyRecoveryCandidate}=require('./mira-hfm-recovery-verification');
 const {openPinnedDirectory,assertPrivateDirectory}=require('./mira-hfm-pinned-directory');
+const {verifyIndependentSourceProvenancePair}=require('./mira-hfm-source-provenance-contract');
 function fail(message,code){const e=new Error(message);e.code=code;throw e;}
 function validateStagingDirectory(directory,directoryPolicy={}){
  if(typeof directory!=='string'||!path.isAbsolute(directory))fail('An explicit absolute staging backup directory is required.','HFM_STAGING_BACKUP_DIRECTORY_REQUIRED');
@@ -16,7 +17,7 @@ function validateBackupFileName(name){
   fail('Backup filename must use the restricted Mira staging-backup format.','HFM_STAGING_BACKUP_FILENAME_INVALID');
  return name;
 }
-async function runStagingBackupDrill({source,baselineSource,request,baselineRequest,trustedSources,keyProvider,backupDirectory,backupFileName,backupDirectoryExpectedUid,backupDirectoryExpectedGid,supportedSchemaVersions=[],now}){
+async function runStagingBackupDrill({source,baselineSource,request,baselineRequest,trustedSources,keyProvider,backupDirectory,backupFileName,backupDirectoryExpectedUid,backupDirectoryExpectedGid,supportedSchemaVersions=[],provenancePolicy,now}){
  if(!source||!source.descriptor||source.descriptor.environment!=='staging'||!baselineSource||!baselineSource.descriptor||baselineSource.descriptor.environment!=='staging'||source.descriptor.sourceId===baselineSource.descriptor.sourceId)
   fail('Two distinct, explicitly staging-only snapshot source identities are required.','HFM_STAGING_INDEPENDENT_SOURCES_REQUIRED');
  if(!request||!baselineRequest||request.projectId!==baselineRequest.projectId||request.scope!=='backup:read'||baselineRequest.scope!=='backup:read')
@@ -27,6 +28,7 @@ async function runStagingBackupDrill({source,baselineSource,request,baselineRequ
   const fileName=validateBackupFileName(backupFileName);
   const baseline=await captureAuthorizedSnapshot({source:baselineSource,request:baselineRequest,trustedSources,now});
   const captured=await captureAuthorizedSnapshot({source,request,trustedSources,now});
+  const provenance=verifyIndependentSourceProvenancePair({baselineEvidence:baseline.evidence,backupEvidence:captured.evidence,provenancePolicy});
   const baselineDigest=sha256(Buffer.from(canonicalize(baseline.snapshot),'utf8'));
   const capturedDigest=sha256(Buffer.from(canonicalize(captured.snapshot),'utf8'));
   if(baseline.metadata.sourceRevision!==captured.metadata.sourceRevision||baseline.metadata.recordCount!==captured.metadata.recordCount||baselineDigest!==capturedDigest)
@@ -39,7 +41,7 @@ async function runStagingBackupDrill({source,baselineSource,request,baselineRequ
   let recovery;
   try{recovery=await verifyRecoveryCandidate({backup:readback,keyProvider,expectedProjectId:request.projectId,supportedSchemaVersions,expectedSourceRevision:baseline.metadata.sourceRevision,expectedRecordCount:baseline.metadata.recordCount,expectedPayloadSha256:baselineDigest});}
   catch(e){e.backupPublished=true;e.backupPath=path.join(backupDirectory,fileName);e.backupRetained=true;throw e;}
-  return {status:'STAGING_BACKUP_AND_RECOVERY_PREVIEW_VERIFIED',backupPath:path.join(backupDirectory,fileName),backupSha256:encrypted.sha256,backupSizeBytes:publication.sizeBytes,publicationStatus:publication.status,baselineSourceId:baseline.evidence.sourceId,backupSourceId:captured.evidence.sourceId,sourceRevision:captured.metadata.sourceRevision,recordCount:captured.metadata.recordCount,payloadSha256:capturedDigest,recovery,canonicalMemoryWritten:false,canonicalKnowledgeWritten:false,restoreExecuted:false,backupDeletionExecuted:false,liveDriveApiCalled:false,productionApproval:false};
+  return {status:'STAGING_BACKUP_AND_RECOVERY_PREVIEW_VERIFIED',backupPath:path.join(backupDirectory,fileName),backupSha256:encrypted.sha256,backupSizeBytes:publication.sizeBytes,publicationStatus:publication.status,baselineSourceId:baseline.evidence.sourceId,backupSourceId:captured.evidence.sourceId,provenance,sourceRevision:captured.metadata.sourceRevision,recordCount:captured.metadata.recordCount,payloadSha256:capturedDigest,recovery,canonicalMemoryWritten:false,canonicalKnowledgeWritten:false,restoreExecuted:false,backupDeletionExecuted:false,liveDriveApiCalled:false,productionApproval:false};
  }finally{pinned.close();}
 }
 module.exports={runStagingBackupDrill};
