@@ -256,7 +256,7 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
       const data = response && response.data;
       const permissionId = data && data.user && data.user.permissionId;
       if (!data.user || data.user.me !== true || typeof permissionId !== 'string' ||
-          sha256(Buffer.from(permissionId, 'utf8')) !== accountBinding {
+          sha256(Buffer.from(permissionId, 'utf8')) !== accountBinding) {
         reject('Google Drive quota identity does not match the configured account.',
           'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
       }
