@@ -50,6 +50,25 @@ async function readResponseBytes(response) {
   throw new Error('Google Drive returned an unsupported backup body.');
 }
 function sha256(bytes) { return crypto.createHash('sha256').update(bytes).digest('hex'); }
+function captureDriveMethods(drive) {
+  const files = drive.files;
+  const about = drive.about;
+  const list = files.list;
+  const create = files.create;
+  const get = files.get;
+  const aboutGet = about && about.get;
+  return Object.freeze({
+    files: Object.freeze({
+      list: (...args) => list.apply(files, args),
+      create: (...args) => create.apply(files, args),
+      get: (...args) => get.apply(files, args)
+    }),
+    about: typeof aboutGet === 'function'
+      ? Object.freeze({ get: (...args) => aboutGet.apply(about, args) })
+      : about
+  });
+}
+
 function validateUploadInput({ drive, folderId, fileName, bytes, projectId }) {
   if (!drive || !drive.files || typeof drive.files.list !== 'function' ||
       typeof drive.files.create !== 'function' || typeof drive.files.get !== 'function') {
@@ -67,6 +86,7 @@ function validateUploadInput({ drive, folderId, fileName, bytes, projectId }) {
 async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, projectId,
   allocatedLimitBytes = DEFAULT_ALLOCATED_LIMIT }) {
   validateUploadInput({ drive, folderId, fileName, bytes, projectId });
+  const stableDrive = captureDriveMethods(drive);
   let quota = null;
   const expectedHash = sha256(bytes);
   const uploadKey = sha256(Buffer.from(JSON.stringify({ folderId, fileName, projectId, expectedHash }), 'utf8'));
@@ -74,7 +94,7 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
   async function listCandidates() {
     let response;
     try {
-      response = await drive.files.list({
+      response = await stableDrive.files.list({
         q: "'" + folderId + "' in parents and name='" + escapedName + "' and trashed=false",
         spaces: 'drive',
         fields: 'files(id,name,size,parents,appProperties)'
@@ -109,7 +129,7 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
       throw error;
     }
     try {
-      const readback = await drive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'arraybuffer' });
+      const readback = await stableDrive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'arraybuffer' });
       const actualBytes = await readResponseBytes(readback);
       if (sha256(actualBytes) !== expectedHash || !actualBytes.equals(bytes)) {
         const error = new Error('Google Drive emergency backup readback integrity mismatch.');
@@ -155,7 +175,7 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
     throw error;
   }
 
-  quota = await getDriveQuotaSnapshot(drive, allocatedLimitBytes);
+  quota = await getDriveQuotaSnapshot(stableDrive, allocatedLimitBytes);
   if (quota.status !== 'QUOTA_SNAPSHOT_VERIFIED') throw new Error('Drive quota is not verified.');
   if (quota.overLimit || bytes.length > quota.remainingBytes) {
     const error = new Error('Emergency backup would exceed the allocated Google Drive capacity.');
@@ -165,7 +185,7 @@ async function uploadEncryptedBackup({ drive, folderId, fileName, bytes, project
 
   let created;
   try {
-    created = await drive.files.create({
+    created = await stableDrive.files.create({
       requestBody: {
         name: fileName,
         parents: [folderId],
