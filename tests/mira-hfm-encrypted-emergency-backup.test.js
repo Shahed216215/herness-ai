@@ -78,6 +78,18 @@ try {
   assert.throws(() => restoreToStaging({ envelope, key, directory: restoreDir, restoreId: 'restore-test-0001' }), error => error.code === 'EEXIST');
   console.log('HFM_PHASE7_RESTORE_STAGING_ONLY=PASS');
 
+  const invalidRestoreDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-hfm-invalid-restore-stage-test-'));
+  try {
+    assert.throws(() => restoreToStaging({
+      envelope, key: crypto.randomBytes(32), directory: invalidRestoreDir,
+      restoreId: 'restore-wrong-key-001'
+    }), error => error.code === 'HFM_BACKUP_AUTH_FAILED');
+    assert.deepEqual(fs.readdirSync(invalidRestoreDir), []);
+  } finally {
+    fs.rmSync(invalidRestoreDir, { recursive: true, force: true });
+  }
+  console.log('HFM_PHASE7_RESTORE_AUTH_FAILURE_NO_STAGE_ARTIFACT=PASS');
+
   const {
     uploadEncryptedEmergencyBackup,
     previewEncryptedEmergencyBackupFromCloud,
