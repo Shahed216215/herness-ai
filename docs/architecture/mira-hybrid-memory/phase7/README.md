@@ -141,3 +141,17 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - The provenance field `snapshotIssuerId` identifies the source-attestation signing trust issuer. It is distinct from `authorizationIssuerId`, which identifies the separately governed issuer of the signed backup:read authorization decision. These two trust purposes must not be conflated.
 - The provenance contract and its negative tests are included in both push and pull-request workflow path filters.
 - Synthetic tests establish only contract behavior. Real infrastructure independence, policy distribution, account ownership, workload identity, and signer/issuer governance remain REVIEW_REQUIRED; F7-SR-05 remains PARTIALLY_REMEDIATED / OPEN.
+
+
+## Current consolidated verification — 2026-11-05 (supersedes earlier five-suite checkpoint)
+
+- Latest verified engineering commit before this documentation update: `0c94bd0b4909946534760c041f966b16fddb8b1c`; push workflow run #127 (`42043450318`) completed SUCCESS. Its `phase7-offline-contract` job and retrieved logs confirm all nine isolated suites completed successfully.
+- The nine suites cover pinned backup-directory race/owner/mode enforcement; encrypted backup; mocked Drive adapter; backup and snapshot-signing key-provider contracts; authoritative signed snapshot; local staging source and signed authorization; staging backup/recovery drill; source-provenance independence; and non-mutating recovery verification.
+- F7-SR-05 provenance test markers all passed: fully independent synthetic profile, shared-boundary rejection, duplicate ID rejection, forged-claim rejection, unpinned-policy rejection, and contract completion.
+- The provenance service and its dedicated test are included in both push and pull-request path filters.
+- The backup key-provider contract now rejects `environment: production` until production custody and approval are separately established.
+- Safety evidence from the run: `NETWORK_REQUESTS=0`, `PRODUCTION_MEMORY_TOUCHED=NO`, `LIVE_DRIVE_API_CALLS=0`, `BACKUP_DELETION=0`, `CANONICAL_MEMORY_WRITTEN=NO`, `CANONICAL_KNOWLEDGE_WRITTEN=NO`.
+- A follow-up documentation-only ledger commit `6398ff934d0152f7d80314bb817430b9d2d86f15` was also tested by push run #128 (`42044256555`), conclusion SUCCESS; its retrieved logs repeat all nine suites and F7-SR-05 markers.
+- F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent issuer/replay governance, real key custody, infrastructure provenance, host/container directory security review, and independent review as applicable. Synthetic CI does not prove production infrastructure truth.
+- Real KMS/HSM, production snapshot source, live Drive quota/upload/download, real restore/migration and retention deletion remain NOT_APPROVED / NOT_RUN. Staging integration and production readiness remain NOT_CERTIFIED.
+- Phase 7 disposition: OFFLINE_CONTRACT_IMPLEMENTATION_AND_CI=PASS; EXTERNAL_SECURITY_AND_LIVE_PROVIDER_GATES=REVIEW_REQUIRED / NOT_APPROVED; PRODUCTION_READINESS=NOT_CERTIFIED.
