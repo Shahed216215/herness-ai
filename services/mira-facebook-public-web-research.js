@@ -54,16 +54,25 @@ function normalizeResult(item, pageId, observedAt) {
   const snippet = snippetRaw.slice(0, MAX_SNIPPET_CHARS);
   if (!(url.toString() + ' ' + title + ' ' + snippet).includes(pageId)) return null;
   const parts = url.pathname.split('/').filter(Boolean);
-  const isPost = (parts.length === 3 && parts[0] === pageId && parts[1] === 'posts') ||
-    (url.pathname === '/permalink.php' && url.searchParams.get('id') === pageId && !!url.searchParams.get('story_fbid'));
-  const isProfile = parts.length === 1 && parts[0] === pageId;
+  const numericPost = parts.length === 3 && parts[0] === pageId && parts[1] === 'posts';
+  const pagesDirectoryPost = parts.length === 5 && parts[0] === 'pages' && parts[2] === pageId && parts[3] === 'posts';
+  const permalinkPost = url.pathname === '/permalink.php' && url.searchParams.get('id') === pageId && !!url.searchParams.get('story_fbid');
+  const isPost = numericPost || pagesDirectoryPost || permalinkPost;
+  const numericProfile = parts.length === 1 && parts[0] === pageId;
+  const pagesDirectoryProfile = parts.length === 3 && parts[0] === 'pages' && parts[2] === pageId;
+  const profilePhp = url.pathname === '/profile.php' && url.searchParams.get('id') === pageId;
+  const isProfile = numericProfile || pagesDirectoryProfile || profilePhp;
   if (!isPost && !isProfile) return null;
   url.searchParams.delete('ref');
   url.searchParams.delete('__tn__');
   url.searchParams.delete('mibextid');
-  const canonicalUrl = url.origin + url.pathname + (url.pathname === '/permalink.php' ?
-    '?id=' + encodeURIComponent(url.searchParams.get('id') || '') + '&story_fbid=' +
-    encodeURIComponent(url.searchParams.get('story_fbid') || '') : '');
+  const canonicalUrl = url.origin + url.pathname + (
+    url.pathname === '/permalink.php'
+      ? '?id=' + encodeURIComponent(url.searchParams.get('id') || '') + '&story_fbid=' + encodeURIComponent(url.searchParams.get('story_fbid') || '')
+      : url.pathname === '/profile.php'
+        ? '?id=' + encodeURIComponent(url.searchParams.get('id') || '')
+        : ''
+  );
   const publishedAt = typeof item.publishedAt === 'string' && Number.isFinite(Date.parse(item.publishedAt))
     ? new Date(item.publishedAt).toISOString() : null;
   return Object.freeze({
