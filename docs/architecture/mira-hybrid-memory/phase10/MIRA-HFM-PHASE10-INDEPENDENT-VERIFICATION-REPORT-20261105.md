@@ -256,3 +256,19 @@ This refresh supersedes older run IDs in §§2–3 where a newer branch-head run
 VERSION=v0.2
 PRODUCTION_READINESS=NOT_CERTIFIED
 PRODUCTION_DEPLOYMENT=NOT_APPROVED
+
+
+## 10. Phase 9 ancestry recheck — 2026-11-05
+
+A fresh GitHub compare supersedes the earlier Phase 9 divergence counts in §8.3:
+
+- Base Phase 8 branch head: c1adc11b3de7cdcdd872d00b8fcd7f91e5e4924e.
+- Phase 9 branch head: 375da3e65af91c0741b2a7f7289d247e46affd93.
+- Merge base: da4f8015a80d70ef86c660dfd9f791209bb03188.
+- Current compare: DIVERGED; Phase 9 is 27 commits ahead and 96 commits behind Phase 8.
+- The Phase 9 offline CI run 41975518333 is successful for its current head, but that does not resolve the branch ancestry or make Phase 9 an integrated candidate.
+
+This is a substantial divergence. Do not merge or rebase the existing Phase 9 branch. Any reconciliation must use a new reviewable branch based on the intended current Phase 8 head, preserve the existing Phase 9 branch for audit, review each Phase 9 commit/change, and rerun all Phase 9 offline tests on the reconciled result. Until then, Phase 9 integration status remains REVIEW_REQUIRED.
+
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
