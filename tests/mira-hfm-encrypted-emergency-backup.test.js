@@ -79,6 +79,26 @@ try {
   assert.ok(Buffer.isBuffer(encryptionPlainBuffer));
   assert.equal(encryptionPlainBuffer.every(byte => byte === 0), true);
 
+  const invalidTimestampPayload = Buffer.from('invalid-timestamp-secret-buffer');
+  let rejectedPlainCopy;
+  const originalBufferFrom = Buffer.from;
+  try {
+    Buffer.from = function (value, ...args) {
+      const output = originalBufferFrom.call(this, value, ...args);
+      if (value === invalidTimestampPayload) rejectedPlainCopy = output;
+      return output;
+    };
+    assert.throws(() => createEncryptedBackup({
+      payload: invalidTimestampPayload, key, backupId: 'backup-zeroize-fail-001',
+      createdAt: 'not-a-canonical-timestamp', metadata
+    }));
+  } finally {
+    Buffer.from = originalBufferFrom;
+  }
+  assert.ok(Buffer.isBuffer(rejectedPlainCopy));
+  assert.equal(rejectedPlainCopy.every(byte => byte === 0), true);
+  console.log('HFM_PHASE7_TEMPORARY_PLAINTEXT_ZEROIZED_ON_VALIDATION_FAILURE=PASS');
+
   let decryptionDerivedKey;
   const originalCreateDecipheriv = crypto.createDecipheriv;
   try {
