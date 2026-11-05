@@ -155,3 +155,15 @@ Status: SIGNED STAGING AUTHORIZATION, SIGN-ONLY SNAPSHOT PROVIDER, AND PINNED BA
 - F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent issuer/replay governance, real key custody, infrastructure provenance, host/container directory security review, and independent review as applicable. Synthetic CI does not prove production infrastructure truth.
 - Real KMS/HSM, production snapshot source, live Drive quota/upload/download, real restore/migration and retention deletion remain NOT_APPROVED / NOT_RUN. Staging integration and production readiness remain NOT_CERTIFIED.
 - Phase 7 disposition: OFFLINE_CONTRACT_IMPLEMENTATION_AND_CI=PASS; EXTERNAL_SECURITY_AND_LIVE_PROVIDER_GATES=REVIEW_REQUIRED / NOT_APPROVED; PRODUCTION_READINESS=NOT_CERTIFIED.
+
+
+## Local fake policy-state provider conformance checkpoint — 2026-11-05
+
+- Added `services/mira-hfm-local-fake-policy-state-provider.js` and `tests/mira-hfm-local-fake-policy-state-provider.test.js` as isolated test-only artifacts; no existing runtime path imports or wires the fake provider.
+- Coverage: initial state read, stale CAS conflict, two competing writers (exactly one accepted), same-key/same-request idempotent receipt, same-key/different-request rejection, JSON snapshot export/re-instantiation restart simulation, unavailable/quorum-loss fail-closed behavior, and commit-success/response-loss reconciliation using the same idempotency key.
+- The fake provider is process-local and its snapshot export is a test harness simulation. It does NOT prove real durable storage, distributed atomicity, quorum semantics, infrastructure independence, or provider-side cryptographic signing.
+- First CI attempt run #170 (`42064973089`) failed because the test incorrectly expected a duplicate same-key retry to conflict; this exposed a test expectation defect, not a provider defect. The test was corrected to use a fresh idempotency key for the stale-CAS assertion.
+- Corrected Phase 7 run #171 (`42065054168`) completed SUCCESS on exact commit `b2b52eacbad966798f24792882ef06c0e4ffcf0f`. Phase 10 independent cross-phase verification run #46 (`42065054145`) also completed SUCCESS on the same commit.
+- Phase 7 fake-provider marker: `LOCAL_FAKE_PROVIDER_TESTS=PASS`; test case list includes all eight scenarios above.
+- Safety boundary: no network request from the fake provider, no production Memory/Knowledge access, no live Drive call, no backup deletion, no staging integration, and no production runtime wiring.
+- Disposition: LOCAL_FAKE_PROVIDER_CONFORMANCE=PASS_CI (synthetic test double only). F7-SR-01 through F7-SR-05 remain PARTIALLY_REMEDIATED / OPEN pending independent review and real operational evidence. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED.
