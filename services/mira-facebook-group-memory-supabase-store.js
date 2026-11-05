@@ -204,7 +204,8 @@ function createSupabaseFacebookGroupImportStore({
         verified[0].group_id !== event.groupId ||
         verified[0].batch_id !== event.batchId ||
         verified[0].event_digest !== eventDigest ||
-        !verified[0].payload || verified[0].payload.batchDigest !== event.batchDigest) {
+        !verified[0].payload || verified[0].payload.batchDigest !== event.batchDigest ||
+        digest(verified[0].payload) !== eventDigest) {
       fail('FB_GROUP_STORE_AUDIT_READBACK_FAILED', 'Durable Group import audit readback failed.');
     }
     return { status: 'AUDIT_WRITE_READBACK_VERIFIED', eventId, eventDigest };
