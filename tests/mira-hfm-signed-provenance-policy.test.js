@@ -131,6 +131,9 @@ const wrongFingerprint = trust();
 wrongFingerprint[issuerId].publicKeySha256 = '0'.repeat(64);
 rejects(() => verify(signed(), { trustedPolicyIssuers: wrongFingerprint }), 'HFM_PROVENANCE_POLICY_KEY_MISMATCH');
 rejects(() => verify(signed(), { operationalIssuerIds: [issuerId] }), 'HFM_PROVENANCE_POLICY_ISSUER_COLLISION');
+rejects(() => verify(signed(), {
+  acceptedPolicyState: state({ authorityId: issuerId })
+}), 'HFM_PROVENANCE_POLICY_ISSUER_COLLISION');
 
 rejects(() => verify(signed(), { acceptedPolicyState: state({ highestAcceptedSequence: 1 }) }),
   'HFM_PROVENANCE_POLICY_ROLLBACK');
