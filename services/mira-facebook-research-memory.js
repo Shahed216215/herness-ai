@@ -19,7 +19,7 @@ function text(value, label, max = 512) {
 function sha256(value) { return crypto.createHash('sha256').update(value, 'utf8').digest('hex'); }
 function pageId(value) {
   const id = text(value, 'pageId', 32);
-  if (!/^\\d{1,32}$/.test(id)) throw new Error('pageId must be numeric.');
+  if (!/^\d{1,32}$/.test(id)) throw new Error('pageId must be numeric.');
   return id;
 }
 function defaultDirectory() {
@@ -151,9 +151,9 @@ function archiveFacebookResearchEvidence({ pageId: requestedPageId, pageName = n
       sourceIntegrity: 'NOT_INDEPENDENTLY_VERIFIED',
       canonicalMemoryWrite: false
     };
-    const archiveId = sha256(id + '|' + safe.sourceUrl + '|' + safe.observedAt + '|' + sha256(safe.title + '\\n' + safe.snippet));
+    const archiveId = sha256(id + '|' + safe.sourceUrl + '|' + safe.observedAt + '|' + sha256(safe.title + '\n' + safe.snippet));
     body.archiveId = archiveId;
-    body.contentDigest = sha256(safe.title + '\\n' + safe.snippet);
+    body.contentDigest = sha256(safe.title + '\n' + safe.snippet);
     body.recordDigest = sha256(JSON.stringify(body));
     return body;
   });
@@ -201,7 +201,7 @@ function archiveFacebookResearchEvidence({ pageId: requestedPageId, pageName = n
   });
 }
 function normalizeQuery(value) {
-  return String(value || '').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+  return String(value || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 function searchFacebookResearchMemory({ pageId: requestedPageId, query = '', limit = 5, directory } = {}) {
   const id = pageId(requestedPageId);
@@ -210,7 +210,7 @@ function searchFacebookResearchMemory({ pageId: requestedPageId, query = '', lim
   if (!Number.isInteger(limit) || limit < 1 || limit > 10) throw new Error('limit must be between 1 and 10.');
   const safeDir = safeDirectory(directory);
   const records = listRecords(safeDir).filter(item => item.pageId === id);
-  const words = safeQuery.split(/\\s+/).filter(word => word.length > 1);
+  const words = safeQuery.split(/\s+/).filter(word => word.length > 1);
   const ranked = records.map(item => {
     const title = normalizeQuery(item.title), snippet = normalizeQuery(item.snippet);
     let score = 0, matchedWords = 0;
