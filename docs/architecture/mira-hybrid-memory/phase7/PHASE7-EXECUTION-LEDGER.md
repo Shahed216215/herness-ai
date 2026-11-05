@@ -302,3 +302,15 @@ This checkpoint supersedes earlier pending notes where later implementation and 
 - The provider adapter specification and F7-SR-05 acceptance specification now describe this contract. Real provider atomicity/durability across state and receipt persistence, restart-safe receipt lookup, and independent operational evidence remain unverified.
 - Verification disposition: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. No PASS claim is made until matching Phase 7 push workflow logs are inspected.
 - F7-SR-01 through F7-SR-05 remain partially remediated/open where real governance, provider custody, host controls, or independent infrastructure evidence is required. Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; version remains v0.2.
+
+
+## Authoritative policy-state receipt reconciliation — 2026-11-05
+
+- Latest implementation/test commit before this documentation checkpoint: `df1cff5db174600178f3916361cee546ef90c2a0`.
+- Extended the policy-state adapter contract to require `getCommitReceipt({authorityId, idempotencyKey, requestDigest})` in addition to `readState` and `compareAndSwap`.
+- CAS idempotency keys are deterministic from policy ID and verified policy digest. The request digest uses SHA-256 over the shared canonical-JSON representation of `{authorityId, expectedSequence, expectedDigest, nextState}`. The signed receipt must bind both values.
+- A confirmed pre-commit request-loss error is retried once with the identical request/key. An ambiguous post-commit response is reconciled through authoritative receipt lookup; receipt absence, lookup failure, or digest mismatch fails closed. No new policy sequence/key is invented during reconciliation.
+- The local fake provider and its tests now support exact receipt lookup and digest binding. The policy-state contract tests cover successful ambiguous-response reconciliation, safe pre-commit retry, wrong receipt digest, and unresolved ambiguous commit. The staging drill fixture also implements the signed receipt lookup contract.
+- Provider-adapter and acceptance specifications now describe the exact interface and evidence required. Synthetic tests still do not prove real provider atomicity/durability, receipt retention, restart behavior, or cross-replica consistency.
+- Verification disposition: `CI_STATUS=INCONCLUSIVE_PENDING_PUSH_RUN_RETRIEVAL`. No PASS claim is made until matching Phase 7 push workflow logs are inspected.
+- Staging remains NOT_APPROVED; production readiness remains NOT_CERTIFIED; work remains within v0.2.
