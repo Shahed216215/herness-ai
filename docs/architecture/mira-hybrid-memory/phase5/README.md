@@ -6,7 +6,7 @@ Status: IMPORT PIPELINE, ADMIN API ROUTES, ATOMIC BATCH/AUDIT RPC, ADDITIVE MIGR
 
 - Manual content import from explicitly user-supplied Group material. The importer never accesses Facebook, scrapes Groups, joins Groups, or reads private Group content.
 - Supported Mira interchange formats: JSON, JSONL, and manual text. Compatibility with arbitrary native Meta export archives is not claimed until a representative user-provided export sample is available.
-- Validates envelope schema, project/group scope, source URL binding, timestamps, bounded content, allowed record types, and canonical HFM record structure.
+- Validates envelope schema, project/group scope, source URL binding, strict ISO-8601 timestamps with explicit timezone and valid calendar values, bounded content, allowed record types, and canonical HFM record structure.
 - Requires an explicit `authorizedAccess: true` attestation and a named authenticated administrator session. This is an attestation by the importer, not independent proof of Facebook membership or authorization.
 - Maps imported records to `sourceType=facebook_group`, `PROJECT_PRIVATE`, `SOURCE_RECORDED`, `UNVERIFIED`, and `PENDING_REVIEW`.
 - Detects exact duplicates across existing stored batches and within an import. Stable generated memory identity is based on Group ID plus source ID so content changes do not evade version conflict detection.
@@ -135,21 +135,21 @@ The same review found the server listening on `127.0.0.1` unconditionally. The b
 
 | Acceptance item | Status | Evidence / boundary |
 |---|---|---|
-| Phase 5 implementation files present on reviewed branch | PASS | Branch head `5d9b96af7ff9c9f710177b8ee1259744927706df`; PR #33 remains open/draft |
+| Phase 5 implementation files present on reviewed branch | PASS | Branch head `203781a59199ef608ea2bbdb6cf8204b5ff45d15`; PR #33 remains open/draft |
 | Focused Phase 5 offline CI suites | PASS | Actions run `42008461380`, exact head SHA above |
 | External-action boundaries in focused CI | PASS | Zero live Facebook requests, private Group access, canonical Memory writes, and production migrations |
 | Dependency-free static regression suite | PASS | Nine tests passed in exact-head run `42029506505`; includes Stage 19 URL/transport contracts and UI/rollback contracts |
 | Full canonical `npm test` regression set (30 tests) | PASS | Exact-head CI run `42033146301`; locked dependencies installed with lifecycle scripts disabled |
-| Full repository `npm test` chain | PASS | All 30 referenced test files exist; four missing paths were redesigned as scoped tests; latest exact-head CI run `42067111202` passed |
+| Full repository `npm test` chain | PASS | All 30 referenced test files exist; four missing paths were redesigned as scoped tests; latest exact-head CI run `42071295948` passed |
 | SQL migration static structure checks | PASS | Offline test verifies additive migration structure, RLS, function security mode, conflict handling, and service-role grants |
-| Real PostgreSQL 16 migration + atomic RPC integration | PASS | Latest exact-head CI run `42067111202`; isolated PostgreSQL 16 service applied both migrations and passed create, retry, operation-key conflict, immutable Batch conflict, audit-failure rollback and role-grant checks |
+| Real PostgreSQL 16 migration + atomic RPC integration | PASS | Latest exact-head CI run `42071295948`; isolated PostgreSQL 16 service applied both migrations and passed create, retry, operation-key conflict, immutable Batch conflict, audit-failure rollback and role-grant checks |
 | Supabase migration application and real persistence/readback | DEFERRED | Requires explicit deployment-window approval and target-project verification |
 | Render configuration, deployment, restart persistence, and runtime auth | DEFERRED | No Render deployment or runtime test performed |
 | Native Meta export archive compatibility | SKIPPED_INPUT_MISSING | `P5-SKIP-002`; only JSON, JSONL and manual-text are implemented until a lawful representative archive sample is supplied |
 
 | Independent human review | SKIPPED_USER_DIRECTED | `P5-SKIP-001`; skipped at the user's direction; not an approval and not counted as PASS |
 
-**Phase 5 implementation/CI status:** `IMPLEMENTATION_COMPLETE; FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; ISOLATED_POSTGRESQL_16_INTEGRATION_PASS; SKIPS_TRACKED; LIVE_SUPABASE_RENDER_VERIFICATION_DEFERRED`. The latest code head `5d9b96af7ff9c9f710177b8ee1259744927706df` passed both jobs in exact-head workflow `42067111202`. Live Supabase persistence and Render runtime/restart verification remain deferred; therefore this is not production certification. All work remains within Mira HFM v0.2.
+**Phase 5 implementation/CI status:** `IMPLEMENTATION_COMPLETE; FOCUSED_PHASE5_PASS; NINE_STATIC_REGRESSION_PASS; CANONICAL_NPM_TEST_30_PASS; SERVER_STARTUP_CONTRACT_PASS; ISOLATED_POSTGRESQL_16_INTEGRATION_PASS; SKIPS_TRACKED; LIVE_SUPABASE_RENDER_VERIFICATION_DEFERRED`. The latest code head `203781a59199ef608ea2bbdb6cf8204b5ff45d15` passed both jobs in exact-head workflow `42071295948`. Live Supabase persistence and Render runtime/restart verification remain deferred; therefore this is not production certification. All work remains within Mira HFM v0.2.
 
 ## Explicit exclusions
 
@@ -182,9 +182,9 @@ The durable skip/deferred ledger is [`SKIP-AND-DEFERRED-REGISTER.md`](./SKIP-AND
 
 ## Latest Phase 5 continuation verification (2026-11-05)
 
-- Current branch head: `5d9b96af7ff9c9f710177b8ee1259744927706df`.
-- Exact-head GitHub Actions run [42067111202](https://github.com/Shahed216215/herness-ai/actions/runs/42067111202): **SUCCESS**.
+- Current branch head: `203781a59199ef608ea2bbdb6cf8204b5ff45d15`.
+- Exact-head GitHub Actions run [42071295948](https://github.com/Shahed216215/herness-ai/actions/runs/42071295948): **SUCCESS**.
 - `facebook-group-import-offline`: completed successfully; includes all four focused Phase 5 tests, nine static regression tests, and the canonical 30-test `npm test` chain.
 - `postgres-atomic-recovery-integration`: completed successfully; both migrations applied to ephemeral PostgreSQL 16 and atomic recovery integration cases passed.
-- Follow-up hardening classifies PostgreSQL class-22 data exceptions, including malformed UUID SQLSTATE `22P02`, as deterministic rejection; regression coverage passed.
+- Follow-up hardening classifies PostgreSQL class-22 data exceptions, including malformed UUID SQLSTATE `22P02`, as deterministic rejection. Import timestamps now require strict ISO-8601 date/time values with explicit timezone; invalid calendar dates, date-only values and timezone-free values are rejected by regression tests.
 - PR #33 remains Draft/Open/unmerged. No Supabase migration or Render deployment was performed.
