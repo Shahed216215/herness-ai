@@ -188,7 +188,9 @@ function createSupabaseFacebookGroupImportStore({
         response.status < 200 || response.status >= 300) {
       failCommitted('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase transaction outcome is uncertain after a non-success response.');
     }
-    const result = rows(response);
+    let result;
+    try { result = rows(response); }
+    catch (_error) { failCommitted('FB_GROUP_STORE_ATOMIC_RESULT_INVALID', 'Atomic transaction may have committed but its response could not be verified.'); }
     if (result.length !== 1 || result[0].batch_id !== batch.batchId ||
         result[0].batch_digest !== batch.batchDigest ||
         result[0].project_id !== batch.projectId ||
@@ -200,16 +202,21 @@ function createSupabaseFacebookGroupImportStore({
       failCommitted('FB_GROUP_STORE_ATOMIC_RESULT_INVALID', 'Atomic Supabase transaction result failed identity or digest verification.');
     }
 
-    const stored = await readBatch(batch.batchId, batch.projectId, batch.groupId);
+    let stored;
+    let auditRows;
+    try {
+      stored = await readBatch(batch.batchId, batch.projectId, batch.groupId);
+      auditRows = rows(await callTable(
+        AUDIT_TABLE,
+        '?select=event_id,operation_key,project_id,group_id,batch_id,event_digest,payload&operation_key=eq.' +
+          encodeURIComponent(operationKey) + '&limit=2',
+        'GET'
+      ));
+    } catch (_error) {
+      failCommitted('FB_GROUP_STORE_ATOMIC_READBACK_FAILED', 'Atomic Group import may have committed, but durable readback could not be completed.');
+    }
     if (!stored || stored.batchDigest !== batch.batchDigest)
       failCommitted('FB_GROUP_STORE_READBACK_FAILED', 'Atomic Group import batch readback failed after commit may have occurred.');
-
-    const auditRows = rows(await callTable(
-      AUDIT_TABLE,
-      '?select=event_id,operation_key,project_id,group_id,batch_id,event_digest,payload&operation_key=eq.' +
-        encodeURIComponent(operationKey) + '&limit=2',
-      'GET'
-    ));
     if (auditRows.length !== 1 ||
         auditRows[0].event_id !== result[0].event_id ||
         auditRows[0].operation_key !== operationKey ||
