@@ -159,7 +159,16 @@ async function main() {
   });
   assert.equal(secondPage.complete, true);
   assert.equal(secondPage.items.length, 0);
+  await assert.rejects(() => provider.listPage({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/',
+    cursor: 'bad\\npage-token', limit: 1
+  }), error => error.code === 'HFM_GOOGLE_DRIVE_LIST_SCOPE');
+  fake.drive.files.list = async () => ({ data: { files: [], incompleteSearch: true } });
+  await assert.rejects(() => provider.listPage({
+    projectId, prefix: 'mira-hfm-emergency/v1/' + projectId + '/', cursor: null, limit: 1
+  }), error => error.code === 'HFM_GOOGLE_DRIVE_LIST_INVALID');
   console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_PROJECT_SCOPED_PAGINATION=PASS');
+  console.log('HFM_PHASE7_GOOGLE_DRIVE_V3_INCOMPLETE_SEARCH_REJECTED=PASS');
 
   const quota = await provider.getQuota({ projectId });
   assert.equal(quota.providerId, 'google-drive-v3');
