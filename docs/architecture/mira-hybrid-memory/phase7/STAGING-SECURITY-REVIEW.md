@@ -24,9 +24,9 @@ The seven-suite CI success demonstrates the tested synthetic contracts. It does 
 
 ### F7-SR-02 — Snapshot signing private-key custody is caller-managed and unverified
 - Severity: HIGH
-- Evidence: `services/mira-hfm-local-staging-snapshot-source.js`; `privateKeyPem` is accepted as a string and converted to a Node private KeyObject in-process.
+- Evidence at original review: `services/mira-hfm-local-staging-snapshot-source.js` accepted `privateKeyPem` and converted it to a Node private KeyObject in-process.
 - Impact: The adapter does not establish where the private key originated, whether it is exportable, how it is protected at rest/in memory, which workload may use it, how it is rotated/revoked, or how compromise is audited. The synthetic tests generate ephemeral keys and do not test custody.
-- Required remediation: Define a signing-provider interface backed by an independently reviewed KMS/HSM or equivalent protected signing service. Pin key identity/version and environment; bind workload identity and least privilege; document rotation, revocation, recovery, audit and compromise response. Do not pass PEM private-key material through general application configuration in the real staging integration. Add wrong-identity, wrong-key-version, denied-sign, rotation and provider-outage tests.
+- Remediation progress (2026-11-05): Added `services/mira-hfm-snapshot-signing-provider-contract.js`. The staging adapter now accepts a sign-only provider interface, never a PEM/private-key value; the provider descriptor pins key ID/version, purpose, algorithm and staging environment. The signed attestation carries the key version, and the independent snapshot trust record must pin the same key version and public-key fingerprint. Synthetic tests exercise the contract shape and adapter-side signing boundary. This is interface separation only: a caller-supplied provider can still be a software key wrapper, and no real KMS/HSM, workload identity, non-exportability, rotation/revocation, or provider audit has been verified. Finding remains PARTIALLY_REMEDIATED / OPEN.
 - Gate: BLOCKS REAL STAGING INTEGRATION AND PRODUCTION.
 
 ### F7-SR-03 — Filesystem path checks do not fully close parent-directory TOCTOU races
