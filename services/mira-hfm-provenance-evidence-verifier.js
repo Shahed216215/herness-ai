@@ -103,6 +103,7 @@ function verifyEvidenceEnvelope({
     sourceId,
     dimension,
     issuerId: p.issuerId,
+    keyFingerprint,
     digest,
     reviewerIds: Object.freeze(p.reviewerIds.slice()),
     verified: true
