@@ -22,9 +22,7 @@ create table if not exists public.mira_facebook_research_archive (
       and payload->>'recordDigest' = record_digest
       and payload->>'archivePolicy' = 'UNTRUSTED_RESEARCH_ONLY'
       and payload->>'canonicalMemoryWrite' = 'false'
-      and payload->>'trustStatus' = 'SOURCE_RECORDED'
-      and payload->>'integrityStatus' = 'UNVERIFIED'
-      and payload->>'lifecycle' = 'PENDING_REVIEW'
+      and payload->>'sourceIntegrity' = 'NOT_INDEPENDENTLY_VERIFIED'
     )
 );
 
