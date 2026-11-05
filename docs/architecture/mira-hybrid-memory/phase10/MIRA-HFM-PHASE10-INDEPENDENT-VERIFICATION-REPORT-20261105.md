@@ -404,4 +404,4 @@ Evidence:
 `PRODUCTION_DEPLOYMENT=NOT_APPROVED`
 `VERSION=v0.2`
 
-The unified Phase 5–9 workflow is expected to run again against this updated report PR. Until that exact PR check completes, the earlier unified run remains evidence for the previous Phase 9 head only.
+The unified Phase 5–9 workflow run `42005912817` completed SUCCESS for this report PR's current merge candidate. Job `unified-offline` passed dependency installation, integrated runtime syntax checks, and all configured Phase 5–9 offline suites. The run records zero live provider requests, zero Supabase writes/migrations, and zero canonical Memory writes.
