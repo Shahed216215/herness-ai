@@ -158,8 +158,6 @@ async function run() {
       },
       keyProvider: testKeyProvider(),
       provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
-      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
-      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
       backupDirectory,
       backupFileName: 'mira-hfm-staging-drill-001.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
@@ -196,6 +194,7 @@ async function run() {
         [baselineSource.source.descriptor.sourceId]: baselineSource.trusted
       },
       keyProvider: testKeyProvider(),
+      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [backupSource.source.descriptor.sourceId]: backupSource.trusted.provenance, [baselineSource.source.descriptor.sourceId]: baselineSource.trusted.provenance } },
       backupDirectory,
       backupFileName: 'mira-hfm-staging-drill-001.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
@@ -221,6 +220,7 @@ async function run() {
         [independentBaseline.source.descriptor.sourceId]: independentBaseline.trusted
       },
       keyProvider: testKeyProvider(),
+      provenancePolicy: { contractVersion: '1', policyVersion: 'synthetic-provenance-policy-v1', sources: { [changedBackup.source.descriptor.sourceId]: changedBackup.trusted.provenance, [independentBaseline.source.descriptor.sourceId]: independentBaseline.trusted.provenance } },
       backupDirectory: mismatchOutput,
       backupFileName: 'mira-hfm-staging-mismatch.mira-hfm.enc.json',
       supportedSchemaVersions: ['1.0.0']
