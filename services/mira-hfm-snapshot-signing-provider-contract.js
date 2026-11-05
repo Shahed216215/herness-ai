@@ -33,9 +33,9 @@ function validateSnapshotSigningProvider(provider, expected) {
       d.environment !== 'staging' ||
       d.keyId !== expected.keyId ||
       typeof provider.sign !== 'function' ||
-      Object.prototype.hasOwnProperty.call(provider, 'privateKeyPem') ||
-      Object.prototype.hasOwnProperty.call(provider, 'privateKey') ||
-      Object.prototype.hasOwnProperty.call(provider, 'privateKeyBytes')) {
+      ['privateKeyPem', 'privateKey', 'privateKeyBytes'].some(k =>
+        Object.prototype.hasOwnProperty.call(provider, k) ||
+        Object.prototype.hasOwnProperty.call(d, k))) {
     fail('Snapshot signing provider descriptor, key scope, or sign-only interface is invalid.',
       'HFM_SIGNING_PROVIDER_CONTRACT_INVALID');
   }
