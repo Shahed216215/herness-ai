@@ -44,6 +44,7 @@ async function captureAuthorizedSnapshot({
   const descriptor = source.descriptor;
   if (descriptor.contractVersion !== '1' || typeof descriptor.sourceId !== 'string' ||
       !descriptor.sourceId.trim() || descriptor.mode !== 'read-only' ||
+      typeof descriptor.signingKeyVersion !== 'string' || !descriptor.signingKeyVersion.trim() ||
       !['test', 'staging', 'production'].includes(descriptor.environment)) {
     fail('Snapshot source descriptor is invalid or is not explicitly read-only.',
       'HFM_SNAPSHOT_SOURCE_CONTRACT_INVALID');
@@ -51,7 +52,8 @@ async function captureAuthorizedSnapshot({
   const trusted = trustedSources[descriptor.sourceId];
   if (!isPlainObject(trusted) || typeof trusted.publicKeyPem !== 'string' ||
       !trusted.publicKeyPem.includes('PUBLIC KEY') || typeof trusted.keyId !== 'string' ||
-      !trusted.keyId.trim() || trusted.keyId !== descriptor.signingKeyId) {
+      !trusted.keyId.trim() || trusted.keyId !== descriptor.signingKeyId ||
+      typeof trusted.keyVersion !== 'string' || trusted.keyVersion !== descriptor.signingKeyVersion) {
     fail('Snapshot source is not present in the independent trust store or its signing key reference differs.',
       'HFM_SNAPSHOT_SOURCE_UNTRUSTED');
   }
@@ -78,6 +80,7 @@ async function captureAuthorizedSnapshot({
   const a = result.attestation;
   const capturedAtMs = Date.parse(a.capturedAt);
   if (a.sourceId !== descriptor.sourceId || a.signingKeyId !== trusted.keyId ||
+      a.signingKeyVersion !== trusted.keyVersion ||
       a.projectId !== request.projectId || a.actorId !== request.actorId ||
       a.authorizationDecision !== 'ALLOW' || a.authorizationScope !== request.scope ||
       a.requestId !== request.requestId || a.nonce !== request.nonce ||
