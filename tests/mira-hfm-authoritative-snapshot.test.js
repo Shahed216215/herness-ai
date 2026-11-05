@@ -73,6 +73,8 @@ function testKeyProvider() {
 
   await assert.rejects(() => captureAuthorizedSnapshot({ source, request: { ...request, nonce: 'different-nonce-123456' },
     trustedSources, now }), error => error.code === 'HFM_SNAPSHOT_ATTESTATION_MISMATCH');
+  await assert.rejects(() => captureAuthorizedSnapshot({ source, request, trustedSources, now: now + 120000 }),
+    error => error.code === 'HFM_SNAPSHOT_ATTESTATION_MISMATCH');
   const denied = createSource({ request, snapshot, privateKey, alter: { authorizationDecision: 'DENY' } });
   await assert.rejects(() => captureAuthorizedSnapshot({ source: denied, request, trustedSources, now }),
     error => error.code === 'HFM_SNAPSHOT_ATTESTATION_MISMATCH');
