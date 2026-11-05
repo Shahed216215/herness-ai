@@ -6,35 +6,57 @@ const {
   hasProductionIntegrationCapabilities
 } = require('../services/mira-hfm-learning-evolution-bridge');
 const { createPersistentProposalStore } = require('../services/mira-hfm-learning-proposal-store');
+const { createSupabaseLearningProposalStore } = require('../services/mira-hfm-learning-proposal-supabase-store');
 const { recordAudit } = require('../audit-log');
 const { fromPublicRetrieval } = require('../services/mira-hfm-learning-evidence-adapter');
 
 function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PERMISSIONS, options = {}) {
   const router = express.Router();
   const isProduction = process.env.NODE_ENV === 'production';
-  const proposalStore = options.proposalStore ||
-    (isProduction ? null : createPersistentProposalStore());
-  const auditWriter = options.auditWriter ||
-    (isProduction ? null : (event => recordAudit({
-      actorRole: event.actorRole || 'admin',
-      action: event.event,
-      resource: 'hfm_learning_proposal',
-      resourceId: event.proposalId,
-      status: 'success',
-      details: {
-        projectId: event.projectId,
-        proposalDigest: event.proposalDigest,
-        proposalStatus: event.status,
-        actorId: event.actorId || 'unknown',
-        canonicalMemoryWrites: 0
+  const backend = String(process.env.MIRA_HFM_LEARNING_PROPOSAL_BACKEND || 'local').trim().toLowerCase();
+  let proposalStore = options.proposalStore || null;
+  let auditWriter = options.auditWriter || null;
+  let adapterErrorCode = null;
+
+  if (!proposalStore && !auditWriter) {
+    try {
+      if (backend === 'supabase') {
+        proposalStore = createSupabaseLearningProposalStore();
+        auditWriter = event => proposalStore.writeAuditEvent(event);
+        auditWriter.durable = true;
+      } else if (backend === 'local' && !isProduction) {
+        proposalStore = createPersistentProposalStore();
+        auditWriter = event => recordAudit({
+          actorRole: event.actorRole || 'admin',
+          action: event.event,
+          resource: 'hfm_learning_proposal',
+          resourceId: event.proposalId,
+          status: 'success',
+          details: {
+            projectId: event.projectId,
+            proposalDigest: event.proposalDigest,
+            proposalStatus: event.status,
+            actorId: event.actorId || 'unknown',
+            canonicalMemoryWrites: 0
+          }
+        });
+      } else if (!['local', 'supabase'].includes(backend)) {
+        adapterErrorCode = 'HFM_LEARNING_BACKEND_UNSUPPORTED';
       }
-    })));
+    } catch (error) {
+      adapterErrorCode = String(error && error.code || 'HFM_LEARNING_ADAPTER_CONFIG_INVALID').slice(0, 80);
+      proposalStore = null;
+      auditWriter = null;
+    }
+  }
+
   const productionReady = !isProduction ||
     hasProductionIntegrationCapabilities({
       proposalStore, auditWriter,
-      productionIntegrationReady: options.productionIntegrationReady
+      productionIntegrationReady: options.productionIntegrationReady === true ||
+        process.env.MIRA_HFM_LEARNING_PROPOSAL_PRODUCTION_READY === 'true'
     });
-  const bridge = productionReady
+  const bridge = productionReady && proposalStore && auditWriter
     ? (options.bridge || createLearningEvolutionBridge({ proposalStore, auditWriter }))
     : null;
 
@@ -57,7 +79,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
     res.status(503).json({
       success: false,
       status: 'NOT_CERTIFIED',
-      code: 'HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED',
+      code: adapterErrorCode || 'HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED',
       canonicalMemoryWrites: 0
     });
     return false;
