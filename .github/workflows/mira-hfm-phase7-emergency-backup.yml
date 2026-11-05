@@ -15,6 +15,7 @@ on:
       - 'services/mira-hfm-source-provenance-contract.js'
       - 'services/mira-hfm-signed-provenance-policy.js'
       - 'services/mira-hfm-policy-state-provider-contract.js'
+      - 'services/mira-hfm-local-fake-policy-state-provider.js'
       - 'services/mira-hfm-provenance-evidence-verifier.js'
       - 'services/mira-hfm-recovery-verification.js'
       - 'services/mira-hfm-key-provider-contract.js'
@@ -28,6 +29,7 @@ on:
       - 'tests/mira-hfm-source-provenance-contract.test.js'
       - 'tests/mira-hfm-signed-provenance-policy.test.js'
       - 'tests/mira-hfm-policy-state-provider-contract.test.js'
+      - 'tests/mira-hfm-local-fake-policy-state-provider.test.js'
       - 'tests/mira-hfm-provenance-evidence-verifier.test.js'
       - 'tests/mira-hfm-recovery-verification.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase7/**'
@@ -89,6 +91,7 @@ jobs:
           node tests/mira-hfm-source-provenance-contract.test.js
           node tests/mira-hfm-signed-provenance-policy.test.js
           node tests/mira-hfm-policy-state-provider-contract.test.js
+          node tests/mira-hfm-local-fake-policy-state-provider.test.js
           node tests/mira-hfm-provenance-evidence-verifier.test.js
           node tests/mira-hfm-recovery-verification.test.js
           echo "NETWORK_REQUESTS=0"
