@@ -17,6 +17,8 @@ const { checkToolSafety } = require('../services/mira-tool-execution-policy');
   const queries = buildFacebookPageResearchQueries({ pageId, pageName: 'Online canel' });
   assert.equal(queries.length, 2);
   assert.ok(queries.every(query => query.includes(pageId)));
+  const urlQueries = buildFacebookPageResearchQueries({ pageId, pageName: 'Online canel', pageUrl: 'https://www.facebook.com/' + pageId });
+  assert.equal(urlQueries.length, 3);
   const calls = [];
   const report = await collectPublicFacebookPageEvidence({
     pageId, pageName: 'Online canel', observedAt: '2026-11-05T00:00:00.000Z',
