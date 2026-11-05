@@ -55,7 +55,7 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     fail('Proposal store capability contract is not satisfied.', 'HFM_LEARNING_STORE_CAPABILITY_REQUIRED');
   }
   if (typeof auditWriter !== 'function') fail('Durable auditWriter is required.', 'HFM_LEARNING_AUDIT_REQUIRED');
-  return Object.freeze({ async submit(input) {
+  return Object.freeze({ async submit(input, context = {}) {
     const p = buildProposal(input);
     const put = await proposalStore.putIfAbsent(p.projectId, p.proposalId, p);
     if (!put || put.created !== true) fail('Proposal ID conflict; overwrite is forbidden.', 'HFM_LEARNING_PROPOSAL_CONFLICT');
@@ -65,7 +65,8 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     }
     try {
       await auditWriter({ event: 'HFM_LEARNING_PROPOSAL_STAGED', projectId: p.projectId,
-        proposalId: p.proposalId, proposalDigest: p.proposalDigest, status: p.status, canonicalMemoryWrites: 0 });
+        proposalId: p.proposalId, proposalDigest: p.proposalDigest, status: p.status, canonicalMemoryWrites: 0,
+        actorRole: typeof context.actorRole === 'string' ? context.actorRole.slice(0, 64) : 'unknown' });
     } catch (cause) {
       const e = new Error('Proposal staged but audit failed; reconcile before retry.');
       e.code = 'HFM_LEARNING_AUDIT_FAILED'; e.stateCommitted = true; e.cause = cause; throw e;
@@ -73,6 +74,18 @@ function createLearningEvolutionBridge({ proposalStore, auditWriter } = {}) {
     return { projectId: p.projectId, proposalId: p.proposalId, proposalDigest: p.proposalDigest,
       status: p.status, trustState: p.trustState, approvalRequired: true,
       automaticExecution: false, canonicalMemoryWrites: 0 };
+  },
+  async get(projectId, proposalId) {
+    const safeProjectId = id(projectId, 'projectId');
+    const safeProposalId = id(proposalId, 'proposalId');
+    const stored = await proposalStore.get(safeProjectId, safeProposalId);
+    if (!stored) return null;
+    if (stored.projectId !== safeProjectId || stored.proposalId !== safeProposalId ||
+        stored.evidenceDigest !== digest(stored.evidence) ||
+        stored.proposalDigest !== digest(Object.fromEntries(Object.entries(stored).filter(([key]) => key !== 'proposalDigest')))) {
+      fail('Stored proposal integrity verification failed.', 'HFM_LEARNING_STORED_INTEGRITY_FAILED');
+    }
+    return stored;
   } });
 }
 module.exports = { buildProposal, createLearningEvolutionBridge, SCHEMA, VERSION, MAX_EVIDENCE };
