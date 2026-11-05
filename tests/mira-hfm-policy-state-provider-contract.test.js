@@ -129,7 +129,7 @@ function makeProvider(options = {}) {
   }
   return {
     async readState() {
-      if (options.readError) throw new Error('synthetic state read failure');
+      if (options.readError) throw new Error(typeof options.readError === 'string' ? options.readError : 'synthetic state read failure');
       return options.badState ? options.badState : current;
     },
     async getCommitReceipt({ authorityId, idempotencyKey, requestDigest: expectedDigest }) {
@@ -145,7 +145,7 @@ function makeProvider(options = {}) {
     },
     async compareAndSwap(request) {
       if (options.casError) {
-        const error = new Error('synthetic CAS conflict');
+        const error = new Error(options.casErrorMessage || 'synthetic CAS conflict');
         error.code = options.casError;
         throw error;
       }
@@ -289,6 +289,36 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
     trustedEvidenceIssuers, expectedEnvironment: 'test',
     expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
   }), 'HFM_POLICY_STATE_CAS_CONFLICT');
+
+  await assert.rejects(
+    verifyAndAcceptSignedProvenancePolicy({
+      envelope: policyEnvelope(), provider: makeProvider({ readError: 'PRIVATE_PROVIDER_READ_DETAIL' }),
+      trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+      trustedPolicyIssuers, trustedPolicyReviewers,
+      evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+      trustedEvidenceIssuers, expectedEnvironment: 'test',
+      expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+    }),
+    error => error.code === 'HFM_POLICY_STATE_UNAVAILABLE' &&
+      !error.message.includes('PRIVATE_PROVIDER_READ_DETAIL')
+  );
+
+  await assert.rejects(
+    verifyAndAcceptSignedProvenancePolicy({
+      envelope: policyEnvelope(),
+      provider: makeProvider({
+        casError: 'HFM_POLICY_STATE_CAS_CONFLICT',
+        casErrorMessage: 'PRIVATE_PROVIDER_CAS_DETAIL'
+      }),
+      trustedStateAuthorities, expectedStateAuthorityId: stateAuthority,
+      trustedPolicyIssuers, trustedPolicyReviewers,
+      evidenceProvider: { async resolve({ evidenceId }) { return evidenceRecords.get(evidenceId); } },
+      trustedEvidenceIssuers, expectedEnvironment: 'test',
+      expectedProjectId: 'mira-hfm-v02', operationalIssuerIds, now
+    }),
+    error => error.code === 'HFM_POLICY_STATE_CAS_CONFLICT' &&
+      !error.message.includes('PRIVATE_PROVIDER_CAS_DETAIL')
+  );
 
   await rejects(verifyAndAcceptSignedProvenancePolicy({
     envelope: policyEnvelope(),
