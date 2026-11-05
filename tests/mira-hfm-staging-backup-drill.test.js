@@ -10,6 +10,7 @@ const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
 const { canonicalize } = require('../services/mira-hfm-authoritative-snapshot');
 const { runStagingBackupDrill } = require('../services/mira-hfm-staging-backup-drill');
 
+function makeSnapshotSigningProvider(privateKey, keyId) { return { descriptor: { contractVersion: '1', providerId: 'fixture-snapshot-signer', providerVersion: '1', keyId, keyVersion: '1', keyPurpose: 'MIRA_HFM_SNAPSHOT_ATTESTATION', algorithm: 'Ed25519', environment: 'staging' }, async sign({ message }) { return crypto.sign(null, message, privateKey); } }; }
 function makeAuthorization(privateKey, request) {
   const issued = Date.now();
   const decision = {
@@ -56,7 +57,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   fs.writeFileSync(knowledgeFile, JSON.stringify([{ id: 'k1', text: knowledgeText }]), { mode: 0o600 });
   const pair = crypto.generateKeyPairSync('ed25519');
   const publicKeyPem = pair.publicKey.export({ type: 'spki', format: 'pem' });
-  const privateKeyPem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' });
+  const signingProvider = makeSnapshotSigningProvider(pair.privateKey, signingKeyId);
   const signingKeyId = sourceId + '-key-v1';
   const policyPair = crypto.generateKeyPairSync('ed25519');
   const policyPublicPem = policyPair.publicKey.export({ type: 'spki', format: 'pem' });
@@ -80,7 +81,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
     environment: 'staging',
     sourceId,
     signingKeyId,
-    privateKeyPem,
+    signingProvider,
     rootDir,
     memoryFile,
     knowledgeFile,
@@ -94,6 +95,7 @@ function fixture(sourceId, knowledgeText = 'synthetic staging knowledge') {
   const trusted = {
     publicKeyPem,
     keyId: signingKeyId,
+    keyVersion: '1',
     publicKeySha256: crypto.createHash('sha256')
       .update(publicKey.export({ type: 'spki', format: 'der' })).digest('hex')
   };
