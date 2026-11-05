@@ -467,6 +467,7 @@ const operationalIssuerIds = ['snapshot-issuer', 'authorization-issuer', 'backup
   }), 'HFM_POLICY_STATE_PROVIDER_REQUIRED');
 
   process.stdout.write('MIRA_HFM_POLICY_STATE_SIGNED_AUTHORITY_PASS\n');
+  process.stdout.write('MIRA_HFM_POLICY_STATE_INPUT_AND_METHOD_SNAPSHOT_PASS\n');
   process.stdout.write('MIRA_HFM_POLICY_STATE_FRESHNESS_AND_REVOCATION_PASS\n');
   process.stdout.write('MIRA_HFM_POLICY_STATE_DURABLE_ATOMIC_CAPABILITY_CLAIMS_PASS\n');
   process.stdout.write('MIRA_HFM_POLICY_STATE_COMPARE_AND_SWAP_PASS\n');
