@@ -17,6 +17,13 @@ Status: OFFLINE CONTRACT CI VERIFIED; PRODUCTION KEY CUSTODY AND LIVE PROVIDER V
 - Logs confirm NETWORK_REQUESTS=0, PRODUCTION_MEMORY_TOUCHED=NO, LIVE_DRIVE_API_CALLS=0 and BACKUP_DELETION=0.
 - Earlier failed attempts are preserved; run 42026705689 failed on an async assertion mismatch. The assertion was corrected and the later branch-head run above passed.
 
+## Key-provider contract update
+- `services/mira-hfm-key-provider-contract.js` validates the declared external-provider interface, backup key purpose, and key ID/version consistency.
+- The validator result is `CONTRACT_SHAPE_VALID_NOT_APPROVAL`; descriptor fields are caller-supplied and do not prove provider identity, key custody, authorization, or production approval.
+- `services/mira-hfm-emergency-backup.js` now enforces this contract before wrapping/unwrapping and zeroizes the temporary DEK copy passed to the wrap callback.
+- `tests/mira-hfm-key-provider-contract.test.js` covers descriptor shape, key-reference mismatch, wrong purpose, missing operations, and unsupported operation.
+- Production KMS/HSM selection, workload identity, least privilege, rotation, escrow/recovery, audit policy, and security approval remain open. See `KEY-PROVIDER-GOVERNANCE.md`.
+
 ## Explicit limitations
 - No production Memory source is read. Caller must provide a snapshot and its independently established project scope/source revision.
 - No Drive folder is created or credentials loaded by the adapter; caller must supply a verified folder ID and authorized client.
