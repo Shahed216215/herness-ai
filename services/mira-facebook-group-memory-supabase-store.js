@@ -192,9 +192,10 @@ function createSupabaseFacebookGroupImportStore({
         ? response.data.code : null;
       if (databaseCode === '23505')
         fail('FB_GROUP_STORE_ATOMIC_IDENTITY_CONFLICT', 'Atomic Group import encountered an immutable batch or audit identity conflict.');
-      // PostgreSQL 22023 is a deterministic function-argument/policy rejection.
-      // The function statement has failed and its transaction did not commit.
-      if (databaseCode === '22023')
+      // PostgreSQL class 22 data exceptions (including 22023 invalid_parameter_value
+      // and 22P02 invalid_text_representation during UUID parsing) are deterministic:
+      // the function statement failed and its transaction did not commit.
+      if (databaseCode && /^22[A-Z0-9]{3}$/.test(databaseCode))
         fail('FB_GROUP_STORE_ATOMIC_REJECTED', 'PostgreSQL rejected the atomic Group import arguments or policy fields.');
       // Other HTTP failures may be gateway/transport ambiguity; preserve retry recovery.
       failCommitted('FB_GROUP_STORE_ATOMIC_HTTP_ERROR', 'Atomic Supabase transaction outcome is uncertain after a non-success response.');
