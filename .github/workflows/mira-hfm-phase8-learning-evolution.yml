@@ -12,6 +12,7 @@ on:
       - 'services/mira-hfm-work-learning-adapter.js'
       - 'services/mira-hfm-work-learning-retrieval.js'
       - 'services/mira-hfm-work-learning-projection.js'
+      - 'services/mira-hfm-evolution-prepare.js'
       - 'services/mira-memory-conflict-assessment.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'tests/mira-memory-project-mapping-contract.test.js'
@@ -20,6 +21,7 @@ on:
       - 'tests/mira-hfm-work-learning-adapter.test.js'
       - 'tests/mira-hfm-work-learning-retrieval.test.js'
       - 'tests/mira-hfm-work-learning-projection.test.js'
+      - 'tests/mira-hfm-evolution-prepare.test.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
@@ -34,6 +36,7 @@ on:
       - 'services/mira-hfm-work-learning-adapter.js'
       - 'services/mira-hfm-work-learning-retrieval.js'
       - 'services/mira-hfm-work-learning-projection.js'
+      - 'services/mira-hfm-evolution-prepare.js'
       - 'services/mira-memory-conflict-assessment.js'
       - 'services/mira-conflict-quarantine-registry.js'
       - 'tests/mira-memory-project-mapping-contract.test.js'
@@ -42,6 +45,7 @@ on:
       - 'tests/mira-hfm-work-learning-adapter.test.js'
       - 'tests/mira-hfm-work-learning-retrieval.test.js'
       - 'tests/mira-hfm-work-learning-projection.test.js'
+      - 'tests/mira-hfm-evolution-prepare.test.js'
       - 'tests/mira-memory-conflict-assessment.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase8/**'
       - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
@@ -68,6 +72,7 @@ jobs:
           node tests/mira-hfm-work-learning-adapter.test.js
           node tests/mira-hfm-work-learning-retrieval.test.js
           node tests/mira-hfm-work-learning-projection.test.js
+          node tests/mira-hfm-evolution-prepare.test.js
           echo "NETWORK_REQUESTS=0"
           echo "CANONICAL_MEMORY_WRITTEN=NO"
           echo "CANONICAL_KNOWLEDGE_WRITTEN=NO"
