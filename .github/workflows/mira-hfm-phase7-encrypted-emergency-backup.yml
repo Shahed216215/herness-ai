@@ -46,6 +46,8 @@ on:
 
 # The complete offline suite includes the encrypted core, provider contract, durable ID journal,
 # generated-ID upload orchestration, and end-to-end journaled cloud adapter integration.
+# Offline integration coverage includes generated-ID journal recovery, Drive v3 metadata/list/quota mapping,
+# exact ciphertext readback, and non-destructive capacity/restore-staging checks.
 permissions:
   contents: read
 
