@@ -169,7 +169,9 @@ function createFacebookPageConnector(options = {}) {
     const result = await graphCall(url, "GET", cfg.token);
     if (String(result.id || "") !== postId)
       fail("FACEBOOK_READBACK_MISMATCH", "Readback returned a different post ID.");
-    if (result.from && result.from.id && String(result.from.id) !== cfg.pageId)
+    if (!result.from || !result.from.id)
+      fail("FACEBOOK_READBACK_OWNER_UNAVAILABLE", "Meta did not provide the post owner needed to verify the Page.");
+    if (String(result.from.id) !== cfg.pageId)
       fail("FACEBOOK_READBACK_PAGE_MISMATCH", "Readback post belongs to a different Page.");
     return {
       status: "VERIFIED",
