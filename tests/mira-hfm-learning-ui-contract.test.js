@@ -13,7 +13,8 @@ for (const id of [
   'miraHfmProposalReviewPanel','miraHfmRefreshStatus','miraHfmBridgeStatus',
   'miraHfmProjectId','miraHfmProposalId','miraHfmLoadProposal',
   'miraHfmProposalDetails','miraHfmReviewReason','miraHfmApproveHandoff',
-  'miraHfmRejectProposal'
+  'miraHfmRejectProposal','miraHfmAgentProposalOptIn','miraHfmStageTitle',
+  'miraHfmStageRationale','miraHfmStageChange'
 ]) {
   assert.match(html, new RegExp('id="' + id + '"'), 'Missing HFM UI control: ' + id);
 }
@@ -22,6 +23,10 @@ assert.match(html, /\/api\/admin\/mira-hfm-learning-evolution\/status/);
 assert.match(html, /\/api\/admin\/mira-hfm-learning-evolution\/proposals\//);
 assert.match(html, /APPROVE_FOR_MANUAL_HANDOFF/);
 assert.match(html, /decision,reason/);
+assert.match(html, /payload\.learningProposalOptIn = true/);
+assert.match(html, /payload\.learningProposal =/);
+assert.match(html, /miraHfmAgentProposalOptIn\.checked = false/);
+assert.match(html, /data\.learningProposalHandoff\.success === true/);
 assert.match(html, /window\.confirm\(confirmation\)/);
 assert.match(html, /manual handoff only/i);
 assert.match(html, /miraHfmApproveHandoff\.disabled = !reviewable/);
