@@ -22,7 +22,26 @@ function validateGroupUrl(value, groupId) {
   if (parts[0] !== 'groups' || parts[1] !== groupId) fail('FB_GROUP_IMPORT_INVALID_INPUT', 'sourceUrl must identify the supplied Facebook Group.');
   return 'https://www.facebook.com/groups/' + groupId + (parts.length > 2 ? '/' + parts.slice(2).join('/') : '/');
 }
-function validTimestamp(v, label) { const raw = text(v, label, 64), n = Date.parse(raw); if (!Number.isFinite(n) || n > Date.now() + 60000) fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' must be a valid non-future timestamp.'); return new Date(n).toISOString(); }
+function validTimestamp(v, label) {
+  const raw = text(v, label, 64);
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d{1,9})?(Z|[+-]\\d{2}:\\d{2})$/.exec(raw);
+  if (!match) fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' must be an ISO-8601 timestamp with an explicit timezone.');
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(Number(yearText), Number(monthText) - 1, Number(dayText));
+  calendar.setUTCHours(Number(hourText), Number(minuteText), Number(secondText), 0);
+  if (calendar.getUTCFullYear() !== Number(yearText) ||
+      calendar.getUTCMonth() !== Number(monthText) - 1 ||
+      calendar.getUTCDate() !== Number(dayText) ||
+      calendar.getUTCHours() !== Number(hourText) ||
+      calendar.getUTCMinutes() !== Number(minuteText) ||
+      calendar.getUTCSeconds() !== Number(secondText))
+    fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' contains an invalid calendar date or time.');
+  const n = Date.parse(raw);
+  if (!Number.isFinite(n) || n > Date.now() + 60000)
+    fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' must be a valid non-future timestamp.');
+  return new Date(n).toISOString();
+}
 function exactKeys(v, allowed, label) { if (!object(v) || Object.keys(v).some(k => !allowed.includes(k))) fail('FB_GROUP_IMPORT_INVALID_INPUT', label + ' must contain only supported fields.'); }
 function parseJsonLines(content) {
   const lines = content.split(/\r?\n/).filter(x => x.trim());
