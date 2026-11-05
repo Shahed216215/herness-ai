@@ -226,7 +226,8 @@ function createGoogleDriveGeneratedIdProvider({ drive, accountBinding, getAccoun
             'HFM_GOOGLE_DRIVE_LIST_ITEM_INVALID');
         }
         return { metadata: {
-          projectId, backupId: p.backupId,
+          fileId: file.id, projectId, backupId: p.backupId,
+          backupSchema: p.schema, backupVersion: p.version, backupCreatedAt: p.createdAt,
           objectKey: 'mira-hfm-emergency/v1/' + projectId + '/' + p.backupId + '.mhe',
           createdAt: p.createdAt, bytes: size,
           contentType: CONTENT_TYPE, encryption: p.encryption,
