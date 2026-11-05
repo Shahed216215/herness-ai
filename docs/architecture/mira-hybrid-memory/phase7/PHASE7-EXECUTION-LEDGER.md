@@ -29,11 +29,19 @@
 - CI logs: NETWORK_REQUESTS=0; PRODUCTION_MEMORY_TOUCHED=NO; LIVE_DRIVE_API_CALLS=0; BACKUP_DELETION=0.
 - Failed run 42026705689 was retained as FAIL evidence (async test assertion mismatch); the correction and subsequent successful run are recorded separately.
 
+## Key-provider contract continuation
+- Added `services/mira-hfm-key-provider-contract.js` and offline conformance tests; workflow now includes this suite.
+- Backup encryption/decryption now require a declared provider descriptor with matching key ID/version and `MIRA_HFM_BACKUP` purpose.
+- Contract result is explicitly `CONTRACT_SHAPE_VALID_NOT_APPROVAL`; it is not proof of KMS identity, custody, authorization, or approval.
+- Temporary DEK copy passed to the wrap callback is zeroized after the callback. Node.js runtime copies cannot be guaranteed erased.
+- Governance requirements and production acceptance gates are in `KEY-PROVIDER-GOVERNANCE.md`.
+
 ## Safety boundary
 - Production Memory read/write: NO
 - Google Drive live API/OAuth call: NO
 - Existing Drive routine sync changed: NO
 - Production key generation/storage/rotation: NO
+- Production KMS/KEK provider selected or approved: NO
 - Production restore/migration: NO
 - Backup deletion: NO
 - Deployment/merge: NO
