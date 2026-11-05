@@ -43,8 +43,8 @@ function trust(key, keyId, keyVersion = '1') {
 const trustedStateAuthorities = { [stateAuthority]: trust(stateKey, 'state-key') };
 const trustedPolicyIssuers = { [policyIssuer]: trust(policyKey, 'policy-key') };
 const trustedPolicyReviewers = {
-  'reviewer-a': trust(reviewerA, 'review-a'),
-  'reviewer-b': trust(reviewerB, 'review-b')
+  'reviewer-a': { ...trust(reviewerA, 'review-a'), role: 'security-reviewer' },
+  'reviewer-b': { ...trust(reviewerB, 'review-b'), role: 'policy-owner' }
 };
 function statePayload(overrides = {}) {
   return {
