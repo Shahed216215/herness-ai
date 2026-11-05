@@ -153,6 +153,9 @@ function createBackupIdJournal({ directory, ...input } = {}) {
         reject('Operation ID is already bound to a different immutable Drive file ID or backup.',
           'HFM_DRIVE_JOURNAL_CONFLICT');
       }
+      fs.unlinkSync(temp); temp = undefined;
+      const existingDirFd = fs.openSync(dir, 'r');
+      try { fs.fsyncSync(existingDirFd); } finally { fs.closeSync(existingDirFd); }
       return Object.freeze({ created: false, ...existing });
     }
     fs.unlinkSync(temp); temp = undefined;
