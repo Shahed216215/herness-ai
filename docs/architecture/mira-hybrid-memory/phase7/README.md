@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 7 Emergency Backup
 
-Status: STAGING BACKUP/RECOVERY DRILL IMPLEMENTED; NEW CI RUN PENDING; PRODUCTION KEY CUSTODY AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
+Status: SIGNED STAGING AUTHORIZATION CONTRACT IMPLEMENTED; CI PENDING; KEY CUSTODY, FILESYSTEM HARDENING, SOURCE PROVENANCE AND LIVE PROVIDER VERIFICATION REMAIN OPEN.
 
 ## Implemented
 - Per-backup random 256-bit data-encryption key (DEK), AES-256-GCM payload encryption, and external key-provider wrapping/unwrapping of the DEK (KEK boundary).
@@ -31,11 +31,11 @@ Status: STAGING BACKUP/RECOVERY DRILL IMPLEMENTED; NEW CI RUN PENDING; PRODUCTIO
 
 ## Local staging snapshot source (new)
 - `services/mira-hfm-local-staging-snapshot-source.js` is a separate staging-only adapter for the existing `memory.json` and `knowledge.json` JSON-array stores.
-- It requires explicit absolute file paths, a non-symlink staging root, `environment: staging`, an injected Ed25519 private signing key, and an explicit authorization callback. It has no default production path and rejects `environment: production`.
+- It requires explicit absolute file paths, a non-symlink staging root, `environment: staging`, an injected Ed25519 private signing key, a separately pinned authorization-issuer trust store, a signed short-lived request-bound ALLOW decision, and a mandatory one-time replay-guard interface. It has no default production path and rejects `environment: production`.
 - It reads the two files through bounded regular-file descriptors, checks file identity/size/mtime across the read, parses JSON arrays, flattens records with store identifiers, and signs a request-bound attestation.
 - The adapter does not call `readMemory()` or `createKnowledgeBackup()`. This is intentional: inspection found that the former may create an initialization marker, while the latter writes backup/audit state.
-- The adapter does not write, migrate, restore, publish, upload, or delete anything. Its signing key and authorization callback are injected; their real identity, custody, and policy remain deployment responsibilities.
-- New synthetic tests cover successful signed staging capture, denied authorization, production-environment rejection, path pinning, and source-file immutability. CI execution for this addition is pending until the new workflow run completes.
+- The adapter does not write, migrate, restore, publish, upload, or delete anything. Its source signing key, authorization issuer trust store, decision provider and replay guard are injected. Real issuer policy governance, durable distributed replay protection and source signing-key custody remain deployment responsibilities.
+- Synthetic tests cover successful signed staging capture, denial, expired decisions, actor mismatch, replay rejection, production-environment rejection, path pinning, and source-file immutability. CI execution is pending until the workflow run completes.
 - This adapter is not a production integration and must not be pointed at production data.
 
 ## Staging backup and recovery drill (new)
