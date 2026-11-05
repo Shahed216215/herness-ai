@@ -66,3 +66,10 @@ Status: STAGING BACKUP/RECOVERY DRILL IMPLEMENTED; NEW CI RUN PENDING; PRODUCTIO
 - Retention: plan-only; deletion not authorized.
 - Restore: decrypt-and-validate preview only; production restore not authorized.
 - Production readiness: NOT_CERTIFIED.
+
+
+## Staging security review (2026-11-05)
+- Static review recorded in `STAGING-SECURITY-REVIEW.md`.
+- Five HIGH findings remain open: independently enforced authorization, signing-key custody, parent-directory TOCTOU resistance, existing backup-directory ownership/permissions, and independently governed baseline provenance.
+- Real staging integration is NOT_APPROVED until remediation and adversarial offline tests are complete. Production readiness remains NOT_CERTIFIED.
+- Review was read-only; no staging/production data, secrets, live providers, or deployment were accessed.
