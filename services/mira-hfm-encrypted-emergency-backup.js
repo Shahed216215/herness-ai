@@ -151,12 +151,12 @@ function safeDirectory(directory) {
   }
   return resolved;
 }
-function writeImmutableBackup({ envelope, directory, backupId } = {}) {
+function writeImmutableBackup({ envelope, key, directory, backupId } = {}) {
   validateId(backupId);
   const bytes = Buffer.isBuffer(envelope) ? envelope : Buffer.from(String(envelope), 'utf8');
   if (bytes.length < 1 || bytes.length > MAX_ENVELOPE_BYTES) fail('Backup envelope exceeds the size limit.');
-  const parsed = JSON.parse(bytes.toString('utf8'));
-  if (parsed.backupId !== backupId || parsed.schema !== SCHEMA) fail('Backup ID does not match the envelope.');
+  const verified = decryptAndVerifyBackup(bytes, key);
+  if (verified.backupId !== backupId) fail('Backup ID does not match the authenticated envelope.');
   const dir = safeDirectory(directory);
   const target = path.join(dir, 'mira-hfm-emergency-' + backupId + '.mhe');
   const temp = path.join(dir, '.mira-hfm-tmp-' + crypto.randomBytes(12).toString('hex'));
