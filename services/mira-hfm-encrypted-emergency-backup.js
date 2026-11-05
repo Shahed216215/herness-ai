@@ -211,8 +211,12 @@ function restoreToStaging({ envelope, key, directory, restoreId } = {}) {
     fs.closeSync(fd); fd = undefined;
     fs.linkSync(temp, target); linked = true;
     fs.unlinkSync(temp);
+    const dirFd = fs.openSync(dir, 'r');
+    try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
     const staged = fs.readFileSync(target);
-    if (sha256(staged) !== verified.plaintextSha256) fail('Restore staging readback failed.', 'HFM_RESTORE_READBACK_FAILED');
+    if (!staged.equals(verified.payload) || sha256(staged) !== verified.plaintextSha256) {
+      fail('Restore staging readback failed.', 'HFM_RESTORE_READBACK_FAILED');
+    }
     return { restoreId, path: target, bytes: staged.length, sha256: verified.plaintextSha256,
       status: 'VERIFIED_STAGING_ONLY', canonicalMemoryWrites: 0, productionRestore: false };
   } catch (error) {
