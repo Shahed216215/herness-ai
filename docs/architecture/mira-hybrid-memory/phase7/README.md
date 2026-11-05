@@ -17,13 +17,13 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 ## Storage and restore safety
 
-- Local emergency artifacts authenticate/decrypt before file creation; owner-only permissions, symlink rejection, atomic create-only publication, fsync, and read-after-write verification are enforced.
+- Local emergency artifacts authenticate/decrypt before file creation; owner-only permissions, symlink rejection, atomic create-only publication, fsync, and read-after-write verification are enforced. Restore staging fsyncs the staging directory after create-only publication and verifies exact plaintext bytes; failed authentication leaves no staging artifact.
 - Existing backup IDs cannot be overwritten.
 - Restore preview authenticates/decrypts without writing a stage file.
 - Cloud restore preview verifies project/object identity and encryption before staging.
 - Actual restore decrypts and verifies into a separate owner-only staging directory only.
 - No canonical Memory writes, live provider calls, production restore, or automatic trust promotion occur.
-- Capacity monitoring uses explicit project-scoped pagination and a configured 5,000,000,000-byte emergency-backup budget. It now reports this HFM budget separately from optional provider-reported account/project quota; unavailable provider quota is explicitly NOT_REPORTED. This is still not a live Google Drive quota integration.
+- Capacity monitoring uses explicit project-scoped pagination and a configured 5,000,000,000-byte emergency-backup budget. It validates provider quota schema, scope, arithmetic, and non-future measurement time; it validates canonical non-future backup timestamps. It reports the HFM budget separately from optional provider-reported account/project quota; unavailable provider quota is explicitly NOT_REPORTED. This is still not a live Google Drive quota integration.
 - Retention planning is non-destructive and never deletes artifacts.
 
 ## Offline key-provider contract
@@ -44,7 +44,9 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 ## Verification
 
 - Latest code-change CI: run **41990607983 — SUCCESS**, job **127121672506**, code commit **77cf0f0deaa8101cac0e60bd3e7c0b2520a48435**.
-- Combined offline job logs: **40 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
+- Latest branch-head CI: run **41992001807 — SUCCESS**, job **127126170037**, commit **4ef7ae04bbd0f2fa705fa256cc73868bcd725749**.
+- Combined offline job logs: **45 Phase 7 PASS markers**, with both test commands reporting `TESTS_FAILED=0`.
+- The five new assertions cover failed-auth restore leaving no stage artifact, provider quota report schema, future quota timestamps, listing timestamp validation, and future backup timestamps.
 - Logs confirm `HFM_PHASE7_CANONICAL_WRITES=0` and `HFM_PHASE7_PRODUCTION_RESTORE=0`.
 - This is synthetic offline CI evidence, not a live-provider or production recovery certification.
 
@@ -52,15 +54,15 @@ Phase 7 adds an encrypted emergency-backup primitive for a bounded Memory snapsh
 
 - Actual Google Drive adapter/OAuth/live upload/download/Drive quota API: NOT_IMPLEMENTED / NOT_TESTED. Synthetic provider capability/quota contracts do not certify a real provider.
 - Production key provider/KMS/OS keystore, key custody, rotation execution, escrow/recovery: NOT_IMPLEMENTED / NOT_CERTIFIED.
-- Canonical HFM snapshot exporter: BLOCKED pending authoritative store/schema reconciliation in Phases 1–3.
+- Canonical HFM snapshot exporter: BLOCKED pending production-grade canonical store integration and approved project-owner mappings. Phase 1 static reconciliation is COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS; Phase 2 local-core safety acceptance is PASS_SCOPED; Phase 3 is COMPLETE_SYNTHETIC_CONTRACT_ONLY. These scoped completions do not establish production host authentication, a persistent authoritative project-owner registry, durable replay protection, production record mappings, or a single committed canonical store. No legacy store is safe to export as a canonical HFM snapshot yet.
 - Production restore drill and independent production recovery certification: NOT_TESTED.
 - Existing routine Google Drive synchronization: UNCHANGED.
 
 VERSION=v0.2
 PHASE7=OFFLINE_ENCRYPTED_EMERGENCY_BACKUP_AND_INJECTED_TRANSPORT_CONTRACT
-LATEST_CI=41990607983_SUCCESS
-LATEST_CI_HEAD=77cf0f0deaa8101cac0e60bd3e7c0b2520a48435
-OFFLINE_PASS_MARKERS=40
+LATEST_CI=41992001807_SUCCESS
+LATEST_CI_HEAD=4ef7ae04bbd0f2fa705fa256cc73868bcd725749
+OFFLINE_PASS_MARKERS=45
 PROVIDER_CAPABILITY_NEGOTIATION=PASS
 PROVIDER_QUOTA_REPORTING_CONTRACT=PASS
 NEGOTIATED_LIMIT_ENFORCEMENT=PASS
