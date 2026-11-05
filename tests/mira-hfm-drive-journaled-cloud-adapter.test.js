@@ -159,6 +159,20 @@ async function main() {
       backupId, key: Buffer.alloc(32, 8)
     }), error => error.code === 'HFM_DRIVE_JOURNAL_RECOVERY_AUTH_FAILED');
     assert.equal(fs.existsSync(journalRecord.journalPath), false);
+    const duplicateListingProvider = {
+      ...provider,
+      async listPage(args) {
+        const page = await provider.listPage(args);
+        return { ...page, items: [...page.items, ...page.items] };
+      }
+    };
+    const duplicateListingAdapter = createJournaledDriveCloudAdapter({
+      provider: duplicateListingProvider, journalDirectory, accountBinding,
+      driveSpace, projectId, parentId
+    });
+    await assert.rejects(() => duplicateListingAdapter.recoverJournal({ backupId, key }),
+      error => error.code === 'HFM_DRIVE_JOURNAL_RECOVERY_CONFLICT');
+    assert.equal(fs.existsSync(journalRecord.journalPath), false);
     const recoveredJournal = await adapter.recoverJournal({ backupId, key });
     assert.equal(recoveredJournal.status, 'JOURNAL_RECOVERED_FROM_AUTHENTICATED_PROVIDER_OBJECT');
     assert.equal(recoveredJournal.canonicalMemoryWrites, 0);
