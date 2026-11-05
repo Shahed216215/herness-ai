@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Phase 8 Learning & Evolution Integration
 
-Status: PROJECT-ISOLATED PROPOSAL BRIDGE, LOCAL DEVELOPMENT STORE, SUPABASE STORE CONTRACT, NAMED-ADMIN IMMUTABLE REVIEW, ADMIN API, PUBLIC-RETRIEVAL AND LEGACY-LEARNING EVIDENCE ADAPTERS, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR, GATED /api/agent GENERATION-CYCLE HANDOFF AND OFFLINE TESTS IMPLEMENTED. LIVE SUPABASE MIGRATION, DEPLOYMENT, UI AND LIVE END-TO-END ORCHESTRATION NOT CERTIFIED.
+Status: PROJECT-ISOLATED PROPOSAL BRIDGE, LOCAL DEVELOPMENT STORE, SUPABASE STORE CONTRACT, NAMED-ADMIN IMMUTABLE REVIEW, ADMIN API, PUBLIC-RETRIEVAL AND LEGACY-LEARNING EVIDENCE ADAPTERS, PRODUCTION FAIL-CLOSED GATE, READ-ONLY LEGACY COMPATIBILITY INSPECTOR, GATED /api/agent GENERATION-CYCLE HANDOFF, UI AND OFFLINE TESTS IMPLEMENTED. LIVE SUPABASE MIGRATION, DEPLOYMENT AND LIVE END-TO-END ORCHESTRATION NOT CERTIFIED.
 
 ## Objective
 
@@ -58,7 +58,7 @@ The migration has been committed to the branch only. It has NOT been applied to 
 1. Apply the SQL migration in the approved Supabase project and verify RLS, grants, primary-key uniqueness and foreign-key behavior.
 2. Run an authorized live integration test: insert, duplicate conflict, cross-project isolation, audit readback, restart/reconnect recovery and fail-closed behavior. This has not been done.
 3. Independently verify the live `/api/agent` hook in a deployed non-production environment with the feature flag disabled and enabled, including non-admin, missing-opt-in, mismatched-project and repeated-retrieval cases. Current verification is offline/contract-level only.
-4. Add UI visibility and independent end-to-end verification for the complete HFM → evidence → proposal → review → human-controlled handoff path.
+4. Independently verify the complete HFM → evidence → proposal → review → human-controlled handoff path end to end in a deployed non-production environment. UI visibility and offline contracts exist; deployed E2E remains unverified.
 5. Verify Render instance/restart behavior and Supabase free-tier capacity without exceeding the $0/month constraint.
 
 ## Offline verification
@@ -67,6 +67,9 @@ The migration has been committed to the branch only. It has NOT been applied to 
 - `node tests/mira-hfm-learning-evolution-route-contract.test.js`
 - `node tests/mira-hfm-learning-evolution-review-route.test.js`
 - `node tests/mira-hfm-learning-generation-cycle.test.js`
+- `node tests/mira-hfm-learning-generation-cycle-request.test.js`
+- `node tests/mira-hfm-learning-generation-cycle-server-integration.test.js`
+- `node tests/mira-hfm-learning-ui-contract.test.js`
 - `node tests/mira-hfm-learning-legacy-compatibility.test.js`
 - `node tests/mira-hfm-learning-supabase-store.test.js`
 
