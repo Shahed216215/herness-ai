@@ -236,10 +236,18 @@ function restoreToStaging({ envelope, key, directory, restoreId } = {}) {
       const dirFd = fs.openSync(dir, 'r');
       try { fs.fsyncSync(dirFd); } finally { fs.closeSync(dirFd); }
       const staged = fs.readFileSync(target);
-      if (!staged.equals(verified.payload) || sha256(staged) !== verified.plaintextSha256) {
+      const stagedBytes = staged.length;
+      let stagedReadbackValid;
+      try {
+        stagedReadbackValid = staged.equals(verified.payload) &&
+          sha256(staged) === verified.plaintextSha256;
+      } finally {
+        staged.fill(0);
+      }
+      if (!stagedReadbackValid) {
         fail('Restore staging readback failed.', 'HFM_RESTORE_READBACK_FAILED');
       }
-      return { restoreId, path: target, bytes: staged.length, sha256: verified.plaintextSha256,
+      return { restoreId, path: target, bytes: stagedBytes, sha256: verified.plaintextSha256,
         status: 'VERIFIED_STAGING_ONLY', canonicalMemoryWrites: 0, productionRestore: false };
     } catch (error) {
       if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
