@@ -80,7 +80,7 @@ async function main() {
   const fake = fakeDrive();
   const provider = createGoogleDriveGeneratedIdProvider({
     drive: fake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
-    driveSpace, parentId
+    driveSpace, projectId, parentId
   });
   const generated = await provider.generateFileId({ accountBinding, driveSpace });
   assert.equal(generated.id, fileId);
@@ -128,7 +128,7 @@ async function main() {
 
   const wrongAccount = createGoogleDriveGeneratedIdProvider({
     drive: fake.drive, accountBinding, getAccountFingerprint: async () => 'c'.repeat(64),
-    driveSpace, parentId
+    driveSpace, projectId, parentId
   });
   await assert.rejects(() => wrongAccount.generateFileId({ accountBinding, driveSpace }),
     error => error.code === 'HFM_GOOGLE_DRIVE_ACCOUNT_SCOPE');
@@ -137,7 +137,7 @@ async function main() {
 
   const badSpace = createGoogleDriveGeneratedIdProvider({
     drive: fake.drive, accountBinding, getAccountFingerprint: async () => accountBinding,
-    driveSpace: 'appDataFolder', parentId: 'appDataFolder'
+    driveSpace: 'appDataFolder', projectId, parentId: 'appDataFolder'
   });
   await assert.rejects(() => badSpace.generateFileId({ accountBinding, driveSpace: 'appDataFolder' }),
     error => error.code === 'HFM_GOOGLE_DRIVE_ID_RESPONSE_INVALID');
