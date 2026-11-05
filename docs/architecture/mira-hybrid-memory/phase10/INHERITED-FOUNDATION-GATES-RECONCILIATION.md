@@ -76,12 +76,19 @@ Exact GitHub compare results establish the following ancestry for the Phase 2–
 - PR #30 Phase 3 head is the base of PR #31 Phase 4; PR #31 head is `773f8cf551286609690d332ad363142cd74af1d8`.
 - Comparing the Phase 4 head with Phase 9 base `3026e22aa1e2ec9d3a61bf89320174828e120999` returned `ahead`, six commits ahead and zero behind. Therefore the Phase 2→3→4 clean-restack chain is an ancestor of the Phase 9/10 base. The earlier uncertainty about Phase 2–4 ancestry is resolved.
 
-A separate Phase 5 recovery-patch lineage remains unresolved:
-- PR #40's recovery-patch head `6bc5a2c90cf8d3d9ace8248c3a0c154f38199ba0` compared with the Phase 9 base returned `diverged` (4 commits ahead / 57 behind).
-- The Phase 5 clean-restack branch compared with the Phase 9 base also returned `diverged` (4 ahead / 93 behind).
-- PR #40 is closed/merged into its Phase 5 branch, not main; these comparisons do not establish that its recovery patch is present in the Phase 9/10 chain.
+### Phase 5–9 clean-restack chain (new exact-SHA findings)
 
-Do not silently cherry-pick, merge, or claim Phase 5 recovery-patch integration. Keep this as a branch-lineage blocker pending a deliberate, reviewed reconciliation. Preserve historical branches and avoid force-push.
+The current PR metadata and commit comparisons reveal a separate, material stale-base problem:
+
+- PR #33 (Phase 5) currently points to head `70f5e725b515b8b1964712630b5423cd00cd087a`, based on Phase 4 public-research head `0797b7fa91254eb714c4481ee681efe8d4da6bdf`.
+- PR #40 recovery-patch head `6bc5a2c90cf8d3d9ace8248c3a0c154f38199ba0` is an ancestor of PR #33's current head (compare: 36 commits ahead / zero behind). Therefore the Phase 5 recovery patch **is present in the current Phase 5 PR #33 branch**. The previous wording that its integration was unproven is superseded by this exact ancestry result.
+- PR #34 (Phase 6) declares base SHA `871cf95301c3f39d525b55dcc93019d2f05102c1`, which is 93 commits behind PR #33's current head. Its head `8f8f35e34a138a53a52f22bd74d9327093aa496c` is only one commit ahead of that stale base. Thus Phase 6 does **not** include the current Phase 5 branch tip/recovery patch lineage.
+- PR #35 (Phase 7) head `364aa77e065b20427046359ed9d7d9fcb09dfc49` is 29 commits ahead of the Phase 6 head. But PR #36 (Phase 8) uses base SHA `2711cd651d678a2e7a463df2b2f2a535c821b546`, which is 28 commits behind the current PR #35 head. Phase 8 therefore branches from an older Phase 7 point, not the current PR #35 tip.
+- PR #36 head `66eccc0cbd81cb48e4a4bf1d8d3a08aa6457fc09` and PR #37/Phase 9 head `3026e22aa1e2ec9d3a61bf89320174828e120999` are linearly connected (one commit each), but inherit the stale Phase 7/8 base.
+
+**Disposition:** Phase 5's current branch includes the recovery patch, but the Phase 6–9 chain is stale relative to the current Phase 5 and Phase 7 tips. Later Phase 8/9 offline CI evidence is valid only for the exact tested stale-chain heads; it does not certify inclusion of the newer Phase 5 recovery patch or current Phase 7 tip.
+
+Do not merge or deploy this chain as if it were fully reconciled. A safe continuation requires a deliberate clean restack of Phase 6 on the current Phase 5 head, then Phase 7, Phase 8 and Phase 9 in sequence, followed by exact-head CI re-execution. Preserve all historical branches and avoid force-push.
 
 ## 5. Phase 10 impact
 
