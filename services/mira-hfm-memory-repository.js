@@ -50,6 +50,15 @@ function recordClassification(record) {
   return record.access.classification;
 }
 
+function assertProjectScope(record, projectId) {
+  if (record.projectId !== projectId) throw fail('HFM_MEMORY_PROJECT_SCOPE_MISMATCH');
+  const allowed = record.access && record.access.allowedProjectIds;
+  if (Array.isArray(allowed) &&
+      (allowed.length !== 1 || allowed[0] !== projectId)) {
+    throw fail('HFM_MEMORY_CROSS_PROJECT_SHARING_NOT_SUPPORTED');
+  }
+}
+
 function makeVaultContext(record, ownerId) {
   return {
     recordId: record.memoryId,
@@ -213,7 +222,7 @@ async function createMemoryRecord(options = {}) {
   const record = options.record;
   const validation = validateCanonicalRecord(record);
   if (!validation.valid) throw fail('HFM_MEMORY_RECORD_INVALID');
-  if (record.projectId !== context.projectId) throw fail('HFM_MEMORY_PROJECT_SCOPE_MISMATCH');
+  assertProjectScope(record, context.projectId);
   if (record.lifecycle === 'TRASHED') throw fail('HFM_MEMORY_INITIAL_TRASH_STATE_INVALID');
 
   const classification = recordClassification(record);
@@ -265,9 +274,8 @@ async function reviseMemoryRecord(options = {}) {
   const nextRecord = options.record;
   const validation = validateCanonicalRecord(nextRecord);
   if (!validation.valid) throw fail('HFM_MEMORY_RECORD_INVALID');
-  if (nextRecord.memoryId !== memoryId || nextRecord.projectId !== context.projectId) {
-    throw fail('HFM_MEMORY_PROJECT_SCOPE_MISMATCH');
-  }
+  if (nextRecord.memoryId !== memoryId) throw fail('HFM_MEMORY_RECORD_IDENTITY_MISMATCH');
+  assertProjectScope(nextRecord, context.projectId);
 
   const operation = await beginIdempotentOperation(
     client, context, options.idempotencyKey, 'memory.update', resource, digest(nextRecord)
