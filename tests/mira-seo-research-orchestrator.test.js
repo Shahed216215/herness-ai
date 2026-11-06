@@ -140,6 +140,10 @@ async function main() {
 
   assert.equal(result.success, true);
   assert.equal(result.status, "RESEARCH_RESULTS_READY_FOR_REVIEW");
+  assert.equal(result.costPolicy.mode, "NO_PURCHASED_API_REQUIRED");
+  assert.equal(result.costPolicy.paidApiKeyRequired, false);
+  assert.equal(result.costPolicy.userApiPurchaseRequired, false);
+  assert.equal(result.costPolicy.providerUsageCost, "NOT_EXPOSED_BY_HOST_PLATFORM");
   assert.equal(result.evidence.evidenceCount, 1);
   assert.equal(result.evidence.uniqueDomainCount, 1);
   assert.equal(result.evidence.evidence[0].sourceDomain, "example.com");
