@@ -20,7 +20,6 @@ on:
       - 'supabase/migrations/20261105090000_mira_facebook_group_import_batches.sql'
       - 'supabase/migrations/20261105120000_mira_facebook_group_import_atomic_recovery.sql'
       - '.github/workflows/mira-hfm-phase10-cross-phase-regression.yml'
-      - 'docs/architecture/mira-hybrid-memory/phase10/**'
   pull_request:
     branches:
       - work/mira-hfm-v02-phase9-restack-on-current-phase8-20261106
