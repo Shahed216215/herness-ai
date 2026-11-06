@@ -124,6 +124,32 @@ test('allowed project IDs must be unique bounded strings', () => {
   assert.ok(validateCanonicalRecord(invalid).errors.includes('record.access.allowedProjectIds.invalid'));
 });
 
+
+test('content hash follows RFC 8785 JCS string serialization and detects mismatches', () => {
+  assert.equal(
+    createContentHash('sample'),
+    'efaa9d1b2193174ba24d21a8594b9f7a3fac82944b6327067cc1003b6d101e0b'
+  );
+  const candidate = record({
+    version: { revision: 1, contentHash: 'f'.repeat(64) }
+  });
+  assert.ok(validateCanonicalRecord(candidate).errors.includes('record.version.contentHash.mismatch'));
+  assert.throws(
+    () => createContentHash('bad' + String.fromCharCode(0xD800)),
+    /HFM_CONTENT_UNICODE_INVALID/
+  );
+});
+
+test('invalid calendar dates are rejected even when Date.parse normalizes them', () => {
+  const candidate = record({
+    timestamps: {
+      createdAt: '2026-02-30T00:00:00Z',
+      updatedAt: '2026-03-01T00:00:00Z'
+    }
+  });
+  assert.equal(validateCanonicalRecord(candidate).valid, false);
+});
+
 test('content hash is deterministic SHA-256 hex', () => {
   const a = createContentHash('sample');
   const b = createContentHash('sample');
