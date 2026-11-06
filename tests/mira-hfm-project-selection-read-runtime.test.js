@@ -111,8 +111,8 @@ for (const patch of [
 console.log("PROJECT_READ_PREFLIGHT_REJECTS_UNSAFE_ROLE_RLS_AND_ALL_NONSELECT_PRIVILEGES=PASS");
 
 assert.match(runtime.PREFLIGHT_SQL, /pg_policies/);
-assert.match(runtime.PREFLIGHT_SQL, /mira\\.project_id/);
-assert.match(runtime.PREFLIGHT_SQL, /mira\\.actor_id/);
+assert.match(runtime.PREFLIGHT_SQL, /mira\.project_id/);
+assert.match(runtime.PREFLIGHT_SQL, /mira\.actor_id/);
 assert.match(runtime.PREFLIGHT_SQL, /has_project_reader_group/);
 assert.match(runtime.PREFLIGHT_SQL, /role_membership_isolated/);
 assert.match(runtime.PREFLIGHT_SQL, /reader_group_has_no_parent_roles/);
