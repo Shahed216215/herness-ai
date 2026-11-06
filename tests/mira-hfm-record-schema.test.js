@@ -45,6 +45,18 @@ test('v1.0.0 legacy record remains valid without changing its record type', () =
   assert.deepEqual(result.errors, []);
 });
 
+
+test('v1.0.0 preserves optional sourceUrl compatibility', () => {
+  const candidate = record({
+    source: {
+      sourceType: 'manual',
+      sourceId: 'synthetic-fixture',
+      observedAt: '2026-11-06T00:00:00Z'
+    }
+  });
+  assert.equal(validateCanonicalRecord(candidate).valid, true);
+});
+
 test('v1.0.0 rejects new v1.1.0 record types rather than silently coercing them', () => {
   const candidate = record({ recordType: 'daily_activity' });
   assert.equal(validateCanonicalRecord(candidate).valid, false);
