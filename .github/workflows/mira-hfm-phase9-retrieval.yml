@@ -7,6 +7,8 @@ on:
     paths:
       - 'services/mira-hfm-retrieval-optimizer.js'
       - 'services/mira-hfm-prompt-boundary.js'
+      - 'services/mira-hfm-tool-message-normalizer.js'
+      - 'providers/groq.js'
       - 'services/mira-request-context.js'
       - 'services/ai.js'
       - 'server.js'
@@ -43,6 +45,6 @@ jobs:
         with:
           node-version: 24
       - name: Syntax check
-        run: node --check server.js && node --check services/ai.js && node --check services/mira-request-context.js && node --check services/mira-hfm-prompt-boundary.js && node --check tests/mira-hfm-phase9-runtime-prompt-boundary.test.js && node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js && node --check tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+        run: node --check server.js && node --check services/ai.js && node --check services/mira-request-context.js && node --check services/mira-hfm-prompt-boundary.js && node --check services/mira-hfm-tool-message-normalizer.js && node --check providers/groq.js && node --check tests/mira-hfm-phase9-runtime-prompt-boundary.test.js && node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js && node --check tests/mira-hfm-phase9-downstream-proposal-injection.test.js
       - name: Phase 9 isolated offline tests
         run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node tests/mira-hfm-phase9-prompt-injection-regression.test.js && node tests/mira-hfm-phase9-downstream-proposal-injection.test.js && node tests/mira-hfm-phase9-runtime-prompt-boundary.test.js
