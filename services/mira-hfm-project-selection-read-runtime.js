@@ -1,6 +1,7 @@
 "use strict";
 
 const postgres = require("./mira-hfm-postgres");
+const { buildTrustedActorContext } = require("./mira-hfm-runtime-identity-context");
 
 const ENABLED_ENV = "MIRA_HFM_PROJECT_READ_ENABLED";
 const URL_ENV = "MIRA_HFM_PROJECT_READ_DATABASE_URL";
@@ -128,12 +129,16 @@ async function createProjectSelectionReadRuntime(options = {}) {
 
 async function findActiveProjectMembership(options = {}) {
   const pool = options.pool;
-  const actorId = options.actorId;
+  const req = options.req;
   const projectId = options.projectId;
   if (!pool || typeof pool.connect !== "function") throw fail("PROJECT_READ_POOL_REQUIRED");
-  if (typeof actorId !== "string" || !ACTOR_ID_PATTERN.test(actorId)) {
+  const identity = buildTrustedActorContext(req);
+  if (identity.status !== "ACTOR_RESOLVED" ||
+      !identity.actor || identity.actor.authentication !== "session" ||
+      typeof identity.actor.actorId !== "string" || !ACTOR_ID_PATTERN.test(identity.actor.actorId)) {
     throw fail("PROJECT_READ_TRUSTED_ACTOR_REQUIRED");
   }
+  const actorId = identity.actor.actorId;
   if (typeof projectId !== "string" || !PROJECT_ID_PATTERN.test(projectId)) {
     throw fail("PROJECT_READ_PROJECT_HINT_INVALID");
   }
