@@ -36,6 +36,27 @@ assert.match(verification, /rls_enabled/);
 assert.doesNotMatch(verification, /^\s*(insert|update|delete|create|alter|drop)\s/m);
 assert.match(route, /hasProductionIntegrationCapabilities\(/);
 assert.match(route, /HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED/);
+
+assert.match(route, /router\.use\(createMiraHfmSameOriginWriteGuard\(\)\)/);
+{
+  const guard = createMiraHfmSameOriginWriteGuard({ env: {
+    MIRA_HFM_LEARNING_ALLOWED_ORIGINS: 'https://admin.example'
+  }});
+  function probe(headers, method = 'POST') {
+    let next = 0;
+    const res = { code: 200, status(value) { this.code = value; return this; },
+      json(value) { this.body = value; return this; } };
+    guard({ method, protocol: 'https', headers,
+      get(name) { return headers[name.toLowerCase()]; } }, res, () => { next++; });
+    return { next, res };
+  }
+  assert.equal(probe({ origin: 'https://admin.example', 'sec-fetch-site': 'same-site' }).next, 1);
+  assert.equal(probe({ origin: 'https://evil.example', 'sec-fetch-site': 'cross-site' }).next, 0);
+  assert.equal(probe({ origin: 'null' }).next, 0);
+  assert.equal(probe({}).next, 0);
+  assert.equal(probe({ origin: 'https://admin.example', referer: 'https://evil.example/x' }).next, 0);
+  assert.equal(probe({}, 'GET').next, 1);
+}
 assert.match(route, /session\.authenticated !== true/);
 assert.match(route, /session\.role !== 'admin'/);
 assert.match(route, /typeof session\.username !== 'string'/);
@@ -62,30 +83,7 @@ assert.match(supabaseStore, /row\.payload\.actorRole !== 'admin'/);
 assert.match(supabaseStore, /APPROVED_FOR_MANUAL_HANDOFF/);
 assert.match(supabaseStore, /mira_hfm_learning_proposal_reviews/);
 assert.match(migration, /mira_hfm_learning_proposal_reviews/);
-
-assert.match(route, /router\.use\(createMiraHfmSameOriginWriteGuard\(\)\)/);
-{
-  const guard = createMiraHfmSameOriginWriteGuard({ env: {
-    MIRA_HFM_LEARNING_ALLOWED_ORIGINS: 'https://admin.example'
-  }});
-  function probe(headers, method = 'POST') {
-    let next = 0;
-    const res = { code: 200, status(value) { this.code = value; return this; },
-      json(value) { this.body = value; return this; } };
-    guard({ method, protocol: 'https', headers,
-      get(name) { return headers[name.toLowerCase()]; } }, res, () => { next++; });
-    return { next, res };
-  }
-  assert.equal(probe({ origin: 'https://admin.example', 'sec-fetch-site': 'same-site' }).next, 1);
-  assert.equal(probe({ origin: 'https://evil.example', 'sec-fetch-site': 'cross-site' }).next, 0);
-  assert.equal(probe({ origin: 'null' }).next, 0);
-  assert.equal(probe({}).next, 0);
-  assert.equal(probe({ origin: 'https://admin.example', referer: 'https://evil.example/x' }).next, 0);
-  assert.equal(probe({}, 'GET').next, 1);
-}
 assert.match(route, /requireAdminPermission\(PERMISSIONS\.SYSTEM_ADMIN\)/);
-assert.match(route, /createMiraHfmSameOriginWriteGuard/);
-assert.match(route, /router\.use\(createMiraHfmSameOriginWriteGuard\(\)\)/);
 assert.match(store, /durable: false, crossInstanceAtomicCreate: false, storageMode: 'LOCAL_SINGLE_INSTANCE_ONLY'/);
 assert.match(store, /putReviewIfAbsent/);
 assert.match(supabaseStore, /putReviewIfAbsent/);
@@ -121,4 +119,5 @@ console.log('HFM_PHASE8_NAMED_ADMIN_SESSION_REQUIRED=PASS');
 console.log('HFM_PHASE8_SYSTEM_ADMIN_ROUTE_GUARD=PASS');
 console.log('HFM_PHASE8_SERVER_ROUTE_REGISTRATION=PASS');
 console.log('TESTS_FAILED=0');
+
 console.log('HFM_PHASE8_CSRF_ORIGIN_GUARD_REGRESSION=PASS');
