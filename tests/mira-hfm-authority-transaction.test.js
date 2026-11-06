@@ -76,6 +76,9 @@ test("authorized operation locks owner, membership, authority; consumes and audi
     async perform(client, context) {
       callbackClient = client;
       assert.equal(context.actorId, actorId);
+      assert.equal(context.authorityContext, 'HFM_CONSUMED_ONE_TIME_AUTHORITY');
+      assert.equal(context.resource, request.resource);
+      assert.equal(context.purpose, request.purpose);
       await client.query("INSERT INTO protected_hfm_test_table (project_id) VALUES ($1)", [context.projectId]);
       return "stored";
     }
