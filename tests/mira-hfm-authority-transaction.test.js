@@ -96,6 +96,9 @@ test("authorized operation locks owner, membership, authority; consumes and audi
   assert.ok(sql.some(x => x.includes("valid_from <= clock_timestamp()") &&
     x.includes("(expires_at IS NULL OR expires_at > clock_timestamp())")));
   assert.ok(sql.some(x => x.includes("FOR UPDATE")));
+  const finalMembershipCheck = sql.findIndex(x => x.startsWith("SELECT (status = 'ACTIVE'"));
+  const commit = sql.findIndex(x => x === "COMMIT");
+  assert.ok(protectedWrite < finalMembershipCheck && finalMembershipCheck < commit);
 });
 
 test("scope mismatch, stale revisions, missing rows and ungranted operation fail closed", async t => {
@@ -104,6 +107,8 @@ test("scope mismatch, stale revisions, missing rows and ungranted operation fail
     [{ noMembership: true }, request, "HFM_PROJECT_MEMBERSHIP_NOT_ACTIVE"],
     [{ membership: { permissions: { operations: ["memory.read"] } } }, request, "HFM_OPERATION_NOT_GRANTED"],
     [{ authority: { operation: "knowledge.read" } }, request, "HFM_AUTHORITY_SCOPE_MISMATCH"],
+    [{ authority: { resource: "memory:other" } }, request, "HFM_AUTHORITY_SCOPE_MISMATCH"],
+    [{ authority: { purpose: "different purpose" } }, request, "HFM_AUTHORITY_SCOPE_MISMATCH"],
     [{ owner: { revision: 4 } }, request, "HFM_AUTHORITY_REVISION_STALE"],
     [{ membership: { revision: 8 } }, request, "HFM_AUTHORITY_REVISION_STALE"],
     [{ noAuthority: true }, request, "HFM_AUTHORITY_MISSING_OR_ALREADY_USED"],
