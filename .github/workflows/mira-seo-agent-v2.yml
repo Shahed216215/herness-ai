@@ -37,6 +37,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
       - name: Syntax check
         run: node --check services/mira-seo-engine.js && node --check tools/seo-audit.js && node --check tests/mira-seo-engine.test.js
       - name: SEO engine regression
