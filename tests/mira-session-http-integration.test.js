@@ -73,7 +73,10 @@ function createApp(rows, production = false) {
     req.session.regenerate(error => {
       if (error) return res.status(500).json({ success: false });
       req.session.user = { id: "user-1", role: "admin" };
-      return res.status(200).json({ success: true });
+      return req.session.save(saveError => {
+        if (saveError) return res.status(500).json({ success: false });
+        return res.status(200).json({ success: true });
+      });
     });
   });
 
@@ -154,7 +157,26 @@ async function main() {
     assert.match(setCookie, /SameSite=Strict/i);
     assert.match(setCookie, /Secure/i,
       "production session cookie must be Secure behind the trusted TLS proxy");
-    cookie = setCookie.split(";")[0];
+    const firstCookie = setCookie.split(";")[0];
+
+    const secondLogin = await fetch(first.baseUrl + "/login", {
+      method: "POST",
+      headers: { ...proxyHeaders, Cookie: firstCookie }
+    });
+    assert.equal(secondLogin.status, 200, "re-authentication must regenerate the session");
+    const secondSetCookie = secondLogin.headers.getSetCookie
+      ? secondLogin.headers.getSetCookie()[0]
+      : secondLogin.headers.get("set-cookie");
+    assert.ok(secondSetCookie, "session regeneration must issue a replacement cookie");
+    cookie = secondSetCookie.split(";")[0];
+    assert.notEqual(cookie, firstCookie,
+      "session regeneration must rotate the session identifier");
+
+    const oldSession = await fetch(first.baseUrl + "/me", {
+      headers: { ...proxyHeaders, Cookie: firstCookie }
+    });
+    assert.equal(oldSession.status, 401,
+      "the pre-regeneration session identifier must no longer authenticate");
 
     const whoami = await fetch(first.baseUrl + "/me", {
       headers: { ...proxyHeaders, Cookie: cookie }
