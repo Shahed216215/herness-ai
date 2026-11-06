@@ -82,7 +82,8 @@ function authorizeAgentToolCall(input = {}) {
   }
 
   if (name === "seo_workflow_review_decision" &&
-      args.confirmation !== REVIEW_CONFIRMATION) {
+      (input.explicitReviewConfirmation !== true ||
+       args.confirmation !== REVIEW_CONFIRMATION)) {
     return { allowed: false, code: "SEO_REVIEW_EXPLICIT_CONFIRMATION_REQUIRED" };
   }
 
