@@ -1,0 +1,41 @@
+name: Mira Competitor Intelligence v1 Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/mira-seo-competitor-intelligence.js'
+      - 'services/mira-seo-research-orchestrator.js'
+      - 'tests/mira-seo-competitor-intelligence.test.js'
+      - 'tests/mira-seo-research-orchestrator.test.js'
+      - '.github/workflows/mira-competitor-intelligence-v1.yml'
+  push:
+    branches:
+      - 'work/mira-competitor-intelligence-v1-20261106'
+    paths:
+      - 'services/mira-seo-competitor-intelligence.js'
+      - 'services/mira-seo-research-orchestrator.js'
+      - 'tests/mira-seo-competitor-intelligence.test.js'
+      - 'tests/mira-seo-research-orchestrator.test.js'
+      - '.github/workflows/mira-competitor-intelligence-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  competitor-intelligence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax checks
+        run: node --check services/mira-seo-competitor-intelligence.js && node --check services/mira-seo-research-orchestrator.js && node --check tests/mira-seo-competitor-intelligence.test.js && node --check tests/mira-seo-research-orchestrator.test.js
+      - name: Competitor intelligence regression
+        run: node tests/mira-seo-competitor-intelligence.test.js
+      - name: Governed multi-query research regression
+        run: node tests/mira-seo-research-orchestrator.test.js
