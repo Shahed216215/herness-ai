@@ -64,9 +64,6 @@ const PREFLIGHT_SQL = [
 
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'INSERT') AS authority_audit_insert,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'SELECT') AS authority_audit_select,",
-  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'UPDATE') AS authority_audit_update,",
-  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS authority_audit_delete,",
-  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS authority_audit_truncate,",
 
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'SELECT') AS records_select,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'INSERT') AS records_insert,",
