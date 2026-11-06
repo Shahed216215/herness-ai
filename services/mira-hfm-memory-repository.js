@@ -203,21 +203,7 @@ async function insertVersion(client, record, ownerId, payload) {
     '(memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, ' +
     'revision, integrity_status, trust_status, public_payload, encrypted_envelope, recorded_at) ' +
     'VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,clock_timestamp())',
-    insertValues(record, ownerId, payload).slice(0, 12).filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
-      .filter((_, index) => index !== 12)
+    insertValues(record, ownerId, payload).slice(0, 12)
   );
 }
 
@@ -333,10 +319,16 @@ async function changeLifecycle(options, targetLifecycle) {
     throw fail('HFM_MEMORY_RECORD_NOT_TRASHED');
   }
 
+  if (row.classification === 'PROJECT_PRIVATE' && options.allowPrivateLifecycle !== true) {
+    throw fail('HFM_MEMORY_PRIVATE_LIFECYCLE_NOT_GRANTED');
+  }
+  if (row.classification === 'RESTRICTED' && options.allowRestrictedLifecycle !== true) {
+    throw fail('HFM_MEMORY_RESTRICTED_LIFECYCLE_NOT_GRANTED');
+  }
   const record = decodeStoredRow(row, {
     ...options,
-    allowPrivateRead: row.classification === 'PROJECT_PRIVATE',
-    allowRestrictedRead: row.classification === 'RESTRICTED'
+    allowPrivateRead: options.allowPrivateLifecycle === true,
+    allowRestrictedRead: options.allowRestrictedLifecycle === true
   });
   const now = new Date().toISOString();
   const nextRecord = {
