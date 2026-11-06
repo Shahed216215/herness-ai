@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const { createMiraHfmSameOriginWriteGuard } = require('../services/security/mira-hfm-same-origin-write-guard');
 const {
   createLearningEvolutionBridge,
   hasProductionIntegrationCapabilities
@@ -18,6 +19,8 @@ const {
 
 function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PERMISSIONS, options = {}) {
   const router = express.Router();
+  // Every state-changing HFM endpoint requires an explicit same-origin browser context.
+  router.use(createMiraHfmSameOriginWriteGuard());
   const isProduction = process.env.NODE_ENV === 'production';
   const backend = String(process.env.MIRA_HFM_LEARNING_PROPOSAL_BACKEND || 'local').trim().toLowerCase();
   let proposalStore = options.proposalStore || null;
