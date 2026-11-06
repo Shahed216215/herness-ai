@@ -10,9 +10,8 @@ const sql = fs.readFileSync(
 );
 
 for (const constraint of [
-  "project_owners_project_revision_key",
   "project_memberships_project_owner_fk",
-  "operation_authorities_project_owner_revision_fk",
+  "operation_authorities_project_owner_fk",
   "operation_authorities_membership_revision_fk"
 ]) {
   assert.ok(sql.includes(constraint), "missing relational constraint: " + constraint);
@@ -24,6 +23,8 @@ assert.match(sql, /FOREIGN KEY\s*\(project_id,\s*owner_revision\)/i);
 assert.match(sql, /FOREIGN KEY\s*\(project_id,\s*actor_id,\s*membership_revision\)/i);
 assert.match(sql, /NOT VALID/i);
 assert.equal((sql.match(/VALIDATE CONSTRAINT/g) || []).length, 3);
+assert.match(sql, /Owner revisions are historical snapshots/i);
+assert.doesNotMatch(sql, /FOREIGN KEY\\s*\\([^)]*owner_revision/i);
 assert.match(sql, /ON DELETE RESTRICT/i);
 assert.match(sql, /Audit events intentionally have no FK/i);
 
