@@ -90,3 +90,13 @@ No source code, runtime configuration, production database schema/data, secrets,
 - Delete is a recoverable Neon soft-delete (`TRASHED`), with sanitized audit and immutable revision history. Restore is available from Trash.
 - No automatic permanent purge is authorized.
 - This UI/repository workflow is not yet implemented or tested. The current PR work adds only the schema/lifecycle foundation; Copy UI, Trash UI, and repository transaction integration remain NOT_STARTED.
+
+
+## Render Free sleep-safe operating contract (2026-11-06)
+
+- Canonical daily activity, learning notes, and social drafts are persisted in Neon; Render filesystem and process memory are never authoritative.
+- Capture writes happen only while the runtime is executing and must be confirmed by a successful Neon commit/readback before reporting saved.
+- If Render is asleep, no background AI digest generation is promised. The next authenticated request after wake may generate the missing date-scoped digest from committed records using idempotency.
+- No keepalive ping, Render Cron Job, paid worker, persistent disk, or always-on upgrade is authorized.
+- A database outage never triggers local or Google Drive fallback and never produces a false saved-success state.
+- Archive/Trash reload after restart is not yet implemented or tested.
