@@ -6,7 +6,8 @@ const LIMITS = Object.freeze({
   html: 200000,
   robots: 20000,
   sitemap: 100000,
-  title: 300
+  title: 300,
+  pageUrl: 2048
 });
 
 function text(value, max, field) {
@@ -18,6 +19,18 @@ function text(value, max, field) {
     throw new Error(field + " exceeds the maximum length.");
   }
   return value.trim();
+}
+
+function safeHttpUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return ["http:", "https:"].includes(parsed.protocol) &&
+      !parsed.username && !parsed.password
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function decodeEntities(value) {
@@ -35,6 +48,7 @@ function stripTags(value) {
     String(value || "")
       .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
       .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
+      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\s*>/gi, " ")
       .replace(/<!--[\s\S]*?-->/g, " ")
       .replace(/<[^>]*>/g, " ")
   ).replace(/\s+/g, " ").trim();
@@ -42,7 +56,7 @@ function stripTags(value) {
 
 function attributes(tag) {
   const result = {};
-  const re = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  const re = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>\x60]+))/g;
   let match;
   while ((match = re.exec(tag))) {
     result[match[1].toLowerCase()] =
@@ -51,40 +65,221 @@ function attributes(tag) {
   return result;
 }
 
-function extractMeta(html, name) {
-  const tags = html.match(/<meta\b[^>]*>/gi) || [];
-  for (const tag of tags) {
-    const attrs = attributes(tag);
-    if ((attrs.name || "").toLowerCase() === name.toLowerCase()) {
-      return attrs.content || "";
-    }
-  }
-  return "";
+function metaTags(html) {
+  return (html.match(/<meta\b[^>]*>/gi) || []).map(attributes);
 }
 
-function analyzeOnPage(html, keywords) {
+function extractMeta(html, name) {
+  const found = metaTags(html).find(attrs =>
+    (attrs.name || "").toLowerCase() === name.toLowerCase()
+  );
+  return found ? found.content || "" : "";
+}
+
+function extractProperty(html, property) {
+  const found = metaTags(html).find(attrs =>
+    (attrs.property || "").toLowerCase() === property.toLowerCase()
+  );
+  return found ? found.content || "" : "";
+}
+
+function extractLinkTags(html) {
+  return (html.match(/<link\b[^>]*>/gi) || []).map(attributes);
+}
+
+function collectJsonLd(html) {
+  const scripts = [];
+  const re = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+  let match;
+  while ((match = re.exec(html))) {
+    const attrs = attributes(match[1]);
+    if ((attrs.type || "").toLowerCase().split(";")[0].trim() ===
+        "application/ld+json") {
+      scripts.push(match[2].trim());
+    }
+  }
+
+  const types = [];
+  let invalidCount = 0;
+  for (const source of scripts) {
+    try {
+      const parsed = JSON.parse(source);
+      const visit = value => {
+        if (!value || typeof value !== "object") return;
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+          return;
+        }
+        const type = value["@type"];
+        for (const item of Array.isArray(type) ? type : [type]) {
+          if (typeof item === "string" && item.trim()) types.push(item.trim());
+        }
+        if (value["@graph"]) visit(value["@graph"]);
+      };
+      visit(parsed);
+    } catch {
+      invalidCount += 1;
+    }
+  }
+
+  return {
+    scriptCount: scripts.length,
+    validScriptCount: scripts.length - invalidCount,
+    invalidScriptCount: invalidCount,
+    types: [...new Set(types)].slice(0, 50),
+    findings: invalidCount
+      ? ["One or more JSON-LD blocks contain invalid JSON."]
+      : scripts.length
+        ? []
+        : ["No JSON-LD structured data block was supplied."]
+  };
+}
+
+function analyzeLinks(html, pageUrl) {
+  const tags = (html.match(/<a\b[^>]*>/gi) || []).map(attributes);
+  let internal = 0;
+  let external = 0;
+  let nofollow = 0;
+  let missingHref = 0;
+  let invalidHref = 0;
+  const base = pageUrl ? safeHttpUrl(pageUrl) : null;
+
+  for (const attrs of tags) {
+    const href = (attrs.href || "").trim();
+    if (!href) {
+      missingHref += 1;
+      continue;
+    }
+    if (/^(mailto:|tel:|javascript:|#)/i.test(href)) continue;
+
+    let parsed;
+    try {
+      parsed = new URL(href, base || undefined);
+    } catch {
+      invalidHref += 1;
+      continue;
+    }
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      invalidHref += 1;
+      continue;
+    }
+    if (base && parsed.origin === base.origin) internal += 1;
+    else external += 1;
+    if ((attrs.rel || "").toLowerCase().split(/\s+/).includes("nofollow")) {
+      nofollow += 1;
+    }
+  }
+
+  return {
+    totalAnchorTags: tags.length,
+    internal,
+    external,
+    nofollow,
+    missingHref,
+    invalidHref,
+    scope: base ? "classified_against_page_origin" : "absolute_links_only"
+  };
+}
+
+function analyzeOnPage(html, keywords, pageUrl = "") {
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
   const title = stripTags(titleMatch ? titleMatch[1] : "");
   const description = extractMeta(html, "description");
-
+  const metas = metaTags(html);
+  const links = extractLinkTags(html);
   const headings = {};
+
   for (let i = 1; i <= 6; i++) {
-      const re = new RegExp("<h" + i + "\\b[^>]*>([\\s\\S]*?)</h" + i + "\\s*>", "gi");
+    const re = new RegExp("<h" + i + "\\b[^>]*>([\\s\\S]*?)</h" + i + "\\s*>", "gi");
     headings["h" + i] = [];
     let match;
-    while ((match = re.exec(html))) {
-      headings["h" + i].push(stripTags(match[1]));
-    }
+    while ((match = re.exec(html))) headings["h" + i].push(stripTags(match[1]));
   }
 
-  const canonicalTags = (html.match(/<link\b[^>]*>/gi) || [])
-    .map(attributes)
-    .filter(a => (a.rel || "").toLowerCase().split(/\s+/).includes("canonical"));
+  const canonicalTags = links.filter(a =>
+    (a.rel || "").toLowerCase().split(/\s+/).includes("canonical")
+  );
+  const canonicalUrl = canonicalTags.length === 1
+    ? safeHttpUrl(canonicalTags[0].href || "")
+    : null;
+  const page = pageUrl ? safeHttpUrl(pageUrl) : null;
+  const canonicalFindings = [];
+  if (canonicalTags.length === 0) canonicalFindings.push("Canonical link is missing.");
+  if (canonicalTags.length > 1) canonicalFindings.push("Multiple canonical links were found.");
+  if (canonicalTags.length === 1 && !canonicalUrl) canonicalFindings.push("Canonical URL is not an absolute HTTP(S) URL.");
+  if (canonicalUrl && page && canonicalUrl.origin !== page.origin) {
+    canonicalFindings.push("Canonical URL points to a different origin than the supplied page URL.");
+  }
 
   const images = (html.match(/<img\b[^>]*>/gi) || []).map(attributes);
   const missingAlt = images.filter(img => !Object.prototype.hasOwnProperty.call(img, "alt"));
+  const emptyAlt = images.filter(img =>
+    Object.prototype.hasOwnProperty.call(img, "alt") && !img.alt.trim()
+  );
 
-  const body = stripTags(html).toLowerCase();
+  const robots = metas.filter(attrs =>
+    ["robots", "googlebot"].includes((attrs.name || "").toLowerCase())
+  );
+  const robotsContent = robots.map(attrs => attrs.content || "").join(",").toLowerCase();
+  const noindex = /(^|[\s,])noindex([\s,]|$)/.test(robotsContent);
+  const nofollow = /(^|[\s,])nofollow([\s,]|$)/.test(robotsContent);
+
+  const htmlTag = (html.match(/<html\b[^>]*>/i) || [""])[0];
+  const htmlAttrs = attributes(htmlTag);
+  const hasCharset = metas.some(attrs =>
+    Boolean(attrs.charset) ||
+    ((attrs["http-equiv"] || "").toLowerCase() === "content-type" &&
+      /charset\s*=\s*[^;\s]+/i.test(attrs.content || ""))
+  );
+  const hasViewport = metas.some(attrs =>
+    (attrs.name || "").toLowerCase() === "viewport" && Boolean(attrs.content)
+  );
+
+  const alternates = links.filter(attrs =>
+    (attrs.rel || "").toLowerCase().split(/\s+/).includes("alternate") &&
+    attrs.hreflang
+  );
+  const invalidHreflang = alternates.filter(attrs =>
+    !/^(x-default|[a-z]{2,3}(?:-[a-z0-9]{2,8})*)$/i.test(attrs.hreflang)
+  );
+
+  const og = {
+    title: extractProperty(html, "og:title"),
+    description: extractProperty(html, "og:description"),
+    type: extractProperty(html, "og:type"),
+    url: extractProperty(html, "og:url"),
+    image: extractProperty(html, "og:image")
+  };
+  const missingOpenGraph = Object.keys(og).filter(key => !og[key]);
+  const twitter = {
+    card: extractMeta(html, "twitter:card"),
+    title: extractMeta(html, "twitter:title"),
+    description: extractMeta(html, "twitter:description"),
+    image: extractMeta(html, "twitter:image")
+  };
+  const missingTwitter = Object.keys(twitter).filter(key => !twitter[key]);
+
+  const structuredData = collectJsonLd(html);
+  const linkAnalysis = analyzeLinks(html, pageUrl);
+  const bodyText = stripTags(html);
+  const wordCount = bodyText ? bodyText.split(/\s+/).filter(Boolean).length : 0;
+  const headingLevels = [];
+  for (let i = 1; i <= 6; i++) {
+    const re = new RegExp("<h" + i + "\\b", "gi");
+    const count = (html.match(re) || []).length;
+    for (let j = 0; j < count; j++) headingLevels.push(i);
+  }
+  const skippedHeadingLevels = [];
+  for (let i = 1; i < headingLevels.length; i++) {
+    if (headingLevels[i] > headingLevels[i - 1] + 1) {
+      skippedHeadingLevels.push({
+        from: "h" + headingLevels[i - 1],
+        to: "h" + headingLevels[i]
+      });
+    }
+  }
+
+  const body = bodyText.toLowerCase();
   const keywordChecks = keywords.map(keyword => {
     const term = keyword.toLowerCase();
     return {
@@ -97,16 +292,65 @@ function analyzeOnPage(html, keywords) {
   });
 
   const checks = [
-    { name: "title_present", passed: !!title },
-    { name: "title_length", passed: title.length >= 30 && title.length <= 60 },
-    { name: "description_present", passed: !!description },
-    { name: "description_length", passed: description.length >= 70 && description.length <= 160 },
-    { name: "single_h1", passed: headings.h1.length === 1 },
-    { name: "canonical_present", passed: canonicalTags.length === 1 },
-    { name: "images_have_alt", passed: missingAlt.length === 0 }
+    { name: "title_present", passed: !!title, severity: "HIGH" },
+    { name: "title_length", passed: title.length >= 30 && title.length <= 60, severity: "MEDIUM" },
+    { name: "description_present", passed: !!description, severity: "MEDIUM" },
+    { name: "description_length", passed: description.length >= 70 && description.length <= 160, severity: "LOW" },
+    { name: "single_h1", passed: headings.h1.length === 1, severity: "MEDIUM" },
+    { name: "canonical_valid", passed: canonicalTags.length === 1 && Boolean(canonicalUrl) && canonicalFindings.length === 0, severity: "HIGH" },
+    { name: "images_have_alt", passed: missingAlt.length === 0, severity: "MEDIUM" },
+    { name: "html_lang_present", passed: Boolean(htmlAttrs.lang), severity: "MEDIUM" },
+    { name: "charset_present", passed: hasCharset, severity: "LOW" },
+    { name: "viewport_present", passed: hasViewport, severity: "MEDIUM" },
+    { name: "indexable_by_meta_robots", passed: !noindex, severity: "HIGH" },
+    { name: "open_graph_complete", passed: missingOpenGraph.length === 0, severity: "LOW" },
+    { name: "json_ld_valid", passed: structuredData.scriptCount === 0 || structuredData.invalidScriptCount === 0, severity: "LOW" }
   ];
 
   const passed = checks.filter(c => c.passed).length;
+  const findings = [];
+  for (const check of checks) {
+    if (!check.passed) findings.push({
+      code: check.name.toUpperCase(),
+      severity: check.severity,
+      message: "SEO check failed: " + check.name
+    });
+  }
+  for (const message of canonicalFindings) findings.push({
+    code: "CANONICAL_CONFIGURATION",
+    severity: "HIGH",
+    message
+  });
+  if (nofollow) findings.push({
+    code: "META_NOINDEX_FOLLOW_POLICY",
+    severity: "HIGH",
+    message: "A meta robots directive contains nofollow; verify this is intentional."
+  });
+  if (emptyAlt.length) findings.push({
+    code: "EMPTY_IMAGE_ALT",
+    severity: "LOW",
+    message: "Some images have empty alt text; confirm they are decorative."
+  });
+  if (skippedHeadingLevels.length) findings.push({
+    code: "HEADING_LEVEL_SKIPS",
+    severity: "LOW",
+    message: "Heading outline skips one or more levels."
+  });
+  if (invalidHreflang.length) findings.push({
+    code: "HREFLANG_INVALID",
+    severity: "MEDIUM",
+    message: "One or more hreflang values are invalid."
+  });
+  if (structuredData.invalidScriptCount) findings.push({
+    code: "JSON_LD_INVALID",
+    severity: "MEDIUM",
+    message: "One or more JSON-LD blocks could not be parsed."
+  });
+  if (wordCount > 0 && wordCount < 300) findings.push({
+    code: "LOW_VISIBLE_WORD_COUNT",
+    severity: "LOW",
+    message: "Visible text is under 300 words; review whether the page fully satisfies its search intent."
+  });
 
   return {
     title,
@@ -115,12 +359,44 @@ function analyzeOnPage(html, keywords) {
     metaDescriptionLength: description.length,
     headings,
     h1Count: headings.h1.length,
+    skippedHeadingLevels,
     canonical: canonicalTags.length === 1 ? canonicalTags[0].href || null : null,
     canonicalCount: canonicalTags.length,
+    canonicalFindings,
     imageCount: images.length,
     imagesMissingAlt: missingAlt.length,
+    imagesEmptyAlt: emptyAlt.length,
+    document: {
+      htmlLang: htmlAttrs.lang || null,
+      charsetPresent: hasCharset,
+      viewportPresent: hasViewport,
+      metaRobots: robots.map(attrs => attrs.content || ""),
+      noindex,
+      nofollow
+    },
+    openGraph: {
+      fields: og,
+      missingFields: missingOpenGraph
+    },
+    twitterCards: {
+      fields: twitter,
+      missingFields: missingTwitter
+    },
+    hreflang: {
+      alternateCount: alternates.length,
+      invalidCount: invalidHreflang.length,
+      values: alternates.map(attrs => attrs.hreflang)
+    },
+    structuredData,
+    links: linkAnalysis,
+    content: {
+      visibleWordCount: wordCount,
+      thinContentHeuristic: wordCount > 0 && wordCount < 300,
+      disclaimer: "Word-count threshold is a review heuristic, not a Google ranking rule."
+    },
     keywordChecks,
     checks,
+    findings,
     checklistScore: Math.round(passed / checks.length * 100),
     scoreDisclaimer: "Checklist score only; not a Google ranking prediction."
   };
@@ -211,18 +487,21 @@ function analyzeSitemap(value) {
   const isXml = /<urlset\b|<sitemapindex\b/i.test(value);
   const urls = (value.match(/<loc(?:\s[^>]*)?>[\s\S]*?<\/loc\s*>/gi) || [])
     .map(v => stripTags(v));
+  const invalidUrls = urls.filter(url => !safeHttpUrl(url));
+  const normalized = urls.map(url => url.trim().replace(/\/$/, "").toLowerCase());
+  const duplicateCount = normalized.length - new Set(normalized).size;
 
   if (!isXml) findings.push("Expected urlset or sitemapindex root element.");
   if (!urls.length) findings.push("No loc entries found.");
-
-  const invalidUrls = urls.filter(url => !/^https?:\/\/[^ ]+/i.test(url));
   if (invalidUrls.length) findings.push("Some loc entries are not absolute HTTP(S) URLs.");
+  if (duplicateCount) findings.push("Duplicate loc entries were found.");
 
   return {
     provided: true,
     rootRecognized: isXml,
     urlCount: urls.length,
     invalidUrlCount: invalidUrls.length,
+    duplicateCount,
     findings
   };
 }
@@ -261,14 +540,19 @@ function audit(input = {}) {
   const html = text(input.html, LIMITS.html, "html");
   const robotsTxt = text(input.robotsTxt, LIMITS.robots, "robotsTxt");
   const sitemapXml = text(input.sitemapXml, LIMITS.sitemap, "sitemapXml");
+  const pageUrl = text(input.pageUrl, LIMITS.pageUrl, "pageUrl");
+  if (pageUrl && !safeHttpUrl(pageUrl)) {
+    throw new Error("pageUrl must be an absolute HTTP(S) URL without credentials.");
+  }
   const keywords = analyzeKeywords(input);
-
-  const onPage = html ? analyzeOnPage(html, keywords.map(k => k.keyword)) : null;
+  const onPage = html
+    ? analyzeOnPage(html, keywords.map(k => k.keyword), pageUrl)
+    : null;
 
   return {
     success: true,
     engine: "Mira SEO Engine",
-    version: "1.0.0",
+    version: "2.0.0",
     mode: "offline_local_analysis",
     networkAccess: false,
     keywordAnalysis: keywords,
@@ -279,10 +563,12 @@ function audit(input = {}) {
     },
     contentBrief: createContentBrief(input, keywords),
     limitations: [
-      "No live SERP or competitor data is collected.",
-      "No website URL is fetched.",
+      "No live SERP or competitor data is collected by the offline audit.",
+      "No website URL is fetched; pageUrl is used only to classify supplied links.",
       "No Google Search Console or Analytics data is accessed.",
-      "Results are diagnostic suggestions, not ranking guarantees."
+      "Structured-data checks validate JSON syntax and discover @type labels; they do not validate Schema.org semantics.",
+      "Visible word count and checklist scores are heuristics, not Google ranking factors or ranking predictions.",
+      "Core Web Vitals, HTTP status, redirects, rendered JavaScript, backlinks, search volume, CPC and keyword difficulty require separate authorized data sources."
     ]
   };
 }
@@ -293,5 +579,7 @@ module.exports = {
   analyzeOnPage,
   analyzeRobots,
   analyzeSitemap,
+  collectJsonLd,
+  analyzeLinks,
   LIMITS
 };
