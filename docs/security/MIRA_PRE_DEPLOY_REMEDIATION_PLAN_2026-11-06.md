@@ -178,3 +178,28 @@ A separate, already-open remediation branch exists and should be evaluated rathe
 5. Keep session persistence as a separate production-behavior change requiring explicit approval.
 
 **Updated status:** PR #69 has a successful dependency-remediation CI/audit result on its own branch; PR #71's own head and the live Render deployment remain on the unpatched dependency tree until an approved merge/deploy occurs. Overall pre-deploy status remains REVIEW_REQUIRED.
+
+## 11. Dependency regression tests added — 2026-11-06
+
+### Archive/glob source finding
+- Read-only inspection of `services/deliverable-real-format-builder.js` shows the production CODE_PACKAGE path deliberately does not import or call `archiver`. It uses a small native ZIP writer and documents that archiver was avoided because of a non-callable export in the Termux/CommonJS environment.
+- Therefore the new archive test is explicitly a **dependency-level compatibility test** for the installed `archiver@8.0.0 → readdir-glob@3.0.0 → minimatch@11.0.1` chain, not a claim that the production deliverable builder currently uses archiver.
+- New test: `tests/archive-glob-compatibility.test.js`. It creates a temporary source tree, invokes `archiver.glob('**/*.txt')`, verifies root and nested entries, verifies ignored and non-matching files are excluded, and checks the resulting ZIP content.
+- This test helps detect a runtime incompatibility caused by forcing minimatch 11 outside readdir-glob's declared `^10.2.2` range. It does not by itself establish that this override is semver-supported or eliminate the need to consider removing the unused direct archiver dependency in a separately reviewed dependency change.
+
+### Redirect credential tests
+- New test: `tests/dependency-redirect-security.test.js`.
+- Uses two ephemeral loopback HTTP servers (redirect origin and capture target); no public network calls.
+- Checks array-form Authorization and Cookie headers are stripped on cross-origin redirects while a benign trace header remains.
+- Checks a genuine cross-realm `sensitiveHeaders` array created with `node:vm` is honored and the custom API key is stripped.
+- Checks Axios 1.20.0 cross-origin redirects do not forward Authorization or Cookie, while a benign header remains.
+- This is a dependency-level integration regression for the locked Axios/follow-redirects versions. Repository-wide production Axios call-site inventory remains INCONCLUSIVE; the test does not claim that all application Axios call paths have been located.
+
+### CI
+- Workflow now runs both focused tests after the configured full `npm test` suite and includes them in PR path filters.
+- Test commits: `2417ac55b8667e8cdbb959cc57b5937a0137a24e`, `e22434dd369d4962fa0a211a302678f72bb03a52`.
+- CI workflow commit: `1c49dff88b83caa1f869f4bee4270ac55d4110f1`.
+- Latest CI run: `42247221463`, head `1c49dff88b83caa1f869f4bee4270ac55d4110f1`. At documentation time, dependency installation was in progress; the focused tests and audit had not yet produced results.
+- No application runtime, dependency manifest, lockfile, Render configuration, session store, production behavior, merge, or deployment change was made by these test additions.
+
+**Status:** focused tests committed; CI verification pending. Overall pre-deploy status remains REVIEW_REQUIRED.
