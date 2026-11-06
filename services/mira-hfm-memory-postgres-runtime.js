@@ -40,21 +40,42 @@ const PREFLIGHT_SQL = [
   'SELECT current_user AS current_role, current_database() AS database_name,',
   'r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls,',
   'r.rolcreaterole AS can_create_roles, r.rolcreatedb AS can_create_databases,',
-  'r.rolinherit AS inherits_roles,',
+  'r.rolinherit AS inherits_roles, r.rolcanlogin AS can_login, r.rolreplication AS can_replicate,',
   "pg_has_role(current_user, $1, 'MEMBER') AS has_memory_writer_group,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'INSERT') AS owners_insert,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'UPDATE') AS owners_update,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'DELETE') AS owners_delete,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'TRUNCATE') AS owners_truncate,",
+
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'SELECT') AS memberships_select,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'INSERT') AS memberships_insert,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'UPDATE') AS memberships_update,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'DELETE') AS memberships_delete,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'TRUNCATE') AS memberships_truncate,",
+
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'SELECT') AS authorities_select,",
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'UPDATE') AS authorities_update,",
+  "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'INSERT') AS authorities_insert,",
+  "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'DELETE') AS authorities_delete,",
+  "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'TRUNCATE') AS authorities_truncate,",
+
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'INSERT') AS authority_audit_insert,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'SELECT') AS authority_audit_select,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'UPDATE') AS authority_audit_update,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS authority_audit_delete,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS authority_audit_truncate,",
+
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'SELECT') AS records_select,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'INSERT') AS records_insert,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'UPDATE') AS records_update,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'DELETE') AS records_delete,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'TRUNCATE') AS records_truncate,",
   "has_table_privilege(current_user, 'mira_hfm.memory_record_versions', 'INSERT') AS versions_insert,",
+  "has_table_privilege(current_user, 'mira_hfm.memory_record_versions', 'SELECT') AS versions_select,",
+
   "has_table_privilege(current_user, 'mira_hfm.memory_record_versions', 'UPDATE') AS versions_update,",
   "has_table_privilege(current_user, 'mira_hfm.memory_record_versions', 'DELETE') AS versions_delete,",
   "has_table_privilege(current_user, 'mira_hfm.memory_record_versions', 'TRUNCATE') AS versions_truncate,",
@@ -72,6 +93,9 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS authority_audit_delete,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS authority_audit_truncate,",
   "has_sequence_privilege(current_user, 'mira_hfm.memory_audit_events_event_sequence_seq', 'USAGE') AS audit_sequence_usage,",
+  "has_sequence_privilege(current_user, 'mira_hfm.memory_audit_events_event_sequence_seq', 'SELECT') AS audit_sequence_select,",
+  "has_sequence_privilege(current_user, 'mira_hfm.memory_audit_events_event_sequence_seq', 'UPDATE') AS audit_sequence_update,",
+
   '(SELECT count(*) = 8 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN " +
     "('project_owners','project_memberships','operation_authorities','authority_audit_events'," +
@@ -81,7 +105,7 @@ const PREFLIGHT_SQL = [
 ].join(' ');
 
 const REQUIRED_TRUE = Object.freeze([
-  'has_memory_writer_group', 'inherits_roles', 'schema_usage',
+  'has_memory_writer_group', 'inherits_roles', 'can_login', 'schema_usage',
   'owners_select', 'memberships_select', 'authorities_select',
   'authorities_update', 'authority_audit_insert',
   'records_select', 'records_insert', 'records_update',
@@ -92,12 +116,16 @@ const REQUIRED_TRUE = Object.freeze([
 ]);
 
 const REQUIRED_FALSE = Object.freeze([
-  'is_superuser', 'bypasses_rls', 'can_create_roles', 'can_create_databases',
+  'is_superuser', 'bypasses_rls', 'can_create_roles', 'can_create_databases', 'can_replicate',
   'records_delete', 'records_truncate',
   'versions_update', 'versions_delete', 'versions_truncate',
   'operations_delete', 'operations_truncate',
   'memory_audit_update', 'memory_audit_delete', 'memory_audit_truncate',
-  'authority_audit_update', 'authority_audit_delete', 'authority_audit_truncate', 'schema_create'
+  'owners_insert', 'owners_update', 'owners_delete', 'owners_truncate',
+  'memberships_insert', 'memberships_update', 'memberships_delete', 'memberships_truncate',
+  'authorities_insert', 'authorities_delete', 'authorities_truncate',
+  'authority_audit_select', 'authority_audit_update', 'authority_audit_delete', 'authority_audit_truncate',
+  'versions_select', 'audit_sequence_select', 'audit_sequence_update', 'schema_create'
 ]);
 
 function verifyWriterPreflight(row, config) {
