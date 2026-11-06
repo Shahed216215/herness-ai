@@ -5,6 +5,8 @@
 // host authorization callback. It never opens a database or falls back to local
 // JSON / Drive. Persistence and authority consumption remain separate layers.
 
+const { validateCanonicalRecord } = require('./mira-hfm-record-schema');
+
 const MAX_RECORDS = 5000;
 const TRUSTED_STATES = new Set(['CONTENT_VERIFIED', 'HUMAN_VERIFIED']);
 const ELIGIBLE_INTEGRITY = new Set(['VERIFIED']);
@@ -69,8 +71,11 @@ function verifyAuthorization(decision, expected, operation, resourceScope, now) 
   const issued = Date.parse(decision.issuedAt);
   const expires = Date.parse(decision.expiresAt);
   const current = now instanceof Date ? now.getTime() : Date.parse(now);
+  const hostIssued = Date.parse(expected.issuedAt);
+  const hostExpires = Date.parse(expected.expiresAt);
   return Number.isFinite(issued) && Number.isFinite(expires) &&
-    issued <= current && expires > current && expires > issued;
+    issued <= current && expires > current && expires > issued &&
+    issued >= hostIssued && expires <= hostExpires;
 }
 
 function conflictIds(pendingConflicts, projectId) {
@@ -116,7 +121,8 @@ function retrieveCanonicalRecordsWithReport({
   const eligible = [];
   let excludedCount = 0;
   for (const record of records) {
-    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    if (!record || typeof record !== 'object' || Array.isArray(record) ||
+        !validateCanonicalRecord(record).valid) {
       excludedCount += 1;
       continue;
     }
@@ -133,12 +139,14 @@ function retrieveCanonicalRecordsWithReport({
   const scoped = [];
   const provenance = [];
   for (const record of eligible) {
-    if (record.projectId !== projectId ||
-        record.access?.classification !== 'PROJECT_PRIVATE' &&
-        record.access?.classification !== 'PUBLIC' ||
-        !Array.isArray(record.access?.allowedProjectIds) ||
-        record.access.allowedProjectIds.length !== 1 ||
-        record.access.allowedProjectIds[0] !== projectId) continue;
+    const classification = record.access?.classification;
+    const allowedProjects = record.access?.allowedProjectIds;
+    const projectAccessValid = classification === 'PROJECT_PRIVATE'
+      ? Array.isArray(allowedProjects) && allowedProjects.length === 1 && allowedProjects[0] === projectId
+      : classification === 'PUBLIC' &&
+        (allowedProjects === undefined || allowedProjects === null ||
+          (Array.isArray(allowedProjects) && allowedProjects.length === 1 && allowedProjects[0] === projectId));
+    if (record.projectId !== projectId || !projectAccessValid) continue;
 
     const resourceScope = 'memory:' + requiredText(record.memoryId, 'record.memoryId', 128);
     const decision = authorizeRequest({
