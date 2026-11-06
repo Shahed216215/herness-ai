@@ -4,7 +4,7 @@
 
 ## Implemented boundary
 
-`services/mira-hfm-authority-transaction.js` exports `executeWithConsumedAuthority`. It requires a caller-supplied PostgreSQL pool, a complete authority scope, and a protected callback. It:
+`services/mira-hfm-authority-transaction.js` exports `executeWithConsumedAuthority`. It requires a caller-supplied PostgreSQL pool, the server-held verified session principal (normalized by the canonical HFM identity contract), a complete authority scope, and a protected callback. Actor ID is derived from that verified principal; it is not accepted from the authority request object. It:
 
 1. Opens a SERIALIZABLE transaction with bounded statement and lock timeouts.
 2. Locks the project owner row, then the active actor membership row, then the exact authority row using `FOR UPDATE` in a deterministic order.
