@@ -1875,7 +1875,13 @@ app.post(
             success:
               engineSucceeded ||
               directDispatchSucceeded,
-            verified
+            verified,
+            ...(executionEvidence?.authorization?.diagnostic
+              ? {
+                  authorizationDiagnostic:
+                    executionEvidence.authorization.diagnostic
+                }
+              : {})
           });
 
           if (
