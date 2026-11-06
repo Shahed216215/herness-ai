@@ -63,6 +63,7 @@ The Admin SEO section now contains a report-generation panel connected to the ex
 - The panel can use the latest audit and the latest returned `research.competitorIntelligence` result from the current browser page session.
 - Users can supply the website domain, exact already-researched keywords and an optional Search Console CSV export.
 - The Admin-only `POST /api/admin/mira-seo/report` endpoint validates a strict input allowlist, enforces bounded request/CSV sizes, parses CSV locally and returns deterministic Markdown.
+- The existing governed marketing workflow now accepts up to five additional distinct competitor queries and up to ten client-confirmed competitor domains from the dashboard. The route and orchestrator validate and forward these values to the existing research orchestrator; Admin session, persisted client consent, explicit live confirmation and the server feature flag remain required.
 - The panel supports copying or downloading the generated Markdown. It does not start live research; live research remains in the separate existing consent-gated marketing workflow with explicit confirmation.
 - The endpoint uses the existing SYSTEM_ADMIN permission boundary and a route-local JSON parser after authorization. The global 50 KB parser excludes this endpoint; its own parser remains bounded to 250 KB.
 - Report source URLs are restricted to credential-free HTTP(S) URLs, and untrusted report text is Markdown-escaped before rendering.
