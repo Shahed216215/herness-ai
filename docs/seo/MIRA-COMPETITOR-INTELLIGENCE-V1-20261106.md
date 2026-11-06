@@ -1,7 +1,7 @@
 # Mira Competitor Research & Live SEO Intelligence v1
 
 Date: 2026-11-06
-Status: IMPLEMENTED ON FEATURE BRANCH; FINAL EXTENDED CI VALIDATION RUNNING
+Status: IMPLEMENTED ON FEATURE BRANCH; EXTENDED CI PASS (RUNS 42191615737 AND 42191615767)
 
 ## Scope
 
@@ -47,3 +47,10 @@ The new multi-query path uses the existing `runSeoResearch` permission boundary.
 7. Perform a controlled non-production live test only after explicit authorization and verified provider configuration.
 
 Production readiness remains NOT_CERTIFIED until provider accuracy, security controls, consent handling and end-to-end live tests are independently verified.
+
+## Latest validation evidence
+
+- Competitor intelligence workflow: GitHub Actions run `42191615737` — SUCCESS.
+- SEO v2 offline regression workflow: GitHub Actions run `42191615767` — SUCCESS.
+- Both ran against code/test revision `9cfa39680274ab687a668b3f0a9aa7afa924425a`.
+- Offline CI recorded `NETWORK_CALLS=0` and `EXTERNAL_ACTIONS=0`; it does not constitute a live SERP/provider test.
