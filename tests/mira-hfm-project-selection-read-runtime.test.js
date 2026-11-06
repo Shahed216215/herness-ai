@@ -68,12 +68,36 @@ assert.match(runtime.PREFLIGHT_SQL, /relforcerowsecurity = true/);
 assert.match(runtime.PREFLIGHT_SQL, /has_table_privilege/);
 console.log("PROJECT_READ_PREFLIGHT_CHECKS_RLS_AND_GRANTS=PASS");
 
+const sessionId = "project-selection-session-001";
+const principal = {
+  verified: true,
+  issuer: "mira.users",
+  subject: "11111111-1111-4111-8111-111111111111",
+  actorType: "HUMAN",
+  authenticationMethod: "USER_SESSION",
+  authenticationRef: sessionId,
+  authenticatedAt: new Date(Date.now() - 60_000).toISOString(),
+  expiresAt: new Date(Date.now() + 60 * 60_000).toISOString()
+};
+const req = {
+  role: "user",
+  sessionID: sessionId,
+  session: {
+    authenticated: true,
+    role: "user",
+    hfmPrincipal: principal
+  },
+  body: { actorId: "mira:attacker:forged", projectId: "mira-project-evil" }
+};
+const expectedActorId = "mira:mira.users:11111111-1111-4111-8111-111111111111";
 const fakeCalls = [];
 const fakeClient = {
   async query(sql, params) {
     fakeCalls.push({ sql, params });
-    if (sql === "BEGIN READ ONLY" || sql.startsWith("SET LOCAL") || sql.startsWith("SELECT set_config") ||
-        sql === "COMMIT" || sql === "ROLLBACK") return { rows: [], rowCount: 0 };
+    if (sql === "BEGIN READ ONLY" || sql.startsWith("SET LOCAL") ||
+        sql.startsWith("SELECT set_config") || sql === "COMMIT" || sql === "ROLLBACK") {
+      return { rows: [], rowCount: 0 };
+    }
     return { rows: [{
       project_id: "mira-project-001",
       owner_revision: "1",
@@ -89,41 +113,39 @@ const fakePool = { async connect() { return fakeClient; } };
 
 (async () => {
   await assert.rejects(
-    runtime.findActiveProjectMembership({ pool: fakePool, actorId: "attacker", projectId: "mira-project-001" }),
+    runtime.findActiveProjectMembership({ pool: fakePool, req: { ...req, session: { authenticated: false } }, projectId: "mira-project-001" }),
     error => error.code === "PROJECT_READ_TRUSTED_ACTOR_REQUIRED"
   );
   await assert.rejects(
-    runtime.findActiveProjectMembership({ pool: fakePool, actorId: "mira:mira.users:11111111-1111-4111-8111-111111111111", projectId: "?" }),
+    runtime.findActiveProjectMembership({ pool: fakePool, req, projectId: "?" }),
     error => error.code === "PROJECT_READ_PROJECT_HINT_INVALID"
   );
   const result = await runtime.findActiveProjectMembership({
-    pool: fakePool,
-    actorId: "mira:mira.users:11111111-1111-4111-8111-111111111111",
-    projectId: "mira-project-001"
+    pool: fakePool, req, projectId: "mira-project-001"
   });
   assert.equal(result.status, "ACTIVE_MEMBERSHIP_VERIFIED");
   assert.equal(result.projectId, "mira-project-001");
   assert.ok(fakeCalls.some(call => call.sql === "BEGIN READ ONLY"));
   assert.ok(fakeCalls.some(call => call.sql.includes("membership.actor_id = $2") &&
-    call.params[0] === "mira-project-001" &&
-    call.params[1] === "mira:mira.users:11111111-1111-4111-8111-111111111111"));
-  assert.ok(fakeCalls.some(call => call.sql.includes("set_config('mira.project_id', $1, true)")));
+    call.params[0] === "mira-project-001" && call.params[1] === expectedActorId));
+  assert.ok(fakeCalls.some(call => call.sql.startsWith("SELECT set_config('mira.project_id', $1, true)")));
   assert.ok(fakeCalls.some(call => call.sql === "COMMIT"));
-  console.log("PROJECT_MEMBERSHIP_LOOKUP_IS_READ_ONLY_AND_ACTOR_SCOPED=PASS");
+  console.log("PROJECT_MEMBERSHIP_LOOKUP_IS_READ_ONLY_AND_SESSION_ACTOR_SCOPED=PASS");
+  console.log("REQUEST_BODY_CANNOT_OVERRIDE_TRUSTED_ACTOR=PASS");
 
   const noMembershipPool = {
     async connect() {
-      return { ...fakeClient, async query(sql, params) {
+      return { ...fakeClient, async query(sql) {
         if (sql === "BEGIN READ ONLY" || sql.startsWith("SET LOCAL") ||
-            sql.startsWith("SELECT set_config") || sql === "COMMIT" || sql === "ROLLBACK") return { rows: [], rowCount: 0 };
+            sql.startsWith("SELECT set_config") || sql === "COMMIT" || sql === "ROLLBACK") {
+          return { rows: [], rowCount: 0 };
+        }
         return { rows: [], rowCount: 0 };
       }};
     }
   };
   const denied = await runtime.findActiveProjectMembership({
-    pool: noMembershipPool,
-    actorId: "mira:mira.users:11111111-1111-4111-8111-111111111111",
-    projectId: "mira-project-001"
+    pool: noMembershipPool, req, projectId: "mira-project-001"
   });
   assert.equal(denied.status, "PROJECT_ACCESS_NOT_AVAILABLE");
   console.log("MISSING_OR_RLS_HIDDEN_MEMBERSHIP_FAILS_CLOSED=PASS");
