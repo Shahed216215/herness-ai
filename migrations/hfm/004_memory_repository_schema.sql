@@ -367,7 +367,7 @@ REVOKE ALL ON TABLE
   mira_hfm.memory_audit_events
 FROM PUBLIC;
 
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA mira_hfm FROM PUBLIC;
+REVOKE ALL ON SEQUENCE mira_hfm.memory_audit_events_event_sequence_seq FROM PUBLIC;
 REVOKE ALL ON FUNCTION mira_hfm.reject_memory_append_only_mutation() FROM PUBLIC;
 REVOKE ALL ON FUNCTION mira_hfm.guard_memory_record_update() FROM PUBLIC;
 
