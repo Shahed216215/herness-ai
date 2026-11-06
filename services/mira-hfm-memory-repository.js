@@ -226,6 +226,7 @@ async function createMemoryRecord(options = {}) {
 
   const ownerId = context.actorId;
   const resource = 'memory:' + record.memoryId;
+  if (context.resource !== resource) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
   const payloadDigest = digest(record);
   const operation = await beginIdempotentOperation(
     client, context, options.idempotencyKey, 'memory.write', resource, payloadDigest
@@ -258,6 +259,7 @@ async function getMemoryRecord(options = {}) {
   const { client, context } = requireTransaction(options);
   if (context.operation !== 'memory.read') throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
   const memoryId = boundedText(options.memoryId, 128, 'HFM_MEMORY_ID_INVALID');
+  if (context.resource !== 'memory:' + memoryId) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
   const result = await client.query(
     'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
     'integrity_status, trust_status, public_payload, encrypted_envelope FROM mira_hfm.memory_records ' +
@@ -272,6 +274,7 @@ async function getMemoryRecord(options = {}) {
 async function listMemoryRecords(options = {}) {
   const { client, context } = requireTransaction(options);
   if (context.operation !== 'memory.read') throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
+  if (context.resource !== 'memory:project:' + context.projectId) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
   const limit = Number.isInteger(options.limit) ? Math.min(Math.max(options.limit, 1), MAX_PAGE_SIZE) : 25;
   const lifecycle = options.lifecycle || 'ACTIVE';
   if (!['ACTIVE', 'SUPERSEDED', 'ARCHIVED', 'TRASHED', 'QUARANTINED', 'PENDING_REVIEW'].includes(lifecycle)) {
@@ -296,6 +299,7 @@ async function changeLifecycle(options, targetLifecycle) {
   if (context.operation !== expectedOperation) throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
   const memoryId = boundedText(options.memoryId, 128, 'HFM_MEMORY_ID_INVALID');
   const resource = 'memory:' + memoryId;
+  if (context.resource !== resource) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
   const operation = await beginIdempotentOperation(
     client, context, options.idempotencyKey, expectedOperation, resource,
     digest({ memoryId, targetLifecycle })
