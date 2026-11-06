@@ -97,6 +97,9 @@ test("authorized operation locks owner, membership, authority; consumes and audi
   const protectedWrite = sql.findIndex(x => x.startsWith("INSERT INTO protected_hfm_test_table"));
   assert.ok(sql[0].startsWith("BEGIN ISOLATION LEVEL SERIALIZABLE"));
   assert.ok(projectScope < ownerLock && ownerLock < membershipLock && membershipLock < authorityLock);
+  assert.equal(sql[ownerLock].includes("FOR UPDATE"), false);
+  assert.equal(sql[membershipLock].includes("FOR UPDATE"), false);
+  assert.equal(sql[authorityLock].includes("FOR UPDATE"), true);
   assert.ok(authorityLock < consume && consume < audit && audit < protectedWrite);
   assert.ok(sql.includes("COMMIT"));
   assert.ok(sql.some(x => x.includes("valid_from <= clock_timestamp()") &&
