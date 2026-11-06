@@ -53,6 +53,7 @@ jobs:
         run: |
           node tests/readdir-glob-minimatch-compatibility.test.js
           node tests/dependency-redirect-security.test.js
+          node tests/stage19-outbound-sink-coverage-test.js
 
       - name: Run npm audit and classify official SheetJS CDN advisory mismatch
         shell: bash
