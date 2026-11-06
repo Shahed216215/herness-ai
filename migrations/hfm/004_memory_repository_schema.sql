@@ -98,7 +98,13 @@ CREATE TABLE IF NOT EXISTS mira_hfm.memory_record_versions (
   project_id TEXT NOT NULL,
   owner_actor_id TEXT NOT NULL
     CHECK (owner_actor_id LIKE 'mira:%' AND length(owner_actor_id) <= 512),
-  record_type TEXT NOT NULL,
+  record_type TEXT NOT NULL
+    CHECK (record_type IN (
+      'fact', 'decision', 'preference', 'procedure', 'lesson', 'experience',
+      'strategy', 'project', 'conversation_reference', 'knowledge', 'research_reference',
+      'daily_activity', 'learning_note', 'knowledge_item', 'social_post_draft',
+      'client_vault_record', 'financial_vault_record'
+    )),
   schema_version TEXT NOT NULL
     CHECK (schema_version IN ('1.0.0', '1.1.0')),
   classification TEXT NOT NULL
@@ -124,12 +130,21 @@ CREATE TABLE IF NOT EXISTS mira_hfm.memory_record_versions (
     (classification = 'PUBLIC'
       AND public_payload IS NOT NULL
       AND jsonb_typeof(public_payload) = 'object'
+      AND jsonb_typeof(public_payload -> 'content') = 'string'
       AND encrypted_envelope IS NULL)
     OR
     (classification IN ('PROJECT_PRIVATE', 'RESTRICTED')
       AND public_payload IS NULL
       AND encrypted_envelope IS NOT NULL
       AND jsonb_typeof(encrypted_envelope) = 'object')
+  ),
+  CHECK (
+    (schema_version = '1.0.0' AND record_type IN (
+      'fact', 'decision', 'preference', 'procedure', 'lesson', 'experience',
+      'strategy', 'project', 'conversation_reference', 'knowledge', 'research_reference'
+    ))
+    OR
+    (schema_version = '1.1.0')
   ),
   CHECK (
     record_type NOT IN ('client_vault_record', 'financial_vault_record')
