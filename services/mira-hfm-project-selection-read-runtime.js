@@ -72,7 +72,10 @@ const PREFLIGHT_SQL = [
   "AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm'",
   "AND tablename IN ('project_owners','project_memberships') AND 'public' = ANY(roles))",
   "AND (SELECT count(*) = 2 FROM pg_policies WHERE schemaname = 'mira_hfm'",
-  "AND tablename IN ('project_owners','project_memberships') AND $1 = ANY(roles) AND cmd = 'SELECT')) AS project_policies_present",
+  "AND tablename IN ('project_owners','project_memberships') AND $1 = ANY(roles) AND cmd = 'SELECT')",
+  "AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm'",
+  "AND tablename IN ('project_owners','project_memberships') AND $1 = ANY(roles)",
+  "AND policyname NOT IN ('hfm_project_reader_owner_select','hfm_project_reader_own_membership_select'))) AS project_policies_present",
   "FROM pg_roles r WHERE r.rolname = current_user"
 ].join(" ");
 
