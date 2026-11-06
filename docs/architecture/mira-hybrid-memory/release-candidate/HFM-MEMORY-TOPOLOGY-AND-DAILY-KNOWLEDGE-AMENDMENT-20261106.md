@@ -66,7 +66,7 @@ Each record must carry immutable record ID, owner/user ID, project ID, record ty
 Client names and contact details; client identity and private profile; project/work details; contracts and deliverables; quotes, invoices, fees, payment and transaction details; private documents and attachments; any credentials or secrets (which should normally be kept in a dedicated secrets manager, not ordinary client records).
 
 ### 6.2 Encryption design
-- Encrypt sensitive payloads in the application before they reach PostgreSQL (application-level encryption); database disk encryption/TLS alone is insufficient.
+- Encrypt every PROJECT_PRIVATE and RESTRICTED payload in the application before it reaches PostgreSQL (application-level encryption); database disk encryption/TLS alone is insufficient. PUBLIC content may be stored in searchable plaintext only when source provenance and classification checks pass.
 - Use authenticated encryption such as AES-256-GCM with a fresh cryptographically random nonce per encryption operation and strict nonce uniqueness.
 - Use envelope encryption: a data-encryption key (DEK) per record or bounded data object, wrapped by a key-encryption key (KEK) held outside Neon in Render Secret Environment or a future managed KMS. Never store plaintext keys in the database, repository, logs, or client response.
 - Store only ciphertext, nonce, authentication tag, wrapped DEK, key version, algorithm/version, and non-sensitive routing metadata in Neon.
@@ -151,7 +151,7 @@ Until this schema revision is reviewed and committed, the new record families ar
 
 ## 14. Persistence envelope and cryptographic boundary
 
-For restricted Client/Financial records, encrypt the complete canonical record payload at the repository boundary before PostgreSQL receives it. The database may retain only the minimum routing fields needed for authorization and query planning (opaque record ID, owner/project IDs, classification, lifecycle, schema/envelope version, timestamps, and ciphertext length). Sensitive content, client names, transaction values, source text, canonical hashes that could reveal low-entropy content, and plaintext search terms must remain inside the authenticated encrypted payload.
+For all PROJECT_PRIVATE and RESTRICTED records, encrypt the complete canonical record payload at the repository boundary before PostgreSQL receives it. The database may retain only the minimum routing fields needed for authorization and query planning (opaque record ID, owner/project IDs, classification, lifecycle, schema/envelope version, timestamps, and ciphertext length). Sensitive content, client names, transaction values, source text, canonical hashes that could reveal low-entropy content, and plaintext search terms must remain inside the authenticated encrypted payload.
 
 Use authenticated additional data (AAD) bound to immutable record ID, owner ID, project ID, classification, record type, schema version, and envelope version so ciphertext cannot be moved across records/projects or reclassified without authentication failure. Keep a separate keyed blind-index key for any specifically approved exact-match lookup; blind indexes leak equality/frequency and must be narrowly scoped, documented, and never treated as general text search.
 
