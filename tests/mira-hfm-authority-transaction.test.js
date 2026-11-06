@@ -5,10 +5,18 @@ const test = require("node:test");
 const { executeWithConsumedAuthority, hasOperationPermission } =
   require("../services/mira-hfm-authority-transaction");
 
+const actorId = "mira:mira.users:user-uuid";
+const verifiedPrincipal = (() => {
+  const now = Date.now();
+  return { verified: true, issuer: "mira.users", subject: "user-uuid", actorType: "HUMAN",
+    authenticationMethod: "USER_SESSION", authenticationRef: "session-ref",
+    authenticatedAt: new Date(now - 1000).toISOString(), expiresAt: new Date(now + 3600000).toISOString() };
+})();
+const run = options => run({ verifiedPrincipal, ...options });
+
 const request = Object.freeze({
   authorityId: "auth-001",
   projectId: "project-001",
-  actorId: "mira:mira.users:user-uuid",
   operation: "memory.write",
   resource: "memory:item-001",
   purpose: "approved test write",
@@ -19,7 +27,7 @@ function fixture(overrides = {}) {
   const calls = [];
   const owner = { project_id: request.projectId, owner_actor_id: "mira:mira.users:owner", status: "ACTIVE", revision: 3 };
   const membership = {
-    membership_id: "member-001", project_id: request.projectId, actor_id: request.actorId,
+    membership_id: "member-001", project_id: request.projectId, actor_id: actorId,
     permissions: { operations: ["memory.write", "memory.read"] }, status: "ACTIVE",
     revision: 7, valid_from: "2026-11-01T00:00:00Z", expires_at: null
   };
@@ -160,13 +168,22 @@ test("membership expiry during protected work aborts commit", async () => {
   assert.equal(f.calls.some(x => x.sql === "COMMIT"), false);
 });
 
+test("missing or unverified server principal is rejected", async () => {
+  const f = fixture();
+  await assert.rejects(
+    executeWithConsumedAuthority({ pool: f.pool, request, verifiedPrincipal: { ...verifiedPrincipal, verified: false }, perform: async () => null }),
+    error => error.code === "HFM_TRUSTED_ACTOR_REQUIRED"
+  );
+  assert.equal(f.calls.some(x => x.sql.startsWith("BEGIN")), false);
+});
+
 test("invalid request and missing transaction executor are rejected before authorization", async () => {
   await assert.rejects(
-    executeWithConsumedAuthority({ pool: { connect: async () => ({ query: async () => ({}) }) }, request: { ...request, actorId: "" }, perform: async () => null }),
+    run({ pool: { connect: async () => ({ query: async () => ({}) }) }, request: { ...request, authorityId: "" }, perform: async () => null }),
     error => error.code === "HFM_AUTHORITY_INPUT_INVALID"
   );
   await assert.rejects(
-    executeWithConsumedAuthority({ request, perform: async () => null }),
+    run({ request, perform: async () => null }),
     error => error.code === "HFM_AUTHORITY_EXECUTOR_NOT_CONFIGURED"
   );
 });
