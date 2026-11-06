@@ -99,7 +99,7 @@ test('daily post contains only same-project active private activity and learning
     now
   });
   assert.equal(result.status, 'DRAFT_READY');
-  assert.deepEqual(result.sourceRecordIds.sort(), ['activity-0001', 'learning-0001']);
+  assert.deepEqual([...result.sourceRecordIds].sort(), ['activity-0001', 'learning-0001']);
   assert.deepEqual(result.sourceCounts, { activities: 1, learnings: 1 });
   assert.match(result.draft.content, /আজ যা করেছি:/);
   assert.match(result.draft.content, /আজ যা শিখেছি:/);
