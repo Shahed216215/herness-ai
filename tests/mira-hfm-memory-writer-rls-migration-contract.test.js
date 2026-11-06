@@ -17,6 +17,9 @@ test('writer migration is source-only and creates no login credential', () => {
   assert.doesNotMatch(sql, /\bCREATE\s+ROLE\s+\S+\s+LOGIN\b/i);
   assert.doesNotMatch(sql, /\bPASSWORD\b/i);
   assert.doesNotMatch(sql, /\bINSERT\s+INTO\b|\bUPDATE\s+mira_hfm\.|\bDELETE\s+FROM\s+mira_hfm\./i);
+  assert.match(sql, /pg_auth_members WHERE member = writer_oid/);
+  assert.match(sql, /pg_class WHERE relowner = writer_oid/);
+  assert.match(sql, /pg_default_acl WHERE defaclrole = writer_oid/);
 });
 
 test('writer group receives only the required table and sequence privileges', () => {
