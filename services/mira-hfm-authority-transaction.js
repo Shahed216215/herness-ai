@@ -122,8 +122,8 @@ async function executeWithConsumedAuthority(options = {}) {
       "prior_revision, new_revision, approval_ref, details) " +
       "VALUES ($1, $2, $3, 'AUTHORITY_CONSUMED', $4, clock_timestamp(), $5, $6, $7, $8::jsonb)",
       [randomUUID(), request.projectId, request.actorId, request.requestId,
-        membership.revision, membership.revision, authority.approval_ref,
-        JSON.stringify({ authorityId: request.authorityId, operation: request.operation, resource: request.resource })]
+        owner.revision, membership.revision, authority.approval_ref,
+        JSON.stringify({ authorityId: request.authorityId, operation: request.operation, resource: request.resource, ownerRevision: String(owner.revision), membershipRevision: String(membership.revision) })]
     );
 
     // All protected database reads/writes must use this same client/transaction.
