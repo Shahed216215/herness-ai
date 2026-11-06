@@ -76,6 +76,8 @@ test('migration does not grant a writer role or broad application privileges', (
   assert.doesNotMatch(sql, /\bCREATE\s+ROLE\b/i);
   assert.doesNotMatch(sql, /\bGRANT\s+(INSERT|UPDATE|DELETE|ALL)\b/i);
   assert.match(sql, /REVOKE ALL ON TABLE/);
+  assert.doesNotMatch(sql, /REVOKE ALL ON ALL SEQUENCES IN SCHEMA mira_hfm/i);
+  assert.match(sql, /REVOKE ALL ON SEQUENCE mira_hfm\\.memory_audit_events_event_sequence_seq FROM PUBLIC/);
 });
 
 test('migration PL/pgSQL function and DO blocks use valid dollar quoting', () => {
