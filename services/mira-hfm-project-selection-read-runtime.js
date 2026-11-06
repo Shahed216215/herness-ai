@@ -152,6 +152,7 @@ async function findActiveProjectMembership(options = {}) {
     await client.query("SET LOCAL statement_timeout = '5000ms'");
     await client.query("SET LOCAL lock_timeout = '3000ms'");
     await client.query("SELECT set_config('mira.project_id', $1, true)", [projectId]);
+    await client.query("SELECT set_config('mira.actor_id', $1, true)", [actorId]);
     const result = await client.query(
       "SELECT owner.project_id, owner.revision AS owner_revision, " +
       "membership.membership_id, membership.revision AS membership_revision, " +
