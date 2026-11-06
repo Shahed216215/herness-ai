@@ -203,3 +203,13 @@ A separate, already-open remediation branch exists and should be evaluated rathe
 - No application runtime, dependency manifest, lockfile, Render configuration, session store, production behavior, merge, or deployment change was made by these test additions.
 
 **Status:** focused tests committed; CI verification pending. Overall pre-deploy status remains REVIEW_REQUIRED.
+
+### 11.1 Test correction from first CI execution
+
+- First focused run `42247221463` failed at the archive test with `TypeError: archiver is not a function`. The full configured `npm test` suite had already passed in that run; the redirect test did not execute because the shell step stopped at the first failing command, and the audit step was skipped.
+- This is consistent with the reviewed production source comment: the deliverable builder deliberately avoids archiver because its CommonJS export is non-callable in the environment. It is not valid to use archiver itself as a compatibility pass criterion for this application.
+- Replaced the archiver test with `tests/readdir-glob-minimatch-compatibility.test.js`, which directly exercises the package that declares minimatch as a dependency. It verifies recursive globstar matching, nested files, extension filtering and ignore patterns against the forced minimatch 11 resolution.
+- Removed the invalid archiver test and updated the CI path filter/step. No dependency manifest or lockfile change was made.
+- Correction commits: `a10318c24821da4edd390e37240e775f8a60a41b`, `9a1506e92a1e4a54f27b998c5937d64ddf175211`, `15f997388020855be81417debec57fb308b5e149`.
+- New validation runs were queued for the corrected head; no PASS claim is made until the corrected full run completes.
+- The direct `archiver` dependency remains present but is not imported by the reviewed production deliverable builder. Removal is a separate dependency-manifest change and has not been performed.
