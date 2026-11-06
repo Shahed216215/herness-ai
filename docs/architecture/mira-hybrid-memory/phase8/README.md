@@ -117,3 +117,16 @@ The `/api/agent` route only stages a proposal when all gates are satisfied:
 6. The `mira_hfm_public_web_retrieval` tool must have executed and returned a valid untrusted evidence report during the same `/api/agent` request.
 
 The API response includes `learningProposalHandoff` when the caller opted in. Otherwise it remains `null`. The handoff is disabled by default; a disabled/missing bridge, non-admin, missing metadata, missing retrieval result or invalid project binding fails closed. The existing `/api/admin/mira-hfm-learning-evolution/proposals/from-public-retrieval` route remains available as a separate explicit admin workflow. This live route integration has only offline contract tests so far; it has not been deployed or exercised against a live AI provider, Supabase or Render.
+
+
+## Same-origin / CSRF write protection — 2026-11-06
+
+All Phase 8 router POST endpoints are protected by `createMiraHfmSameOriginWriteGuard` before their route handlers. The guard:
+- requires a parseable `Origin` or `Referer` for state-changing POST requests;
+- rejects opaque `null`, missing, malformed, mismatched Origin/Referer and `Sec-Fetch-Site: cross-site`;
+- accepts the exact request origin and any additional exact origins explicitly listed in `MIRA_HFM_LEARNING_ALLOWED_ORIGINS` (comma-separated origins, for approved custom-domain deployments);
+- leaves GET requests unchanged.
+
+The regression contract runs in the Phase 8 offline CI suite. Exact-head run [42150921183](https://github.com/Shahed216215/herness-ai/actions/runs/42150921183) succeeded on `67c4c5bd17446cb18f1d559b7075788030112c96`, including same-origin allow, cross-site/missing-origin deny, opaque-origin deny, Origin/Referer mismatch deny and GET bypass checks.
+
+**Residual:** the independent review finding has an implementation mitigation, but no independent security re-review or live custom-domain/Render verification has occurred. Configure the allowlist only for exact trusted frontend origins; do not use wildcards. Production security remains REVIEW_REQUIRED until independently re-reviewed. No Render environment setting was changed.
