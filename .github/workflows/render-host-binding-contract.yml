@@ -1,0 +1,36 @@
+name: Render host binding contract
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "server.js"
+      - "tests/render-host-binding-contract.test.js"
+      - ".github/workflows/render-host-binding-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-host-binding-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render-host-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run zero-network Render host contract
+        run: node tests/render-host-binding-contract.test.js

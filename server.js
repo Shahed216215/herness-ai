@@ -123,7 +123,7 @@ const registerStage16_17Routes = require("./routes/stage16-17");
 
 const app = express();
 
-const HOST = "127.0.0.1";
+const HOST = process.env.HOST || (process.env.RENDER ? "0.0.0.0" : "127.0.0.1");
 const PORT = Number(process.env.PORT) || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
