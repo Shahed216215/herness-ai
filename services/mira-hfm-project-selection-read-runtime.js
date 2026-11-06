@@ -43,6 +43,10 @@ const PREFLIGHT_SQL = [
   "SELECT current_user AS current_role, current_database() AS database_name,",
   "r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls, r.rolcanlogin AS can_login,",
   "pg_has_role(current_user, $1, 'USAGE') AS has_project_reader_group,",
+  "NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles granted ON granted.oid = m.roleid",
+  "WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND granted.rolname <> $1) AS role_membership_isolated,",
+  "NOT EXISTS (SELECT 1 FROM pg_auth_members m",
+  "WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = $1)) AS reader_group_has_no_parent_roles,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
@@ -57,16 +61,24 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'TRUNCATE') AS memberships_truncate,",
   "(SELECT count(*) = 2 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace",
   "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships')",
-  "AND c.relrowsecurity = true AND c.relforcerowsecurity = true) AS project_rls_forced,",
+  "AND c.relrowsecurity = true AND c.relforcerowsecurity = true",
+  "AND c.relowner <> (SELECT oid FROM pg_roles WHERE rolname = current_user)) AS project_rls_forced,",
   "(EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'project_owners'",
-  "AND cmd = 'SELECT' AND $1 = ANY(roles) AND qual ILIKE '%mira.project_id%')",
+  "AND policyname = 'hfm_project_reader_owner_select' AND cmd = 'SELECT' AND $1 = ANY(roles)",
+  "AND qual ILIKE '%mira.project_id%')",
   "AND (EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'project_memberships'",
-  "AND cmd = 'SELECT' AND $1 = ANY(roles) AND qual ILIKE '%mira.project_id%' AND qual ILIKE '%mira.actor_id%')) AS project_policies_present",
+  "AND policyname = 'hfm_project_reader_own_membership_select' AND cmd = 'SELECT' AND $1 = ANY(roles)",
+  "AND qual ILIKE '%mira.project_id%' AND qual ILIKE '%mira.actor_id%')",
+  "AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm'",
+  "AND tablename IN ('project_owners','project_memberships') AND 'public' = ANY(roles))",
+  "AND (SELECT count(*) = 2 FROM pg_policies WHERE schemaname = 'mira_hfm'",
+  "AND tablename IN ('project_owners','project_memberships') AND $1 = ANY(roles) AND cmd = 'SELECT')) AS project_policies_present",
   "FROM pg_roles r WHERE r.rolname = current_user"
 ].join(" ");
 
 const REQUIRED_TRUE = Object.freeze([
-  "can_login", "has_project_reader_group", "schema_usage", "owners_select", "memberships_select",
+  "can_login", "has_project_reader_group", "role_membership_isolated",
+  "reader_group_has_no_parent_roles", "schema_usage", "owners_select", "memberships_select",
   "project_rls_forced", "project_policies_present"
 ]);
 const REQUIRED_FALSE = Object.freeze([
