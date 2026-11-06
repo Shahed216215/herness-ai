@@ -1139,7 +1139,7 @@ function auditExecutionFailure({
       reason:
         String(reason || ""),
       ...(auditStatus === "blocked"
-        ? { authorizationDiagnostic: safeDiagnostic }
+        ? { workAuthDiagnostic: safeDiagnostic }
         : {})
     }
   });
