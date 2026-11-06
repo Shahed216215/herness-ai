@@ -30,6 +30,8 @@ const good = {
   has_project_reader_group: true,
   role_membership_isolated: true,
   reader_group_has_no_parent_roles: true,
+  reader_group_noinherit: true,
+  reader_group_owns_no_objects: true,
   schema_usage: true,
   schema_create: false,
   owners_select: true,
@@ -56,6 +58,8 @@ for (const patch of [
   { bypasses_rls: true },
   { role_membership_isolated: false },
   { reader_group_has_no_parent_roles: false },
+  { reader_group_noinherit: false },
+  { reader_group_owns_no_objects: false },
   { owners_insert: true },
   { memberships_update: true },
   { project_rls_forced: false },
@@ -74,6 +78,9 @@ assert.match(runtime.PREFLIGHT_SQL, /mira\.actor_id/);
 assert.match(runtime.PREFLIGHT_SQL, /has_project_reader_group/);
 assert.match(runtime.PREFLIGHT_SQL, /role_membership_isolated/);
 assert.match(runtime.PREFLIGHT_SQL, /reader_group_has_no_parent_roles/);
+assert.match(runtime.PREFLIGHT_SQL, /reader_group_noinherit/);
+assert.match(runtime.PREFLIGHT_SQL, /reader_group_owns_no_objects/);
+assert.match(runtime.PREFLIGHT_SQL, /pg_shdepend/);
 assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_owner_select/);
 assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_own_membership_select/);
 assert.match(runtime.PREFLIGHT_SQL, /policyname NOT IN/);
