@@ -8,6 +8,8 @@ const {
   isTrustedAdminContext
 } = require("../services/mira-seo-research-orchestrator");
 
+const { extractSearchEvidence } = require("../services/mira-seo-research-evidence");
+
 const calls = [];
 let consentAuthorized = true;
 let nextExecution = null;
@@ -139,6 +141,10 @@ async function main() {
   assert.equal(result.success, true);
   assert.equal(result.status, "RESEARCH_RESULTS_READY_FOR_REVIEW");
   assert.equal(result.evidence.evidenceCount, 1);
+  assert.equal(result.evidence.uniqueDomainCount, 1);
+  assert.equal(result.evidence.evidence[0].sourceDomain, "example.com");
+  assert.equal(result.evidence.evidence[0].providerResultPosition, 1);
+  assert.ok(result.evidence.evidence[0].queryTermCoverage.matchedTerms.includes("seo"));
   assert.equal(calls.length, 1);
   assert.equal(calls[0][1].permissionGranted, true);
   assert.equal(calls[0][1].persist, false);
@@ -147,6 +153,38 @@ async function main() {
   console.log("PASS: consent-backed governed execution");
   console.log("PASS: trusted route context supplies execution permission");
   console.log("PASS: evidence verification and normalization");
+  console.log("PASS: query-term coverage and normalized source-domain signals");
+
+  const diversity = extractSearchEvidence([
+    {
+      title: "SEO guide",
+      url: "https://example.com/page#first",
+      snippet: "SEO guide for site owners."
+    },
+    {
+      title: "SEO reference",
+      url: "https://example.com/page#second",
+      snippet: "SEO reference and examples."
+    },
+    {
+      title: "Search optimization",
+      url: "https://www.example.com/another",
+      snippet: "Search optimization resource."
+    },
+    {
+      title: "Technical guide",
+      url: "https://other.test/technical",
+      snippet: "Technical guide."
+    }
+  ], "SEO guide");
+
+  assert.equal(diversity.uniqueDomainCount, 2);
+  assert.equal(diversity.duplicateSourceUrlCount, 1);
+  assert.equal(diversity.evidence[0].duplicateSourceUrl, true);
+  assert.equal(diversity.evidence[0].duplicateDomain, true);
+  assert.equal(diversity.evidence[3].duplicateDomain, false);
+  assert.equal(diversity.evidence[0].queryTermCoverage.ratio, 1);
+  console.log("PASS: duplicate URL, domain diversity and query overlap diagnostics");
 
   nextExecution = {
     success: false,

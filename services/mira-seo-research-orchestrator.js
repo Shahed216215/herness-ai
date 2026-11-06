@@ -209,7 +209,7 @@ async function runSeoResearch(
     };
   }
 
-  const evidence = extractSearchEvidence(toolResult.result);
+  const evidence = extractSearchEvidence(toolResult.result, validated.query);
 
   if (!evidence.success || evidence.evidence.length === 0) {
     return {

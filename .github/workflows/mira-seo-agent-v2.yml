@@ -1,0 +1,51 @@
+name: Mira SEO Agent v2 Offline Tests
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'services/mira-seo-engine.js'
+      - 'services/mira-seo-research-evidence.js'
+      - 'services/mira-seo-research-orchestrator.js'
+      - 'tools/seo-audit.js'
+      - 'tests/mira-seo-engine.test.js'
+      - 'tests/mira-seo-research-orchestrator.test.js'
+      - 'tests/mira-marketing-workflow-orchestrator.test.js'
+      - 'tests/mira-seo-review-dispatch.test.js'
+      - 'docs/seo/**'
+      - '.github/workflows/mira-seo-agent-v2.yml'
+  push:
+    branches:
+      - 'work/mira-seo-agent-v2-main-20261106'
+    paths:
+      - 'services/mira-seo-engine.js'
+      - 'services/mira-seo-research-evidence.js'
+      - 'services/mira-seo-research-orchestrator.js'
+      - 'tools/seo-audit.js'
+      - 'tests/mira-seo-engine.test.js'
+      - 'tests/mira-seo-research-orchestrator.test.js'
+      - 'tests/mira-marketing-workflow-orchestrator.test.js'
+      - 'tests/mira-seo-review-dispatch.test.js'
+      - 'docs/seo/**'
+      - '.github/workflows/mira-seo-agent-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  seo-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax check
+        run: node --check services/mira-seo-engine.js && node --check services/mira-seo-research-evidence.js && node --check services/mira-seo-research-orchestrator.js && node --check tools/seo-audit.js && node --check tests/mira-seo-engine.test.js && node --check tests/mira-seo-research-orchestrator.test.js
+      - name: SEO engine regression
+        run: node tests/mira-seo-engine.test.js
+      - name: Governed research and workflow regressions
+        run: node tests/mira-seo-research-orchestrator.test.js && node tests/mira-marketing-workflow-orchestrator.test.js && node tests/mira-seo-review-dispatch.test.js
