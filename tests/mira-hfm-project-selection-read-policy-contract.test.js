@@ -9,8 +9,12 @@ const sql = fs.readFileSync(
   "utf8"
 );
 
-assert.match(sql, /CREATE ROLE mira_hfm_project_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/);
-assert.match(sql, /rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls/);
+assert.match(sql, /CREATE ROLE mira_hfm_project_reader NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/);
+assert.match(sql, /rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls/);
+assert.match(sql, /HFM_PROJECT_READER_ROLE_MUST_NOT_INHERIT_PARENT_ROLES/);
+assert.match(sql, /HFM_PROJECT_READER_ROLE_MUST_NOT_OWN_DATABASE_OBJECTS/);
+assert.match(sql, /HFM_PROJECT_READER_POLICY_NAME_COLLISION/);
+assert.match(sql, /pg_shdepend/);
 assert.match(sql, /relrowsecurity AND c\.relforcerowsecurity/);
 assert.match(sql, /GRANT SELECT ON TABLE mira_hfm\.project_owners, mira_hfm\.project_memberships/);
 assert.doesNotMatch(sql, /GRANT (INSERT|UPDATE|DELETE|TRUNCATE|ALL)/i);
