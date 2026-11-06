@@ -6,11 +6,11 @@ const runtime = require("../services/mira-hfm-project-selection-read-runtime");
 const env = {
   MIRA_HFM_PROJECT_READ_ENABLED: "true",
   MIRA_HFM_PROJECT_READ_DATABASE_URL: "postgresql://reader:secret@ep-example.us-east-2.aws.neon.tech/neondb?sslmode=require",
-  MIRA_HFM_PROJECT_READ_ROLE: "mira_hfm_project_reader"
+  MIRA_HFM_PROJECT_READ_ROLE: "mira_hfm_project_reader_login"
 };
 const config = runtime.getProjectReadConfig(env);
 assert.equal(config.enabled, true);
-assert.equal(config.expectedRole, "mira_hfm_project_reader");
+assert.equal(config.expectedRole, "mira_hfm_project_reader_login");
 assert.equal(config.databaseName, "neondb");
 assert.equal(Object.hasOwn(config, "connectionString"), false);
 console.log("PROJECT_READ_CONFIG_SECRET_NOT_EXPOSED=PASS");
@@ -22,7 +22,7 @@ assert.throws(() => runtime.getProjectReadConfig({
 console.log("PROJECT_READ_CONFIG_FAILS_CLOSED=PASS");
 
 const good = {
-  current_role: "mira_hfm_project_reader",
+  current_role: "mira_hfm_project_reader_login",
   database_name: "neondb",
   is_superuser: false,
   bypasses_rls: false,
