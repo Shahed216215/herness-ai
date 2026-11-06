@@ -268,3 +268,12 @@ A separate, already-open remediation branch exists and should be evaluated rathe
 - No dependency manifest/lockfile change, production runtime change, Render change, merge or deployment was made by these test/inventory commits.
 
 **Status:** PR #69's latest PR-triggered CI is green for the dependency patch and expanded source inventory. PR #69 remains Draft/open/unmerged; PR #71 remains Draft/open/unmerged. Overall release remains REVIEW_REQUIRED pending review of the dependency choices, session persistence and explicit merge/deployment approval.
+
+## 14. Provider secure-request call-site coverage expansion — 2026-11-06
+
+- Extended `tests/stage19-outbound-callsite-integration-test.js` to include the Anthropic and xAI provider modules, in addition to web-search, OpenRouter, DeepSeek and Hugging Face.
+- The six inspected call sites import and call the shared `services/security/secure-provider-request` wrapper. The wrapper uses Axios with automatic redirects disabled (`maxRedirects: 0`), pinned DNS, proxy disabled and TLS verification.
+- Added this call-site contract test to the dependency remediation CI focused regression step.
+- Test commit: `02c4fc9a6d3f61762ff3c115a6cad7cc08efe1aa`; workflow commit: `8de38526024368eac8a5bea9dda536c7f4510da0`.
+- Latest branch CI was queued at the time of this update. Do not claim the expanded six-provider call-site gate has passed until the latest run completes.
+- No production provider source, dependency manifest/lockfile, Render setting, or runtime behavior changed.
