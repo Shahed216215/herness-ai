@@ -8,7 +8,7 @@ on:
       - "server.js"
       - "package.json"
       - "package-lock.json"
-      - "tests/render-host-binding-contract.test.js"
+      - "tests/**"
       - ".github/workflows/render-host-binding-contract.yml"
   workflow_dispatch:
 
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   render-host-binding:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -34,5 +34,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run isolated zero-network Render host contract
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run repository regression suite
+        run: npm test
+
+      - name: Run zero-network Render host contract
         run: node tests/render-host-binding-contract.test.js
