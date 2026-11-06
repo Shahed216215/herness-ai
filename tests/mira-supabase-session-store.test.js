@@ -80,11 +80,33 @@ async function main() {
     role: "admin"
   };
 
+  rows.set("sid-expired-prune", {
+    sid: "sid-expired-prune",
+    sess: sessionData,
+    expire: new Date(Date.now() - 1000).toISOString()
+  });
+
   await call(store, "set", "sid-live", sessionData);
   assert.equal(rows.has("sid-live"), true, "set must persist the session");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(rows.has("sid-expired-prune"), false,
+    "session writes must trigger best-effort expired-row cleanup");
 
   const restored = await call(store, "get", "sid-live");
   assert.deepEqual(restored, sessionData, "get must restore persisted session");
+
+  await Promise.all([
+    call(store, "set", "sid-concurrent-a", sessionData),
+    call(store, "set", "sid-concurrent-b", sessionData)
+  ]);
+  assert.deepEqual(await call(store, "get", "sid-concurrent-a"), sessionData);
+  assert.deepEqual(await call(store, "get", "sid-concurrent-b"), sessionData);
+  await call(store, "destroy", "sid-concurrent-a");
+  assert.equal(rows.has("sid-concurrent-a"), false,
+    "destroying one concurrent session must remove only that session");
+  assert.deepEqual(await call(store, "get", "sid-concurrent-b"), sessionData,
+    "destroying one concurrent session must preserve the other session");
+  await call(store, "destroy", "sid-concurrent-b");
 
   await call(store, "touch", "sid-live", {
     ...sessionData,
@@ -126,6 +148,16 @@ async function main() {
     call(failingStore, "get", "sid-down"),
     /HTTP 503/,
     "database/API failures must reach the session middleware"
+  );
+  await assert.rejects(
+    call(failingStore, "set", "sid-write-down", sessionData),
+    /HTTP 503/,
+    "database/API write failures must fail session persistence"
+  );
+  await assert.rejects(
+    call(failingStore, "touch", "sid-touch-down", sessionData),
+    /HTTP 503/,
+    "database/API touch failures must reach the session middleware"
   );
 
   assert.throws(
