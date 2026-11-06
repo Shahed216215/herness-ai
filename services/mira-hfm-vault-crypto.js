@@ -137,22 +137,25 @@ function decryptBytes(key, encrypted, aad) {
   const nonce = decodePart(encrypted.nonce, 12);
   const ciphertext = decodePart(encrypted.ciphertext);
   const tag = decodePart(encrypted.tag, 16);
+  let partial;
+  let finalPart;
   try {
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce, {
       authTagLength: 16
     });
     decipher.setAAD(aad);
     decipher.setAuthTag(tag);
-    return Buffer.concat([
-      decipher.update(ciphertext),
-      decipher.final()
-    ]);
+    partial = decipher.update(ciphertext);
+    finalPart = decipher.final();
+    return Buffer.concat([partial, finalPart]);
   } catch (_error) {
     throw fail('MIRA_VAULT_AUTHENTICATION_FAILED');
   } finally {
     nonce.fill(0);
     ciphertext.fill(0);
     tag.fill(0);
+    if (partial) partial.fill(0);
+    if (finalPart) finalPart.fill(0);
   }
 }
 
@@ -173,12 +176,14 @@ function createVaultEnvelope({ record, context, env = process.env } = {}) {
     throw fail('MIRA_VAULT_RECORD_SIZE_INVALID');
   }
 
-  const keyVersion = activeKeyVersion(env);
-  const kek = resolveKey(keyVersion, env);
-  const dek = crypto.randomBytes(32);
+  let kek;
+  let dek;
   try {
+    const keyVersion = activeKeyVersion(env);
+    kek = resolveKey(keyVersion, env);
+    dek = crypto.randomBytes(32);
     const payload = encryptBytes(dek, plaintext, payloadAad(safeContext));
-    const wrappedDek = encryptBytes(dek.length ? kek : kek, dek, dekAad(safeContext, keyVersion));
+    const wrappedDek = encryptBytes(kek, dek, dekAad(safeContext, keyVersion));
     return Object.freeze({
       envelopeVersion: ENVELOPE_VERSION,
       algorithm: ALGORITHM,
@@ -188,8 +193,8 @@ function createVaultEnvelope({ record, context, env = process.env } = {}) {
     });
   } finally {
     plaintext.fill(0);
-    dek.fill(0);
-    kek.fill(0);
+    if (dek) dek.fill(0);
+    if (kek) kek.fill(0);
   }
 }
 
