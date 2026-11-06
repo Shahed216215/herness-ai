@@ -73,6 +73,20 @@ test('v1.1.0 accepts daily activity, learning, knowledge, and social draft recor
   }
 });
 
+
+test('daily activity and learning notes cannot be stored as PUBLIC records', () => {
+  for (const recordType of ['daily_activity', 'learning_note']) {
+    const candidate = record({
+      schemaVersion: SCHEMA_V1_1,
+      recordType,
+      access: { classification: 'PUBLIC', allowedProjectIds: [] }
+    });
+    assert.ok(
+      validateCanonicalRecord(candidate).errors.includes('record.private_activity_learning_draft.must_be_PROJECT_PRIVATE')
+    );
+  }
+});
+
 test('v1.1.0 client and financial records require RESTRICTED classification and JSON payloads', () => {
   for (const recordType of ['client_vault_record', 'financial_vault_record']) {
     const content = JSON.stringify({ synthetic: true, value: 'not-real-client-data' });
