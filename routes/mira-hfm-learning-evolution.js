@@ -83,7 +83,50 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
           canonicalMemoryWrites:0, automaticExecution:false })
   });
 
-  function requireNamedAdminSession(req, res) {
+  function requireSameOrigin(req, res) {
+    const getHeader = name => {
+      if (req && typeof req.get === 'function') return req.get(name);
+      const headers = req && req.headers || {};
+      return headers[name.toLowerCase()] || headers[name] || '';
+    };
+    const expectedHost = getHeader('host');
+    const protocol = String(req && req.protocol || '').toLowerCase();
+    const origin = String(getHeader('origin') || '').trim();
+    const referer = String(getHeader('referer') || '').trim();
+    const fetchSite = String(getHeader('sec-fetch-site') || '').trim().toLowerCase();
+
+    if (!expectedHost || !['http', 'https'].includes(protocol) ||
+        ['cross-site', 'same-site'].includes(fetchSite)) {
+      res.status(403).json({ success:false, status:'BLOCKED',
+        code:'HFM_LEARNING_CSRF_ORIGIN_REJECTED' });
+      return false;
+    }
+
+    const suppliedUrl = origin || referer;
+    if (!suppliedUrl) {
+      if (fetchSite === 'same-origin') return true;
+      res.status(403).json({ success:false, status:'BLOCKED',
+        code:'HFM_LEARNING_CSRF_ORIGIN_REQUIRED' });
+      return false;
+    }
+
+    let parsed;
+    try { parsed = new URL(suppliedUrl); } catch {
+      res.status(403).json({ success:false, status:'BLOCKED',
+        code:'HFM_LEARNING_CSRF_ORIGIN_REJECTED' });
+      return false;
+    }
+    const expectedOrigin = protocol + '://' + expectedHost;
+    if (parsed.origin !== expectedOrigin) {
+      res.status(403).json({ success:false, status:'BLOCKED',
+        code:'HFM_LEARNING_CSRF_ORIGIN_REJECTED' });
+      return false;
+    }
+    return true;
+  }
+
+  function requireNamedAdminSession(req, res, enforceSameOrigin = false) {
+    if (enforceSameOrigin && !requireSameOrigin(req, res)) return null;
     const session = req && req.session;
     if (!session || session.authenticated !== true || session.role !== 'admin' ||
         typeof session.username !== 'string' || !session.username.trim()) {
@@ -109,7 +152,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   }
 
   router.get('/status', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     return res.json({
       success:true,
@@ -125,7 +168,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   });
 
   router.post('/proposals', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     if (!requireBridge(res)) return;
     try {
@@ -147,7 +190,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   });
 
   router.post('/proposals/from-public-retrieval', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     if (!requireBridge(res)) return;
     try {
@@ -168,7 +211,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   });
 
   router.post('/proposals/from-legacy-learning', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     if (!requireBridge(res)) return;
     try {
@@ -218,7 +261,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   });
 
   router.post('/proposals/from-experience-retrieval', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     if (!requireBridge(res)) return;
     try {
@@ -279,7 +322,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   });
 
   router.post('/proposals/from-consolidated-knowledge', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     if (!requireBridge(res)) return;
     try {
@@ -333,7 +376,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   });
 
   router.post('/proposals/:projectId/:proposalId/review', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     if (!requireBridge(res)) return;
     try {
@@ -353,7 +396,7 @@ function registerMiraHfmLearningEvolutionRoutes(app, requireAdminPermission, PER
   });
 
   router.get('/proposals/:projectId/:proposalId', async (req, res) => {
-    const actorId = requireNamedAdminSession(req, res);
+    const actorId = requireNamedAdminSession(req, res, req.method === 'POST');
     if (!actorId) return;
     if (!requireBridge(res)) return;
     try {
