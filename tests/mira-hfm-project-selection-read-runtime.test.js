@@ -30,7 +30,13 @@ const good = {
   has_project_reader_group: true,
   role_membership_isolated: true,
   reader_group_has_no_parent_roles: true,
+  reader_group_no_login: true,
   reader_group_noinherit: true,
+  reader_group_no_superuser: true,
+  reader_group_no_createdb: true,
+  reader_group_no_createrole: true,
+  reader_group_no_replication: true,
+  reader_group_no_bypassrls: true,
   reader_group_owns_no_objects: true,
   schema_usage: true,
   schema_create: false,
@@ -68,7 +74,13 @@ for (const patch of [
   { bypasses_rls: true },
   { role_membership_isolated: false },
   { reader_group_has_no_parent_roles: false },
+  { reader_group_no_login: false },
   { reader_group_noinherit: false },
+  { reader_group_no_superuser: false },
+  { reader_group_no_createdb: false },
+  { reader_group_no_createrole: false },
+  { reader_group_no_replication: false },
+  { reader_group_no_bypassrls: false },
   { reader_group_owns_no_objects: false },
   { owners_insert: true },
   { owners_update: true },
@@ -123,9 +135,16 @@ assert.match(runtime.PREFLIGHT_SQL, /memberships_column_references/);
 assert.match(runtime.PREFLIGHT_SQL, /valid_from/);
 assert.match(runtime.PREFLIGHT_SQL, /expires_at/);
 assert.match(runtime.PREFLIGHT_SQL, /clock_timestamp/);
-assert.match(runtime.PREFLIGHT_SQL, /qual ~\\* 'status\\.\\*=\\.\\*ACTIVE'/);
-assert.match(runtime.PREFLIGHT_SQL, /qual ~\\* 'valid_from\\.\\*<=\\.\\*clock_timestamp'/);
-assert.match(runtime.PREFLIGHT_SQL, /qual ~\\* 'expires_at\\.\\*IS NULL\\.\\*OR\\.\\*expires_at\\.\\*>\\.\\*clock_timestamp'/);
+assert.ok(runtime.PREFLIGHT_SQL.includes("reader_group_no_login"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("reader_group_no_superuser"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("reader_group_no_createdb"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("reader_group_no_createrole"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("reader_group_no_replication"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("reader_group_no_bypassrls"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("regexp_replace(regexp_replace(lower(qual)"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("project_id=nullif(current_setting('mira.project_id',true),'')andstatus='active'"));
+assert.ok(runtime.PREFLIGHT_SQL.includes("project_id=nullif(current_setting('mira.project_id',true),'')andactor_id=nullif(current_setting('mira.actor_id',true),'')andstatus='active'andvalid_from<=clock_timestamp()andexpires_atisnullorexpires_at>clock_timestamp()"));
+assert.match(runtime.PREFLIGHT_SQL, /relowner NOT IN/);
 assert.match(runtime.PREFLIGHT_SQL, /permissive = 'PERMISSIVE'/);
 console.log("PROJECT_READ_PREFLIGHT_CHECKS_COMPLETE_POLICY_SEMANTICS_AND_PRIVILEGES=PASS");
 
