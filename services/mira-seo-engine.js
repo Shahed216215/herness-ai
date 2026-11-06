@@ -515,6 +515,187 @@ function analyzeSitemap(value) {
   };
 }
 
+function parseCsvRows(source) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (quoted) {
+      if (char === '"' && source[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        cell += char;
+      }
+    } else if (char === '"') {
+      if (cell.length) throw new Error("SEARCH_CONSOLE_CSV_INVALID_QUOTE");
+      quoted = true;
+    } else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\n") {
+      row.push(cell.replace(/\r$/, ""));
+      if (row.some(value => value.trim())) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  if (quoted) throw new Error("SEARCH_CONSOLE_CSV_UNCLOSED_QUOTE");
+  row.push(cell.replace(/\r$/, ""));
+  if (row.some(value => value.trim())) rows.push(row);
+  return rows;
+}
+
+function parseMetric(value, field, options = {}) {
+  const normalized = String(value || "").trim().replace(/,/g, "");
+  const percent = normalized.endsWith("%");
+  const numeric = Number(percent ? normalized.slice(0, -1) : normalized);
+  if (!normalized || !Number.isFinite(numeric) || numeric < 0) {
+    throw new Error("SEARCH_CONSOLE_CSV_INVALID_" + field.toUpperCase());
+  }
+  if (options.positive && numeric <= 0) {
+    throw new Error("SEARCH_CONSOLE_CSV_INVALID_" + field.toUpperCase());
+  }
+  return options.percent
+    ? (percent ? numeric : numeric <= 1 ? numeric * 100 : numeric)
+    : numeric;
+}
+
+function analyzeSearchConsoleCsv(source) {
+  if (typeof source !== "string" || !source.trim()) {
+    throw new Error("SEARCH_CONSOLE_CSV_REQUIRED");
+  }
+  if (source.length > 200000) {
+    throw new Error("SEARCH_CONSOLE_CSV_TOO_LARGE");
+  }
+  const rows = parseCsvRows(source.replace(/^\uFEFF/, ""));
+  if (rows.length < 2) throw new Error("SEARCH_CONSOLE_CSV_HEADER_AND_ROWS_REQUIRED");
+  if (rows.length - 1 > 5000) throw new Error("SEARCH_CONSOLE_CSV_TOO_MANY_ROWS");
+
+  const headers = rows[0].map(value => value.trim().toLowerCase());
+  const aliases = {
+    query: ["query", "top queries"],
+    page: ["page", "top pages"],
+    clicks: ["clicks"],
+    impressions: ["impressions"],
+    ctr: ["ctr"],
+    position: ["position", "average position"]
+  };
+  const indexes = {};
+  for (const [field, names] of Object.entries(aliases)) {
+    indexes[field] = headers.findIndex(value => names.includes(value));
+    if (indexes[field] < 0) {
+      throw new Error("SEARCH_CONSOLE_CSV_MISSING_COLUMN_" + field.toUpperCase());
+    }
+  }
+
+  const records = [];
+  let skippedRows = 0;
+  for (const values of rows.slice(1)) {
+    if (values.length < headers.length) {
+      skippedRows++;
+      continue;
+    }
+    try {
+      const query = values[indexes.query].trim();
+      const page = values[indexes.page].trim();
+      if (!query || !page) throw new Error("missing dimension");
+      const clicks = parseMetric(values[indexes.clicks], "clicks");
+      const impressions = parseMetric(values[indexes.impressions], "impressions");
+      const ctr = parseMetric(values[indexes.ctr], "ctr", { percent: true });
+      const position = parseMetric(values[indexes.position], "position", { positive: true });
+      if (ctr > 100) throw new Error("SEARCH_CONSOLE_CSV_INVALID_CTR");
+      records.push({ query, page, clicks, impressions, ctr, position });
+    } catch {
+      skippedRows++;
+    }
+  }
+  if (!records.length) throw new Error("SEARCH_CONSOLE_CSV_NO_VALID_DATA_ROWS");
+
+  const queryMap = new Map();
+  const pageMap = new Map();
+  for (const record of records) {
+    const queryKey = record.query.toLocaleLowerCase();
+    const pageKey = record.page;
+    const q = queryMap.get(queryKey) || {
+      query: record.query, clicks: 0, impressions: 0, weightedCtr: 0,
+      weightedPosition: 0, rows: 0, pages: new Set()
+    };
+    q.clicks += record.clicks;
+    q.impressions += record.impressions;
+    q.weightedCtr += record.ctr * record.impressions;
+    q.weightedPosition += record.position * record.impressions;
+    q.rows++;
+    q.pages.add(pageKey);
+    queryMap.set(queryKey, q);
+
+    const p = pageMap.get(pageKey) || {
+      page: pageKey, clicks: 0, impressions: 0, weightedCtr: 0,
+      weightedPosition: 0, rows: 0
+    };
+    p.clicks += record.clicks;
+    p.impressions += record.impressions;
+    p.weightedCtr += record.ctr * record.impressions;
+    p.weightedPosition += record.position * record.impressions;
+    p.rows++;
+    pageMap.set(pageKey, p);
+  }
+  const summarize = item => ({
+    ...item,
+    ctr: item.impressions
+      ? Number((item.weightedCtr / item.impressions).toFixed(2)) : 0,
+    averagePosition: item.impressions
+      ? Number((item.weightedPosition / item.impressions).toFixed(2)) : null
+  });
+  const queries = [...queryMap.values()].map(item => {
+    const summary = summarize(item);
+    delete summary.weightedCtr;
+    delete summary.weightedPosition;
+    delete summary.rows;
+    summary.pages = [...item.pages].slice(0, 20);
+    summary.opportunitySignals = [];
+    if (summary.impressions >= 100 && summary.ctr < 2) {
+      summary.opportunitySignals.push("HIGH_IMPRESSIONS_LOW_CTR_REVIEW");
+    }
+    if (summary.averagePosition >= 8 && summary.averagePosition <= 20) {
+      summary.opportunitySignals.push("POSITIONS_8_TO_20_REVIEW");
+    }
+    return summary;
+  }).sort((a, b) => b.impressions - a.impressions || a.query.localeCompare(b.query));
+  const pages = [...pageMap.values()].map(item => {
+    const summary = summarize(item);
+    delete summary.weightedCtr;
+    delete summary.weightedPosition;
+    delete summary.rows;
+    return summary;
+  }).sort((a, b) => b.impressions - a.impressions || a.page.localeCompare(b.page));
+
+  return {
+    success: true,
+    source: "USER_SUPPLIED_SEARCH_CONSOLE_CSV",
+    importedRows: records.length,
+    skippedRows,
+    totals: {
+      clicks: records.reduce((sum, item) => sum + item.clicks, 0),
+      impressions: records.reduce((sum, item) => sum + item.impressions, 0)
+    },
+    queries,
+    pages,
+    methodology: [
+      "CTR and average position are impressions-weighted when query/page rows are aggregated.",
+      "Opportunity labels are review heuristics, not guaranteed ranking or traffic gains.",
+      "Only rows included in the supplied export are analyzed; export filters and date range are not independently verified.",
+      "No Google account connection, API request or website fetch is performed."
+    ]
+  };
+}
+
 function createContentBrief(input, keywordResults) {
   const primary = keywordResults[0]?.keyword || "";
   const secondary = keywordResults.slice(1).map(k => k.keyword);
@@ -549,6 +730,7 @@ function audit(input = {}) {
   const html = text(input.html, LIMITS.html, "html");
   const robotsTxt = text(input.robotsTxt, LIMITS.robots, "robotsTxt");
   const sitemapXml = text(input.sitemapXml, LIMITS.sitemap, "sitemapXml");
+  const searchConsoleCsv = text(input.searchConsoleCsv, 200000, "searchConsoleCsv");
   const pageUrl = text(input.pageUrl, LIMITS.pageUrl, "pageUrl");
   if (pageUrl && !safeHttpUrl(pageUrl)) {
     throw new Error("pageUrl must be an absolute HTTP(S) URL without credentials.");
@@ -570,6 +752,9 @@ function audit(input = {}) {
       robotsTxt: analyzeRobots(robotsTxt),
       sitemap: analyzeSitemap(sitemapXml)
     },
+    searchPerformance: searchConsoleCsv
+      ? analyzeSearchConsoleCsv(searchConsoleCsv)
+      : { provided: false, source: "NOT_CONNECTED" },
     contentBrief: createContentBrief(input, keywords),
     limitations: [
       "No live SERP or competitor data is collected by the offline audit.",
@@ -588,6 +773,7 @@ module.exports = {
   analyzeOnPage,
   analyzeRobots,
   analyzeSitemap,
+  analyzeSearchConsoleCsv,
   collectJsonLd,
   analyzeLinks,
   LIMITS
