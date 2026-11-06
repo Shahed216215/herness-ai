@@ -1,0 +1,145 @@
+name: Dependency remediation validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "services/deliverable-real-format-builder.js"
+      - "tests/stage101-real-format-test.js"
+      - "tests/dependency-redirect-security.test.js"
+      - "tests/readdir-glob-minimatch-compatibility.test.js"
+      - ".github/workflows/dependency-remediation-validation.yml"
+  push:
+    branches:
+      - fix/dependency-security-remediation-20261106
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-remediation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-remediation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Regenerate lockfile from reviewed package manifest
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install exact locked dependency tree
+        run: npm ci --no-audit --no-fund
+
+      - name: Run full repository regression suite
+        run: npm test
+
+      - name: Run isolated dependency compatibility and redirect security regressions
+        run: |
+          node tests/readdir-glob-minimatch-compatibility.test.js
+          node tests/dependency-redirect-security.test.js
+          node tests/stage19-outbound-sink-coverage-test.js
+          node tests/stage19-outbound-callsite-integration-test.js
+          node tests/dependency-usage-inventory.test.js
+
+      - name: Run npm audit and classify official SheetJS CDN advisory mismatch
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit-report.json
+          audit_exit=$?
+          set -e
+          export NPM_AUDIT_EXIT_CODE="$audit_exit"
+          node <<'NODE'
+          const fs = require("node:fs");
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync("npm-audit-report.json", "utf8"));
+          } catch {
+            console.error("AUDIT_REPORT_PARSE=FAIL");
+            process.exit(1);
+          }
+
+          const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+          const xlsx = lock.packages?.["node_modules/xlsx"];
+          const expectedIntegrity = "sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==";
+          const expectedResolved = "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz";
+
+          if (!xlsx || xlsx.version !== "0.20.3" ||
+              xlsx.resolved !== expectedResolved ||
+              xlsx.integrity !== expectedIntegrity) {
+            console.error("SHEETJS_CDN_PIN=FAIL");
+            process.exit(1);
+          }
+          console.log("SHEETJS_CDN_PIN=PASS");
+
+          const meta = report.metadata?.vulnerabilities || {};
+          for (const severity of ["critical", "high", "moderate", "low", "info"]) {
+            console.log("AUDIT_" + severity.toUpperCase() + "=" + (meta[severity] ?? 0));
+          }
+
+          const vulnerabilities = Object.entries(report.vulnerabilities || {});
+          const unexpected = vulnerabilities.filter(([name, item]) =>
+            name !== "xlsx" && ["critical", "high", "moderate"].includes(item.severity)
+          );
+
+          const xlsxFinding = report.vulnerabilities?.xlsx;
+          if (xlsxFinding) {
+            console.log("XLSX_AUDIT_STATUS=REGISTRY_ADVISORY_MISMATCH_REVIEW_REQUIRED");
+            console.log("XLSX_AUDIT_SEVERITY=" + xlsxFinding.severity);
+            console.log("XLSX_LOCKED_VERSION=" + xlsx.version);
+            console.log("XLSX_RESOLVED_FROM_OFFICIAL_CDN=YES");
+          } else {
+            console.log("XLSX_AUDIT_STATUS=CLEAR");
+          }
+
+          for (const [name, item] of vulnerabilities) {
+            console.log(JSON.stringify({
+              package: name,
+              severity: item.severity,
+              direct: item.isDirect,
+              range: item.range,
+              fixAvailable: item.fixAvailable ?? null
+            }));
+          }
+
+          if (unexpected.length) {
+            console.error("UNEXPECTED_MODERATE_OR_HIGH_FINDINGS=" + unexpected.length);
+            process.exit(1);
+          }
+          if ((meta.critical || 0) > 0) {
+            console.error("CRITICAL_FINDINGS=FAIL");
+            process.exit(1);
+          }
+
+          console.log("UNEXPECTED_MODERATE_OR_HIGH_FINDINGS=0");
+          console.log("NPM_AUDIT_EXIT_CODE=" + process.env.NPM_AUDIT_EXIT_CODE);
+          console.log("DEPENDENCY_REMEDIATION_AUDIT_GATE=PASS_WITH_XLSX_REGISTRY_REVIEW");
+          NODE
+
+      - name: Upload generated lockfile and audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-remediation-evidence
+          path: |
+            package-lock.json
+            npm-audit-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
