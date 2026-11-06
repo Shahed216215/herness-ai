@@ -55,6 +55,18 @@ assert.equal(
 assert.equal(report.queryReports[0].ownDomainVisible, true);
 assert.equal(report.queryReports[1].ownDomainVisible, false);
 assert.equal(report.candidateOpportunities[1].candidateOpportunity, true);
+const mismatchedDomain = analyzeCompetitorSearches([{
+  query: "sample",
+  evidence: {
+    success: true,
+    evidence: [{
+      title: "Misleading declared domain",
+      url: "https://actual.example/article",
+      sourceDomain: "claimed-competitor.example"
+    }]
+  }
+}]);
+assert.equal(mismatchedDomain.competitorDomainCount, 0);
 assert.equal(report.freshness.status, "UNKNOWN");
 assert.ok(report.limitations.some(item => /not Google organic ranking/.test(item)));
 assert.equal(normalizeDomain("https://www.Example.com/path"), "example.com");
