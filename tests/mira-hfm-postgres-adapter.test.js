@@ -42,6 +42,7 @@ test("pool enforces TLS verification, small pool and bounded timeouts", () => {
   assert.equal(received.connectionTimeoutMillis, 5000);
   assert.equal(received.statement_timeout, 5000);
   assert.equal(received.application_name, "mira-hfm-readonly");
+  const readOnlyOptions = received.options;
   adapter.createPool({
     env: { MIRA_HFM_DATABASE_URL: validUrl },
     PoolCtor: FakePool,
@@ -50,7 +51,8 @@ test("pool enforces TLS verification, small pool and bounded timeouts", () => {
     applicationName: "mira-hfm-memory-writer"
   });
   assert.equal(received.application_name, "mira-hfm-memory-writer");
-  assert.equal(received.options, "-c default_transaction_read_only=on");
+  assert.equal(received.options, undefined);
+  assert.equal(readOnlyOptions, "-c default_transaction_read_only=on");
   assert.throws(
     () => adapter.createPool({ env: { MIRA_HFM_DATABASE_URL: validUrl }, PoolCtor: FakePool, readOnly: false }),
     error => error.code === "DATABASE_WRITE_MODE_NOT_APPROVED"
