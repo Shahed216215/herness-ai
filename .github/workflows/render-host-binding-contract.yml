@@ -34,3 +34,62 @@ jobs:
 
       - name: Run zero-network Render host contract
         run: node tests/render-host-binding-contract.test.js
+
+  render-live-http-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      MIRA_BASE_URL: https://mira-ai-agent-2pfh.onrender.com
+    steps:
+      - name: Check live Render health and unauthenticated rejection
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const base = process.env.MIRA_BASE_URL.endsWith("/") ? process.env.MIRA_BASE_URL.slice(0, -1) : process.env.MIRA_BASE_URL;
+
+          async function request(path, options = {}) {
+            return fetch(base + path, {
+              ...options,
+              signal: AbortSignal.timeout(20000)
+            });
+          }
+
+          async function main() {
+            let healthResponse;
+            let lastError;
+            for (let attempt = 1; attempt <= 4; attempt += 1) {
+              try {
+                healthResponse = await request("/api/health");
+                if (healthResponse.status === 200) break;
+                lastError = new Error("HTTP " + healthResponse.status);
+              } catch (error) {
+                lastError = error;
+              }
+              if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+
+            assert.ok(healthResponse, "Health endpoint did not respond: " + String(lastError));
+            assert.equal(healthResponse.status, 200, "Health endpoint must return HTTP 200");
+            const health = await healthResponse.json();
+            assert.equal(health.success, true);
+            assert.equal(health.status, "ok");
+            assert.equal(health.service, "Mira AI Agent");
+            console.log("PASS live-render-health status=200 service=Mira-AI-Agent");
+
+            const agentResponse = await request("/api/agent", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              // Empty JSON is invalid if auth is accidentally bypassed, so
+              // this probe cannot start an agent task.
+              body: JSON.stringify({})
+            });
+            assert.equal(agentResponse.status, 401,
+              "Unauthenticated Run Agent request must be rejected before execution");
+            console.log("PASS live-render-run-agent-unauthenticated status=401");
+          }
+
+          main().catch(error => {
+            console.error("FAIL live-render-http-smoke:", error.message);
+            process.exitCode = 1;
+          });
+          NODE

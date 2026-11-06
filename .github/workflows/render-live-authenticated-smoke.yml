@@ -1,0 +1,51 @@
+name: Trusted live Render authenticated smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated-live-smoke:
+    # Only run the secret-bearing probe from the protected default branch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      MIRA_BASE_URL: https://mira-ai-agent-2pfh.onrender.com
+      MIRA_LIVE_TEST_TOKEN: ${{ secrets.MIRA_LIVE_TEST_TOKEN }}
+    steps:
+      - name: Verify authenticated request stops at validation
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const token = process.env.MIRA_LIVE_TEST_TOKEN;
+          if (!token) {
+            throw new Error("MIRA_LIVE_TEST_TOKEN secret is not configured");
+          }
+          const base = process.env.MIRA_BASE_URL.endsWith("/") ? process.env.MIRA_BASE_URL.slice(0, -1) : process.env.MIRA_BASE_URL;
+
+          async function main() {
+            const response = await fetch(base + "/api/agent", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                authorization: "Bearer " + token
+              },
+              body: JSON.stringify({}),
+              signal: AbortSignal.timeout(20000)
+            });
+            assert.equal(response.status, 400,
+              "Authenticated empty-body probe must pass auth and stop at command validation");
+            const body = await response.json();
+            assert.equal(body.success, false);
+            assert.equal(body.error, "Command must be a string.");
+            console.log("PASS live-render-run-agent-authenticated-validation status=400 ai-provider=NOT_CALLED tools=NOT_CALLED");
+          }
+
+          main().catch(error => {
+            console.error("FAIL authenticated-live-smoke:", error.message);
+            process.exitCode = 1;
+          });
+          NODE
