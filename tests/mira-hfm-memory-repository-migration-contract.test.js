@@ -78,4 +78,10 @@ test('migration does not grant a writer role or broad application privileges', (
   assert.match(sql, /REVOKE ALL ON TABLE/);
 });
 
+test('migration PL/pgSQL function and DO blocks use valid dollar quoting', () => {
+  assert.ok(sql.includes('CREATE OR REPLACE FUNCTION mira_hfm.guard_memory_record_update()\\nRETURNS TRIGGER\\nLANGUAGE plpgsql\\nAS $'));
+  assert.ok(sql.includes('\\nDO $\\nBEGIN'));
+  assert.ok(sql.includes('END;\\n$;\\n\\nREVOKE ALL ON TABLE'));
+});
+
 console.log('HFM_MEMORY_REPOSITORY_MIGRATION_SOURCE_CONTRACT=PASS');
