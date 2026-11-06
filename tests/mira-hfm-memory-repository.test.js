@@ -283,4 +283,48 @@ test('trash requires explicit private lifecycle grant and writes a recoverable r
   assert.equal(versionInsert.params[13], context.actorId);
 });
 
+test('restore clears trash metadata and preserves a new immutable revision', async () => {
+  const trashed = record({
+    recordType: 'knowledge_item',
+    content: 'A public post draft retained in Trash.',
+    version: { revision: 2, contentHash: createContentHash('A public post draft retained in Trash.') },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] },
+    lifecycle: 'TRASHED'
+  });
+  const row = {
+    memory_id: trashed.memoryId, project_id: trashed.projectId,
+    owner_actor_id: context.actorId, record_type: trashed.recordType,
+    schema_version: trashed.schemaVersion, classification: 'PUBLIC',
+    lifecycle: 'TRASHED', revision: 2, integrity_status: 'VERIFIED',
+    trust_status: 'SOURCE_RECORDED', public_payload: trashed, encrypted_envelope: null,
+    created_at: new Date(trashed.timestamps.createdAt),
+    updated_at: new Date(trashed.timestamps.updatedAt)
+  };
+  const client = fakeClient({
+    query: async sql => {
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith('SELECT memory_id') && sql.includes('FOR UPDATE')) return { rowCount: 1, rows: [row] };
+      if (sql.startsWith('SELECT event_hash')) return { rowCount: 0, rows: [] };
+      return { rowCount: 1, rows: [{}] };
+    }
+  });
+  const result = await repository.restoreMemoryRecord({
+    client,
+    context: { ...context, operation: 'memory.restore' },
+    memoryId: trashed.memoryId,
+    idempotencyKey: 'restore-public-1',
+    env
+  });
+  assert.equal(result.status, 'RESTORED');
+  assert.equal(result.revision, 3);
+  const update = client.calls.find(call => call.sql.startsWith('UPDATE mira_hfm.memory_records'));
+  assert.ok(update);
+  assert.equal(update.params[2], 'ACTIVE');
+  assert.equal(update.params[3], null);
+  assert.equal(update.params[4], null);
+  const version = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions'));
+  assert.equal(version.params[12], null);
+  assert.equal(version.params[13], null);
+});
+
 console.log('HFM_MEMORY_REPOSITORY_UNIT_TESTS=PASS');
