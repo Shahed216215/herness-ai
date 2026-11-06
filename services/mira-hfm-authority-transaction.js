@@ -133,7 +133,10 @@ async function executeWithConsumedAuthority(options = {}) {
       operation: request.operation,
       resource: request.resource,
       purpose: request.purpose,
-      requestId: request.requestId
+      requestId: request.requestId,
+      resource: request.resource,
+      purpose: request.purpose,
+      authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY'
     }));
 
     // Recheck time-bounded membership after the protected work and before commit.
