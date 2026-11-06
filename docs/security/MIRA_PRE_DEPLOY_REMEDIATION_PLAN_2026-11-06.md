@@ -277,3 +277,12 @@ A separate, already-open remediation branch exists and should be evaluated rathe
 - Test commit: `02c4fc9a6d3f61762ff3c115a6cad7cc08efe1aa`; workflow commit: `8de38526024368eac8a5bea9dda536c7f4510da0`.
 - Latest branch CI was queued at the time of this update. Do not claim the expanded six-provider call-site gate has passed until the latest run completes.
 - No production provider source, dependency manifest/lockfile, Render setting, or runtime behavior changed.
+
+### 14.1 Expanded six-provider CI result
+
+- Latest PR #69 head: `8de38526024368eac8a5bea9dda536c7f4510da0`.
+- Pull-request workflow run `42248157156`: SUCCESS.
+- Push workflow run `42248150364`: SUCCESS.
+- `STAGE19_OUTBOUND_CALLSITE_INTEGRATION=PASS` for all six inspected call sites: web-search, OpenRouter, DeepSeek, Hugging Face, Anthropic and xAI.
+- The same run also passed full `npm test`, readdir-glob/minimatch compatibility, Axios/follow-redirects redirect regression, outbound sink inventory, dependency usage inventory, SheetJS integrity pin and npm audit (0 findings; exit 0).
+- No production source, package manifest, lockfile, Render setting, session behavior, merge or deployment changed.
