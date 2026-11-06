@@ -73,8 +73,9 @@ No source code, runtime configuration, production database schema/data, secrets,
 
 ## Still not implemented
 
-- No PostgreSQL-backed canonical v1.1.0 record repository or migration.
-- No PostgreSQL Memory repository, migrations, payload write role, or project-scoped Memory Core.
+- Migration 004 schema has been executed and inspected on the disposable Neon test branch only; production remains unchanged.
+- A transaction-client-only project-scoped Memory Repository service now exists on PR #70, with create/revise/read/list/trash/restore operations, encrypted private payloads, idempotency, revision history, and sanitized audit.
+- No application writer role or write connection is provisioned; the repository service is not yet wired to runtime tools or routes.
 - No integration of `memory_save`, `knowledge_save`, `knowledge_search`, or client-profile routes.
 - No daily activity/learning capture pipeline.
 - No social-post draft store, preview UI, or Copy button.
@@ -100,3 +101,15 @@ No source code, runtime configuration, production database schema/data, secrets,
 - No keepalive ping, Render Cron Job, paid worker, persistent disk, or always-on upgrade is authorized.
 - A database outage never triggers local or Google Drive fallback and never produces a false saved-success state.
 - Archive/Trash reload after restart is not yet implemented or tested.
+
+
+## Repository service and CI checkpoint (2026-11-06)
+
+- Added `services/mira-hfm-memory-repository.js`; it accepts only the transaction client/context passed inside the consumed-authority callback and does not open a database connection itself.
+- Operations: create, revise, project-scoped get/list, recoverable trash, and restore.
+- PUBLIC payloads remain plaintext/searchable. PROJECT_PRIVATE and RESTRICTED payloads are envelope-encrypted before database writes; private/restricted reads and lifecycle operations require explicit grants.
+- Project scope is bound to the consumed authority resource; cross-project sharing is rejected.
+- Idempotency registry, immutable revision history, and sanitized hash-linked audit events are part of the same caller-owned transaction.
+- Latest commit `e70bb4a682eaecd70fb81370c7f28e8df265d98c`: focused repository tests PASS and full `npm test` PASS in the dedicated GitHub Actions workflow.
+- This is a service-layer foundation only. Legacy tools, activity/learning capture, daily digest generation, social-post Copy UI, public Facebook/web ingestion, writer-role provisioning, KEK configuration, and Render runtime integration remain NOT_STARTED.
+- No Render env changes, writer role, production writes, merge, or deployment.
