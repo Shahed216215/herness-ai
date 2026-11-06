@@ -103,10 +103,10 @@ function validateResearchInput(input) {
   const cleanCompetitorDomains = confirmedCompetitorDomains.map(value => {
     if (typeof value !== "string" || !value.trim() ||
         value.trim().length > 253 ||
-        !/^(?:https?:\\/\\/)?(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}(?:[/:?#].*)?$/i.test(value.trim())) {
+        !/^(?:https?:\/\/)?(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:[/:?#].*)?$/i.test(value.trim())) {
       throw new TypeError("SEO_CONFIRMED_COMPETITOR_DOMAIN_INVALID");
     }
-    return value.trim().toLowerCase().replace(/^https?:\\/\\//, "").split(/[/:?#]/)[0].replace(/^www\\./, "");
+    return value.trim().toLowerCase().replace(/^https?:\/\//, "").split(/[/:?#]/)[0].replace(/^www\./, "");
   });
   if (new Set(cleanCompetitorDomains).size !== cleanCompetitorDomains.length) {
     throw new TypeError("SEO_CONFIRMED_COMPETITOR_DOMAINS_MUST_BE_UNIQUE");
