@@ -39,6 +39,7 @@ jobs:
           npm audit --json > npm-audit-report.json
           audit_exit=$?
           set -e
+          export NPM_AUDIT_EXIT_CODE="$audit_exit"
           node <<'NODE'
           const fs = require("node:fs");
           let report;
@@ -64,7 +65,7 @@ jobs:
               fixAvailable: item.fixAvailable ?? null
             }));
           }
-          console.log("NPM_AUDIT_EXIT_CODE=" + ${audit_exit});
+          console.log("NPM_AUDIT_EXIT_CODE=" + process.env.NPM_AUDIT_EXIT_CODE);
           NODE
 
       - name: Upload full npm audit JSON
