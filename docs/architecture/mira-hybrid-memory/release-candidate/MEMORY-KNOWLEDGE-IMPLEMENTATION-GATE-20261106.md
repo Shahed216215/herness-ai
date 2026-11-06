@@ -47,7 +47,7 @@ The normative topology decision is no longer unresolved. Implementation must sti
 ## Current execution boundary
 
 `ARCHITECTURE_DECISION=APPROVED_B`
-`IMPLEMENTATION=NOT_STARTED`
+`IMPLEMENTATION=FOUNDATION_PARTIAL`
 `LEGACY_DATA=READ_ONLY_PRESERVE`
 `FACEBOOK_TOKEN_REQUIRED_FOR_CORE_MEMORY=NO`
 `FACEBOOK_ACCESS=PUBLIC_READ_ONLY_WHEN_PERMITTED`
@@ -57,7 +57,7 @@ The normative topology decision is no longer unresolved. Implementation must sti
 `PRODUCTION_WRITE=NOT_APPROVED`
 `DEPLOYMENT=NOT_APPROVED`
 
-No source code, runtime configuration, production database schema/data, secrets, or deployment were changed in this documentation step. No scheduled task, reminder, or automation was created.
+This gate separates the implemented service-layer foundation from runtime/production activation. No production database schema/data, secrets, writer role, or deployment was changed. No scheduled task, reminder, or automation was created.
 
 
 ## New implementation evidence (2026-11-06)
@@ -69,7 +69,7 @@ No source code, runtime configuration, production database schema/data, secrets,
 - Added `tests/mira-hfm-record-schema.test.js` and included both focused test files in the configured `npm test` chain.
 - Isolated local Node harness result: combined vault crypto + record schema 21/21. The harness used a local copy of the current branch source; these results are not the full repository regression suite and are not exact-head GitHub CI evidence.
 - Draft PR #70: https://github.com/Shahed216215/herness-ai/pull/70
-- PR #70 is based on PR #66's exact head and remains Draft/Open. The existing runtime-foundation workflow filters pull requests by base branch (`main` or `work/render-main-host-binding-compat-20261106`), so it does not automatically run for PR #70's current base. Exact-head CI remains NOT_RUN / INCONCLUSIVE until a suitable validation path is established.
+- PR #70 remains Draft/Open. The dedicated `mira-hfm-memory-repository.yml` workflow was added for its base branch and source branch. Repository implementation commit `e70bb4a682eaecd70fb81370c7f28e8df265d98c` passed syntax checks, focused repository tests, and full `npm test` (GitHub Actions run `42238970176`). Later commits in the current PR head only update documentation.
 
 ## Still not implemented
 
@@ -90,7 +90,7 @@ No source code, runtime configuration, production database schema/data, secrets,
 - Copy is a direct user-initiated clipboard operation; copied is not equivalent to published.
 - Delete is a recoverable Neon soft-delete (`TRASHED`), with sanitized audit and immutable revision history. Restore is available from Trash.
 - No automatic permanent purge is authorized.
-- This UI/repository workflow is not yet implemented or tested. The current PR work adds only the schema/lifecycle foundation; Copy UI, Trash UI, and repository transaction integration remain NOT_STARTED.
+- The Copy UI and Trash/Restore UI are NOT_STARTED. The transaction-client-only repository service and lifecycle transaction operations are implemented and CI-tested, but no runtime tool/route is wired to them yet.
 
 
 ## Render Free sleep-safe operating contract (2026-11-06)
