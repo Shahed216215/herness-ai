@@ -131,7 +131,7 @@ async function main() {
   assert.strictEqual(gsc.queries[0].query, "seo, tools");
   assert.strictEqual(gsc.queries[0].ctr, 1.33);
   assert.ok(gsc.queries[0].opportunitySignals.includes("HIGH_IMPRESSIONS_LOW_CTR_REVIEW"));
-  assert.throws(() => analyzeSearchConsoleCsv("Query,Page,Clicks"), /MISSING_COLUMN/);
+  assert.throws(() => analyzeSearchConsoleCsv("Query,Page,Clicks\\nx,y,1"), /MISSING_COLUMN/);
   assert.throws(() => analyzeSearchConsoleCsv(""), /CSV_REQUIRED/);
   const queryOnly = analyzeSearchConsoleCsv([
     "Top queries,Clicks,Impressions,CTR,Position",
