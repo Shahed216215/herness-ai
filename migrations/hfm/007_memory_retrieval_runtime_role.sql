@@ -77,15 +77,9 @@ END;
 $$;
 
 REVOKE ALL ON SCHEMA mira_hfm FROM mira_hfm_memory_reader;
-REVOKE ALL ON SEQUENCE mira_hfm.authority_audit_events_event_sequence_seq
-FROM mira_hfm_memory_reader;
-REVOKE ALL ON TABLE
-  mira_hfm.project_owners,
-  mira_hfm.project_memberships,
-  mira_hfm.operation_authorities,
-  mira_hfm.authority_audit_events,
-  mira_hfm.memory_records
-FROM mira_hfm_memory_reader;
+REVOKE ALL ON ALL TABLES IN SCHEMA mira_hfm FROM mira_hfm_memory_reader;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA mira_hfm FROM mira_hfm_memory_reader;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA mira_hfm FROM mira_hfm_memory_reader;
 
 GRANT USAGE ON SCHEMA mira_hfm TO mira_hfm_memory_reader;
 GRANT SELECT ON TABLE
