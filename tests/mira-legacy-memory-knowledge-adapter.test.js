@@ -213,5 +213,25 @@ assert.throws(() => adaptLegacyEntries({
 }), /snapshot locator mismatch|sourceDigest mismatch/);
 console.log('ORDINAL_AND_SOURCE_BINDING_ENFORCED=PASS');
 
+const mismatchedWrapper = { ...activeKnowledge, memoryId: 'memory-other' };
+assert.throws(() => filterAdaptedLegacyEntries({
+  adaptedEntries: [mismatchedWrapper], pendingConflicts: [], projectId: 'project-alpha',
+  authorizeAccess, actorContext
+}), /identity mismatch/);
+console.log('ADAPTED_CANONICAL_IDENTITY_BINDING_ENFORCED=PASS');
+
+const sameIdUntrustedClone = {
+  ...activeKnowledge,
+  canonicalRecord: {
+    ...activeKnowledge.canonicalRecord,
+    lifecycle: 'PENDING_REVIEW'
+  }
+};
+assert.throws(() => filterAdaptedLegacyEntries({
+  adaptedEntries: [activeKnowledge, sameIdUntrustedClone],
+  pendingConflicts: [], projectId: 'project-alpha', authorizeAccess, actorContext
+}), /Duplicate adapted canonical memory identity/);
+console.log('DUPLICATE_ID_TRUST_FILTER_BYPASS_REJECTED=PASS');
+
 console.log('TESTS_FAILED=0');
 console.log('RESULT=MIRA_LEGACY_MEMORY_KNOWLEDGE_ADAPTER_SNAPSHOT_BOUND_PASS');
