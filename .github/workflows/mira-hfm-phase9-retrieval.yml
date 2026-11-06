@@ -6,16 +6,21 @@ on:
       - 'work/mira-hfm-v02-phase8-restack-on-phase7-20261106'
     paths:
       - 'services/mira-hfm-retrieval-optimizer.js'
+      - 'services/mira-hfm-prompt-boundary.js'
+      - 'services/mira-request-context.js'
+      - 'services/ai.js'
+      - 'server.js'
       - 'services/mira-hfm-retrieval-provider-adapters.js'
       - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
       - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
       - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
       - 'tests/mira-hfm-phase9-downstream-proposal-injection.test.js'
+      - 'tests/mira-hfm-phase9-runtime-prompt-boundary.test.js'
       - 'docs/architecture/mira-hybrid-memory/phase9/**'
       - '.github/workflows/mira-hfm-phase9-retrieval.yml'
   push:
     branches:
-      - 'work/mira-hfm-v02-phase9-restack-on-phase8-20261106'
+      - 'work/mira-hfm-v02-phase9-restack-on-current-phase8-20261106'
     paths:
       - 'services/mira-hfm-retrieval-provider-adapters.js'
       - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
@@ -38,6 +43,6 @@ jobs:
         with:
           node-version: 24
       - name: Syntax check
-        run: node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js && node --check tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+        run: node --check server.js && node --check services/ai.js && node --check services/mira-request-context.js && node --check services/mira-hfm-prompt-boundary.js && node --check tests/mira-hfm-phase9-runtime-prompt-boundary.test.js && node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js && node --check tests/mira-hfm-phase9-downstream-proposal-injection.test.js
       - name: Phase 9 isolated offline tests
-        run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node tests/mira-hfm-phase9-prompt-injection-regression.test.js && node tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+        run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node tests/mira-hfm-phase9-prompt-injection-regression.test.js && node tests/mira-hfm-phase9-downstream-proposal-injection.test.js && node tests/mira-hfm-phase9-runtime-prompt-boundary.test.js
