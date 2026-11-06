@@ -91,10 +91,11 @@ test("authorized operation locks owner, membership, authority; consumes and audi
   const authorityLock = sql.findIndex(x => x.includes("FROM mira_hfm.operation_authorities"));
   const consume = sql.findIndex(x => x.startsWith("UPDATE mira_hfm.operation_authorities"));
   const audit = sql.findIndex(x => x.startsWith("INSERT INTO mira_hfm.authority_audit_events"));
+  const projectScope = sql.findIndex(x => x.includes("set_config('mira.project_id'"));
   const protectedWrite = sql.findIndex(x => x.startsWith("INSERT INTO protected_hfm_test_table"));
   assert.ok(sql[0].startsWith("BEGIN ISOLATION LEVEL SERIALIZABLE"));
   assert.ok(ownerLock < membershipLock && membershipLock < authorityLock);
-  assert.ok(authorityLock < consume && consume < audit && audit < protectedWrite);
+  assert.ok(authorityLock < consume && consume < audit && audit < projectScope && projectScope < protectedWrite);
   assert.ok(sql.includes("COMMIT"));
   assert.ok(sql.some(x => x.includes("valid_from <= clock_timestamp()") &&
     x.includes("(expires_at IS NULL OR expires_at > clock_timestamp())")));
