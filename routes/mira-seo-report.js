@@ -71,7 +71,7 @@ function validateReportInput(body = {}) {
 function createReport(body) {
   const input = validateReportInput(body);
   const searchPerformance = input.searchConsoleCsv
-    ? analyzeSearchConsoleCsv(input.searchConsoleCsv)
+    ? { provided: true, ...analyzeSearchConsoleCsv(input.searchConsoleCsv) }
     : undefined;
   const contentGapAnalysis = input.targetKeywords
     ? analyzeContentGaps({
