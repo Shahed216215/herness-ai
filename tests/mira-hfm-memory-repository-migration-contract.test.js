@@ -79,17 +79,17 @@ test('migration does not grant a writer role or broad application privileges', (
 });
 
 test('migration PL/pgSQL function and DO blocks use valid dollar quoting', () => {
-  assert.match(sql, /CREATE OR REPLACE FUNCTION mira_hfm\\.guard_memory_record_update\\(\\)\\s+RETURNS TRIGGER\\s+LANGUAGE plpgsql\\s+AS \\$\\$/);
-  assert.match(sql, /DO \\$\\$\\s+BEGIN/);
-  assert.match(sql, /END;\\s+\\$\\$;\\s+REVOKE ALL ON TABLE/);
+  assert.match(sql, /CREATE OR REPLACE FUNCTION mira_hfm\.guard_memory_record_update\(\)\s+RETURNS TRIGGER\s+LANGUAGE plpgsql\s+AS \$\$/);
+  assert.match(sql, /DO \$\$\s+BEGIN/);
+  assert.match(sql, /END;\s+\$\$;\s+REVOKE ALL ON TABLE/);
 });
 
 test('social draft deletion is recoverable through the TRASHED lifecycle', () => {
   assert.equal((sql.match(/'TRASHED'/g) || []).length >= 2, true);
   assert.equal((sql.match(/trashed_at TIMESTAMPTZ/g) || []).length, 2);
   assert.equal((sql.match(/trashed_by_actor_id TEXT/g) || []).length, 2);
-  assert.match(sql, /lifecycle = 'TRASHED'[\\s\\S]*?trashed_at IS NOT NULL[\\s\\S]*?trashed_by_actor_id IS NOT NULL/);
-  assert.match(sql, /BEFORE DELETE ON mira_hfm\\.memory_records/);
+  assert.match(sql, /lifecycle = 'TRASHED'[\s\S]*?trashed_at IS NOT NULL[\s\S]*?trashed_by_actor_id IS NOT NULL/);
+  assert.match(sql, /BEFORE DELETE ON mira_hfm\.memory_records/);
   assert.match(sql, /HFM_MEMORY_HISTORY_IS_APPEND_ONLY/);
 });
 
