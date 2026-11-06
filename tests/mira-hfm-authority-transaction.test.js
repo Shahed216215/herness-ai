@@ -75,7 +75,7 @@ test("authorized operation locks owner, membership, authority; consumes and audi
     pool: f.pool, request,
     async perform(client, context) {
       callbackClient = client;
-      assert.equal(context.actorId, request.actorId);
+      assert.equal(context.actorId, actorId);
       await client.query("INSERT INTO protected_hfm_test_table (project_id) VALUES ($1)", [context.projectId]);
       return "stored";
     }
