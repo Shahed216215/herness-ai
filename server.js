@@ -1640,6 +1640,8 @@ app.post(
       let finalResult =
         null;
 
+      const toolExecutionTrace = [];
+
       let firewallInspectionAssessment =
         null;
 
@@ -1712,6 +1714,7 @@ app.post(
             functionCall.args || {};
 
           let toolResult;
+          let executionEvidence = null;
 
           const requiresNamedAdminSession = [
             "marketing_client_context",
@@ -1813,6 +1816,8 @@ app.post(
                 }
               );
 
+            executionEvidence = execution;
+
             if (
               execution &&
               execution.success === true &&
@@ -1830,6 +1835,11 @@ app.post(
           } catch (
             executionError
           ) {
+            executionEvidence = {
+              success: false,
+              status: "execution_error",
+              error: executionError.message
+            };
             toolResult = {
               success: false,
               error:
@@ -1837,6 +1847,36 @@ app.post(
             };
           }
           }
+
+          const engineSucceeded =
+            executionEvidence?.success === true;
+          const directDispatchSucceeded =
+            !executionEvidence &&
+            toolResult?.success === true;
+          const verified =
+            engineSucceeded &&
+            Array.isArray(executionEvidence.results) &&
+            executionEvidence.results.length > 0 &&
+            executionEvidence.results.every(
+              item => item.verification?.passed === true
+            );
+
+          toolExecutionTrace.push({
+            tool: toolName,
+            status:
+              executionEvidence?.status ||
+              toolResult?.status ||
+              (engineSucceeded || directDispatchSucceeded
+                ? "completed"
+                : "returned"),
+            executionPath: executionEvidence
+              ? "MIRA_WORK_EXECUTION_ENGINE"
+              : "GOVERNED_DIRECT_DISPATCH",
+            success:
+              engineSucceeded ||
+              directDispatchSucceeded,
+            verified
+          });
 
           if (
             toolName ===
@@ -1906,7 +1946,11 @@ app.post(
             return res.json({
               success: true,
               role: req.role,
-              result: finalResult
+              result: finalResult,
+              execution: {
+                toolCallCount: toolExecutionTrace.length,
+                trace: toolExecutionTrace
+              }
             });
           }
 
@@ -1914,6 +1958,7 @@ app.post(
             role: "tool",
             tool_call_id:
               functionCall.id,
+            name: toolName,
             content:
               JSON.stringify(
                 toolResult
@@ -1987,7 +2032,11 @@ app.post(
         role:
           req.role,
         result:
-          finalResult
+          finalResult,
+        execution: {
+          toolCallCount: toolExecutionTrace.length,
+          trace: toolExecutionTrace
+        }
       });
     } catch (error) {
       next(error);
