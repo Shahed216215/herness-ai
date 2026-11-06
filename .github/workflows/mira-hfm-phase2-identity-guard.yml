@@ -6,6 +6,12 @@ on:
       - work/mira-hfm-v02-phase2-identity-guard-on-phase9-20261106
     paths:
       - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'services/mira-hfm-runtime-identity-context.js'
+      - 'services/mira-work-execution-engine.js'
+      - 'services/tool-runner.js'
+      - 'tools/index.js'
+      - 'server.js'
+      - 'tests/mira-hfm-runtime-identity-context.test.js'
       - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
       - '.github/workflows/mira-hfm-phase2-identity-guard.yml'
   pull_request:
@@ -32,9 +38,17 @@ jobs:
         run: |
           set -euo pipefail
           node --check services/mira-legacy-memory-knowledge-adapter.js
+          node --check services/mira-hfm-runtime-identity-context.js
+          node --check services/mira-work-execution-engine.js
+          node --check services/tool-runner.js
+          node --check tools/index.js
+          node --check server.js
+          node --check tests/mira-hfm-runtime-identity-context.test.js
           node --check tests/mira-legacy-memory-knowledge-adapter.test.js
       - name: Isolated legacy adapter regression
         run: node tests/mira-legacy-memory-knowledge-adapter.test.js
+      - name: Runtime identity context regression
+        run: node tests/mira-hfm-runtime-identity-context.test.js
       - name: Confirm external boundaries
         run: |
           echo "PRODUCTION_MEMORY_TOUCHED=NO"
