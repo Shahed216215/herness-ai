@@ -132,6 +132,27 @@ async function main() {
       "('project_owners','project_memberships','operation_authorities','authority_audit_events')"
     );
     assert.equal(schema.rows[0].count, 4);
+    const privileges = await pool.query(
+      "SELECT " +
+      "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create, " +
+      "has_table_privilege(current_user, 'mira_hfm.project_owners', 'INSERT') AS fixture_insert, " +
+      "has_table_privilege(current_user, 'mira_hfm.project_owners', 'DELETE') AS fixture_cleanup_delete, " +
+      "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'INSERT') AS audit_insert, " +
+      "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'UPDATE') AS audit_update, " +
+      "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS audit_delete, " +
+      "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS audit_truncate, " +
+      "has_database_privilege(current_user, current_database(), 'TEMP') AS temp_allowed"
+    );
+    const grants = privileges.rows[0];
+    assert.equal(grants.schema_create, false);
+    assert.equal(grants.fixture_insert, true);
+    assert.equal(grants.fixture_cleanup_delete, true);
+    assert.equal(grants.audit_insert, true);
+    assert.equal(grants.audit_update, false);
+    assert.equal(grants.audit_delete, false);
+    assert.equal(grants.audit_truncate, false);
+    assert.equal(grants.temp_allowed, true);
+    console.log("HFM_AUTHORITY_TEST_ROLE_LEAST_PRIVILEGE=PASS");
     console.log("HFM_AUTHORITY_TEST_SCHEMA=PASS");
 
     const success = await seedFixture(pool, "commit");
