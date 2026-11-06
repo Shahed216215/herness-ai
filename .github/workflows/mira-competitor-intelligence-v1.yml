@@ -24,8 +24,13 @@ on:
     paths:
       - 'services/mira-seo-competitor-intelligence.js'
       - 'services/mira-seo-content-gap-report.js'
+      - 'routes/mira-seo-report.js'
+      - 'server.js'
+      - 'public/index.html'
       - 'tools/seo-content-gap-report.js'
       - 'tests/mira-seo-content-gap-report.test.js'
+      - 'tests/mira-seo-report-route.test.js'
+      - 'tests/mira-seo-report-ui.test.js'
       - 'services/mira-seo-research-orchestrator.js'
       - 'tests/mira-seo-competitor-intelligence.test.js'
       - 'tests/mira-seo-research-orchestrator.test.js'
