@@ -10,7 +10,7 @@ on:
       - "services/deliverable-real-format-builder.js"
       - "tests/stage101-real-format-test.js"
       - "tests/dependency-redirect-security.test.js"
-      - "tests/archive-glob-compatibility.test.js"
+      - "tests/readdir-glob-minimatch-compatibility.test.js"
       - ".github/workflows/dependency-remediation-validation.yml"
   push:
     branches:
@@ -51,7 +51,7 @@ jobs:
 
       - name: Run isolated dependency compatibility and redirect security regressions
         run: |
-          node tests/archive-glob-compatibility.test.js
+          node tests/readdir-glob-minimatch-compatibility.test.js
           node tests/dependency-redirect-security.test.js
 
       - name: Run npm audit and classify official SheetJS CDN advisory mismatch
