@@ -33,5 +33,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run offline approval diagnostic regression
+      - name: Run offline authorization unit regression
         run: node tests/tool-health-approval-diagnostic.test.js
+
+      - name: Run isolated execution-engine integration regression
+        run: node tests/tool-health-authorization-engine-integration.test.js
