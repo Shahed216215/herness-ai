@@ -8,7 +8,7 @@ function normalizeDomain(value) {
     const parsed = new URL(value);
     if (!["http:", "https:"].includes(parsed.protocol) ||
         parsed.username || parsed.password) return null;
-    return parsed.hostname.toLowerCase().replace(/^www\\./, "");
+    return parsed.hostname.toLowerCase().replace(/^www\./, "");
   } catch {
     return null;
   }
