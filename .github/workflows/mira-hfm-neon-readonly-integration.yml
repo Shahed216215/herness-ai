@@ -1,0 +1,145 @@
+name: Mira HFM Neon read-only integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mira-hfm-neon-readonly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  neon-readonly-integration:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted workflow source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Pin the reviewed HFM adapter candidate. Update this SHA only after reviewing
+      # the candidate changes; never pass this secret to pull_request workflows.
+      - name: Checkout reviewed HFM adapter candidate
+        uses: actions/checkout@v4
+        with:
+          repository: Shahed216215/herness-ai
+          ref: a7c78cc856746ac271bc642cc3f7bf36225f94d4
+          path: candidate
+          persist-credentials: false
+
+      - name: Install production dependencies without lifecycle scripts
+        working-directory: candidate
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+
+      - name: Verify disposable Neon adapter connection is read-only
+        working-directory: candidate
+        env:
+          MIRA_HFM_TEST_DATABASE_URL: ${{ secrets.MIRA_HFM_TEST_DATABASE_URL }}
+        run: |
+          node <<'NODE'
+          "use strict";
+          const assert = require("node:assert/strict");
+          const adapter = require("./services/mira-hfm-postgres");
+
+          function fail(code) {
+            const error = new Error(code);
+            error.code = code;
+            throw error;
+          }
+
+          async function main() {
+            const raw = process.env.MIRA_HFM_TEST_DATABASE_URL;
+            if (!raw) fail("TEST_SECRET_NOT_CONFIGURED");
+
+            let parsed;
+            try { parsed = new URL(raw); } catch (_error) { fail("TEST_URL_INVALID"); }
+
+            if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
+              fail("TEST_URL_PROTOCOL_INVALID");
+            }
+            if (parsed.hostname.toLowerCase() !== "ep-square-river-a1m3fhob.ap-southeast-1.aws.neon.tech") {
+              fail("TEST_HOST_NOT_DISPOSABLE_BRANCH");
+            }
+            if (decodeURIComponent(parsed.pathname.slice(1)) !== "neondb") {
+              fail("TEST_DATABASE_MISMATCH");
+            }
+            if (decodeURIComponent(parsed.username) !== "mira_hfm_runtime") {
+              fail("TEST_ROLE_MISMATCH");
+            }
+            if (!["require", "verify-full"].includes(parsed.searchParams.get("sslmode"))) {
+              fail("TEST_SSL_REQUIRED");
+            }
+
+            const resolved = adapter.resolveDatabaseConfig({ MIRA_HFM_DATABASE_URL: raw });
+            if (!resolved.configured ||
+                resolved.host !== "ep-square-river-a1m3fhob.ap-southeast-1.aws.neon.tech" ||
+                resolved.databaseName !== "neondb") {
+              fail("ADAPTER_CONFIG_GUARD_FAILED");
+            }
+
+            const pool = adapter.createPool({
+              env: { MIRA_HFM_DATABASE_URL: raw },
+              readOnly: true
+            });
+            try {
+              const report = await adapter.inspectDatabase({ pool });
+              if (report.status !== "CONNECTED_READ_ONLY" ||
+                  report.readOnly !== true ||
+                  report.transactionReadOnly !== true ||
+                  report.databaseName !== "neondb" ||
+                  report.databaseRole !== "mira_hfm_runtime" ||
+                  report.schemaExists !== true) {
+                fail("ADAPTER_READ_ONLY_INSPECTION_FAILED");
+              }
+
+              const expected = [
+                "authority_audit_events",
+                "operation_authorities",
+                "project_memberships",
+                "project_owners"
+              ];
+              assert.deepEqual(report.tables, expected);
+              console.log("HFM_NEON_ADAPTER_CONNECTION=PASS");
+              console.log("HFM_NEON_EXPECTED_SCHEMA_METADATA=PASS");
+
+              const client = await pool.connect();
+              let transactionOpen = false;
+              try {
+                await client.query("BEGIN READ ONLY");
+                transactionOpen = true;
+                const state = await client.query("SELECT current_setting('transaction_read_only') AS value");
+                if (state.rows[0]?.value !== "on") fail("READ_ONLY_TRANSACTION_NOT_CONFIRMED");
+
+                let writeRejected = false;
+                try {
+                  await client.query("CREATE TEMP TABLE mira_hfm_readonly_probe (id integer)");
+                } catch (error) {
+                  if (error && error.code === "25006") writeRejected = true;
+                  else fail("READ_ONLY_PROBE_UNEXPECTED_DATABASE_ERROR");
+                }
+                if (!writeRejected) fail("READ_ONLY_WRITE_GUARD_NOT_ENFORCED");
+                console.log("HFM_NEON_READ_ONLY_WRITE_GUARD=PASS");
+              } finally {
+                if (transactionOpen) {
+                  try { await client.query("ROLLBACK"); } catch (_error) {}
+                }
+                client.release();
+              }
+            } finally {
+              await pool.end();
+            }
+          }
+
+          main().catch(error => {
+            const code = typeof error?.code === "string" && /^[A-Z0-9_]{1,64}$/.test(error.code)
+              ? error.code
+              : "UNEXPECTED_FAILURE";
+            console.error("HFM_NEON_READONLY_INTEGRATION=FAIL");
+            console.error("REASON=" + code);
+            process.exitCode = 1;
+          });
+          NODE
