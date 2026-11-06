@@ -76,6 +76,7 @@ assert.match(runtime.PREFLIGHT_SQL, /role_membership_isolated/);
 assert.match(runtime.PREFLIGHT_SQL, /reader_group_has_no_parent_roles/);
 assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_owner_select/);
 assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_own_membership_select/);
+assert.match(runtime.PREFLIGHT_SQL, /policyname NOT IN/);
 assert.match(runtime.PREFLIGHT_SQL, /'public' = ANY\\(roles\\)/);
 assert.match(runtime.PREFLIGHT_SQL, /relforcerowsecurity = true/);
 assert.match(runtime.PREFLIGHT_SQL, /has_table_privilege/);
