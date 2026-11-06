@@ -213,3 +213,29 @@ A separate, already-open remediation branch exists and should be evaluated rathe
 - Correction commits: `a10318c24821da4edd390e37240e775f8a60a41b`, `9a1506e92a1e4a54f27b998c5937d64ddf175211`, `15f997388020855be81417debec57fb308b5e149`.
 - New validation runs were queued for the corrected head; no PASS claim is made until the corrected full run completes.
 - The direct `archiver` dependency remains present but is not imported by the reviewed production deliverable builder. Removal is a separate dependency-manifest change and has not been performed.
+
+## 12. Axios production reachability inventory and successful focused CI — 2026-11-06
+
+### Static outbound sink inventory
+- Reviewed `tests/stage19-outbound-sink-coverage-test.js`. It recursively scans JavaScript under `services`, `routes`, `tools`, `providers`, and `scripts` for direct HTTP(S), Axios, fetch, WebSocket, net and TLS sinks.
+- Its reviewed sink allowlist is exactly `services/security/secure-provider-request.js` and `scripts/mira-doctor.js`. The test explicitly labels this a static inventory, not complete runtime coverage proof.
+- The only direct Axios sink found by that inventory is `services/security/secure-provider-request.js`. Its `axios.request()` call sets `maxRedirects: 0`, disables proxy use, uses a pinned DNS lookup and enables TLS certificate verification. Therefore the current shared provider-request wrapper does not automatically follow redirects.
+- The inspected provider call paths for Anthropic and xAI import this shared wrapper; the existing outbound call-site contract test also checks web-search, OpenRouter, DeepSeek and Hugging Face wrappers. The outbound sink inventory test is now included in the dependency remediation workflow.
+- This reduces the known production reachability of follow-redirects redirect credential advisories: the shared Axios wrapper rejects redirect responses rather than following them. The new direct library/Axios regression remains useful to verify patched dependency behavior if a future caller enables redirects, but it is not evidence that the production wrapper follows redirects.
+
+### Corrected dependency CI evidence
+- Corrected head before the final inventory gate: `15f997388020855be81417debec57fb308b5e149`.
+- GitHub Actions push run `42247400503`: SUCCESS.
+- GitHub Actions pull_request run `42247408824`: SUCCESS.
+- Both runs completed locked dependency install, full configured `npm test`, direct readdir-glob/minimatch regression, Axios/follow-redirects redirect regression, report-only npm audit and evidence artifact upload.
+- The job logs for run `42247400503` explicitly show:
+  - `READDIR_GLOB_MINIMATCH_COMPATIBILITY=PASS`
+  - array-form Authorization/Cookie stripped; benign header preserved
+  - cross-realm `sensitiveHeaders` strips custom credential
+  - Axios cross-origin redirect strips Authorization/Cookie
+  - `DEPENDENCY_REDIRECT_SECURITY=PASS`
+  - `SHEETJS_CDN_PIN=PASS`
+  - npm audit: 0 critical, 0 high, 0 moderate, 0 low, 0 info; exit code 0.
+- Follow-up commit `8fca13e37569089d183e0befbe8eb06af3b27d26` adds the repository-wide outbound sink inventory test to the focused CI step. Its CI run is pending; do not attribute the above green result to this newer commit until its run completes.
+
+**Status:** prior corrected CI head PASS; latest added sink-inventory gate pending. PR #69 and PR #71 remain Draft/open/unmerged; no Render deployment or production change.
