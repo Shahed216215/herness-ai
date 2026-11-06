@@ -13,10 +13,10 @@ const hostDeclaration = source.match(/^const HOST = (.+);$/m);
 assert.ok(hostDeclaration, "server.js must declare HOST");
 
 const expression = hostDeclaration[1];
-assert.match(expression, /process\\.env\\.HOST/, "explicit HOST override must be supported");
+assert.match(expression, /process\.env\.HOST/, "explicit HOST override must be supported");
 assert.match(
   expression,
-  /process\\.env\\.RENDER\\s*\\?\\s*"0\\.0\\.0\\.0"\\s*:\\s*"127\\.0\\.0\\.1"/,
+  /process\.env\.RENDER\s*\?\s*"0\.0\.0\.0"\s*:\s*"127\.0\.0\.1"/,
   "Render must bind publicly while local default remains loopback-only"
 );
 
