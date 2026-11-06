@@ -11,6 +11,7 @@ const session = require("express-session");
 const { generate } = require("./services/ai");
 const { selectRecentMessages } = require("./services/mira-request-context");
 const { executeWork } = require("./services/mira-work-execution-engine");
+const { buildTrustedActorContext } = require("./services/mira-hfm-runtime-identity-context");
 const { startAutonomousWorker } = require("./services/mira-autonomous-worker");
 const { declarations, tools } = require("./tools");
 const firewallDefense = require("./firewall-defense");
@@ -1797,7 +1798,8 @@ app.post(
                     }
                   ],
                   persist: false,
-                  permissionGranted: true
+                  permissionGranted: true,
+                  trustedContext: buildTrustedActorContext(req)
                 }
               );
 
