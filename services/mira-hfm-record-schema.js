@@ -125,6 +125,14 @@ function validateCanonicalRecord(record) {
     if (typeof record.version.contentHash !== 'string' ||
         !/^[a-f0-9]{64}$/i.test(record.version.contentHash)) {
       errors.push('record.version.contentHash.invalid');
+    } else if (typeof record.content === 'string') {
+      try {
+        if (record.version.contentHash !== createContentHash(record.content)) {
+          errors.push('record.version.contentHash.mismatch');
+        }
+      } catch (_error) {
+        errors.push('record.version.contentHash.content_invalid');
+      }
     }
   }
 
@@ -192,7 +200,13 @@ function createContentHash(content) {
   if (typeof content !== 'string') {
     throw new TypeError('HFM_CONTENT_STRING_REQUIRED');
   }
-  return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+  if (!isWellFormedUnicode(content)) {
+    throw new TypeError('HFM_CONTENT_UNICODE_INVALID');
+  }
+  // RFC 8785 JCS serialization of a JSON string is its JSON string literal.
+  // The hash covers UTF-8(JCS(content)), not the unquoted raw string bytes.
+  const canonical = JSON.stringify(content);
+  return crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
 }
 
 module.exports = Object.freeze({
