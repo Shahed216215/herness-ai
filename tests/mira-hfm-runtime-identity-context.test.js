@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const { buildTrustedActorContext } = require("../services/mira-hfm-runtime-identity-context");
 
 const registered = buildTrustedActorContext({
@@ -50,4 +52,26 @@ assert.equal(context.actor.actorId, "trusted-user-001");
 assert.equal(Object.hasOwn(context.actor, "projectId"), false);
 assert.equal(untrustedModelArgs.actorId, "attacker-controlled");
 console.log("MODEL_ARGUMENTS_CANNOT_OVERRIDE_TRUSTED_ACTOR=PASS");
+
+const readSource = relativePath => fs.readFileSync(
+  path.join(__dirname, "..", relativePath),
+  "utf8"
+);
+assert.match(
+  readSource("server.js"),
+  /trustedContext:\s*buildTrustedActorContext\(req\)/
+);
+assert.match(
+  readSource("services/mira-work-execution-engine.js"),
+  /options\.trustedContext\s*\|\|\s*null/
+);
+assert.match(
+  readSource("services/tool-runner.js"),
+  /executeTool\(name, args, trustedContext\)/
+);
+assert.match(
+  readSource("tools/index.js"),
+  /tools\[name\]\.execute\(args, trustedContext\)/
+);
+console.log("TRUSTED_CONTEXT_SERVER_TO_TOOL_DISPATCH_WIRING=PASS");
 console.log("TESTS_FAILED=0");
