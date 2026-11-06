@@ -62,6 +62,8 @@ function main() {
   assert.match(report.markdown, /SEO Research Report/);
   assert.match(report.markdown, /Competitor audit service/);
   assert.match(report.markdown, /seo audit service/);
+  assert.match(report.markdown, /Search Console performance/);
+  assert.match(report.markdown, /800/);
   assert.match(report.markdown, /call Google APIs/);
   const offlineOnly = createReport({ siteName: "Audit only" });
   assert.equal(offlineOnly.success, true);
