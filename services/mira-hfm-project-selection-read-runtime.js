@@ -6,6 +6,7 @@ const { buildTrustedActorContext } = require("./mira-hfm-runtime-identity-contex
 const ENABLED_ENV = "MIRA_HFM_PROJECT_READ_ENABLED";
 const URL_ENV = "MIRA_HFM_PROJECT_READ_DATABASE_URL";
 const ROLE_ENV = "MIRA_HFM_PROJECT_READ_ROLE";
+const EXPECTED_READ_GROUP = "mira_hfm_project_reader";
 const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/;
 const ACTOR_ID_PATTERN = /^mira:[A-Za-z0-9._:-]{3,512}$/;
 
@@ -41,6 +42,7 @@ function getProjectReadConfig(env = process.env) {
 const PREFLIGHT_SQL = [
   "SELECT current_user AS current_role, current_database() AS database_name,",
   "r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls, r.rolcanlogin AS can_login,",
+  "pg_has_role(current_user, $1, 'MEMBER') AS has_project_reader_group,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
@@ -56,13 +58,15 @@ const PREFLIGHT_SQL = [
   "(SELECT count(*) = 2 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace",
   "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships')",
   "AND c.relrowsecurity = true AND c.relforcerowsecurity = true) AS project_rls_forced,",
-  "(SELECT count(DISTINCT tablename) = 2 FROM pg_policies",
-  "WHERE schemaname = 'mira_hfm' AND tablename IN ('project_owners','project_memberships')) AS project_policies_present",
+  "(EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'project_owners'",
+  "AND cmd = 'SELECT' AND $1 = ANY(roles) AND qual ILIKE '%mira.project_id%')",
+  "AND (EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'project_memberships'",
+  "AND cmd = 'SELECT' AND $1 = ANY(roles) AND qual ILIKE '%mira.project_id%' AND qual ILIKE '%mira.actor_id%')) AS project_policies_present",
   "FROM pg_roles r WHERE r.rolname = current_user"
 ].join(" ");
 
 const REQUIRED_TRUE = Object.freeze([
-  "can_login", "schema_usage", "owners_select", "memberships_select",
+  "can_login", "has_project_reader_group", "schema_usage", "owners_select", "memberships_select",
   "project_rls_forced", "project_policies_present"
 ]);
 const REQUIRED_FALSE = Object.freeze([
@@ -110,7 +114,7 @@ async function createProjectSelectionReadRuntime(options = {}) {
   let ready = false;
   try {
     client = await pool.connect();
-    const result = await client.query(PREFLIGHT_SQL);
+    const result = await client.query(PREFLIGHT_SQL, [EXPECTED_READ_GROUP]);
     const report = verifyProjectReadPreflight(result.rows && result.rows[0], config);
     ready = true;
     return Object.freeze({ ...report, pool });
@@ -198,6 +202,7 @@ module.exports = Object.freeze({
   ENABLED_ENV,
   URL_ENV,
   ROLE_ENV,
+  EXPECTED_READ_GROUP,
   PREFLIGHT_SQL,
   getProjectReadConfig,
   verifyProjectReadPreflight,
