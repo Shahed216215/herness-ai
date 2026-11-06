@@ -41,3 +41,6 @@ jobs:
 
       - name: Run isolated execution-engine integration regression
         run: node tests/tool-health-authorization-engine-integration.test.js
+
+      - name: Run isolated full Run Agent HTTP authorization regression
+        run: node tests/run-agent-http-authorization-integration.test.js
