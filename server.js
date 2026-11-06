@@ -7,6 +7,7 @@ const express = require("express");
 const { listProjects: listProjectsForSixMenu } = require("./project-store");
 const rejectUnsupportedUploads = require("./services/security/reject-unsupported-uploads");
 const session = require("express-session");
+const { SupabaseRestSessionStore } = require("./services/mira-supabase-session-store");
 
 const { generate } = require("./services/ai");
 const { selectRecentMessages } = require("./services/mira-request-context");
@@ -166,8 +167,13 @@ app.use(
 // payloads are rejected as well as multipart uploads.
 app.use(rejectUnsupportedUploads);
 
+const miraSessionStore = IS_PRODUCTION
+  ? new SupabaseRestSessionStore()
+  : undefined;
+
 app.use(
   session({
+    ...(miraSessionStore ? { store: miraSessionStore } : {}),
     secret: process.env.MIRA_SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
