@@ -65,6 +65,27 @@ async function main() {
   registerRoutes(app,()=>((req,res,next)=>next()),{SYSTEM_ADMIN:'system_admin'},
     {proposalStore:{},auditWriter:async()=>{},bridge});
   assert.equal(typeof app.locals.miraHfmLearningGenerationCycle.stage, 'function');
+  const writeGuard = registered[0][2].middleware[0];
+  const guardResponse = responseRecorder();
+  let guardPassed = false;
+  writeGuard({method:'POST',protocol:'https',headers:{host:'mira.example.com',
+    origin:'https://evil.example','sec-fetch-site':'cross-site'}},
+    guardResponse,()=>{guardPassed=true;});
+  assert.equal(guardPassed,false);
+  assert.equal(guardResponse.statusCode,403);
+  assert.equal(guardResponse.body.code,'HFM_LEARNING_CSRF_ORIGIN_REJECTED');
+  const missingOriginResponse = responseRecorder();
+  writeGuard({method:'POST',protocol:'https',headers:{host:'mira.example.com'}},
+    missingOriginResponse,()=>{guardPassed=true;});
+  assert.equal(missingOriginResponse.statusCode,403);
+  const sameOriginResponse = responseRecorder();
+  writeGuard({method:'POST',protocol:'https',headers:{host:'mira.example.com',
+    origin:'https://mira.example.com','sec-fetch-site':'same-origin'}},
+    sameOriginResponse,()=>{guardPassed=true;});
+  assert.equal(guardPassed,true);
+  console.log('HFM_PHASE8_CSRF_CROSS_ORIGIN_POST_BLOCKED=PASS');
+  console.log('HFM_PHASE8_CSRF_MISSING_ORIGIN_POST_BLOCKED=PASS');
+  console.log('HFM_PHASE8_CSRF_SAME_ORIGIN_POST_ALLOWED=PASS');
   const statusLayer = registered[0][2].stack.find(item => item.route &&
     item.route.path === '/status' && item.route.methods.get);
   assert.ok(statusLayer, 'HFM status GET route must be registered');
