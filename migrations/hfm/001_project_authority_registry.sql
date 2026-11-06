@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS mira_hfm.project_memberships (
   revoked_at TIMESTAMPTZ,
   CHECK (expires_at IS NULL OR expires_at > valid_from),
   CHECK (
-    (status = 'REVOKED' AND revoked_by_actor_id LIKE 'mira:%' AND revoked_at IS NOT NULL)
+    (status = 'REVOKED' AND revoked_by_actor_id IS NOT NULL AND revoked_by_actor_id LIKE 'mira:%' AND revoked_at IS NOT NULL)
     OR
     (status <> 'REVOKED' AND revoked_by_actor_id IS NULL AND revoked_at IS NULL)
   ),
