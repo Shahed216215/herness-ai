@@ -23,6 +23,7 @@ on:
       - 'server.js'
       - 'tests/mira-gemini-conversation-adapter.test.js'
       - 'tests/mira-agent-runner-integration.test.js'
+      - 'tests/mira-gemini-provider-offline.test.js'
       - '.github/workflows/mira-agent-runner-conversation.yml'
 
 permissions:
