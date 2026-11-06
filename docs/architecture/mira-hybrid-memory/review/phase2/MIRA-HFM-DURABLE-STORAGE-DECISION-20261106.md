@@ -23,7 +23,7 @@ Sources:
 ## Why not Render Free Postgres or Supabase Free as the first choice
 
 - Render Free web services have ephemeral local filesystems. Render Free Postgres is limited to 1 GB and expires 30 days after creation; Render says Free instances are intended for testing/hobby use, not production. https://render.com/docs/free
-- Supabase Free provides 500 MB database storage and may pause a project after seven days of low activity. Free plan does not include automatic daily database backups. https://supabase.com/docs/guides/platform/billing-on-supabase https://supabase.com/docs/guides/platform/free-project-pausing https://supabase.com/docs/guides/platform/backup-restore/backup-faq
+- Supabase Free provides 500 MB database storage and may pause a project after seven days of low activity. Free plan does not include automatic daily database backups. https://supabase.com/docs/guides/platform/billing-on-supabase https://supabase.com/docs/guides/platform/free-project-pausing https://supabase.com/docs/guides/platform/free-plan-backups
 
 Neon is preferred here because its compute scales to zero without deleting the database, has more included storage for this metadata workload, and publishes an instant-restore window. This does not remove the need for independent logical backups.
 
@@ -83,3 +83,14 @@ No existing project owner is imported or inferred by this migration.
 - Production credentials/settings changed: **NO**
 - Deployment: **NOT PERFORMED**
 - Production HFM readiness: **NOT_CERTIFIED**
+
+
+## Source-contract CI evidence
+
+Latest candidate commit: `786e106e717223d6d786502d474a4ec29f3a190f1`
+
+GitHub Actions run #60 (`42166978595`):
+- `identity-context`: **PASS**, including the project-authority schema source-contract test.
+- `repository-regression`: **PASS**, including the new schema source-contract test at the start of `npm test`.
+
+This CI validates source-level invariants only. It does **not** parse or execute the PostgreSQL migration against a live database, prove runtime database privileges, or establish a Neon account/project. SQL execution and integration tests remain **NOT_PERFORMED**.
