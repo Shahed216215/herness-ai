@@ -135,3 +135,9 @@ No session store package, schema, or runtime behavior was changed in this planni
 - SheetJS ReDoS advisory: https://github.com/advisories/GHSA-5pgg-2g8v-p4x9
 
 **Overall pre-deploy status: REVIEW_REQUIRED.** CI regression checks are green, but dependency vulnerabilities and session persistence are unresolved. This plan is not a deployment approval.
+
+
+## 9. Additional lockfile parent-chain evidence
+- `follow-redirects@1.16.0` is a dependency of the direct package `axios@1.20.0` (lockfile range `^1.16.0`). This narrows the remediation path: inspect Axios redirect/header usage and its provider/client wrappers before changing the transitive resolution.
+- The application-wide parser finding is independently grounded in the global `express.json()` middleware in `server.js`, while the lockfile resolves `body-parser@2.3.0`.
+- Spreadsheet runtime call-site inventory remains incomplete. The direct `xlsx` dependency is confirmed, but do not claim it is unused or safe until all source references and feature paths are traced.
