@@ -42,7 +42,7 @@ function getProjectReadConfig(env = process.env) {
 const PREFLIGHT_SQL = [
   "SELECT current_user AS current_role, current_database() AS database_name,",
   "r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls, r.rolcanlogin AS can_login,",
-  "pg_has_role(current_user, $1, 'MEMBER') AS has_project_reader_group,",
+  "pg_has_role(current_user, $1, 'USAGE') AS has_project_reader_group,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
