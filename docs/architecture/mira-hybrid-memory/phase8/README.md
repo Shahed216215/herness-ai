@@ -117,3 +117,10 @@ The `/api/agent` route only stages a proposal when all gates are satisfied:
 6. The `mira_hfm_public_web_retrieval` tool must have executed and returned a valid untrusted evidence report during the same `/api/agent` request.
 
 The API response includes `learningProposalHandoff` when the caller opted in. Otherwise it remains `null`. The handoff is disabled by default; a disabled/missing bridge, non-admin, missing metadata, missing retrieval result or invalid project binding fails closed. The existing `/api/admin/mira-hfm-learning-evolution/proposals/from-public-retrieval` route remains available as a separate explicit admin workflow. This live route integration has only offline contract tests so far; it has not been deployed or exercised against a live AI provider, Supabase or Render.
+
+
+## Same-origin / CSRF write protection — 2026-11-06
+
+All Phase 8 router POST endpoints are protected by the shared same-origin write guard before their route handlers. The guard requires a parseable Origin or Referer, rejects missing/malformed/mismatched origins and cross-site Fetch Metadata, and accepts only the exact request origin or exact additional origins listed in MIRA_HFM_LEARNING_ALLOWED_ORIGINS. GET requests remain unchanged.
+
+Offline regression tests cover same-origin allow and cross-origin/missing-origin deny behavior. Production custom-domain topology and independent security re-review remain REVIEW_REQUIRED. No Render environment setting was changed.
