@@ -89,7 +89,7 @@ async function main() {
   assert.strictEqual(report.networkAccess, false);
   assert.match(report.markdown, /SEO Research Report/);
   assert.match(report.markdown, /CANDIDATE_GAP/);
-  assert.match(report.markdown, /not proof/i);
+  assert.match(report.markdown, /not confirmed missing content/i);
   assert.match(report.markdown, /No search volume/);
   assert.strictEqual(report.sections.contentGapKeywords, 3);
 
