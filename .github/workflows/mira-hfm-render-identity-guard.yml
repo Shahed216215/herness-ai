@@ -31,6 +31,8 @@ jobs:
         run: node tests/mira-memory-host-identity-contract.test.js
       - name: Run fail-closed identity and dispatch tests
         run: node tests/mira-hfm-runtime-identity-context.test.js
+      - name: Run project authority schema source contract test
+        run: node tests/mira-hfm-project-authority-schema-contract.test.js
 
   repository-regression:
     runs-on: ubuntu-latest
