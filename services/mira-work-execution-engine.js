@@ -1216,7 +1216,8 @@ async function executeWork(
       toolResult =
         await runTool(
           call.name,
-          call.args
+          call.args,
+          options.trustedContext || null
         );
     } catch (error) {
       const failure =
