@@ -54,6 +54,9 @@ assert.equal(
 );
 assert.equal(report.queryReports[0].ownDomainVisible, true);
 assert.equal(report.queryReports[1].ownDomainVisible, false);
+assert.equal(report.queryReports[0].sources.length, 3);
+assert.equal(report.queryReports[0].sources[0].title, "Alpha PM");
+assert.equal(report.queryReports[0].sources[0].url, "https://alpha.example/products");
 assert.equal(report.candidateOpportunities[1].candidateOpportunity, true);
 const mismatchedDomain = analyzeCompetitorSearches([{
   query: "sample",
