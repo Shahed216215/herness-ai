@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const { createContentHash, validateCanonicalRecord } = require('./mira-hfm-record-schema');
+const { createMemoryRecord } = require('./mira-hfm-memory-repository');
 
 const MAX_SOURCE_RECORDS = 500;
 const MAX_ITEM_CHARS = 700;
@@ -116,7 +117,8 @@ function buildDailyKnowledgePost(options = {}) {
   lines.push('প্রকাশের আগে ব্যক্তিগত, ক্লায়েন্ট ও আর্থিক তথ্য যাচাই করে নিন।');
   lines.push('#DailyProgress #Learning');
   const content = lines.join('\n').slice(0, MAX_POST_CHARS);
-  const memoryId = 'daily-post-' + crypto.randomUUID();
+  const stableId = crypto.createHash('sha256').update(projectId + ':' + localDate, 'utf8').digest('hex').slice(0, 32);
+  const memoryId = 'daily-post-' + stableId;
   const record = {
     schemaVersion: '1.1.0',
     memoryId,
@@ -153,8 +155,24 @@ function buildDailyKnowledgePost(options = {}) {
   });
 }
 
+async function saveDailyKnowledgePost(options = {}) {
+  const generated = buildDailyKnowledgePost(options);
+  if (generated.status !== 'DRAFT_READY') return generated;
+  if (options.allowPrivateWrite !== true) throw fail('HFM_DAILY_POST_PRIVATE_WRITE_NOT_GRANTED');
+  const saved = await createMemoryRecord({
+    client: options.client,
+    context: options.context,
+    record: generated.draft,
+    idempotencyKey: generated.idempotencyKey,
+    allowPrivateWrite: true,
+    env: options.env || process.env
+  });
+  return Object.freeze({ ...generated, saved });
+}
+
 module.exports = Object.freeze({
   buildDailyKnowledgePost,
+  saveDailyKnowledgePost,
   dateInTimeZone,
   redactObviousSensitiveText
 });
