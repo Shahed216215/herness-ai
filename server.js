@@ -1658,7 +1658,9 @@ app.post(
             functionCall,
             tools,
             role: req.role,
-            session: req.session
+            session: req.session,
+            explicitReviewConfirmation: req.body &&
+              req.body.confirmSeoWorkflowReviewDecision === true
           });
 
           if (!toolAuthorization.allowed) {
