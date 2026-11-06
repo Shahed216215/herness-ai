@@ -1,0 +1,171 @@
+MIRA HYBRID MEMORY — PHASE 2
+DOMAIN IDENTITY & PROJECT-SCOPE CONTRACT
+Document ID: MIRA-HFM-CAGR-001-PHASE2-DOMAIN-IDENTITY-CONTRACT-20261104
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Parent evidence: Phase 2 targeted callsite audit dated 2026-11-04
+Version boundary: v0.2
+Status: IMPLEMENTATION CONTRACT PROPOSAL — NOT A PRODUCTION MIGRATION AUTHORIZATION
+
+1. PURPOSE AND NON-GOALS
+This contract defines identity, scope, revision and provenance rules for three distinct data domains:
+A. General legacy Memory (memory.js / mira-local-memory-store).
+B. Legacy Knowledge (knowledge.js / knowledge.json).
+C. Structured CRM Conversation messages and context (conversation-store.js / conversation-schema.js).
+
+The domains MUST NOT be collapsed into one inferred identity namespace. The read-only legacy adapter is a compatibility proof only. This document does not authorize production migration, project reassignment, Drive cutover, publication, or runtime feature activation.
+
+2. OBSERVED SCHEMAS (SOURCE FACTS)
+2.1 General legacy Memory
+memory.js creates/appends legacy message objects with role, content and time. The inspected legacy object does not require immutable messageId, projectId, revision, source provenance, access classification or per-record integrity/trust state.
+Decision: no safe canonical identity or project scope can be inferred from this object.
+
+2.2 Legacy Knowledge
+knowledge.js creates Knowledge IDs using createKnowledgeId() and updateKnowledge() preserves the existing ID. The current ID is content-derived at creation; projectId, canonical revision, canonical hash, access, trust and integrity are not universally required by the inspected CRUD paths.
+Decision: legacy id is a legacy locator, not by itself a canonical immutable memoryId or revision history.
+
+2.3 CRM Conversation
+conversation-schema.js creates structured messages with messageId, conversationId, clientId, participant, direction, status, content, source, externalMessageId, createdAt and updatedAt. The messageId is generated if absent by createConversationMessage().
+Decision: structured CRM messageId is stable within the CRM store only when persisted and preserved; it does not establish HFM projectId. conversationId/clientId/opportunityId/proposalId MUST NOT be silently equated with projectId.
+
+3. DOMAIN CONTRACTS
+3.1 General legacy Memory — LEGACY_GENERAL_MEMORY
+Required identity:
+- sourceSystem = "mira_legacy_memory"
+- legacyId = explicit immutable sidecar ID assigned by a separately approved migration registry.
+- canonical memoryId = generated/assigned by a versioned migration manifest, unique and immutable.
+- projectId = explicit authoritative mapping from an approved project registry. No default project, path-derived project, user-wide implicit project, or content-derived scope.
+- revision = 1 only for a captured immutable source snapshot; subsequent revisions require explicit append-only version events.
+- sourceDigest = SHA-256 of the exact parsed legacy object under the adapter's documented deterministic serialization; migration manifest also stores raw file digest and record ordinal to disambiguate byte-level source.
+- source content must preserve role, content and time exactly. No normalization may alter source values.
+If any required identity/scope value is absent or ambiguous: reject adaptation; keep original legacy record unchanged and mark migration candidate BLOCKED.
+
+3.2 Knowledge — LEGACY_KNOWLEDGE
+Required identity:
+- sourceSystem = "mira_legacy_knowledge"
+- legacyId = exact existing Knowledge id (e.g. kb_...); preserve it permanently as an alias.
+- canonical memoryId = separate immutable ID allocated by the migration manifest. Never derive it from mutable title/topic/url/content.
+- projectId = explicit authoritative project registry mapping; no global default and no guess from topic, folder, client, URL or metadata.
+- revision = canonical revision 1 for the first immutable captured source snapshot. This is a migration baseline, not a claim that the legacy record had a historical revision. Any known historical versions must be preserved separately with evidence; do not fabricate revisions.
+- sourceDigest = SHA-256 of the exact source record; raw knowledge.json digest and source array ordinal recorded in the manifest.
+- updateKnowledge() updates become new canonical revisions only after the writer boundary is instrumented and old version preserved; until then canonical adapter must be read-only.
+If an id is absent, duplicated, mutable, or source digest mismatches: reject and retain legacy record untouched.
+
+3.3 CRM Conversation message — CRM_CONVERSATION_MESSAGE
+Required identity:
+- sourceSystem = "mira_crm_conversation"
+- legacyId = persisted messageId from conversation-store, not an ephemeral newly generated value from a read.
+- canonical memoryId = separate immutable HFM ID in an explicit sidecar mapping.
+- conversationId must match the containing conversation.
+- projectId = explicit conversation-to-project mapping from an approved registry. clientId, opportunityId, proposalId and conversationId are correlation attributes, not project authority.
+- revision = 1 for immutable message content. If message edits are supported, every edit must create a new immutable revision with previous digest preserved.
+- sourceDigest = digest of exact stored message record plus parent conversation identity reference.
+If conversation-to-project mapping is unavailable or ambiguous: the message remains in CRM storage but is not admitted into project-scoped HFM retrieval.
+
+4. CANONICAL RECORD MAPPING
+The canonical record must pass validateCanonicalMemoryRecord() as currently implemented. Domain mapping:
+- record.projectId = approved mapping only.
+- record.memoryId = manifest allocation, never inferred from content.
+- record.source.sourceType = "legacy_import" for all three imported domains unless the schema is deliberately extended under a separate versioned change.
+- record.source.sourceId = exact legacyId.
+- record.content = deterministic domain-specific serialization preserving all source fields, rather than content-only truncation. A domain payload envelope is required so role/time or Knowledge metadata or CRM message metadata is not lost.
+- record.version.revision = approved migration baseline revision.
+- record.integrity.status = UNVERIFIED until independent digest/readback verification; never mark VERIFIED merely because schema validation passed.
+- record.trust.status = SOURCE_RECORDED at most, unless a distinct trust evidence process establishes a higher state.
+- record.access.classification must be explicitly mapped from an approved data-classification registry; missing classification fails closed.
+- record.lifecycle.status = PENDING_REVIEW during migration; only governed promotion can set ACTIVE.
+
+IMPORTANT: Current adapter implementation compares canonicalRecord.content directly with entry.content. That is compatible only with a narrow content-only payload and does not preserve all three observed domain schemas. It must not be used as the final domain mapper without a reviewed, versioned payload envelope change and new tests.
+
+5. MAPPING MANIFEST CONTRACT
+A future migration manifest is append-only and immutable per source snapshot. Each entry must contain:
+manifestSchemaVersion, domain, sourceSystem, sourceFileDigest, sourceOrdinal, legacyId, canonicalMemoryId, projectId, revision, sourceDigest, canonicalRecordDigest, classification, migrationStatus, createdAt, createdBy, approvalReference, verificationEvidence.
+- No wildcard project mapping.
+- No duplicate legacyId within a domain/source snapshot.
+- No duplicate canonicalMemoryId.
+- No many-to-one mapping unless an explicit merge resolution record exists and all originals are retained.
+- A source file change invalidates the prior manifest's sourceFileDigest and requires a new review; it must not silently update mappings.
+- Approval references are mandatory before a manifest can be used for production writes.
+- The manifest must not contain secrets or raw client credentials.
+
+6. RETRIEVAL AND WRITE ENFORCEMENT RULES
+- Reads: quarantine filter must run before ranking, search snippets, context assembly, count, list, export or API response.
+- Writes: validate scope, immutable identity, monotonic revision, source provenance, canonical hash and conflict arbitration before persistence.
+- Drive results: normalize to the same domain contract and apply the same project/quarantine guard before search; local-only filtering is insufficient.
+- Evolution/controlled apply: use the same write gate; bypassing the canonical writer is prohibited.
+- Backups: preserve original quarantined records and forensic evidence; normal user exports must exclude quarantined/untrusted records by default.
+- Restore: validate snapshot, scope and conflicts before replacing state; no restore is authorized by this contract.
+- CRM messages remain CRM data unless explicitly promoted through an approved project mapping and access policy.
+
+7. FAIL-CLOSED CONDITIONS
+Reject adaptation and do not write when:
+- authoritative project mapping absent/ambiguous;
+- legacy identity missing/duplicate or not immutable;
+- source digest mismatch;
+- canonical memoryId collision;
+- canonical record validation failure;
+- access classification absent;
+- source file changed after manifest creation;
+- revision rollback or ambiguous revision ordering;
+- conflict registry unavailable or unverified;
+- audit writer unavailable for a governed mutation;
+- project boundary mismatch;
+- Drive/provider payload cannot prove source identity and project scope.
+
+8. IMPLEMENTATION PLAN
+I. Keep existing adapter isolated and read-only.
+II. Add domain-specific serialization and contract tests using synthetic fixtures only.
+III. Build a manifest validator and dry-run planner that emits BLOCKED/READY candidates but cannot write production data.
+IV. Add a complete caller registry for all routes, tools, services, Drive, Evolution, backup/restore, export, caches and workers.
+V. Integrate policy-aware read/write gates in isolated fixture-backed branches, one domain at a time.
+VI. Run full regression and independent bypass tests.
+VII. Only after documented identity/classification approval, prepare a separate migration proposal and rollback plan. Production migration and provider cutover require their own explicit authorization.
+
+9. ACCEPTANCE CRITERIA
+- All three domains have separate schema/identity adapters.
+- No identity or projectId is inferred from content or unrelated IDs.
+- Source fields are losslessly preserved in canonical payloads.
+- Manifest is deterministic, immutable, duplicate-safe and digest-bound.
+- Quarantined records are excluded from every registered retrieval surface.
+- Every registered write path rejects unapproved project scope and unresolved conflict.
+- Drive retrieval and writes cannot bypass the policy.
+- Backup/restore and Evolution cannot reintroduce quarantined records into active retrieval.
+- Tests prove positive and negative cases with synthetic fixtures.
+- Production data remains unchanged until a separately approved migration.
+
+10. CURRENT READINESS
+GENERAL_MEMORY_IMMUTABLE_ID=ABSENT_IN_LEGACY_SCHEMA
+GENERAL_MEMORY_PROJECT_SCOPE=NOT_ESTABLISHED
+KNOWLEDGE_LEGACY_ID=PRESENT_BUT_CONTENT_DERIVED
+KNOWLEDGE_PROJECT_SCOPE=NOT_UNIVERSAL
+KNOWLEDGE_HISTORICAL_REVISION=NOT_ESTABLISHED
+CRM_MESSAGE_ID=PRESENT_IN_STRUCTURED_STORE
+CRM_PROJECT_MAPPING=NOT_ESTABLISHED
+CURRENT_ADAPTER=READ_ONLY_NARROW_COMPATIBILITY_PROTOTYPE
+DOMAIN_COMPLETE_SERIALIZATION=NOT_IMPLEMENTED
+MANIFEST_VALIDATOR=NOT_IMPLEMENTED
+PRODUCTION_MIGRATION=NOT_AUTHORIZED
+RUNTIME_INTEGRATION=NOT_AUTHORIZED_BY_THIS_DOCUMENT
+VERSION=v0.2
+PHASE2=IN_PROGRESS
+
+END OF CONTRACT
+
+
+11. IMPLEMENTATION REFINEMENT — GENERAL MEMORY SIDE-CAR IDENTITY
+The existing general Memory record is {role, content, time} and does not carry an immutable per-record ID. The isolated planner and adapter now support a read-only sidecar locator:
+legacyId = "legacy-memory:" + sourceFileDigest + ":" + sourceOrdinal
+This locator is bound to the exact raw JSON source snapshot SHA-256 and stable array ordinal. It is not a content-derived identity and does not modify the legacy record. Any source-file change invalidates the mapping. Canonical memoryId remains a separately allocated immutable ID. The adapter preserves the complete source object in the canonical payload, not only the content string.
+
+12. IMPLEMENTATION REFINEMENT — CRM PROJECT MAPPING
+A direct schema relationship review found that conversation has opportunityId but no projectId; Project has opportunityId but project-store does not enforce uniqueness of opportunityId; Opportunity and Work Acceptance schemas do not expose an authoritative clientId relation for validating the conversation's clientId. Therefore opportunityId-only joins are not sufficient project authority.
+The CRM adapter and dry-run planner now require a separately approved conversationId -> projectId mapping with matching conversationId, projectId, mappingStatus="APPROVED", and a non-empty approvalReference. Missing or mismatched mapping fails closed.
+
+13. RETRIEVAL POLICY REFINEMENT
+Project-scoped trusted retrieval now requires all of:
+- record.projectId exactly matches requested projectId;
+- lifecycle is ACTIVE;
+- integrity.status is VERIFIED;
+- trust.status is one of SOURCE_RECORDED, SOURCE_REACHABLE, CONTENT_VERIFIED, HUMAN_VERIFIED;
+- record is not blocked by a project-scoped conflict state.
+Pending-review migration candidates, unverified/integrity-failed records, quarantined trust states, missing trust state and cross-project records are excluded.

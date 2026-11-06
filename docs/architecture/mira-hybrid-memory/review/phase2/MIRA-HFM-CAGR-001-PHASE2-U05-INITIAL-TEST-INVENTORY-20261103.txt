@@ -1,0 +1,72 @@
+MIRA HYBRID MEMORY — U05 INITIAL TEST SUITE INVENTORY AND PROPOSED CANONICAL IDs
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-U05-INITIAL-TEST-INVENTORY-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-U05-CANONICAL-TEST-REGISTRY-SPEC-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: READ-ONLY INVENTORY — PROPOSED IDs, NOT A LIVE REGISTRY
+
+1. PURPOSE AND LIMITS
+
+This inventory records the eight isolated Phase 2 test suites currently invoked by the Phase 2 CI workflow. It proposes stable canonical suite IDs to seed the U05 registry after owner review. It does not create a runtime registry, alter test semantics, convert historical test names into aliases, or assert that every individual assertion has its own canonical ID.
+
+The IDs below are proposals only. They are not yet frozen or registered. A future approved registry may split a suite into multiple requirement-level tests.
+
+2. INVENTORY
+
+| Proposed canonical ID | Current suite path | Current source blob SHA | Scope |
+| MIRA-HFM-TST-STATE-0001 | tests/mira-hfm-phase2-core-safety.test.js | 00daee8f2c16d911b1fc498d68a337e13cf75dd3 | Core state-store safety and recovery boundaries |
+| MIRA-HFM-TST-KNOWLEDGE-0001 | tests/mira-knowledge-state-safety-test.js | 04cc412199baa8f313eb723f481682b3b6424de1 | Knowledge state safety |
+| MIRA-HFM-TST-RECOVERY-0001 | tests/mira-phase2-recovery-regression.test.js | cc6d0f5f9bd6acc38c6b4eb1d480b58a0d28bee9 | Backup, restore, corruption, version recovery, capacity eviction quarantine |
+| MIRA-HFM-TST-MEMORY-0001 | tests/mira-local-memory-safety-test.js | c211e85c54d5d69e5f74445e468b14e71aeb5c7f | Local Memory safety |
+| MIRA-HFM-TST-STORE-0001 | tests/mira-memory-local-store-contract-test.js | 4c818e49465e4e621d763f5be397daffad75541b | Local store contract |
+| MIRA-HFM-TST-EVOLUTION-0001 | tests/mira-memory-evolution-integration-test.js | 266e228bf631a86481de14e9b886e81c2f23ab44 | Evolution integration and fail-closed audit behavior |
+| MIRA-HFM-TST-CONFLICT-0001 | tests/mira-memory-conflict-assessment.test.js | 7ef5e0e6cfee64c786dd3207f7f1cb4fbf88be91 | Read-only structural conflict classification and timestamp shape |
+| MIRA-HFM-TST-CONFLICT-0002 | tests/mira-conflict-quarantine-registry.test.js | 0e36090793cb1e161860e3e0eb6f8f50d1a7ffb4 | Isolated conflict quarantine lifecycle and resolution |
+
+3. CI EVIDENCE BOUNDARY
+
+GitHub Actions run 41669279406 (run 152), job 126032970291, completed SUCCESS on branch head commit 18775a40b73d45a991fdc9dc27ff2785b2832f22. The job log confirms the current eight-suite workflow completed successfully, including the post-hardening conflict quarantine lifecycle suite.
+
+The run explicitly reported:
+- Core safety: TESTS_PASSED=24, TESTS_FAILED=0.
+- Knowledge safety: TESTS_PASSED=14, TESTS_FAILED=0.
+- Recovery regression: RESULT=PHASE2_RECOVERY_PASS, TESTS_FAILED=0.
+- Local store contract: TESTS_PASSED=8, TESTS_FAILED=0.
+- Evolution integration: TESTS_PASSED=10, TESTS_FAILED=0.
+- Structural conflict assessment: RESULT=PHASE2_STRUCTURAL_CONFLICT_ASSESSMENT_PASS, TESTS_FAILED=0.
+- Conflict quarantine lifecycle: all named PASS markers, TESTS_FAILED=0, RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS.
+
+The current lifecycle run includes full-envelope metadata tamper detection, symlink-ancestor rejection, mandatory explicit authorization callback before resolution, idempotent resolution, merge revision gate and resolution audit-failure recovery.
+
+Run 152 logs confirm PRODUCTION_MEMORY_TOUCHED=NO, PRODUCTION_KNOWLEDGE_TOUCHED=NO, REAL_GOOGLE_DRIVE_TOUCHED=NO, PRODUCTION_DATA_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+
+4. ALIAS POLICY
+
+No historical test-ID aliases are created in this inventory. Existing file paths are source locations, not automatically historical IDs. Any future alias must be grounded in a historical registry or decision record and reviewed for one-to-one semantic equivalence. Ambiguous legacy names remain UNMAPPED/REVIEW_REQUIRED.
+
+5. COVERAGE LIMITATIONS
+
+- These are suite-level proposed IDs, not a complete requirement-to-test traceability matrix.
+- The suite count does not imply complete Phase 2 requirement coverage.
+- A passing suite does not establish provider guarantees, production behavior, independent verification, or live integration.
+- U03/U04/U06/E-15 acceptance tests remain design proposals unless separately implemented and executed.
+- HFM-004 and HFM-005 remain separate approval/security gates.
+
+6. STATUS
+
+SUITES_INVENTORIED=8
+PROPOSED_CANONICAL_IDS=8
+LIVE_REGISTRY_CREATED=NO
+HISTORICAL_ALIASES_CREATED=0
+REQUIREMENT_COVERAGE_COMPLETE=NO
+LATEST_CONFLICT_LIFECYCLE_CI=PASS_SCOPED_RUN_152
+PRODUCTION_DATA_ACCESSED=NO
+NETWORK_REQUESTS=0
+EXTERNAL_ACTIONS=0
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF INVENTORY

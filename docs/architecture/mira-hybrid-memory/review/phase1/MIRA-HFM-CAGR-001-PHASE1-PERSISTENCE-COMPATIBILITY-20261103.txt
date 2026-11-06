@@ -1,0 +1,213 @@
+MIRA HYBRID MEMORY
+PHASE 1 — PERSISTENCE CONTRACT & HISTORICAL DEPENDENCY RECONCILIATION
+Document ID: MIRA-HFM-CAGR-001-PHASE1-PERSISTENCE-COMPATIBILITY-20261103
+Version: v0.2 review artifact (additive; no release/version promotion)
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD: 29bf3f915a50378b94e3b835d5d8b220033f928b
+Review date: 2026-11-03
+Status: PARTIAL — PHASE 1 NOT CLOSED
+
+1. SCOPE
+This is a documentation-only continuation of Phase 1. Selected store/service source files and Git history were inspected. No application source changed. No test was run. No production data, Memory contents, credential values, or live provider data was read or changed. No route, worker, backup, restore, or external API was invoked.
+
+2. PERSISTENCE COMPATIBILITY MATRIX — OBSERVED SOURCE CONTRACTS
+This matrix records source-observed behavior, not a claim that stores are interchangeable or production-ready.
+
+A. General Memory — services/mira-local-memory-store.js
+Path: MIRA_MEMORY_FILE absolute override; otherwise storagePath("memory.json").
+Shape: JSON array.
+Read: missing primary file can be treated as empty array; corrupt, blank, non-array, symlink and unreadable files reject.
+Write: temp file, fsync, rename, directory fsync attempt, readback hash comparison.
+Audit: not every ordinary operation independently proven to write audit-log.
+Backup/restore: memory backup and safety backup are in same memory directory; restore path is destructive and remains prohibited.
+Compatibility note: private Evolution writer is separate; common provider-neutral CAS contract not established.
+
+B. Knowledge / catalog Learning — knowledge.js
+Path: storagePath("knowledge.json"); Drive mirror is also used by current routines.
+Shape: Knowledge and Learning records share the Knowledge JSON structure.
+Read/write: add/update/delete Knowledge and add/update Learning write locally and then attempt Drive sync.
+Audit/rollback: behavior differs by caller; controlled-apply has snapshots/verification/rollback, ordinary CRUD does not share a proven universal transaction.
+Compatibility note: Knowledge search has Local-first then Drive fallback; any Drive array, including empty, replaces the local search source. Source-of-truth policy is unresolved.
+
+C. Google Drive adapter — google-drive.js
+Path/identity: Drive folder/file identifiers for Memory and Knowledge; OAuth credential resolution is project-root based in inspected adapter.
+Serialization: JSON; encryption layer not established in reviewed callsites.
+Failure behavior: Drive availability is a runtime dependency for some Knowledge controlled apply and Evolution workflows.
+Compatibility note: cannot remove Drive sync until every dependent caller has a verified replacement and regression evidence.
+
+D. Work Learning — services/mira-work-learning-engine.js
+Path: MIRA_LEARNING_FILE override or storagePath("data/work-learning-records.json").
+Shape: normalized/versioned work-learning records.
+Role: source records for Experience Memory projection.
+Compatibility note: derived Experience Memory and retrieval layers are not separate authoritative persistent stores in inspected files.
+
+E. Work Knowledge Consolidation — services/mira-work-knowledge-consolidation.js
+Path: storagePath("data/work-knowledge-consolidation.json").
+Shape: normalized consolidation items with integrityHash.
+Role: independent persistent domain, not equivalent to Work Learning records.
+Compatibility note: must retain own schema and provenance if later unified behind an adapter.
+
+F. Conversation Store — conversation-store.js
+Path: storagePath("data/conversations.json").
+Shape: conversations/messages/contexts.
+Callers: conversation routes and Conversation Memory Engine delegate to it.
+Compatibility note: conversation history is not the same schema or lifecycle as general memory.json.
+
+G. Stage 13 Learning Governance — services/mira-stage13-learning-governance.js
+Path: MIRA_STAGE13_STORE override or storagePath("data/stage13-learning-governance.json").
+Shape: events, feedback, failures and benchmark evidence with event hash chain.
+Compatibility note: governance provenance must not be flattened into ordinary Memory records.
+
+H. Audit Log — audit-log.js
+Path: MIRA_AUDIT_FILE override or storagePath("audit-log.json").
+Shape: bounded array, maximum 500 events in inspected implementation.
+Read: missing/blank log becomes empty; non-array JSON also returns empty array.
+Write: temp file then rename; no uniform fsync/readback contract established.
+Compatibility note: audit log is a distinct integrity domain; its fail-open empty handling differs from stricter stores.
+
+I. Snapshots — snapshot-manager.js
+Path: project-root backups/changes, not storagePath in inspected header.
+Role: project change snapshots/manifests; Evolution also has Drive snapshot behavior.
+Compatibility note: project-artifact snapshots may intentionally remain outside app data root; decision must be explicit and documented.
+
+J. Local Memory Backup/Restore — scripts/mira-memory-backup.js and tools/memory-restore.js
+Path: local memory directory; restore is destructive.
+Compatibility note: do not run against active production state. Fixture-only isolated tests required.
+
+K. Knowledge Backup/Restore — tools/knowledge-backup.js and tools/knowledge-restore.js
+Path: direct project-root files plus Drive artifacts.
+Side effects: backup writes project-root knowledge.json and backup artifact and performs Drive operations; restore can overwrite local Knowledge and sync Drive.
+Compatibility note: neither command is a read-only audit. Do not invoke.
+
+L. Client Profile Store — client-profile-store.js
+Path: storagePath("client-profiles.json").
+Shape: {profiles:[]}.
+Read: missing file initializes empty; corrupt/invalid fails.
+Write: temp file + rename; no lock/fsync/readback contract observed.
+Operations: create/get/list/update/remove.
+Audit: direct store methods do not themselves establish universal audit coverage.
+
+M. Client Communication Store — client-communication-store.js
+Path: storagePath("data/client-communications.json").
+Shape: version, conversations, messages, communications.
+Read: ensure/create default then parse and validate arrays.
+Write: temp file with fixed .tmp suffix then rename (full implementation has additional caller methods).
+Audit: engine contains recordAudit call; exact coverage depends on operation.
+Compatibility note: fixed temp naming and no cross-process lock in inspected header; concurrency guarantees not established.
+
+N. Client Follow-up Store — client-follow-up-store.js
+Path: storagePath("data/client-follow-ups.json").
+Shape: {followUps:[]}, schema normalization/validation.
+Read: missing file initializes empty; malformed schema rejects.
+Write: temp file with pid/time suffix then rename.
+Audit: follow-up engine has explicit audit writer and returns AUDIT_WRITE_FAILED state on failure paths.
+Compatibility note: store and audit are separate writes; atomic cross-store transaction not established.
+
+O. Deliverable Store — deliverable-store.js
+Path: storagePath("data/deliverables.json").
+Shape: {deliveries:[]}.
+Read: blank file is treated as empty deliveries; malformed schema rejects.
+Write: fixed .tmp file then rename.
+Compatibility note: blank-file fail-open behavior and fixed temp name differ from other stores.
+
+P. Opportunity Store — opportunity-store.js
+Path: MIRA_OPPORTUNITY_FILE override or storagePath("data/opportunities.json").
+Shape: versioned object with opportunities array.
+Read: missing file initializes; JSON/schema invalid fails.
+Write: fixed .tmp file then rename.
+Callers: discovery/matching engines; matching reads Task Store and Experience Memory.
+Compatibility note: matching spans separate persistence domains; no cross-store transaction established.
+
+Q. Client Consent Store — services/mira-client-consent-store.js
+Path: storagePath("client-consents.json") by default; factory allows explicit filePath.
+Shape: version 1 event log; authorized/revoked events.
+Read: ENOENT returns empty state; symlink/non-regular file rejects; schema validated.
+Write: exclusive temp create, mode 0600, rename; audit is orchestrated by consent service using pending/committed events and integrity verification.
+Compatibility note: consent event provenance and fail-closed audit behavior are security-sensitive; do not merge with ordinary profile records.
+
+R. SEO Workflow Store — services/mira-seo-workflow-store.js
+Path: storagePath("mira-seo-workflow-records.json").
+Shape: schemaVersion 1 records; max 500 records, max 10 MiB store, max 1 MiB per record.
+Read: lstat rejects symlink/non-file/oversize; missing returns empty; schema validation.
+Write: lock directory; exclusive temp file, fsync, rename, chmod 0600.
+Compatibility note: stronger locking/size/security controls than several older stores; preserve those semantics if an abstraction is introduced.
+
+S. Provider Credential Store — services/provider-credential-store.js
+Path: project-root data/provider-credentials.enc.json; not storagePath.
+Format: AES-256-GCM; scrypt-derived key; version 1 legacy fixed salt and version 2 per-record salt; requires MIRA_CREDENTIALS_ENCRYPTION_KEY of at least 32 UTF-8 bytes.
+Write: exclusive temp, fsync, rename, chmod 0600.
+Resolver: managed store reveal is attempted before environment fallback; decryption/configuration errors fail closed.
+Compatibility note: secrets must never be copied into Memory/Knowledge or printed in reports. No credential values were accessed.
+
+T. Autonomous Orchestrator — services/autonomous-orchestrator.js
+Path: MIRA_STAGE16_17_WORKFLOWS_FILE override or storagePath("data/stage16-17-workflows.json").
+Shape: version 1 jobs; validates job state and duplicate IDs at module load.
+Write: temp file + rename; lock directory used in workflow coordination.
+Compatibility note: module initialization reads its ledger; it was fetched as source only and not imported/invoked by this review.
+
+U. Research Governance — services/mira-research-governance.js
+Path: MIRA_RESEARCH_GOVERNANCE_FILE override or storagePath("data/mira-research-governance.json").
+Shape: schemaVersion 1 approvals and dailyUsage.
+Read: missing ledger becomes empty; malformed/unreadable fails closed.
+Write: lock directory with owner marker, bounded lock wait, temp file + rename.
+Callers: research governance route reads Task Store and records audit; autonomous worker reads approvals before research.
+Compatibility note: cross-domain task/approval/audit consistency is not a single transaction.
+
+3. HISTORICAL CONFIRMATION — MISSING PROJECT SCHEDULE STORE
+Current branch tree has no project-schedule-store.js.
+GitHub path history query for project-schedule-store.js returned no commits.
+The service services/mira-project-schedule-planning-service.js has a first/only path-history result at commit 4ca0c7dc06bff3e9be1ffd5977a335f4d48e435f ("Initial public project upload", 2026-11-02). Fetching that exact historical version confirms it imports ../project-schedule-store and expects listSchedules and createStoredProjectSchedule.
+The current tree has tests that also import ../project-schedule-store. This is stronger evidence than a current-tree-only absence: the missing module appears to have been referenced from the initial public upload and no file-path commit exists in repository history returned for that exact path.
+Impact: loading the service or running those tests is expected to fail module resolution unless an untracked/runtime-provided module exists. This does NOT prove server startup is blocked; no direct server import was established. Do not recreate the store or patch callers in Phase 1.
+
+4. ROUTE / SERVICE CALLER CROSS-DOMAIN NOTES
+- Client communication route -> communication store and communication engine -> audit-log.
+- Client follow-up route -> follow-up store; engine also reads Project Store and Client Profile service, invokes communication engine, and writes audit.
+- Consent route -> consent service -> consent store + audit-log; audit integrity is verified before successful completion.
+- Opportunity route -> opportunity store; matching engine also reads Task Store and Experience Memory.
+- Project creation/task initialization services combine Project Store, Work Acceptance Store and Task Store.
+- Marketing workflow orchestrator checks persisted SEO audit consent, invokes audit/research orchestration, appends SEO workflow history, and records audit. Public web research consent is checked separately. Source review found no website fetch in the described supplied-data SEO audit branch; separate research orchestration remains a provider/network dependency to review.
+- Queue services read Project Store and compose project/task queues; queue engine itself is an in-memory derived queue, not a durable independent store.
+- Autonomous worker consumes Task Store, updates task status, persists result/budget/report records and uses Research Governance for research approval.
+
+5. COMPATIBILITY CONCLUSIONS
+A single "replace provider" operation is not safe as a blind path swap. At minimum, each domain needs a contract for:
+- schema/version and identity/provenance fields;
+- missing vs empty vs corrupt read semantics;
+- concurrency control, lock scope and lost-update prevention;
+- atomic write, durability and readback guarantees;
+- error mapping and retry semantics;
+- audit event ordering and failure policy;
+- backup/restore and rollback ownership;
+- path override precedence and containment;
+- external provider side effects and consent/permission checks.
+The current implementation has heterogeneous contracts. A future Hybrid Memory provider adapter must preserve per-domain semantics and must not flatten consent, credentials, audit, governance, conversation, work-learning and general Memory into one untyped record bucket.
+
+6. REMAINING PHASE 1 GAPS
+C01 Full source-text scan across all relevant branch source files: NOT_EXECUTED.
+C02 Exhaustive path/caller inventory across all 540 JS-family files plus non-JS configuration/scripts: NOT_COMPLETE.
+C03 Knowledge Local-vs-Drive authoritative-source policy: NOT_DECIDED.
+C04 Caller compatibility matrix: EXPANDED but not exhaustive; not all public functions/results/errors have been enumerated.
+C05 All Drive read/write callsites and replacement evidence: PARTIAL.
+C06 Isolated fixture-only test plan and execution: NOT_EXECUTED; active tests remain prohibited.
+C07 Provider permission scopes and data-flow review: NOT_COMPLETE. OAuth and credential resolution are identified, but provider-specific scopes and all egress callsites have not been exhaustively mapped.
+
+7. STATUS
+BRANCH_HEAD_REVIEWED=29bf3f915a50378b94e3b835d5d8b220033f928b
+TREE_ENTRIES=619
+TREE_TRUNCATED=NO
+PERSISTENCE_CONTRACT_MATRIX=EXPANDED_PARTIAL
+MISSING_SCHEDULE_STORE_HISTORY=CONFIRMED_NO_PATH_COMMITS_RETURNED
+MISSING_SCHEDULE_STORE_IMPACT=SERVICE_AND_TEST_IMPORT_RISK; SERVER_STARTUP_NOT_PROVEN_BLOCKED
+SOURCE_TEXT_SCAN=NOT_EXECUTED
+TESTS=NOT_EXECUTED
+PRODUCTION_DATA_ACCESS=NONE
+EXTERNAL_PROVIDER_CALLS=NONE
+SOURCE_CODE_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+
+END OF REPORT

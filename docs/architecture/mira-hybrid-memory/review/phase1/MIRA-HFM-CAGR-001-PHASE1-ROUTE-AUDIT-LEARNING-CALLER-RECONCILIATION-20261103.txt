@@ -1,0 +1,129 @@
+MIRA HYBRID MEMORY — PHASE 1 ROUTE, AUDIT & LEARNING-CALLER RECONCILIATION
+Document: MIRA-HFM-CAGR-001-PHASE1-ROUTE-AUDIT-LEARNING-CALLER-RECONCILIATION
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this additive report: c1b9fb940a0c9b59b335b5401a1065fc21b3e2cd
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Project version boundary: v0.2
+Status: TARGETED SOURCE REVIEW — PHASE 1 REMAINS INCOMPLETE
+
+1. SCOPE AND METHOD
+
+Read-only review of exact branch files:
+- routes/knowledge-improvements.js (blob 9cd6b25a7e5a45675cc9bc47bb8cb8ec180d210e)
+- routes/autonomous-learning.js (blob 37c4df7dceffed67f81b41d64ea94270b33bbc2a)
+- routes/learning-history.js (blob b7275edad4cb5efcaf9afab2db7799158a1195c5)
+- services/learning.js (blob be66edd9aa46b2ee84317a5f2dbf4e1ac11a2461)
+- services/mira-experience-memory.js (blob d72091ef6d06ef81b2739db7bd69f9c1714efef1)
+- services/mira-cross-task-learning-engine.js (blob cf8f42b675974ee5ec49c977d5667f23cce2fa5d)
+
+The branch-specific recursive Git tree was re-read at the reviewed HEAD: 607 blobs, tree truncated=false. This is not a full source-text scan. Only the listed files and their visible call relationships were reviewed here. No runtime route was invoked and no test was run.
+
+2. KNOWLEDGE IMPROVEMENT ROUTE — CALLER AND AUDIT ORDER
+
+routes/knowledge-improvements.js is SYSTEM_ADMIN-gated for proposal listing, approval, rejection, apply, and audit-log retrieval.
+
+Approval/rejection:
+- Route loads proposal, calls approveProposal/rejectProposal, then attempts audit record.
+- The local writeAudit wrapper catches recordAudit exceptions and returns {logged:false,...}; callers do not inspect that result. Therefore proposal mutation may succeed while its audit record fails without the route failing closed.
+
+Apply path:
+- Reads proposal and current Knowledge through getProposal/getKnowledge.
+- Requires proposal.status === approved.
+- Locates original entry by normalized title+topic and checks proposal.existing.contentHash against current content.
+- Builds proposed Knowledge state and expectedPreStateHash.
+- Calls prepareEvolution, then applyEvolution, then verifyEvolutionState("knowledge").
+- On final verification failure, attempts rollbackEvolution when changeId and snapshotId exist.
+- Calls markProposalApplied only after successful verification. If proposal marking fails, it attempts rollbackEvolution.
+- Successful path writes KNOWLEDGE_IMPROVEMENT_APPLIED audit after apply, verification, and proposal marking.
+
+Audit coverage gap:
+- Several early return branches (proposal missing, approval missing, original entry missing, stale proposal, prepare failure, apply failure, final verification failure, proposal commit failure) return without a corresponding route-level audit record.
+- The catch branch records APPLY_FAILED, but handled failure returns do not enter catch.
+- Thus route-level audit coverage for this apply endpoint is incomplete even though lower-level evolution services may emit their own audit events. This review did not prove whether every lower-level event covers every branch.
+
+3. AUTONOMOUS LEARNING ROUTE — CALLER AND AUDIT ORDER
+
+routes/autonomous-learning.js is SYSTEM_ADMIN-gated.
+- Proposal creation calls createAutonomousProposal and records created/duplicate/failed audit outcomes.
+- Admin proposal creation writes proposal records only; route comments explicitly state it does not modify knowledge.json.
+- Apply requires proposal status approved, records AUTONOMOUS_APPLY_STARTED, calls applyAutonomousLearningControlled, and records success/failure with snapshot, rollback, count, and Drive sync metadata.
+- The route reports driveSynced and verified from the controlled apply result.
+
+Audit behavior differs from Knowledge Improvement:
+- writeAudit calls recordAudit directly and does not wrap it in a local try/catch. Audit-store failure can therefore affect the route's request path, unlike the swallowing helper in routes/knowledge-improvements.js.
+- Empty proposal ID validation returns 400 before an audit event is written.
+- Other blocked/not-found apply states are audited.
+- The apply controller remains the actual mutation boundary; this route does not directly write Knowledge.
+
+4. LEARNING SERVICE — AUTOMATIC PERSISTENCE AND PROVIDER EGRESS
+
+services/learning.js:
+- learnFromContent cleans source text, builds a learning prompt, and calls generate(...) with the prompt as both prompt content and user message, plus a system instruction.
+- This is an external-provider egress boundary whenever a live provider is selected; source material and source metadata may be transmitted to that provider. No provider call was made in this review.
+- Parsed model output is validated, then searchKnowledge is used for duplicate detection.
+- If no duplicate is found, learnFromContent calls addLearning directly.
+- addLearning is the Knowledge CRUD path already mapped to local write followed by Drive sync.
+- Therefore this function is not merely a proposal generator: its normal non-duplicate path can persist Knowledge/Learning and trigger Drive synchronization without the separate admin proposal/apply route. Caller authorization, consent, and invocation context must be traced at each upstream caller before any provider or persistence redesign.
+- Return fields include success, learned, saved, duplicate, drive, title, topic, category, track, and difficulty. A successful learning extraction can return saved=false for duplicate or unsuccessful add; drive is a boolean derived from the addLearning result.
+
+5. LEARNING HISTORY AND EXPERIENCE READ PATH
+
+routes/learning-history.js:
+- SYSTEM_ADMIN-gated read-only endpoints expose stats, lessons, filtered history, per-record timeline, and per-record detail.
+- Route delegates to mira-learning-history and mira-experience-memory; it does not directly perform file I/O in the inspected module.
+
+services/mira-experience-memory.js:
+- Experience records are normalized projections derived from mira-work-learning-engine records.
+- get/list operations call learningEngine.getLearningRecord/listLearningRecords; no independent Experience Memory file store or write path was found in this module.
+- Integrity hash is calculated over the normalized projection; it is a derived-record integrity check, not evidence of persisted source authenticity.
+- Future strategy normalization in this module currently returns null.
+- Cross-task learning delegates to Experience Retrieval and Future Strategy engines and declares read-only/non-executable governance in its returned metadata. This metadata alone is not a substitute for caller authorization or independent enforcement.
+
+6. NEW PHASE 1 FINDINGS / GAP REGISTER UPDATES
+
+R01 — KNOWLEDGE IMPROVEMENT APPLY AUDIT COVERAGE: PARTIAL / REVIEW REQUIRED.
+Handled early-return failure branches do not all emit route-level audit events. Lower-level coverage has not been exhaustively traced.
+
+R02 — AUDIT FAILURE SEMANTICS ARE INCONSISTENT: CONFIRMED.
+Knowledge Improvement helper swallows audit errors; Autonomous Learning helper does not. A common audit contract and explicit fail-open/fail-closed policy are not established.
+
+R03 — LEARNING SERVICE DIRECT PERSISTENCE: CONFIRMED.
+learnFromContent can directly call addLearning after provider extraction and duplicate detection, causing Knowledge local persistence and Drive sync. Full upstream caller/consent/authorization inventory remains open.
+
+R04 — EXPERIENCE MEMORY IS A DERIVED VIEW IN REVIEWED MODULE: CONFIRMED.
+No independent persistence path was found in mira-experience-memory.js; its source of record is Work Learning Records through mira-work-learning-engine.
+
+R05 — ROUTE-TO-STORE AND ROUTE-TO-PROVIDER GRAPH: PARTIAL.
+These files add caller-level detail but do not prove exhaustive coverage across all routes, tools, workers, dynamic imports, and scripts.
+
+7. CLOSURE BLOCKER STATUS
+
+C01 Repository-wide source-text scan: OPEN.
+C02 All persistence roots and callers: PARTIAL.
+C03 Local/Drive authority and conflict policy: OPEN.
+C04 Caller-by-caller compatibility and audit/error/rollback table: PARTIAL; this report adds two route apply flows and learning-history reads.
+C05 Exhaustive Drive callsite inventory: OPEN; learnFromContent -> addLearning adds an upstream caller path but does not close the inventory.
+C06 Isolated fixture test plan/execution: NOT EXECUTED; no tests were run.
+C07 Provider permissions, scopes, retention and data-egress governance: PARTIAL; this report confirms a source-content egress call through generate but does not establish provider retention terms or consent coverage.
+
+8. SAFETY AND CHANGE STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+RUNTIME_ROUTES_INVOKED=NONE
+TESTS=NOT_EXECUTED
+APPLICATION_SOURCE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+IMPLEMENTATION=NOT_STARTED
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF REPORT

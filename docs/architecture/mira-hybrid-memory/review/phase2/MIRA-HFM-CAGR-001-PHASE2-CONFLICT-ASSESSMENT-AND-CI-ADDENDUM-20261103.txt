@@ -1,0 +1,84 @@
+MIRA HYBRID MEMORY — PHASE 2 CONFLICT ASSESSMENT AND CI ADDENDUM
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-ASSESSMENT-AND-CI-ADDENDUM-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-IMPLEMENTATION-REPORT-20261103
+Version boundary: v0.2
+Branch: work/mira-hfm-v02-phase2-core-safety
+Date: 2026-11-03
+Status: READ-ONLY STRUCTURAL ASSESSMENT IMPLEMENTED; FULL CONFLICT LIFECYCLE REVIEW_REQUIRED
+
+1. SOURCE CONTRACT
+
+The implementation is based on the canonical Memory JSON Schema in:
+docs/architecture/mira-hybrid-memory/MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.4.md
+Section 2 defines schemaVersion 1.0.0, identity, provenance, timestamps, revision/hash, integrity, trust, access and lifecycle fields. Section 5 defines conflict categories:
+IDENTITY_CONFLICT, REVISION_CONFLICT, CONTENT_CONFLICT, SOURCE_CONFLICT, ACCESS_CONFLICT, SCHEMA_CONFLICT, INTEGRITY_CONFLICT.
+
+2. IMPLEMENTATION
+
+Added services/mira-memory-conflict-assessment.js.
+
+Scope:
+- Read-only validation against the v0.2.4 canonical record structure.
+- Rejects missing required fields, unsupported top-level fields, invalid enums, malformed timestamps, invalid revisions/hashes, invalid provenance, and invalid access shape.
+- Structurally detects the seven contract conflict categories.
+- Returns REVIEW_REQUIRED for malformed or unverified records.
+- Reports cryptographicVerification=NOT_PERFORMED. It does not claim that contentHash has been recomputed or authenticated.
+- Does not write, merge, resolve, quarantine, or mutate records.
+
+Added tests/mira-memory-conflict-assessment.test.js covering:
+- Identity, revision, content, source, access, schema and integrity conflict classification.
+- Malformed and extra-field fail-closed behavior.
+- Unverified record review requirement.
+- Read-only/no-write boundary.
+
+3. WORKFLOW CORRECTION
+
+Removed a duplicate Evolution source path from the push workflow filter and ensured the source path is included once in both push and pull_request filters.
+Added the conflict assessment service and test to both filters.
+Added the conflict assessment test to the isolated Phase 2 CI job.
+
+4. CI EVIDENCE
+
+Run 115: https://github.com/Shahed216215/herness-ai/actions/runs/41663991182
+Head: c77f2761ff6d866d34780853c23115918ab8b5a5
+Conclusion: SUCCESS
+Job: isolated-core-safety — SUCCESS
+Phase 2 isolated test step — SUCCESS
+
+Run 114: https://github.com/Shahed216215/herness-ai/actions/runs/41663966053
+Head: cb893fbe245eb5c3e9cd65483042c5b5ab8bebe1
+Conclusion: SUCCESS
+Job: isolated-core-safety — SUCCESS
+Phase 2 isolated test step — SUCCESS
+
+5. LIMITATIONS / REMAINING GATES
+
+This is a read-only structural classifier, not the complete conflict lifecycle required by Contract §5. The following remain REVIEW_REQUIRED:
+- Durable conflict record containing both original versions, source IDs, timestamps, hashes and conflict reason.
+- Quarantine persistence and enforcement that quarantined records are excluded from trusted retrieval.
+- Governed resolution, merge/reject actor, resulting revision, and audit correlation.
+- Integration at every provider/adaptor write boundary.
+- Recompute/verify canonical content hashes under an approved canonical serialization profile.
+- Concurrency/compare-and-swap and uncertain-write arbitration.
+- Independent verification of conflict evidence.
+
+The classifier must not be represented as resolving or quarantining conflicts.
+
+DR-08 U03/U04/U05/U06 and E-15 remain unresolved/not approved as specified in the Decision Closure Matrix. HFM-004 Drive cutover and HFM-005 encrypted emergency backup remain deferred. The Blueprint source-hash discrepancy remains a separate source-integrity gate until reconciled against an authoritative baseline.
+
+No production Memory/Knowledge was touched. No provider cutover, live API, production migration, deployment, or merge was performed. Version remains v0.2.
+
+6. STATUS
+
+CANONICAL_SCHEMA_STRUCTURAL_VALIDATION=PASS_SCOPED
+SEVEN_CONFLICT_CATEGORY_ASSESSMENT=PASS_SCOPED
+MALFORMED_INPUT_FAIL_CLOSED=PASS_SCOPED
+CONFLICT_QUARANTINE_LIFECYCLE=REVIEW_REQUIRED
+PROVIDER_WRITE_BOUNDARY_INTEGRATION=REVIEW_REQUIRED
+CRYPTOGRAPHIC_CONTENT_HASH_VERIFICATION=NOT_PERFORMED
+DR08_CANONICAL_AUDIT_CLOSURE=REVIEW_REQUIRED
+FULL_PHASE2_CLOSURE=REVIEW_REQUIRED
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+END OF ADDENDUM

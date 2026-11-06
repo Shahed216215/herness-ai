@@ -36,8 +36,20 @@ try {
     path.join(TEMP, 'mira-storage.js')
   );
   fs.copyFileSync(
+    path.join(PROJECT, 'audit-log.js'),
+    path.join(TEMP, 'audit-log.js')
+  );
+  fs.copyFileSync(
     path.join(PROJECT, 'services/mira-local-memory-store.js'),
     path.join(tempServices, 'mira-local-memory-store.js')
+  );
+  fs.copyFileSync(
+    path.join(PROJECT, 'services/mira-json-state-store.js'),
+    path.join(tempServices, 'mira-json-state-store.js')
+  );
+  fs.copyFileSync(
+    path.join(PROJECT, 'services/mira-store-initialization-guard.js'),
+    path.join(tempServices, 'mira-store-initialization-guard.js')
   );
 
   const fixtureMemory = path.join(TEMP, 'memory.json');
@@ -86,7 +98,7 @@ try {
   const snapshot = readProjectFile('snapshot-manager.js');
   const localStore = readProjectFile('services/mira-local-memory-store.js');
 
-  check('Evolution source has its own local atomic writer', () => {
+  check('Evolution keeps an atomic adapter over the shared state stores', () => {
     assert.match(evolution, /function\s+atomicWriteJson\s*\(/);
     assert.match(evolution, /atomicWriteJson\s*\(\s*getTargetFile\(target\)\s*,\s*proposed\s*\)/);
   });
@@ -97,11 +109,11 @@ try {
     assert.match(snapshot, /renameSync\s*\(/);
   });
 
-  check('Evolution source does not import Local Memory Store', () => {
-    assert.doesNotMatch(
-      evolution,
-      /require\s*\(\s*['"][^'"]*mira-local-memory-store['"]\s*\)/
-    );
+  check('Evolution delegates Memory persistence to shared Local Store', () => {
+    assert.ok(evolution.includes('require("./services/mira-local-memory-store")'));
+    assert.ok(evolution.includes('localMemoryStore.readMemory()'));
+    assert.ok(evolution.includes('localMemoryStore.writeMemory(value)'));
+    assert.ok(evolution.includes('jsonStateStore.writeArrayState'));
   });
 
   check('Local Store supports explicit MIRA_MEMORY_FILE path', () => {
@@ -119,6 +131,9 @@ try {
       ? 'RESULT=ISOLATED_CONTRACT_TEST_PASS'
       : 'RESULT=ISOLATED_CONTRACT_TEST_FAIL'
   );
+  if (failed > 0) {
+    process.exitCode = 1;
+  }
 } finally {
   try {
     fs.rmSync(TEMP, { recursive: true, force: true });

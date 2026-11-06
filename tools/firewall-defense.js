@@ -1,4 +1,5 @@
 const firewallDefense = require("../firewall-defense");
+const { checkToolSafety } = require("../services/mira-tool-execution-policy");
 
 module.exports = {
   name: "firewall_defense",
@@ -6,7 +7,7 @@ module.exports = {
   declaration: {
     name: "firewall_defense",
     description:
-      "Manage defensive firewall inspections and approval-gated firewall change proposals. Never modifies firewall rules automatically.",
+      "Currently blocked at the tool wrapper boundary. Firewall inspection and changes require a separately authenticated human-approval workflow, which is not yet available.",
 
     parameters: {
       type: "object",
@@ -64,6 +65,16 @@ module.exports = {
   },
 
   execute: async (args = {}) => {
+    const safety = checkToolSafety("firewall_defense", args);
+    if (!safety || safety.passed !== true) {
+      return JSON.stringify({
+        success: false,
+        status: "BLOCKED",
+        code: "TOOL_POLICY_DENIED",
+        reason: safety?.reason || "Tool execution policy could not be verified."
+      });
+    }
+
     const action = String(
       args.action || ""
     )

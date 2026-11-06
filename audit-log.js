@@ -8,6 +8,8 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
 const crypto = require("crypto");
+const jsonStateStore = require("./services/mira-json-state-store");
+const { createStoreInitializationGuard } = require("./services/mira-store-initialization-guard");
 
 const AUDIT_FILE =
   process.env.MIRA_AUDIT_FILE || storagePath("audit-log.json");
@@ -15,57 +17,172 @@ const AUDIT_FILE =
 const MAX_AUDIT_ENTRIES = 500;
 const AUDIT_HASH_ALGORITHM = "sha256";
 const AUDIT_INTEGRITY_VERSION = 1;
+const AUDIT_LOCK_FILE = AUDIT_FILE + ".lock";
+const AUDIT_GUARD = createStoreInitializationGuard({
+  primaryFile: AUDIT_FILE,
+  storeId: "MIRA_AUDIT_LOG",
+  evidenceFiles: [AUDIT_FILE + ".anchor"]
+});
 
-function loadAuditLog() {
-  try {
-    if (!fs.existsSync(AUDIT_FILE)) {
-      return [];
+function acquireAuditLock(attempts = 100, delayMs = 10) {
+  const waitCell = new Int32Array(new SharedArrayBuffer(4));
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let fd;
+    let stat;
+    try {
+      fd = fs.openSync(AUDIT_LOCK_FILE, "wx", 0o600);
+      stat = fs.fstatSync(fd);
+      fs.writeFileSync(fd, JSON.stringify({
+        pid: process.pid,
+        createdAt: new Date().toISOString()
+      }), "utf8");
+      fs.fsyncSync(fd);
+      return { fd, dev: stat.dev, ino: stat.ino };
+    } catch (error) {
+      if (fd !== undefined) {
+        try { fs.closeSync(fd); } catch {}
+        if (stat) {
+          try {
+            const current = fs.lstatSync(AUDIT_LOCK_FILE);
+            if (!current.isSymbolicLink() && current.dev === stat.dev && current.ino === stat.ino) {
+              fs.unlinkSync(AUDIT_LOCK_FILE);
+            }
+          } catch {}
+        }
+      }
+      if (error.code !== "EEXIST") throw error;
+      if (attempt + 1 < attempts) Atomics.wait(waitCell, 0, 0, delayMs);
     }
-
-    const raw = fs.readFileSync(
-      AUDIT_FILE,
-      "utf8"
-    );
-
-    if (!raw.trim()) {
-      return [];
-    }
-
-    const data = JSON.parse(raw);
-
-    return Array.isArray(data)
-      ? data
-      : [];
-  } catch (error) {
-    throw new Error(
-      `Failed to load audit log: ${error.message}`
-    );
   }
+  const error = new Error("Audit log lock is busy; stale lock recovery is manual and fail-closed.");
+  error.code = "AUDIT_LOCK_BUSY";
+  throw error;
+}
+
+function releaseAuditLock(lock) {
+  fs.closeSync(lock.fd);
+  const stat = fs.lstatSync(AUDIT_LOCK_FILE);
+  if (stat.isSymbolicLink() || !stat.isFile() ||
+      stat.dev !== lock.dev || stat.ino !== lock.ino) {
+    throw new Error("Audit log lock identity changed before release.");
+  }
+  fs.unlinkSync(AUDIT_LOCK_FILE);
+}
+
+function withAuditLock(callback) {
+  const lock = acquireAuditLock();
+  let result;
+  let failure;
+  try {
+    result = callback();
+  } catch (error) {
+    failure = error;
+  }
+  try {
+    releaseAuditLock(lock);
+  } catch (releaseError) {
+    if (failure) {
+      failure.lockReleaseError = releaseError.message;
+    } else {
+      releaseError.stateCommitted = result !== undefined;
+      failure = releaseError;
+    }
+  }
+  if (failure) throw failure;
+  return result;
+}
+function loadAuditLog() {
+  const exists = AUDIT_GUARD.primaryExists();
+  if (!exists) {
+    if (AUDIT_GUARD.missingPrimaryDecision() === "PREVIOUSLY_INITIALIZED") {
+      const missing = new Error(
+        "Audit log was previously initialized but its primary is missing; empty reinitialization is blocked."
+      );
+      missing.code = "AUDIT_LOG_PRIMARY_MISSING_RESTORE_REQUIRED";
+      throw missing;
+    }
+    return [];
+  }
+
+  // Existing bytes establish prior-store state even if parsing subsequently fails.
+  AUDIT_GUARD.ensureMarker();
+  let raw;
+  try {
+    raw = fs.readFileSync(AUDIT_FILE, "utf8");
+  } catch (error) {
+    throw new Error(`Failed to load audit log: ${error.code || "IO_ERROR"}`);
+  }
+  if (!raw.trim()) {
+    throw new Error("Audit log is empty and may be corrupted.");
+  }
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error("Audit log contains invalid JSON.");
+  }
+  if (!Array.isArray(data)) {
+    throw new Error("Audit log must contain a JSON array.");
+  }
+  return data;
+}
+
+function writeAuditLogAtomic(entries) {
+  if (!Array.isArray(entries)) throw new Error("Audit log entries must be an array.");
+  if (entries.length > MAX_AUDIT_ENTRIES) {
+    const error = new Error(
+      "Audit log retention limit reached; explicit verified archival is required before another append."
+    );
+    error.code = "AUDIT_RETENTION_LIMIT_REACHED";
+    throw error;
+  }
+  AUDIT_GUARD.assertWritable();
+  jsonStateStore.atomicWriteJson(AUDIT_FILE, entries, "Mira Audit Log");
+  return entries;
 }
 
 function saveAuditLog(entries) {
-  const limited =
-    entries.slice(-MAX_AUDIT_ENTRIES);
-
-  const tempFile =
-    `${AUDIT_FILE}.tmp`;
-
-  fs.writeFileSync(
-    tempFile,
-    JSON.stringify(
-      limited,
-      null,
-      2
-    ),
-    "utf8"
-  );
-
-  fs.renameSync(
-    tempFile,
-    AUDIT_FILE
-  );
-
-  return limited;
+  if (!Array.isArray(entries)) throw new Error("Audit log entries must be an array.");
+  if (entries.length > MAX_AUDIT_ENTRIES) {
+    const error = new Error("Audit log retention limit reached; automatic truncation is disabled.");
+    error.code = "AUDIT_RETENTION_LIMIT_REACHED";
+    throw error;
+  }
+  return withAuditLock(() => {
+    const verification = verifyAuditIntegrity();
+    if (!verification.ok) throw new Error("Audit write blocked: existing audit integrity is not verified.");
+    const current = loadAuditLog();
+    if (entries.length < current.length ||
+        current.some((entry, index) => JSON.stringify(entry) !== JSON.stringify(entries[index]))) {
+      throw new Error("Audit log save must be append-only; replacement or truncation is blocked.");
+    }
+    let previousHash = getLastIntegrityHash(current);
+    for (const entry of entries.slice(current.length)) {
+      if (!entry || typeof entry !== "object" ||
+          entry.previousHash !== previousHash ||
+          entry.integrityHash !== calculateIntegrityHash(entry)) {
+        throw new Error("Audit log append contains an invalid integrity link.");
+      }
+      if (current.some(item => Number(item.integrityVersion) >= 2) &&
+          Number(entry.integrityVersion) < 2) {
+        throw new Error("Audit log append downgrade is blocked.");
+      }
+      previousHash = entry.integrityHash;
+    }
+    const previousCount = current.length;
+    const result = writeAuditLogAtomic(entries);
+    if (entries.length > previousCount) {
+      try {
+        writeAnchor(entries[entries.length - 1]);
+      } catch (error) {
+        error.code = "AUDIT_ANCHOR_WRITE_FAILED";
+        error.stateCommitted = true;
+        throw error;
+      }
+    }
+    return result;
+  });
 }
 
 function sanitizeValue(value) {
@@ -258,7 +375,7 @@ function recordAuditBase({
 
   entries.push(entry);
 
-  saveAuditLog(entries);
+  writeAuditLogAtomic(entries);
 
   return entry;
 }
@@ -437,11 +554,24 @@ function getAuditLog(limit = 100) {
 }
 
 function clearAuditLogBase() {
-  saveAuditLog([]);
-
+  const entries = loadAuditLog();
+  let archiveFile = null;
+  if (entries.length > 0) {
+    archiveFile = AUDIT_FILE + ".archive-" + Date.now() + "-" + crypto.randomBytes(4).toString("hex") + ".json";
+    jsonStateStore.atomicWriteJson(archiveFile, {
+      archiveVersion: 1,
+      archivedAt: new Date().toISOString(),
+      source: path.basename(AUDIT_FILE),
+      entryCount: entries.length,
+      entries
+    }, "Mira Audit Log Archive");
+  }
+  writeAuditLogAtomic([]);
   return {
     success: true,
-    cleared: true
+    cleared: true,
+    archiveFile: archiveFile ? path.basename(archiveFile) : null,
+    archivedEntries: entries.length
   };
 }
 
@@ -495,32 +625,40 @@ function writeAnchor(entry) {
   fs.renameSync(tmp, anchorPath());
 }
 function recordAudit(input) {
-  // STAGE62_FAIL_CLOSED_HMAC_GUARD: never downgrade a v2 audit stream.
-  if (!getHmacKey()) {
-    let hasV2History = false;
-    try {
-      const raw = JSON.parse(fs.readFileSync(AUDIT_FILE, "utf8"));
-      const entries = Array.isArray(raw) ? raw :
-        (raw.entries || raw.auditLog || raw.records || []);
-      hasV2History = Array.isArray(entries) &&
-        entries.some(e => Number(e && e.integrityVersion) >= 2);
-    } catch (_) {}
-    if (hasV2History) {
-      throw new Error("Audit write blocked: HMAC key unavailable for an existing v2 audit stream");
+  return withAuditLock(() => {
+    const verification = verifyAuditIntegrity();
+    if (!verification.ok) {
+      throw new Error("Audit write blocked: existing audit integrity is not verified.");
     }
-  }
-  const entry = recordAuditBase(input);
-  try {
-    writeAnchor(entry);
-  } catch (error) {
-    console.error("AUDIT_ANCHOR_WRITE_FAILED");
-  }
-  return entry;
+    const entry = recordAuditBase(input);
+    try {
+      writeAnchor(entry);
+    } catch (error) {
+      error.code = "AUDIT_ANCHOR_WRITE_FAILED";
+      error.stateCommitted = true;
+      throw error;
+    }
+    return entry;
+  });
 }
 function clearAuditLog() {
-  const result = clearAuditLogBase();
-  try { fs.unlinkSync(anchorPath()); } catch (error) {}
-  return result;
+  return withAuditLock(() => {
+    const verification = verifyAuditIntegrity();
+    if (!verification.ok) {
+      throw new Error("Audit clear blocked: existing audit integrity is not verified.");
+    }
+    const result = clearAuditLogBase();
+    try {
+      fs.unlinkSync(anchorPath());
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        error.code = "AUDIT_ANCHOR_CLEAR_FAILED";
+        error.stateCommitted = true;
+        throw error;
+      }
+    }
+    return result;
+  });
 }
 function verifyAuditIntegrity() {
   const result = verifyAuditIntegrityBase();

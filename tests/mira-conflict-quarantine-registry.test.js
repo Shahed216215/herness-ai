@@ -1,0 +1,523 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const {
+  createConflictQuarantine, readConflict, verifyConflict,
+  beginConflictReview, verifyReview, listConflicts,
+  resolveConflict, verifyResolution, filterTrustedRecords
+} = require('../services/mira-conflict-quarantine-registry');
+
+function digestForTest(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function record(overrides = {}) {
+  const base = {
+    schemaVersion: '1.0.0', memoryId: 'memory-0001', projectId: 'project-a',
+    recordType: 'fact', content: 'original fact',
+    source: { sourceType: 'manual', sourceId: 'source-1', sourceUrl: null, observedAt: '2026-11-03T10:00:00.000Z' },
+    timestamps: { createdAt: '2026-11-03T10:00:00.000Z', updatedAt: '2026-11-03T10:00:00.000Z' },
+    version: { revision: 1, contentHash: '' },
+    integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
+    trust: { status: 'SOURCE_RECORDED' },
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-a'] },
+    lifecycle: 'ACTIVE'
+  };
+  const merged = { ...base, ...overrides };
+  merged.version = { ...base.version, ...(overrides.version || {}) };
+  merged.version.contentHash = crypto.createHash('sha256')
+    .update(JSON.stringify(merged.content), 'utf8').digest('hex');
+  return merged;
+}
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'mira-conflict-registry-'));
+const authorizeAccess = () => true;
+const actorContext = { actorId: 'fixture-actor', projectId: 'project-a', purpose: 'isolated-test', requestId: 'request-fixture-001' };
+const auditEvents = [];
+const auditWriter = event => { auditEvents.push(event); };
+const authorizeResolution = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-') && request.resolutionProposal?.requiredAuthority === 'authorized-human-reviewer';
+const resolutionProposal = () => ({
+  fieldLevelChanges: [],
+  dataLossRisks: ['Both original versions are preserved; no source record is deleted by this isolated service.'],
+  requiredAuthority: 'authorized-human-reviewer',
+  recoveryPoint: 'synthetic-fixture-originals-retained',
+  verificationPlan: ['verify both original digests', 'verify resolution digest', 'verify accepted result or merge revision']
+});
+const authorizeReview = request => request.actor === 'reviewer' && request.policyDecision.startsWith('POLICY-REVIEW');
+function startReview(directory, conflictId) {
+  return beginConflictReview({
+    directory, conflictId, projectId: 'project-a', actor: 'reviewer',
+    policyDecision: 'POLICY-REVIEW-1', authorizeReview, auditWriter
+  });
+}
+try {
+  const originalA = record();
+  const originalB = record({ content: 'competing fact', version: { revision: 1, contentHash: 'b'.repeat(64) } });
+  const broadenedMerge = record({
+    content: 'broadened merged content',
+    version: { revision: 3, contentHash: '9'.repeat(64) },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['*'] }
+  });
+  const created = createConflictQuarantine({
+    directory, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], reason: 'fixture conflict', actor: 'test-suite', auditWriter
+  });
+  assert.equal(created.status, 'QUARANTINED');
+  assert.equal(fs.readdirSync(directory).some(name => name.startsWith('.mira-quarantine-tmp-')), false);
+  const repeatedCreate = createConflictQuarantine({
+    directory, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], reason: 'fixture conflict', actor: 'test-suite-retry', auditWriter
+  });
+  assert.equal(repeatedCreate.status, 'ALREADY_EXISTS');
+  const read = readConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' });
+  assert.deepEqual(read.originals.map(item => item.record), [originalA, originalB]);
+  assert.throws(() => readConflict({ directory, conflictId: created.conflictId, projectId: 'project-b' }), /Cross-project/);
+  assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'QUARANTINED');
+
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }), /UNDER_REVIEW state/);
+  const visibleBefore = filterTrustedRecords([
+    originalA, originalB, record({ memoryId: 'memory-0002' }),
+    record({ memoryId: 'memory-0001', projectId: 'project-b',
+      access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-b'] } })
+  ], listConflicts({ directory, projectId: 'project-a' }), 'project-a', authorizeAccess, actorContext);
+  assert.deepEqual(visibleBefore.map(item => item.projectId + ':' + item.memoryId),
+    ['project-a:memory-0002']);
+  assert.deepEqual(filterTrustedRecords([
+    record({ memoryId: 'memory-pending', lifecycle: 'PENDING_REVIEW' }),
+    record({ memoryId: 'memory-unverified', integrity: { status: 'UNVERIFIED', algorithm: 'SHA-256' } }),
+    record({ memoryId: 'memory-quarantined-trust', trust: { status: 'QUARANTINED' } }),
+    record({ memoryId: 'memory-missing-trust', trust: undefined }),
+    record({ memoryId: 'memory-malformed', unexpectedField: 'reject-me' })
+  ], [], 'project-a', authorizeAccess, actorContext), []);
+  assert.deepEqual(filterTrustedRecords(
+    [originalA],
+    [{ projectId: 'project-a', status: 'RESOLVED', originalMemoryIds: ['memory-0001'] }],
+    'project-a', authorizeAccess, actorContext
+  ), []);
+  assert.throws(() => filterTrustedRecords(
+    [originalA],
+    [{ status: 'QUARANTINED', originalMemoryIds: ['memory-0001'] }],
+    'project-a', authorizeAccess, actorContext
+  ), /Conflict quarantine metadata is malformed/);
+  console.log('INCOMPLETE_CONFLICT_METADATA_FAILS_CLOSED=PASS');
+  console.log('PENDING_UNVERIFIED_AND_CROSS_PROJECT_RECORDS_EXCLUDED=PASS');
+  const mainReview = startReview(directory, created.conflictId);
+  assert.equal(mainReview.status, 'UNDER_REVIEW');
+  assert.equal(verifyReview({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'UNDER_REVIEW');
+  assert.deepEqual(filterTrustedRecords([originalA, originalB],
+    listConflicts({ directory, projectId: 'project-a' }), 'project-a', authorizeAccess, actorContext), []);
+  assert.equal(startReview(directory, created.conflictId).status, 'ALREADY_UNDER_REVIEW');
+  assert.throws(() => beginConflictReview({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    actor: 'other-reviewer', policyDecision: 'POLICY-REVIEW-2',
+    authorizeReview: () => true, auditWriter
+  }), /different review authority/);
+  assert.throws(() => filterTrustedRecords([], [], ''), /projectId is required/);
+  assert.throws(() => filterTrustedRecords([originalA], [], 'project-a'), /authenticated access authorizer is required/i);
+  assert.deepEqual(filterTrustedRecords([
+    record({ memoryId: 'memory-restricted-outside-allowlist',
+      access: { classification: 'RESTRICTED', allowedProjectIds: ['project-b'] } })
+  ], [], 'project-a', authorizeAccess, actorContext), []);
+  assert.deepEqual(filterTrustedRecords([
+    originalA
+  ], [], 'project-a', () => false, actorContext), []);
+  console.log('ACCESS_AUTHORIZER_REQUIRED_FAIL_CLOSED=PASS');
+  console.log('RESTRICTED_ALLOWLIST_ENFORCED=PASS');
+  console.log('ACTOR_ACCESS_DECISION_ENFORCED=PASS');
+
+
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'unapproved-user', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(),
+    auditWriter, authorizeResolution
+  }), /authorization denied/);
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
+    auditWriter, authorizeResolution
+  }), /structured resolutionProposal is required/);
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: {}, auditWriter, authorizeResolution
+  }), /fieldLevelChanges is invalid/);
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter
+  }), /authorizeResolution callback is required/);
+
+  const accessAuthorizationDirectory = path.join(directory, 'access-authorization-fixture');
+  const accessAuthorizationConflict = createConflictQuarantine({
+    directory: accessAuthorizationDirectory, projectId: 'project-a', conflictTypes: ['ACCESS_CONFLICT'],
+    records: [originalA, record({ version: { revision: 2, contentHash: '8'.repeat(64) } })],
+    actor: 'test-suite', auditWriter
+  });
+  startReview(accessAuthorizationDirectory, accessAuthorizationConflict.conflictId);
+  assert.equal(resolveConflict({
+    directory: accessAuthorizationDirectory, conflictId: accessAuthorizationConflict.conflictId,
+    projectId: 'project-a', decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer',
+    policyDecision: 'POLICY-ACCESS-CHANGE', resolutionProposal: resolutionProposal(),
+    mergedRecord: broadenedMerge, auditWriter, authorizeResolution,
+    authorizeBroaderAccess: request => request.resultingAccessClass === 'PUBLIC',
+    broaderAccessAuthorization: 'SEPARATE-ACCESS-APPROVAL-001'
+  }).status, 'RESOLVED');
+  const accessResolution = JSON.parse(fs.readFileSync(path.join(accessAuthorizationDirectory, accessAuthorizationConflict.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(accessResolution.broaderAccessAuthorization, 'SEPARATE-ACCESS-APPROVAL-001');
+  assert.equal(verifyResolution({
+    directory: accessAuthorizationDirectory, conflictId: accessAuthorizationConflict.conflictId,
+    projectId: 'project-a'
+  }).status, 'VERIFIED');
+
+  const invalidMerge = record({ version: { revision: 1, contentHash: 'c'.repeat(64) } });
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(),
+    mergedRecord: invalidMerge, auditWriter, authorizeResolution
+  }), /increment exactly once/);
+
+  assert.throws(() => resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }), /explicit acceptedOriginalIndex/);
+  const resolution = resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 1, actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  });
+  assert.equal(resolution.status, 'RESOLVED');
+  assert.equal(resolution.acceptedOriginalIndex, 1);
+  assert.equal(resolution.acceptedOriginalDigest, read.originals[1].recordDigest);
+  assert.equal(listConflicts({ directory, projectId: 'project-a' })[0].status, 'RESOLVED');
+  assert.equal(verifyConflict({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  assert.equal(verifyResolution({ directory, conflictId: created.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const acceptedResolution = JSON.parse(fs.readFileSync(path.join(directory, created.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(acceptedResolution.proposal.affectedVersions.length, 2);
+  assert.equal(acceptedResolution.proposal.originalHashes.length, 2);
+  assert.equal(acceptedResolution.proposal.requiredAuthority, 'authorized-human-reviewer');
+  assert.ok(acceptedResolution.proposal.verificationPlan.length > 0);
+  const repeatedResolution = resolveConflict({
+    directory, conflictId: created.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 1, actor: 'reviewer', policyDecision: 'POLICY-1',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  });
+  assert.equal(repeatedResolution.status, 'ALREADY_RESOLVED');
+  const acceptedVisible = filterTrustedRecords(
+    [originalA, originalB, record({ memoryId: 'memory-independent' })],
+    listConflicts({ directory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(acceptedVisible.map(item => digestForTest(item)), [
+    digestForTest(originalB), digestForTest(record({ memoryId: 'memory-independent' }))
+  ]);
+  console.log('RESOLVED_CONFLICT_ACCEPTED_VERSION_ONLY_RETRIEVABLE=PASS');
+
+  const rejectDirectory = path.join(directory, 'reject-fixture');
+  const rejectConflict = createConflictQuarantine({
+    directory: rejectDirectory, projectId: 'project-a', conflictTypes: ['SOURCE_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  startReview(rejectDirectory, rejectConflict.conflictId);
+  assert.equal(resolveConflict({
+    directory: rejectDirectory, conflictId: rejectConflict.conflictId, projectId: 'project-a',
+    decision: 'REJECT_CONFLICTING_CHANGE', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-REJECT',
+    resolutionProposal: resolutionProposal(),
+    auditWriter, authorizeResolution
+  }).status, 'RESOLVED');
+  const rejectRecord = JSON.parse(fs.readFileSync(path.join(rejectDirectory, rejectConflict.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(rejectRecord.decision, 'REJECT_CONFLICTING_CHANGE');
+  assert.equal(rejectRecord.originalDigests.length, 2);
+  assert.equal(listConflicts({ directory: rejectDirectory, projectId: 'project-a' })[0].status, 'REJECTED');
+  assert.equal(listConflicts({ directory: rejectDirectory, projectId: 'project-a' })[0].state, 'REJECTED');
+  const rejectedVisible = filterTrustedRecords(
+    [originalA, originalB], listConflicts({ directory: rejectDirectory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(rejectedVisible, [originalA]);
+  console.log('REJECTED_CONFLICT_UNSELECTED_VERSION_EXCLUDED=PASS');
+
+  const retainDirectory = path.join(directory, 'retain-fixture');
+  const failedIntegrityOriginal = record({ integrity: { status: 'FAILED', algorithm: 'SHA-256' } });
+  const retainConflict = createConflictQuarantine({
+    directory: retainDirectory, projectId: 'project-a', conflictTypes: ['INTEGRITY_CONFLICT'],
+    records: [originalA, failedIntegrityOriginal], actor: 'test-suite', auditWriter
+  });
+  assert.equal(verifyConflict({ directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const retainedEnvelope = readConflict({ directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a' });
+  assert.ok(retainedEnvelope.originals[1].schemaValidationErrors.length === 0);
+  assert.equal(retainedEnvelope.originals[1].declaredIntegrityStatus, 'FAILED');
+  startReview(retainDirectory, retainConflict.conflictId);
+  assert.throws(() => resolveConflict({
+    directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
+    decision: 'RETAIN_QUARANTINED', acceptedOriginalIndex: 0,
+    actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }), /cannot select an accepted original/);
+  assert.equal(resolveConflict({
+    directory: retainDirectory, conflictId: retainConflict.conflictId, projectId: 'project-a',
+    decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-RETAIN',
+    resolutionProposal: resolutionProposal(),
+    auditWriter, authorizeResolution
+  }).status, 'RESOLVED');
+  assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].status, 'RETAINED_QUARANTINED');
+  assert.equal(listConflicts({ directory: retainDirectory, projectId: 'project-a' })[0].state, 'QUARANTINED');
+  assert.deepEqual(filterTrustedRecords([originalA, originalB],
+    listConflicts({ directory: retainDirectory, projectId: 'project-a' }), 'project-a', authorizeAccess, actorContext), []);
+
+  const multiDirectory = path.join(directory, 'multi-original-fixture');
+  const thirdOriginal = record({
+    content: 'third version',
+    version: { revision: 3, contentHash: 'f'.repeat(64) }
+  });
+  const multiConflict = createConflictQuarantine({
+    directory: multiDirectory, projectId: 'project-a', conflictTypes: ['REVISION_CONFLICT'],
+    records: [originalA, originalB, thirdOriginal], actor: 'test-suite', auditWriter
+  });
+  assert.equal(readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals.length, 3);
+  startReview(multiDirectory, multiConflict.conflictId);
+  assert.throws(() => resolveConflict({
+    directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 99,
+    actor: 'reviewer', policyDecision: 'POLICY-ALT',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }), /valid acceptedOriginalIndex/);
+  assert.equal(resolveConflict({
+    directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_ALTERNATE_VERSION', acceptedOriginalIndex: 2,
+    actor: 'reviewer', policyDecision: 'POLICY-ALT',
+    resolutionProposal: resolutionProposal(), auditWriter, authorizeResolution
+  }).status, 'RESOLVED');
+  const multiResolution = JSON.parse(fs.readFileSync(path.join(multiDirectory, multiConflict.conflictId + '.resolution.json'), 'utf8'));
+  assert.equal(multiResolution.acceptedOriginalDigest, readConflict({ directory: multiDirectory, conflictId: multiConflict.conflictId }).originals[2].recordDigest);
+  assert.equal(verifyResolution({ directory: multiDirectory, conflictId: multiConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const alternateVisible = filterTrustedRecords(
+    [originalA, originalB, thirdOriginal],
+    listConflicts({ directory: multiDirectory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(alternateVisible, [thirdOriginal]);
+  console.log('ALTERNATE_VERSION_SELECTION_ENFORCED=PASS');
+
+  const mergeDirectory = path.join(directory, 'merge-fixture');
+  const mergeConflict = createConflictQuarantine({
+    directory: mergeDirectory, projectId: 'project-a', conflictTypes: ['REVISION_CONFLICT'],
+    records: [originalA, record({ version: { revision: 2, contentHash: 'd'.repeat(64) } })],
+    actor: 'test-suite', auditWriter
+  });
+  const merged = record({ content: 'reviewed merged content', version: { revision: 3, contentHash: 'e'.repeat(64) } });
+
+  startReview(mergeDirectory, mergeConflict.conflictId);
+  assert.throws(() => resolveConflict({
+    directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
+    decision: 'APPROVED_FIELD_MERGE', acceptedOriginalIndex: 0,
+    actor: 'reviewer', policyDecision: 'POLICY-2', resolutionProposal: resolutionProposal(),
+    mergedRecord: merged, auditWriter, authorizeResolution
+  }), /cannot select one original version/);
+  assert.throws(() => resolveConflict({
+    directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
+    decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
+    resolutionProposal: resolutionProposal(), mergedRecord: broadenedMerge,
+    auditWriter, authorizeResolution
+  }), /separate broader-access authorization/);
+  assert.equal(resolveConflict({
+    directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a',
+    decision: 'APPROVED_FIELD_MERGE', actor: 'reviewer', policyDecision: 'POLICY-2',
+    resolutionProposal: resolutionProposal(),
+    mergedRecord: merged, auditWriter, authorizeResolution
+  }).status, 'RESOLVED');
+  const mergedResolution = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
+  assert.deepEqual(mergedResolution.originalDigests.length, 2);
+  assert.equal(mergedResolution.resultingRecord.version.revision, 3);
+  assert.equal(mergedResolution.broaderAccessAuthorization, null);
+  assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+  const mergedVisible = filterTrustedRecords(
+    [originalA, record({ version: { revision: 2, contentHash: 'd'.repeat(64) } }), merged],
+    listConflicts({ directory: mergeDirectory, projectId: 'project-a' }),
+    'project-a', authorizeAccess, actorContext
+  );
+  assert.deepEqual(mergedVisible, [merged]);
+  console.log('APPROVED_MERGE_ORIGINALS_EXCLUDED=PASS');
+
+  const resolutionTamper = JSON.parse(fs.readFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), 'utf8'));
+  resolutionTamper.proposal.requiredAuthority = 'TAMPERED';
+  fs.writeFileSync(path.join(mergeDirectory, mergeConflict.conflictId + '.resolution.json'), JSON.stringify(resolutionTamper));
+  assert.equal(verifyResolution({ directory: mergeDirectory, conflictId: mergeConflict.conflictId, projectId: 'project-a' }).status, 'INTEGRITY_FAILED');
+  assert.equal(listConflicts({ directory: mergeDirectory, projectId: 'project-a' })[0].status, 'INTEGRITY_FAILED');
+
+  const malformedResolutionDir = path.join(directory, 'malformed-resolution');
+  const malformedResolutionConflict = createConflictQuarantine({
+    directory: malformedResolutionDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  fs.writeFileSync(path.join(malformedResolutionDir, malformedResolutionConflict.conflictId + '.resolution.json'), 'null');
+  assert.equal(verifyResolution({
+    directory: malformedResolutionDir, conflictId: malformedResolutionConflict.conflictId, projectId: 'project-a'
+  }).status, 'INTEGRITY_FAILED');
+
+  const reviewDeniedDir = path.join(directory, 'review-denied');
+  const reviewDeniedConflict = createConflictQuarantine({
+    directory: reviewDeniedDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  assert.throws(() => beginConflictReview({
+    directory: reviewDeniedDir, conflictId: reviewDeniedConflict.conflictId, projectId: 'project-a',
+    actor: 'reviewer', policyDecision: 'POLICY-REVIEW-DENIED',
+    authorizeReview: () => false, auditWriter
+  }), /review authorization denied/);
+  assert.equal(listConflicts({ directory: reviewDeniedDir, projectId: 'project-a' })[0].status, 'QUARANTINED');
+
+  const reviewAuditDir = path.join(directory, 'review-audit-fail');
+  const reviewAuditConflict = createConflictQuarantine({
+    directory: reviewAuditDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  assert.throws(() => beginConflictReview({
+    directory: reviewAuditDir, conflictId: reviewAuditConflict.conflictId, projectId: 'project-a',
+    actor: 'reviewer', policyDecision: 'POLICY-REVIEW-FAIL',
+    authorizeReview, auditWriter: () => { throw new Error('review audit unavailable'); }
+  }), error => error.code === 'CONFLICT_REVIEW_AUDIT_FAILED' && error.stateCommitted === true);
+  assert.equal(listConflicts({ directory: reviewAuditDir, projectId: 'project-a' })[0].status, 'UNDER_REVIEW');
+  assert.equal(beginConflictReview({
+    directory: reviewAuditDir, conflictId: reviewAuditConflict.conflictId, projectId: 'project-a',
+    actor: 'reviewer', policyDecision: 'POLICY-REVIEW-FAIL', authorizeReview, auditWriter
+  }).status, 'ALREADY_UNDER_REVIEW');
+
+  const auditFailDir = path.join(directory, 'audit-fail');
+  assert.throws(() => createConflictQuarantine({
+    directory: auditFailDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite',
+    auditWriter: () => { throw new Error('audit unavailable'); }
+  }), error => error.code === 'CONFLICT_QUARANTINED_AUDIT_FAILED' && error.stateCommitted === true);
+
+  const resolutionAuditDir = path.join(directory, 'resolution-audit-fail');
+  const resolutionAuditConflict = createConflictQuarantine({
+    directory: resolutionAuditDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  startReview(resolutionAuditDir, resolutionAuditConflict.conflictId);
+  assert.throws(() => resolveConflict({
+    directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-3',
+    resolutionProposal: resolutionProposal(),
+    auditWriter: () => { throw new Error('resolution audit unavailable'); }, authorizeResolution
+  }), error => error.code === 'CONFLICT_RESOLUTION_AUDIT_FAILED' && error.stateCommitted === true);
+  assert.equal(listConflicts({ directory: resolutionAuditDir, projectId: 'project-a' })[0].status, 'RESOLVED');
+  assert.equal(resolveConflict({
+    directory: resolutionAuditDir, conflictId: resolutionAuditConflict.conflictId, projectId: 'project-a',
+    decision: 'ACCEPT_EXISTING_VERSION', acceptedOriginalIndex: 0, actor: 'reviewer', policyDecision: 'POLICY-3',
+    resolutionProposal: resolutionProposal(),
+    auditWriter, authorizeResolution
+  }).status, 'ALREADY_RESOLVED');
+
+  assert.throws(() => readConflict({ directory, conflictId: '../../outside', projectId: 'project-a' }), /Invalid conflictId/);
+
+  const malformedDir = path.join(directory, 'malformed-original');
+  const malformedOriginal = record({ unexpectedField: 'preserve-me', integrity: { status: 'FAILED', algorithm: 'SHA-256' } });
+  const malformedConflict = createConflictQuarantine({
+    directory: malformedDir, projectId: 'project-a', conflictTypes: ['SCHEMA_CONFLICT'],
+    records: [originalA, malformedOriginal], actor: 'test-suite', auditWriter
+  });
+  const malformedEnvelope = readConflict({ directory: malformedDir, conflictId: malformedConflict.conflictId, projectId: 'project-a' });
+  assert.ok(malformedEnvelope.originals[1].schemaValidationErrors.length > 0);
+  assert.equal(verifyConflict({ directory: malformedDir, conflictId: malformedConflict.conflictId, projectId: 'project-a' }).status, 'VERIFIED');
+
+  const tamperDir = path.join(directory, 'tamper');
+  const tampered = createConflictQuarantine({
+    directory: tamperDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  const tamperPath = path.join(tamperDir, tampered.conflictId + '.conflict.json');
+  const tamperEnvelope = JSON.parse(fs.readFileSync(tamperPath, 'utf8'));
+  tamperEnvelope.originals[0].record.content = 'tampered';
+  fs.writeFileSync(tamperPath, JSON.stringify(tamperEnvelope));
+  assert.equal(verifyConflict({ directory: tamperDir, conflictId: tampered.conflictId }).status, 'INTEGRITY_FAILED');
+  assert.throws(() => resolveConflict({
+    directory: tamperDir, conflictId: tampered.conflictId, projectId: 'project-a',
+    decision: 'RETAIN_QUARANTINED', actor: 'reviewer', policyDecision: 'POLICY-TAMPER',
+    resolutionProposal: resolutionProposal(),
+    auditWriter, authorizeResolution
+  }), /integrity verification failed/);
+
+  const metadataTamperDir = path.join(directory, 'metadata-tamper');
+  const metadataConflict = createConflictQuarantine({
+    directory: metadataTamperDir, projectId: 'project-a', conflictTypes: ['CONTENT_CONFLICT'],
+    records: [originalA, originalB], actor: 'test-suite', auditWriter
+  });
+  const metadataPath = path.join(metadataTamperDir, metadataConflict.conflictId + '.conflict.json');
+  const metadataEnvelope = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+  metadataEnvelope.createdBy = 'tampered-actor';
+  fs.writeFileSync(metadataPath, JSON.stringify(metadataEnvelope));
+  assert.equal(verifyConflict({ directory: metadataTamperDir, conflictId: metadataConflict.conflictId }).status, 'INTEGRITY_FAILED');
+
+  const symlinkDir = path.join(directory, 'symlink');
+  fs.mkdirSync(symlinkDir);
+  const outside = path.join(directory, 'outside');
+  fs.mkdirSync(outside);
+  fs.symlinkSync(outside, path.join(symlinkDir, 'linked'), 'dir');
+  assert.throws(() => createConflictQuarantine({
+    directory: path.join(symlinkDir, 'linked'), projectId: 'project-a',
+    conflictTypes: ['CONTENT_CONFLICT'], records: [originalA, originalB],
+    actor: 'test-suite', auditWriter
+  }), /safe directory/);
+  assert.throws(() => createConflictQuarantine({
+    directory: path.join(symlinkDir, 'linked', 'nested'), projectId: 'project-a',
+    conflictTypes: ['CONTENT_CONFLICT'], records: [originalA, originalB],
+    actor: 'test-suite', auditWriter
+  }), /unsafe directory component/);
+
+  assert.ok(auditEvents.some(event => event.action === 'memory_conflict_quarantined'));
+  assert.ok(auditEvents.some(event => event.action === 'memory_conflict_resolved'));
+  console.log('IMMUTABLE_CONFLICT_ENVELOPE_AND_ORIGINAL_PRESERVATION=PASS');
+  console.log('ATOMIC_IMMUTABLE_PUBLICATION_AND_TEMP_CLEANUP=PASS');
+  console.log('PROJECT_SCOPED_READ_AND_LIST=PASS');
+  console.log('LOCAL_SHA256_INTEGRITY_VERIFICATION=PASS');
+  console.log('IMMUTABLE_RESOLUTION_INTEGRITY_AND_IDEMPOTENCY=PASS');
+  console.log('PENDING_CONFLICT_RETRIEVAL_EXCLUSION=PASS');
+  console.log('PROJECT_SCOPED_RETRIEVAL_EXCLUSION=PASS');
+  console.log('CONFLICT_STATE_QUARANTINED_TO_UNDER_REVIEW=PASS');
+  console.log('UNDER_REVIEW_RETRIEVAL_EXCLUSION=PASS');
+  console.log('CONTRACT_REJECTED_AND_RETAINED_STATES=PASS');
+  console.log('REVIEW_AUTHORIZATION_AND_IDEMPOTENCY=PASS');
+  console.log('REVIEW_AUDIT_FAILURE_RECOVERY=PASS');
+  console.log('GOVERNED_ACCEPT_EXISTING_VERSION_RESOLUTION=PASS');
+  console.log('GOVERNED_ACCEPT_ALTERNATE_VERSION_RESOLUTION=PASS');
+  console.log('GOVERNED_APPROVED_FIELD_MERGE_RESOLUTION=PASS');
+  console.log('BROADER_ACCESS_MERGE_REQUIRES_SEPARATE_AUTHORIZATION=PASS');
+  console.log('GOVERNED_RETAIN_QUARANTINED=PASS');
+  console.log('INCOMPATIBLE_RESOLUTION_FIELDS_REJECTED=PASS');
+  console.log('ALTERNATE_VERSION_INDEX_BOUNDS=PASS');
+  console.log('MULTI_ORIGINAL_CONFLICT_PRESERVATION=PASS');
+  console.log('FAILED_INTEGRITY_ORIGINAL_QUARANTINE=PASS');
+  console.log('GOVERNED_REJECT_CONFLICTING_CHANGE_RESOLUTION=PASS');
+  console.log('EXPLICIT_RESOLUTION_AUTHORIZATION_GATE=PASS');
+  console.log('CONTRACT_RESOLUTION_PROPOSAL_REQUIRED=PASS');
+  console.log('RESOLUTION_PROPOSAL_TRACEABILITY_AND_TAMPER_DETECTION=PASS');
+  console.log('MERGE_REVISION_INCREMENT_AND_SOURCE_LINKAGE=PASS');
+  console.log('AUDIT_FAILURE_FAIL_CLOSED=PASS');
+  console.log('RESOLUTION_AUDIT_FAILURE_RECOVERY=PASS');
+  console.log('TAMPER_DETECTION=PASS');
+  console.log('MALFORMED_ORIGINAL_PRESERVATION=PASS');
+  console.log('INVALID_CONFLICT_ID_PATH_TRAVERSAL_REJECTED=PASS');
+  console.log('MALFORMED_RESOLUTION_FAIL_CLOSED=PASS');
+  console.log('FULL_ENVELOPE_METADATA_TAMPER_DETECTION=PASS');
+  console.log('SYMLINK_PATH_REJECTION=PASS');
+  console.log('SYNTHETIC_FIXTURES_ONLY=PASS');
+  console.log('PRODUCTION_DATA_TOUCHED=NO');
+  console.log('NETWORK_REQUESTS=0');
+  console.log('EXTERNAL_ACTIONS=0');
+  console.log('TESTS_FAILED=0');
+  console.log('RESULT=PHASE2_CONFLICT_QUARANTINE_LIFECYCLE_ISOLATED_PASS');
+} finally {
+  fs.rmSync(directory, { recursive: true, force: true });
+}

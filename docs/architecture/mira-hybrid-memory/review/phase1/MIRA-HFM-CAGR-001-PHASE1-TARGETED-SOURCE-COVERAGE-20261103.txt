@@ -1,0 +1,145 @@
+MIRA HYBRID MEMORY
+PHASE 1 — TARGETED SOURCE-COVERAGE ADDENDUM
+Document ID: MIRA-HFM-CAGR-001-PHASE1-TARGETED-SOURCE-COVERAGE-20261103
+Version: v0.2 review artifact (additive; no release/version promotion)
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed branch HEAD: 7f5e5d90cc78956ecb71e9042d4835f64172c180
+Review date: 2026-11-03
+Status: PARTIAL SOURCE REVIEW — PHASE 1 REMAINS INCOMPLETE
+
+1. PURPOSE AND SAFETY BOUNDARY
+This report extends the Phase 1 documentation/source review with targeted inspection of additional routes, tools, scripts, and services. It does not authorize implementation.
+No production Memory content was read, printed, hashed, parsed, migrated, backed up, restored, or modified. No Google Drive or Facebook API was invoked. No tests were executed. No application source code was changed. No dependency was installed.
+All findings below are based on source text fetched from the named GitHub feature branch. A targeted sample is not a repository-wide source-text scan.
+
+2. BRANCH TREE RECONCILIATION
+Recursive Git tree at reviewed HEAD:
+- TREE_ENTRIES=616
+- TREE_TRUNCATED=NO
+Earlier inventory recorded 613 entries. The current branch tree therefore contains three more entries than that earlier inventory. This count describes repository tree entries, not source files fully inspected.
+The branch HEAD recorded for this review is 7f5e5d90cc78956ecb71e9042d4835f64172c180.
+
+3. ADDITIONAL TARGETED SOURCE FILES INSPECTED
+Conversation and learning:
+- routes/conversations.js
+- routes/learning-history.js
+- services/mira-conversation-memory-engine.js
+- services/mira-learning-history.js
+- services/mira-cross-task-learning-engine.js
+- services/mira-experience-memory.js
+- services/mira-experience-retrieval-engine.js
+- services/mira-future-strategy-engine.js
+- conversation-store.js
+- services/mira-work-learning-engine.js
+- services/mira-work-knowledge-consolidation.js
+- services/mira-stage13-learning-governance.js
+- services/learning.js
+- routes/autonomous-learning.js
+- autonomous-learning-engine.js
+- autonomous-learning-controlled-apply.js
+- knowledge-controlled-apply.js
+- knowledge-memory-evolution.js
+- knowledge.js
+Tools and scripts:
+- tools/knowledge-search.js
+- tools/knowledge-cleanup.js
+- tools/knowledge-backup.js
+- tools/knowledge-restore.js
+- tools/knowledge-improve.js
+- tools/knowledge-save.js
+- tools/learning-save.js
+- tools/memory-save.js
+- tools/memory-count.js
+- tools/memory-restore.js
+- tools/knowledge-count.js
+- scripts/mira-memory-backup.js
+
+Some route and derived-learning files contain no direct filesystem or Drive callsites in the inspected text and delegate to their imported store/service. This does not mean the route has no persistence effect; the delegated module must be traced.
+
+4. CONFIRMED ADDITIONAL FINDINGS
+
+F01 — Conversation persistence is separate from general Memory.
+conversation-store.js imports mira-storage and resolves data/conversations.json through storagePath. It performs local directory creation, read/write, and temporary-file rename operations. routes/conversations.js delegates CRUD/context operations to conversation-store and conversation-memory-engine. The conversation-memory-engine delegates persistence to conversation-store. This is a distinct persistence domain and must not be conflated with memory.json.
+
+F02 — Learning and governance stores remain separate persistence domains.
+services/mira-work-learning-engine.js uses storagePath('data/work-learning-records.json') unless MIRA_LEARNING_FILE overrides it. The inspected implementation performs local filesystem operations including directory creation, read/write, and rename.
+services/mira-work-knowledge-consolidation.js uses storagePath('data') and a separate work-knowledge-consolidation store file.
+services/mira-stage13-learning-governance.js uses MIRA_STAGE13_STORE when configured, otherwise storagePath('data/stage13-learning-governance.json'). These are separate data stores and require separate compatibility and migration analysis in any future design.
+
+F03 — Learning-history and experience layers are read/derived service layers in the inspected call chain.
+routes/learning-history.js delegates to mira-learning-history and experience-memory. mira-learning-history obtains records from experience-memory and future-strategy-engine. The inspected files did not expose independent file writes for these derived layers. Their source persistence remains upstream and must be traced through the relevant source engines; do not count them as separate durable stores without evidence.
+
+F04 — Knowledge search has a Local/Drive precedence ambiguity.
+tools/knowledge-search.js first obtains local Knowledge and then attempts loadKnowledgeFromDrive(). If the Drive result is an array, it replaces the local search source. An empty Drive array is still an array and therefore also replaces the local source. This is confirmed source behavior. The intended authoritative-source and empty-remote-result policy is not established by the inspected code or current design record.
+
+F05 — Knowledge cleanup bypasses the shared storage resolver.
+tools/knowledge-cleanup.js constructs KNOWLEDGE_FILE from a project-root path, writes the cleaned local Knowledge file directly, and then calls saveKnowledgeToDrive(). This is inconsistent with the storagePath-based Knowledge module when MIRA_STORAGE_DIR points elsewhere. The cleanup action was not invoked.
+
+F06 — Knowledge backup is not a strictly read-only/local-only operation.
+tools/knowledge-backup.js constructs project-root Knowledge and credential/token paths directly, writes local knowledge.json and knowledge-backup.json, and performs Google Drive folder/list/create/update operations to synchronize a backup. Its description says it creates a separate backup without modifying the Knowledge base, but the implementation includes a local knowledge.json write. This path was inspected only; the tool was not invoked and no credentials were read.
+
+F07 — Knowledge restore is destructive and path-divergent.
+tools/knowledge-restore.js constructs project-root Knowledge, backup, credentials, and token paths directly. It can load a backup from Drive, write a safety backup, overwrite local knowledge.json, and synchronize restored entries to Drive. The inspected path is destructive and bypasses the shared storage resolver. It was not invoked.
+
+F08 — Controlled apply and Evolution continue to depend on Drive.
+autonomous-learning-controlled-apply.js uses storagePath for local Knowledge but also reads/writes Drive state, checks equality, snapshots state, verifies post-apply state, and attempts rollback.
+knowledge-controlled-apply.js reads Local and Drive before apply, blocks on mismatch, synchronizes and verifies after apply, and has rollback paths.
+knowledge-memory-evolution.js uses storagePath for local Memory/Knowledge while retaining Drive load/save and persisted Drive snapshot logic. These remain blockers to removing routine Drive sync until replacement behavior and regression evidence exist.
+
+F09 — Knowledge CRUD remains Drive-coupled.
+knowledge.js uses storagePath('knowledge.json') locally and saveKnowledgeToDrive() through syncToDrive(). The inspected CRUD paths expose Drive synchronization outcomes in returned results. tools/knowledge-save.js and tools/learning-save.js surface Drive status from delegated Knowledge/Learning operations. services/learning.js and routes/autonomous-learning.js expose or propagate Drive sync status from delegated flows. These indirect callers must remain in the caller-compatibility inventory.
+
+F10 — Memory and Knowledge helper tools delegate to modules.
+tools/memory-save.js, tools/memory-count.js, tools/memory-restore.js, tools/knowledge-count.js, tools/knowledge-improve.js, and scripts/mira-memory-backup.js are small wrappers or delegates in the inspected files; direct persistence effects are not fully described by their own wrapper text. Their imported module call chains must be included in the caller compatibility map. No helper tool was executed.
+
+5. UPDATED PHASE 1 COVERAGE INTERPRETATION
+- Targeted source files listed in this addendum: 32.
+- Repository-wide source-text scan: NOT_EXECUTED.
+- Full path inventory: COMPLETE for the reviewed Git tree (616 entries; not truncated).
+- Persistence caller inventory: PARTIAL.
+- Local/Drive source-of-truth policy: UNDECIDED.
+- Caller-by-caller compatibility matrix: PARTIAL.
+- Provider permission-scope review: NOT_COMPLETE.
+- Isolated fixture/mock test plan: NOT_EXECUTED.
+- Tests: NOT_EXECUTED.
+- Production data access: NONE.
+- Application source changes: NONE.
+
+6. PHASE 1 CLOSURE BLOCKERS
+C01 Full source-text scan across all relevant branch source files remains incomplete.
+C02 All filesystem/path callers, background jobs, scheduled jobs, and environment path overrides are not yet reconciled.
+C03 Authoritative-source, conflict, and empty-Drive-result behavior remains undecided.
+C04 Caller-by-caller compatibility for Knowledge CRUD, Learning CRUD, cleanup, backup, restore, controlled apply, autonomous learning, and Evolution remains partial.
+C05 Every Drive read/write callsite and its approved replacement is not yet proven. Drive sync removal remains blocked.
+C06 Isolated fixture-only test plan and evidence remain outstanding; no tests were run.
+C07 Provider dependencies and permission scopes have not been comprehensively reviewed.
+
+7. REQUIRED NEXT REVIEW WORK
+1. Continue targeted source retrieval in small batches, prioritizing remaining file I/O, direct BASE_DIR/path.join callers, scheduled/background jobs, and provider access.
+2. Trace wrapper/delegate call chains for Memory/Knowledge tools and all indirect Learning routes.
+3. Complete the caller compatibility table with inputs, outputs, errors, side effects, snapshots, rollback, audit, and Drive dependencies.
+4. Define the Local/Drive authority and conflict policy as a design decision only; do not implement it in this review.
+5. Prepare an isolated fixture/mock-only test plan. Do not run tests against production data or invoke destructive tools.
+6. Review provider scopes and data-flow requirements before any future provider implementation.
+
+8. FINAL STATUS
+TREE_ENTRIES=616
+TREE_TRUNCATED=NO
+TARGETED_SOURCE_FILES_LISTED=32
+REPOSITORY_WIDE_SOURCE_TEXT_SCAN=NOT_EXECUTED
+PERSISTENCE_CALLER_INVENTORY=PARTIAL
+KNOWLEDGE_DRIVE_PRECEDENCE=CONFIRMED
+KNOWLEDGE_CLEANUP_PATH_BYPASS=CONFIRMED
+KNOWLEDGE_BACKUP_SIDE_EFFECT=CONFIRMED
+KNOWLEDGE_RESTORE_DESTRUCTIVE_PATH=CONFIRMED
+DRIVE_DEPENDENCY=CONFIRMED
+TESTS=NOT_EXECUTED
+PRODUCTION_DATA_ACCESS=NONE
+SOURCE_CODE_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+
+END OF REPORT

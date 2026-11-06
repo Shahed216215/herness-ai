@@ -1,0 +1,192 @@
+MIRA HYBRID MEMORY — PHASE 2
+EXTENDED ADJACENT STORE AND PROVIDER BOUNDARY AUDIT
+Date: 2026-11-04
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Code verification commit: f3e032080880e7a273758c52c2f82ea45d32e1c2
+Status: TARGETED STATIC AUDIT — NO RUNTIME INTEGRATION
+
+1. SCOPE
+This addendum extends the 18-path Memory/Knowledge/Conversation callsite audit. It inspects additional provider, route, tool and adjacent persistence boundaries. It is not a full repository scan of all 562 JavaScript files in the branch tree.
+
+Additional inspected source paths include:
+autonomous-learning-engine.js
+autonomous-learning-proposals.js
+google-drive.js
+knowledge-improvement.js
+providers/index.js
+providers/custom/index.js
+routes/autonomous-learning.js
+routes/learning-history.js
+routes/mira-evolution.js
+routes/mira-provider-evolution.js
+routes/mira-research-governance.js
+routes/mira-seo-research.js
+scripts/mira-memory-backup.js
+services/learning.js
+services/mira-conversation-response-planner.js
+services/mira-conversation-response-service.js
+services/mira-cross-task-learning-engine.js
+services/mira-experience-memory.js
+services/mira-experience-retrieval-engine.js
+services/mira-learning-history.js
+services/mira-seo-research-evidence.js
+services/mira-stage13-learning-governance.js
+services/mira-work-knowledge-consolidation.js
+services/mira-work-learning-engine.js
+services/mira-work-quality-learning-handoff.js
+services/mira-evolution-staging.js
+services/mira-provider-evolution.js
+services/mira-request-context.js
+services/mira-research-governance.js
+services/mira-seo-research-orchestrator.js
+services/mira-knowledge-state-recovery.js
+tools/knowledge-cleanup.js
+tools/memory-version-recovery.js
+
+2. ADDITIONAL FINDINGS
+A. Google Drive provider boundary — google-drive.js
+- saveKnowledgeToDrive() at lines 201–218 writes the supplied Knowledge array through Drive helpers.
+- loadKnowledgeFromDrive() at lines 220–234 returns Drive Knowledge without canonical project mapping or conflict-registry filtering at this boundary.
+- saveMemoryToDrive()/loadMemoryFromDrive() at lines 236–269 are distinct Memory provider boundaries.
+- Existing Phase 1 authority policy says Drive sync must not be cut over or removed without separate approval. Phase 2 must not make live Drive calls in CI.
+Finding: provider boundary needs normalization, project-scope verification, quarantine filtering and write arbitration before remote calls. Existing offline CI stub is retained.
+
+B. Knowledge cleanup tool — tools/knowledge-cleanup.js
+- inspectKnowledge() reads getKnowledge() at line 53.
+- removeDuplicates() reads getKnowledge() at line 81, calls replaceKnowledge() at line 100, then saveKnowledgeToDrive() at line 103.
+- It uses title/url/content equality, not canonical identity/revision/conflict arbitration.
+Finding: this is a direct destructive rewrite + provider sync path. It must be registered as a governed write boundary; duplicate similarity must not erase conflicting versions or forensic originals. No production execution was performed.
+
+C. Knowledge improvement proposals — knowledge-improvement.js
+- Proposal state reads through jsonStateStore.readJsonArray() at lines 11–17.
+- saveProposals() writes atomically and audits at lines 19–45.
+Finding: proposal records are not canonical Knowledge records, but controlled-apply must preserve proposal-to-source linkage and cannot bypass Knowledge write arbitration.
+
+D. Autonomous learning / general learning — services/learning.js and routes/autonomous-learning.js
+- services/learning.js calls addLearning() at line 479 and updateLearning() at line 645.
+- routes/autonomous-learning.js imports autonomous learning engine/proposal/controlled-apply services.
+Finding: these are indirect Knowledge mutation callers; they inherit the knowledge.js boundary and must be included in the caller registry and integration tests.
+
+E. Stage 13 Learning Governance — services/mira-stage13-learning-governance.js
+- Own JSON store path is selected at lines 11–12.
+- ensureStore()/loadStore()/saveStore() perform independent persistence at lines 43–69.
+- persist() appends records and events at lines 99–104.
+- Feedback, failure and benchmark records are persisted by recordFeedback()/recordFailure()/recordBenchmark() at lines 145–214.
+Finding: this is a separate governance/learning evidence domain, not general Memory or canonical Knowledge. It needs data classification, project/source linkage and integrity/retention policy; do not silently merge it into Knowledge.
+
+F. Work Knowledge Consolidation — services/mira-work-knowledge-consolidation.js
+- loadStore() validates a separate items store at lines 141–178.
+- saveStore() uses atomicWriteJson() and state audit at lines 180–205.
+- getConsolidatedKnowledge() reads items at line 919; stats reads them at lines 923–930.
+Finding: distinct derived/proposal store. Its current fail-closed storage tests do not establish canonical conflict-registry filtering or project-scoped retrieval.
+
+G. Work Learning — services/mira-work-learning-engine.js
+- loadStore() reads a separate records store at lines 192–228.
+- saveStore() validates and writes the records collection from line 235 onward.
+- services/learning.js and quality handoff call this engine.
+Finding: separate learning domain; existing fail-closed store tests do not prove canonical HFM project isolation or quarantine filtering.
+
+H. CRM Conversation response path
+- services/mira-conversation-response-planner.js reads getConversationMemory() at lines 185–188.
+- routes/conversations.js creates structured messages and updates conversation memory at lines 245–267; its memory endpoint reads getConversationMemory() at lines 445–465.
+Finding: the CRM response planner consumes CRM conversation context. A project mapping cannot be inferred from messageId or clientId; an approved conversation-to-project registry is still required.
+
+I. Memory backup script
+- scripts/mira-memory-backup.js delegates to local memory store createBackup().
+Finding: backup/restore and user export are separate policy boundaries. Backups may preserve forensic originals; normal retrieval/export must apply quarantine policy. No backup was run.
+
+J. Other research/provider/governance routes
+- Provider evolution routes maintain separate runtime/staging/rollback configuration state.
+- Research governance, SEO research and learning history have separate evidence/history stores and should be classified independently.
+Finding: not every store named "memory" or "learning" is the canonical HFM Memory domain. The boundary inventory must retain domain labels rather than forcing a single adapter over every file.
+
+3. UPDATED DOMAIN CLASSIFICATION
+- General personal Memory: memory.js + mira-local-memory-store.js.
+- Public/shared staged Knowledge: knowledge.js + Google Drive mirror/provider.
+- CRM Conversation: conversation-store.js + conversation memory engine + response planner/routes.
+- Knowledge improvement proposals: knowledge-improvement.js.
+- Autonomous learning proposals/controlled apply: autonomous-learning modules + services/learning.js.
+- Work Learning: mira-work-learning-engine.js.
+- Work Knowledge Consolidation: mira-work-knowledge-consolidation.js.
+- Stage 13 Learning Governance: mira-stage13-learning-governance.js.
+- Research evidence/governance: research/SEO research stores.
+- Backup/recovery: local Memory store backup, Knowledge state recovery, snapshot manager, Drive backup helpers.
+These are separate trust/scope classes until an explicit promotion contract says otherwise.
+
+4. REQUIRED NEW CALLSITE REGISTRY ENTRIES
+- tools/knowledge-cleanup.js: READ + DESTRUCTIVE LOCAL REPLACE + DRIVE WRITE.
+- google-drive.js: KNOWLEDGE/MEMORY PROVIDER READ + WRITE.
+- services/learning.js: INDIRECT KNOWLEDGE ADD + UPDATE.
+- knowledge-improvement.js: PROPOSAL STORE READ + WRITE.
+- autonomous-learning-controlled-apply.js: CONTROLLED KNOWLEDGE REPLACE + DRIVE RESTORE.
+- knowledge-controlled-apply.js: CONTROLLED KNOWLEDGE UPDATE + SNAPSHOT/DRIVE ROLLBACK.
+- services/mira-stage13-learning-governance.js: SEPARATE GOVERNANCE LEARNING STORE WRITE + VERIFY.
+- services/mira-work-knowledge-consolidation.js: SEPARATE DERIVED KNOWLEDGE STORE READ + WRITE.
+- services/mira-work-learning-engine.js: SEPARATE WORK LEARNING STORE READ + WRITE.
+- services/mira-conversation-response-planner.js: CRM CONVERSATION MEMORY READ.
+- routes/conversations.js: CRM MESSAGE WRITE + CONTEXT UPDATE + MEMORY READ.
+- scripts/mira-memory-backup.js: MEMORY BACKUP READ + WRITE.
+- tools/knowledge-backup.js / tools/knowledge-restore.js: KNOWLEDGE BACKUP + RESTORE.
+- tools/memory-restore.js / tools/memory-version-recovery.js: MEMORY RESTORE/RECOVERY.
+No single callsite fix is sufficient while these routes remain independent.
+
+5. PHASE 2 PROGRESS — NEW DRY-RUN MANIFEST PLANNER
+Added:
+- services/mira-hfm-migration-manifest.js
+- tests/mira-hfm-migration-manifest.test.js
+- CI workflow now executes the isolated planner suite.
+
+Planner behavior:
+- Accepts exact source JSON snapshot text and computes its SHA-256 digest.
+- Requires a JSON array and non-negative source ordinals.
+- Uses domain-specific identity extraction for General Memory, Knowledge and CRM Conversation messages.
+- Requires explicit legacy ID, canonical memoryId, projectId, revision 1, source digest, classification and approval reference.
+- Verifies CRM message's parent conversation identity.
+- Rejects duplicate/unused mappings, stale source digest, invalid snapshot JSON, missing immutable Memory ID, unknown classification and canonical ID collisions.
+- Emits BLOCKED or READY_FOR_REVIEW only. Every candidate and plan has writeAuthorized=false.
+- Does not read/write local files, production data, Drive or providers.
+- The source digest algorithm was aligned with the existing read-only adapter and tested for compatibility.
+
+6. CI EVIDENCE
+GitHub Actions Run 410:
+URL: https://github.com/Shahed216215/herness-ai/actions/runs/41771622423
+Run ID: 41771622423
+Head SHA: f3e032080880e7a273758c52c2f82ea45d32e1c2
+Conclusion: SUCCESS
+Job: isolated-core-safety
+The run log confirms:
+- LEGACY_ADAPTER_SOURCE_DIGEST_COMPATIBLE=PASS
+- EXACT_SOURCE_SNAPSHOT_DIGEST_BOUND=PASS
+- SOURCE_SNAPSHOT_CHANGE_INVALIDATES_MAPPING=PASS
+- CRM_PARENT_CONVERSATION_REQUIRED=PASS
+- CRM_EXPLICIT_PARENT_AND_PROJECT_MAPPING=PASS
+- GENERAL_MEMORY_SNAPSHOT_WITHOUT_ID_BLOCKED=PASS
+- UNKNOWN_CLASSIFICATION_BLOCKED=PASS
+- FABRICATED_HISTORICAL_REVISION_BLOCKED=PASS
+- DUPLICATE_LEGACY_ID_REJECTED=PASS
+- CANONICAL_ID_COLLISION_REJECTED=PASS
+- WRITE_AUTHORIZATION_CANNOT_BE_ENABLED=PASS
+- TESTS_FAILED=0
+- RESULT=MIRA_HFM_DRY_RUN_MANIFEST_PLANNER_ISOLATED_PASS
+All other 16 existing Phase 2 isolated suites in the same workflow also emitted their PASS result markers and TESTS_FAILED=0.
+No production data or real Drive was touched; workflow uses MIRA_TEST_OFFLINE_DRIVE=1 and reports NETWORK_REQUESTS=0.
+
+7. STATUS / LIMITATIONS
+ADDITIONAL_SOURCE_PATHS_REVIEWED=32
+TARGETED_SOURCE_PATHS_REVIEWED_TOTAL=50
+FULL_REPOSITORY_562_JS_FILE_SCAN=NOT_EXECUTED
+DRY_RUN_MANIFEST_PLANNER=ISOLATED_PASS
+CANONICAL_DOMAIN_MIGRATION=NOT_IMPLEMENTED
+UNIVERSAL_RUNTIME_READ_GUARD=NOT_INTEGRATED
+UNIVERSAL_RUNTIME_WRITE_GUARD=NOT_INTEGRATED
+DRIVE_PROVIDER_POLICY_GUARD=NOT_INTEGRATED
+KNOWLEDGE_CLEANUP_GOVERNED_WRITE=NOT_INTEGRATED
+ADJACENT_LEARNING_STORE_SCOPE=REVIEW_REQUIRED
+PRODUCTION_DATA_ACCESSED=NO
+LIVE_PROVIDER_CALLS=NO
+VERSION=v0.2
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+END OF ADDENDUM

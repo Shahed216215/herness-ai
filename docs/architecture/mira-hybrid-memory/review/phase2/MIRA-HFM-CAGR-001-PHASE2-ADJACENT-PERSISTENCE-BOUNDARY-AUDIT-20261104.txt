@@ -1,0 +1,69 @@
+MIRA HYBRID MEMORY v0.2 — PHASE 2
+ADJACENT PERSISTENCE BOUNDARY AUDIT
+
+Date: 2026-11-04
+Branch: work/mira-hfm-v02-phase2-core-safety
+Purpose: prevent Phase 2 completion claims from silently expanding into unrelated application stores.
+
+1. AUDIT SCOPE
+
+This is a bounded source-level review of application-owned persistence paths directly connected to Memory, Knowledge, Work Learning, Work Knowledge Consolidation, and the autonomous-learning apply adapter. It is not a complete repository-wide persistence inventory. No production files, live user records, Google Drive, external services, or network endpoints were accessed.
+
+2. IN-SCOPE PATHS REVIEWED / HARDENED
+
+A. Canonical Knowledge
+- knowledge.js reads through mira-json-state-store.readJsonArray and writes through writeArrayState.
+- Capacity eviction is quarantined before the bounded active set is committed.
+- replaceKnowledge() now provides a guarded canonical replacement boundary for cleanup and rollback adapters.
+- tools/knowledge-cleanup.js no longer writes a hard-coded project-root knowledge.json; it uses replaceKnowledge().
+- autonomous-learning-controlled-apply.js now reads with getKnowledge() and restores via replaceKnowledge() rather than direct file I/O.
+
+B. Local Memory
+- services/mira-local-memory-store.js uses the configured storage path and canonical state-store safety primitives.
+- knowledge-memory-evolution.js checks its Memory path against the local Memory store and delegates array writes through the guarded store.
+
+C. Work Learning
+- services/mira-work-learning-engine.js now fails closed for existing invalid stores, uses atomicWriteJson, rejects over-capacity state, and quarantines capacity-evicted records before committing the active bounded set.
+- Isolated regression suite: tests/mira-work-learning-store-fail-closed.test.js.
+
+D. Work Knowledge Consolidation
+- services/mira-work-knowledge-consolidation.js now returns empty only for a missing first-run file, rejects corrupt/empty/unsafe/invalid/oversized state, uses atomicWriteJson, and validates integrity verifier paths.
+- Isolated regression suite: tests/mira-work-knowledge-store-fail-closed.test.js.
+
+E. Canonical conflict assessment
+- services/mira-memory-conflict-assessment.js validates the v0.2.4 SHA-256(UTF-8(JCS(content))) content hash. This is content-hash consistency only, not source authenticity, signature verification, whole-record integrity or trust-anchor proof.
+
+3. ADJACENT PERSISTENCE SYSTEMS — NOT MODIFIED IN THIS PHASE 2 CHANGESET
+
+These stores have distinct owners, lifecycle rules, and approval semantics. They are recorded here to avoid falsely implying they were covered by the HFM fixes.
+
+A. autonomous-learning-proposals.js
+- Persists autonomous-learning-proposals.json.
+- Existing loader rejects malformed JSON and invalid proposal structure, but uses existsSync/readFileSync without explicit lstat symlink rejection.
+- saveStore uses a fixed temporary filename and rename; no canonical atomic writer/readback evidence was found in this bounded inspection.
+- Proposal history is capped at MAX_HISTORY=200; createProposal retains only the last 200 entries. The eviction path was not modified here because this is an approval/governance history store and needs its own retention/quarantine decision.
+
+B. services/mira-stage13-learning-governance.js
+- Persists stage13-learning-governance.json containing events, feedback, failures and benchmarks.
+- Schema validation exists; appendEvent rejects when the event collection reaches MAX_RECORDS.
+- Current source uses existsSync/readFileSync and a temporary-file rename writer; no symlink rejection or post-write readback was demonstrated in this bounded audit.
+- Not modified because it is a separate Stage 13 governance ledger with its own event-chain and recovery semantics.
+
+C. services/mira-research-governance.js
+- Persists research approval and daily-usage state.
+- Existing loader fails closed on malformed/schema-invalid state and uses a lock directory, but the bounded review did not establish complete symlink and fsync/readback protections.
+- Not modified because it is a separate approval ledger, not a canonical HFM Memory/Knowledge store.
+
+D. services/mira-seo-workflow-store.js
+- Persists SEO workflow records.
+- Existing implementation includes lstat regular-file checks, byte/record limits, lock directory, exclusive temporary creation, fsync and atomic rename.
+- Not modified; this is a separate client workflow store.
+
+4. BOUNDARY AND STATUS
+
+- HFM v0.2 Phase 2 changes in this branch address the canonical Memory/Knowledge stores and directly connected Work Learning / Work Knowledge adapters described above.
+- Adjacent proposal, Stage 13 governance and research approval ledgers remain outside this change scope. They require separate bounded design, tests, retention policy and authorization before modification.
+- This document does not certify every file-backed subsystem, every cache, every provider adapter, every retrieval path, or every application state store.
+- No production data was read or changed; no Google Drive API or live provider was called; network requests and external actions were zero.
+- PR #4 remains Draft and unmerged. Version remains v0.2.
+- FULL_PHASE2=REVIEW_REQUIRED until all required integration, independent verification, approval and deferred provider/encryption gates have evidence.

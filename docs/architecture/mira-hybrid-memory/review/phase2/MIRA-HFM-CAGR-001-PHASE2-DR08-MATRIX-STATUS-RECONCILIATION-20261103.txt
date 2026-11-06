@@ -1,0 +1,107 @@
+MIRA HYBRID MEMORY — DR-08 DECISION CLOSURE MATRIX STATUS RECONCILIATION
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-DR08-MATRIX-STATUS-RECONCILIATION-20261103
+Parent: docs/architecture/mira-hybrid-memory/review/DR-08-DECISION-CLOSURE-MATRIX-v0.2.md
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: EVIDENCE AND OWNER-ACCEPTANCE RECONCILIATION
+
+1. PURPOSE
+
+Reconcile the original DR-08 Decision Closure Matrix statuses with:
+- the owner's acceptance of DR-08 recommendations as a planning baseline only;
+- the six-source hash reconciliation;
+- current U05/U06 technical evidence;
+- latest isolated Phase 2 CI run 215.
+
+This addendum does not silently convert planning acceptance into final normative design approval or implementation approval.
+
+2. OWNER ACCEPTANCE BOUNDARY
+
+The owner accepted the DR-08 technical recommendations as the planning/design direction for continued v0.2 work. The accepted planning direction covers:
+- U03: dedicated immutable project genesis anchor;
+- U04: one authoritative per-project append-arbitration authority, preferring provider-native atomic compare-and-swap/transaction when qualified;
+- U05: one canonical immutable test registry, stable test IDs and explicit historical alias mapping;
+- U06: versioned deterministic UTC timestamp profile with fixed precision and explicit rejection rules;
+- E-15: independent verifier separated from writer/allocator/checkpoint/provider response path.
+
+This is ACCEPTED_AS_PLANNING_BASELINE_ONLY. Exact schemas, test vectors, authority/trust-anchor parameters, actual provider qualification and final implementation scope remain open. The acceptance record explicitly does not grant production/provider/Drive/encryption/merge/deployment approval.
+
+3. G1 — SOURCE INTEGRITY
+
+Original matrix status: REVIEW_REQUIRED.
+Reconciled evidence: six core source documents (Contract v0.2.4, Blueprint, Prototype B, Prototype C, Prototype D, Prototype E) have identical Git blob SHA and byte length across Phase 1 baseline commit 90b48f2816e28686cd499650ff6a5fc6217f0e8a, Phase 1 final reviewed commit 720309923223c4f287ec3ede0fb0c16aff80f213 and current Phase 2 branch. SHA-256 values were recomputed over UTF-8 content.
+
+Updated status: PASS_SCOPED_IDENTICAL_6_OF_6.
+Report: MIRA-HFM-CAGR-001-PHASE2-SOURCE-HASH-RECONCILIATION-20261103.txt
+
+4. UPDATED DECISION STATUS
+
+| Item | Planning direction | Current evidence/status | What remains open |
+| U03 Genesis | ACCEPTED_AS_PLANNING_BASELINE_ONLY | DESIGN_REFINED | Final genesis schema, sequence convention, authenticity/signing authority, trust anchor, uncertain-create recovery and independent vectors not approved/tested |
+| U04 Backend atomicity | ACCEPTED_AS_PLANNING_BASELINE_ONLY | DESIGN_REFINED | Actual provider not selected/qualified; atomicity, authoritative readback, crash/concurrency behavior NOT_ESTABLISHED |
+| U05 Test registry | ACCEPTED_AS_PLANNING_BASELINE_ONLY | SPECIFICATION + 8-suite inventory + legacy ambiguity register prepared | Live registry not implemented/approved; Prototype B HFM-LOG family has range reference but no per-ID definitions in §10; no aliases assigned |
+| U06 Timestamp | ACCEPTED_AS_PLANNING_BASELINE_ONLY | Compatibility assessment completed; audit-log emits UTC millisecond ISO timestamps for new events | Canonical chain profile not approved; historical conformance not tested; broader Memory validator not changed |
+| E-15 Independent verifier | ACCEPTED_AS_PLANNING_BASELINE_ONLY | DESIGN_REFINED | Independent implementation, trust anchors, evidence custody, test vectors and qualification NOT_TESTED |
+
+5. RELATED GATES
+
+- G2 Source traceability: PARTIAL; exact per-ID legacy semantics and requirement-level mapping still need review.
+- G3 Canonical event/schema consistency: NOT_APPROVED.
+- G4 Sequence recovery/gap closure: OPEN; U01/U02 planning directions remain distinct from implementation approval.
+- G5 Genesis: REVIEW_REQUIRED.
+- G6 Backend capability: NOT_ESTABLISHED.
+- G7 Test registry: REVIEW_REQUIRED.
+- G8 Timestamp profile: OPEN.
+- G9 Independent verification: REVIEW_REQUIRED.
+- G10 Independent design review: NOT_APPROVED.
+- G11 Explicit implementation authorization: NOT_APPROVED.
+
+6. CURRENT IMPLEMENTATION EVIDENCE
+
+The isolated local conflict quarantine lifecycle now aligns with the five exact v0.2.4 Contract §30 outcomes and its proposal requirements. GitHub Actions run 41673854536 (run 215), job 126049053444, completed SUCCESS with TESTS_FAILED=0. This is scoped local synthetic-fixture evidence only. It does not qualify provider atomicity, canonical audit-chain behavior, JCS contentHash verification, universal retrieval interception or E-15.
+
+7. NON-ACTIONS AND SAFETY
+
+No production Memory/Knowledge data was accessed or changed. No provider account, Google Drive API, Facebook/API/model-provider request, migration, deployment or PR merge occurred. HFM-004 Drive cutover and HFM-005 encrypted emergency backup/key custody remain separate NOT_AUTHORIZED gates. Version remains v0.2.
+
+8. OVERALL RESULT
+
+DR08_G1_SOURCE_INTEGRITY=PASS_SCOPED_IDENTICAL_6_OF_6
+DR08_RECOMMENDATIONS=ACCEPTED_AS_PLANNING_BASELINE_ONLY
+DR08_FINAL_NORMATIVE_DESIGN_APPROVAL=NOT_APPROVED
+DR08_IMPLEMENTATION_APPROVAL=NOT_GRANTED
+DR08_OVERALL=INCONCLUSIVE
+PRODUCTION_READINESS=NOT_CERTIFIED
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF RECONCILIATION
+
+
+9. U03 / U06 / E-15 ISOLATED VERIFIER PROTOTYPE UPDATE — RUN 267
+
+A separate read-only verifier prototype now exists at services/mira-audit-chain-independent-verifier.js. It checks synthetic exports using a bounded RFC 8785/JCS-compatible canonicalization profile, SHA-256, externally pinned genesis/checkpoint hashes, monotonic sequence, previous-hash linkage, event/project identity, strict UTC-millisecond timestamps and checkpoint head binding.
+
+GitHub Actions run 41678192509 (run 267), job 126064407377, SUCCESS:
+- U03_PINNED_GENESIS_ANCHOR=PASS.
+- U06_CANONICAL_UTC_MILLISECOND_TIMESTAMP=PASS within this verifier only.
+- E15_VALID_CHAIN_AND_CHECKPOINT=PASS.
+- E15_TRUST_ANCHORS_REQUIRED=PASS.
+- E15_EVENT_TAMPER_DETECTION=PASS.
+- E15_SEQUENCE_GAP_DETECTION=PASS.
+- E15_FORK_DETECTION=PASS.
+- E15_DUPLICATE_EVENT_ID_DETECTION=PASS.
+- E15_PROJECT_ISOLATION=PASS.
+- E15_CHECKPOINT_HEAD_BINDING=PASS.
+- VERIFIER_READ_ONLY=PASS.
+- TESTS_FAILED=0.
+
+Updated item interpretation:
+- U03: verifier-side pinned genesis hash verification is PASS_SCOPED; genesis creation/persistence, signer authority and trust-anchor custody remain NOT_IMPLEMENTED.
+- U06: strict UTC-millisecond profile is exercised in the isolated verifier; global audit/Memory timestamp profile remains NOT_APPROVED.
+- E-15: separate read-only verifier prototype is PASS_SCOPED; digital signature/writer authenticity, trust-anchor custody/rotation, third-party independent review and production integration remain open.
+- U04 remains NOT_ESTABLISHED because no provider append arbiter/durable acknowledgement has been qualified.
+
+No production audit log or data was read or changed. Overall DR-08 remains INCONCLUSIVE and full Phase 2 remains REVIEW_REQUIRED.

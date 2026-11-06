@@ -1,6 +1,12 @@
 "use strict";
 
 const {
+  TOOL_POLICIES,
+  getToolPolicy,
+  checkToolSafety
+} = require("./mira-tool-execution-policy");
+
+const {
   createTaskPlan,
   validatePlan
 } = require("./mira-task-planner");
@@ -80,176 +86,6 @@ const RISK_ORDER = Object.freeze({
  * explicitConfirmation:
  *   Tool requires explicit user confirmation in its arguments.
  */
-const TOOL_POLICIES = Object.freeze({
-  calculator: {
-    operation: "test",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  capacity_change: {
-    operation: "proposal_create",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  firewall_defense: {
-    operation: "controlled_apply",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: true
-  },
-
-  knowledge_backup: {
-    operation: "file_modify",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: false
-  },
-
-  knowledge_cleanup: {
-    operation: "file_modify",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: true
-  },
-
-  knowledge_count: {
-    operation: "read",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  knowledge_improve: {
-    operation: "proposal_create",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  knowledge_restore: {
-    operation: "file_modify",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: true
-  },
-
-  knowledge_save: {
-    operation: "file_modify",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  knowledge_search: {
-    operation: "read",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  learning_save: {
-    operation: "file_modify",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  memory_backup: {
-    operation: "file_modify",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: false
-  },
-
-  memory_count: {
-    operation: "read",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  memory_restore: {
-    operation: "file_modify",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: true
-  },
-
-  memory_save: {
-    operation: "file_modify",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  system_info: {
-    operation: "inspect",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  tool_health: {
-    operation: "inspect",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  project_connection_audit: {
-    operation: "inspect",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  mira_one_run_audit: {
-    operation: "inspect",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  marketing_client_context: {
-    operation: "inspect",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  seo_workflow_history: {
-    operation: "inspect",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: false
-  },
-
-  seo_workflow_review_decision: {
-    operation: "human_review_decision",
-    autonomous: false,
-    humanApprovalRequired: true,
-    explicitConfirmation: true
-  },
-
-  seo_audit: {
-    operation: "inspect",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  },
-
-  web_search: {
-    operation: "read",
-    autonomous: true,
-    humanApprovalRequired: false,
-    explicitConfirmation: false
-  }
-});
-
 function now() {
   return new Date().toISOString();
 }
@@ -268,15 +104,6 @@ function cleanText(value, max = 5000) {
   }
 
   return text;
-}
-
-function getToolPolicy(toolName) {
-  const normalized =
-    cleanText(toolName, 200).toLowerCase();
-
-  return (
-    TOOL_POLICIES[normalized] || null
-  );
 }
 
 function getTaskRisk(plan) {
@@ -370,101 +197,6 @@ function checkCapability(plan, toolName) {
     passed: true,
     reason:
       "Required capabilities are available and verified."
-  };
-}
-
-function hasDangerousConfirmationBypass(
-  toolName,
-  args
-) {
-  const policy =
-    getToolPolicy(toolName);
-
-  if (!policy) {
-    return true;
-  }
-
-  /*
-   * Stage 5.4 never manufactures confirmation.
-   */
-  if (
-    policy.explicitConfirmation === true
-  ) {
-    return true;
-  }
-
-  /*
-   * Never allow generic confirmation fields
-   * to silently turn an unsafe operation into
-   * an autonomous operation.
-   */
-  if (
-    args &&
-    typeof args === "object" &&
-    (
-      args.confirm === true &&
-      [
-        "knowledge_restore",
-        "memory_restore"
-      ].includes(toolName)
-    )
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function checkToolSafety(toolName, args) {
-  const policy =
-    getToolPolicy(toolName);
-
-  if (!policy) {
-    return {
-      check: "tool_safety",
-      passed: false,
-      reason:
-        "No Stage 5.4 safety policy exists for this tool."
-    };
-  }
-
-  if (policy.humanApprovalRequired) {
-    return {
-      check: "tool_safety",
-      passed: false,
-      reason:
-        "This tool is restricted to explicit human approval."
-    };
-  }
-
-  if (!policy.autonomous) {
-    return {
-      check: "tool_safety",
-      passed: false,
-      reason:
-        "This tool is not eligible for autonomous execution."
-    };
-  }
-
-  if (
-    hasDangerousConfirmationBypass(
-      toolName,
-      args
-    )
-  ) {
-    return {
-      check: "tool_safety",
-      passed: false,
-      reason:
-        "Explicit confirmation cannot be manufactured by autonomous execution."
-    };
-  }
-
-  return {
-    check: "tool_safety",
-    passed: true,
-    reason:
-      "Tool is registered and eligible for autonomous execution."
   };
 }
 

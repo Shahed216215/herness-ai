@@ -1,0 +1,229 @@
+MIRA HYBRID MEMORY — DR08-U05 CANONICAL TEST REGISTRY SPECIFICATION
+Document ID: MIRA-HFM-CAGR-001-PHASE2-U05-REGISTRY-SPEC-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-DR08-TECHNICAL-RECOMMENDATIONS-20261103
+Version boundary: v0.2
+Date: 2026-11-03
+Status: DESIGN SPECIFICATION — IMPLEMENTATION NOT APPROVED
+
+1. PURPOSE
+
+Define an implementation-ready design for one canonical, auditable test registry for Mira Hybrid Memory v0.2. This document is additive design material only. It does not create a runtime registry, change CI, reclassify historical test outcomes, or authorize implementation.
+
+2. DESIGN INVARIANTS
+
+- Every canonical test has one immutable, globally unique testId within the HFM registry namespace.
+- A canonical testId is never reused for a different behavior or requirement.
+- A test definition is versioned; a material semantic change creates a new testId and may declare supersedesTestId.
+- Historical identifiers remain aliases only. An alias never changes the meaning or result of its historical test.
+- A test definition and an execution record are separate immutable objects.
+- Execution evidence is append-only. Corrections are new records that supersede, but do not erase, prior evidence.
+- No aggregate may count NOT_EXECUTED, NOT_APPLICABLE, NOT_APPROVED, REVIEW_REQUIRED or INCONCLUSIVE as PASS.
+- A green CI job is not sufficient evidence that every registered test ran; the execution record must identify the exact test IDs actually executed.
+- Registry generation, test execution and verification must not depend on mutable production Memory or Knowledge data.
+
+3. CANONICAL IDENTIFIERS
+
+Recommended format:
+MIRA-HFM-TST-<AREA>-<NNNN>
+
+Area examples:
+STATE, MEMORY, KNOWLEDGE, EVOLUTION, CONFLICT, BACKUP, RESTORE, AUDIT, PROVIDER, SECURITY.
+
+IDs are assigned once and remain stable. Numeric gaps are allowed. IDs must not be renumbered after deletion or reorganization. The registry should reject duplicate canonical IDs and duplicate alias ownership.
+
+4. TEST DEFINITION RECORD
+
+Required fields:
+- registrySchemaVersion
+- testId
+- testDefinitionVersion
+- title
+- requirementIds
+- sourceSections
+- objective
+- fixtureId
+- preconditions
+- setup
+- action
+- failureInjection
+- expectedResult
+- prohibitedSideEffects
+- executionEnvironment
+- evidencePolicy
+- approvalState
+- createdAt
+- createdBy
+- sourceCommit
+
+Optional fields:
+- supersedesTestId
+- tags
+- notes
+- knownLimitations
+- aliasIds
+
+All fields must be validated against a versioned schema with additionalProperties=false. Exact field constraints and serialization profile are to be fixed before implementation. Definitions are immutable once accepted into the canonical registry; amendments create a new definition version and preserve the previous version.
+
+5. EXECUTION RECORD
+
+Each execution is a distinct immutable record referencing testId and testDefinitionVersion.
+
+Required fields:
+- executionId
+- testId
+- testDefinitionVersion
+- executionStatus
+- expectedResult
+- actualResult
+- evidenceReference
+- sourceCommit
+- workflowRunId (or an explicit local-run identifier)
+- jobId (when CI)
+- runtime
+- operatingSystem
+- startedAt
+- completedAt
+- executor
+- verifier
+- productionDataTouched
+- networkRequests
+- externalActions
+- limitations
+- recordedAt
+
+Evidence references must resolve to retained logs, artifacts, or a reviewed report. A URL alone is not proof that the underlying evidence remains available. Secrets, credentials and private record contents must not be stored in registry records.
+
+6. STATUS TAXONOMY
+
+Allowed executionStatus values:
+- TESTED_PASS
+- TESTED_FAIL
+- INCONCLUSIVE
+- NOT_APPROVED
+- REVIEW_REQUIRED
+- NOT_APPLICABLE
+- NOT_EXECUTED
+
+Semantics:
+- TESTED_PASS: the exact registered test ran and all declared assertions passed with retained evidence.
+- TESTED_FAIL: at least one declared assertion failed.
+- INCONCLUSIVE: execution was incomplete, evidence unavailable, environment unsuitable, or result ambiguous.
+- NOT_APPROVED: required authorization was not granted; no execution is implied.
+- REVIEW_REQUIRED: evidence or interpretation requires human/independent review.
+- NOT_APPLICABLE: the requirement does not apply to the declared target; rationale and reviewer are mandatory.
+- NOT_EXECUTED: no execution evidence exists.
+
+A CI workflow conclusion of SUCCESS is a workflow-level status, not a test-level status. A test is TESTED_PASS only when its execution record proves it ran.
+
+7. HISTORICAL ALIASES
+
+Alias record fields:
+- aliasId
+- canonicalTestId
+- historicalMeaning
+- sourceDocument
+- sourceCommit
+- mappingRationale
+- reviewedBy
+- reviewedAt
+
+Aliases are read-only identifiers. One alias may map to only one canonical test. If a historical ID covered multiple behaviors, it must not be mapped wholesale to one test; split it into explicitly reviewed mappings or mark it UNMAPPED/REVIEW_REQUIRED. Never infer equivalence from similar names.
+
+8. REQUIREMENT COVERAGE AND AGGREGATION
+
+Coverage is computed from explicit requirementIds and sourceSections, not from filename matching alone.
+
+For each requirement, report:
+- registered test count
+- latest execution status per test
+- evidence availability
+- uncovered acceptance criteria
+- blocked/not-approved tests
+- reviewer/approval state
+
+Aggregate rules:
+- Requirement PASS requires every mandatory test to be TESTED_PASS and evidence review to pass.
+- Any TESTED_FAIL makes the requirement FAIL.
+- Any mandatory INCONCLUSIVE, NOT_EXECUTED, NOT_APPROVED or REVIEW_REQUIRED prevents PASS.
+- NOT_APPLICABLE is excluded only with documented rationale and reviewer approval.
+- Missing tests or missing evidence produce REVIEW_REQUIRED, not PASS.
+
+9. INDEPENDENCE AND EVIDENCE
+
+The test runner may collect evidence but must not be its sole verifier for high-assurance integrity claims. E-15 independent verification remains a separate unresolved design gate. Registry data must preserve verifier identity and verifier implementation/version. An independent verifier must not silently rewrite execution records.
+
+10. SECURITY AND PRIVACY
+
+- No production Memory/Knowledge access in the Phase 2 isolated registry suite.
+- No real provider credentials in CI.
+- No network calls unless separately authorized and explicitly declared.
+- Fixtures contain synthetic data only.
+- Evidence is redacted and access-controlled.
+- Registry writes are restricted to authorized maintainers or CI identities under a reviewed policy.
+- Tampering, duplicate IDs, alias collision, invalid status and missing evidence fail closed.
+
+11. PROPOSED ACCEPTANCE TESTS
+
+U05-REG-001: canonical testId uniqueness.
+U05-REG-002: duplicate alias ownership rejection.
+U05-REG-003: alias target must exist and preserve historical meaning.
+U05-REG-004: immutable definition version and supersession behavior.
+U05-REG-005: execution must reference an existing definition version.
+U05-REG-006: unknown execution status rejected.
+U05-REG-007: NOT_EXECUTED and NOT_APPLICABLE never aggregate to PASS.
+U05-REG-008: TESTED_PASS requires evidence reference and source commit.
+U05-REG-009: evidence unavailable produces INCONCLUSIVE/REVIEW_REQUIRED.
+U05-REG-010: workflow SUCCESS without test execution record does not create TESTED_PASS.
+U05-REG-011: production-data/network/external-action declarations are mandatory.
+U05-REG-012: synthetic fixture isolation and secret-redaction checks.
+U05-REG-013: requirement coverage reports uncovered mandatory criteria.
+U05-REG-014: prior execution records remain immutable after a correction.
+
+These are proposed test cases, not executed tests.
+
+12. IMPLEMENTATION PLAN AFTER SEPARATE APPROVAL
+
+1. Review and approve exact schemas and identifier namespace.
+2. Inventory existing test names and historical IDs without changing outcomes.
+3. Produce a reviewed alias mapping and ambiguity register.
+4. Implement the registry in an isolated location with synthetic fixtures only.
+5. Add registry schema and lifecycle tests.
+6. Generate execution records from CI without changing test semantics.
+7. Independently review status aggregation and evidence retention.
+8. Only then propose broader adoption across the repository.
+
+13. NON-ACTIONS AND STATUS
+
+RUNTIME_REGISTRY_CREATED=NO
+EXISTING_TESTS_RECLASSIFIED=NO
+CI_EXECUTION_SEMANTICS_CHANGED=NO
+PRODUCTION_DATA_ACCESSED=NO
+PROVIDER_OR_NETWORK_ACCESS=NO
+IMPLEMENTATION_APPROVAL=NOT_GRANTED
+DESIGN_SPECIFICATION=PREPARED
+DR08_U05=REVIEW_REQUIRED_PENDING_EXACT_SCHEMA_AND_IMPLEMENTATION_APPROVAL
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF SPECIFICATION
+
+
+
+14. ISOLATED CANONICAL TEST REGISTRY PROTOTYPE — RUN 486
+Added services/mira-hfm-test-registry.js and tests/mira-hfm-test-registry.test.js.
+- Strict versioned definition, execution and historical alias validators reject unknown fields/statuses.
+- Definition versions and execution/alias records are append-only exclusive-create files; existing IDs cannot be overwritten.
+- Execution records must reference a registered definition; CI records require jobId and run identity; execution records carry production-data/network/external-action declarations and canonical timestamps.
+- TESTED_PASS requires retained evidence reference and source commit; NOT_APPLICABLE requires rationale and reviewer; NOT_EXECUTED/INCONCLUSIVE/NOT_APPROVED/REVIEW_REQUIRED require a reason.
+- Unapproved definitions cannot be executed as tested outcomes.
+- Requirement aggregation refuses PASS when a mandatory test is missing, NOT_EXECUTED, INCONCLUSIVE, NOT_APPROVED, REVIEW_REQUIRED or unapproved. TESTED_FAIL yields FAIL. NOT_APPLICABLE is excluded only with explicit approvedNotApplicable input and reviewer rationale.
+- The prototype uses synthetic temp-directory fixtures only; it does not register or reclassify existing repository tests.
+
+Run 486: https://github.com/Shahed216215/herness-ai/actions/runs/41774593307 — SUCCESS. Markers include CANONICAL_TEST_DEFINITION_APPEND=PASS, DEFINITION_VERSION_IMMUTABLE=PASS, UNKNOWN_EXECUTION_STATUS_REJECTED=PASS, MISSING_TEST_NEVER_AGGREGATES_TO_PASS=PASS, INCONCLUSIVE_NEVER_AGGREGATES_TO_PASS=PASS, TESTED_FAIL_AGGREGATES_TO_FAIL=PASS and TESTS_FAILED=0.
+
+UPDATED STATUS
+CANONICAL_TEST_REGISTRY=ISOLATED_PROTOTYPE_PASS
+HISTORICAL_REPOSITORY_TEST_ALIAS_MAPPING=NOT_COMPLETED
+FULL_REPOSITORY_TEST_RECLASSIFICATION=NOT_PERFORMED
+CI_WIDE_REGISTRY_ADOPTION=NOT_COMPLETED
+U05=PARTIALLY_CLOSED_IN_ISOLATED_FIXTURE_ONLY

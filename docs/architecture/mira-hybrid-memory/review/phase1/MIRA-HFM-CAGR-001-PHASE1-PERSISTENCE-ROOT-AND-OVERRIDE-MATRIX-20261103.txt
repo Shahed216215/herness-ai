@@ -1,0 +1,321 @@
+MIRA HYBRID MEMORY — PHASE 1 PERSISTENCE ROOT & ENVIRONMENT OVERRIDE MATRIX
+Document: MIRA-HFM-CAGR-001-PHASE1-PERSISTENCE-ROOT-AND-OVERRIDE-MATRIX
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this report: b161682f6cef25410aa6cf93a1e23a1f744e1020
+Version boundary: v0.2
+Status: REPOSITORY-WIDE JS-FAMILY PATH RECONCILIATION — KNOWN ROOTS MAPPED; INDIRECT/DYNAMIC USE REVIEW REQUIRED
+
+1. BASE STORAGE RESOLVER
+
+mira-storage.js:
+- Project root = path.resolve(__dirname).
+- MIRA_STORAGE_DIR, when configured, changes STORAGE_ROOT to path.resolve(value).
+- storagePath(relativePath) rejects absolute paths and traversal outside STORAGE_ROOT.
+- If configured root target is missing, it may seed from the project-root counterpart when source is a regular non-symlink file, size-bounded, and not in excluded secret patterns.
+- Excluded seed patterns include client_secret*.json and google-token.json.
+- A shared path resolver does not automatically redirect code that uses __dirname, process.cwd(), PROJECT_ROOT, BASE_DIR, or a hardcoded path.
+
+2. ENVIRONMENT-OVERRIDE REGISTER
+
+E01 MIRA_STORAGE_DIR — mira-storage.js — changes shared storage root.
+E02 MIRA_MEMORY_FILE — services/mira-local-memory-store.js — absolute path override for general Memory; independent of MIRA_STORAGE_DIR.
+E03 MIRA_AUDIT_FILE — audit-log.js — absolute/explicit Audit Log path override.
+E04 MIRA_LEARNING_FILE — services/mira-work-learning-engine.js — Work Learning Records path override.
+E05 MIRA_STAGE13_STORE — services/mira-stage13-learning-governance.js — Stage13 Governance store override.
+E06 MIRA_STAGE13_CAPABILITY_INTEGRATION_STORE — services/mira-stage13-capability-integration.js — Stage13 capability integration store override.
+E07 MIRA_STAGE16_17_WORKFLOWS_FILE — services/autonomous-orchestrator.js — autonomous workflow state override.
+E08 MIRA_WORKER_RESULTS_FILE — services/mira-autonomous-worker.js — worker results JSONL path override.
+E09 MIRA_TASK_FILE — task-store.js — task store path override.
+E10 MIRA_OPPORTUNITY_FILE — opportunity-store.js — opportunity store path override.
+E11 MIRA_RESEARCH_GOVERNANCE_FILE — services/mira-research-governance.js — research governance ledger override.
+E12 MIRA_CHANGE_FILE — change-management.js — change proposal store override.
+E13 MIRA_CAPABILITY_PROFILE_FILE — capability-profile.js — capability profile store override.
+E14 MIRA_CUSTOM_PROVIDER_CONFIG_PATH — services/custom-provider-config.js — custom provider slot config override.
+E15 MIRA_CREDENTIALS_ENCRYPTION_KEY — services/provider-credential-store.js — encryption key material; not a path. Never read or print this value.
+
+This is the environment override register found in the reviewed source modules. It excludes unrelated operational settings such as feature toggles, provider API keys, test TLS paths, audit HMAC keys, and worker interval settings.
+
+3. PERSISTENCE DOMAIN / ROOT MATRIX
+
+R01 General Memory
+- Owner: memory.js -> services/mira-local-memory-store.js
+- Default: storagePath("memory.json")
+- Override: MIRA_MEMORY_FILE (absolute path, not constrained by MIRA_STORAGE_DIR)
+- Backup files: sibling memory-backup.json and memory-before-restore.json
+- Contract: JSON array {role, content, time}; v2 backup envelope with entryCount and SHA-256.
+- Risk: missing primary file is read as []; Local Store and Evolution have separate writers.
+
+R02 Knowledge
+- Owner: knowledge.js
+- Default: storagePath("knowledge.json")
+- Override: none in knowledge.js
+- Contract: JSON array; Learning records are represented as Knowledge entries with type=learning.
+- Risk: missing/invalid/non-array read becomes []; direct write; local-first then Drive.
+
+R03 Google Drive remote files
+- Owner: google-drive.js
+- Remote: Mira AI Memory/memory.json; Mira AI Knowledge/knowledge.json
+- Credentials: project-root client_secret.json and google-token.json with /etc/secrets fallback in reviewed code.
+- OAuth effective scopes: UNKNOWN; no token/credential content read.
+
+R04 Knowledge legacy tools
+- Owners: tools/knowledge-cleanup.js, tools/knowledge-backup.js, tools/knowledge-restore.js
+- Root: BASE_DIR / project-root path construction, not shared storagePath for the primary Knowledge file.
+- Side effects: cleanup remove writes primary Knowledge then Drive; backup rewrites primary Knowledge and writes backup then Drive; restore writes safety backup, overwrites primary Knowledge, then Drive sync.
+- Risk: divergence when MIRA_STORAGE_DIR is configured; restore is destructive.
+
+R05 Work Learning Records
+- Owner: services/mira-work-learning-engine.js
+- Default: storagePath("data/work-learning-records.json")
+- Override: MIRA_LEARNING_FILE
+- Contract: versioned normalized store with records, temp file + rename; mode 0600 requested.
+
+R06 Experience Memory / Retrieval / Future Strategy / Cross-Task Learning / Learning History
+- Owners: services/mira-experience-memory.js, mira-experience-retrieval-engine.js, mira-future-strategy-engine.js, mira-cross-task-learning-engine.js, mira-learning-history.js
+- Persistence: derived/read-oriented from Work Learning Records; no separate canonical file store established in reviewed modules.
+- Risk: preserve source learningId and provenance; do not invent duplicate storage.
+
+R07 Work Knowledge Consolidation
+- Owner: services/mira-work-knowledge-consolidation.js
+- Default: storagePath("data/work-knowledge-consolidation.json")
+- Contract: schema/engine version, items, integrityHash; separate from Knowledge CRUD.
+
+R08 Conversation Store
+- Owner: conversation-store.js
+- Default: storagePath("data/conversations.json")
+- Contract: versioned conversations/messages/contexts.
+- Risk: separate access/retention class from general Memory.
+
+R09 Audit Log
+- Owner: audit-log.js
+- Default: storagePath("audit-log.json")
+- Override: MIRA_AUDIT_FILE
+- Contract: hash-linked events with integrity metadata; retention truncation limits historical chain.
+- Risk: not all Memory/Knowledge operations are comprehensively audited.
+
+R10 Local Memory backup/restore
+- Owner: services/mira-local-memory-store.js; scripts/mira-memory-backup.js; tools/memory-restore.js
+- Root: sibling backup files beside resolved Memory file.
+- Risk: restore destructive; confirmation required; no production restore performed.
+
+R11 Knowledge backup/restore
+- Owner: tools/knowledge-backup.js; tools/knowledge-restore.js
+- Root: project-root knowledge-backup.json and knowledge-before-restore.json; Drive backup and knowledge.json.
+- Risk: bypasses shared resolver; backupVersion=1, entries array; no independent integrity hash established.
+
+R12 Knowledge Improvement proposals
+- Owner: knowledge-improvement.js
+- Default: storagePath("knowledge-improvement-proposals.json")
+- Contract: proposal IDs, status, approval provenance; not ordinary Memory.
+
+R13 Autonomous Learning proposals
+- Owner: autonomous-learning-proposals.js
+- Default: storagePath("autonomous-learning-proposals.json")
+- Contract: proposal learning data, status and approval metadata.
+
+R14 Change proposals
+- Owner: change-management.js
+- Default: storagePath("change-proposals.json")
+- Override: MIRA_CHANGE_FILE
+- Contract: governed change records; approval and status state.
+
+R15 Stage13 Learning Governance
+- Owner: services/mira-stage13-learning-governance.js
+- Default: storagePath("data/stage13-learning-governance.json")
+- Override: MIRA_STAGE13_STORE
+- Contract: events/feedback/failures/benchmarks with integrity hash chain.
+
+R16 Stage13 Capability Integration
+- Owner: services/mira-stage13-capability-integration.js
+- Default: storagePath("data/stage13-capability-integration.json")
+- Override: MIRA_STAGE13_CAPABILITY_INTEGRATION_STORE
+- Contract: integration state referencing capability profile and learning governance.
+
+R17 Research Governance
+- Owner: services/mira-research-governance.js
+- Default: storagePath("data/mira-research-governance.json")
+- Override: MIRA_RESEARCH_GOVERNANCE_FILE
+- Contract: approvals and governance ledger; lock directory/owner marker and atomic temp rename.
+
+R18 Autonomous Orchestrator
+- Owner: services/autonomous-orchestrator.js
+- Default: storagePath("data/stage16-17-workflows.json")
+- Override: MIRA_STAGE16_17_WORKFLOWS_FILE
+- Contract: workflow jobs/status; lock owner file.
+
+R19 Autonomous Worker
+- Owner: services/mira-autonomous-worker.js
+- Results default: storagePath("data/autonomous-worker-results.jsonl")
+- Results override: MIRA_WORKER_RESULTS_FILE
+- Budget default: storagePath("data/autonomous-research-budget.json")
+- Reports default: storagePath("reports")
+- Task status: task-store.js.
+- Worker and research are explicit opt-in; not started in this review.
+
+R20 Task Store
+- Owner: task-store.js
+- Default: storagePath("data/tasks.json")
+- Override: MIRA_TASK_FILE
+
+R21 Opportunity Store
+- Owner: opportunity-store.js
+- Default: storagePath("data/opportunities.json")
+- Override: MIRA_OPPORTUNITY_FILE
+
+R22 Capacity Config
+- Owner: capacity-config.js
+- Default: storagePath("capacity-config.json")
+- No dedicated path override found.
+
+R23 Capacity Change Proposals
+- Owner: capacity-change.js
+- Default: storagePath("capacity-change-proposals.json")
+- No dedicated path override found.
+
+R24 Capability Profile
+- Owner: capability-profile.js
+- Default: storagePath("data/capability-profile.json")
+- Override: MIRA_CAPABILITY_PROFILE_FILE
+
+R25 Provider Credentials
+- Owner: services/provider-credential-store.js
+- Default: path.join(__dirname, "..", "data", "provider-credentials.enc.json")
+- Not routed through storagePath; diverges when MIRA_STORAGE_DIR is configured.
+- Encryption: AES-256-GCM; key derived/used via MIRA_CREDENTIALS_ENCRYPTION_KEY. No key or credential file read.
+
+R26 Custom Provider Slots
+- Owner: services/custom-provider-config.js
+- Default: path.join(process.cwd(), "data", "custom-provider-slots.json")
+- Override: MIRA_CUSTOM_PROVIDER_CONFIG_PATH
+- Not routed through storagePath by default; process.cwd() may differ from __dirname/project root.
+
+R27 Provider Runtime / Staging / Rollback
+- Owner: services/mira-provider-evolution.js and routes/mira-provider-evolution.js
+- Root: project-root runtime/staging/rollback configuration files.
+- Route directly reads/writes runtime and staging config files; privileged route is SYSTEM_ADMIN-gated.
+- Risk: separate root from shared storage; credential reveal path returns plaintext in authorized response.
+
+R28 Snapshot Manager
+- Owner: snapshot-manager.js
+- Root: project-root backups/changes.
+- Not routed through mira-storage in reviewed module.
+- This is code-change recovery, not the same as user Memory or Knowledge backup.
+
+R29 Client Consent
+- Owner: services/mira-client-consent-store.js
+- Default: storagePath("client-consents.json")
+- Contract: versioned consent records with integrity/audit integration.
+
+R30 Client Profiles
+- Owner: client-profile-store.js
+- Default: storagePath("client-profiles.json")
+
+R31 Client Communication
+- Owner: client-communication-store.js
+- Default: storagePath("data/client-communications.json")
+
+R32 Client Follow-ups
+- Owner: client-follow-up-store.js
+- Default: storagePath("data/client-follow-ups.json")
+
+R33 Projects
+- Owner: project-store.js
+- Default: storagePath("data/projects.json")
+
+R34 Work Acceptance
+- Owner: work-acceptance-store.js
+- Default: storagePath("data/work-acceptances.json")
+
+R35 Deliverables
+- Owner: deliverable-store.js
+- Default: storagePath("data/deliverables.json"); artifact output under storagePath("deliveries").
+
+R36 SEO Workflow History
+- Owner: services/mira-seo-workflow-store.js
+- Default: storagePath("mira-seo-workflow-records.json")
+- Includes lock/temp-file handling.
+
+R37 Specialist Audit
+- Owner: services/multi-agent/specialist-runtime.cjs
+- Default: storagePath("data/specialist-audit.jsonl")
+
+R38 Global Safety Governance
+- Owner: services/global-safety-governance.js
+- Default: storagePath("data") with local state files; exact per-state names are defined in module.
+
+R39 Firewall Defense State
+- Owner: firewall-defense.js
+- Default: storagePath("firewall-defense-state.json")
+
+R40 User Accounts
+- Owner: users.js
+- Default: storagePath("users.json")
+
+R41 Worker / Research Reports and budget
+- Owner: services/mira-autonomous-worker.js
+- Default: storagePath("reports") and storagePath("data/autonomous-research-budget.json"); already included in R19 but separately called out because reports and budget are distinct files with different data classes.
+
+R42 Schedule Planning Store Reference
+- Referenced by services/mira-project-schedule-planning-service.js and Stage 9.2.5 tests as ../project-schedule-store.
+- Current branch tree contains no project-schedule-store.js or alternative schedule store; path history returned no commits. The service import is a broken/missing reference from initial public upload, not proven to be a later regression.
+- Do not recreate or patch under this documentation-only report; service/test load may throw MODULE_NOT_FOUND.
+
+4. ROOT DIVERGENCE REGISTER
+
+DIVERGENCE A — MIRA_STORAGE_DIR does not control every path:
+- MIRA_MEMORY_FILE is an independent absolute path override.
+- MIRA_AUDIT_FILE, MIRA_LEARNING_FILE, MIRA_STAGE13_STORE, MIRA_STAGE13_CAPABILITY_INTEGRATION_STORE, MIRA_STAGE16_17_WORKFLOWS_FILE, MIRA_WORKER_RESULTS_FILE, MIRA_TASK_FILE, MIRA_OPPORTUNITY_FILE, MIRA_RESEARCH_GOVERNANCE_FILE, MIRA_CHANGE_FILE, and MIRA_CAPABILITY_PROFILE_FILE may override individual files outside the shared root if absolute paths are configured.
+- provider-credential-store uses __dirname project-root data path.
+- custom-provider-config uses process.cwd() data path or MIRA_CUSTOM_PROVIDER_CONFIG_PATH.
+- provider runtime/staging route uses project-root configuration files.
+- snapshot-manager uses project-root backups/changes.
+- legacy Knowledge tools use BASE_DIR/project-root paths.
+- Google OAuth credentials use project-root and /etc/secrets fallback paths.
+
+DIVERGENCE B — shared path resolver does not unify schemas or write guarantees:
+- Local Memory Store has atomic temp/fsync/rename/readback.
+- Knowledge CRUD uses direct writes.
+- Conversation, Learning, Governance, Consent, and other stores each have their own persistence semantics.
+- Path convergence alone does not establish one canonical provider or transaction model.
+
+DIVERGENCE C — app data versus project recovery artifacts:
+- backups/changes and staged artifacts are project/code recovery state and should not be merged into personal Memory.
+- provider runtime configuration and credentials are privileged security state.
+- proposal/approval records are governance state.
+- client profiles/communications/consent are client data with separate access/retention rules.
+
+5. C02 STATUS
+
+PERSISTENCE_ROOTS_MAPPED=42_DOMAIN_ENTRIES
+ENVIRONMENT_OVERRIDES_REGISTERED=15
+DIRECT_STORAGE_ROOT_BYPASSES=IDENTIFIED
+LEGACY_KNOWLEDGE_TOOL_ROOT_BYPASS=CONFIRMED
+PROVIDER_CREDENTIAL_ROOT_DIVERGENCE=CONFIRMED
+CUSTOM_PROVIDER_CONFIG_ROOT_DIVERGENCE=CONFIRMED
+SNAPSHOT_ROOT_DIVERGENCE=CONFIRMED
+ALL_DYNAMIC_CALLER_PATHS=NOT_PROVEN
+C02=SUBSTANTIALLY_MAPPED_REVIEW_REQUIRED
+
+The matrix is an expanded source-grounded ownership/path map, not proof that every dynamically computed path, imported plugin, or runtime caller is fully resolved. Any new store found by future source changes must be added before a production migration plan.
+
+6. SAFETY / STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+RUNTIME_WORKERS_STARTED=NONE
+TESTS=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF REPORT

@@ -1,0 +1,102 @@
+MIRA HYBRID MEMORY — LEGACY MEMORY/KNOWLEDGE CONFLICT ADAPTER DESIGN
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-LEGACY-CONFLICT-ADAPTER-DESIGN-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-BOUNDARY-CALLSITE-MATRIX-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: READ-ONLY ADAPTER DESIGN — NO RUNTIME INTEGRATION
+
+1. PURPOSE
+
+Define the minimum safe adapter requirements before the isolated canonical conflict registry can be wired into the existing conversation Memory and Knowledge models. This design prevents accidental validation of legacy records against an incompatible schema or assignment of invented project identity.
+
+2. CURRENT CONVERSATION MEMORY MODEL
+
+Observed in memory.js:
+- Records are appended as { role, content, time }.
+- Duplicate detection compares role and content.
+- saveMemory() applies capacity slicing and delegates to localStore.writeMemory().
+- No stable record ID, projectId, revision, source reference, access classification, trust state or per-record integrity status is present in the inspected message object.
+
+Compatibility result:
+- Direct use of validateCanonicalMemoryRecord() is invalid for this legacy array.
+- Deriving memoryId only from role/content/time is unsafe: identical messages can repeat, timestamps can collide/normalize, and content changes create new identities.
+- A separate immutable messageId and project scope must be introduced through an approved schema migration or a sidecar identity map before conflict quarantine can target a message safely.
+
+3. CURRENT KNOWLEDGE MODEL
+
+Observed in knowledge.js:
+- addKnowledge() builds title/url/content, merges optional metadata and adds savedAt.
+- createKnowledgeId() derives a kb_ identifier from normalized title/topic/url/source/content using the first 24 hexadecimal characters of SHA-256.
+- updateKnowledge() explicitly preserves the existing stable ID while changing title/url/content and adding updatedAt.
+- Knowledge records do not consistently require or enforce projectId, revision, canonical contentHash, integrity status, trust state or access classification.
+- The active Knowledge file is read through jsonStateStore.readJsonArray(); writes use writeArrayState().
+- Capacity eviction uses the legacy jsonStateStore.quarantineConflict() envelope, not the new canonical conflict registry envelope.
+
+Compatibility result:
+- Knowledge has a useful stable ID, but the current ID is content-derived at creation and only 96 bits long; it is not a substitute for the canonical Memory identity/version/hash contract.
+- Project scope and per-entry access/trust/integrity metadata are not guaranteed by the inspected add/update paths.
+- The legacy capacity-quarantine payload does not include the two-or-more version model and governed resolution record required by the canonical registry.
+
+4. ADAPTER DESIGN REQUIREMENTS
+
+A. Memory conversation adapter
+- Define immutable messageId independent of message content.
+- Define explicit projectId source and authorization boundary.
+- Preserve existing role/content/time semantics without rewriting old messages.
+- Provide revision/version semantics only if edits are supported; otherwise mark messages append-only.
+- Define source/provenance and access policy for each message class.
+- Backfill identities through an explicit reversible migration plan; never derive identity from a mutable content hash alone.
+
+B. Knowledge adapter
+- Preserve the existing kb_ ID as legacyId and create a separately defined canonical memoryId only under an approved mapping.
+- Define projectId from an authoritative project configuration, not a guessed path or constant.
+- Add revision, canonical content hash, source/provenance, trust, integrity and access metadata through a versioned schema.
+- Keep the legacy capacity-eviction quarantine envelope distinguishable; import only after a reviewed mapping and original-byte verification.
+- Preserve previous versions and IDs on update; never overwrite the original source version during conflict detection.
+
+C. Shared policy boundary
+- Adapters must produce canonical records and source references before invoking the conflict assessor.
+- Every write path must run structural validation and conflict arbitration before commit.
+- Every retrieval path must apply the project-scoped quarantine guard before search, list, snippets, counts, exports and agent context assembly.
+- Backup/restore and Evolution paths must use the same guard or explicitly declare a reviewed exception.
+- Audit and resolution must fail closed; no silent last-write-wins.
+
+5. REQUIRED TESTS BEFORE INTEGRATION
+
+- Legacy Memory message migration preserves exact role/content/time and assigns stable immutable messageId.
+- Repeated identical messages do not collapse into one identity.
+- Project boundary cannot be inferred or spoofed by message content.
+- Knowledge update preserves kb_ legacy ID and creates a new canonical revision without losing the previous version.
+- Content changes cannot silently rewrite the original canonical record.
+- Legacy capacity quarantine is not misread as a canonical conflict record.
+- Pending/UNDER_REVIEW/RETAINED_QUARANTINED entries are excluded from every registered retrieval surface.
+- Every write entry point is covered by a caller-to-boundary integration test.
+- All tests use synthetic fixtures; migration tests use copied fixture files only.
+
+6. APPROVAL AND MIGRATION GATES
+
+Before implementing either adapter:
+1. Approve the authoritative projectId source.
+2. Approve stable identity and versioning rules for conversation Memory.
+3. Approve the Knowledge canonical record schema and legacy kb_ ID mapping.
+4. Approve the backfill/migration strategy and rollback checkpoint.
+5. Approve retrieval and write-boundary integration scope.
+6. Obtain independent review of fixture results before enabling any runtime feature flag.
+
+7. STATUS
+
+MEMORY_LEGACY_SCHEMA_COMPATIBLE_WITH_CANONICAL_RECORD=NO
+KNOWLEDGE_LEGACY_SCHEMA_COMPATIBLE_WITH_CANONICAL_RECORD=PARTIAL
+PROJECT_ID_SOURCE_APPROVED=NO
+MEMORY_STABLE_ID_APPROVED=NO
+KNOWLEDGE_CANONICAL_REVISION_MAPPING_APPROVED=NO
+ADAPTER_IMPLEMENTATION=NOT_STARTED
+PRODUCTION_DATA_ACCESSED=NO
+RUNTIME_CHANGED_BY_THIS_DESIGN=NO
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF DESIGN

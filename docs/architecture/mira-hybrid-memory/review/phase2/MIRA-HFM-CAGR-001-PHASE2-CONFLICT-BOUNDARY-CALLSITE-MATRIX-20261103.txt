@@ -1,0 +1,391 @@
+MIRA HYBRID MEMORY — CONFLICT QUARANTINE RETRIEVAL AND WRITE-BOUNDARY CALLSITE MATRIX
+
+Document ID: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-BOUNDARY-CALLSITE-MATRIX-20261103
+Parent: MIRA-HFM-CAGR-001-PHASE2-CONFLICT-LIFECYCLE-GAP-ASSESSMENT-20261103
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v02-phase2-core-safety
+Version boundary: v0.2
+Date: 2026-11-03
+Status: READ-ONLY SOURCE INSPECTION
+
+1. PURPOSE
+
+Identify the currently inspected local Memory and Knowledge retrieval/write entry points and determine whether the new isolated conflict quarantine registry is wired into them. No production data was read. No runtime source was modified by this assessment.
+
+2. SOURCES AND BLOB SHAS
+
+- memory.js — 6765fed022e1a1beadcc035262ac5ad03443e5a6
+- services/mira-local-memory-store.js — 8f153b543d4ba75a2f498c02856ff57a87ed9747
+- knowledge.js — 42cbd990ae671669a898e2abaeb6a55dd5b31465
+- services/mira-conflict-quarantine-registry.js — 1310934daf790ec73fca6ebb84c6a7e78a0c854b
+- services/mira-memory-conflict-assessment.js — 5e685efe8f9660b0afce8c2b571bafa85130cb8d
+
+3. LOCAL MEMORY CALL PATH
+
+A. Retrieval
+- memory.js loadMemory() delegates to localStore.readMemory().
+- memory.js getMemory() returns loadMemory().
+- services/mira-local-memory-store.js readMemory() reads the primary Memory JSON array; if missing, it may return entries from a verified backup; if neither exists it returns [].
+- The inspected readMemory path does not consult the conflict registry or structural conflict assessor.
+
+B. Writes
+- memory.js saveMemory() validates array shape, applies capacity slicing, then calls localStore.writeMemory().
+- memory.js addMemory() loads the current array, checks duplicate role/content, appends a message with Date.toISOString(), and saves.
+- services/mira-local-memory-store.js writeMemory() delegates to jsonStateStore.writeArrayState().
+- The inspected write path does not call assessMemoryConflict(), createConflictQuarantine(), or a registry authorization/resolution gate.
+
+C. Data-model boundary
+The current conversation Memory array stores message-like objects (role/content/time). It is not the canonical Memory record schema validated by mira-memory-conflict-assessment.js. Applying that canonical validator directly to this legacy message array would reject valid current records and is not safe without a separately approved schema/adapter design.
+
+4. LOCAL KNOWLEDGE CALL PATH
+
+A. Retrieval
+- knowledge.js loadKnowledge() reads the active Knowledge JSON array using jsonStateStore.readJsonArray().
+- searchKnowledge(), getKnowledge() and getKnowledgeStats() all call loadKnowledge().
+- The inspected active Knowledge retrieval path does not consult the new conflict registry or structural conflict assessor.
+
+B. Writes
+- addKnowledge() loads active Knowledge, checks duplicate title/content/URL semantics, and later persists/synchronizes the updated array.
+- addLearning() validates learning input, loads active Knowledge and checks duplicate title/topic/content.
+- updateKnowledge(), updateLearning() and deleteKnowledge() load active Knowledge, locate an entry and write the updated array.
+- saveLocalKnowledge() delegates to jsonStateStore.writeArrayState().
+- The inspected add/update/delete paths do not invoke assessMemoryConflict() or the new registry's governed resolution API at a universal pre-write boundary.
+
+C. Existing capacity quarantine is distinct
+applyKnowledgeCapacity() calls jsonStateStore.quarantineConflict() to preserve capacity-evicted entries before committing the bounded active set. That legacy envelope is not the new canonical conflict registry envelope; it has no guaranteed canonical conflictId, source-version pair, governed resolution record or registry status. It must not be silently treated as equivalent.
+
+5. REGISTRY INTEGRATION STATUS
+
+The isolated registry exposes:
+- createConflictQuarantine()
+- readConflict()
+- verifyConflict()
+- listConflicts()
+- resolveConflict()
+- verifyResolution()
+- filterTrustedRecords()
+
+The filter is a pure helper that requires the caller to supply the relevant conflict list. It is not a global interception layer. The registry does not currently wrap memory.js, localStore.readMemory(), knowledge.js loadKnowledge(), searchKnowledge(), getKnowledge(), or the add/update/delete write paths.
+
+6. REQUIRED INTEGRATION PLAN — NOT IMPLEMENTED
+
+Before runtime integration, define separate adapters for the existing conversation-message Memory model and canonical Knowledge record model. Do not force both through one schema.
+
+Proposed order:
+1. Inventory every public API, route, worker, tool, background task and direct file reader that can retrieve or mutate Memory/Knowledge.
+2. Define per-domain record identity and conflict mapping without changing existing records.
+3. Define how legacy capacity/divergence quarantine envelopes are imported or remain separate.
+4. Build one policy-aware retrieval guard and prove all public retrieval entry points use it.
+5. Add pre-write validation and conflict arbitration to each authorized write boundary.
+6. Prove quarantined items are excluded from search, list, count, snippets, export, backup and restore according to policy.
+7. Test cross-project isolation, cache/index invalidation, concurrent writes, audit failure and recovery using synthetic fixtures.
+8. Only after independent review and explicit scope approval, propose any production data migration or provider integration.
+
+7. STATUS
+
+LOCAL_MEMORY_RETRIEVAL_GUARD=NOT_INTEGRATED
+LOCAL_MEMORY_PREWRITE_CONFLICT_CHECK=NOT_INTEGRATED
+KNOWLEDGE_RETRIEVAL_GUARD=NOT_INTEGRATED
+KNOWLEDGE_PREWRITE_CONFLICT_CHECK=NOT_INTEGRATED
+LEGACY_CAPACITY_QUARANTINE_EQUIVALENCE=NOT_ESTABLISHED
+ISOLATED_REGISTRY=PASS_SCOPED_CI_RUN_166
+UNIVERSAL_RETRIEVAL_EXCLUSION=REVIEW_REQUIRED
+ALL_WRITE_BOUNDARY_INTEGRATION=REVIEW_REQUIRED
+PRODUCTION_DATA_ACCESSED=NO
+RUNTIME_CHANGED_BY_THIS_ASSESSMENT=NO
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+END OF MATRIX
+
+
+8. SERVER ROUTE CALLSITES INSPECTED
+
+Source: server.js, current branch blob SHA 55e8d3c61a6fad546f4255e47a1646f6bede8762.
+
+Read paths:
+- GET /api/admin/knowledge/search calls searchKnowledge().
+- GET /api/admin/knowledge/:id calls getKnowledge().
+- POST /api/agent obtains getMemory() and searchKnowledge() before composing the agent context.
+- GET /api/admin/diagnostic/learning calls getKnowledge() for a read-only diagnostic.
+
+Write paths:
+- DELETE /api/admin/knowledge/:id calls deleteKnowledge().
+- POST /api/admin/knowledge/:id/edit calls updateLearning() or updateKnowledge() depending on the existing entry/workflow.
+- These routes are admin/agent permission gated, but the inspected route handlers do not themselves invoke the new conflict registry. Permission gating is not a substitute for conflict detection or retrieval exclusion.
+
+Additional route review is not a complete repository-wide call graph. Background jobs, workers, alternate tools, exports, backup/restore and direct JSON readers still require a full static inventory before universal integration can be claimed.
+
+
+9. EXPLICIT LEGACY IDENTITY ADAPTER PROTOTYPE — VERIFIED BY RUN 392
+
+Added:
+- services/mira-legacy-memory-knowledge-adapter.js
+- tests/mira-legacy-memory-knowledge-adapter.test.js
+
+The adapter is read-only and requires an explicit, exact mapping binding domain, projectId, legacyId, canonical memoryId, revision, sourceDigest and a canonical record. It verifies the legacy source digest, canonical schema/content hash, project scope, revision, provenance sourceId and exact content preservation. It does not write files, backfill IDs, alter legacy records or enable a production feature.
+
+Conversation Memory compatibility:
+- Existing role/content/time messages without messageId are rejected with an explicit identity-backfill requirement.
+- A conversation message is adapted only when an immutable messageId and explicit mapping are supplied.
+- The adapter does not derive message identity from mutable content or timestamps.
+
+Knowledge compatibility:
+- Existing Knowledge IDs may be used only as explicit legacyId values.
+- A caller must supply a reviewed project mapping and a canonical record; the adapter does not infer projectId or revision.
+- Quarantined canonical records are filtered through the existing project-scoped registry helper.
+
+GitHub Actions run 41768834680 (run 392), job 126373473545, completed SUCCESS on commit ecba9ca6e809c8f2c538e7d9e2a97a8733d6f540. The new suite reports:
+EXPLICIT_KNOWLEDGE_IDENTITY_MAPPING=PASS
+STALE_SOURCE_DIGEST_REJECTED=PASS
+MISSING_PROJECT_SCOPE_REJECTED=PASS
+LEGACY_MESSAGE_WITHOUT_STABLE_ID_FAILS_CLOSED=PASS
+EXPLICIT_CONVERSATION_MESSAGE_ID_MAPPING=PASS
+DUPLICATE_MAPPING_REJECTED=PASS
+CROSS_PROJECT_MAPPING_REJECTED=PASS
+QUARANTINED_RECORD_EXCLUDED=PASS
+CROSS_PROJECT_CONFLICT_ISOLATION=PASS
+ADAPTER_SCOPE_ENFORCED=PASS
+CANONICAL_HASH_TAMPER_REJECTED=PASS
+TESTS_FAILED=0
+RESULT=MIRA_LEGACY_MEMORY_KNOWLEDGE_ADAPTER_ISOLATED_PASS
+
+This closes the explicit mapping prototype/test gap only. It does not integrate the adapter into memory.js, knowledge.js, route handlers, workers, exports, backup/restore, Evolution or provider write boundaries. Existing conversation Memory records still lack immutable messageId; no projectId source or production migration is approved. Universal retrieval exclusion and all-write-boundary integration remain REVIEW_REQUIRED.
+
+ADAPTER_IMPLEMENTATION=ISOLATED_READ_ONLY_PROTOTYPE
+ADAPTER_CI=PASS_SCOPED_RUN_392
+RUNTIME_INTEGRATION=NOT_ENABLED
+PRODUCTION_DATA_ACCESSED=NO
+VERSION=v0.2
+FULL_PHASE2=REVIEW_REQUIRED
+
+
+10. SEMANTIC CALLSITE REVIEW — 2026-11-04
+The following source ranges were fetched from the Phase 2 branch and manually classified. These are direct observations of the current branch source, not assumptions from regex matches.
+
+A. Conversation persistence and retrieval
+- conversation-store.js:13-42 validateStore()/ensureStore(): creates/validates the conversations.json envelope and initializes empty conversations/messages/contexts. It does not assign a projectId to each message.
+- conversation-store.js:300-370 createStoredMessage(): validates parent conversation existence, rejects duplicate messageId, appends message and increments parent messageCount, then persists via saveStore(). This is a direct message write boundary.
+- conversation-store.js:390-460 getContext()/saveContext(): contexts are keyed by conversationId; saveContext merges and persists without a canonical HFM projectId/revision mapping or conflict-registry arbitration.
+- services/mira-conversation-memory-engine.js:155-169 getConversationHistory(): retrieves all messages for a conversation and returns messageId/participant/direction/status/content/createdAt.
+- services/mira-conversation-memory-engine.js:283-357 updateConversationMemory(): derives context from a supplied message and writes context through store.saveContext(). This is a second write path, distinct from message persistence.
+- services/mira-conversation-memory-engine.js:364-399 getConversationMemory(): returns parent conversation, stored context and full history. No conflict quarantine registry call is present in this retrieval path.
+- routes/conversations.js:240-285 incoming message route calls createConversationMessage() then updateConversationMemory(); the two persistence operations are sequential rather than one transaction. A failure after message commit can leave message/history and derived context out of sync.
+- routes/conversations.js:445-485 GET conversation memory calls getConversationMemory() directly after conversation existence check; it does not apply canonical HFM trusted-record filtering.
+Conclusion: conversation message storage has immutable messageId at the schema/store boundary for new messages, but existing legacy messages may lack it; the context record has conversationId but no independently approved projectId mapping. The isolated sidecar adapter must remain opt-in/read-only until identity and project mapping are established for every legacy record.
+
+B. Knowledge persistence and retrieval
+- knowledge.js:150-240 addKnowledge(): loads the complete local Knowledge array, creates an ID, appends and writes the array; duplicate detection is semantic rather than canonical source-version arbitration.
+- knowledge.js:700-820 updateLearning(): locates an existing item by ID or normalized title, replaces selected fields, writes the array and invokes Drive synchronization. This is a direct local write boundary followed by a provider sync attempt.
+- knowledge.js:820-900 searchKnowledge(): calls loadKnowledge(), tokenizes the query and ranks entries; no conflict registry or canonical trust-state filter is called in the inspected search path.
+- knowledge.js:900-980 getKnowledge()/getKnowledgeStats(): reads the active array directly; no canonical quarantine filter is called in the inspected list/stat path.
+- services/mira-knowledge-state-recovery.js:110-143 createKnowledgeBackup(): reads the entire Knowledge array and writes a backup envelope. It does not currently filter pending/quarantined canonical records by HFM policy.
+- services/mira-knowledge-state-recovery.js:146-220 restoreKnowledge(): after explicit confirm, validates backup, preserves a safety copy/quarantine, writes the restored entries and verifies readback. This is a destructive state-replacement boundary; HFM quarantine policy is not integrated into restore eligibility.
+Conclusion: Knowledge still uses a legacy array model with per-entry IDs, no universally enforced projectId/revision, and local+Drive synchronization. The HFM adapter is not wired into these paths. Backup/restore and Drive synchronization require separate explicit policy integration and dedicated tests.
+
+C. Local Memory persistence and recovery
+- services/mira-local-memory-store.js:19-63 readArray(): rejects symlink/non-file, empty or invalid JSON and non-array payloads.
+- services/mira-local-memory-store.js:74-140 atomicWriteJson(): temp-file exclusive create, fsync, chmod, rename, directory fsync best-effort and readback hash verification.
+- services/mira-local-memory-store.js:143 onward readMemory(): reads the primary Memory array; on missing primary it can expose a verified backup read-only and avoids turning a missing primary into an empty write.
+- services/mira-local-memory-store.js exports createBackup()/restoreMemory(); those paths remain separate from HFM conflict-registry retrieval and write arbitration.
+Conclusion: local store has meaningful filesystem integrity controls, but they are not equivalent to HFM identity, trust, project-scope or conflict-resolution controls.
+
+D. Route and cross-domain boundary implications
+- Conversation routes and Knowledge routes are separate call paths; no single shared guard currently intercepts both.
+- Knowledge add/update/delete, conversation message create, conversation context save, Knowledge search/list, conversation history/context retrieval, backup and restore each need an explicit integration decision and a dedicated test.
+- A route-level authentication/authorization check does not establish canonical record integrity, project isolation, trusted provenance or conflict arbitration.
+- A regex inventory match is not counted as a semantic HFM boundary unless the inspected source establishes that role. The broader 1125-match inventory remains a review index, not 1125 confirmed HFM operations.
+
+11. UPDATED STATUS AFTER SEMANTIC REVIEW
+CONVERSATION_MESSAGE_WRITE_BOUNDARY=IDENTIFIED
+CONVERSATION_CONTEXT_WRITE_BOUNDARY=IDENTIFIED
+CONVERSATION_MEMORY_RETRIEVAL_BOUNDARY=IDENTIFIED
+KNOWLEDGE_ADD_UPDATE_DELETE_BOUNDARIES=IDENTIFIED
+KNOWLEDGE_SEARCH_LIST_STATS_BOUNDARIES=IDENTIFIED
+KNOWLEDGE_BACKUP_RESTORE_BOUNDARIES=IDENTIFIED
+LOCAL_MEMORY_FILESYSTEM_INTEGRITY=EXISTING_CONTROLS_VERIFIED_BY_SOURCE_REVIEW
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+PHASE2=IN_PROGRESS
+PRODUCTION_READINESS=NOT_CERTIFIED
+VERSION=v0.2
+
+
+12. IDENTITY SCHEMA AND FAILURE-ATOMICITY FINDINGS — 2026-11-04
+- conversation-schema.js:123-178 createConversation() persists clientId, opportunityId and proposalId but has no projectId field. The schema therefore cannot itself prove conversationId -> projectId.
+- conversation-schema.js:181-228 createConversationMessage() creates a messageId when absent for new messages and stores conversationId/clientId, but no projectId. This does not retroactively provide immutable IDs to legacy records that were already persisted without them.
+- routes/conversations.js:240-285 performs message creation and context update as separate calls. The message store commit precedes derived context update; if the latter fails, the endpoint can return an error while the message has already been persisted. No transaction/outbox/compensating rollback was found in the inspected path. Treat as a consistency/recovery gap, not as a confirmed data-loss incident.
+- knowledge.js:150-240 and 700-820 perform local array writes before/around asynchronous Drive synchronization. A provider failure can leave local and remote state divergent; the current path needs explicit idempotency/version arbitration and reconciliation evidence before it can be considered a single authoritative write boundary.
+
+13. FOLLOW-UP WORK ORDER (SAFE, NON-PRODUCTION)
+1. Add isolated fault-injection tests for conversation message commit followed by context-save failure; specify the accepted recovery contract (retry/idempotent context rebuild or explicit partial-commit response).
+2. Add isolated fault-injection tests for local Knowledge commit followed by Drive sync failure; document local-authoritative versus provider-authoritative semantics and retry reconciliation.
+3. Extend callsite inventory to all callers of conversation-store, knowledge APIs and local Memory store, including background tasks, tools, exports and admin diagnostics; record each caller and whether it can expose data outside its project.
+4. Design a project-scope source for conversations (do not add inferred projectId based only on opportunityId until uniqueness and authority are proven).
+5. Only then propose a production guard design. No adapter wiring, schema mutation, production migration, Drive write or data rewrite is authorized by this audit.
+
+14. STATUS UPDATE
+CONVERSATION_SCHEMA_PROJECT_ID=ABSENT
+NEW_CONVERSATION_MESSAGE_ID_GENERATION=EXISTING
+LEGACY_MESSAGE_ID_BACKFILL=NOT_AUTHORIZED
+CONVERSATION_MESSAGE_CONTEXT_ATOMICITY=GAP_IDENTIFIED_NOT_RUNTIME_PATCHED
+KNOWLEDGE_LOCAL_PROVIDER_DIVERGENCE=RECONCILIATION_GAP_IDENTIFIED
+HFM_RUNTIME_ADAPTER=NOT_ENABLED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+
+
+15. ISOLATED FAILURE-INJECTION RESULTS — 2026-11-04
+- Added tests/mira-hfm-conversation-partial-commit.test.js. In a temporary MIRA_STORAGE_DIR fixture, create a conversation and persist one incoming message, inject a one-shot saveContext failure, and assert the message remains committed while context remains absent. A subsequent explicit updateConversationMemory retry creates context without creating a second message.
+- Added tests/mira-hfm-knowledge-drive-retry.test.js. In a temporary storage fixture, intercept the google-drive module with a deterministic stub: first sync throws, second sync succeeds. The test proves local Knowledge remains committed after provider failure and duplicate add retries provider sync without duplicating the local entry.
+- The tests do not establish route-level exactly-once semantics, transactional message+context commits, provider CAS, cross-process retry safety or universal source-of-truth arbitration. They establish only the tested local recovery behavior.
+- Both tests were added to .github/workflows/mira-hfm-phase2-core-safety.yml and executed in GitHub Actions:
+  - Run 41777222583: SUCCESS, head cc0553c14663363144767845a587f0180d15bd39.
+  - Run 41777228555: SUCCESS, head cc0553c14663363144767845a587f0180d15bd39.
+- Both logs explicitly show MESSAGE_COMMITTED_CONTEXT_WRITE_FAILED_PARTIAL_STATE=PASS, EXPLICIT_MEMORY_RETRY_RECOVERS_WITHOUT_DUPLICATE_MESSAGE=PASS, LOCAL_KNOWLEDGE_COMMIT_SURVIVES_DRIVE_SYNC_FAILURE=PASS, DUPLICATE_RETRY_RECONCILES_PROVIDER_WITHOUT_DUPLICATING_LOCAL_ENTRY=PASS, TESTS_FAILED=0, REAL_GOOGLE_DRIVE_TOUCHED=NO, NETWORK_REQUESTS=0 and EXTERNAL_ACTIONS=0.
+- No production Conversation or Knowledge data was touched.
+
+UPDATED BOUNDARY STATUS
+CONVERSATION_PARTIAL_COMMIT_RECOVERY=ISOLATED_RETRY_BEHAVIOR_VERIFIED
+CONVERSATION_MESSAGE_CONTEXT_TRANSACTIONAL_ATOMICITY=NOT_IMPLEMENTED
+KNOWLEDGE_LOCAL_COMMIT_SURVIVAL=ISOLATED_PASS
+KNOWLEDGE_DRIVE_RETRY_RECONCILIATION=ISOLATED_PASS
+KNOWLEDGE_PROVIDER_CAS_AND_VERSION_ARBITRATION=NOT_ESTABLISHED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+
+16. EXTENDED CALLER-LEVEL SEMANTIC REVIEW — 2026-11-04
+The following additional direct callers were inspected from the Phase 2 branch. This extends semantic classification beyond the initial store/route files; it is not a claim that all 567 scanned files or all 1125 regex matches have been semantically reviewed.
+
+A. General Memory API and legacy identity
+- memory.js:1-90 imports services/mira-local-memory-store; loadMemory() delegates to readMemory(), saveMemory() truncates to capacity then calls writeMemory(), addMemory() performs role+content duplicate detection and stores {role, content, time}. No immutable per-entry messageId or projectId is added here.
+- services/mira-local-memory-store.js remains the underlying filesystem boundary; its atomicity/integrity controls do not establish canonical HFM project scope, source identity or conflict status.
+- scripts/mira-memory-backup.js:1-12 exposes local Memory backup creation through a tool wrapper.
+- tools/memory-restore.js:1-42 exposes explicit-confirmation restore. Restore is a state-replacement boundary and must be evaluated against conflict quarantine and canonical project scope before HFM runtime integration.
+
+B. Conversation retrieval and planning
+- services/mira-conversation-response-planner.js:150-230 validates conversation/message presence, then calls memoryEngine.getConversationMemory(conversationId) to build priority and clarification decisions. This is a downstream retrieval consumer of the conversation memory path; no separate HFM trust/quarantine filter was observed in this function.
+- routes/conversations.js registers the authenticated client-project routes; authentication is not a substitute for canonical projectId binding or conflict trust checks.
+- server.js:2199 onward registers the conversation routes through requireAgentAuth and CLIENT_PROJECTS permission.
+
+C. Evolution and provider paths
+- knowledge-memory-evolution.js:1-110 imports local Memory store plus Google Drive Memory/Knowledge providers; it routes Memory array writes through localMemoryStore.writeMemory(), while Knowledge array writes use jsonStateStore.writeArrayState(). Its loadLocalState()/loadDriveState()/saveDriveState() functions (around lines 235-550) compare and synchronize local and Drive arrays without canonical HFM project/conflict arbitration.
+- knowledge-controlled-apply.js:70-130 and 220-270 preflight local Knowledge against Drive and compare complete arrays; 400-500 verifies local/provider state and attempts rollback after failed sync. This is a controlled apply boundary, but it is not a provider CAS/atomic append arbiter and has no universal canonical conflict guard in the inspected path.
+- autonomous-learning-controlled-apply.js:50-140 and 240-390 reads local Knowledge, reads Drive, writes/rolls back snapshots and verifies equality. It is another independent write/recovery/provider path; equality checks do not establish atomic provider arbitration or HFM trusted-record filtering.
+- google-drive.js:201-245 implements Knowledge/Memory provider save/load helpers. Provider operations remain separate from local commits and no canonical HFM source-version/CAS token is passed through these helpers.
+
+D. Tools, recovery and admin surfaces
+- services/mira-state-version-recovery.js:1-220 verifies a local snapshot and, after explicit confirm, writes snapshot.entries directly with jsonStateStore.writeArrayState(). This is a direct recovery write boundary requiring conflict/quarantine eligibility policy; SHA-256 snapshot integrity alone is not an HFM trust decision.
+- tools/knowledge-backup.js:1-20 wraps local Knowledge backup.
+- tools/knowledge-restore.js:1-44 wraps explicit-confirmation Knowledge restore; it reports post-commit verification failures but does not itself enforce HFM conflict eligibility.
+- routes/knowledge-improvements.js:320-455 reads Knowledge, checks approved proposal/stale content hash and prepares Evolution. Its preconditions protect proposal freshness/approval but do not replace canonical project scope and conflict trust checks.
+- server.js:1090-1225 exposes admin Knowledge delete/search and additional Knowledge reads/stats; these are privileged but still direct legacy Knowledge API consumers.
+- routes/autonomous-learning.js imports the controlled-apply engine and exposes proposal operations behind SYSTEM_ADMIN permission; its admin authorization does not itself establish canonical memory integrity.
+
+E. Boundary classification update
+GENERAL_MEMORY_ROLE_CONTENT_TIME_IDENTITY=LEGACY_IDENTITY_ONLY
+CONVERSATION_RESPONSE_PLANNER_RETRIEVAL=IDENTIFIED
+EVOLUTION_LOCAL_AND_DRIVE_PROVIDER_PATHS=IDENTIFIED
+KNOWLEDGE_CONTROLLED_APPLY_PROVIDER_PATH=IDENTIFIED
+AUTONOMOUS_LEARNING_CONTROLLED_APPLY_PROVIDER_PATH=IDENTIFIED
+VERSION_RESTORE_DIRECT_WRITE_BOUNDARY=IDENTIFIED
+BACKUP_RESTORE_TOOL_BOUNDARIES=IDENTIFIED
+ADMIN_KNOWLEDGE_ROUTE_CONSUMERS=IDENTIFIED
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+The next required step is to continue source-level caller discovery for background workers, exports, caches/indexes, provider adapters and any additional direct imports, then build a deduplicated callsite-to-guard coverage matrix. No runtime adapter wiring or production data change is implied by this review.
+
+
+17. TOOL AND WORKER CONSUMER REVIEW — 2026-11-04
+- tools/knowledge-search.js:1-55 reads local Knowledge, then replaces its search corpus with the Drive array whenever Drive returns an array. This is a distinct provider-backed retrieval path and has no canonical project/trust/quarantine filter in the inspected tool.
+- tools/knowledge-save.js:1-50 exposes addKnowledge() and reports local-only success versus Drive sync status.
+- tools/knowledge-count.js:1-30 exposes raw local array count; tools/memory-count.js:1-35 exposes raw local Memory count. Counts are not trust-filtered and must not be interpreted as trusted-record counts.
+- tools/knowledge-cleanup.js:1-95 inspects raw local Knowledge and can call replaceKnowledge() before saving to Drive. The inspected response sets driveSync=true after awaiting saveKnowledgeToDrive() without validating result.success; this is a separate provider-status accuracy/reconciliation issue to review. The cleanup helper has its own duplicate-assessment contract, not universal HFM quarantine enforcement.
+- tools/memory-save.js:1-55 calls memory.addMemory("user", content); memory.js persists role/content/time and therefore remains a legacy identity path without immutable messageId/projectId.
+- tools/memory-version-recovery.js invokes services/mira-state-version-recovery.restoreVersion() after explicit confirmation; this is a separate historical-state replacement boundary.
+- services/mira-autonomous-worker.js was inspected as a candidate worker, but the initial source scan did not establish a direct import/call to the core conversation-store, knowledge.js or mira-local-memory-store APIs in the inspected file. Do not classify it as a confirmed HFM caller solely because it is a worker.
+- services/mira-work-knowledge-consolidation.js uses its own data/work-knowledge-consolidation.json store, SHA-256 integrity envelope and audit events. It is a separate Work Knowledge domain; mapping its learning/task references to canonical HFM project scope remains unproven.
+- services/mira-experience-memory.js consumes the Work Learning engine and appears to be a separate Experience Memory domain. It remains a candidate for cross-domain mapping review, not a confirmed direct caller of the legacy Memory/Knowledge arrays.
+
+NEW REVIEW FINDINGS
+KNOWLEDGE_TOOL_DRIVE_SEARCH_OVERRIDE=IDENTIFIED
+KNOWLEDGE_CLEANUP_PROVIDER_STATUS_VALIDATION=REVIEW_REQUIRED
+KNOWLEDGE_AND_MEMORY_COUNT_TOOLS=RAW_COUNT_BOUNDARIES_IDENTIFIED
+LEGACY_MEMORY_SAVE_TOOL=IDENTITY_GAP_CONFIRMED
+VERSION_RESTORE_TOOL_BOUNDARY=IDENTIFIED
+WORK_KNOWLEDGE_STORE=SEPARATE_DOMAIN_MAPPING_REVIEW_REQUIRED
+EXPERIENCE_MEMORY=SEPARATE_DOMAIN_MAPPING_REVIEW_REQUIRED
+AUTONOMOUS_WORKER_CORE_STORE_CALL=NOT_ESTABLISHED_BY_INSPECTED_SOURCE
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED
+
+
+18. CONVERSATION ROUTE-TO-STORE CONTRACT CORRECTION — 2026-11-04
+Source review found routes/conversations.js imported six names not exported by conversation-store.js: createConversation, createConversationMessage, listConversationMessages, getConversationMessage, getConversationContext and saveConversationContext. The route handlers therefore referenced undefined functions. The route's message input also passed participantType while conversation-schema.createConversationMessage() consumes participant.
+Scoped correction committed:
+- routes/conversations.js now calls the actual exported persistence APIs: createStoredConversation, createStoredMessage, listMessages, getMessage, getContext and saveContext.
+- Conversation creation and message creation now inspect the store result envelope and return HTTP 409 when the store reports that the record was not created.
+- The route maps participant or legacy participantType input into the schema's participant field.
+- Added tests/mira-hfm-conversation-route-contract.test.js using temporary storage and a lightweight route-registration harness. It exercises conversation creation, message create + memory update, message list/detail, context read/write and memory retrieval.
+- Workflow now includes routes/conversations.js and the isolated route-contract test.
+
+CI:
+- Run 41777990347 — SUCCESS — head ad4fd7475b1a642112c2ed2acd7951422edfc5fa.
+- Run 41777984461 — SUCCESS — head ad4fd7475b1a642112c2ed2acd7951422edfc5fa.
+- Both logs show CONVERSATION_CREATE_ROUTE_STORE_CONTRACT=PASS, CONVERSATION_MESSAGE_CREATE_AND_MEMORY_ROUTE=PASS, CONVERSATION_MESSAGE_LIST_ROUTE=PASS, CONVERSATION_MESSAGE_DETAIL_ROUTE=PASS, CONVERSATION_CONTEXT_READ_ROUTE=PASS, CONVERSATION_CONTEXT_WRITE_ROUTE=PASS, CONVERSATION_MEMORY_RETRIEVAL_ROUTE=PASS, TESTS_FAILED=0.
+
+Residual:
+- This closes the undefined-export/API-shape defect in the inspected conversation route path only.
+- Message persistence and derived context persistence are still separate commits. The prior partial-commit test proves retry recovery only when the same stored message is explicitly supplied to the memory engine; route-level retry/idempotency and transaction/outbox semantics remain NOT_ESTABLISHED.
+- No projectId schema change, HFM runtime guard wiring or production data migration was performed.
+
+
+19. KNOWLEDGE TOOL / AGENT RETRIEVAL / PROVIDER STATUS REVIEW — 2026-11-04
+Expanded source inspection across the 91 source files listed in the static inventory identified these additional semantic edges:
+
+A. Retrieval fan-out
+- services/learning.js:3-8 imports searchKnowledge from ../knowledge. findImprovementCandidate() and learnFromContent() call it (around lines 350-470) to locate existing knowledge before learning or updating. This is an indirect Knowledge retrieval consumer, not an independent storage adapter.
+- tools/knowledge-search.js:1-2 and 35-70 reads local getKnowledge(), then replaces its search corpus with the complete Drive array whenever loadKnowledgeFromDrive() returns an array. No canonical project/trust/quarantine filter is applied in this tool. This is a confirmed separate retrieval path.
+- server.js:1520-1565 reads local getMemory() and calls searchKnowledge(cleanCommand, 2); the returned records are inserted into the agent message context. The prompt says stored knowledge is reference data, not instructions, but source trust/quarantine filtering is not applied at this callsite.
+- server.js admin Knowledge search/detail/edit/delete handlers around lines 1120-1460 are separate privileged direct API consumers. Authentication/role permission is not equivalent to HFM project scope and conflict trust.
+- tools/index.js dynamically loads every JS tool in tools/ and registers declarations/executors. Therefore the Knowledge and Memory tools are runtime-reachable through the tool registry; a file-level inventory alone must not omit these dynamically registered edges.
+- tools/knowledge-count.js and tools/memory-count.js expose raw local counts. They do not claim trust-filtered counts and must remain labelled as raw storage metrics until a canonical count API exists.
+- tools/capacity-change.js reads getKnowledgeStats() to propose capacity changes; this is metadata/aggregate use rather than content retrieval.
+
+B. Knowledge cleanup provider-status defect and correction
+- tools/knowledge-cleanup.js previously called replaceKnowledge(cleanedKnowledge), awaited saveKnowledgeToDrive(), then unconditionally returned driveSync=true without checking result.success. A rejected provider response or thrown provider exception could therefore be reported as synchronized after the local commit.
+- Corrected tools/knowledge-cleanup.js to preserve the local commit result while reporting driveSync=true only when provider result.success === true. A false/missing success flag or thrown exception now reports driveSync=false, driveStatus=FAILED_OR_UNCONFIRMED, localCommit=true and an explicit reconciliation message. Provider exception detail is bounded to 240 characters.
+- tests/mira-knowledge-cleanup-tool-boundary.test.js now injects both provider rejection and provider exception after local commit and asserts the tool does not claim sync.
+- tests/mira-knowledge-cleanup-storage-contract.test.js mock now returns explicit success:true for its successful provider scenario.
+
+C. Cache / export / provider qualification
+- tools/index.js dynamic registry is confirmed. No standalone HFM-specific cache or index module was identified among the named 91 source files, but this is not proof that no cache/index or dynamic edge exists elsewhere in the full repository.
+- No dedicated Memory/Knowledge export/download endpoint was confirmed in the inspected candidate paths. Snapshot, backup, restore and admin-read paths remain separate disclosure/recovery boundaries already classified above.
+- providers/index.js has dynamic provider loading, but the inspected provider registry is an AI model provider registry, not evidence of Memory/Knowledge storage-provider arbitration.
+- The source review does not establish that all 579 code files, dynamic imports, runtime routes, exports, caches, workers or provider adapters are semantically covered.
+
+D. New classification
+LEARNING_ENGINE_INDIRECT_KNOWLEDGE_RETRIEVAL=IDENTIFIED
+AGENT_PROMPT_KNOWLEDGE_RECALL_PATH=IDENTIFIED
+DYNAMIC_TOOL_REGISTRY_REACHABILITY=IDENTIFIED
+KNOWLEDGE_SEARCH_DRIVE_OVERRIDE=IDENTIFIED_NO_HFM_FILTER
+ADMIN_KNOWLEDGE_DIRECT_CALLERS=IDENTIFIED_NO_HFM_FILTER
+KNOWLEDGE_CLEANUP_PROVIDER_STATUS_BUG=FIXED_ISOLATED_CI_VERIFIED
+DEDICATED_HFM_CACHE_INDEX_MODULE=NOT_IDENTIFIED_IN_REVIEWED_CANDIDATES
+DEDICATED_KNOWLEDGE_EXPORT_ENDPOINT=NOT_CONFIRMED_IN_REVIEWED_CANDIDATES
+ALL_CALLSITE_SEMANTIC_CLASSIFICATION=IN_PROGRESS
+UNIVERSAL_HFM_GUARD=NOT_INTEGRATED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+PRODUCTION_READINESS=NOT_CERTIFIED

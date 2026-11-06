@@ -1,0 +1,134 @@
+MIRA HYBRID MEMORY
+PHASE 1 — ROUTE, DOMAIN-STORE AND GOVERNANCE-CALLER ADDENDUM
+Document ID: MIRA-HFM-CAGR-001-PHASE1-DOMAIN-CALLER-RECONCILIATION-20261103
+Version: v0.2 review artifact (additive; no release/version promotion)
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed branch HEAD before this report: c0772996d9a52e53414f1f83888b12ec1ab145f7
+Review date: 2026-11-03
+Status: PARTIAL SOURCE REVIEW — PHASE 1 REMAINS INCOMPLETE
+
+1. SCOPE AND SAFETY
+This report extends targeted Phase 1 source review. It is documentation-only.
+No application source code was modified. No test was executed. No production Memory, task, project, client, consent, opportunity, credential, or provider data was read or changed. No Drive/Facebook/API call was made. No worker, route action, backup, restore, or scheduled job was invoked.
+Findings are based on selected source files fetched from the named feature branch. The repository-wide source-text scan remains NOT_EXECUTED.
+
+2. BRANCH INVENTORY
+Branch HEAD before this report: c0772996d9a52e53414f1f83888b12ec1ab145f7
+Recursive Git tree: 618 entries; truncated=false.
+JavaScript-family files in tree: 540 (path count only; not all contents inspected).
+The 540-file count demonstrates why the current targeted sample cannot be described as a complete source scan.
+
+3. ROUTE-TO-STORE CALLER RECONCILIATION
+The following route modules were inspected for direct file I/O and their imports/delegation:
+- routes/client-communication.js -> client-communication-store.js and mira-client-communication-engine.js.
+- routes/client-follow-up.js -> client-follow-up-store.js and mira-client-follow-up-engine.js.
+- routes/client-profiles.js -> client-profile-service.js -> client-profile-store.js.
+- routes/mira-client-consent.js -> mira-client-consent-service.js -> mira-client-consent-store.js; route also calls audit-log.
+- routes/opportunities.js -> opportunity-store.js and opportunity engines.
+- routes/work-acceptance.js -> work-acceptance-store.js and acceptance engines.
+- routes/deliverables.js / routes/deliverable-integration.js -> deliverable builder/orchestrator; store usage is delegated downstream.
+- routes/work-economics.js -> mira-work-economics-engine.js.
+- routes/mira-marketing-workflow.js -> marketing workflow orchestrator and SEO research route.
+No direct fs read/write callsites were found in the inspected route files. This is not proof of no persistence side effects: the routes delegate to services and stores listed above. Their indirect call chains must be included in compatibility mapping.
+
+4. DOMAIN STORE PATHS CONFIRMED
+The following store modules were inspected:
+- project-store.js -> storagePath("data/projects.json")
+- task-store.js -> MIRA_TASK_FILE override, otherwise storagePath("data/tasks.json")
+- work-acceptance-store.js -> storagePath("data/work-acceptances.json")
+- client-profile-store.js -> storagePath("client-profiles.json")
+- client-communication-store.js -> storagePath("data/client-communications.json")
+- client-follow-up-store.js -> storagePath("data/client-follow-ups.json")
+- deliverable-store.js -> storagePath("data/deliverables.json")
+- opportunity-store.js -> MIRA_OPPORTUNITY_FILE override, otherwise storagePath("data/opportunities.json")
+- services/mira-client-consent-store.js -> storagePath("client-consents.json")
+- services/mira-seo-workflow-store.js -> storagePath("mira-seo-workflow-records.json")
+Most use local JSON read/write with temporary-file rename. Atomicity, lock discipline, validation, audit, and backup behavior differ by module and have not been independently verified through tests. Do not infer uniform durability guarantees from shared use of mira-storage.
+
+5. ADDITIONAL GOVERNANCE AND ORCHESTRATION STORES
+services/autonomous-orchestrator.js:
+- STORE = MIRA_STAGE16_17_WORKFLOWS_FILE when configured; otherwise storagePath("data/stage16-17-workflows.json").
+- Loads the store at module initialization and rejects invalid/duplicate job state.
+- Persists workflow jobs using temporary-file write and rename.
+- Contains lock-directory operations for coordination.
+- This is a separate persistence domain from Memory and from Stage 13 Learning Governance. It was not invoked.
+services/mira-research-governance.js:
+- MIRA_RESEARCH_GOVERNANCE_FILE override; otherwise storagePath("data/mira-research-governance.json").
+- Uses a lock directory, owner marker, bounded lock wait, validation, temporary-file write and rename.
+- Missing ledger is treated as an empty governance state; malformed/unreadable state fails closed.
+- routes/mira-research-governance.js delegates to task-store and governance service and records audit events on relevant action paths.
+No governance route was invoked.
+
+6. PROVIDER CREDENTIAL RESOLUTION CHAIN
+services/provider-credential-resolver.js delegates managed credential retrieval to services/provider-credential-store.js and only then falls back to the configured environment key for the explicitly supported provider.
+The credential store default path remains project-root data/provider-credentials.enc.json rather than mira-storage. The store source uses AES-256-GCM and a configured MIRA_CREDENTIALS_ENCRYPTION_KEY; resolver treats store decryption/configuration errors as fail-closed. No credential file, key, or secret value was read. No provider request was made.
+This path and credential-source precedence need inclusion in future provider governance and storage-root review. No credential movement is authorized.
+
+7. AUTONOMOUS WORKER / GOVERNANCE LINKAGE
+The autonomous worker reads task records from task-store, updates task status, appends worker results to MIRA_WORKER_RESULTS_FILE or storagePath("data/autonomous-worker-results.jsonl"), and writes research budget/report files. Research mode additionally reads governance approvals through mira-research-governance.
+The worker has separate explicit opt-ins for worker activation and autonomous research. It was not started, and no task was processed.
+The worker's use of task-store, research governance, result JSONL, budget, and reports creates a cross-domain caller chain that must be represented in the final compatibility matrix.
+
+8. UPDATED PATH-OVERRIDE REGISTER
+Additional environment path overrides confirmed in targeted source:
+- MIRA_STAGE16_17_WORKFLOWS_FILE -> stage16/17 orchestrator workflow ledger.
+- MIRA_RESEARCH_GOVERNANCE_FILE -> autonomous research governance ledger.
+Previously recorded overrides remain:
+- MIRA_STORAGE_DIR
+- MIRA_MEMORY_FILE
+- MIRA_AUDIT_FILE
+- MIRA_LEARNING_FILE
+- MIRA_STAGE13_STORE
+- MIRA_WORKER_RESULTS_FILE
+- MIRA_TASK_FILE
+- MIRA_OPPORTUNITY_FILE
+The provider credential store has a project-root default and no MIRA_STORAGE_DIR integration in inspected code.
+This register is still partial: all 540 JavaScript-family files have not been content-scanned, and non-JavaScript callers/configuration have not been comprehensively reconciled.
+
+9. PHASE 1 STATUS UPDATE
+- Tree inventory: COMPLETE as a path list for current reviewed HEAD; not truncated.
+- Route direct filesystem scan: targeted selected routes; no direct fs calls in those route files.
+- Route-to-store delegation: PARTIALLY MAPPED.
+- Domain store path inventory: EXPANDED; not exhaustive.
+- Governance/orchestrator stores: EXPANDED.
+- Provider credential resolution: PARTIALLY MAPPED.
+- Environment path override register: EXPANDED; not exhaustive.
+- Drive caller inventory: PARTIAL; prior Drive callsites remain.
+- Repository-wide source-text scan: NOT_EXECUTED.
+- Caller compatibility table: PARTIAL.
+- Provider permission scopes: NOT_COMPLETE.
+- Tests: NOT_EXECUTED.
+- Production data access: NONE.
+- Application source changes: NONE.
+
+10. REQUIRED NEXT WORK
+1. Complete the source scan or document a bounded, evidence-based coverage strategy that accounts for all relevant source files and explicitly lists exclusions.
+2. Trace every route-to-service-to-store path, including indirect audit writes and background processes.
+3. Build the caller compatibility matrix for all persistence domains: schema, path resolution, read semantics, write semantics, atomicity/locking, error handling, audit, backup/restore, and external provider effects.
+4. Consolidate all environment overrides and hard-coded paths, then assess storage-root containment and intentional project-artifact exceptions.
+5. Complete Drive read/write callsite inventory and approved replacement analysis before any Drive sync removal.
+6. Design isolated fixture-only tests; do not execute active-store tests or destructive tools.
+7. Complete provider scope and data-flow review before future provider implementation.
+
+FINAL STATUS
+TREE_ENTRIES_BEFORE_REPORT=618
+TREE_TRUNCATED=NO
+JS_FAMILY_FILES=540
+TARGETED_ROUTE_FILES=10
+ROUTE_DIRECT_FS_CALLS=NONE_FOUND_IN_INSPECTED_ROUTES
+ROUTE_TO_STORE_MAPPING=PARTIAL
+DOMAIN_STORES=EXPANDED
+GOVERNANCE_STORES=EXPANDED
+PROVIDER_CREDENTIAL_CHAIN=PARTIALLY_MAPPED
+PATH_OVERRIDE_REGISTER=EXPANDED_NOT_EXHAUSTIVE
+REPOSITORY_WIDE_SOURCE_TEXT_SCAN=NOT_EXECUTED
+TESTS=NOT_EXECUTED
+PRODUCTION_DATA_ACCESS=NONE
+SOURCE_CODE_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+
+END OF REPORT

@@ -278,21 +278,287 @@ Remaining:
 - Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2; PR #4 draft/unmerged.
 
 
-15. RESTRICTED WRAPPER IMPORT INVENTORY EXPANSION — 2026-11-04
+16. RETRIEVAL TRUST BOUNDARY SEMANTIC REVIEW — 2026-11-04
 
-Expanded the repository-wide persistent-writer callsite test's direct-import denylist from the three persistent-save wrappers to all seven non-routed human-only wrappers:
-- memory-save
-- knowledge-save
-- learning-save
-- firewall-defense
-- memory-restore
-- memory-version-recovery
-- knowledge-cleanup
+The CI inventory emits 36 retrieval calls across 14 application source files; all 14 lack both recognized in-file trust-filter and conflict-quarantine-filter markers. A separate semantic review classifies them by risk rather than treating every match as a confirmed exposure.
 
-The test scans application source files (excluding tests, docs, generated/backups and dependencies) and asserts none of these modules is directly imported outside the dynamic registry. Dedicated admin-route exceptions knowledge-backup and knowledge-restore are not included in this denylist because their only reviewed direct calls are protected by requireAdminPermission(BACKUP_RESTORE), with confirm===true required before restore.
+Highest-priority boundaries:
+- server.js agent request context: getMemory() and searchKnowledge() results are assembled into model context without explicit canonical project/trust/quarantine filtering.
+- tools/knowledge-search.js: Drive-returned arrays replace the local search corpus before matching; no canonical filter is present in the inspected function.
+- server.js admin Knowledge search/detail/edit/delete reads: SYSTEM_ADMIN is an actor permission, not an HFM project-scope or trust-clearance waiver.
+- services/learning.js: searchKnowledge() influences duplicate/improvement decisions without an HFM filter.
+
+Other callsites include controlled apply/rollback and Drive reconciliation, core local APIs, evolution synchronization, raw counts and cleanup. These are separately classified; they are not all equivalent user-facing retrievals.
+
+The legacy identity blocker remains: historical Conversation Memory does not universally have immutable messageId/projectId, and legacy Knowledge does not universally have explicit canonical project mapping/trust metadata. Wiring a fail-closed filter without source-bound mappings would either exclude legacy data or tempt synthetic identity derivation. No such mapping or migration was invented.
+
+Read-only report:
+MIRA-HFM-CAGR-001-PHASE2-RETRIEVAL-BOUNDARY-SEMANTIC-REVIEW-20261104.txt
+
+CI inventory evidence: run 41792648804 SUCCESS; 36 calls, 14 consumer files, 14 review-required files; TESTS_FAILED=0, NETWORK_REQUESTS=0, EXTERNAL_ACTIONS=0, REAL_GOOGLE_DRIVE_TOUCHED=NO.
+
+Remediation sequence: define an authenticated project-scoped canonical retrieval facade; validate canonical identity/content hash/lifecycle/integrity/trust/quarantine; apply identical filtering to local and Drive corpora; integrate first into model context and Knowledge search; then learning and admin read paths; preserve separate recovery/provider reconciliation semantics. All missing mappings fail closed. No production retrieval behavior changed in this review.
+
+RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED
+PRODUCTION_READINESS=NOT_CERTIFIED
+PHASE2=IN_PROGRESS
+VERSION=v0.2
+
+
+17. RESOLVED-CONFLICT RETRIEVAL SELECTION HARDENING — 2026-11-04
+
+Finding:
+- filterTrustedRecords() previously blocked originals while a conflict was QUARANTINED or UNDER_REVIEW, but listConflicts() did not expose the selected resolution digest to the retrieval filter.
+- After ACCEPT_EXISTING_VERSION, ACCEPT_ALTERNATE_VERSION or REJECT_CONFLICTING_CHANGE, the conflict status became RESOLVED/REJECTED and the previous filter no longer blocked any original. Multiple conflicting versions could therefore become retrievable again.
+- APPROVED_FIELD_MERGE also needed to keep all source originals excluded after resolution.
+
+Correction:
+- listConflicts() now exposes the original record digests, resolution decision, accepted original digest and resulting merge digest only from a verified resolution record.
+- filterTrustedRecords() now:
+  - blocks every original while quarantined, under review, retained or integrity-failed;
+  - after a selected-version resolution, permits only the exact accepted original digest and excludes every unselected original;
+  - after an approved merge, excludes all original digests so only the separately persisted merged record can be retrieved;
+  - fails closed for malformed, incomplete, unknown or unsupported conflict metadata.
+- No legacy record identity, project mapping or resolution authority was inferred.
+
+Regression tests:
+- Resolved accepted version only retrievable.
+- REJECT_CONFLICTING_CHANGE excludes the unselected original.
+- ACCEPT_ALTERNATE_VERSION selects the exact requested original.
+- APPROVED_FIELD_MERGE excludes all source originals.
+- Incomplete resolution metadata and malformed conflict metadata fail closed.
 
 CI:
-- Run 41792648804 — SUCCESS — tested HEAD deb6ccec7cad1c9d7e356becadb364353329820c.
-- Log markers: MIRA_HFM_NONROUTED_HUMAN_ONLY_WRAPPER_DIRECT_IMPORTS=0; MIRA_HFM_PERSISTENT_WRITER_INVENTORY_TESTS_FAILED=0; MIRA_HFM_DIRECT_DISPATCH_BOUNDARY_TESTS_FAILED=0; TESTS_FAILED=0; NETWORK_REQUESTS=0; EXTERNAL_ACTIONS=0; REAL_GOOGLE_DRIVE_TOUCHED=NO.
+- Run 41803660014 — SUCCESS — source fix commit 6fc7d03a165765f715dcbd1b0992a346dee2d13a.
+- Run 41803664926 — SUCCESS — regression test commit 430910af869a667be7bc74175e71073ae08a4ad8.
+- Run 41803735497 — SUCCESS — explicit regression markers and malformed-metadata test commit 3b4d11b1579bc35fa2f952ec7b760b529bd616cf.
+- All three runs completed the isolated Phase 2 workflow; the conflict lifecycle suite reported TESTS_FAILED=0 and the new retrieval-selection assertions PASS.
+- No production data, Google Drive, network or external actions were touched.
 
-This remains a static source inventory, not proof against runtime dynamic import construction, external module consumers, or all possible execution mechanisms. Production readiness remains NOT_CERTIFIED; Phase 2 remains IN_PROGRESS; v0.2 unchanged.
+Scope limitation:
+- This closes the isolated conflict-registry retrieval-selection defect. The registry remains additive and is not wired to every production retrieval consumer.
+- The 36 retrieval calls / 14 consumer files remain a separate integration backlog. Current auth does not supply a canonical projectId for every user/session; no project identity was synthesized.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+18. INITIALIZED-MEMORY MISSING-PRIMARY FAIL-CLOSED GUARD — 2026-11-04
+
+Finding:
+- The previous missing-primary behavior returned [] when both the primary and backup were absent. That is valid for a true first-run store, but without a durable initialization indicator it could not distinguish first-run from deletion of a previously populated store.
+- A verified backup could be returned read-only, but a subsequent ordinary save could recreate the primary without an explicit restore decision.
+
+Correction:
+- services/mira-local-memory-store.js now maintains a separate, integrity-checked initialization marker bound to the Memory primary filename and store ID.
+- A first-run empty read remains read-only and does not create the marker.
+- A valid read of an existing legacy primary establishes the marker without changing Memory bytes.
+- Existing backup or version-snapshot evidence also establishes prior-store state.
+- If an initialized primary disappears, a verified backup may be exposed read-only, but ordinary writes are blocked until explicit verified restore.
+- If both primary and verified backup are absent after initialization, reads fail closed instead of returning [].
+- Marker corruption, malformed content, symlink/non-regular marker and digest mismatch fail closed.
+- Explicit restore is the only path that recreates a missing initialized primary; the verified backup is copied to the safety-backup path first.
+
+Regression evidence:
+- FIRST_RUN_EMPTY_ONLY_WITHOUT_INITIALIZATION_MARKER=PASS
+- LEGACY_PRIMARY_READ_ESTABLISHES_INITIALIZATION_MARKER=PASS
+- MISSING_PRIMARY_VERIFIED_BACKUP_READ_ONLY=PASS
+- MISSING_PRIMARY_WRITE_REQUIRES_EXPLICIT_RESTORE=PASS
+- MISSING_PRIMARY_AND_BACKUP_FAIL_CLOSED=PASS
+- INITIALIZATION_MARKER_TAMPER_FAILS_CLOSED=PASS
+
+CI:
+- Runs 41803963553 and 41804015063 — FAILURE — intermediate commits exposed expected compatibility assumptions in the old missing-primary test path; failures were retained and not relabelled.
+- Run 41804033785 — SUCCESS — corrected implementation and updated restore test, commit e253aa9511ec0517aa8a04d221a21c67d9c60610.
+- Run 41804100463 — SUCCESS — explicit regression markers, commit 84b44b822f6962b44daba76b5e04c35265ce8645.
+- Run 673 reports TESTS_FAILED=0 for all invoked suites; no production Memory, Knowledge or Conversation data, real Drive, network or external action was touched.
+
+Residual:
+- A legacy store whose primary, backup, version snapshots and initialization marker were all deleted before the first verified read cannot be distinguished from a genuine first-run store by local evidence alone. This limitation is explicit; no data identity or recovery state is fabricated.
+- The marker is local metadata, not an independent remote trust anchor.
+- Knowledge's separate missing-primary/first-run boundary and the production-wide retrieval integration remain separately REVIEW_REQUIRED.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+19. KNOWLEDGE INITIALIZATION / MISSING-PRIMARY FAIL-CLOSED GUARD — 2026-11-04
+
+Finding:
+- Knowledge previously treated a missing knowledge.json as an empty first-run state without checking whether a marker, prior version snapshots or a local backup proved that the store had already existed.
+- createKnowledgeBackup() also used missing:'empty', which could create a new empty backup when the primary was missing after prior initialization.
+- Explicit Knowledge restore did not correctly handle a missing primary; it attempted to preserve a corrupt primary even when no primary file existed.
+
+Correction:
+- Added reusable services/mira-store-initialization-guard.js with an integrity-checked local marker, safe primary/marker checks, version-snapshot/recovery-evidence detection and fail-closed write authorization.
+- knowledge.js now returns [] only for a true first-run state with no initialization marker, version snapshots or backup evidence.
+- A missing initialized Knowledge primary blocks read/CRUD and blocks creation of a new backup that could replace recovery evidence.
+- services/mira-knowledge-state-recovery.js now preserves a verified safety copy before restoring a missing primary and uses atomic replacement plus readback verification.
+- Existing corrupt/empty/invalid/symlink state continues to fail closed.
+
+Regression evidence:
+- KNOWLEDGE_FIRST_RUN_EMPTY_WITHOUT_MARKER=PASS
+- KNOWLEDGE_INITIALIZATION_MARKER_CREATED_ON_FIRST_WRITE=PASS
+- KNOWLEDGE_MISSING_PRIMARY_BLOCKS_READ_WRITE_AND_BACKUP=PASS
+- KNOWLEDGE_MISSING_PRIMARY_EXPLICIT_RESTORE=PASS
+- KNOWLEDGE_MISSING_PRIMARY_AND_MARKER_TAMPER_FAIL_CLOSED=PASS
+- TESTS_PASSED=20; TESTS_FAILED=0.
+
+CI:
+- Run 41804273088 — FAILURE — initial Knowledge guard regex implementation did not correctly classify the missing-primary error; retained as historical evidence.
+- Run 41804317402 — SUCCESS — corrected classifier, commit 4f4cbd89ceeb9d7e991af0d0495eef7e44981bb1.
+- Run 41804345427 — SUCCESS — initialization-aware backup and restore implementation, commit 5dbf2067cb1450a9ecc61492cfff98094deeba81.
+- Run 41804371633 — SUCCESS — first-run, missing-primary, explicit restore tests, commit 73ab586c78f8d7b3b03ac08d303c7379fdb8fe67.
+- Run 41804430790 — SUCCESS — marker tamper and missing-primary regression coverage, commit 8fe545361647d6758e0b47c32eac257f2890030f.
+- Run 679 explicitly reports TESTS_PASSED=20, TESTS_FAILED=0 and RESULT=KNOWLEDGE_STATE_SAFETY_PASS.
+
+Scope:
+- Tests use temporary isolated storage. Production Knowledge/Memory, real Google Drive and network were not touched.
+- This closes the missing-primary initialization ambiguity for the local Knowledge store; it does not implement encrypted backup, Drive cutover, canonical provider migration or universal conflict-registry retrieval integration.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+20. EMPTY VERSION-DIRECTORY PRIOR-STORE EVIDENCE — VERIFIED BY RUNS 682/683
+
+Finding:
+- The first initialization-marker revision treated a version directory as prior-state evidence only when it still contained a .json snapshot.
+- If snapshot files had been removed but the directory remained, the missing-primary path could still be misclassified as first-run after marker loss.
+
+Correction:
+- Memory and the reusable Knowledge initialization guard now treat the existence of a safe version directory itself as prior-store evidence, including an empty directory.
+- Memory read fallback now checks version-directory evidence before returning [].
+- Knowledge missingPrimaryDecision() uses the same conservative rule.
+- An empty or unreadable version directory cannot be silently treated as a new empty store.
+
+Regression evidence:
+- EMPTY_MEMORY_VERSION_DIRECTORY_STILL_PROVES_PRIOR_STORE=PASS
+- EMPTY_KNOWLEDGE_VERSION_DIRECTORY_STILL_PROVES_PRIOR_STORE=PASS
+- MISSING_PRIMARY_AND_BACKUP_FAIL_CLOSED=PASS
+- KNOWLEDGE_MISSING_PRIMARY_AND_MARKER_TAMPER_FAIL_CLOSED=PASS
+- Both test suites reported TESTS_FAILED=0.
+
+CI:
+- Run 41804715258 — SUCCESS — Memory read-side version evidence, commit c228388bb9998b1c53fe7cd4a2294329750fd54d.
+- Run 41804725719 — SUCCESS — reusable guard version-directory evidence, commit 981579285876519d3be2199a53da24df4d620846.
+- Run 41804739802 — SUCCESS — Memory empty-version-directory regression, commit 5e78b8c0bc443ec6c7e72ee5a1f67babe64636d7.
+- Run 41804745095 — SUCCESS — Knowledge empty-version-directory regression, commit de843a51abc16d8d5d3b6e6034c8d08c33d30254.
+
+No production data, Google Drive, network or external action was used. This is local initialization metadata, not an independent remote trust anchor. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+21. GENERAL MEMORY CAPACITY-EVICTION PRESERVATION — VERIFIED BY RUN 685
+
+Finding:
+- memory.js saveMemory() previously used memory.slice(-maxMemory) and silently discarded every older entry beyond the configured capacity.
+- This bypassed the conflict-preservation behavior already added to Knowledge, Work Learning and Work Knowledge Consolidation.
+
+Correction:
+- Before committing a bounded Memory array, saveMemory() now identifies all displaced records and writes them to the local restricted memory-conflicts quarantine using the shared atomic JSON writer.
+- The quarantine envelope records the source digest, store/domain, capacity, original/retained/evicted counts and the exact displaced records.
+- The active Memory state is committed only after quarantine publication and audit succeed.
+- If quarantine publication fails (including an unsafe/symlink quarantine directory), the active Memory write is blocked and the previous Memory remains unchanged.
+
+Regression evidence:
+- MEMORY_CAPACITY_EVICTION_PRESERVED_BEFORE_COMMIT=PASS
+- MEMORY_CAPACITY_QUARANTINE_FAILURE_BLOCKS_WRITE=PASS
+- TESTS_FAILED=0.
+
+CI:
+- Run 41804912005 — SUCCESS — source implementation commit 458af7838c2d3fda08714e272a7795d360be3080.
+- Run 41804930923 — SUCCESS — regression test commit b07240283097b433683a919d80323084efa02741.
+- Run 685 log confirms both new assertions and all invoked isolated Phase 2 suites report TESTS_FAILED=0.
+
+No production Memory was accessed or changed; tests used isolated MIRA_STORAGE_DIR. No Drive/API/network/external action occurred. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+22. CONVERSATION, WORK-LEARNING AND WORK-KNOWLEDGE INITIALIZATION GUARDS — VERIFIED BY RUN 692
+
+Findings:
+- Conversation store ensureStore() recreated an empty conversations.json after the file disappeared, even after prior initialization.
+- Work Learning loadStore() returned a new empty record collection when the primary was missing.
+- Work Knowledge Consolidation loadStore() also returned an empty store on ENOENT; verifyStoreIntegrity() bypassed the new initialization guard and directly lstat'ed the file.
+
+Corrections:
+- conversation-store.js now uses the reusable initialization guard. A missing previously initialized conversation store fails closed; first-run initialization remains atomic and audited.
+- mira-work-learning-engine.js now marks the store after a verified existing read/first write, and blocks load/save/ensureStore from silently recreating a missing initialized primary.
+- mira-work-knowledge-consolidation.js now uses the same marker guard for load/save, and verifyStoreIntegrity() checks the missing-primary decision before reporting integrity.
+- Marker paths are exported for isolated regression verification; no production store was migrated.
+
+Regression evidence:
+- CONVERSATION_STORE_INITIALIZATION_MARKER_CREATED=PASS
+- CONVERSATION_STORE_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- CONVERSATION_STORE_MARKER_TAMPER_FAILS_CLOSED=PASS
+- WORK_KNOWLEDGE_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- WORK_KNOWLEDGE_MARKER_TAMPER_FAILS_CLOSED=PASS
+- WORK_LEARNING_INITIALIZATION_MARKER_CREATED=PASS
+- WORK_LEARNING_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- WORK_LEARNING_MARKER_TAMPER_FAILS_CLOSED=PASS
+- All invoked suites report TESTS_FAILED=0.
+
+CI history:
+- Runs 41805139634, 41805234496, 41805254557, 41805274370, 41805290888 and 41805400645 — FAILURE — intermediate regressions were retained: marker path export omission, then Work Knowledge verifyStoreIntegrity() bypass.
+- Run 41805497174 — SUCCESS — corrected implementation and full isolated suite, commit b7842afcc247169ca3e9a7c105995cb97ac3cf73.
+- Run 692 logs confirm Conversation Store, Work Knowledge Consolidation and Work Learning missing-primary/marker-tamper tests all PASS; no error markers.
+
+No production Conversation, Learning or Knowledge records were accessed or changed. No Google Drive, network or external actions occurred. Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+23. AUDIT LOG FAIL-CLOSED / ATOMIC / LOCAL CONCURRENCY HARDENING — VERIFIED BY RUN 697
+
+Findings:
+- audit-log.js previously returned [] for malformed/non-array audit state, wrote through a separate temp/rename path, silently truncated history beyond 500 entries, and did not serialize concurrent writers.
+- A corrupt or missing audit log could therefore be treated as an empty stream or lose appended events.
+- Anchor write failures were logged but not surfaced to the caller.
+
+Corrections:
+- audit-log.js now uses the reusable initialized-store guard. A missing initialized audit log, empty file, malformed JSON, non-array content, unsafe primary or tampered marker fails closed.
+- Audit writes use the shared atomic JSON writer and verify existing chain integrity before appending.
+- Synchronous local filesystem lock serializes append, save and clear operations across Node processes. A stale lock blocks writes and requires manual recovery; it is never auto-stolen.
+- Automatic 500-entry truncation is removed. Reaching the retention limit blocks further append until an explicit archive/clear operation.
+- clearAuditLog() now writes a local archive of the existing verified entries before resetting the active log.
+- Anchor-write failure is surfaced as AUDIT_ANCHOR_WRITE_FAILED with stateCommitted=true. The next verified append can recover a one-entry-ahead anchor state.
+
+Regression evidence:
+- AUDIT_LOG_TRUE_FIRST_RUN_EMPTY=PASS
+- AUDIT_LOG_INITIALIZATION_MARKER_AND_HMAC=PASS
+- AUDIT_LOG_CROSS_PROCESS_APPEND_NO_LOST_EVENTS=PASS
+- AUDIT_LOG_ANCHOR_FAILURE_REPORTED_AFTER_COMMIT=PASS
+- AUDIT_LOG_ANCHOR_RECOVERS_ON_NEXT_VERIFIED_APPEND=PASS
+- AUDIT_LOG_STALE_LOCK_FAILS_CLOSED=PASS
+- AUDIT_LOG_RETENTION_LIMIT_NEVER_TRUNCATES=PASS
+- AUDIT_LOG_CLEAR_PRESERVES_VERIFIED_ARCHIVE=PASS
+- AUDIT_LOG_EMPTY_FILE_FAILS_CLOSED=PASS
+- AUDIT_LOG_INVALID_JSON_FAILS_CLOSED=PASS
+- AUDIT_LOG_NON_ARRAY_FAILS_CLOSED=PASS
+- AUDIT_LOG_MISSING_PRIMARY_FAILS_CLOSED=PASS
+- AUDIT_LOG_MARKER_TAMPER_FAILS_CLOSED=PASS
+
+CI history:
+- Run 41806102523 — FAILURE — isolated fixture copy did not yet include the new initialization-guard dependency.
+- Run 41806289090 — FAILURE — second isolated fixture (Stage 19 proposal state test) also omitted the helper dependency.
+- Run 41806371853 — SUCCESS — fixture dependency corrected; all previously failing isolated contract and Stage 19 suites passed.
+- Run 41806446515 — FAILURE — anchor-failure regression assertions passed; archive count assertion still expected five entries after two additional test events.
+- Run 41806461195 — SUCCESS — corrected archive assertions and full Phase 2 workflow, commit f9e4c44c227f32ecb0fa1bee10c6a720b80cc6ae.
+- Run 697 confirms all audit log safety assertions, isolated Memory contract, Stage 19 proposal state, Conversation, Work Learning and Work Knowledge tests passed; TESTS_FAILED=0 in all invoked suites.
+
+Scope and residual:
+- This is local filesystem serialization only. It is not a distributed/cloud append arbiter and does not create an independent remote trust anchor.
+- Stale audit lock recovery is intentionally manual and fail-closed.
+- Audit archive is local and integrity-verifiable from its embedded event chain; encrypted emergency backup is still a separate future task.
+- No production audit log, Memory, Knowledge, Drive, network or external action was touched.
+- Phase 2 remains IN_PROGRESS; production readiness NOT_CERTIFIED; version v0.2.
+
+
+24. PHASE 2 CORE ROADMAP EXIT — 2026-11-04
+
+The seven Phase 2 tasks in MIRA-HFM-CAGR-001 §6 are complete at scoped local-core level:
+- Read failure protection: PASS_SCOPED.
+- Atomic write: PASS_SCOPED.
+- Integrity verification: PASS_SCOPED.
+- Version management: PASS_SCOPED.
+- Conflict quarantine: PASS_SCOPED.
+- Safe restore: PASS_SCOPED for General Memory and Knowledge; separate Conversation/Work Learning/Work Knowledge recovery remains REVIEW_REQUIRED.
+- Audit logging: PASS_SCOPED.
+
+PHASE2_CORE_ACCEPTANCE=PASS_SCOPED
+PHASE2_CORE_SAFETY=COMPLETED_SCOPED
+PRODUCTION_CERTIFICATION=NOT_APPROVED
+MERGE=NOT_APPROVED
+
+The remaining identity/project mapping and universal retrieval/write integration belong to Phase 3 design review; encrypted emergency backup and Drive cutover belong to Phase 7 after dependency migration; independent remote audit trust anchoring remains a future governance review. No global project ID is inferred. PR #4 remains draft and is not mergeable; no merge or deployment was performed.
