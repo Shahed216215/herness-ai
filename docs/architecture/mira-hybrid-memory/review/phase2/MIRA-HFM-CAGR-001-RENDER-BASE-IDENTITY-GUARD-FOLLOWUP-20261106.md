@@ -63,3 +63,18 @@ A repository-wide regression attempt was added to CI after the focused identity 
 - CI workflow was separated into two jobs so the focused identity syntax/test job can complete independently while the repository regression job truthfully reports the existing missing-test-file failure.
 
 This baseline suite failure is not attributed to the identity-context patch. It remains a release gate until the missing test is restored or the package test command is reconciled in a separately reviewed change.
+
+
+## Regression-gap reconciliation progress
+
+Two test files were restored from the Phase 9 branch onto the Render-base candidate after confirming their directly exercised implementation dependencies were byte-identical on both branches:
+
+- `tests/change-management-regression-test.js`: restored; its change-management regression checks passed in run #16.
+- `tests/custom-provider-config-v1.test.js`: restored; schema, endpoint policy, atomic persistence, and secret-exclusion checks passed in run #16.
+
+The next `npm test` blocker is `tests/custom-provider-config-route-isolated.test.js`, which is absent from the Render-base branch. Its fixture also copies `services/mira-json-state-store.js` and `services/mira-store-initialization-guard.js`, both absent from the Render-base branch. That test and those runtime dependencies were **not** copied because they form a wider implementation dependency set requiring separate compatibility review.
+
+Latest run #16:
+- `identity-context`: **PASS**.
+- `repository-regression`: **FAIL / NEXT BASELINE GAP** after the two restored tests passed.
+- No production runtime code was changed to make the regression command pass.
