@@ -83,7 +83,9 @@ jobs:
             const agentResponse = await request("/api/agent", {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ command: "MIRA_LIVE_SMOKE_UNAUTHENTICATED_PROBE" })
+              // Empty body is intentionally invalid if auth is accidentally bypassed.
+              // This makes the probe fail closed without triggering agent execution.
+              body: JSON.stringify({})
             });
             assert.equal(
               agentResponse.status,
