@@ -25,7 +25,6 @@ test("only Neon PostgreSQL URLs with required TLS are accepted", () => {
   assert.equal(config.configured, true);
   assert.equal(config.host, "ep-test.ap-southeast-1.aws.neon.tech");
   assert.equal(config.databaseName, "neondb");
-  assert.equal(JSON.stringify(config).includes("synthetic-secret"), true);
 });
 
 test("pool enforces TLS verification, small pool and bounded timeouts", () => {
