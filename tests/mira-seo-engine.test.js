@@ -107,6 +107,19 @@ async function main() {
   assert.strictEqual(sitemap.technical.sitemap.duplicateCount, 1);
   assert.strictEqual(sitemap.technical.sitemap.invalidUrlCount, 1);
 
+  const caseSensitiveSitemap = audit({
+    sitemapXml: "<urlset><url><loc>https://example.test/Page</loc></url>" +
+      "<url><loc>https://example.test/page</loc></url>" +
+      "<url><loc>https://example.test/path/</loc></url>" +
+      "<url><loc>https://example.test/path</loc></url></urlset>"
+  });
+  assert.strictEqual(caseSensitiveSitemap.technical.sitemap.duplicateCount, 0);
+
+  const unscopedLinks = analyzeLinks('<a href="https://outside.test/a">x</a>');
+  assert.strictEqual(unscopedLinks.internal, null);
+  assert.strictEqual(unscopedLinks.external, null);
+  assert.strictEqual(unscopedLinks.absolute, 1);
+
   assert.strictEqual(classifyIntent("official website login"), "navigational");
   assert.strictEqual(classifyIntent("unknown phrase"), "undetermined");
 
