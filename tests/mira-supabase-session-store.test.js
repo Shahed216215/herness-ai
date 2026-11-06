@@ -71,6 +71,9 @@ async function main() {
     requestImpl
   });
 
+  assert.equal(await store.verifyConnectivity(), true);
+  assert.equal(rows.size, 0, "startup verification must clean up its probe row");
+
   const sessionData = {
     cookie: { maxAge: 60 * 60 * 1000 },
     authenticated: true,
