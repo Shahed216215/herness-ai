@@ -18,6 +18,9 @@ on:
       - 'work/mira-competitor-intelligence-v1-20261106'
     paths:
       - 'services/mira-seo-competitor-intelligence.js'
+      - 'services/mira-seo-content-gap-report.js'
+      - 'tools/seo-content-gap-report.js'
+      - 'tests/mira-seo-content-gap-report.test.js'
       - 'services/mira-seo-research-orchestrator.js'
       - 'tests/mira-seo-competitor-intelligence.test.js'
       - 'tests/mira-seo-research-orchestrator.test.js'
