@@ -320,6 +320,14 @@ async function runSeoResearch(
       verificationPassed: true,
       planPersistenceRequested: false
     },
+    costPolicy: {
+      mode: "NO_PURCHASED_API_REQUIRED",
+      paidApiKeyRequired: false,
+      paidProviderConfigured: false,
+      userApiPurchaseRequired: false,
+      providerUsageCost: "NOT_EXPOSED_BY_HOST_PLATFORM",
+      note: "Uses the existing governed web_search capability. This code does not configure, call or require a separately purchased SEO API; host-platform access limits and any account-level charges are outside this service and are not represented as zero-cost guarantees."
+    },
     limitations: [
       "Client public web research consent was checked from the server-side consent store.",
       "Admin permission was supplied by the protected named-session route.",
