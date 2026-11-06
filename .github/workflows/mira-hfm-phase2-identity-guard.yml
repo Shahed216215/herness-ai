@@ -1,0 +1,57 @@
+name: Mira HFM Phase 2 Legacy Adapter Identity Guard
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase2-identity-guard-on-phase9-20261106
+    paths:
+      - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'services/mira-hfm-runtime-identity-context.js'
+      - 'services/mira-work-execution-engine.js'
+      - 'services/tool-runner.js'
+      - 'tools/index.js'
+      - 'server.js'
+      - 'tests/mira-hfm-runtime-identity-context.test.js'
+      - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - '.github/workflows/mira-hfm-phase2-identity-guard.yml'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase9-restack-on-current-phase8-20261106
+    paths:
+      - 'services/mira-legacy-memory-knowledge-adapter.js'
+      - 'tests/mira-legacy-memory-knowledge-adapter.test.js'
+      - '.github/workflows/mira-hfm-phase2-identity-guard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-adapter-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax checks
+        run: |
+          set -euo pipefail
+          node --check services/mira-legacy-memory-knowledge-adapter.js
+          node --check services/mira-hfm-runtime-identity-context.js
+          node --check services/mira-work-execution-engine.js
+          node --check services/tool-runner.js
+          node --check tools/index.js
+          node --check server.js
+          node --check tests/mira-hfm-runtime-identity-context.test.js
+          node --check tests/mira-legacy-memory-knowledge-adapter.test.js
+      - name: Isolated legacy adapter regression
+        run: node tests/mira-legacy-memory-knowledge-adapter.test.js
+      - name: Runtime identity context regression
+        run: node tests/mira-hfm-runtime-identity-context.test.js
+      - name: Confirm external boundaries
+        run: |
+          echo "PRODUCTION_MEMORY_TOUCHED=NO"
+          echo "PRODUCTION_KNOWLEDGE_TOUCHED=NO"
+          echo "NETWORK_REQUESTS=0"
+          echo "EXTERNAL_ACTIONS=0"
