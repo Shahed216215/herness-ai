@@ -37,6 +37,9 @@ function fixture(overrides = {}) {
     async query(sql, params) {
       calls.push({ sql, params });
       if (sql.includes("FROM mira_hfm.project_owners")) return { rows: overrides.noOwner ? [] : [owner] };
+      if (sql.startsWith("SELECT (status = 'ACTIVE'")) {
+        return { rows: [{ membership_valid: !overrides.membershipExpiresAtCommit }] };
+      }
       if (sql.includes("FROM mira_hfm.project_memberships")) return { rows: overrides.noMembership ? [] : [membership] };
       if (sql.includes("FROM mira_hfm.operation_authorities")) return { rows: overrides.noAuthority ? [] : [authority] };
       if (sql.startsWith("UPDATE mira_hfm.operation_authorities")) {
@@ -137,6 +140,22 @@ test("protected callback failure rolls back authority consumption and audit toge
   );
   assert.ok(f.calls.some(x => x.sql.startsWith("UPDATE mira_hfm.operation_authorities")));
   assert.ok(f.calls.some(x => x.sql.startsWith("INSERT INTO mira_hfm.authority_audit_events")));
+  assert.ok(f.calls.some(x => x.sql === "ROLLBACK"));
+  assert.equal(f.calls.some(x => x.sql === "COMMIT"), false);
+});
+
+test("membership expiry during protected work aborts commit", async () => {
+  const f = fixture({ membershipExpiresAtCommit: true });
+  let called = false;
+  await assert.rejects(
+    executeWithConsumedAuthority({
+      pool: f.pool, request,
+      async perform() { called = true; return "written"; }
+    }),
+    error => error.code === "HFM_MEMBERSHIP_EXPIRED_DURING_OPERATION"
+  );
+  assert.equal(called, true);
+  assert.ok(f.calls.some(x => x.sql.startsWith("SELECT (status = 'ACTIVE'")));
   assert.ok(f.calls.some(x => x.sql === "ROLLBACK"));
   assert.equal(f.calls.some(x => x.sql === "COMMIT"), false);
 });
