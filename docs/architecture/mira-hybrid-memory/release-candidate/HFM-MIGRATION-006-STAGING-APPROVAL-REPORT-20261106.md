@@ -1,7 +1,8 @@
 # MIRA HFM v0.2 — Migration 006 Staging Review & Approval Report
 
 **Date:** 2026-11-06  
-**Decision:** NOT APPROVED FOR EXECUTION — REVIEW REQUIRED  
+**Original review decision:** NOT APPROVED FOR EXECUTION — REVIEW REQUIRED
+**Current staging status (2026-11-07):** APPLIED TO NEON STAGING ONLY — POSITIVE/NEGATIVE RLS TESTS PASS; PRODUCTION NOT APPROVED  
 **Scope:** HFM v0.2 source preparation only
 
 ## 1. Source target
@@ -75,3 +76,71 @@ This report does not authorize a database write. The target must be re-identifie
 Source hardening is committed, but tests have not been executed and the actual LOGIN-role RLS behavior has not been verified. Do not execute Migration 006, create or alter database roles, change secrets or Render environment variables, deploy, merge, or touch Production under this report.
 
 The next permitted work is test planning and the approved Render runtime verification path. A separate explicit staging-write approval is required before Migration 006 is executed.
+
+
+## 8. Revalidation and staging execution addendum (2026-11-07)
+
+**Execution target (re-identified immediately before execution):**
+- Neon Project: mira-ai-agent-db
+- Project ID: steep-grass-38696226
+- Branch: mira-hfm-test
+- Branch ID: br-lingering-dawn-a18x6pxx
+- Database: neondb
+- Branch state: ready; non-default, non-primary staging branch
+- Parent branch: production
+
+**Source integrity:**
+- Current migration file GitHub blob SHA-1: 7cfaa3b27c61f9c6fc5bda136cb88a49c4e48f83
+- This exactly matches the reviewed report's GitHub blob SHA-1.
+- Recorded SHA-256 remains 493a9aa1c8f3aad2f7d52fb793a0f58da9d6132c9c47fd7f6ff04cdf7058ed8b.
+- Migration source content was unchanged from the reviewed blob.
+
+**Preflight immediately before execution:**
+- Both target tables exist and have ENABLE + FORCE RLS.
+- Reader group role did not exist.
+- No reader policy-name collisions or PUBLIC policies were present.
+- Both target tables had zero owner/membership fixture rows.
+- No production branch was targeted.
+
+**Execution:**
+- Migration 006 statements executed transactionally on the staging branch only after explicit user authorization.
+- Created NOLOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS role mira_hfm_project_reader.
+- Granted schema USAGE and SELECT only on project_owners and project_memberships.
+- Created the two SELECT policies:
+  - hfm_project_reader_owner_select
+  - hfm_project_reader_own_membership_select
+
+**Dedicated LOGIN RLS verification:**
+- Created temporary read-only LOGIN role mira_hfm_project_reader_test_20261107, scoped to schema mira_hfm.
+- Revoked its direct SELECT grants on all HFM tables and granted membership only in mira_hfm_project_reader.
+- Role attributes verified: LOGIN, INHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS.
+- Positive test: selected project owner rows = 1; selected actor membership rows = 1.
+- Cross-project negative test: other-project owner rows = 0; other-project membership rows = 0.
+- Cross-actor negative test: selected project owner row remains visible = 1; another actor's membership rows = 0.
+- Missing-project-context negative test: owner rows = 0; membership rows = 0.
+- All tests were read-only while using the temporary LOGIN role.
+
+**Cleanup verification:**
+- Both synthetic project owner rows and both synthetic membership rows were deleted.
+- Temporary LOGIN role was revoked from the reader group and deleted.
+- Post-cleanup verification: owner_fixture_rows = 0; membership_fixture_rows = 0; test_role_still_exists = false.
+
+**Current boundary:**
+- Migration 006 is applied to the staging branch only.
+- The permanent mira_hfm_runtime LOGIN role was not granted reader-group membership.
+- No real project owner, membership, or operation-authority rows were provisioned.
+- No Render environment variables or secrets were changed.
+- No production migration, production database write, merge, or deployment occurred.
+
+**Updated assessment:**
+| Gate | Status |
+|---|---|
+| Migration 006 staging apply | PASS |
+| Reader group role hardening | PASS |
+| Exact owner and membership SELECT policy contract | PASS |
+| Dedicated temporary LOGIN positive/negative RLS tests | PASS |
+| Synthetic fixture cleanup | PASS |
+| Permanent runtime LOGIN membership | NOT_CONFIGURED |
+| Real project owner/membership bootstrap | BLOCKED / NOT_APPROVED |
+| Render HFM read runtime activation | NOT_CONFIGURED |
+| Production readiness | NOT_CERTIFIED |
