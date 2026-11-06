@@ -80,7 +80,7 @@ async function main() {
 
     assert.equal(result.failureAudit?.status, "blocked");
     assert.equal(
-      result.failureAudit?.details?.authorizationDiagnostic?.reasonCode,
+      result.failureAudit?.details?.workAuthDiagnostic?.reasonCode,
       "TASK_RISK_REQUIRES_APPROVAL"
     );
 
