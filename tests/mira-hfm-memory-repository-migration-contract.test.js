@@ -1,0 +1,58 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+
+const sql = fs.readFileSync(
+  path.join(__dirname, '..', 'migrations', 'hfm', '004_memory_repository_schema.sql'),
+  'utf8'
+);
+
+test('migration is explicitly source-only and creates empty structures only', () => {
+  assert.match(sql, /SOURCE-ONLY DRAFT/);
+  assert.match(sql, /Do not execute on production/);
+  assert.doesNotMatch(sql, /\bINSERT\s+INTO\b/i);
+  assert.doesNotMatch(sql, /\bUPDATE\s+mira_hfm\./i);
+  assert.doesNotMatch(sql, /\bDELETE\s+FROM\s+mira_hfm\./i);
+});
+
+test('repository separates PUBLIC plaintext from encrypted private and restricted payloads', () => {
+  assert.match(sql, /public_payload JSONB/);
+  assert.match(sql, /encrypted_envelope JSONB/);
+  assert.match(sql, /classification = 'PUBLIC'[\s\S]*?public_payload IS NOT NULL[\s\S]*?encrypted_envelope IS NULL/);
+  assert.match(sql, /classification IN \('PROJECT_PRIVATE', 'RESTRICTED'\)[\s\S]*?public_payload IS NULL[\s\S]*?encrypted_envelope IS NOT NULL/);
+  assert.match(sql, /public_search_vector TSVECTOR GENERATED ALWAYS AS/);
+  assert.match(sql, /WHERE classification = 'PUBLIC'/);
+});
+
+test('client and financial records are restricted; daily, learning, and social drafts are private', () => {
+  assert.match(sql, /client_vault_record', 'financial_vault_record'[\s\S]*?classification = 'RESTRICTED'/);
+  assert.match(sql, /daily_activity', 'learning_note', 'social_post_draft'[\s\S]*?classification = 'PROJECT_PRIVATE'/);
+});
+
+test('repository has project scope, immutable versions, idempotency, and audit history', () => {
+  for (const table of [
+    'memory_records',
+    'memory_record_versions',
+    'memory_operation_registry',
+    'memory_audit_events'
+  ]) {
+    assert.match(sql, new RegExp('CREATE TABLE IF NOT EXISTS mira_hfm\\.' + table + '\\b'));
+  }
+  assert.match(sql, /REFERENCES mira_hfm\.project_owners/);
+  assert.match(sql, /UNIQUE \(project_id, idempotency_key\)/);
+  assert.match(sql, /PRIMARY KEY \(memory_id, revision\)/);
+  assert.match(sql, /BEFORE UPDATE OR DELETE ON mira_hfm\.memory_record_versions/);
+  assert.match(sql, /BEFORE UPDATE OR DELETE ON mira_hfm\.memory_audit_events/);
+  assert.match(sql, /BEFORE TRUNCATE ON mira_hfm\.memory_audit_events/);
+});
+
+test('migration does not grant a writer role or broad application privileges', () => {
+  assert.doesNotMatch(sql, /\bCREATE\s+ROLE\b/i);
+  assert.doesNotMatch(sql, /\bGRANT\s+(INSERT|UPDATE|DELETE|ALL)\b/i);
+  assert.match(sql, /REVOKE ALL ON TABLE/);
+});
+
+console.log('HFM_MEMORY_REPOSITORY_MIGRATION_SOURCE_CONTRACT=PASS');
