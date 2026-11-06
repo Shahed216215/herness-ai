@@ -128,6 +128,17 @@ async function executeWithConsumedAuthority(options = {}) {
       purpose: request.purpose,
       requestId: request.requestId
     }));
+
+    // Recheck time-bounded membership after the protected work and before commit.
+    const finalMembership = await client.query(
+      "SELECT (status = 'ACTIVE' AND valid_from <= clock_timestamp() " +
+      "AND (expires_at IS NULL OR expires_at > clock_timestamp())) AS membership_valid " +
+      "FROM mira_hfm.project_memberships WHERE membership_id = $1",
+      [membership.membership_id]
+    );
+    if (!finalMembership.rows?.[0]?.membership_valid) {
+      throw fail("HFM_MEMBERSHIP_EXPIRED_DURING_OPERATION");
+    }
     await client.query("COMMIT");
     transactionOpen = false;
     return { status: "AUTHORIZED_AND_COMMITTED", value };
