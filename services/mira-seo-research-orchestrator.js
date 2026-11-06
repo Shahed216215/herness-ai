@@ -273,14 +273,17 @@ async function runSeoResearch(
   const evidence = searchEvidence[0]?.evidence;
 
   if (searchEvidence.some(item =>
-    !item.evidence.success || item.evidence.evidence.length === 0
+    !item.evidence.success ||
+    item.evidence.evidence.length === 0 ||
+    item.evidence.completeSourceCount === 0
   )) {
     return {
       success: false,
       status: "INCONCLUSIVE",
       reason: searchEvidence.find(item => !item.evidence.success ||
-        item.evidence.evidence.length === 0)?.evidence.reason ||
-        "NO_USABLE_SEARCH_EVIDENCE",
+        item.evidence.evidence.length === 0 ||
+        item.evidence.completeSourceCount === 0)?.evidence.reason ||
+        "NO_COMPLETE_SOURCE_EVIDENCE",
       evidence,
       networkAccess: "SEARCH_TOOL_EXECUTED",
       externalActions: false
