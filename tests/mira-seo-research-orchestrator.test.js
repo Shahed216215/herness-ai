@@ -155,6 +155,70 @@ async function main() {
   console.log("PASS: evidence verification and normalization");
   console.log("PASS: query-term coverage and normalized source-domain signals");
 
+  assert.equal(validateResearchInput({
+    ...validInput,
+    competitorQueries: ["best project management tools", "project management alternatives"]
+  }).competitorQueries.length, 2);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    competitorQueries: ["same query", "same query"]
+  }), /MUST_BE_UNIQUE/);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    competitorQueries: new Array(6).fill("extra query")
+  }), /QUERIES_INVALID/);
+
+  nextExecution = {
+    success: true,
+    results: [
+      {
+        tool: "web_search",
+        result: JSON.stringify([
+          { title: "Alpha PM", link: "https://alpha.example/product", snippet: "Project management software." },
+          { title: "Our product", link: "https://example.com/product", snippet: "Project management platform." }
+        ]),
+        verification: { passed: true }
+      },
+      {
+        tool: "web_search",
+        result: JSON.stringify([
+          { title: "Alpha comparison", link: "https://alpha.example/compare", snippet: "Best project management tools." },
+          { title: "Beta guide", link: "https://beta.example/guide", snippet: "Project management alternatives." }
+        ]),
+        verification: { passed: true }
+      },
+      {
+        tool: "web_search",
+        result: JSON.stringify([
+          { title: "Gamma review", link: "https://gamma.example/review", snippet: "Project management alternatives." }
+        ]),
+        verification: { passed: true }
+      }
+    ]
+  };
+  const multi = await runSeoResearch({
+    ...validInput,
+    competitorQueries: [
+      "best project management tools",
+      "project management alternatives"
+    ]
+  }, trustedContext, {
+    consentService,
+    executeWork: async (...args) => {
+      calls.push(args);
+      return nextExecution;
+    }
+  });
+  assert.equal(multi.success, true);
+  assert.equal(multi.competitorIntelligence.searchCount, 3);
+  assert.equal(multi.competitorIntelligence.competitorDomains[0].domain, "alpha.example");
+  assert.equal(multi.competitorIntelligence.competitorDomains[0].queryCoverageCount, 2);
+  assert.equal(multi.competitorIntelligence.queryReports[0].ownDomainVisible, true);
+  assert.equal(calls[1][1].toolCalls.length, 3);
+  assert.equal(calls[1][1].toolCalls[0].name, "web_search");
+  assert.equal(calls[1][1].persist, false);
+  console.log("PASS: governed multi-query competitor research and domain coverage");
+
   const diversity = extractSearchEvidence([
     {
       title: "SEO guide",
