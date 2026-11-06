@@ -1,4 +1,5 @@
 const session = require("express-session");
+const { randomUUID } = require("node:crypto");
 const { secureProviderRequest } = require("./security/secure-provider-request");
 
 const DEFAULT_TTL_MS = 8 * 60 * 60 * 1000;
@@ -109,6 +110,41 @@ class SupabaseRestSessionStore extends session.Store {
       // Cleanup is best-effort; session writes themselves remain authoritative.
       this.lastPruneAt = 0;
     });
+  }
+
+  async verifyConnectivity() {
+    const sid = "__mira_session_store_probe__" + randomUUID();
+    const probeSession = {
+      cookie: { expires: new Date(Date.now() + 60 * 1000).toISOString() },
+      _miraSessionStoreProbe: true
+    };
+
+    await this.#request(
+      "POST",
+      { on_conflict: "sid" },
+      { sid, sess: probeSession, expire: probeSession.cookie.expires },
+      "resolution=merge-duplicates,return=minimal"
+    );
+
+    try {
+      const rows = await this.#request(
+        "GET",
+        { sid: "eq." + sid, select: "sid,sess,expire", limit: "1" }
+      );
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (!row || !row.sess || row.sess._miraSessionStoreProbe !== true) {
+        throw new Error("Supabase session store read-after-write verification failed.");
+      }
+    } finally {
+      await this.#request(
+        "DELETE",
+        { sid: "eq." + sid },
+        null,
+        "return=minimal"
+      );
+    }
+
+    return true;
   }
 
   get(sid, callback) {
