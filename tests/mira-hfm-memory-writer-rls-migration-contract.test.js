@@ -34,6 +34,10 @@ test('writer group receives only the required table and sequence privileges', ()
 
 test('all four Memory tables force project-scoped row-level security', () => {
   for (const table of [
+    'project_owners',
+    'project_memberships',
+    'operation_authorities',
+    'authority_audit_events',
     'memory_records',
     'memory_record_versions',
     'memory_operation_registry',
@@ -43,7 +47,7 @@ test('all four Memory tables force project-scoped row-level security', () => {
     assert.match(sql, new RegExp('ALTER TABLE mira_hfm\\.' + table + ' FORCE ROW LEVEL SECURITY'));
     assert.match(sql, new RegExp('CREATE POLICY [a-z_]+[\\s\\S]*?ON mira_hfm\\.' + table));
   }
-  assert.equal((sql.match(/current_setting\('mira\.project_id', true\)/g) || []).length, 8);
+  assert.equal((sql.match(/current_setting\('mira\.project_id', true\)/g) || []).length, 16);
   assert.match(sql, /NULLIF\(current_setting\('mira\.project_id', true\), ''\)/);
 });
 
