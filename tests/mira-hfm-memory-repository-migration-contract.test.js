@@ -61,6 +61,17 @@ test('immutable version rows preserve canonical type and classification constrai
   assert.match(versions, /jsonb_typeof\\(public_payload -> 'content'\\) = 'string'/);
 });
 
+
+test('current records preserve immutable identity, monotonic revisions, and no hard-delete path', () => {
+  assert.match(sql, /CREATE OR REPLACE FUNCTION mira_hfm\.guard_memory_record_update/);
+  assert.match(sql, /HFM_MEMORY_RECORD_IDENTITY_IMMUTABLE/);
+  assert.match(sql, /HFM_MEMORY_REVISION_MUST_INCREMENT/);
+  assert.match(sql, /HFM_MEMORY_UPDATED_AT_MUST_ADVANCE/);
+  assert.match(sql, /memory_records_no_delete/);
+  assert.match(sql, /memory_records_no_truncate/);
+  assert.match(sql, /memory_operations_no_delete/);
+});
+
 test('migration does not grant a writer role or broad application privileges', () => {
   assert.doesNotMatch(sql, /\bCREATE\s+ROLE\b/i);
   assert.doesNotMatch(sql, /\bGRANT\s+(INSERT|UPDATE|DELETE|ALL)\b/i);
