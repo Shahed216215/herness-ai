@@ -121,6 +121,12 @@ The API response includes `learningProposalHandoff` when the caller opted in. Ot
 
 ## Same-origin / CSRF write protection — 2026-11-06
 
-All Phase 8 router POST endpoints are protected by the shared same-origin write guard before their route handlers. The guard requires a parseable Origin or Referer, rejects missing/malformed/mismatched origins and cross-site Fetch Metadata, and accepts only the exact request origin or exact additional origins listed in MIRA_HFM_LEARNING_ALLOWED_ORIGINS. GET requests remain unchanged.
+All Phase 8 router POST endpoints are protected by `createMiraHfmSameOriginWriteGuard` before their route handlers. The guard:
+- requires a parseable `Origin` or `Referer` for state-changing POST requests;
+- rejects opaque `null`, missing, malformed, mismatched Origin/Referer and `Sec-Fetch-Site: cross-site`;
+- accepts the exact request origin and any additional exact origins explicitly listed in `MIRA_HFM_LEARNING_ALLOWED_ORIGINS` (comma-separated origins, for approved custom-domain deployments);
+- leaves GET requests unchanged.
 
-Offline regression tests cover same-origin allow and cross-origin/missing-origin deny behavior. Production custom-domain topology and independent security re-review remain REVIEW_REQUIRED. No Render environment setting was changed.
+The regression contract runs in the Phase 8 offline CI suite. Exact-head run [42150921183](https://github.com/Shahed216215/herness-ai/actions/runs/42150921183) succeeded on `67c4c5bd17446cb18f1d559b7075788030112c96`, including same-origin allow, cross-site/missing-origin deny, opaque-origin deny, Origin/Referer mismatch deny and GET bypass checks.
+
+**Residual:** the independent review finding has an implementation mitigation, but no independent security re-review or live custom-domain/Render verification has occurred. Configure the allowlist only for exact trusted frontend origins; do not use wildcards. Production security remains REVIEW_REQUIRED until independently re-reviewed. No Render environment setting was changed.
