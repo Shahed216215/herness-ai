@@ -77,8 +77,8 @@ This gate separates the implemented service-layer foundation from runtime/produc
 - A transaction-client-only project-scoped Memory Repository service now exists on PR #70, with create/revise/read/list/trash/restore operations, encrypted private payloads, idempotency, revision history, and sanitized audit.
 - No application writer role or write connection is provisioned; the repository service is not yet wired to runtime tools or routes.
 - No integration of `memory_save`, `knowledge_save`, `knowledge_search`, or client-profile routes.
-- No daily activity/learning capture pipeline.
-- No social-post draft store, preview UI, or Copy button.
+- No daily activity/learning capture pipeline or automatic invocation of the digest builder.
+- A deterministic Bengali daily knowledge post builder and authority-scoped save helper now exist; social-post preview/Copy UI is not implemented.
 - No public Facebook/Page URL ingestion adapter or safe web-search pipeline.
 - No encrypted vault UI, authorization-gated decrypt route, blind-index design, or tested recovery/key-custody workflow.
 - No production migration, secret/key configuration, production write, merge, or deployment.
@@ -111,5 +111,16 @@ This gate separates the implemented service-layer foundation from runtime/produc
 - Project scope is bound to the consumed authority resource; cross-project sharing is rejected.
 - Idempotency registry, immutable revision history, and sanitized hash-linked audit events are part of the same caller-owned transaction.
 - Latest commit `e70bb4a682eaecd70fb81370c7f28e8df265d98c`: focused repository tests PASS and full `npm test` PASS in the dedicated GitHub Actions workflow.
-- This is a service-layer foundation only. Legacy tools, activity/learning capture, daily digest generation, social-post Copy UI, public Facebook/web ingestion, writer-role provisioning, KEK configuration, and Render runtime integration remain NOT_STARTED.
+- This is a service-layer foundation only. Legacy tool integration, activity/learning capture, automatic daily digest invocation, social-post Copy/Trash UI, public Facebook/web ingestion, writer-role provisioning, KEK configuration, and Render runtime integration remain NOT_STARTED.
 - No Render env changes, writer role, production writes, merge, or deployment.
+
+
+## Daily knowledge post builder checkpoint (2026-11-06)
+
+- Added deterministic Bengali post builder for the selected Asia/Dhaka local date.
+- It accepts only same-project, ACTIVE, PROJECT_PRIVATE daily_activity and learning_note records; client/financial vault records, restricted records, other projects and other dates are excluded.
+- Obvious email, URL, phone/long-number and currency amount patterns are redacted. This is best-effort only; human review remains mandatory because names and other sensitive phrases may remain.
+- The draft uses a stable project/date ID and idempotency key, is stored as PROJECT_PRIVATE, and the save helper delegates to the authority-scoped Memory repository with an explicit private-write grant.
+- The builder is deterministic/template-based; it does not invoke an LLM, auto-publish, schedule a midnight job, or capture activity itself.
+- GitHub Actions run for implementation commit `57b49a6c24eacd6645786c1a31566abce8cac41f`: syntax checks PASS, focused HFM and daily-post tests PASS, full `npm test` PASS.
+- Render sleep-safe behavior remains: the next authenticated request after wake may generate a missing daily post from records already committed to Neon.
