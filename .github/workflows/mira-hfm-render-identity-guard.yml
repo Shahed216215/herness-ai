@@ -1,6 +1,7 @@
 name: Mira HFM Render-base identity guard
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - work/hfm-phase2-identity-guard-render-base-20261106
