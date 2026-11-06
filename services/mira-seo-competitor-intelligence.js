@@ -57,6 +57,7 @@ function analyzeCompetitorSearches(
 
     const seen = new Set();
     const queryDomains = [];
+    const querySources = [];
     for (const item of search.evidence.evidence.slice(0, MAX_DOMAIN_RESULTS)) {
       // Derive identity from the cited URL; never trust a caller-supplied
       // sourceDomain that could disagree with the evidence URL.
@@ -96,6 +97,14 @@ function analyzeCompetitorSearches(
         aggregate.urls.push(item.url);
       }
       seen.add(domain);
+      if (item.url && item.title && querySources.length < 10 &&
+          !querySources.some(source => source.url === item.url)) {
+        querySources.push({
+          domain,
+          title: String(item.title).slice(0, 300),
+          url: item.url
+        });
+      }
     }
 
     queryDomains.push(...seen);
@@ -104,6 +113,7 @@ function analyzeCompetitorSearches(
       resultCount: search.evidence.evidence.length,
       uniqueDomainCount: seen.size,
       domains: [...seen].sort(),
+      sources: querySources,
       ownDomainVisible: ownDomain ? seen.has(ownDomain) : null,
       provider: "governed_web_search",
       positionMeaning: "provider_result_order_not_google_organic_rank"
