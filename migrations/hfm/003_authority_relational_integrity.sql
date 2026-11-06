@@ -7,26 +7,11 @@
 
 BEGIN;
 
--- A project revision is a stable reference target for issued authorities.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'project_owners_project_revision_key'
-      AND conrelid = 'mira_hfm.project_owners'::regclass
-  ) THEN
-    ALTER TABLE mira_hfm.project_owners
-      ADD CONSTRAINT project_owners_project_revision_key
-      UNIQUE (project_id, revision);
-  END IF;
-END;
-$$;
-
+-- Owner revisions are historical snapshots on authorities, not foreign-key
+-- targets: a project owner must be able to advance its revision while older
+-- authorities remain available for replay detection and audit.
 CREATE INDEX IF NOT EXISTS project_memberships_project_id_idx
   ON mira_hfm.project_memberships (project_id);
-
-CREATE INDEX IF NOT EXISTS operation_authorities_project_owner_revision_idx
-  ON mira_hfm.operation_authorities (project_id, owner_revision);
 
 CREATE INDEX IF NOT EXISTS operation_authorities_project_actor_membership_revision_idx
   ON mira_hfm.operation_authorities (project_id, actor_id, membership_revision);
@@ -50,13 +35,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
-    WHERE conname = 'operation_authorities_project_owner_revision_fk'
+    WHERE conname = 'operation_authorities_project_owner_fk'
       AND conrelid = 'mira_hfm.operation_authorities'::regclass
   ) THEN
     ALTER TABLE mira_hfm.operation_authorities
-      ADD CONSTRAINT operation_authorities_project_owner_revision_fk
-      FOREIGN KEY (project_id, owner_revision)
-      REFERENCES mira_hfm.project_owners (project_id, revision)
+      ADD CONSTRAINT operation_authorities_project_owner_fk
+      FOREIGN KEY (project_id)
+      REFERENCES mira_hfm.project_owners (project_id)
       ON UPDATE RESTRICT ON DELETE RESTRICT
       NOT VALID;
   END IF;
@@ -80,7 +65,7 @@ ALTER TABLE mira_hfm.project_memberships
   VALIDATE CONSTRAINT project_memberships_project_owner_fk;
 
 ALTER TABLE mira_hfm.operation_authorities
-  VALIDATE CONSTRAINT operation_authorities_project_owner_revision_fk;
+  VALIDATE CONSTRAINT operation_authorities_project_owner_fk;
 
 ALTER TABLE mira_hfm.operation_authorities
   VALIDATE CONSTRAINT operation_authorities_membership_revision_fk;
