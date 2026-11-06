@@ -58,20 +58,27 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'UPDATE') AS owners_update,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'DELETE') AS owners_delete,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'TRUNCATE') AS owners_truncate,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'REFERENCES') AS owners_references,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'TRIGGER') AS owners_trigger,",
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'INSERT') AS memberships_insert,",
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'UPDATE') AS memberships_update,",
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'DELETE') AS memberships_delete,",
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'TRUNCATE') AS memberships_truncate,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'REFERENCES') AS memberships_references,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'TRIGGER') AS memberships_trigger,",
   "(SELECT count(*) = 2 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace",
   "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships')",
   "AND c.relrowsecurity = true AND c.relforcerowsecurity = true",
   "AND c.relowner <> (SELECT oid FROM pg_roles WHERE rolname = current_user)) AS project_rls_forced,",
   "(EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'project_owners'",
-  "AND policyname = 'hfm_project_reader_owner_select' AND cmd = 'SELECT' AND $1 = ANY(roles)",
-  "AND qual ILIKE '%mira.project_id%')",
+  "AND policyname = 'hfm_project_reader_owner_select' AND cmd = 'SELECT' AND permissive = 'PERMISSIVE'",
+  "AND roles = ARRAY[$1]::name[] AND qual ILIKE '%mira.project_id%'",
+  "AND qual ILIKE '%project_id%' AND qual ILIKE '%status%' AND qual ILIKE '%ACTIVE%')",
   "AND (EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'project_memberships'",
-  "AND policyname = 'hfm_project_reader_own_membership_select' AND cmd = 'SELECT' AND $1 = ANY(roles)",
-  "AND qual ILIKE '%mira.project_id%' AND qual ILIKE '%mira.actor_id%')",
+  "AND policyname = 'hfm_project_reader_own_membership_select' AND cmd = 'SELECT' AND permissive = 'PERMISSIVE'",
+  "AND roles = ARRAY[$1]::name[] AND qual ILIKE '%mira.project_id%' AND qual ILIKE '%mira.actor_id%'",
+  "AND qual ILIKE '%project_id%' AND qual ILIKE '%actor_id%' AND qual ILIKE '%status%' AND qual ILIKE '%ACTIVE%'",
+  "AND qual ILIKE '%valid_from%' AND qual ILIKE '%clock_timestamp%' AND qual ILIKE '%expires_at%')",
   "AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm'",
   "AND tablename IN ('project_owners','project_memberships') AND 'public' = ANY(roles))",
   "AND (SELECT count(*) = 2 FROM pg_policies WHERE schemaname = 'mira_hfm'",
@@ -91,7 +98,9 @@ const REQUIRED_TRUE = Object.freeze([
 const REQUIRED_FALSE = Object.freeze([
   "is_superuser", "bypasses_rls", "schema_create",
   "owners_insert", "owners_update", "owners_delete", "owners_truncate",
-  "memberships_insert", "memberships_update", "memberships_delete", "memberships_truncate"
+  "owners_references", "owners_trigger",
+  "memberships_insert", "memberships_update", "memberships_delete", "memberships_truncate",
+  "memberships_references", "memberships_trigger"
 ]);
 
 function verifyProjectReadPreflight(row, config) {
