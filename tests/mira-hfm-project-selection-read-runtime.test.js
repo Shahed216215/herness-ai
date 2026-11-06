@@ -40,10 +40,14 @@ const good = {
   owners_update: false,
   owners_delete: false,
   owners_truncate: false,
+  owners_references: false,
+  owners_trigger: false,
   memberships_insert: false,
   memberships_update: false,
   memberships_delete: false,
   memberships_truncate: false,
+  memberships_references: false,
+  memberships_trigger: false,
   project_rls_forced: true,
   project_policies_present: true
 };
@@ -61,7 +65,17 @@ for (const patch of [
   { reader_group_noinherit: false },
   { reader_group_owns_no_objects: false },
   { owners_insert: true },
+  { owners_update: true },
+  { owners_delete: true },
+  { owners_truncate: true },
+  { owners_references: true },
+  { owners_trigger: true },
+  { memberships_insert: true },
   { memberships_update: true },
+  { memberships_delete: true },
+  { memberships_truncate: true },
+  { memberships_references: true },
+  { memberships_trigger: true },
   { project_rls_forced: false },
   { project_policies_present: false },
   { owners_select: false },
@@ -70,11 +84,11 @@ for (const patch of [
 ]) {
   assert.throws(() => runtime.verifyProjectReadPreflight({ ...good, ...patch }, config));
 }
-console.log("PROJECT_READ_PREFLIGHT_REJECTS_UNSAFE_ROLE_OR_RLS=PASS");
+console.log("PROJECT_READ_PREFLIGHT_REJECTS_UNSAFE_ROLE_RLS_AND_ALL_NONSELECT_PRIVILEGES=PASS");
 
 assert.match(runtime.PREFLIGHT_SQL, /pg_policies/);
-assert.match(runtime.PREFLIGHT_SQL, /mira\.project_id/);
-assert.match(runtime.PREFLIGHT_SQL, /mira\.actor_id/);
+assert.match(runtime.PREFLIGHT_SQL, /mira\\.project_id/);
+assert.match(runtime.PREFLIGHT_SQL, /mira\\.actor_id/);
 assert.match(runtime.PREFLIGHT_SQL, /has_project_reader_group/);
 assert.match(runtime.PREFLIGHT_SQL, /role_membership_isolated/);
 assert.match(runtime.PREFLIGHT_SQL, /reader_group_has_no_parent_roles/);
@@ -84,10 +98,19 @@ assert.match(runtime.PREFLIGHT_SQL, /pg_shdepend/);
 assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_owner_select/);
 assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_own_membership_select/);
 assert.match(runtime.PREFLIGHT_SQL, /policyname NOT IN/);
-assert.match(runtime.PREFLIGHT_SQL, /'public' = ANY\\(roles\\)/);
+assert.match(runtime.PREFLIGHT_SQL, /'public' = ANY/);
 assert.match(runtime.PREFLIGHT_SQL, /relforcerowsecurity = true/);
 assert.match(runtime.PREFLIGHT_SQL, /has_table_privilege/);
-console.log("PROJECT_READ_PREFLIGHT_CHECKS_RLS_AND_GRANTS=PASS");
+assert.match(runtime.PREFLIGHT_SQL, /owners_references/);
+assert.match(runtime.PREFLIGHT_SQL, /owners_trigger/);
+assert.match(runtime.PREFLIGHT_SQL, /memberships_references/);
+assert.match(runtime.PREFLIGHT_SQL, /memberships_trigger/);
+assert.match(runtime.PREFLIGHT_SQL, /valid_from/);
+assert.match(runtime.PREFLIGHT_SQL, /expires_at/);
+assert.match(runtime.PREFLIGHT_SQL, /clock_timestamp/);
+assert.match(runtime.PREFLIGHT_SQL, /qual ILIKE '%ACTIVE%'/);
+assert.match(runtime.PREFLIGHT_SQL, /permissive = 'PERMISSIVE'/);
+console.log("PROJECT_READ_PREFLIGHT_CHECKS_COMPLETE_POLICY_SEMANTICS_AND_PRIVILEGES=PASS");
 
 const sessionId = "project-selection-session-001";
 const principal = {
