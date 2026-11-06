@@ -207,3 +207,19 @@ Changed-file inventories and exact PR patches were inspected before attempting a
 Other Phase 5, 6 and 7 changed paths are disjoint by filename in the current PR inventories, but that fact alone does not prove semantic compatibility or test success after restacking. PR #33 changes 25 paths, PR #34 changes 21, PR #35 changes 19; the overlap findings above are the explicit filename collisions found in these adjacent phase pairs. Phase 8 and 9 inventories add their own downstream paths and require exact-head CI after ancestry is repaired.
 
 **Safe next action:** create a new Phase 6 restack branch from the current Phase 5 head, reconcile the three shared paths with reviewed combined content, bring across the remaining Phase 6 changes, then run Phase 6 plus Phase 5 regression suites. Only after that exact head passes should Phase 7 be restacked and its workflow filters repaired, followed by Phase 8 and Phase 9. Keep all original branches/PRs unchanged. This audit did not change application source, workflows, migrations, or production state.
+
+
+## Restack completion update — 2026-11-06
+
+The safe restack sequence described above has now been carried out on separate additive branches; the original PR branches were not modified.
+
+| Phase | Restack PR | Exact-head commit | Offline CI evidence | Remaining status |
+|---|---:|---|---|---|
+| 6 | #43 | `50988a63656986b7f58a3b4cb7e6ccf0baf5cfdf` | Run `42133316229` SUCCESS | Live web/model, Render and independent E2E not tested |
+| 7 | #44 | `71b4849683100407b6c1ff5c9318defcb57c7df1` | Runs `42133639085`, `42133650251` SUCCESS | Live Drive OAuth/API, key custody/rotation, production backup/restore not tested |
+| 8 | #45 | `83b7c19ad05bafd2a3043e59c5a2a068b7aacb98` | Run `42134079217` SUCCESS | Supabase migration unapplied; live integration not tested; CSRF/Origin review remains REVIEW_REQUIRED |
+| 9 | #46 | `b661802607f271fa80be593a5a14e33eea2999ff` | Run `42134236245` SUCCESS | Downstream prompt isolation, tool-router prompt isolation and live generation E2E explicitly NOT_TESTED |
+
+The Phase 6 restack reconciled `server.js` while preserving the Phase 5 Facebook Group import route and bounded parser exception, and added the Phase 6 archive route/bind-host helper. Phase 7 restored the missing Google Drive generated-ID provider test after its first CI attempt failed; the corrected exact-head push and PR runs both passed. Phase 8 applied only its reviewed server/UI patch hunks on top of the current Phase 7 branch, preserving inherited changes. Phase 9 was restacked on the new Phase 8 head.
+
+These workflow successes establish only the configured offline contract suites. They do not certify the full product, live provider behavior, deployed runtime, persistence/restart recovery, production security, or readiness to merge/deploy. Phase 10 remains **INCONCLUSIVE / NOT_CERTIFIED** pending the residual evidence and independent review listed in the readiness report. All work remains within Mira HFM v0.2.
