@@ -62,6 +62,8 @@ assert.match(supabaseStore, /APPROVED_FOR_MANUAL_HANDOFF/);
 assert.match(supabaseStore, /mira_hfm_learning_proposal_reviews/);
 assert.match(migration, /mira_hfm_learning_proposal_reviews/);
 assert.match(route, /requireAdminPermission\(PERMISSIONS\.SYSTEM_ADMIN\)/);
+assert.match(route, /createMiraHfmSameOriginWriteGuard/);
+assert.match(route, /router\.use\(createMiraHfmSameOriginWriteGuard\(\)\)/);
 assert.match(store, /durable: false, crossInstanceAtomicCreate: false, storageMode: 'LOCAL_SINGLE_INSTANCE_ONLY'/);
 assert.match(store, /putReviewIfAbsent/);
 assert.match(supabaseStore, /putReviewIfAbsent/);
