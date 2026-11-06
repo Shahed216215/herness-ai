@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: dependency-remediation-${{ github.ref }}
@@ -133,22 +133,3 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Commit validated regenerated lockfile to this PR branch
-        if: github.ref == 'refs/heads/fix/dependency-security-remediation-20261106' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          if git diff --cached --quiet; then
-            echo "LOCKFILE_COMMIT=NOT_NEEDED"
-            exit 0
-          fi
-          git commit -m "chore(deps): update security-patched lockfile"
-          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.extraheader="AUTHORIZATION: basic $auth" push origin "HEAD:$TARGET_BRANCH"
-          echo "LOCKFILE_COMMIT=PUSHED_TO_PR_BRANCH"
