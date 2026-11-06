@@ -3,7 +3,7 @@
 function normalizeMessage(message) {
   if (!message || typeof message !== 'object') return null;
   const role = message.role;
-  if (!['system', 'user', 'assistant', 'tool'].includes(role)) return null;
+  if (!['user', 'assistant', 'tool'].includes(role)) return null;
 
   if (role === 'tool') {
     if (typeof message.tool_call_id !== 'string' || !message.tool_call_id.trim() ||
