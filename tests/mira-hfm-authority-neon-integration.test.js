@@ -163,7 +163,7 @@ async function main() {
       request: success.request,
       async perform(client, context) {
         await client.query(
-          "CREATE TEMP TABLE hfm_authority_probe (project_id text, actor_id text) ON COMMIT DROP ON COMMIT DROP"
+          "CREATE TEMP TABLE hfm_authority_probe (project_id text, actor_id text) ON COMMIT DROP"
         );
         await client.query(
           "INSERT INTO pg_temp.hfm_authority_probe (project_id, actor_id) VALUES ($1, $2)",
