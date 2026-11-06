@@ -28,6 +28,8 @@ const good = {
   bypasses_rls: false,
   can_login: true,
   has_project_reader_group: true,
+  role_membership_isolated: true,
+  reader_group_has_no_parent_roles: true,
   schema_usage: true,
   schema_create: false,
   owners_select: true,
@@ -52,6 +54,8 @@ console.log("PROJECT_READ_ROLE_LEAST_PRIVILEGE_PREFLIGHT=PASS");
 for (const patch of [
   { is_superuser: true },
   { bypasses_rls: true },
+  { role_membership_isolated: false },
+  { reader_group_has_no_parent_roles: false },
   { owners_insert: true },
   { memberships_update: true },
   { project_rls_forced: false },
@@ -68,6 +72,11 @@ assert.match(runtime.PREFLIGHT_SQL, /pg_policies/);
 assert.match(runtime.PREFLIGHT_SQL, /mira\.project_id/);
 assert.match(runtime.PREFLIGHT_SQL, /mira\.actor_id/);
 assert.match(runtime.PREFLIGHT_SQL, /has_project_reader_group/);
+assert.match(runtime.PREFLIGHT_SQL, /role_membership_isolated/);
+assert.match(runtime.PREFLIGHT_SQL, /reader_group_has_no_parent_roles/);
+assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_owner_select/);
+assert.match(runtime.PREFLIGHT_SQL, /hfm_project_reader_own_membership_select/);
+assert.match(runtime.PREFLIGHT_SQL, /'public' = ANY\\(roles\\)/);
 assert.match(runtime.PREFLIGHT_SQL, /relforcerowsecurity = true/);
 assert.match(runtime.PREFLIGHT_SQL, /has_table_privilege/);
 console.log("PROJECT_READ_PREFLIGHT_CHECKS_RLS_AND_GRANTS=PASS");
