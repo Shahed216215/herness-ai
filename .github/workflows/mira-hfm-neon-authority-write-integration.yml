@@ -1,0 +1,44 @@
+name: Mira HFM Neon authority write integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mira-hfm-neon-authority-write-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  neon-authority-write-integration:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted workflow source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Pinned candidate contains the reviewed HFM authority transaction service
+      # and its disposable Neon integration test. Change only after review.
+      - name: Checkout HFM authority candidate
+        uses: actions/checkout@v4
+        with:
+          repository: Shahed216215/herness-ai
+          ref: 69b9d69877cfe96a77306cdbf3530a9968683ae2
+          path: candidate
+          persist-credentials: false
+
+      - name: Install production dependencies
+        working-directory: candidate
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+
+      - name: Run disposable Neon authority transaction tests
+        working-directory: candidate
+        env:
+          MIRA_HFM_AUTHORITY_TEST_DATABASE_URL: ${{ secrets.MIRA_HFM_AUTHORITY_TEST_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-authority-neon-integration.test.js
