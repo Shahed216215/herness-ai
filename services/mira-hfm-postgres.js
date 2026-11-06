@@ -10,7 +10,7 @@ function configError(code) {
   return error;
 }
 
-function resolveDatabaseConfig(env = process.env) {
+function parseDatabaseConfig(env = process.env) {
   const connectionString = env[DATABASE_ENV_KEY];
   if (typeof connectionString !== "string" || !connectionString.trim()) {
     return { configured: false, reason: "DATABASE_URL_NOT_CONFIGURED" };
@@ -45,9 +45,15 @@ function resolveDatabaseConfig(env = process.env) {
   };
 }
 
+function resolveDatabaseConfig(env = process.env) {
+  const config = parseDatabaseConfig(env);
+  if (!config.configured) return config;
+  return { configured: true, host: config.host, databaseName: config.databaseName };
+}
+
 function createPool(options = {}) {
   const env = options.env || process.env;
-  const config = resolveDatabaseConfig(env);
+  const config = parseDatabaseConfig(env);
   if (!config.configured) throw configError(config.reason);
 
   let Pool = options.PoolCtor;
