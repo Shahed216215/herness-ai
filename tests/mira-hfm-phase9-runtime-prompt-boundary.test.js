@@ -84,7 +84,8 @@ assert.equal(authorizeAgentToolCall({
     reason: "Reviewed manually.", expectedVersion: 1,
     confirmation: "I_CONFIRM_SEO_REVIEW_DECISION"
   }},
-  tools: safeTools, role: "admin", session: admin
+  tools: safeTools, role: "admin", session: admin,
+  explicitReviewConfirmation: true
 }).route, "named_admin_explicit_review");
 
 console.log("HFM_PHASE9_RETRIEVED_CONTEXT_USER_DATA_BOUNDARY=PASS");
