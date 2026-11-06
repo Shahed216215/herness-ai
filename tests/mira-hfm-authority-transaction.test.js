@@ -12,7 +12,7 @@ const verifiedPrincipal = (() => {
     authenticationMethod: "USER_SESSION", authenticationRef: "session-ref",
     authenticatedAt: new Date(now - 1000).toISOString(), expiresAt: new Date(now + 3600000).toISOString() };
 })();
-const run = options => run({ verifiedPrincipal, ...options });
+const run = options => executeWithConsumedAuthority({ verifiedPrincipal, ...options });
 
 const request = Object.freeze({
   authorityId: "auth-001",
@@ -32,7 +32,7 @@ function fixture(overrides = {}) {
     revision: 7, valid_from: "2026-11-01T00:00:00Z", expires_at: null
   };
   const authority = {
-    authority_id: request.authorityId, project_id: request.projectId, actor_id: request.actorId,
+    authority_id: request.authorityId, project_id: request.projectId, actor_id: actorId,
     operation: request.operation, resource: request.resource, purpose: request.purpose,
     request_id: request.requestId, membership_revision: 7, owner_revision: 3,
     status: "ISSUED", approval_ref: "approval-001",
@@ -71,7 +71,7 @@ test("permission contract denies missing or malformed operation grants", () => {
 test("authorized operation locks owner, membership, authority; consumes and audits in same transaction", async () => {
   const f = fixture();
   let callbackClient;
-  const result = await executeWithConsumedAuthority({
+  const result = await run({
     pool: f.pool, request,
     async perform(client, context) {
       callbackClient = client;
@@ -113,7 +113,7 @@ test("scope mismatch, stale revisions, missing rows and ungranted operation fail
     await t.test(code + " " + JSON.stringify(overrides), async () => {
       const f = fixture(overrides);
       await assert.rejects(
-        executeWithConsumedAuthority({ pool: f.pool, request: req, perform: async () => "must-not-run" }),
+        run({ pool: f.pool, request: req, perform: async () => "must-not-run" }),
         error => error.code === code
       );
       assert.ok(f.calls.some(x => x.sql === "ROLLBACK"));
@@ -126,7 +126,7 @@ test("failed atomic consume blocks protected callback and rolls back", async () 
   const f = fixture({ consumeFails: true });
   let called = false;
   await assert.rejects(
-    executeWithConsumedAuthority({
+    run({
       pool: f.pool, request,
       async perform() { called = true; }
     }),
@@ -140,7 +140,7 @@ test("failed atomic consume blocks protected callback and rolls back", async () 
 test("protected callback failure rolls back authority consumption and audit together", async () => {
   const f = fixture();
   await assert.rejects(
-    executeWithConsumedAuthority({
+    run({
       pool: f.pool, request,
       async perform() { throw new Error("synthetic protected write failure"); }
     }),
@@ -156,7 +156,7 @@ test("membership expiry during protected work aborts commit", async () => {
   const f = fixture({ membershipExpiresAtCommit: true });
   let called = false;
   await assert.rejects(
-    executeWithConsumedAuthority({
+    run({
       pool: f.pool, request,
       async perform() { called = true; return "written"; }
     }),
@@ -171,7 +171,7 @@ test("membership expiry during protected work aborts commit", async () => {
 test("missing or unverified server principal is rejected", async () => {
   const f = fixture();
   await assert.rejects(
-    executeWithConsumedAuthority({ pool: f.pool, request, verifiedPrincipal: { ...verifiedPrincipal, verified: false }, perform: async () => null }),
+    run({ pool: f.pool, request, verifiedPrincipal: { ...verifiedPrincipal, verified: false }, perform: async () => null }),
     error => error.code === "HFM_TRUSTED_ACTOR_REQUIRED"
   );
   assert.equal(f.calls.some(x => x.sql.startsWith("BEGIN")), false);
