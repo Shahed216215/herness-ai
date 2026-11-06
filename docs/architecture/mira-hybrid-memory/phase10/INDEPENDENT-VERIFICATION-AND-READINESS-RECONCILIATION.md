@@ -140,3 +140,13 @@ Exact-head run 42152153722 passed all configured offline suites (`TESTS_FAILED=0
 ### Current overall decision
 
 The corrected Phase 6→7→8→9 restack is present in PRs #43→#44→#45→#48, all draft/open/unmerged. Phase 10 documentation has been restacked on current Phase 9 head in PR #49. Phase 10 remains **INCONCLUSIVE / NOT_CERTIFIED**. Production deployment, Supabase migration, live provider testing, backup restore, independent security review and merge remain separate gates requiring explicit authorization and evidence.
+
+
+## Phase 10 cross-phase offline regression — 2026-11-06
+- Exact Phase 10 PR #49 head: 302b06e9625ccc246c515b1cbe4e0319c00f3859.
+- Exact-head GitHub Actions run 42153260912: SUCCESS. Both jobs passed.
+- Phase 5 offline regression and repository tests passed. The two Phase 5 SQL migrations were applied only to a disposable PostgreSQL 16 CI service, and the Phase 5 atomic recovery integration test passed in that isolated database.
+- The Phase 6, Phase 7, Phase 8 (including Origin/CSRF), and Phase 9 (including runtime prompt/tool-boundary) offline contract suites all passed.
+- CI explicitly retained zero live Facebook/Meta, Drive OAuth/API, Supabase, model-provider calls, and zero production Memory writes or production migrations.
+
+This is cross-phase automated regression evidence, not independent production verification. Live Render/custom-domain validation, live model/provider E2E, production Supabase migration, key custody/rotation, backup/restore drill, deployed tokenizer calibration, end-to-end 100x capacity and independent security re-review remain NOT_TESTED / REVIEW_REQUIRED. Phase 10 remains INCONCLUSIVE / NOT_CERTIFIED.
