@@ -16,6 +16,8 @@ for (const marker of [
   'id="miraSeoReportKeywords"',
   'id="miraSeoReportCsv"',
   'id="miraSeoReportOutput"',
+  'id="miraMarketingCompetitorQueries"',
+  'id="miraMarketingConfirmedCompetitors"',
   'mira:seo-audit-ready',
   'mira:marketing-workflow-ready',
   '/api/admin/mira-seo/report',
