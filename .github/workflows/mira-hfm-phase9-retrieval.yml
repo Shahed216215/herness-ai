@@ -6,7 +6,15 @@ on:
       - 'work/mira-hfm-v02-phase8-restack-on-phase7-20261106'
     paths:
       - 'services/mira-hfm-retrieval-optimizer.js'
+      - 'services/security/mira-hfm-same-origin-write-guard.js'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'tests/mira-hfm-same-origin-write-guard.test.js'
+      - 'tests/mira-hfm-learning-evolution-review-route.test.js'
       - 'services/mira-hfm-retrieval-provider-adapters.js'
+      - 'services/security/mira-hfm-same-origin-write-guard.js'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'tests/mira-hfm-same-origin-write-guard.test.js'
+      - 'tests/mira-hfm-learning-evolution-review-route.test.js'
       - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
       - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
       - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
@@ -38,6 +46,6 @@ jobs:
         with:
           node-version: 24
       - name: Syntax check
-        run: node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js && node --check tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+        run: node --check services/security/mira-hfm-same-origin-write-guard.js && node --check routes/mira-hfm-learning-evolution.js && node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js && node --check tests/mira-hfm-phase9-downstream-proposal-injection.test.js
       - name: Phase 9 isolated offline tests
-        run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node tests/mira-hfm-phase9-prompt-injection-regression.test.js && node tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+        run: node tests/mira-hfm-same-origin-write-guard.test.js && node tests/mira-hfm-learning-evolution-review-route.test.js && node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node tests/mira-hfm-phase9-prompt-injection-regression.test.js && node tests/mira-hfm-phase9-downstream-proposal-injection.test.js
