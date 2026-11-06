@@ -136,13 +136,13 @@ async function main() {
   const queryOnly = analyzeSearchConsoleCsv([
     "Top queries,Clicks,Impressions,CTR,Position",
     "seo audit,5,500,1%,7"
-  ].join("\\n"));
+  ].join("\n"));
   assert.strictEqual(queryOnly.queries.length, 1);
   assert.strictEqual(queryOnly.pages.length, 0);
   const pageOnly = analyzeSearchConsoleCsv([
     "Top pages,Clicks,Impressions,CTR,Position",
     "https://example.test/page,5,500,1%,7"
-  ].join("\\n"));
+  ].join("\n"));
   assert.strictEqual(pageOnly.pages.length, 1);
   assert.strictEqual(pageOnly.queries.length, 0);
 
