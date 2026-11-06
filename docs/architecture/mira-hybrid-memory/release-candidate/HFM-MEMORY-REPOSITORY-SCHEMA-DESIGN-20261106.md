@@ -195,3 +195,27 @@ Scope limitation:
 - No application repository writer, data lifecycle integration, encryption-key provisioning, API, daily capture, Copy UI, Trash/Restore UI, or production integration was tested.
 - The backup branch `mira-hfm-test-pre-003-backup-20261106` remains a separate ready snapshot; it was not modified.
 - PR #70 remains an Open Draft. Exact-head CI and full repository tests remain NOT_RUN.
+
+
+## 14. Repository service implementation checkpoint (2026-11-06)
+
+Added `services/mira-hfm-memory-repository.js` as a transaction-client-only repository service. It does not create its own pool, connect to a database, fall back to local files, or expose HTTP routes.
+
+Implemented operations:
+- `createMemoryRecord`: validates canonical v1.0.0/v1.1.0 record shape, checks project scope and classification grants, encrypts PROJECT_PRIVATE/RESTRICTED payloads before SQL parameters, inserts the current row and immutable revision, appends a sanitized hash-linked audit event, and completes a project-scoped idempotency record.
+- `reviseMemoryRecord`: requires immutable identity, classification, schema version and created-at continuity; requires revision +1 and a strictly advancing update timestamp; writes an immutable revision before guarded current-row update.
+- `getMemoryRecord` and `listMemoryRecords`: project-scoped reads; private/restricted decrypt requires explicit caller-provided classification grants.
+- `trashMemoryRecord` and `restoreMemoryRecord`: soft-delete/restore through revisioned lifecycle transitions; restricted/private lifecycle operations require explicit grants and retain trash metadata in version history.
+- Every operation requires the transaction client and callback context marked by the consumed one-time authority transaction. Resource identifiers are checked against the authorized scope. Cross-project sharing is rejected in this v1 repository.
+
+Validation:
+- Focused repository contract tests include encrypted/private persistence, PUBLIC persistence, project isolation, idempotency, revision history, trash metadata, restore, and explicit private/restricted authorization.
+- Dedicated GitHub Actions workflow `mira-hfm-memory-repository.yml` runs syntax checks, focused HFM tests and `npm test`.
+- Latest workflow run for commit `e70bb4a682eaecd70fb81370c7f28e8df265d98c`: syntax checks PASS, focused tests PASS, full repository regression PASS.
+
+Not yet integrated:
+- No legacy Memory/Knowledge tools, client routes, activity/learning event capture, social-post UI, or HTTP API calls this repository service.
+- No writer database role or write connection is provisioned. Existing runtime database configuration remains read-only.
+- No KEK or Render environment secret is configured; encrypted operations require explicit server-side key custody before use.
+- No Render deployment, production database change, PR merge, Facebook ingestion, or automatic Facebook publishing occurred.
+- A successful unit/CI run does not prove a live application/database integration.
