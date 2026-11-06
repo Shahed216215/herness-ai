@@ -163,7 +163,7 @@ async function main() {
       request: success.request,
       async perform(client, context) {
         await client.query(
-          "CREATE TEMP TABLE hfm_authority_probe (project_id text, actor_id text) ON COMMIT DROP"
+          "CREATE TEMP TABLE hfm_authority_probe (project_id text, actor_id text) ON COMMIT DROP ON COMMIT DROP"
         );
         await client.query(
           "INSERT INTO pg_temp.hfm_authority_probe (project_id, actor_id) VALUES ($1, $2)",
@@ -205,7 +205,7 @@ async function main() {
         verifiedPrincipal: rollback.verifiedPrincipal,
         request: rollback.request,
         async perform(client) {
-          await client.query("CREATE TEMP TABLE hfm_authority_rollback_probe (value text)");
+          await client.query("CREATE TEMP TABLE hfm_authority_rollback_probe (value text) ON COMMIT DROP");
           await client.query("INSERT INTO pg_temp.hfm_authority_rollback_probe VALUES ('must-rollback')");
           throw new Error("HFM_SYNTHETIC_CALLBACK_ABORT");
         }
@@ -227,7 +227,7 @@ async function main() {
       verifiedPrincipal: concurrent.verifiedPrincipal,
       request: concurrent.request,
       async perform(client) {
-        await client.query("CREATE TEMP TABLE hfm_authority_concurrency_probe (value integer)");
+        await client.query("CREATE TEMP TABLE hfm_authority_concurrency_probe (value integer) ON COMMIT DROP");
         await client.query("INSERT INTO pg_temp.hfm_authority_concurrency_probe VALUES (1)");
         await new Promise(resolve => setTimeout(resolve, 150));
         return "concurrent-write";
