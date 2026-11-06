@@ -139,6 +139,7 @@ function analyzeLinks(html, pageUrl) {
   const tags = (html.match(/<a\b[^>]*>/gi) || []).map(attributes);
   let internal = 0;
   let external = 0;
+  let absolute = 0;
   let nofollow = 0;
   let missingHref = 0;
   let invalidHref = 0;
@@ -163,8 +164,9 @@ function analyzeLinks(html, pageUrl) {
       invalidHref += 1;
       continue;
     }
+    absolute += 1;
     if (base && parsed.origin === base.origin) internal += 1;
-    else external += 1;
+    else if (base) external += 1;
     if ((attrs.rel || "").toLowerCase().split(/\s+/).includes("nofollow")) {
       nofollow += 1;
     }
@@ -172,8 +174,9 @@ function analyzeLinks(html, pageUrl) {
 
   return {
     totalAnchorTags: tags.length,
-    internal,
-    external,
+    internal: base ? internal : null,
+    external: base ? external : null,
+    absolute,
     nofollow,
     missingHref,
     invalidHref,
@@ -488,7 +491,13 @@ function analyzeSitemap(value) {
   const urls = (value.match(/<loc(?:\s[^>]*)?>[\s\S]*?<\/loc\s*>/gi) || [])
     .map(v => stripTags(v));
   const invalidUrls = urls.filter(url => !safeHttpUrl(url));
-  const normalized = urls.map(url => url.trim().replace(/\/$/, "").toLowerCase());
+  const normalized = urls
+    .map(url => safeHttpUrl(url))
+    .filter(Boolean)
+    .map(parsed => {
+      parsed.hash = "";
+      return parsed.href;
+    });
   const duplicateCount = normalized.length - new Set(normalized).size;
 
   if (!isXml) findings.push("Expected urlset or sitemapindex root element.");
