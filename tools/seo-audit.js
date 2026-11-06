@@ -31,6 +31,10 @@ module.exports = {
         sitemapXml: {
           type: "string",
           description: "Optional sitemap XML content."
+        },
+        searchConsoleCsv: {
+          type: "string",
+          description: "Optional user-exported Google Search Console Performance CSV (Query, Page, Clicks, Impressions, CTR, Position), maximum 200 KB. Parsed locally; no Google login or API call."
         }
       },
       additionalProperties: false
