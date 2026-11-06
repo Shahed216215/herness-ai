@@ -159,3 +159,18 @@ Implementation contract:
 - Normal Memory/Draft lists exclude TRASHED records; a separate Trash view allows restore. Restore is an audited revision that returns the record to an allowed active state.
 - No automatic permanent purge or retention timer is authorized. Permanent deletion requires a separate explicit user decision and a reviewed retention/purge design.
 - The migration's hard-delete guard remains in place; no physical DELETE is used by the UI.
+
+
+## 12. Render Free sleep-safe daily Memory operation
+
+Runtime and durable-storage responsibilities are separate:
+- Render Free is the stateless application/API runtime only. Do not store canonical Memory, daily posts, session continuity, or authoritative state on its local filesystem. Do not attach or assume a persistent disk.
+- Neon is the durable source of truth. Every verified activity/learning event must be committed to Neon at the time the event is observed, before the tool/API reports it as saved.
+- If Render sleeps, no new request-driven work or AI-generated daily digest can run until a request wakes the service. The first request may wait for cold start. Existing Neon records remain available when the runtime reconnects.
+- On the next authenticated request after a day boundary, the app may generate a missing daily digest from already committed records. Use a unique idempotency key scoped to owner/project/local-date so retries cannot create duplicate posts.
+- The digest is therefore created on the next active request, not guaranteed at midnight while Render is asleep. Do not create a Render Cron Job, keepalive ping, always-on service, or paid worker under the current $0 requirement.
+- If the database is unavailable, the UI must show Memory unavailable/pending and must not claim that a save or post generation succeeded. Do not fall back to local filesystem or Google Drive.
+- After Render restart/redeploy/sleep, the app reloads the archive and Trash from Neon. No local in-memory cache is authoritative.
+- A lightweight status panel should distinguish Render runtime availability from Neon database availability and show last confirmed Neon commit time.
+
+Current free-tier planning assumptions to re-check before production: Render Free web services spin down after 15 minutes without inbound traffic and have ephemeral filesystems; Neon Free compute scales to zero after 5 minutes while database storage remains persisted. Quotas and plan terms may change. Do not treat these free tiers as a production durability SLA.
