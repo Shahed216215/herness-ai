@@ -81,6 +81,18 @@ TO mira_hfm_memory_writer;
 GRANT USAGE ON SEQUENCE mira_hfm.memory_audit_events_event_sequence_seq
 TO mira_hfm_memory_writer;
 
+ALTER TABLE mira_hfm.project_owners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mira_hfm.project_owners FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE mira_hfm.project_memberships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mira_hfm.project_memberships FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE mira_hfm.operation_authorities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mira_hfm.operation_authorities FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE mira_hfm.authority_audit_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mira_hfm.authority_audit_events FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE mira_hfm.memory_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mira_hfm.memory_records FORCE ROW LEVEL SECURITY;
 
@@ -93,8 +105,68 @@ ALTER TABLE mira_hfm.memory_operation_registry FORCE ROW LEVEL SECURITY;
 ALTER TABLE mira_hfm.memory_audit_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mira_hfm.memory_audit_events FORCE ROW LEVEL SECURITY;
 
-DO $$
+DO $
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'mira_hfm'
+      AND tablename = 'project_owners'
+      AND policyname = 'project_owners_project_scope'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY project_owners_project_scope
+      ON mira_hfm.project_owners
+      FOR ALL TO mira_hfm_memory_writer
+      USING (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+      WITH CHECK (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+    $policy$;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'mira_hfm'
+      AND tablename = 'project_memberships'
+      AND policyname = 'project_memberships_project_scope'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY project_memberships_project_scope
+      ON mira_hfm.project_memberships
+      FOR ALL TO mira_hfm_memory_writer
+      USING (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+      WITH CHECK (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+    $policy$;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'mira_hfm'
+      AND tablename = 'operation_authorities'
+      AND policyname = 'operation_authorities_project_scope'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY operation_authorities_project_scope
+      ON mira_hfm.operation_authorities
+      FOR ALL TO mira_hfm_memory_writer
+      USING (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+      WITH CHECK (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+    $policy$;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'mira_hfm'
+      AND tablename = 'authority_audit_events'
+      AND policyname = 'authority_audit_project_scope'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY authority_audit_project_scope
+      ON mira_hfm.authority_audit_events
+      FOR ALL TO mira_hfm_memory_writer
+      USING (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+      WITH CHECK (project_id = NULLIF(current_setting('mira.project_id', true), ''))
+    $policy$;
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
