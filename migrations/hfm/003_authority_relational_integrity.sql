@@ -1,4 +1,5 @@
 -- MIRA HFM additive relational-integrity hardening.
+-- Disposable PostgreSQL verification: all three FKs validated; negative and positive rollback tests passed.
 -- SOURCE-ONLY DRAFT: do not execute on production. Apply to a disposable branch
 -- only after schema-owner approval, backup verification, and preflight review.
 -- No rows are inserted, updated, deleted, or migrated by this file.
