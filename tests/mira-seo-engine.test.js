@@ -5,7 +5,8 @@ const {
   audit,
   classifyIntent,
   collectJsonLd,
-  analyzeLinks
+  analyzeLinks,
+  analyzeSearchConsoleCsv
 } = require("../services/mira-seo-engine");
 const seoTool = require("../tools/seo-audit");
 const { getToolPolicy } = require("../services/mira-work-execution-engine");
@@ -57,6 +58,7 @@ async function main() {
   assert.strictEqual(result.version, "2.0.0");
   assert.strictEqual(result.mode, "offline_local_analysis");
   assert.strictEqual(result.networkAccess, false);
+  assert.strictEqual(result.searchPerformance.provided, false);
   assert.strictEqual(result.onPage.title, "Python SEO Guide for Beginners");
   assert.strictEqual(result.onPage.h1Count, 1);
   assert.strictEqual(result.onPage.canonicalCount, 1);
@@ -114,6 +116,23 @@ async function main() {
       "<url><loc>https://example.test/path</loc></url></urlset>"
   });
   assert.strictEqual(caseSensitiveSitemap.technical.sitemap.duplicateCount, 0);
+
+  const gsc = analyzeSearchConsoleCsv([
+    "Top queries,Top pages,Clicks,Impressions,CTR,Position",
+    '"seo, tools","https://example.test/seo",12,1000,1.2%,9.5',
+    '"seo, tools","https://example.test/seo",8,500,1.6%,10.5',
+    '"seo guide","https://example.test/guide",30,200,15%,3.2',
+    '"bad row","https://example.test/bad",oops,20,1%,4'
+  ].join("\\n"));
+  assert.strictEqual(gsc.importedRows, 3);
+  assert.strictEqual(gsc.skippedRows, 1);
+  assert.strictEqual(gsc.totals.clicks, 50);
+  assert.strictEqual(gsc.totals.impressions, 1700);
+  assert.strictEqual(gsc.queries[0].query, "seo, tools");
+  assert.strictEqual(gsc.queries[0].ctr, 1.33);
+  assert.ok(gsc.queries[0].opportunitySignals.includes("HIGH_IMPRESSIONS_LOW_CTR_REVIEW"));
+  assert.throws(() => analyzeSearchConsoleCsv("Query,Page,Clicks"), /MISSING_COLUMN/);
+  assert.throws(() => analyzeSearchConsoleCsv(""), /CSV_REQUIRED/);
 
   const unscopedLinks = analyzeLinks('<a href="https://outside.test/a">x</a>');
   assert.strictEqual(unscopedLinks.internal, null);
@@ -180,6 +199,7 @@ async function main() {
   console.log("PASS: Open Graph, Twitter Cards, hreflang and JSON-LD diagnostics");
   console.log("PASS: internal/external links and visible-content heuristics");
   console.log("PASS: robots.txt and duplicate/invalid sitemap analysis");
+  console.log("PASS: offline Search Console CSV aggregation and cautious opportunity heuristics");
   console.log("PASS: input limits, URL validation and invalid input rejection");
   console.log("PASS: seo_audit tool registration and inspect-only policy");
   console.log("NETWORK_CALLS=0");
