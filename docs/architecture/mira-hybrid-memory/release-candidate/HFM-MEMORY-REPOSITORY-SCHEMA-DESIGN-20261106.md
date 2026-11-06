@@ -234,3 +234,29 @@ Added `services/mira-hfm-daily-knowledge-post.js`:
 - Output is always `reviewRequired=true` and `autoPublish=false`.
 
 The builder does not capture source activities, schedule itself, or run while Render is asleep. The app must capture activities while active and invoke generation on a later authenticated request after wake. The saved Neon draft then remains available after Render process restart/sleep; Copy UI and Trash UI are still not implemented.
+
+
+## 16. Writer runtime and project RLS activation gate (2026-11-06)
+
+Added `services/mira-hfm-memory-postgres-runtime.js`:
+- Memory writes remain disabled unless `MIRA_HFM_MEMORY_WRITE_ENABLED=true`.
+- Requires a separate `MIRA_HFM_MEMORY_DATABASE_URL`; it never falls back to the existing read-only `MIRA_HFM_DATABASE_URL`.
+- Requires `MIRA_HFM_MEMORY_WRITER_ROLE` to match the actual login role.
+- Before returning a writer pool, verifies the role is a login member of `mira_hfm_memory_writer`, inherits roles, is not superuser/BYPASSRLS/CREATEDB/CREATEROLE/REPLICATION, and has only the required table/sequence privileges.
+- Requires forced RLS on all eight project/authority/Memory tables and rejects DELETE/TRUNCATE, append-only history mutation, schema CREATE, extra project-table writes, and extra sequence privileges.
+- The pool is named `mira-hfm-memory-writer`; failed preflight closes the pool and returns a sanitized error.
+
+Added source-only `migrations/hfm/005_memory_writer_role_and_project_rls.sql`:
+- Creates a NOLOGIN, NOINHERIT, non-privileged group role `mira_hfm_memory_writer`.
+- Rejects pre-existing group-role memberships or object ownership.
+- Grants only the table/sequence privileges required by the authority transaction and Memory repository.
+- Enables and forces project RLS on `project_owners`, `project_memberships`, `operation_authorities`, `authority_audit_events`, and all four Memory tables.
+- Each policy binds `project_id` to transaction-local `mira.project_id`; unset context returns no rows.
+- Does not create a LOGIN role, password, database URL, or Render secret. A dedicated login role and its membership are a separate DBA/credential step.
+
+The authority transaction now sets `mira.project_id` transaction-locally before querying project owner, membership, and authority rows. The same value is bound by the consumed-authority request and is cleared automatically at transaction end.
+
+Validation:
+- Source/contract and runtime preflight tests pass in GitHub Actions commit `a7e5aed10812af9691fccd857ad7832658ec67c6`; focused HFM tests and full `npm test` pass.
+- Migration 005 has NOT been executed on Neon. No writer group/login role, grants, credentials, KEK, or Render environment variables have been created.
+- Writer pool remains DISABLED until a separate writer login, exact grants/RLS, connection secret, and KEK are provisioned and reviewed.
