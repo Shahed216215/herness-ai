@@ -28,5 +28,5 @@ assert.match(gemini, /normalizeGeminiResponse/);
 console.log("PASS: Dashboard Run Agent sends the prompt to /api/agent.");
 console.log("PASS: /api/agent invokes Mira AI and the governed work execution engine.");
 console.log("PASS: Tool responses preserve tool identity for multi-turn provider conversations.");
-console.log("PASS: Run Agent returns a bounded execution trace with verification state.");
+console.log("PASS: Run Agent returns an execution trace with verification state.");
 console.log("PASS: Gemini provider uses the shared multi-turn conversation adapter.");
