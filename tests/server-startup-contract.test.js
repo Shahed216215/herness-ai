@@ -50,7 +50,7 @@ assert.ok(
 
 assert.match(
   source,
-  /const HOST\\s*=\\s*resolveServerBindHost\\(process\\.env\\)\\s*;/,
+  /const HOST\s*=\s*resolveServerBindHost\(process\.env\)\s*;/,
   "Server must use the shared environment-aware bind-host resolver."
 );
 assert.match(source, /const PORT\s*=\s*Number\(process\.env\.PORT\)\s*\|\|\s*3000;/);
