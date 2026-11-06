@@ -197,13 +197,13 @@ function insertValues(record, ownerId, payload) {
   ];
 }
 
-async function insertVersion(client, record, ownerId, payload) {
+async function insertVersion(client, record, ownerId, payload, trashedAt = null, trashedByActorId = null) {
   await client.query(
     'INSERT INTO mira_hfm.memory_record_versions ' +
     '(memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, ' +
-    'revision, integrity_status, trust_status, public_payload, encrypted_envelope, recorded_at) ' +
-    'VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,clock_timestamp())',
-    insertValues(record, ownerId, payload).slice(0, 12)
+    'revision, integrity_status, trust_status, public_payload, encrypted_envelope, trashed_at, trashed_by_actor_id, recorded_at) ' +
+    'VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13,$14,clock_timestamp())',
+    [...insertValues(record, ownerId, payload).slice(0, 12), trashedAt, trashedByActorId]
   );
 }
 
@@ -345,7 +345,7 @@ async function changeLifecycle(options, targetLifecycle) {
   const trashAt = targetLifecycle === 'TRASHED' ? now : null;
   const trashedBy = targetLifecycle === 'TRASHED' ? context.actorId : null;
 
-  await insertVersion(client, nextRecord, row.owner_actor_id, payload);
+  await insertVersion(client, nextRecord, row.owner_actor_id, payload, trashAt, trashedBy);
   const update = await client.query(
     'UPDATE mira_hfm.memory_records SET lifecycle = $3, trashed_at = $4, trashed_by_actor_id = $5, ' +
     'revision = $6, integrity_status = $7, trust_status = $8, public_payload = $9::jsonb, ' +
