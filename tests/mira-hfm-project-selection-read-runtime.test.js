@@ -129,6 +129,7 @@ const fakePool = { async connect() { return fakeClient; } };
   assert.ok(fakeCalls.some(call => call.sql.includes("membership.actor_id = $2") &&
     call.params[0] === "mira-project-001" && call.params[1] === expectedActorId));
   assert.ok(fakeCalls.some(call => call.sql.startsWith("SELECT set_config('mira.project_id', $1, true)")));
+  assert.ok(fakeCalls.some(call => call.sql.startsWith("SELECT set_config('mira.actor_id', $1, true)") && call.params[0] === expectedActorId));
   assert.ok(fakeCalls.some(call => call.sql === "COMMIT"));
   console.log("PROJECT_MEMBERSHIP_LOOKUP_IS_READ_ONLY_AND_SESSION_ACTOR_SCOPED=PASS");
   console.log("REQUEST_BODY_CANNOT_OVERRIDE_TRUSTED_ACTOR=PASS");
