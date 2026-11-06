@@ -34,7 +34,7 @@ The draft migration requires the existing owner and membership tables to have RL
 
 The migration intentionally does not create a LOGIN role, password, owner, membership, or authority. The dedicated LOGIN role must be provisioned separately by the database operator and granted membership in the NOLOGIN reader group. The migration has not been executed. Review the exact target project/branch/database, current roles, policies, grants, migration digest, and expected effects, then obtain explicit staging-write approval before execution.
 
-The runtime preflight now checks the expected group membership, SELECT grants, absence of write grants, FORCE RLS, and policy expressions that reference the required project/actor transaction context. The real positive and negative row-visibility tests must still be run with the dedicated LOGIN role after migration.
+The runtime preflight now checks the expected group membership, direct role-membership isolation, that the reader group inherits no parent roles, SELECT grants, absence of write grants, table ownership separation, FORCE RLS, the two exact policy names/expressions, absence of PUBLIC policies, and absence of additional policies assigned to the reader group. This reduces the risk that PostgreSQL's permissive-policy OR behavior widens visibility. The real positive and negative row-visibility tests must still be run with the dedicated LOGIN role after migration.
 
 ## 4. Not yet wired
 
