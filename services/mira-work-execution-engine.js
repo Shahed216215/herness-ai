@@ -242,6 +242,13 @@ const TOOL_POLICIES = Object.freeze({
     explicitConfirmation: false
   },
 
+  hfm_database_status: {
+    operation: "inspect",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
   web_search: {
     operation: "read",
     autonomous: true,
@@ -1516,7 +1523,8 @@ async function executeWork(
       toolResult =
         await runTool(
           call.name,
-          call.args
+          call.args,
+          options.trustedContext || null
         );
     } catch (error) {
       const failure =

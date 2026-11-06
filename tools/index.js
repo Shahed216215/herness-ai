@@ -17,12 +17,12 @@ for (const file of toolFiles) {
 
 const declarations = Object.values(tools).map(tool => tool.declaration);
 
-async function executeTool(name, args) {
+async function executeTool(name, args, trustedContext = null) {
   if (!tools[name]) {
     return `Tool "${name}" not found.`;
   }
 
-  return await tools[name].execute(args);
+  return await tools[name].execute(args, trustedContext);
 }
 
 module.exports = {

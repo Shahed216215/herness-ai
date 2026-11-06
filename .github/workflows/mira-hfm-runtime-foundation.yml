@@ -1,0 +1,82 @@
+name: Mira HFM runtime foundation contract
+
+on:
+  push:
+    branches:
+      - integration/hfm-v02-mainline-20261107
+    paths:
+      - "server.js"
+      - "package.json"
+      - "package-lock.json"
+      - "services/mira-hfm-*.js"
+      - "services/mira-memory-host-identity-contract.js"
+      - "services/mira-work-execution-engine.js"
+      - "services/tool-runner.js"
+      - "tools/index.js"
+      - "tools/hfm-database-status.js"
+      - "migrations/hfm/**"
+      - "tests/mira-hfm-*.test.js"
+      - "tests/mira-memory-host-identity-contract.test.js"
+      - ".github/workflows/mira-hfm-runtime-foundation.yml"
+  pull_request:
+    branches:
+      - main
+      - work/render-main-host-binding-compat-20261106
+    paths:
+      - "server.js"
+      - "package.json"
+      - "package-lock.json"
+      - "services/mira-hfm-*.js"
+      - "services/mira-memory-host-identity-contract.js"
+      - "services/mira-work-execution-engine.js"
+      - "services/tool-runner.js"
+      - "tools/index.js"
+      - "tools/hfm-database-status.js"
+      - "migrations/hfm/**"
+      - "tests/mira-hfm-*.test.js"
+      - "tests/mira-memory-host-identity-contract.test.js"
+      - ".github/workflows/mira-hfm-runtime-foundation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mira-hfm-runtime-foundation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  hfm-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax-check HFM runtime foundation
+        run: |
+          node --check server.js
+          node --check services/mira-memory-host-identity-contract.js
+          node --check services/mira-hfm-runtime-identity-context.js
+          node --check services/mira-hfm-authority-transaction.js
+          node --check services/mira-hfm-postgres.js
+          node --check services/mira-work-execution-engine.js
+          node --check services/tool-runner.js
+          node --check tools/index.js
+          node --check tools/hfm-database-status.js
+      - name: Run focused canonical identity contracts
+        run: |
+          node tests/mira-memory-host-identity-contract.test.js
+          node tests/mira-hfm-runtime-identity-context.test.js
+      - name: Inventory legacy Memory and Knowledge retrieval callsites
+        run: node tests/mira-hfm-retrieval-callsite-inventory.test.js
+      - name: Run repository regression suite
+        run: npm test
