@@ -25,7 +25,7 @@ jobs:
       - name: Checkout reviewed HFM candidate
         uses: actions/checkout@v4
         with:
-          ref: 811c874c40e648c17a74fb48e8235a5f7a4f513f
+          ref: 7a5e2edacf8d2f7f7c3eaadff813381e5ded59df
           path: candidate
           persist-credentials: false
 
