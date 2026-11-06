@@ -90,6 +90,34 @@ test("inspection is read-only, returns metadata only and always rolls back", asy
   assert.equal(JSON.stringify(result).includes("synthetic-secret"), false);
 });
 
+test("inspection fails closed when PostgreSQL does not confirm read-only transaction state", async () => {
+  const calls = [];
+  const client = {
+    async query(sql) {
+      calls.push(sql);
+      if (sql.startsWith("SELECT current_database")) {
+        return { rows: [{
+          database_name: "neondb",
+          database_role: "unexpected_role",
+          transaction_read_only: "off",
+          schema_exists: true
+        }] };
+      }
+      return { rows: [] };
+    },
+    release() { calls.push("RELEASE"); }
+  };
+  const result = await adapter.inspectDatabase({
+    pool: { async connect() { return client; } }
+  });
+
+  assert.equal(result.status, "INCONCLUSIVE");
+  assert.equal(result.readOnly, true);
+  assert.equal(result.errorCode, "DATABASE_NOT_READ_ONLY");
+  assert.ok(calls.includes("ROLLBACK"));
+  assert.equal(calls.some(sql => typeof sql === "string" && sql.startsWith("SELECT table_name")), false);
+});
+
 test("connection failures are sanitized and do not expose driver messages", async () => {
   const result = await adapter.inspectDatabase({
     pool: { async connect() { throw Object.assign(new Error("password=synthetic-secret"), { code: "28P01" }); } }
