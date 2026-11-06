@@ -58,8 +58,14 @@ function analyzeCompetitorSearches(
     const seen = new Set();
     const queryDomains = [];
     for (const item of search.evidence.evidence.slice(0, MAX_DOMAIN_RESULTS)) {
-      const domain = normalizeDomain(item.sourceDomain || "") ||
-        normalizeDomain(item.url || "");
+      // Derive identity from the cited URL; never trust a caller-supplied
+      // sourceDomain that could disagree with the evidence URL.
+      const urlDomain = normalizeDomain(item.url || "");
+      const declaredDomain = normalizeDomain(item.sourceDomain || "");
+      const domain = urlDomain &&
+        (!declaredDomain || declaredDomain === urlDomain)
+        ? urlDomain
+        : null;
       if (!domain) continue;
 
       let aggregate = domains.get(domain);
