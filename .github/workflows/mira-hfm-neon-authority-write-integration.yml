@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Shahed216215/herness-ai
-          ref: 69b9d69877cfe96a77306cdbf3530a9968683ae2
+          ref: a5bc099e201e185c7c76c7df75433639b5f3014d
           path: candidate
           persist-credentials: false
 
