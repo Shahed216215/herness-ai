@@ -1,0 +1,106 @@
+MIRA HYBRID MEMORY — PHASE 1 PATH & CALLER COMPATIBILITY RECONCILIATION
+Document: MIRA-HFM-CAGR-001-PHASE1-PATH-COMPATIBILITY-20261103
+Scope: v0.2 documentation/source review only
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD: a6424863557ae17f41ee76173f74b6fe5a641063
+Tree: ce2973790e54e3e94d32810108255f7acd7e9ab8
+Review date: 2026-11-03
+
+1. EXECUTIVE RESULT
+- Branch HEAD independently rechecked and matches the prior reviewed commit.
+- Recursive Git tree inventory: 613 entries; truncated=false.
+- Targeted source review expanded across mira-storage.js, knowledge.js, google-drive.js, Knowledge tools, controlled-apply modules, Evolution, routes/autonomous-learning.js, and services/learning.js.
+- A concrete storage-root split is confirmed: the primary Knowledge module uses mira-storage.js, while at least three legacy Knowledge tools construct project-root paths directly.
+- The prior Drive dependency matrix must retain the additional tool callsites D08-D11 and the direct Drive-dependent controlled-apply/Evolution paths.
+- No source code changed. No tests were executed. No Drive/Facebook API was called. No production Memory data was read or modified.
+- Phase 1 remains INCOMPLETE / REVIEW_REQUIRED; this report does not certify complete repository-wide callsite coverage.
+
+2. STORAGE ROOT COMPATIBILITY FINDINGS
+
+2.1 Primary Knowledge path
+knowledge.js imports ./mira-storage and defines KNOWLEDGE_FILE = storagePath("knowledge.json"). Therefore, when MIRA_STORAGE_DIR is configured, the primary Knowledge API reads/writes the configured storage root (subject to mira-storage's safe path and seed behavior).
+
+2.2 Legacy tool path divergence — CONFIRMED
+The following tools construct paths using path.join(__dirname, "..", "knowledge.json") or BASE_DIR and do not import mira-storage:
+- tools/knowledge-cleanup.js: KNOWLEDGE_FILE is project-root knowledge.json; removeDuplicates writes directly to it, then calls saveKnowledgeToDrive.
+- tools/knowledge-backup.js: KNOWLEDGE_FILE and backup paths are project-root paths; createBackup reads via getKnowledge(), then writes project-root knowledge.json and knowledge-backup.json before Google Drive operations.
+- tools/knowledge-restore.js: primary and backup paths are project-root paths; restoreFromBackup may overwrite project-root knowledge.json and then synchronize Drive.
+Consequently, with MIRA_STORAGE_DIR set, these tools can operate on a different physical knowledge.json than knowledge.js. Backup is not read-only: it rewrites the project-root knowledge.json from getKnowledge() before writing its backup. Restore is destructive and must remain uninvoked absent separate explicit authorization.
+
+2.3 Google Drive credential paths
+google-drive.js resolves client_secret.json and google-token.json relative to the project root, with /etc/secrets fallback. mira-storage.js explicitly excludes these files from seed copying. This is a separate credential-resolution policy, not a Knowledge data-root policy. No credential contents were read.
+
+2.4 Additional storage-root risk
+The inspected mira-storage.js seeds a configured target from the project-root file only when the target is absent, the source is a regular non-symlink file, and the size is within its configured bound. This means the configured root may begin as a copy of project-root state, while legacy tools can continue targeting project-root state. A deployment with MIRA_STORAGE_DIR therefore needs a single, explicit path contract and caller migration plan before any storage migration.
+
+3. KNOWLEDGE / DRIVE CALLER COMPATIBILITY MAP
+
+A. Primary Knowledge API (knowledge.js)
+- addKnowledge -> loadKnowledge -> saveLocalKnowledge(storagePath("knowledge.json")) -> syncToDrive -> saveKnowledgeToDrive.
+- addLearning -> same shared knowledge.json catalog path and Drive sync.
+- deleteKnowledge -> local write then Drive sync.
+- updateKnowledge -> local write then Drive sync.
+- updateLearning -> local write then Drive sync.
+- getKnowledge/getLearning and related reads use the primary module's storagePath-resolved file.
+Compatibility implication: Knowledge and catalog Learning share one persistence file; callers must preserve result fields such as drive/added/updated/deleted and current error behavior during any future provider abstraction.
+
+B. Tool-level callers
+- tools/knowledge-save.js -> addKnowledge (indirect Drive write).
+- tools/learning-save.js -> services/learning.js -> knowledge.addLearning (indirect Drive write).
+- tools/knowledge-search.js -> getKnowledge first, then loadKnowledgeFromDrive; any returned Drive array replaces the local search source. This is an explicit Drive-precedence/source-of-truth ambiguity, not merely a fallback-on-empty behavior.
+- tools/knowledge-cleanup.js -> getKnowledge, direct project-root write, then saveKnowledgeToDrive. Path divergence and destructive mutation risk.
+- tools/knowledge-backup.js -> getKnowledge, project-root write(s), direct OAuth/Drive list/create/update operations. Backup action has local side effects before remote calls.
+- tools/knowledge-restore.js -> local/Drive backup read, project-root safety backup and overwrite, then Drive write. Destructive restore path; not invoked.
+
+C. Controlled application and Evolution
+- knowledge-controlled-apply.js -> reads local Knowledge and Drive, requires equality, performs snapshot/apply through Knowledge update APIs, then verifies/rolls back Drive state. Direct Drive dependency and rollback compatibility blocker.
+- autonomous-learning-controlled-apply.js -> reads local Knowledge and Drive, compares state, applies Learning through addLearning, verifies local/Drive hashes and rolls back on mismatch.
+- knowledge-memory-evolution.js -> reads/writes both Memory and Knowledge through Drive adapter, creates persisted Drive snapshots, verifies and rolls back. This remains a major blocker to Drive removal.
+- routes/autonomous-learning.js invokes the autonomous learning pipeline and reports driveSynced from the controlled apply result. This route is an indirect consumer of Drive-dependent apply semantics.
+- services/learning.js delegates Learning persistence to knowledge.js addLearning/updateLearning and exposes Drive status to callers.
+
+4. SOURCE-OF-TRUTH AND SEMANTIC GAPS
+- knowledge-search.js currently prefers Drive whenever loadKnowledgeFromDrive returns an array, including an empty array. A stale or empty Drive response can therefore supersede a non-empty local source for search results. No conflict-resolution policy or authoritative-source contract was proven in this review.
+- Primary Knowledge writes are local-first and Drive-sync-afterward. A Drive failure can leave local state updated while the returned drive flag is false. Callers differ in how they report or react to that state.
+- Controlled-apply modules impose stricter local/Drive equality and rollback semantics than ordinary Knowledge CRUD. A future provider-neutral interface must explicitly preserve or replace these distinct guarantees; simply swapping saveKnowledgeToDrive is insufficient.
+- Backup and restore tools do not share the same path resolver as the primary Knowledge module.
+- Backup/restore semantics, schema/integrity guarantees, and route/tool-level confirmation behavior require a dedicated compatibility contract before implementation.
+
+5. REQUIRED CLOSURE WORK
+C01 — Full source-text scan across the branch's source files and direct/indirect persistence callsites remains NOT EXECUTED. The 613-entry tree inventory is path-complete, not a full content scan.
+C02 — Reconcile all file-based persistence roots and every BASE_DIR/path.join caller against mira-storage, including routes, tools, scripts, services, and scheduled/background jobs.
+C03 — Define authoritative-source and conflict behavior for Knowledge search and ordinary reads when Local and Drive differ or Drive returns an empty array.
+C04 — Produce a caller-by-caller compatibility table for Knowledge CRUD, Learning CRUD, cleanup, backup, restore, controlled apply, autonomous learning, and Evolution, including result fields, errors, snapshots, rollback, and audit behavior.
+C05 — Identify all Drive read/write callsites and prove each has an approved replacement before any Drive sync removal.
+C06 — Isolated fixture-only test plan and execution evidence remain outstanding. No production tests or production data were touched in this review.
+C07 — Review all additional provider dependencies and permission scopes before future provider implementation.
+
+6. SAFETY AND CHANGE DECLARATION
+- Documentation-only review artifact.
+- No application source files changed.
+- No production Memory file or content accessed.
+- No local runtime command, test, migration, backup, restore, cleanup, or deletion executed.
+- No Google Drive or Facebook API request made.
+- No package installation, paid service, or network call was initiated from the user's local device.
+- Phase 2 implementation remains NOT_AUTHORIZED / NOT_APPROVED by this review.
+- Version scope remains v0.2; no v0.3 transition is implied.
+
+7. STATUS
+BRANCH_HEAD_VERIFIED=a6424863557ae17f41ee76173f74b6fe5a641063
+TREE_ENTRIES=613
+TREE_TRUNCATED=NO
+TARGETED_PATH_REVIEW=COMPLETE_FOR_LISTED_FILES
+MIRA_STORAGE_DIR_PATH_DIVERGENCE=CONFIRMED
+KNOWLEDGE_SEARCH_DRIVE_PRECEDENCE=CONFIRMED
+KNOWLEDGE_BACKUP_PROJECT_ROOT_SIDE_EFFECT=CONFIRMED
+KNOWLEDGE_RESTORE_DESTRUCTIVE_PATH=CONFIRMED_NOT_INVOKED
+REPOSITORY_WIDE_SOURCE_TEXT_SCAN=NOT_EXECUTED
+TESTS=NOT_EXECUTED
+PRODUCTION_DATA_ACCESS=NONE
+SOURCE_CODE_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED_PENDING_C01_TO_C07
+IMPLEMENTATION=NOT_STARTED
+PRODUCTION_MIGRATION=NOT_APPROVED
+DRIVE_SYNC_REMOVAL=BLOCKED

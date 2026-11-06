@@ -1,0 +1,68 @@
+MIRA HYBRID MEMORY — P0 DESIGN CONSISTENCY REVIEW
+Timestamp UTC: 20261101T131805Z
+Candidate: /workspace/quiet-bose/docs/architecture/mira-hybrid-memory/MIRA-HFM-PHASE2-DETAILED-TECHNICAL-CONTRACT-v0.2.4.md
+Candidate SHA-256: 88c7df7bed05d8dc3ee230c77cb461ded3596e0aa3ca591f4879eeea493ae887
+Review type: Offline static cross-section consistency inspection
+Independent technical approval: NOT_PERFORMED
+
+[GAP] P0-01 Adapter reconciliation API consistency
+Evidence: Section 3 does not expose reconcileOperation; Section 29 requires it.
+
+[REVIEW_REQUIRED] P0-02 ContentHash schema compatibility
+Evidence: Schema defines contentHash; recordHash is not an explicit canonical schema field.
+
+[PARTIAL] P0-02 Record hash field profile
+Evidence: Section 26 requires a versioned field profile but does not enumerate the exact canonical record field set.
+
+[REVIEW_REQUIRED] P0-02 Authenticity proof integration
+Evidence: Schema-level authenticity representation is not explicitly defined; provider/backup metadata may be separate.
+
+[GAP] P0-03 Restricted owner access
+Evidence: Owner project is implied through record projectId but owner access and delegated access are not fully formalized.
+
+[PARTIAL] P0-03 Empty and absent allowlist semantics
+Evidence: Section 27 says allowlist inclusion is required when present, but empty versus absent semantics need explicit normative rules.
+
+[GAP] P0-04 Explicit transition graph
+Evidence: Section 28 defines state meanings but not a complete machine-readable allowed-transition graph.
+
+[PRESENT] P0-04 Trust invalidation
+Evidence: Section 28 includes invalidation after source/content changes.
+
+[GAP] P0-05 Write-ahead audit intent
+Evidence: Section 32 does not define a required pre-write durable intent state.
+
+[PARTIAL] P0-05 Provider commit / audit failure recovery
+Evidence: Section 32 mentions uncertain audit persistence and reconciliation but does not define the complete operation state machine.
+
+[GAP] P0-05 Cross-provider atomicity boundary
+Evidence: Section 32 does not explicitly disclaim distributed atomic transactions across independent providers.
+
+[PRESENT] Cross-reference: encryption and backup
+Evidence: Backup authenticity and encryption key lifecycle must be integrated.
+
+[PARTIAL] Cross-reference: revision and idempotency
+Evidence: Both contracts exist, but their combined retry/revision semantics need explicit rules.
+
+[PRESENT] Cross-reference: access and backup/restore
+Evidence: Backup and restore must preserve canonical access boundaries.
+
+[PARTIAL] Test traceability matrix
+Evidence: Test record fields exist, but an actual requirement-to-test mapping table is absent.
+
+[REVIEW_REQUIRED] Approval status consistency
+Evidence: Approval/version markers are repeated across sections and may drift.
+
+SUMMARY
+CHECKS_TOTAL=16
+PRESENT=3
+PARTIAL=5
+REVIEW_REQUIRED=3
+GAP=5
+CONTENT_REVIEW=REVIEW_REQUIRED
+USER_APPROVAL=NOT_GRANTED
+CANDIDATE_MODIFIED=NO
+SOURCE_MODIFIED=NO
+PRODUCTION_MEMORY_TOUCHED=NO
+NETWORK_REQUESTS=0
+RESULT=P0_CONSISTENCY_REVIEW_EVIDENCE_GENERATED

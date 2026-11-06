@@ -1,0 +1,19 @@
+MIRA HFM v0.2.1 — WHITESPACE NORMALIZED GAP RECHECK
+UTC=2026-11-01T11:31:42.241Z
+SPEC_SHA256=42db24d0f03d274cb85888a3a56ecac55cd06c543073c56a63cdf25249d94844
+
+PASS: Revision mismatch cannot overwrite newer record
+PASS: Expired capability cannot authorize consequential operation
+PASS: Atomic compare-and-swap required
+PASS: Unsupported concurrency fails closed
+PASS: Expired or UNKNOWN capability fails closed
+PASS: Read and Write capabilities independent
+
+CHECKS_TOTAL=6
+CHECKS_PASSED=6
+REVIEW_ITEMS=0
+PRODUCTION_MEMORY_TOUCHED=NO
+PRODUCTION_SOURCE_MODIFIED=NO
+NETWORK_REQUESTS=0
+IMPLEMENTATION=NOT_STARTED
+RESULT=BOTH_PREVIOUS_REVIEW_ITEMS_CONFIRMED_AS_FALSE_NEGATIVES

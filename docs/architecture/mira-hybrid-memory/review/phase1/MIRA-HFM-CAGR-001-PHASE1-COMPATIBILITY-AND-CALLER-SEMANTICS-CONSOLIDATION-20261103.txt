@@ -1,0 +1,219 @@
+MIRA HYBRID MEMORY — PHASE 1 COMPATIBILITY & CALLER SEMANTICS CONSOLIDATION
+Document: MIRA-HFM-CAGR-001-PHASE1-COMPATIBILITY-AND-CALLER-SEMANTICS-CONSOLIDATION
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Reviewed HEAD before this report: 1a5b5fe6d9b5ed22d6336a1e7dbbe0152a9839bb
+Version boundary: v0.2
+Status: CALLER COMPATIBILITY MATRIX CONSOLIDATED — RESIDUAL AUDIT/POLICY GAPS EXPLICIT
+
+1. SCOPE
+
+This report consolidates the K01-K13 Knowledge/Learning compatibility matrix with the complete 26-route/26-tool inventory, all 143 service modules, 540-file lexical source scan, and the route-level audit/rollback reconciliation. It focuses on the caller contract required before any persistence provider replacement.
+
+No runtime route was invoked. No tests were executed. No source or production data was modified.
+
+2. CALLER COMPATIBILITY MATRIX
+
+C01 — addKnowledge(data)
+Caller: tools/knowledge-save.js; services and routes may call Knowledge APIs indirectly.
+Write: Local knowledge.json direct write, then saveKnowledgeToDrive through syncToDrive.
+Result: added=true/status=added; duplicate=true/status=duplicate_skipped; drive boolean; stable id and savedAt on new record.
+Failure: validation errors or local write exceptions may throw; Drive failure is caught by syncToDrive and returned as drive=false after local write may already have succeeded.
+Audit: no comprehensive per-operation Memory/Knowledge audit event established.
+Rollback: no transaction/automatic local rollback for ordinary CRUD.
+Compatibility: preserve duplicate key (normalized title+URL+content), capacity trimming, stable IDs, and drive boolean semantics.
+
+C02 — addLearning(data)
+Callers: services/learning.js -> tools/learning-save.js; autonomous-learning-controlled-apply.js.
+Write: local Knowledge array then Drive sync.
+Result: added=true/status=learned; duplicate=true/status=duplicate_skipped; drive boolean; structured Learning metadata and stable ID.
+Failure: validation_error returns added=false/drive=false/errors[]; Drive failure can leave Local updated and Drive stale.
+Audit: no complete direct CRUD audit event established; controlled apply adds higher-level audit.
+Rollback: ordinary learning-save has no automatic rollback; autonomous controlled apply does.
+Compatibility: preserve structured fields, duplicate key (normalized title+topic+content), source, IDs, and capacity trim.
+
+C03 — deleteKnowledge(id)
+Write: Local filtered array, then Drive sync.
+Result: deleted=true/status=deleted with deleted entry metadata; missing -> deleted=false/status=not_found/drive=false.
+Failure: Local write failure may throw; Drive failure may leave partial dual-write.
+Audit/Rollback: no complete ordinary CRUD audit or rollback.
+Compatibility: preserve ID matching and not_found semantics.
+
+C04 — updateKnowledge(id, data)
+Write: Local replacement preserving ID, then Drive sync.
+Result: updated=true/status=updated; duplicate -> updated=false/status=duplicate_skipped; missing -> not_found; invalid title/content -> validation_error; includes previous and entry metadata and drive boolean.
+Failure: local write may succeed while Drive fails.
+Audit/Rollback: no transaction/ordinary CRUD rollback.
+Compatibility: preserve stable ID, validation, duplicate key and result fields.
+
+C05 — updateLearning(target, data)
+Write: Local replacement preserving record fields/ID, then Drive sync.
+Result: updated=true/status=updated; duplicate -> duplicate_skipped; missing -> not_found; invalid structured payload -> validation_error; previous/entry metadata and drive boolean.
+Failure: Local updated=true with drive=false is treated as failure by controlled apply and causes rollback attempt.
+Audit/Rollback: caller-dependent; controlled apply performs rollback.
+Compatibility: preserve title/topic or ID resolution and all result booleans.
+
+C06 — searchKnowledge / tools/knowledge-search
+Read: Local first; then Drive.
+Precedence: any Drive array, including [], replaces Local search source; Drive exception keeps Local.
+Result: ranked results or explicit no-knowledge message.
+Audit/Rollback: read-only; no mutation.
+Compatibility: must define authoritative source, version/freshness, empty remote vs unavailable, stale/conflicting source behavior before replacing this path.
+
+C07 — knowledge-count
+Read: Local getKnowledge only.
+Result: local count; no Drive consistency check.
+Mutation: none.
+Compatibility: if provider changes, count semantics must explicitly specify canonical store vs local cache.
+
+C08 — knowledge-cleanup inspect
+Read: getKnowledge and duplicate grouping.
+Result: success/action=inspect/totalEntries/duplicateGroups/duplicateEntries/dataModified=false.
+Mutation: none.
+Compatibility: preserve exact duplicate fingerprint and inspect result shape.
+
+C09 — knowledge-cleanup remove
+Write: project-root knowledge.json direct write, then saveKnowledgeToDrive.
+Result: removed/remaining counts and drive action.
+Failure: Drive result is not fully reflected as failure in tool result; local root may differ from shared MIRA_STORAGE_DIR root.
+Audit/Rollback: no verified snapshot rollback.
+Compatibility: must preserve dry-run/inspect boundary, explicit destructive confirmation, root selection, and sync result truthfulness.
+
+C10 — Knowledge backup
+Write: project-root knowledge.json rewrite plus knowledge-backup.json; then direct Google OAuth Drive create/update.
+Result: backupVersion=1, createdAt, source, entryCount, entries.
+Failure: local backup and Drive operation can partially succeed; no common adapter transaction.
+Audit/Rollback: no unified audit/rollback guarantee.
+Compatibility: distinguish read-only export from backup that rewrites primary data; preserve metadata and Drive file IDs.
+
+C11 — Knowledge restore
+Read: local backup if present, else Drive backup.
+Validation: backupVersion=1 and entries array.
+Write: safety backup, overwrite project-root knowledge.json, then Drive sync.
+Result: restore success/failure details.
+Failure: destructive partial restore possible; no independent cryptographic authenticity hash in reviewed v1 format.
+Audit/Rollback: safety backup exists, but no complete rollback/readback proof in this tool path.
+Compatibility: require explicit confirmation, authenticated backup envelope, pre-restore snapshot, idempotent recovery and truthful partial status. Never invoke in Phase 1.
+
+C12 — Knowledge controlled apply
+Caller: routes/knowledge-improvements.js and controlled-apply services.
+Gate: approved proposal; valid existing/proposed data; current content hash.
+Preflight: Local and Drive must both be arrays and exactly equal; Drive errors -> drive_preflight_failed; invalid array -> drive_preflight_invalid; mismatch -> local_drive_state_mismatch.
+Write: verified local snapshot, updateLearning, Local/Drive verification.
+Result: ok/status/changeId/snapshotId/rollback metadata.
+Failure: update/verification failures trigger snapshot rollback and Drive restoration; status differentiates verification_failed_rolled_back vs verification_failed_rollback_failed, content verification, Drive verification, local/Drive mismatch.
+Audit: lower-level services emit events; route-level early-return failures do not all emit audit.
+Compatibility: preserve approved status, content hash, pre-state, snapshot ID, exact status/error shapes, rollback result and audit order.
+
+C13 — Autonomous Learning controlled apply
+Caller: routes/autonomous-learning.js -> autonomous-learning-controlled-apply.js.
+Gate: approved proposal and valid Learning payload.
+Preflight: raw Local file vs module Local state; then Local vs Drive equality.
+Write: verified snapshot, addLearning, verify count increment and matching record, verify Drive equality, then mark proposal applied.
+Result: ok/status/snapshotId/knowledgeCount/appliedLearningId/driveSynced/verified.
+Failure: duplicate_learning or preflight mismatch blocks; catch attempts snapshot rollback and Drive restore/readback; fallback local rewrite + Drive restore if snapshot absent.
+Audit: route records APPLY_STARTED, FAILED, VERIFIED; helper propagates audit errors rather than swallowing them.
+Compatibility: preserve approval gate, no duplicate apply, snapshots, result fields, rollback status and route audit events.
+
+C14 — Stage 4.12 Knowledge/Memory Evolution
+Caller: routes/knowledge-improvements.js and evolution orchestration.
+Gate: approved proposal, target allowlist, expected pre-state hash and preservation checks.
+Preflight: Local/Drive target arrays; equality/reconciliation logic; Drive snapshot.
+Write: Local target and Drive target; verify hashes/count/preservation.
+Result: applied_verified or failure status with changeId/snapshotId/rollback.
+Failure: rollback attempts Local snapshot and Drive prior state; failure yields recovery_required.
+Audit: lower-level stage412_apply and stage412_rollback events; route audit occurs after final verification and proposal marking on successful path.
+Compatibility: preserve target selection, expected hashes, preservation, snapshots, Drive state, rollback/readback and audit chain.
+
+C15 — learning-save tool
+Caller: tool runner.
+Path: learning-save -> learnFromContent -> generate -> searchKnowledge -> addLearning.
+Effect: source content is sent to selected model provider; if not duplicate, Knowledge is written locally and Drive sync attempted.
+Policy: this is ordinary educational Knowledge ingestion in current code. Its authorization/consent/audit boundary must be explicitly distinguished from proposal-controlled changes to system behavior, code, permissions or security controls.
+Result: success/learned/saved/duplicate/drive plus Learning metadata.
+Compatibility: preserve this distinction and source provenance; do not silently convert into proposal apply or silently persist without caller policy.
+
+C16 — knowledge-improve tool / proposal route
+Caller: tools/knowledge-improve.js -> improveExistingKnowledge / proposal store -> admin approval/apply route.
+Effect: proposal creation is separate from final controlled apply; existing Knowledge is not directly modified by the tool path.
+Result: proposal status and ID.
+Compatibility: preserve approval provenance, stale-state check, proposal ID and controlled apply boundary.
+
+C17 — general Memory save/count/restore
+Callers: tools/memory-save.js, memory-count.js, memory-restore.js.
+Write: memory-save -> memory.addMemory -> Local Memory Store atomic writer.
+Read: memory-count -> Local Memory Store.
+Restore: requires confirm=true, validates backup, writes safety backup, then replaces Memory.
+Compatibility: preserve role/content/time schema, duplicate role+content semantics, capacity limit, atomic write/readback, confirmation and backup validation. Restore is not invoked.
+
+3. ROUTE AUDIT / FAILURE SEMANTICS
+
+Knowledge Improvement Apply:
+- Approval, pre-state content hash, Evolution prepare/apply, final verification, proposal marking.
+- On final verification or proposal marking failure, attempts rollback if changeId and snapshotId exist.
+- Successful route audit is written after verification and proposal marking.
+- Handled early returns for missing proposal, approval missing, stale/original state mismatch, prepare/apply failure, final verification failure, and proposal commit failure do not all write route-level audit events.
+- Local writeAudit catches/swallow audit exceptions; some callers ignore logged=false.
+
+Autonomous Learning Apply:
+- Records blocked/not-found and APPLY_STARTED events.
+- Calls controlled apply.
+- Records APPLY_FAILED with rollback status or APPLY_VERIFIED with snapshot/count/appliedLearningId/driveSynced/verified.
+- writeAudit does not swallow recordAudit exceptions; failure can propagate.
+
+Result:
+- Audit failure semantics differ across the two apply routes.
+- Lower-level audit event coverage does not prove every early-return branch is logged.
+- A common audit contract and explicit fail-open/fail-closed policy are required before provider migration.
+
+4. COMPATIBILITY / MIGRATION ACCEPTANCE CHECKLIST
+
+A replacement provider must preserve or explicitly version:
+1. Data schema, stable IDs, timestamps, Learning fields, source provenance.
+2. Distinction between general Memory, Knowledge, Work Learning, derived Experience, Conversation and Governance records.
+3. Missing, empty, malformed, unreadable and corrupt state semantics.
+4. Local vs remote authority, empty remote, stale remote and conflict quarantine behavior.
+5. Duplicate fingerprints, ordering and capacity trimming.
+6. Every public status, boolean, error, and metadata field used by route/tool callers.
+7. Approval status, proposal ID, expected hash and pre-state checks.
+8. Snapshot ID linkage, snapshot contents and restore ordering.
+9. Rollback result semantics, partial failure status and readback verification.
+10. Audit event ordering, audit failure policy, actor/resource/provenance fields.
+11. Storage path overrides and legacy root compatibility.
+12. No unintended provider egress or change to consent boundary.
+13. Offline fixture coverage for CRUD, backup/restore, controlled apply, rollback, crash recovery, concurrent writer and data preservation.
+
+5. C04 STATUS
+
+C04_CALLER_COMPATIBILITY=PASS_SCOPED_FOR_KNOWLEDGE_LEARNING_MEMORY_DIRECT_WORKFLOWS
+COVERED_CALLER_CLASSES=17
+ROUTE_MODULES_REVIEWED=26
+TOOL_MODULES_REVIEWED=26
+RELEVANT_SERVICES_REVIEWED=ALL_143_SOURCE_SCANNED_WITH_TARGETED_DETAIL_FOR_MEMORY_KNOWLEDGE_LEARNING
+AUDIT_FAILURE_POLICY=REVIEW_REQUIRED
+INDIRECT_DYNAMIC_CALLER_REACHABILITY=NOT_RUNTIME_VERIFIED
+PROVIDER_REPLACEMENT=NOT_IMPLEMENTED
+DRIVE_REMOVAL=NOT_AUTHORIZED
+
+C04 is a source-level compatibility matrix PASS for the explicitly enumerated Knowledge/Learning/Memory workflows and route/tool consumers. It does not certify runtime behavior, every dynamic import, or the final cross-domain policy decision.
+
+6. SAFETY / STATUS
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+RUNTIME_ROUTES_INVOKED=NONE
+TESTS=NOT_EXECUTED
+TEST_RESULT=INCONCLUSIVE
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_DATA_CHANGES=NONE
+PHASE1=INCOMPLETE_REVIEW_REQUIRED
+PHASE1_CLOSURE=BLOCKED
+VERSION=v0.2
+
+END OF REPORT

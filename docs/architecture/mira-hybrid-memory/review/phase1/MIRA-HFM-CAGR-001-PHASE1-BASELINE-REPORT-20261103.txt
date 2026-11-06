@@ -1,0 +1,203 @@
+MIRA HYBRID MEMORY — PHASE 1 BASELINE REPORT
+Document ID: MIRA-HFM-CAGR-001-PHASE1-BASELINE-REPORT
+Blueprint: MIRA-HFM-CAGR-001 v1.0.0
+Date: 2026-11-03
+Repository: Shahed216215/herness-ai
+Branch: work/mira-hfm-v025-six-documents
+Verified HEAD: 720309923223c4f287ec3ede0fb0c16aff80f213
+Source baseline: 90b48f2816e28686cd499650ff6a5fc6217f0e8a
+Version boundary: v0.2
+Phase 1 status: COMPLETE — SOURCE RECONCILIATION & ISOLATED FIXTURE BASELINE
+Implementation status: NOT STARTED
+Production migration: NOT AUTHORIZED
+
+1. EXECUTIVE RESULT
+
+Phase 1 Existing Architecture Reconciliation is complete at the documented source-review and isolated-fixture scope.
+
+All seven closure criteria C01-C07 have a scoped PASS or recorded decision. The six selected fixture tests executed successfully on a disposable GitHub-hosted runner. The exact source baseline was verified as an ancestor of the tested commit, and GitHub's compare API reported no JavaScript/TypeScript-family source changes between the baseline and tested HEAD.
+
+This closure is not a claim that every runtime/dynamic path, provider account setting, OAuth token scope, Facebook connector, or production behavior has been verified. The residuals in Section 5 remain explicit pre-implementation requirements.
+
+2. REPOSITORY / SOURCE BASELINE
+
+- Exact tested branch: work/mira-hfm-v025-six-documents
+- Exact tested HEAD: 720309923223c4f287ec3ede0fb0c16aff80f213
+- Source baseline: 90b48f2816e28686cd499650ff6a5fc6217f0e8a
+- Compare result: ahead by 12 commits; behind by 0.
+- Changed paths since source baseline at tested HEAD:
+  1. .github/workflows/mira-hfm-phase1-fixtures.yml (additive isolated test workflow)
+  2. docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-CURRENT-STATUS-LEDGER-20261103.txt (status ledger)
+  3. docs/architecture/mira-hybrid-memory/review/phase1/MIRA-HFM-CAGR-001-PHASE1-ISOLATED-FIXTURE-TEST-RUNBOOK-20261103.txt (runbook)
+- No application source or test source files changed after the source baseline.
+- Current tree inventory: 637 entries, 617 blobs, not truncated.
+- Executable JavaScript-family source/test scan: 540 files.
+- Targeted route inventory: 26 route modules.
+- Targeted tool inventory: 26 tool modules.
+- Service inventory: 143 service modules.
+- Persistence matrix: 42 persistence-domain entries.
+- Environment override register: 15 entries.
+
+The GitHub Actions workflow is restricted to the feature branch and selected fixture-related paths. It uses read-only repository permissions, a disposable runner, and no application secrets.
+
+3. CLOSURE CRITERIA
+
+C01 — EXECUTABLE SOURCE-TEXT SCAN
+Result: PASS (SCOPED)
+Evidence: 540 JavaScript-family files retrieved and lexically scanned across root, services, routes, tools, providers, scripts, and tests. This is executable-source coverage, not every documentation, asset, or runtime-generated file.
+
+C02 — PERSISTENCE ROOT INVENTORY
+Result: PASS (SCOPED STATIC BASELINE)
+Evidence: 42 persistence-domain entries and 15 environment overrides recorded, including shared storagePath users, legacy BASE_DIR/project-root bypasses, provider credential/config roots, snapshot roots, and worker stores.
+Qualification: dynamically computed runtime paths and all indirect runtime reachability are not proven. The missing project-schedule-store reference remains recorded as an existing broken dependency.
+
+C03 — AUTHORITY / CONFLICT POLICY
+Result: PASS (PHASE 1 DATA-CLASS BASELINE RECORDED)
+Decision:
+- Private personal Memory: Local-first canonical authority.
+- Public/shared Knowledge: Facebook Page canonical only after approved publication and connector implementation; Facebook Group secondary.
+- Web Search: evidence retrieval only, never a canonical Memory/Knowledge writer.
+- Google Drive: target role is encrypted emergency backup, not a routine source-of-truth writer.
+- Conversation/client data and governance/credential data remain separate data classes.
+- Empty/unavailable remote responses do not imply deletion; conflicts are preserved and quarantined.
+Qualification: this is a design decision only. It does not create a Facebook connector, change Drive behavior, or authorize publication/migration.
+
+C04 — CALLER COMPATIBILITY
+Result: PASS (SCOPED SOURCE MATRIX)
+Evidence: 17 direct Memory/Knowledge/Learning workflow classes documented with result fields, errors, partial-success behavior, audit, snapshots, rollback, and migration compatibility. All route/tool modules were reviewed at source level.
+Qualification: dynamic runtime reachability and one uniform audit failure policy remain unresolved.
+
+C05 — DRIVE CALLSITE INVENTORY
+Result: PASS (SCOPED STATIC INVENTORY)
+Evidence: 540 JavaScript-family files scanned; direct Google OAuth modules, shared adapter callers, indirect Learning callers, and governed routes documented in the Drive callsite allowlist and supporting reports.
+Qualification: inventory does not authorize Drive sync removal, OAuth changes, or live API calls. Existing controlled apply and Evolution dependencies must remain intact until separately replaced and approved.
+
+C06 — ISOLATED FIXTURE TEST EXECUTION
+Result: PASS
+Workflow: Mira Hybrid Memory Phase 1 Fixture Tests
+Run ID: 41638703895
+Run URL: https://github.com/Shahed216215/herness-ai/actions/runs/41638703895
+Tested commit: 720309923223c4f287ec3ede0fb0c16aff80f213
+Job: Six isolated fixture tests
+Runner: Ubuntu 24.04
+Node: v22.23.4
+Job conclusion: success
+Source baseline guard: PASS; no JS/CJS/MJS/TS source diff from baseline.
+Tests:
+1. tests/mira-local-memory-safety-test.js — PASS
+2. tests/mira-memory-local-store-contract-test.js — PASS; TESTS_PASSED=8; TESTS_FAILED=0
+3. tests/mira-memory-evolution-integration-test.js — PASS; TESTS_PASSED=8; TESTS_FAILED=0; separate Evolution writer gap confirmed
+4. tests/mira-research-audit-fail-closed.test.js — PASS
+5. tests/mira-research-governance.test.js — PASS
+6. tests/mira-client-consent.test.js — PASS
+
+Isolation controls:
+- Every test used disposable temporary storage and the runner cleanup trap.
+- Provider API keys, Google credential variables, credential encryption key, and audit HMAC key were unset.
+- Autonomous worker and research worker were explicitly disabled.
+- Memory Evolution integration used a local mocked Google Drive adapter; no real Drive API.
+- Test-step logs reported NETWORK_REQUESTS=0 / NETWORK_CALLS=0 and EXTERNAL_ACTIONS=0.
+- No package installation or npm test suite was run.
+- The workflow checked out the repository from GitHub; this was source retrieval only, not a provider/Drive/Facebook request.
+
+Harness correction:
+- Initial run 41638635255 stopped at preflight because checkout depth 1 did not include the source-baseline commit. No tests ran in that attempt.
+- The workflow was corrected to fetch full history. Run 41638703895 then passed the baseline guard and all six tests.
+- The first run is INCONCLUSIVE, not counted as a test failure or pass.
+
+C07 — PROVIDER / PERMISSION / DATA-EGRESS INVENTORY
+Result: PASS (SCOPED SOURCE AND PUBLIC-POLICY INVENTORY)
+Evidence: OpenAI, Anthropic, Gemini, Groq, DeepSeek, OpenRouter, Hugging Face, xAI, custom provider slots 1–5, Tavily, and Google Drive OAuth scope guidance reviewed.
+Qualification: effective OAuth scopes, provider account tiers, ZDR settings, custom provider terms, and downstream OpenRouter/Hugging Face provider identity remain UNKNOWN. Account-specific verification is required before live use.
+
+4. IMPORTANT TEST FINDING
+
+The integration fixture confirms that the current Knowledge/Memory Evolution module still owns a separate atomic writer and does not import/use the Local Memory Store. The test also verifies mocked Local/Drive apply, verification, rollback, injected Drive failure rollback, stale pre-state rejection, and preservation checks.
+This is a confirmed architecture integration gap, not a failing test. It remains a high-priority follow-up before any attempt to consolidate writers or change persistence providers.
+
+5. RESIDUAL RISK / FOLLOW-UP REGISTER
+
+R01 — Knowledge read/write safety
+- knowledge.js maps missing, malformed, and non-array Knowledge JSON to [].
+- Knowledge CRUD uses direct writes rather than the Local Memory Store's atomic temp/fsync/rename/readback pattern.
+- Ordinary CRUD can write Local successfully and then report Drive sync failure, leaving partial dual-write state.
+- Severity: HIGH.
+- HFM-001/HFM-002 remain open for future implementation.
+
+R02 — Evolution writer duplication
+- Knowledge/Memory Evolution uses its own writer; Local Memory Store is separate.
+- Severity: HIGH.
+- Requires compatibility design, isolated regression tests, and approved migration before consolidation.
+
+R03 — Storage root divergence
+- MIRA_STORAGE_DIR does not control every file path.
+- Legacy Knowledge tools, provider credential/config stores, snapshot manager, and several explicit path overrides can remain outside the shared root.
+- Severity: HIGH.
+- Must be addressed with per-domain migration and rollback plan, not a blanket path rewrite.
+
+R04 — Missing schedule store
+- services/mira-project-schedule-planning-service.js and Stage 9.2.5 tests reference ../project-schedule-store.
+- No matching module or path history was found in the reviewed branch; historical service source already contained the broken import at initial public upload.
+- Expected MODULE_NOT_FOUND when those paths are loaded.
+- Severity: HIGH for affected schedule service/tests; no proof main server startup is blocked.
+
+R05 — Drive dependency
+- Controlled apply, autonomous learning apply, Knowledge tools, and Evolution still depend on Drive.
+- Drive sync removal remains prohibited until a tested replacement and separate cutover approval exist.
+
+R06 — Provider account configuration
+- Effective Google OAuth scopes, ZDR/account settings, custom provider vendors/terms, and some downstream provider retention are unknown.
+- No credential/token content was accessed.
+- Live provider usage with sensitive Memory/Knowledge requires separate account-level verification and data-minimization controls.
+
+R07 — Facebook connector absence
+- No Facebook Page/Group Graph API connector path was found in the reviewed source tree.
+- The target Page/Group authority policy is a design baseline only; no Facebook connector, publication, or private Group access exists from this work.
+
+R08 — Audit consistency
+- Knowledge Improvement and Autonomous Learning apply routes differ in audit failure propagation and early-return coverage.
+- A common audit failure policy is not established.
+
+R09 — Runtime completeness
+- Source inventory and static lexical scans do not prove every dynamically computed path, plugin, or indirect runtime caller.
+- Runtime workers/routes were not started or invoked.
+
+6. PHASE 1 EXIT DECISION
+
+PHASE1_C01=PASS_SCOPED
+PHASE1_C02=PASS_SCOPED_STATIC_BASELINE
+PHASE1_C03=PASS_POLICY_BASELINE_RECORDED
+PHASE1_C04=PASS_SCOPED_SOURCE_MATRIX
+PHASE1_C05=PASS_SCOPED_STATIC_INVENTORY
+PHASE1_C06=PASS_SIX_ISOLATED_FIXTURE_TESTS
+PHASE1_C07=PASS_SCOPED_PROVIDER_POLICY_INVENTORY
+
+PHASE1=COMPLETE_WITH_EXPLICIT_RESIDUAL_RISKS
+PHASE1_BASELINE_REPORT=ISSUED
+PHASE2_IMPLEMENTATION=NOT_STARTED
+SOURCE_CODE_CHANGES=NONE
+PRODUCTION_MIGRATION=NOT_AUTHORIZED
+DRIVE_SYNC_REMOVAL=NOT_AUTHORIZED
+FACEBOOK_CONNECTOR_IMPLEMENTATION=NOT_AUTHORIZED
+VERSION=v0.2
+
+Phase 1 is closed as an existing-architecture reconciliation and isolated test baseline. Closure does not imply that the residual issues are fixed, that production behavior is certified, or that Phase 2 implementation is authorized.
+
+7. SAFETY ATTESTATION
+
+PRODUCTION_MEMORY_READ=NONE
+PRODUCTION_MEMORY_WRITE=NONE
+PRODUCTION_BACKUP_OR_RESTORE=NONE
+CREDENTIAL_OR_TOKEN_READ=NONE
+GOOGLE_DRIVE_API_CALLS=NONE
+FACEBOOK_API_CALLS=NONE
+LIVE_MODEL_PROVIDER_CALLS=NONE
+AUTONOMOUS_WORKER_STARTED=NONE
+PRODUCTION_DATA_CHANGED=NONE
+SOURCE_APPLICATION_CODE_CHANGED=NONE
+CI_WORKFLOW_ADDED=YES — FEATURE BRANCH ONLY
+DOCUMENTATION_ADDED_OR_UPDATED=YES — FEATURE BRANCH ONLY
+TEST_FIXTURES=DISPOSABLE_RUNNER_TEMPORARY_STORAGE
+VERSION=v0.2
+
+END OF PHASE 1 BASELINE REPORT
