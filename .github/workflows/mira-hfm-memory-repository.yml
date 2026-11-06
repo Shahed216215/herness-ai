@@ -24,6 +24,13 @@ on:
     branches:
       - work/hfm-authority-relational-integrity-20261106
     paths:
+      - "services/mira-hfm-memory-postgres-runtime.js"
+      - "services/mira-hfm-daily-knowledge-post.js"
+      - "migrations/hfm/004_memory_repository_schema.sql"
+      - "migrations/hfm/005_memory_writer_role_and_project_rls.sql"
+      - "tests/mira-hfm-memory-postgres-runtime.test.js"
+      - "tests/mira-hfm-memory-writer-rls-migration-contract.test.js"
+      - "tests/mira-hfm-daily-knowledge-post.test.js"
       - "services/mira-hfm-memory-repository.js"
       - "services/mira-hfm-authority-transaction.js"
       - "services/mira-hfm-record-schema.js"
