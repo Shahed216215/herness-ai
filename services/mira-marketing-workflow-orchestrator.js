@@ -18,7 +18,10 @@ function validateWorkflowInput(input, dependencies = {}) {
     throw new TypeError("MARKETING_WORKFLOW_INPUT_OBJECT_REQUIRED");
   }
 
-  const allowed = new Set(["brief", "query", "auditInput"]);
+  const allowed = new Set([
+    "brief", "query", "auditInput",
+    "competitorQueries", "confirmedCompetitorDomains"
+  ]);
 
   for (const key of Object.keys(input)) {
     if (!allowed.has(key)) {
@@ -108,6 +111,35 @@ function validateWorkflowInput(input, dependencies = {}) {
     throw new TypeError("MARKETING_WORKFLOW_QUERY_REQUIRED");
   }
 
+  const competitorQueries = input.competitorQueries === undefined
+    ? []
+    : input.competitorQueries;
+  if (!Array.isArray(competitorQueries) || competitorQueries.length > 5) {
+    throw new TypeError("MARKETING_WORKFLOW_COMPETITOR_QUERIES_INVALID");
+  }
+  const cleanCompetitorQueries = competitorQueries.map((value, index) => {
+    if (typeof value !== "string" || !value.trim() || value.trim().length > 500) {
+      throw new TypeError("MARKETING_WORKFLOW_COMPETITOR_QUERY_INVALID:" + index);
+    }
+    return value.trim();
+  });
+  if (new Set([input.query.trim(), ...cleanCompetitorQueries]
+      .map(value => value.toLocaleLowerCase())).size !==
+      1 + cleanCompetitorQueries.length) {
+    throw new TypeError("MARKETING_WORKFLOW_COMPETITOR_QUERIES_MUST_BE_UNIQUE");
+  }
+
+  const confirmedCompetitorDomains = input.confirmedCompetitorDomains === undefined
+    ? []
+    : input.confirmedCompetitorDomains;
+  if (!Array.isArray(confirmedCompetitorDomains) ||
+      confirmedCompetitorDomains.length > 10 ||
+      confirmedCompetitorDomains.some(value =>
+        typeof value !== "string" || !value.trim() || value.trim().length > 253
+      )) {
+    throw new TypeError("MARKETING_WORKFLOW_CONFIRMED_COMPETITOR_DOMAINS_INVALID");
+  }
+
   const auditInput = input.auditInput === undefined
     ? {}
     : input.auditInput;
@@ -120,6 +152,8 @@ function validateWorkflowInput(input, dependencies = {}) {
   return {
     brief,
     query: input.query.trim(),
+    competitorQueries: cleanCompetitorQueries,
+    confirmedCompetitorDomains: confirmedCompetitorDomains.map(value => value.trim()),
     auditInput
   };
 }
@@ -255,7 +289,9 @@ async function runMarketingWorkflow(
     research = await researchRunner(
       {
         brief: researchBrief,
-        query: validated.query
+        query: validated.query,
+        competitorQueries: validated.competitorQueries,
+        confirmedCompetitorDomains: validated.confirmedCompetitorDomains
       },
       trustedContext,
       researchDependencies
