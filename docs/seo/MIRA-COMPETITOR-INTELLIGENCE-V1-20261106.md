@@ -1,7 +1,7 @@
 # Mira Competitor Research & Live SEO Intelligence v1
 
 Date: 2026-11-06
-Status: IMPLEMENTED ON FEATURE BRANCH; CI VALIDATION PENDING
+Status: IMPLEMENTED ON FEATURE BRANCH; INITIAL CI PASSED; EXTENDED DOMAIN-CLASSIFICATION TESTS PENDING
 
 ## Scope
 
@@ -15,6 +15,8 @@ The workflow fails closed if any expected search result is missing, unverified, 
 - Cross-query domain coverage and result counts.
 - Provider result positions retained as provider order, never represented as Google rank.
 - Sample titles and source URLs for human review.
+- Optional client-confirmed competitor domains (maximum 10), validated and normalized before comparison.
+- Explicit distinction between `CLIENT_CONFIRMED_COMPETITOR` and `UNCONFIRMED_RESEARCH_CANDIDATE`; the agent never labels an unconfirmed domain as a direct competitor.
 - Client own-domain visibility within each returned sample, when the client website domain is known.
 - Candidate search-coverage opportunities when the own domain is absent from a returned sample.
 - Explicit unknown freshness when the provider contract supplies no verified publication/retrieval timestamp.
@@ -22,6 +24,7 @@ The workflow fails closed if any expected search result is missing, unverified, 
 ## Interpretation constraints
 
 - A domain in a search sample is a research candidate, not verified proof of a direct commercial competitor.
+- Only domains explicitly supplied through the client-confirmed competitor list receive the `CLIENT_CONFIRMED_COMPETITOR` label.
 - Own-domain absence from a limited sample is not proof of a ranking/content gap.
 - Provider result order is not Google organic position, rank tracking or share of voice.
 - No search volume, CPC, keyword difficulty, traffic, backlink authority, conversion rate or market share is estimated.
