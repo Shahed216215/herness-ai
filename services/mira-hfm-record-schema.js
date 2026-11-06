@@ -42,11 +42,10 @@ function hasOnlyKeys(value, allowed, path, errors) {
   }
 }
 
-function boundedString(value, min, max) {
+function stringLength(value, min, max = Infinity) {
   return typeof value === 'string' &&
     value.length >= min &&
-    value.length <= max &&
-    value.trim() === value;
+    value.length <= max;
 }
 
 function isRfc3339(value) {
@@ -103,8 +102,8 @@ function validateCanonicalRecord(record) {
     errors.push('record.schemaVersion.unsupported');
   }
 
-  if (!boundedString(record.memoryId, 8, 128)) errors.push('record.memoryId.invalid');
-  if (!boundedString(record.projectId, 1, 128)) errors.push('record.projectId.invalid');
+  if (!stringLength(record.memoryId, 8, 128)) errors.push('record.memoryId.invalid');
+  if (!stringLength(record.projectId, 1, 128)) errors.push('record.projectId.invalid');
 
   const allowedRecordTypes = schemaVersion === SCHEMA_V1_1
     ? LEGACY_RECORD_TYPES.concat(EXTENDED_RECORD_TYPES)
@@ -113,16 +112,17 @@ function validateCanonicalRecord(record) {
     errors.push('record.recordType.unsupported_for_schema_version');
   }
 
-  if (!boundedString(record.content, 1, 100000)) errors.push('record.content.invalid');
+  if (!stringLength(record.content, 1, 100000)) errors.push('record.content.invalid');
 
   if (!isPlainObject(record.source)) {
     errors.push('record.source.object_required');
   } else {
     hasOnlyKeys(record.source, ['sourceType', 'sourceId', 'sourceUrl', 'observedAt'], 'record.source', errors);
     if (!SOURCE_TYPES.includes(record.source.sourceType)) errors.push('record.source.sourceType.invalid');
-    if (!boundedString(record.source.sourceId, 1, 1024)) errors.push('record.source.sourceId.invalid');
-    if (!(record.source.sourceUrl === null ||
-        boundedString(record.source.sourceUrl, 1, 2048))) {
+    if (!stringLength(record.source.sourceId, 1)) errors.push('record.source.sourceId.invalid');
+    if (!(record.source.sourceUrl === undefined ||
+        record.source.sourceUrl === null ||
+        typeof record.source.sourceUrl === 'string')) {
       errors.push('record.source.sourceUrl.invalid');
     }
     if (!isRfc3339(record.source.observedAt)) errors.push('record.source.observedAt.invalid');
@@ -145,11 +145,11 @@ function validateCanonicalRecord(record) {
     errors.push('record.version.object_required');
   } else {
     hasOnlyKeys(record.version, ['revision', 'contentHash'], 'record.version', errors);
-    if (!Number.isSafeInteger(record.version.revision) || record.version.revision < 1) {
+    if (!Number.isInteger(record.version.revision) || record.version.revision < 1) {
       errors.push('record.version.revision.invalid');
     }
     if (typeof record.version.contentHash !== 'string' ||
-        !/^[a-f0-9]{64}$/i.test(record.version.contentHash)) {
+        !/^[a-f0-9]{64}$/.test(record.version.contentHash)) {
       errors.push('record.version.contentHash.invalid');
     } else if (typeof record.content === 'string') {
       try {
@@ -187,7 +187,7 @@ function validateCanonicalRecord(record) {
     if (record.access.allowedProjectIds !== undefined) {
       const ids = record.access.allowedProjectIds;
       if (!Array.isArray(ids) ||
-          ids.some(id => !boundedString(id, 1, 128)) ||
+          ids.some(id => typeof id !== 'string') ||
           new Set(ids).size !== ids.length) {
         errors.push('record.access.allowedProjectIds.invalid');
       }
