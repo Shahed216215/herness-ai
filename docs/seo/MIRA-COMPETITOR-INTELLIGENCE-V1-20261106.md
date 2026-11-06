@@ -55,6 +55,20 @@ The `seo_content_gap_report` tool adds two deterministic, no-paid-API capabiliti
 
 The gap label is a research prioritization signal, not proof of missing content, a direct commercial competitor, a ranking gap or guaranteed traffic gain. No search volume, CPC, keyword difficulty, traffic, backlinks, market share or conversion data are fabricated. Report generation is deterministic and offline; it does not fetch websites, call Google APIs, publish content, modify client websites or message clients.
 
+## Admin dashboard and report endpoint integration
+
+The Admin SEO section now contains a report-generation panel connected to the existing in-session audit and marketing workflow results:
+
+- Successful offline SEO audit results and governed marketing workflow responses are captured in page memory only; the UI does not persist additional copies.
+- The panel can use the latest audit and the latest returned `research.competitorIntelligence` result from the current browser page session.
+- Users can supply the website domain, exact already-researched keywords and an optional Search Console CSV export.
+- The Admin-only `POST /api/admin/mira-seo/report` endpoint validates a strict input allowlist, enforces bounded request/CSV sizes, parses CSV locally and returns deterministic Markdown.
+- The panel supports copying or downloading the generated Markdown. It does not start live research; live research remains in the separate existing consent-gated marketing workflow with explicit confirmation.
+- The endpoint uses the existing SYSTEM_ADMIN permission boundary and a route-local JSON parser after authorization. The global 50 KB parser excludes this endpoint; its own parser remains bounded to 250 KB.
+- Report source URLs are restricted to credential-free HTTP(S) URLs, and untrusted report text is Markdown-escaped before rendering.
+
+The dashboard only has access to audit/research results generated in the current page session. Refreshing the page clears these in-memory references; users can rerun the existing workflows to repopulate them. Report generation itself is offline and does not fetch websites, call external APIs or change client records.
+
 ## Validation status for this extension
 
 Implementation and regression tests are committed to the existing feature branch. GitHub Actions must complete successfully on the exact latest branch head before this extension is labelled CI PASS. No PR merge or Render deployment is authorized. Production readiness remains `NOT_CERTIFIED`.
