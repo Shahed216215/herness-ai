@@ -92,6 +92,8 @@ test("authorized operation locks owner, membership, authority; consumes and audi
   const consume = sql.findIndex(x => x.startsWith("UPDATE mira_hfm.operation_authorities"));
   const audit = sql.findIndex(x => x.startsWith("INSERT INTO mira_hfm.authority_audit_events"));
   const projectScope = sql.findIndex(x => x.includes("set_config('mira.project_id'"));
+  const actorScope = sql.findIndex(x => x.includes("set_config('mira.actor_id'"));
+  assert.ok(projectScope < actorScope && actorScope < ownerLock);
   const protectedWrite = sql.findIndex(x => x.startsWith("INSERT INTO protected_hfm_test_table"));
   assert.ok(sql[0].startsWith("BEGIN ISOLATION LEVEL SERIALIZABLE"));
   assert.ok(projectScope < ownerLock && ownerLock < membershipLock && membershipLock < authorityLock);
