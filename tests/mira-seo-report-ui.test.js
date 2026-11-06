@@ -6,7 +6,7 @@ const vm = require("node:vm");
 
 const html = fs.readFileSync("public/index.html", "utf8");
 const scriptMatch = html.match(
-  /<script id="mira-seo-report-ui-script">([\\s\\S]*?)<\\/script>/
+  /<script id="mira-seo-report-ui-script">([\s\S]*?)<\/script>/
 );
 assert.ok(scriptMatch, "SEO report dashboard script must exist");
 new vm.Script(scriptMatch[1], { filename: "mira-seo-report-ui-script.js" });
