@@ -159,6 +159,18 @@ async function main() {
     ...validInput,
     competitorQueries: ["best project management tools", "project management alternatives"]
   }).competitorQueries.length, 2);
+  assert.deepEqual(validateResearchInput({
+    ...validInput,
+    confirmedCompetitorDomains: ["https://www.alpha.example/path"]
+  }).confirmedCompetitorDomains, ["alpha.example"]);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    confirmedCompetitorDomains: ["not a valid domain"]
+  }), /CONFIRMED_COMPETITOR_DOMAIN_INVALID/);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    confirmedCompetitorDomains: new Array(11).fill("example.com")
+  }), /DOMAINS_INVALID/);
   assert.throws(() => validateResearchInput({
     ...validInput,
     competitorQueries: ["same query", "same query"]
@@ -201,7 +213,8 @@ async function main() {
     competitorQueries: [
       "best project management tools",
       "project management alternatives"
-    ]
+    ],
+    confirmedCompetitorDomains: ["alpha.example"]
   }, trustedContext, {
     consentService,
     executeWork: async (...args) => {
@@ -213,6 +226,10 @@ async function main() {
   assert.equal(multi.competitorIntelligence.searchCount, 3);
   assert.equal(multi.competitorIntelligence.competitorDomains[0].domain, "alpha.example");
   assert.equal(multi.competitorIntelligence.competitorDomains[0].queryCoverageCount, 2);
+  assert.equal(
+    multi.competitorIntelligence.competitorDomains[0].competitorClassification,
+    "CLIENT_CONFIRMED_COMPETITOR"
+  );
   assert.equal(multi.competitorIntelligence.queryReports[0].ownDomainVisible, true);
   assert.equal(calls[1][1].toolCalls.length, 3);
   assert.equal(calls[1][1].toolCalls[0].name, "web_search");
