@@ -75,7 +75,7 @@ This gate separates the implemented service-layer foundation from runtime/produc
 
 - Migration 004 schema has been executed and inspected on the disposable Neon test branch only; production remains unchanged.
 - A transaction-client-only project-scoped Memory Repository service now exists on PR #70, with create/revise/read/list/trash/restore operations, encrypted private payloads, idempotency, revision history, and sanitized audit.
-- No application writer role or write connection is provisioned; the repository service is not yet wired to runtime tools or routes.
+- No writer role/login or write connection is provisioned. A source-only Migration 005 and fail-closed writer-pool preflight are drafted; Migration 005 has not been executed. The repository service is not yet wired to runtime tools or routes.
 - No integration of `memory_save`, `knowledge_save`, `knowledge_search`, or client-profile routes.
 - No daily activity/learning capture pipeline or automatic invocation of the digest builder.
 - A deterministic Bengali daily knowledge post builder and authority-scoped save helper now exist; social-post preview/Copy UI is not implemented.
@@ -124,3 +124,14 @@ This gate separates the implemented service-layer foundation from runtime/produc
 - The builder is deterministic/template-based; it does not invoke an LLM, auto-publish, schedule a midnight job, or capture activity itself.
 - GitHub Actions run for implementation commit `57b49a6c24eacd6645786c1a31566abce8cac41f`: syntax checks PASS, focused HFM and daily-post tests PASS, full `npm test` PASS.
 - Render sleep-safe behavior remains: the next authenticated request after wake may generate a missing daily post from records already committed to Neon.
+
+
+## Writer runtime and RLS checkpoint (2026-11-06)
+
+- Added a fail-closed writer-pool factory that requires explicit `MIRA_HFM_MEMORY_WRITE_ENABLED=true`, a separate `MIRA_HFM_MEMORY_DATABASE_URL`, and an exact `MIRA_HFM_MEMORY_WRITER_ROLE`. It never falls back to the read-only database URL.
+- Preflight requires a dedicated login role with INHERIT membership in `mira_hfm_memory_writer`, no superuser/BYPASSRLS/CREATEDB/CREATEROLE/REPLICATION, no schema CREATE, and only required table/sequence grants.
+- Preflight requires forced RLS on eight project/authority/Memory tables and rejects DELETE/TRUNCATE, append-only history mutation, excess project table grants, and excess sequence grants.
+- Added source-only Migration 005. It creates only a NOLOGIN group role, grants least-privilege access, and defines project RLS policies based on transaction-local `mira.project_id`. It creates no login/password and has NOT been executed.
+- Authority transaction now sets project scope before project-owner/membership/authority queries, then validates and consumes the one-time authority before the protected repository callback.
+- GitHub Actions run for code commit `a7e5aed10812af9691fccd857ad7832658ec67c6`: syntax checks PASS, focused tests PASS, full `npm test` PASS.
+- No Neon role/grant/RLS changes from Migration 005, no writer URL, no KEK, no Render secrets, and no production writes have occurred.
