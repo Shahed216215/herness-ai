@@ -39,9 +39,9 @@ test('all four Memory tables force project-scoped row-level security', () => {
     'memory_operation_registry',
     'memory_audit_events'
   ]) {
-    assert.match(sql, new RegExp('ALTER TABLE mira_hfm\\\\.' + table + ' ENABLE ROW LEVEL SECURITY'));
-    assert.match(sql, new RegExp('ALTER TABLE mira_hfm\\\\.' + table + ' FORCE ROW LEVEL SECURITY'));
-    assert.match(sql, new RegExp('CREATE POLICY [a-z_]+[\\\\s\\\\S]*?ON mira_hfm\\\\.' + table));
+    assert.match(sql, new RegExp('ALTER TABLE mira_hfm\\.' + table + ' ENABLE ROW LEVEL SECURITY'));
+    assert.match(sql, new RegExp('ALTER TABLE mira_hfm\\.' + table + ' FORCE ROW LEVEL SECURITY'));
+    assert.match(sql, new RegExp('CREATE POLICY [a-z_]+[\\s\\S]*?ON mira_hfm\\.' + table));
   }
   assert.equal((sql.match(/current_setting\\('mira\\.project_id', true\\)/g) || []).length, 8);
   assert.match(sql, /NULLIF\(current_setting\('mira\.project_id', true\), ''\)/);
