@@ -63,6 +63,13 @@ async function executeWithConsumedAuthority(options = {}) {
     await client.query("SET LOCAL statement_timeout = '5000ms'");
     await client.query("SET LOCAL lock_timeout = '3000ms'");
 
+    // The requested project id is only a row filter here, not an authorization grant.
+    // RLS scopes every project table before the owner/membership/authority checks.
+    await client.query(
+      "SELECT set_config('mira.project_id', $1, true)",
+      [request.projectId]
+    );
+
     // Deterministic lock order: project owner -> actor membership -> one-time authority.
     // Revocation/owner revision updates must lock these same rows, so they cannot race
     // between validation and the protected operation's commit.
@@ -124,13 +131,6 @@ async function executeWithConsumedAuthority(options = {}) {
       [randomUUID(), request.projectId, trustedActor.actorId, request.requestId,
         owner.revision, membership.revision, authority.approval_ref,
         JSON.stringify({ authorityId: request.authorityId, operation: request.operation, resource: request.resource, ownerRevision: String(owner.revision), membershipRevision: String(membership.revision) })]
-    );
-
-    // Project RLS context is transaction-local and is set only after membership
-    // and one-time authority validation. All Memory repository SQL uses this client.
-    await client.query(
-      "SELECT set_config('mira.project_id', $1, true)",
-      [request.projectId]
     );
 
     // All protected database reads/writes must use this same client/transaction.
