@@ -33,6 +33,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Run offline authorization unit regression
         run: node tests/tool-health-approval-diagnostic.test.js
 
