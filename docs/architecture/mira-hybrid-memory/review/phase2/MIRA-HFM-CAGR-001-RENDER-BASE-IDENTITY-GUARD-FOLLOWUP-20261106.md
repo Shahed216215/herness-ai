@@ -78,3 +78,21 @@ Latest run #16:
 - `identity-context`: **PASS**.
 - `repository-regression`: **FAIL / NEXT BASELINE GAP** after the two restored tests passed.
 - No production runtime code was changed to make the regression command pass.
+
+
+## Latest repository regression run
+
+Run #22 completed with both jobs successful:
+
+- `identity-context`: **PASS** (syntax checks + fail-closed actor dispatch test).
+- `npm ci`: **PASS**.
+- `npm test`: **PASS** (the complete configured Render-base regression chain).
+- The previously missing test files were restored or adapted only after checking their direct dependencies:
+  - change-management test: direct implementation SHA identical across the two branches;
+  - custom-provider config schema test: implementation SHA identical;
+  - custom-provider route isolated test: removed two fixture copies that the Render-base route does not import;
+  - Claude/Grok provider contract test: secure request and both provider implementation SHAs identical.
+- The test logs report mock/offline provider tests and zero live provider/external network calls.
+- Dependency install still reports 9 audit findings (6 moderate, 3 high); no automatic fix was applied.
+
+The repository regression chain is now green on the candidate. This does not certify HFM production readiness: the admin subject, bearer subject, canonical host principal normalization, durable project registry, project membership, and operation-scoped authority remain separate gates.
