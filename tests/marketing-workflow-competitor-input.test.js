@@ -41,6 +41,11 @@ async function main() {
     competitorQueries: new Array(6).fill("x")
   }, { getClientProfile: () => null }), /COMPETITOR_QUERIES_INVALID/);
 
+  assert.throws(() => validateWorkflowInput({
+    ...request,
+    confirmedCompetitorDomains: ["not a valid domain"]
+  }, { getClientProfile: () => null }), /CONFIRMED_COMPETITOR_DOMAIN_INVALID/);
+
   let forwarded = null;
   const response = await runMarketingWorkflow(request, {
     permissionGranted: true,
