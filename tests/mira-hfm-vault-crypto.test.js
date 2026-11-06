@@ -1,0 +1,126 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const crypto = require('node:crypto');
+const {
+  createVaultEnvelope,
+  decryptVaultEnvelope
+} = require('../services/mira-hfm-vault-crypto');
+
+const env = Object.freeze({
+  MIRA_VAULT_ACTIVE_KEK_VERSION: 'v1',
+  MIRA_VAULT_KEK_V1: crypto.randomBytes(32).toString('base64')
+});
+const context = Object.freeze({
+  recordId: 'vault-record-001',
+  ownerId: 'mira:owner-001',
+  projectId: 'project-001',
+  recordType: 'client_vault_record',
+  classification: 'RESTRICTED',
+  schemaVersion: '1.1.0'
+});
+const record = Object.freeze({
+  clientName: 'Synthetic Test Client',
+  phone: '+8801000000000',
+  work: 'Synthetic confidential work description',
+  transaction: { amount: '12345.67', currency: 'BDT' }
+});
+
+test('vault envelope encrypts the complete payload and round-trips with the same context', () => {
+  const envelope = createVaultEnvelope({ record, context, env });
+  const serialized = JSON.stringify(envelope);
+  assert.equal(serialized.includes(record.clientName), false);
+  assert.equal(serialized.includes(record.phone), false);
+  assert.equal(serialized.includes(record.work), false);
+  assert.equal(envelope.algorithm, 'AES-256-GCM');
+  assert.deepEqual(decryptVaultEnvelope({ envelope, context, env }), record);
+});
+
+test('vault envelope uses fresh data keys and nonces for every encryption', () => {
+  const first = createVaultEnvelope({ record, context, env });
+  const second = createVaultEnvelope({ record, context, env });
+  assert.notEqual(first.payload.nonce, second.payload.nonce);
+  assert.notEqual(first.wrappedDek.nonce, second.wrappedDek.nonce);
+  assert.notEqual(first.payload.ciphertext, second.payload.ciphertext);
+});
+
+test('wrong owner, project, record, classification, type, or schema context fails authentication', () => {
+  const envelope = createVaultEnvelope({ record, context, env });
+  const changes = [
+    { ownerId: 'mira:other-owner' },
+    { projectId: 'other-project' },
+    { recordId: 'other-record' },
+    { classification: 'PROJECT_PRIVATE' },
+    { recordType: 'knowledge_item' },
+    { schemaVersion: '1.0.0' }
+  ];
+  for (const change of changes) {
+    assert.throws(
+      () => decryptVaultEnvelope({
+        envelope,
+        context: { ...context, ...change },
+        env
+      }),
+      error => error.code === 'MIRA_VAULT_AUTHENTICATION_FAILED'
+    );
+  }
+});
+
+test('missing, malformed, or unversioned key configuration fails closed', () => {
+  const envelope = createVaultEnvelope({ record, context, env });
+  assert.throws(
+    () => createVaultEnvelope({ record, context, env: {} }),
+    error => error.code === 'MIRA_VAULT_ACTIVE_KEY_VERSION_MISSING'
+  );
+  assert.throws(
+    () => decryptVaultEnvelope({ envelope, context, env: {} }),
+    error => error.code === 'MIRA_VAULT_KEY_MISSING'
+  );
+  assert.throws(
+    () => createVaultEnvelope({
+      record,
+      context,
+      env: { MIRA_VAULT_ACTIVE_KEK_VERSION: 'v1', MIRA_VAULT_KEK_V1: 'not-a-valid-key' }
+    }),
+    error => error.code === 'MIRA_VAULT_KEY_INVALID'
+  );
+});
+
+test('tampered ciphertext and malformed envelope fail closed', () => {
+  const envelope = createVaultEnvelope({ record, context, env });
+  const tampered = {
+    ...envelope,
+    payload: {
+      ...envelope.payload,
+      ciphertext: Buffer.from('tampered').toString('base64')
+    }
+  };
+  assert.throws(
+    () => decryptVaultEnvelope({ envelope: tampered, context, env }),
+    error => error.code === 'MIRA_VAULT_AUTHENTICATION_FAILED'
+  );
+  assert.throws(
+    () => decryptVaultEnvelope({
+      envelope: { ...envelope, algorithm: 'AES-128-CBC' },
+      context,
+      env
+    }),
+    error => error.code === 'MIRA_VAULT_ENVELOPE_INVALID'
+  );
+});
+
+test('vault rejects non-RESTRICTED contexts and non-object records', () => {
+  assert.throws(
+    () => createVaultEnvelope({
+      record,
+      context: { ...context, classification: 'PUBLIC' },
+      env
+    }),
+    error => error.code === 'MIRA_VAULT_CONTEXT_CLASSIFICATION_INVALID'
+  );
+  assert.throws(
+    () => createVaultEnvelope({ record: 'plaintext', context, env }),
+    error => error.code === 'MIRA_VAULT_RECORD_INVALID'
+  );
+});
