@@ -6,13 +6,14 @@ const { createMiraHfmSameOriginWriteGuard } =
 
 function invoke(guard, { method='POST', headers={}, protocol='https', host='mira.example' } = {}) {
   let nextCalls = 0;
+  const requestHeaders = { ...headers, host: headers.host || host };
   const response = {
     statusCode: 200,
     body: null,
     status(code) { this.statusCode = code; return this; },
     json(body) { this.body = body; return this; }
   };
-  guard({ method, headers, protocol, get(name) { return headers[name.toLowerCase()]; } },
+  guard({ method, headers: requestHeaders, protocol, get(name) { return requestHeaders[name.toLowerCase()]; } },
     response, () => { nextCalls++; });
   return { response, nextCalls };
 }
