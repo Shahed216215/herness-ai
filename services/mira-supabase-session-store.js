@@ -1,4 +1,5 @@
 const session = require("express-session");
+const { secureProviderRequest } = require("./security/secure-provider-request");
 
 const DEFAULT_TTL_MS = 8 * 60 * 60 * 1000;
 const PRUNE_INTERVAL_MS = 15 * 60 * 1000;
@@ -24,11 +25,11 @@ class SupabaseRestSessionStore extends session.Store {
 
     this.endpoint = new URL("/rest/v1/mira_express_sessions", parsedUrl).toString();
     this.serviceRoleKey = serviceRoleKey;
-    this.fetchImpl = options.fetchImpl || globalThis.fetch;
+    this.requestImpl = options.requestImpl || secureProviderRequest;
     this.lastPruneAt = 0;
 
-    if (typeof this.fetchImpl !== "function") {
-      throw new Error("This Node.js runtime does not provide fetch().");
+    if (typeof this.requestImpl !== "function") {
+      throw new Error("Supabase session store transport is unavailable.");
     }
   }
 
@@ -52,25 +53,25 @@ class SupabaseRestSessionStore extends session.Store {
     }
     if (prefer) headers.Prefer = prefer;
 
-    const response = await this.fetchImpl(
+    const result = await this.requestImpl(
       this.#queryUrl(params),
       {
         method,
         headers,
-        ...(body === undefined || body === null
-          ? {}
-          : { body: JSON.stringify(body) })
-      }
+        ...(body === undefined || body === null ? {} : { data: body })
+      },
+      { allowHttpErrors: true }
     );
 
-    if (!response || response.ok !== true) {
-      const status = response && Number.isInteger(response.status)
-        ? response.status
+    if (!result || !Number.isInteger(result.status) ||
+        result.status < 200 || result.status >= 300) {
+      const status = result && Number.isInteger(result.status)
+        ? result.status
         : "unknown";
       throw new Error("Supabase session store request failed (HTTP " + status + ").");
     }
 
-    return response;
+    return result.data;
   }
 
   #expiresAt(sess) {
@@ -112,7 +113,7 @@ class SupabaseRestSessionStore extends session.Store {
 
   get(sid, callback) {
     this.#run(async () => {
-      const response = await this.#request(
+      const rows = await this.#request(
         "GET",
         {
           sid: "eq." + sid,
@@ -121,7 +122,6 @@ class SupabaseRestSessionStore extends session.Store {
         }
       );
 
-      const rows = await response.json();
       const row = Array.isArray(rows) ? rows[0] : null;
       if (!row) return null;
 
