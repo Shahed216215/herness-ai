@@ -308,6 +308,30 @@ async function main() {
   assert.equal(malformed.reason, "SEARCH_RESULT_FORMAT_INVALID");
 
   console.log("PASS: malformed search evidence fails closed");
+
+  nextExecution = {
+    success: true,
+    results: [{
+      tool: "web_search",
+      result: JSON.stringify([{
+        title: "Unlinked search result",
+        snippet: "A snippet without a verifiable source URL."
+      }]),
+      verification: { passed: true }
+    }]
+  };
+  const incomplete = await runSeoResearch(validInput, trustedContext, {
+    consentService,
+    executeWork: async (...args) => {
+      calls.push(args);
+      return nextExecution;
+    }
+  });
+  assert.equal(incomplete.success, false);
+  assert.equal(incomplete.status, "INCONCLUSIVE");
+  assert.equal(incomplete.reason, "NO_COMPLETE_SOURCE_EVIDENCE");
+  console.log("PASS: results without complete URL/title/snippet evidence fail closed");
+
   console.log("MOCK_EXECUTION_CALLS=" + calls.length);
   console.log("REAL_TOOL_EXECUTION=NO");
   console.log("NETWORK_CALLS=0");
