@@ -1,6 +1,6 @@
 -- MIRA HFM Project Selection Reader — narrow staging-only RLS policy.
 -- SOURCE-ONLY DRAFT. Do not execute on production.
--- Apply only after staging schema/policy/grant inventory and explicit approval.
+-- One-shot draft: apply only after staging schema/policy/grant inventory and explicit approval; do not reapply.
 -- This migration creates a NOLOGIN group role and SELECT-only access.
 -- A dedicated LOGIN role must be created separately and granted membership manually.
 -- No owner, membership, authority, or memory data is inserted or modified.
