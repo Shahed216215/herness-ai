@@ -34,12 +34,24 @@ const searches = [
   }
 ];
 
-const report = analyzeCompetitorSearches(searches, "https://oursite.example/");
+const report = analyzeCompetitorSearches(
+  searches,
+  "https://oursite.example/",
+  ["https://www.alpha.example/"]
+);
 assert.equal(report.success, true);
 assert.equal(report.searchCount, 2);
 assert.equal(report.competitorDomainCount, 3);
 assert.equal(report.competitorDomains[0].domain, "alpha.example");
 assert.equal(report.competitorDomains[0].queryCoverageCount, 2);
+assert.equal(
+  report.competitorDomains[0].competitorClassification,
+  "CLIENT_CONFIRMED_COMPETITOR"
+);
+assert.equal(
+  report.competitorDomains[1].competitorClassification,
+  "UNCONFIRMED_RESEARCH_CANDIDATE"
+);
 assert.equal(report.queryReports[0].ownDomainVisible, true);
 assert.equal(report.queryReports[1].ownDomainVisible, false);
 assert.equal(report.candidateOpportunities[1].candidateOpportunity, true);
@@ -47,6 +59,13 @@ assert.equal(report.freshness.status, "UNKNOWN");
 assert.ok(report.limitations.some(item => /not Google organic ranking/.test(item)));
 assert.equal(normalizeDomain("https://www.Example.com/path"), "example.com");
 assert.equal(normalizeDomain("javascript:alert(1)"), null);
+assert.equal(normalizeDomain("https://user:pass@example.com"), null);
+assert.equal(normalizeDomain("not a valid domain"), null);
+assert.throws(() => analyzeCompetitorSearches(
+  searches,
+  "https://oursite.example/",
+  ["not a valid domain"]
+), /CONFIRMED_COMPETITOR_DOMAIN_INVALID/);
 assert.throws(() => analyzeCompetitorSearches([]), /1_TO_6/);
 assert.throws(() => analyzeCompetitorSearches([{
   query: "x",
