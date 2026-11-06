@@ -1,21 +1,16 @@
 "use strict";
 
-const PRINCIPAL_ISSUER = "mira-local-session-auth";
-const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 8;
+const { normalizeTrustedActorIdentity } = require("./mira-memory-host-identity-contract");
 const STABLE_SUBJECT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function unavailable(reason) {
-  return Object.freeze({
-    status: "IDENTITY_UNAVAILABLE",
-    actor: null,
-    reason
-  });
+  return Object.freeze({ status: "IDENTITY_UNAVAILABLE", actor: null, reason });
 }
 
 /*
- * Resolve a canonical principal envelope only from server-issued session state.
- * Never derive identity from model/tool arguments, email, display name, or role alone.
- * Shared bearer credentials and legacy sessions deliberately fail closed.
+ * Resolve a canonical principal only from server-issued authenticated session state.
+ * This does not authenticate bearer tokens or authorize project operations.
+ * Model/tool arguments, email, display name, and role-only claims are never identity.
  */
 function buildTrustedActorContext(req) {
   const session = req && req.session;
@@ -30,9 +25,13 @@ function buildTrustedActorContext(req) {
   if (!principal || typeof principal !== "object" || Array.isArray(principal)) {
     return unavailable("SERVER_ISSUED_PRINCIPAL_REQUIRED");
   }
-  if (principal.issuer !== PRINCIPAL_ISSUER ||
-      principal.actorType !== role ||
-      principal.authenticationMethod !== "password_session" ||
+
+  const expectedIssuer = role === "admin" ? "mira.admins" : "mira.users";
+  const expectedMethod = role === "admin" ? "ADMIN_SUBJECT" : "USER_SESSION";
+  if (principal.verified !== true ||
+      principal.issuer !== expectedIssuer ||
+      principal.actorType !== "HUMAN" ||
+      principal.authenticationMethod !== expectedMethod ||
       typeof principal.subject !== "string" ||
       !STABLE_SUBJECT_PATTERN.test(principal.subject) ||
       typeof sessionId !== "string" || !sessionId ||
@@ -40,33 +39,23 @@ function buildTrustedActorContext(req) {
     return unavailable("PRINCIPAL_ENVELOPE_INVALID");
   }
 
-  const authenticatedAt = Date.parse(principal.authenticatedAt);
-  const expiresAt = Date.parse(principal.expiresAt);
-  const now = Date.now();
-  if (!Number.isFinite(authenticatedAt) || !Number.isFinite(expiresAt) ||
-      authenticatedAt > now + 60000 || expiresAt <= now ||
-      expiresAt <= authenticatedAt ||
-      expiresAt - authenticatedAt > SESSION_MAX_AGE_MS) {
-    return unavailable("PRINCIPAL_VALIDITY_WINDOW_INVALID");
+  let normalized;
+  try {
+    normalized = normalizeTrustedActorIdentity({
+      verifiedPrincipal: principal,
+      now: new Date()
+    });
+  } catch (_error) {
+    return unavailable("PRINCIPAL_NORMALIZATION_FAILED");
   }
-
-  const canonicalPrincipal = Object.freeze({
-    issuer: principal.issuer,
-    subject: principal.subject,
-    actorType: principal.actorType,
-    authenticationMethod: principal.authenticationMethod,
-    authenticationRef: principal.authenticationRef,
-    authenticatedAt: new Date(authenticatedAt).toISOString(),
-    expiresAt: new Date(expiresAt).toISOString()
-  });
 
   return Object.freeze({
     status: "ACTOR_RESOLVED",
     actor: Object.freeze({
-      actorId: canonicalPrincipal.subject,
+      actorId: normalized.actorId,
       role,
       authentication: "session",
-      principal: canonicalPrincipal
+      principal: normalized
     })
   });
 }
