@@ -67,9 +67,9 @@ test('writer pool stays disabled unless an explicit feature flag is enabled', as
 });
 
 test('writer config rejects missing URL, invalid role and non-Neon hosts', () => {
-  assert.throws(
-    () => runtime.getMemoryWriterConfig({ ...validEnv, MIRA_HFM_MEMORY_DATABASE_URL: '' }),
-    error => error.code === 'MEMORY_WRITER_DATABASE_URL_NOT_CONFIGURED'
+  assert.deepEqual(
+    runtime.getMemoryWriterConfig({ ...validEnv, MIRA_HFM_MEMORY_DATABASE_URL: '' }),
+    { enabled: false, reason: 'MEMORY_WRITER_DATABASE_URL_NOT_CONFIGURED' }
   );
   assert.throws(
     () => runtime.getMemoryWriterConfig({ ...validEnv, MIRA_HFM_MEMORY_WRITER_ROLE: 'bad role' }),
@@ -78,7 +78,7 @@ test('writer config rejects missing URL, invalid role and non-Neon hosts', () =>
   assert.throws(
     () => runtime.getMemoryWriterConfig({
       ...validEnv,
-      MIRA_HFM_MEMORY_DATABASE_URL: 'postgresql://writer:secret@db.example.com/neondb?sslmode=require'
+      MIRA_HFM_MEMORY_DATABASE_URL: 'postgresql://writer:placeholder@db.example.com/neondb?sslmode=require'
     }),
     error => error.code === 'DATABASE_HOST_NOT_ALLOWLISTED'
   );
