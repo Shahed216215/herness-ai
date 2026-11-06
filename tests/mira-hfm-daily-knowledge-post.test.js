@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
   buildDailyKnowledgePost,
+  saveDailyKnowledgePost,
   dateInTimeZone,
   redactObviousSensitiveText
 } = require('../services/mira-hfm-daily-knowledge-post');
@@ -111,6 +112,81 @@ test('daily post contains only same-project active private activity and learning
   assert.equal(result.reviewRequired, true);
   assert.equal(result.autoPublish, false);
   assert.equal(validateCanonicalRecord(result.draft).valid, true);
+});
+
+test('daily post ID and idempotency key are stable for the same project and local date', () => {
+  const input = {
+    records: [sourceRecord({ memoryId: 'stable-source-01' })],
+    projectId: 'project-001',
+    localDate: '2026-11-06',
+    now
+  };
+  const first = buildDailyKnowledgePost(input);
+  const second = buildDailyKnowledgePost(input);
+  assert.equal(first.draft.memoryId, second.draft.memoryId);
+  assert.equal(first.idempotencyKey, second.idempotencyKey);
+});
+
+test('saving a daily draft requires an explicit private-write grant', async () => {
+  await assert.rejects(
+    saveDailyKnowledgePost({
+      records: [sourceRecord()],
+      projectId: 'project-001',
+      localDate: '2026-11-06',
+      now
+    }),
+    error => error.code === 'HFM_DAILY_POST_PRIVATE_WRITE_NOT_GRANTED'
+  );
+});
+
+test('daily post persists only through the authority-scoped encrypted repository', async () => {
+  const crypto = require('node:crypto');
+  const env = {
+    MIRA_VAULT_ACTIVE_KEK_VERSION: 'v1',
+    MIRA_VAULT_KEK_V1: crypto.randomBytes(32).toString('base64')
+  };
+  const preview = buildDailyKnowledgePost({
+    records: [sourceRecord({ content: 'Practised Python functions.' })],
+    projectId: 'project-001',
+    localDate: '2026-11-06',
+    now
+  });
+  const context = {
+    actorId: 'mira:mira.users:11111111-1111-4111-8111-111111111111',
+    projectId: 'project-001',
+    operation: 'memory.write',
+    requestId: 'daily-post-request-001',
+    resource: 'memory:' + preview.draft.memoryId,
+    purpose: 'save reviewed daily knowledge draft',
+    authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY'
+  };
+  const calls = [];
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith('SELECT event_hash')) return { rowCount: 0, rows: [] };
+      return { rowCount: 1, rows: [{}] };
+    }
+  };
+  const result = await saveDailyKnowledgePost({
+    records: [sourceRecord({ content: 'Practised Python functions.' })],
+    projectId: 'project-001',
+    localDate: '2026-11-06',
+    now,
+    client,
+    context,
+    allowPrivateWrite: true,
+    env
+  });
+  assert.equal(result.status, 'DRAFT_READY');
+  assert.equal(result.saved.status, 'CREATED');
+  const insert = calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_records'));
+  assert.ok(insert);
+  assert.equal(insert.params[10], null);
+  assert.equal(insert.params[11].includes('Practised Python functions.'), false);
+  assert.equal(result.reviewRequired, true);
+  assert.equal(result.autoPublish, false);
 });
 
 test('daily post is not created when no eligible records exist', () => {
