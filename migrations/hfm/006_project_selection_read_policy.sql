@@ -48,6 +48,30 @@ BEGIN
     RAISE EXCEPTION 'HFM_PROJECT_READER_POLICY_NAME_COLLISION';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policy p
+    JOIN pg_class c ON c.oid = p.polrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'mira_hfm'
+      AND c.relname IN ('project_owners', 'project_memberships')
+      AND 0 = ANY(p.polroles)
+  ) THEN
+    RAISE EXCEPTION 'HFM_PROJECT_SELECTION_PUBLIC_POLICY_EXISTS';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policy p
+    JOIN pg_class c ON c.oid = p.polrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'mira_hfm'
+      AND c.relname IN ('project_owners', 'project_memberships')
+      AND (SELECT oid FROM pg_roles WHERE rolname = 'mira_hfm_project_reader') = ANY(p.polroles)
+  ) THEN
+    RAISE EXCEPTION 'HFM_PROJECT_READER_PREEXISTING_POLICY_EXISTS';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
