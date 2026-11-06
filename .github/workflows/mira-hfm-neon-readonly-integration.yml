@@ -1,0 +1,35 @@
+name: Mira HFM Neon read-only integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mira-hfm-neon-readonly-integration
+  cancel-in-progress: false
+
+jobs:
+  disposable-neon-readonly:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout trusted default-branch revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Run offline adapter unit tests
+        run: node tests/mira-hfm-postgres-adapter.test.js
+      - name: Run live read-only Neon adapter integration
+        env:
+          MIRA_HFM_TEST_DATABASE_URL: ${{ secrets.MIRA_HFM_TEST_DATABASE_URL }}
+        run: npm run test:hfm-neon-readonly
