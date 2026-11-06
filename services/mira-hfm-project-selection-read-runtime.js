@@ -89,7 +89,7 @@ const PREFLIGHT_SQL = [
   "AND (EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'project_memberships'",
   "AND policyname = 'hfm_project_reader_own_membership_select' AND cmd = 'SELECT' AND permissive = 'PERMISSIVE'",
   "AND roles = ARRAY[$1]::name[] AND with_check IS NULL",
-  "AND regexp_replace(regexp_replace(lower(qual), '[[:space:]()]', '', 'g'), '::[a-z_]+', '', 'g') = '((project_id=nullif(current_setting(''mira.project_id'',true),''''))and(actor_id=nullif(current_setting(''mira.actor_id'',true),''''))and(status=''active'')and(valid_from<=clock_timestamp())and((expires_atisnull)or(expires_at>clock_timestamp())))')",
+  "AND regexp_replace(regexp_replace(lower(qual), '[[:space:]]', '', 'g'), '::[a-z_]+', '', 'g') = '((project_id=nullif(current_setting(''mira.project_id'',true),''''))and(actor_id=nullif(current_setting(''mira.actor_id'',true),''''))and(status=''active'')and(valid_from<=clock_timestamp())and((expires_atisnull)or(expires_at>clock_timestamp())))')",
   "AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm'",
   "AND tablename IN ('project_owners','project_memberships') AND 'public' = ANY(roles))",
   "AND (SELECT count(*) = 2 FROM pg_policies WHERE schemaname = 'mira_hfm'",
