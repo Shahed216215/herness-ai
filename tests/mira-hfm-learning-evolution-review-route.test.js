@@ -7,7 +7,7 @@ const Module = require('node:module');
 // not Express internals, HTTP sockets, middleware packages or network access.
 const originalLoad = Module._load;
 function makeRouter() {
-  const router = { stack: [] };
+  const router = { stack: [], use(...handlers) { router.middleware = handlers; return router; } };
   for (const method of ['get', 'post']) {
     router[method] = (routePath, ...handlers) => {
       router.stack.push({
