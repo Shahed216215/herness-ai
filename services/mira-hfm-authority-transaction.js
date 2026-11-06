@@ -70,7 +70,7 @@ async function executeWithConsumedAuthority(options = {}) {
     const membershipResult = await client.query(
       "SELECT membership_id, project_id, actor_id, permissions, status, revision, " +
       "valid_from, expires_at FROM mira_hfm.project_memberships " +
-      "WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' FOR UPDATE",
+      "WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp()) FOR UPDATE",
       [request.projectId, request.actorId]
     );
     const membership = membershipResult.rows && membershipResult.rows[0];
