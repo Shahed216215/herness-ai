@@ -54,11 +54,11 @@ test('immutable version rows preserve canonical type and classification constrai
   const start = sql.indexOf('CREATE TABLE IF NOT EXISTS mira_hfm.memory_record_versions');
   const end = sql.indexOf('CREATE TABLE IF NOT EXISTS mira_hfm.memory_operation_registry');
   const versions = sql.slice(start, end);
-  assert.match(versions, /record_type TEXT NOT NULL[\\s\\S]*?CHECK \\(record_type IN/);
-  assert.match(versions, /schema_version = '1.0.0'[\\s\\S]*?research_reference/);
-  assert.match(versions, /client_vault_record', 'financial_vault_record'[\\s\\S]*?classification = 'RESTRICTED'/);
-  assert.match(versions, /daily_activity', 'learning_note', 'social_post_draft'[\\s\\S]*?classification = 'PROJECT_PRIVATE'/);
-  assert.match(versions, /jsonb_typeof\\(public_payload -> 'content'\\) = 'string'/);
+  assert.match(versions, /record_type TEXT NOT NULL[\s\S]*?CHECK \(record_type IN/);
+  assert.match(versions, /schema_version = '1.0.0'[\s\S]*?research_reference/);
+  assert.match(versions, /client_vault_record', 'financial_vault_record'[\s\S]*?classification = 'RESTRICTED'/);
+  assert.match(versions, /daily_activity', 'learning_note', 'social_post_draft'[\s\S]*?classification = 'PROJECT_PRIVATE'/);
+  assert.match(versions, /jsonb_typeof\(public_payload -> 'content'\) = 'string'/);
 });
 
 
