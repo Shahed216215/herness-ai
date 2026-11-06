@@ -5,14 +5,14 @@ const crypto = require('node:crypto');
 const ENVELOPE_VERSION = '1';
 const ALGORITHM = 'AES-256-GCM';
 const MAX_PLAINTEXT_BYTES = 1024 * 1024;
-const CONTEXT_FIELDS = Object.freeze([
-  'recordId',
-  'ownerId',
-  'projectId',
-  'recordType',
-  'classification',
-  'schemaVersion'
-]);
+const CONTEXT_LIMITS = Object.freeze({
+  recordId: 128,
+  ownerId: 512,
+  projectId: 128,
+  recordType: 64,
+  classification: 32,
+  schemaVersion: 32
+});
 
 function fail(code) {
   const error = new Error(code);
@@ -31,11 +31,13 @@ function validateContext(context) {
   if (!context || typeof context !== 'object' || Array.isArray(context)) {
     throw fail('MIRA_VAULT_CONTEXT_INVALID');
   }
-  for (const field of CONTEXT_FIELDS) {
-    const max = field === 'schemaVersion' ? 32 : 256;
+  for (const [field, max] of Object.entries(CONTEXT_LIMITS)) {
     if (!boundedText(context[field], max)) {
       throw fail('MIRA_VAULT_CONTEXT_INVALID');
     }
+  }
+  if (context.recordId.length < 8) {
+    throw fail('MIRA_VAULT_CONTEXT_INVALID');
   }
   if (context.classification !== 'RESTRICTED') {
     throw fail('MIRA_VAULT_CONTEXT_CLASSIFICATION_INVALID');
