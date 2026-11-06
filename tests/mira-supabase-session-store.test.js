@@ -35,13 +35,13 @@ async function main() {
     }
 
     if (method === "GET") {
-      const sid = url.searchParams.get("sid").slice(4);
+      const sid = url.searchParams.get("sid").slice(3);
       const record = rows.get(sid);
       return response(record ? [record] : []);
     }
 
     if (method === "PATCH") {
-      const sid = url.searchParams.get("sid").slice(4);
+      const sid = url.searchParams.get("sid").slice(3);
       const record = rows.get(sid);
       if (record) Object.assign(record, JSON.parse(options.body));
       return response(null, 204);
@@ -49,7 +49,7 @@ async function main() {
 
     if (method === "DELETE") {
       const sidFilter = url.searchParams.get("sid");
-      if (sidFilter) rows.delete(sidFilter.slice(4));
+      if (sidFilter) rows.delete(sidFilter.slice(3));
       else {
         const expiryFilter = url.searchParams.get("expire");
         if (expiryFilter) {
