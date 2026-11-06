@@ -83,6 +83,8 @@ const registerAutonomousLearningRoutes =
   require("./routes/autonomous-learning");
 const registerMiraResearchGovernanceRoutes =
   require("./routes/mira-research-governance");
+const registerFacebookPageConnectorRoutes =
+  require("./routes/mira-facebook-page-connector");
 
 const registerMiraEvolutionRoutes =
   require("./routes/mira-evolution");
@@ -217,6 +219,11 @@ registerAutonomousLearningRoutes(
   PERMISSIONS
 );
 registerMiraResearchGovernanceRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+registerFacebookPageConnectorRoutes(
   app,
   requireAdminPermission,
   PERMISSIONS
