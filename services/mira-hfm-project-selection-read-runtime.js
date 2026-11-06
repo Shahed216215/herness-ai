@@ -47,6 +47,9 @@ const PREFLIGHT_SQL = [
   "WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND granted.rolname <> $1) AS role_membership_isolated,",
   "NOT EXISTS (SELECT 1 FROM pg_auth_members m",
   "WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = $1)) AS reader_group_has_no_parent_roles,",
+  "(SELECT rolinherit = false FROM pg_roles WHERE rolname = $1) AS reader_group_noinherit,",
+  "NOT EXISTS (SELECT 1 FROM pg_shdepend d WHERE d.refclassid = 'pg_authid'::regclass",
+  "AND d.refobjid = (SELECT oid FROM pg_roles WHERE rolname = $1) AND d.deptype = 'o') AS reader_group_owns_no_objects,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
@@ -81,7 +84,8 @@ const PREFLIGHT_SQL = [
 
 const REQUIRED_TRUE = Object.freeze([
   "can_login", "has_project_reader_group", "role_membership_isolated",
-  "reader_group_has_no_parent_roles", "schema_usage", "owners_select", "memberships_select",
+  "reader_group_has_no_parent_roles", "reader_group_noinherit", "reader_group_owns_no_objects",
+  "schema_usage", "owners_select", "memberships_select",
   "project_rls_forced", "project_policies_present"
 ]);
 const REQUIRED_FALSE = Object.freeze([
