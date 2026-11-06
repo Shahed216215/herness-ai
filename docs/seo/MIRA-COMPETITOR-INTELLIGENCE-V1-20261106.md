@@ -21,6 +21,10 @@ The workflow fails closed if any expected search result is missing, unverified, 
 - Candidate search-coverage opportunities when the own domain is absent from a returned sample.
 - Explicit unknown freshness when the provider contract supplies no verified publication/retrieval timestamp.
 
+## Zero-purchased-API operating policy
+
+The current implementation reuses the repository's existing governed `web_search` capability. It does not require the user to buy or configure a separate SEO/SERP API key, and it does not add a paid provider dependency. Successful research responses expose `costPolicy` metadata so the UI can distinguish the absence of a separately purchased API requirement from the host platform's own usage limits or possible account-level charges. The service deliberately reports provider usage cost as `NOT_EXPOSED_BY_HOST_PLATFORM`; it does not promise that all ChatGPT/host usage is unlimited or free. If the existing search capability is unavailable or blocked, the workflow must return BLOCKED/INCONCLUSIVE rather than silently switching to a paid API.
+
 ## Interpretation constraints
 
 - A domain in a search sample is a research candidate, not verified proof of a direct commercial competitor.
