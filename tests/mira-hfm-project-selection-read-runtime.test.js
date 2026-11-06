@@ -65,8 +65,8 @@ for (const patch of [
 console.log("PROJECT_READ_PREFLIGHT_REJECTS_UNSAFE_ROLE_OR_RLS=PASS");
 
 assert.match(runtime.PREFLIGHT_SQL, /pg_policies/);
-assert.match(runtime.PREFLIGHT_SQL, /mira\\.project_id/);
-assert.match(runtime.PREFLIGHT_SQL, /mira\\.actor_id/);
+assert.match(runtime.PREFLIGHT_SQL, /mira\.project_id/);
+assert.match(runtime.PREFLIGHT_SQL, /mira\.actor_id/);
 assert.match(runtime.PREFLIGHT_SQL, /has_project_reader_group/);
 assert.match(runtime.PREFLIGHT_SQL, /relforcerowsecurity = true/);
 assert.match(runtime.PREFLIGHT_SQL, /has_table_privilege/);
