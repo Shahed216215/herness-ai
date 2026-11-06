@@ -283,6 +283,7 @@ function generateSeoReport(input = {}) {
 
   lines.push("", "## Methodology and limitations", "",
     "- This report is generated from supplied audit, Search Console CSV and research evidence only.",
+    "- Competitor research payload provenance is not independently verified by this report endpoint; validate it against the original governed research response.",
     "- It does not fetch or crawl websites, sign in to Google, call paid APIs, publish content or modify a website.",
     "- Competitor research samples are not Google organic rankings or proof of direct competitors.",
     "- Content gap labels are review candidates, not confirmed missing content or guaranteed ranking opportunities.",
@@ -310,6 +311,7 @@ function generateSeoReport(input = {}) {
     },
     limitations: [
       "Only supplied evidence is included; missing inputs are not inferred.",
+      "Competitor research payload provenance is not independently verified against the original provider execution.",
       "Report generation does not validate the authenticity or completeness of supplied exports.",
       "Human review is required before external delivery."
     ]
