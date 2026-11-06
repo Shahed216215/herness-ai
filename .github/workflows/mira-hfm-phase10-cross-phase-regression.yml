@@ -83,7 +83,7 @@ jobs:
         run: |
           set -euo pipefail
           docker exec -i "$PG_CONTAINER" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 <<'SQL'
-          DO $
+          DO $block$
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN
               CREATE ROLE anon NOLOGIN;
@@ -95,8 +95,7 @@ jobs:
               CREATE ROLE service_role NOLOGIN;
             END IF;
           END
-          $;
-          ALTER ROLE service_role BYPASSRLS;
+          $block$;
           SQL
       - name: Apply migrations to ephemeral PostgreSQL only
         run: |
