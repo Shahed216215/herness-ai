@@ -139,4 +139,4 @@ Exact-head run 42152153722 passed all configured offline suites (`TESTS_FAILED=0
 
 ### Current overall decision
 
-The corrected Phase 6→7→8→9 restack is present in PRs #43→#44→#45→#48, all draft/open/unmerged. Phase 10 documentation has been restacked on current Phase 9 head in PR #49 (once opened). Phase 10 remains **INCONCLUSIVE / NOT_CERTIFIED**. Production deployment, Supabase migration, live provider testing, backup restore, independent security review and merge remain separate gates requiring explicit authorization and evidence.
+The corrected Phase 6→7→8→9 restack is present in PRs #43→#44→#45→#48, all draft/open/unmerged. Phase 10 documentation has been restacked on current Phase 9 head in PR #49. Phase 10 remains **INCONCLUSIVE / NOT_CERTIFIED**. Production deployment, Supabase migration, live provider testing, backup restore, independent security review and merge remain separate gates requiring explicit authorization and evidence.
