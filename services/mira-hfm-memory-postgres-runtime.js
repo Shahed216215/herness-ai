@@ -68,6 +68,7 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.memory_audit_events', 'TRUNCATE') AS memory_audit_truncate,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'UPDATE') AS authority_audit_update,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS authority_audit_delete,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS authority_audit_truncate,",
   "has_sequence_privilege(current_user, 'mira_hfm.memory_audit_events_event_sequence_seq', 'USAGE') AS audit_sequence_usage,",
   '(SELECT count(*) = 4 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN " +
@@ -93,7 +94,8 @@ const REQUIRED_FALSE = Object.freeze([
   'versions_update', 'versions_delete', 'versions_truncate',
   'operations_delete', 'operations_truncate',
   'memory_audit_update', 'memory_audit_delete', 'memory_audit_truncate',
-  'authority_audit_update', 'authority_audit_delete'
+  'authority_audit_update', 'authority_audit_delete', 'authority_audit_truncate', 'schema_create',
+  'can_create_roles', 'can_create_databases'
 ]);
 
 function verifyWriterPreflight(row, config) {
