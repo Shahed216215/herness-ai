@@ -141,3 +141,21 @@ Source-only draft: `migrations/hfm/004_memory_repository_schema.sql`.
 `CLIENT_FINANCIAL_VAULT=CRYPTO_PRIMITIVE_ONLY`
 `PRODUCTION_DATABASE_WRITE=NOT_APPROVED`
 `DEPLOYMENT=NOT_APPROVED`
+
+
+## 11. User-controlled social draft Copy and recoverable Delete
+
+The user confirmed this workflow:
+1. Mira saves each daily/social draft in Neon.
+2. The user clicks Copy; the browser copies only the selected draft body after the explicit click.
+3. The user manually publishes the copied text in Facebook.
+4. The user returns to Mira and clicks Delete for that draft.
+
+Implementation contract:
+- Copy must use a user-initiated clipboard action and report success only after the clipboard operation succeeds. Copy does not mean published.
+- A draft may be marked `copied` only after clipboard success. It may be marked `published_by_user` only after the user explicitly confirms that they published it.
+- Before Copy, show the exact text and run a conservative sensitive-data check. Client identity/contact, private project details, credentials, and financial/transaction data must never be included in a social draft. Flag uncertain cases for user review; do not silently publish/copy sensitive text.
+- Delete means a recoverable soft-delete in Neon: set lifecycle to `TRASHED`, record `trashed_at` and `trashed_by_actor_id`, append a sanitized audit event, and preserve an immutable revision.
+- Normal Memory/Draft lists exclude TRASHED records; a separate Trash view allows restore. Restore is an audited revision that returns the record to an allowed active state.
+- No automatic permanent purge or retention timer is authorized. Permanent deletion requires a separate explicit user decision and a reviewed retention/purge design.
+- The migration's hard-delete guard remains in place; no physical DELETE is used by the UI.
