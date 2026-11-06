@@ -1,0 +1,52 @@
+name: Mira HFM Render-base identity guard
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work/hfm-phase2-identity-guard-render-base-20261106
+      - feature/hfm-neon-postgres-adapter
+  pull_request:
+    branches:
+      - work/render-host-binding-env-compat-audit
+      - work/hfm-phase2-identity-guard-render-base-20261106
+
+permissions:
+  contents: read
+
+jobs:
+  identity-context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax-check changed runtime files
+        run: |
+          node --check server.js
+          node --check services/mira-hfm-runtime-identity-context.js
+          node --check services/mira-work-execution-engine.js
+          node --check services/tool-runner.js
+          node --check tools/index.js
+          node --check services/mira-hfm-postgres.js
+      - name: Run canonical host identity contract tests
+        run: node tests/mira-memory-host-identity-contract.test.js
+      - name: Run fail-closed identity and dispatch tests
+        run: node tests/mira-hfm-runtime-identity-context.test.js
+      - name: Run project authority schema source contract test
+        run: node tests/mira-hfm-project-authority-schema-contract.test.js
+      - name: Run Neon PostgreSQL adapter unit tests
+        run: node tests/mira-hfm-postgres-adapter.test.js
+
+  repository-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run repository regression suite
+        run: npm test
