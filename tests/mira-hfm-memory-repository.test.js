@@ -1,0 +1,230 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const crypto = require('node:crypto');
+const repository = require('../services/mira-hfm-memory-repository');
+const { createContentHash } = require('../services/mira-hfm-record-schema');
+
+const now = '2026-11-06T12:00:00.000Z';
+const env = {
+  MIRA_VAULT_ACTIVE_KEK_VERSION: 'v1',
+  MIRA_VAULT_KEK_V1: crypto.randomBytes(32).toString('base64')
+};
+const context = Object.freeze({
+  actorId: 'mira:mira.users:11111111-1111-4111-8111-111111111111',
+  projectId: 'project-001',
+  operation: 'memory.write',
+  requestId: 'request-001',
+  resource: 'memory:record-0001',
+  purpose: 'approved memory write',
+  authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY'
+});
+
+function record(overrides = {}) {
+  const value = {
+    schemaVersion: '1.1.0',
+    memoryId: 'record-0001',
+    projectId: 'project-001',
+    recordType: 'daily_activity',
+    content: 'Completed the approved project review.',
+    source: {
+      sourceType: 'internal_system',
+      sourceId: 'mira-session-001',
+      observedAt: now
+    },
+    timestamps: { createdAt: now, updatedAt: now },
+    version: { revision: 1, contentHash: createContentHash('Completed the approved project review.') },
+    integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
+    trust: { status: 'SOURCE_RECORDED' },
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] },
+    lifecycle: 'ACTIVE'
+  };
+  return { ...value, ...overrides };
+}
+
+function fakeClient(handlers = {}) {
+  const calls = [];
+  return {
+    calls,
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      if (handlers.query) return handlers.query(sql, params, calls);
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) {
+        return { rowCount: 1, rows: [{ operation_id: params[0] }] };
+      }
+      if (sql.startsWith('SELECT event_hash')) return { rowCount: 0, rows: [] };
+      if (sql.startsWith('UPDATE mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [{}] };
+      return { rowCount: 1, rows: [{}] };
+    }
+  };
+}
+
+test('create requires a consumed authority context and the same transaction client', async () => {
+  const client = fakeClient();
+  await assert.rejects(
+    repository.createMemoryRecord({ client, context: { ...context, authorityContext: undefined }, record: record(), idempotencyKey: 'idem-1', allowPrivateWrite: true, env }),
+    error => error.code === 'HFM_MEMORY_CONSUMED_AUTHORITY_CONTEXT_REQUIRED'
+  );
+  await assert.rejects(
+    repository.createMemoryRecord({ client, context, record: record({ projectId: 'other-project' }), idempotencyKey: 'idem-2', allowPrivateWrite: true, env }),
+    error => error.code === 'HFM_MEMORY_PROJECT_SCOPE_MISMATCH'
+  );
+  assert.equal(client.calls.length, 0);
+});
+
+test('private memory is encrypted before any database insert', async () => {
+  const client = fakeClient();
+  const result = await repository.createMemoryRecord({
+    client, context, record: record(), idempotencyKey: 'idem-private-1',
+    allowPrivateWrite: true, env
+  });
+  assert.equal(result.status, 'CREATED');
+  const insert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_records'));
+  assert.ok(insert);
+  assert.equal(insert.params[10], null);
+  assert.equal(typeof insert.params[11], 'string');
+  assert.equal(insert.params[11].includes('Completed the approved project review.'), false);
+  assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions')));
+  assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
+  assert.ok(client.calls.some(call => call.sql.startsWith('UPDATE mira_hfm.memory_operation_registry')));
+});
+
+test('private and restricted writes fail closed without explicit classification grants', async () => {
+  const client = fakeClient();
+  await assert.rejects(
+    repository.createMemoryRecord({ client, context, record: record(), idempotencyKey: 'idem-no-private', env }),
+    error => error.code === 'HFM_MEMORY_PRIVATE_WRITE_NOT_GRANTED'
+  );
+  const restricted = record({
+    recordType: 'client_vault_record',
+    content: JSON.stringify({ clientName: 'Example Client', notes: 'confidential' }),
+    version: { revision: 1, contentHash: createContentHash(JSON.stringify({ clientName: 'Example Client', notes: 'confidential' })) },
+    access: { classification: 'RESTRICTED', allowedProjectIds: ['project-001'] }
+  });
+  await assert.rejects(
+    repository.createMemoryRecord({ client, context, record: restricted, idempotencyKey: 'idem-no-restricted', env }),
+    error => error.code === 'HFM_MEMORY_RESTRICTED_WRITE_NOT_GRANTED'
+  );
+  assert.equal(client.calls.length, 0);
+});
+
+test('public memory remains plaintext and searchable without writing an encrypted envelope', async () => {
+  const client = fakeClient();
+  const publicRecord = record({
+    recordType: 'knowledge_item',
+    content: 'Public research note.',
+    version: { revision: 1, contentHash: createContentHash('Public research note.') },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+  });
+  const result = await repository.createMemoryRecord({
+    client, context, record: publicRecord, idempotencyKey: 'idem-public-1', env
+  });
+  const insert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_records'));
+  assert.equal(result.status, 'CREATED');
+  assert.equal(insert.params[10].includes('Public research note.'), true);
+  assert.equal(insert.params[11], null);
+});
+
+test('completed idempotency key returns the original result without a second write', async () => {
+  const client = fakeClient({
+    query(sql) {
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 0, rows: [] };
+      if (sql.startsWith('SELECT operation_id')) return { rowCount: 1, rows: [{
+        operation_id: 'operation-existing', actor_id: context.actorId, operation: 'memory.write',
+        resource: 'memory:record-0001', purpose: context.purpose,
+        payload_digest: repository.digest(record()), status: 'COMPLETED', result_code: 'record-0001'
+      }] };
+      throw new Error('unexpected SQL');
+    }
+  });
+  const result = await repository.createMemoryRecord({
+    client, context, record: record(), idempotencyKey: 'idem-existing',
+    allowPrivateWrite: true, env
+  });
+  assert.deepEqual(result, { status: 'ALREADY_COMMITTED', memoryId: 'record-0001', duplicate: true });
+  assert.equal(client.calls.length, 2);
+});
+
+test('private read requires explicit authorization and verifies encrypted record context', async () => {
+  const privateRecord = record();
+  const { createVaultEnvelope } = require('../services/mira-hfm-vault-crypto');
+  const envelope = createVaultEnvelope({
+    record: privateRecord,
+    context: {
+      recordId: privateRecord.memoryId,
+      ownerId: context.actorId,
+      projectId: privateRecord.projectId,
+      recordType: privateRecord.recordType,
+      classification: 'PROJECT_PRIVATE',
+      schemaVersion: privateRecord.schemaVersion
+    },
+    env
+  });
+  const row = {
+    memory_id: privateRecord.memoryId, project_id: privateRecord.projectId,
+    owner_actor_id: context.actorId, record_type: privateRecord.recordType,
+    schema_version: privateRecord.schemaVersion, classification: 'PROJECT_PRIVATE',
+    lifecycle: 'ACTIVE', revision: 1, integrity_status: 'VERIFIED',
+    trust_status: 'SOURCE_RECORDED', public_payload: null, encrypted_envelope: envelope
+  };
+  const client = fakeClient({ query: async sql => sql.startsWith('SELECT memory_id')
+    ? { rowCount: 1, rows: [row] } : { rowCount: 1, rows: [] } });
+  await assert.rejects(
+    repository.getMemoryRecord({ client, context: { ...context, operation: 'memory.read' }, memoryId: row.memory_id, env }),
+    error => error.code === 'HFM_MEMORY_PRIVATE_READ_NOT_GRANTED'
+  );
+  const result = await repository.getMemoryRecord({
+    client, context: { ...context, operation: 'memory.read' },
+    memoryId: row.memory_id, allowPrivateRead: true, env
+  });
+  assert.equal(result.status, 'FOUND');
+  assert.equal(result.record.content, privateRecord.content);
+});
+
+test('trash requires explicit private lifecycle grant and writes a recoverable revision', async () => {
+  const privateRecord = record();
+  const { createVaultEnvelope } = require('../services/mira-hfm-vault-crypto');
+  const envelope = createVaultEnvelope({
+    record: privateRecord,
+    context: {
+      recordId: privateRecord.memoryId, ownerId: context.actorId,
+      projectId: privateRecord.projectId, recordType: privateRecord.recordType,
+      classification: 'PROJECT_PRIVATE', schemaVersion: privateRecord.schemaVersion
+    }, env
+  });
+  const row = {
+    memory_id: privateRecord.memoryId, project_id: privateRecord.projectId,
+    owner_actor_id: context.actorId, record_type: privateRecord.recordType,
+    schema_version: privateRecord.schemaVersion, classification: 'PROJECT_PRIVATE',
+    lifecycle: 'ACTIVE', revision: 1, integrity_status: 'VERIFIED',
+    trust_status: 'SOURCE_RECORDED', public_payload: null, encrypted_envelope: envelope,
+    created_at: now, updated_at: now
+  };
+  const client = fakeClient({
+    query: async (sql, params) => {
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith('SELECT memory_id') && sql.includes('FOR UPDATE')) return { rowCount: 1, rows: [row] };
+      if (sql.startsWith('SELECT event_hash')) return { rowCount: 0, rows: [] };
+      return { rowCount: 1, rows: [{}] };
+    }
+  });
+  const trashContext = { ...context, operation: 'memory.trash' };
+  await assert.rejects(
+    repository.trashMemoryRecord({ client, context: trashContext, memoryId: row.memory_id, idempotencyKey: 'trash-1', env }),
+    error => error.code === 'HFM_MEMORY_PRIVATE_LIFECYCLE_NOT_GRANTED'
+  );
+  const result = await repository.trashMemoryRecord({
+    client, context: trashContext, memoryId: row.memory_id, idempotencyKey: 'trash-2',
+    allowPrivateLifecycle: true, env
+  });
+  assert.equal(result.status, 'TRASHED');
+  const update = client.calls.find(call => call.sql.startsWith('UPDATE mira_hfm.memory_records'));
+  assert.ok(update);
+  assert.equal(update.params[2], 'TRASHED');
+  assert.equal(update.params[3] !== null, true);
+  assert.equal(update.params[4], context.actorId);
+  assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions')));
+});
+
+console.log('HFM_MEMORY_REPOSITORY_UNIT_TESTS=PASS');
