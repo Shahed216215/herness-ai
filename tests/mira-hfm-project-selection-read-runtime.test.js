@@ -42,12 +42,18 @@ const good = {
   owners_truncate: false,
   owners_references: false,
   owners_trigger: false,
+  owners_column_insert: false,
+  owners_column_update: false,
+  owners_column_references: false,
   memberships_insert: false,
   memberships_update: false,
   memberships_delete: false,
   memberships_truncate: false,
   memberships_references: false,
   memberships_trigger: false,
+  memberships_column_insert: false,
+  memberships_column_update: false,
+  memberships_column_references: false,
   project_rls_forced: true,
   project_policies_present: true
 };
@@ -70,12 +76,18 @@ for (const patch of [
   { owners_truncate: true },
   { owners_references: true },
   { owners_trigger: true },
+  { owners_column_insert: true },
+  { owners_column_update: true },
+  { owners_column_references: true },
   { memberships_insert: true },
   { memberships_update: true },
   { memberships_delete: true },
   { memberships_truncate: true },
   { memberships_references: true },
   { memberships_trigger: true },
+  { memberships_column_insert: true },
+  { memberships_column_update: true },
+  { memberships_column_references: true },
   { project_rls_forced: false },
   { project_policies_present: false },
   { owners_select: false },
@@ -105,10 +117,15 @@ assert.match(runtime.PREFLIGHT_SQL, /owners_references/);
 assert.match(runtime.PREFLIGHT_SQL, /owners_trigger/);
 assert.match(runtime.PREFLIGHT_SQL, /memberships_references/);
 assert.match(runtime.PREFLIGHT_SQL, /memberships_trigger/);
+assert.match(runtime.PREFLIGHT_SQL, /has_any_column_privilege/);
+assert.match(runtime.PREFLIGHT_SQL, /owners_column_insert/);
+assert.match(runtime.PREFLIGHT_SQL, /memberships_column_references/);
 assert.match(runtime.PREFLIGHT_SQL, /valid_from/);
 assert.match(runtime.PREFLIGHT_SQL, /expires_at/);
 assert.match(runtime.PREFLIGHT_SQL, /clock_timestamp/);
-assert.match(runtime.PREFLIGHT_SQL, /qual ILIKE '%ACTIVE%'/);
+assert.match(runtime.PREFLIGHT_SQL, /qual ~\\* 'status\\.\\*=\\.\\*ACTIVE'/);
+assert.match(runtime.PREFLIGHT_SQL, /qual ~\\* 'valid_from\\.\\*<=\\.\\*clock_timestamp'/);
+assert.match(runtime.PREFLIGHT_SQL, /qual ~\\* 'expires_at\\.\\*IS NULL\\.\\*OR\\.\\*expires_at\\.\\*>\\.\\*clock_timestamp'/);
 assert.match(runtime.PREFLIGHT_SQL, /permissive = 'PERMISSIVE'/);
 console.log("PROJECT_READ_PREFLIGHT_CHECKS_COMPLETE_POLICY_SEMANTICS_AND_PRIVILEGES=PASS");
 
