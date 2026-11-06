@@ -224,7 +224,10 @@ test('trash requires explicit private lifecycle grant and writes a recoverable r
   assert.equal(update.params[2], 'TRASHED');
   assert.equal(update.params[3] !== null, true);
   assert.equal(update.params[4], context.actorId);
-  assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions')));
+  const versionInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions'));
+  assert.ok(versionInsert);
+  assert.equal(versionInsert.params[12] !== null, true);
+  assert.equal(versionInsert.params[13], context.actorId);
 });
 
 console.log('HFM_MEMORY_REPOSITORY_UNIT_TESTS=PASS');
