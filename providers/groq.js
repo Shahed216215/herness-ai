@@ -66,7 +66,44 @@ function buildMessages(options, prompt) {
         continue;
       }
 
-      messages.push(message);
+      const role = message.role;
+      if (role === "tool") {
+        if (typeof message.tool_call_id !== "string" ||
+            !message.tool_call_id.trim() ||
+            typeof message.content !== "string") continue;
+        messages.push({
+          role: "tool",
+          tool_call_id: message.tool_call_id.slice(0, 128),
+          content: message.content
+        });
+        continue;
+      }
+
+      if (role === "assistant") {
+        const normalized = { role: "assistant" };
+        if (typeof message.content === "string") normalized.content = message.content;
+        else normalized.content = null;
+        if (Array.isArray(message.tool_calls)) {
+          normalized.tool_calls = message.tool_calls
+            .filter(call => call && typeof call.id === "string" &&
+              call.function && typeof call.function.name === "string")
+            .map(call => ({
+              id: call.id.slice(0, 128),
+              type: "function",
+              function: {
+                name: call.function.name.slice(0, 128),
+                arguments: typeof call.function.arguments === "string"
+                  ? call.function.arguments : "{}"
+              }
+            }));
+        }
+        messages.push(normalized);
+        continue;
+      }
+
+      if (typeof message.content === "string") {
+        messages.push({ role, content: message.content });
+      }
     }
   } else {
     messages.push({
@@ -265,5 +302,6 @@ async function generate(prompt, options = {}) {
 
 module.exports = {
   name: "groq",
-  generate
+  generate,
+  buildMessages
 };
