@@ -124,6 +124,9 @@ const app = express();
 const HOST = process.env.HOST || (process.env.RENDER ? "0.0.0.0" : "127.0.0.1");
 const PORT = Number(process.env.PORT) || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const MIRA_SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 8;
+const MIRA_HFM_PRINCIPAL_ISSUER = "mira-local-session-auth";
+const MIRA_STABLE_SUBJECT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 if (IS_PRODUCTION) {
   if (typeof process.env.MIRA_SESSION_SECRET !== "string" ||
@@ -170,7 +173,7 @@ app.use(
       httpOnly: true,
       sameSite: "strict",
       secure: IS_PRODUCTION,
-      maxAge: 1000 * 60 * 60 * 8
+      maxAge: MIRA_SESSION_MAX_AGE_MS
     }
   })
 );
@@ -550,6 +553,28 @@ app.post(
         }
         if (typeof identity.email === "string" && identity.email.trim()) {
           req.session.email = identity.email.trim();
+        }
+
+        const hfmSubjectId =
+          identity.role === "admin"
+            ? process.env.MIRA_ADMIN_SUBJECT_ID
+            : identity.userId;
+        if (
+          typeof hfmSubjectId === "string" &&
+          MIRA_STABLE_SUBJECT_PATTERN.test(hfmSubjectId.trim())
+        ) {
+          const authenticatedAt = new Date();
+          req.session.hfmPrincipal = {
+            issuer: MIRA_HFM_PRINCIPAL_ISSUER,
+            subject: hfmSubjectId.trim(),
+            actorType: identity.role,
+            authenticationMethod: "password_session",
+            authenticationRef: req.sessionID,
+            authenticatedAt: authenticatedAt.toISOString(),
+            expiresAt: new Date(
+              authenticatedAt.getTime() + MIRA_SESSION_MAX_AGE_MS
+            ).toISOString()
+          };
         }
 
         req.session.save(
