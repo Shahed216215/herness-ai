@@ -10,6 +10,9 @@ on:
       - "services/deliverable-real-format-builder.js"
       - "tests/stage101-real-format-test.js"
       - ".github/workflows/dependency-remediation-validation.yml"
+  push:
+    branches:
+      - fix/dependency-security-remediation-20261106
   workflow_dispatch:
 
 permissions:
@@ -131,9 +134,10 @@ jobs:
           retention-days: 14
 
       - name: Commit validated regenerated lockfile to this PR branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.ref == 'refs/heads/fix/dependency-security-remediation-20261106' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         env:
           GH_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -146,5 +150,5 @@ jobs:
           fi
           git commit -m "chore(deps): update security-patched lockfile"
           auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.extraheader="AUTHORIZATION: basic $auth" push origin "HEAD:$GITHUB_HEAD_REF"
+          git -c http.extraheader="AUTHORIZATION: basic $auth" push origin "HEAD:$TARGET_BRANCH"
           echo "LOCKFILE_COMMIT=PUSHED_TO_PR_BRANCH"
