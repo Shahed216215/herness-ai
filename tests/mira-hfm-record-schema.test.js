@@ -63,10 +63,12 @@ test('v1.1.0 accepts daily activity, learning, knowledge, and social draft recor
 
 test('v1.1.0 client and financial records require RESTRICTED classification and JSON payloads', () => {
   for (const recordType of ['client_vault_record', 'financial_vault_record']) {
+    const content = JSON.stringify({ synthetic: true, value: 'not-real-client-data' });
     const candidate = record({
       schemaVersion: SCHEMA_V1_1,
       recordType,
-      content: JSON.stringify({ synthetic: true, value: 'not-real-client-data' }),
+      content,
+      version: { revision: 1, contentHash: createContentHash(content) },
       access: { classification: 'RESTRICTED', allowedProjectIds: [] }
     });
     assert.equal(validateCanonicalRecord(candidate).valid, true, recordType);
