@@ -39,7 +39,7 @@ function validateContext(context) {
   if (context.recordId.length < 8) {
     throw fail('MIRA_VAULT_CONTEXT_INVALID');
   }
-  if (context.classification !== 'RESTRICTED') {
+  if (!['PROJECT_PRIVATE', 'RESTRICTED'].includes(context.classification)) {
     throw fail('MIRA_VAULT_CONTEXT_CLASSIFICATION_INVALID');
   }
   return Object.freeze({
