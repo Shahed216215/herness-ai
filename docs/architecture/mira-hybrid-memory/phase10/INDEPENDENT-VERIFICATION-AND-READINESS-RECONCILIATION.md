@@ -108,3 +108,35 @@ The Phase 9 restack now includes an offline contract test for the server tool-re
 - This does not certify live provider behavior. Full downstream model prompt-isolation, other provider history adapters, and live generation E2E remain NOT_TESTED.
 
 The current restack evidence is Phase 8 PR #45 head bcfc5f537d522d4f3f5c7be444eaefca7683b4ef / CI 42151042729 SUCCESS, and Phase 9 PR #46 head 13ae4b63c2795cafaa78db319973274c0419c543 / CI 42151320149 SUCCESS. Phase 10 remains INCONCLUSIVE / NOT_CERTIFIED.
+
+
+## Current clean-restack evidence update — 2026-11-06 (supersedes older Phase 8/9 branch rows)
+
+The latest Phase 8 and Phase 9 work is now carried on a corrected linear restack. Earlier PR #45 and PR #46 baseline rows above are historical evidence; current downstream review targets are PR #45 (updated Phase 8) and PR #48 (Phase 9 restacked on the updated Phase 8). The original PR branches remain open and unmerged.
+
+| Phase | Current review PR | Current branch head | Exact code/test CI | Result |
+|---|---:|---|---|---|
+| 6 | #43 | `50988a63656986b7f58a3b4cb7e6ccf0baf5cfdf` | [42133316229](https://github.com/Shahed216215/herness-ai/actions/runs/42133316229) | SUCCESS (offline) |
+| 7 | #44 | `71b4849683100407b6c1ff5c9318defcb57c7df1` | [42133639085](https://github.com/Shahed216215/herness-ai/actions/runs/42133639085), [42133650251](https://github.com/Shahed216215/herness-ai/actions/runs/42133650251) | SUCCESS (offline) |
+| 8 | #45 | current PR head `bcfc5f537d522d4f3f5c7be444eaefca7683b4ef`; code/test head `67c4c5bd17446cb18f1d559b7075788030112c96` | [42150921183](https://github.com/Shahed216215/herness-ai/actions/runs/42150921183) | SUCCESS (offline) |
+| 9 | #48 | current PR head `da1c2ccc954cf686c6e1886a18719dd561ef0b8d`; code/test head `faf5b9a7f0c4941d1af2fd744c540eb3d881180e` | [42152153722](https://github.com/Shahed216215/herness-ai/actions/runs/42152153722) | SUCCESS (offline) |
+
+### Phase 8 security disposition
+
+Phase 8 now applies a shared fail-closed same-origin Origin/Referer + Fetch Metadata guard to every HFM Learning & Evolution POST endpoint. Exact trusted custom origins may be added through `MIRA_HFM_LEARNING_ALLOWED_ORIGINS`; no Render setting was changed. Regression tests cover same-origin acceptance and missing, malformed, opaque, mismatched, and cross-site rejection. The code-level gap is mitigated; independent security re-review and live Render/custom-domain topology verification remain REVIEW_REQUIRED. Supabase migration remains unapplied.
+
+### Phase 9 runtime prompt/tool boundary disposition
+
+Phase 9 now adds offline integration checks against the actual `/api/agent` wiring:
+- Retrieved Knowledge is bounded, field-allowlisted JSON inserted as a user-role data block, not a system-role message.
+- System policy explicitly treats retrieved context, history, tool results and provider output as data rather than instructions.
+- Persisted system/tool history is excluded from conversation replay.
+- Model tool calls must target registered tools and pass existing tool policy; sensitive routes require named-admin session checks.
+- SEO review decisions require a separate request-level confirmation signal in addition to the tool confirmation token.
+- Groq tool-message normalization strips arbitrary metadata and retains only typed role/content/tool-call fields; tool outputs remain in the tool role.
+
+Exact-head run 42152153722 passed all configured offline suites (`TESTS_FAILED=0`). This does not constitute live model inference, provider API execution, full end-to-end generation, or production security certification. `HFM_PHASE9_LIVE_GENERATION_E2E=NOT_TESTED` remains open. The deployed tokenizer remains unconfigured and 100x capacity remains synthetic-only.
+
+### Current overall decision
+
+The corrected Phase 6→7→8→9 restack is present in PRs #43→#44→#45→#48, all draft/open/unmerged. Phase 10 documentation has been restacked on current Phase 9 head in PR #49 (once opened). Phase 10 remains **INCONCLUSIVE / NOT_CERTIFIED**. Production deployment, Supabase migration, live provider testing, backup restore, independent security review and merge remain separate gates requiring explicit authorization and evidence.
