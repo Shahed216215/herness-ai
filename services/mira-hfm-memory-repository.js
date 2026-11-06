@@ -255,6 +255,75 @@ async function createMemoryRecord(options = {}) {
   return { status: 'CREATED', memoryId: record.memoryId, revision: record.version.revision, duplicate: false };
 }
 
+async function reviseMemoryRecord(options = {}) {
+  const { client, context } = requireTransaction(options);
+  if (context.operation !== 'memory.update') throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
+  const memoryId = boundedText(options.memoryId, 128, 'HFM_MEMORY_ID_INVALID');
+  const resource = 'memory:' + memoryId;
+  if (context.resource !== resource) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
+
+  const nextRecord = options.record;
+  const validation = validateCanonicalRecord(nextRecord);
+  if (!validation.valid) throw fail('HFM_MEMORY_RECORD_INVALID');
+  if (nextRecord.memoryId !== memoryId || nextRecord.projectId !== context.projectId) {
+    throw fail('HFM_MEMORY_PROJECT_SCOPE_MISMATCH');
+  }
+
+  const operation = await beginIdempotentOperation(
+    client, context, options.idempotencyKey, 'memory.update', resource, digest(nextRecord)
+  );
+  if (operation.duplicate) {
+    return { status: 'ALREADY_COMMITTED', memoryId: operation.resultCode, duplicate: true };
+  }
+
+  const currentResult = await client.query(
+    'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
+    'integrity_status, trust_status, public_payload, encrypted_envelope, created_at, updated_at ' +
+    'FROM mira_hfm.memory_records WHERE project_id = $1 AND memory_id = $2 FOR UPDATE',
+    [context.projectId, memoryId]
+  );
+  const row = currentResult.rows && currentResult.rows[0];
+  if (!row) throw fail('HFM_MEMORY_RECORD_NOT_FOUND');
+  if (row.lifecycle === 'TRASHED') throw fail('HFM_MEMORY_TRASHED_RECORD_IMMUTABLE');
+  if (row.classification === 'PROJECT_PRIVATE' && options.allowPrivateWrite !== true) {
+    throw fail('HFM_MEMORY_PRIVATE_WRITE_NOT_GRANTED');
+  }
+  if (row.classification === 'RESTRICTED' && options.allowRestrictedWrite !== true) {
+    throw fail('HFM_MEMORY_RESTRICTED_WRITE_NOT_GRANTED');
+  }
+  if (nextRecord.recordType !== row.record_type ||
+      nextRecord.schemaVersion !== row.schema_version ||
+      nextRecord.access.classification !== row.classification ||
+      nextRecord.lifecycle !== row.lifecycle ||
+      nextRecord.timestamps.createdAt !== new Date(row.created_at).toISOString() ||
+      nextRecord.version.revision !== Number(row.revision) + 1 ||
+      Date.parse(nextRecord.timestamps.updatedAt) <= Date.parse(row.updated_at)) {
+    throw fail('HFM_MEMORY_REVISION_IDENTITY_OR_ORDER_INVALID');
+  }
+
+  const payload = storedPayload(nextRecord, row.owner_actor_id, options.env || process.env);
+  await insertVersion(client, nextRecord, row.owner_actor_id, payload);
+  const update = await client.query(
+    'UPDATE mira_hfm.memory_records SET revision = $3, integrity_status = $4, trust_status = $5, ' +
+    'public_payload = $6::jsonb, encrypted_envelope = $7::jsonb, updated_at = $8 ' +
+    'WHERE project_id = $1 AND memory_id = $2 AND revision = $9 RETURNING memory_id',
+    [context.projectId, memoryId, nextRecord.version.revision,
+      nextRecord.integrity.status, nextRecord.trust.status,
+      payload.publicPayload === null ? null : JSON.stringify(payload.publicPayload),
+      payload.encryptedEnvelope === null ? null : JSON.stringify(payload.encryptedEnvelope),
+      nextRecord.timestamps.updatedAt, row.revision]
+  );
+  if (update.rowCount !== 1) throw fail('HFM_MEMORY_REVISION_CONFLICT');
+  await appendAudit(client, context, operation.operationId, memoryId, 'MEMORY_REVISED', 'COMPLETED', {
+    recordType: nextRecord.recordType,
+    classification: row.classification,
+    revision: nextRecord.version.revision,
+    contentHash: nextRecord.version.contentHash
+  });
+  await completeOperation(client, operation.operationId, memoryId);
+  return { status: 'REVISED', memoryId, revision: nextRecord.version.revision };
+}
+
 async function getMemoryRecord(options = {}) {
   const { client, context } = requireTransaction(options);
   if (context.operation !== 'memory.read') throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
@@ -375,6 +444,7 @@ function restoreMemoryRecord(options = {}) {
 
 module.exports = Object.freeze({
   createMemoryRecord,
+  reviseMemoryRecord,
   getMemoryRecord,
   listMemoryRecords,
   trashMemoryRecord,
