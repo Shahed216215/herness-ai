@@ -24,6 +24,13 @@ on:
     branches:
       - 'work/mira-hfm-v02-phase9-restack-on-current-phase8-20261106'
     paths:
+      - 'server.js'
+      - 'services/ai.js'
+      - 'services/mira-request-context.js'
+      - 'services/mira-hfm-prompt-boundary.js'
+      - 'services/mira-hfm-tool-message-normalizer.js'
+      - 'providers/groq.js'
+      - 'tests/mira-hfm-phase9-runtime-prompt-boundary.test.js'
       - 'services/mira-hfm-retrieval-provider-adapters.js'
       - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
       - 'services/mira-hfm-retrieval-optimizer.js'
