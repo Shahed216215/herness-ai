@@ -150,3 +150,23 @@ The corrected Phase 6→7→8→9 restack is present in PRs #43→#44→#45→#4
 - CI explicitly retained zero live Facebook/Meta, Drive OAuth/API, Supabase, model-provider calls, and zero production Memory writes or production migrations.
 
 This is cross-phase automated regression evidence, not independent production verification. Live Render/custom-domain validation, live model/provider E2E, production Supabase migration, key custody/rotation, backup/restore drill, deployed tokenizer calibration, end-to-end 100x capacity and independent security re-review remain NOT_TESTED / REVIEW_REQUIRED. Phase 10 remains INCONCLUSIVE / NOT_CERTIFIED.
+
+
+## Phase 10 cross-phase regression — exact-head result (2026-11-06)
+
+**Workflow:** [42153260912](https://github.com/Shahed216215/herness-ai/actions/runs/42153260912)  
+**Exact workflow head:** `302b06e9625ccc246c515b1cbe4e0319c00f3859`  
+**Result:** SUCCESS — both jobs completed successfully.
+
+| Job | Result | Evidence scope |
+|---|---|---|
+| `phase5-offline-and-postgres` | SUCCESS | Locked npm install; Phase 5 targeted tests; offline static regression; full `npm test`; Phase 5 base + recovery SQL applied only to ephemeral PostgreSQL 16; atomic recovery integration passed |
+| `phase6-to-phase9-offline` | SUCCESS | Syntax checks plus all configured Phase 6, Phase 7, Phase 8 and Phase 9 offline contract suites |
+
+Key PostgreSQL integration log markers: `POSTGRES_RPC_AND_TABLE_ROLE_GRANTS=PASS`, `POSTGRES_RLS_ENABLED=PASS`, `POSTGRES_ATOMIC_BATCH_AUDIT_CREATE=PASS`, `POSTGRES_IDEMPOTENT_RETRY_NO_DUPLICATE=PASS`, `POSTGRES_OPERATION_KEY_AUDIT_IDENTITY_CONFLICT=PASS`, `POSTGRES_IMMUTABLE_BATCH_CONFLICT=PASS`, `POSTGRES_BATCH_ROLLBACK_ON_AUDIT_FAILURE=PASS`, and `POSTGRES_PHASE5_ATOMIC_RECOVERY_INTEGRATION=PASS`. Both jobs reported `TESTS_FAILED=0` in their configured test output.
+
+Cross-phase reconciliation found one stale test contract: `tests/server-startup-contract.test.js` still asserted the old inline HOST ternary, while Phase 6 had moved to the shared `resolveServerBindHost` helper. The test was corrected to assert resolver import/order and production-vs-local host behavior; application runtime code was not changed for this issue. The first ephemeral PostgreSQL attempt also exposed a shell/heredoc dollar-quoting error in the new Phase 10 workflow; this was corrected using a quoted `$block$` delimiter and the exact-head rerun passed.
+
+The run explicitly reports `LIVE_FACEBOOK_REQUESTS=0`, `LIVE_GOOGLE_DRIVE_OAUTH_API_CALLS=0`, `LIVE_SUPABASE_CALLS=0`, `LIVE_MODEL_PROVIDER_CALLS=0`, and `PRODUCTION_MIGRATION=0`. PostgreSQL execution was confined to the temporary CI service container; no user's Supabase project was touched.
+
+**Phase 10 result:** `CROSS_PHASE_OFFLINE_REGRESSION=PASS`; overall `INCONCLUSIVE / NOT_CERTIFIED` remains unchanged because live provider/model E2E, production migration/persistence, Drive OAuth/key custody, production restore, independent security review and deployment verification remain outstanding. Phase 8 Origin/CSRF independent re-review remains REVIEW_REQUIRED; Phase 9 live generation E2E remains NOT_TESTED.
