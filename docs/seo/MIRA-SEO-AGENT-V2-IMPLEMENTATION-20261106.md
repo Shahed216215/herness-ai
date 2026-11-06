@@ -25,6 +25,7 @@ The offline audit engine now additionally reports:
 - Heading-level skips, internal/external anchor counts, nofollow count and malformed/missing href counts.
 - Visible-word-count review heuristic.
 - Duplicate and invalid sitemap loc diagnostics.
+- Public search-evidence normalization now preserves provider result order, extracts normalized source domains, flags repeated URLs/domains, and reports exact-token query overlap as a clearly labelled heuristic.
 - Severity-labelled findings and a larger deterministic checklist.
 
 The optional pageUrl is parsed locally only. It is never fetched. The audit and its tests perform no network requests.
@@ -38,7 +39,7 @@ The optional pageUrl is parsed locally only. It is never fetched. The audit and 
 - Link counts do not test HTTP status, redirects, crawlability or rendered DOM.
 - Regex-based HTML extraction is intentionally bounded and is not a full browser parser.
 - Keyword intent classification is heuristic. It does not establish real SERP intent, search volume, CPC, keyword difficulty or ranking opportunity.
-- Current public research uses the existing governed web_search execution and source normalization. It does not yet provide a calibrated multi-competitor SERP dataset, reliable volume/difficulty metrics or Google Search Console performance data.
+- Current public research uses the existing governed web_search execution. Evidence diagnostics describe provider-returned result order, source-domain repetition and lexical query overlap; they do not certify organic SERP rank, competitor market share or source authority. The workflow does not yet provide a calibrated multi-competitor SERP dataset, reliable volume/difficulty metrics or Google Search Console performance data.
 - Core Web Vitals, rendered JavaScript, backlinks, crawl-depth/site-wide link graphs and live HTTP diagnostics are not implemented in this offline engine.
 
 ## Remaining work — separate approval and evidence required
