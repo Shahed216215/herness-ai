@@ -18,7 +18,9 @@ async function main() {
   }
 
   const pool = adapter.createPool({
-    env: { MIRA_HFM_DATABASE_URL: url }
+    env: { MIRA_HFM_DATABASE_URL: url },
+    readOnly: false,
+    allowWrites: true
   });
   const schema = "mira_hfm_it_" + crypto.randomUUID().replace(/-/g, "");
   const quotedSchema = '"' + schema + '"';
