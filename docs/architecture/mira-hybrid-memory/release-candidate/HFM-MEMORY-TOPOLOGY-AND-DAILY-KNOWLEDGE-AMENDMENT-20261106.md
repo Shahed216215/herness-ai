@@ -134,3 +134,25 @@ Implementation sequence:
 - Vault retrieval requires valid user/project authorization and is masked by default in UI.
 - Cross-project isolation and redaction tests pass independently.
 - Existing legacy stores remain preserved until a separately approved migration is verified.
+
+
+## 13. Canonical schema compatibility clarification
+
+The record-family names in Section 2 are domain-level families, not permission to send unsupported `recordType` values to the existing v0.2.4 validator.
+
+Before implementation, introduce a separately versioned additive canonical schema revision (target `1.1.0`) that:
+- continues to accept and preserve all valid v1.0.0 records unchanged;
+- adds explicit record types for `daily_activity`, `learning_note`, `knowledge_item`, `social_post_draft`, `client_vault_record`, and `financial_vault_record`;
+- preserves the independent trust, integrity, classification, lifecycle, ownership, and project-scope fields and state machines;
+- rejects unknown critical schema versions and unsupported record types; no silent coercion or lossy mapping;
+- adds explicit compatibility tests for v1.0.0 read/round-trip and v1.1.0 validation.
+
+Until this schema revision is reviewed and committed, the new record families are design-only and must not be written using guessed v0.2.4 recordType mappings.
+
+## 14. Persistence envelope and cryptographic boundary
+
+For restricted Client/Financial records, encrypt the complete canonical record payload at the repository boundary before PostgreSQL receives it. The database may retain only the minimum routing fields needed for authorization and query planning (opaque record ID, owner/project IDs, classification, lifecycle, schema/envelope version, timestamps, and ciphertext length). Sensitive content, client names, transaction values, source text, canonical hashes that could reveal low-entropy content, and plaintext search terms must remain inside the authenticated encrypted payload.
+
+Use authenticated additional data (AAD) bound to immutable record ID, owner ID, project ID, classification, record type, schema version, and envelope version so ciphertext cannot be moved across records/projects or reclassified without authentication failure. Keep a separate keyed blind-index key for any specifically approved exact-match lookup; blind indexes leak equality/frequency and must be narrowly scoped, documented, and never treated as general text search.
+
+The application must verify database routing metadata against decrypted canonical fields before returning a record. Authorization happens before decryption. Failed authentication, AAD mismatch, key absence, or schema mismatch fails closed and produces sanitized audit evidence only.
