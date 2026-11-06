@@ -23,7 +23,7 @@ function validateResearchInput(input) {
     throw new TypeError("SEO_RESEARCH_INPUT_OBJECT_REQUIRED");
   }
 
-  const allowed = new Set(["brief", "query", "competitorQueries"]);
+  const allowed = new Set(["brief", "query", "competitorQueries", "confirmedCompetitorDomains"]);
 
   for (const key of Object.keys(input)) {
     if (!allowed.has(key)) {
@@ -92,7 +92,32 @@ function validateResearchInput(input) {
     throw new TypeError("SEO_COMPETITOR_QUERIES_MUST_BE_UNIQUE");
   }
 
-  return { brief, query, competitorQueries: cleanCompetitorQueries };
+  const confirmedCompetitorDomains =
+    input.confirmedCompetitorDomains === undefined
+      ? []
+      : input.confirmedCompetitorDomains;
+  if (!Array.isArray(confirmedCompetitorDomains) ||
+      confirmedCompetitorDomains.length > 10) {
+    throw new TypeError("SEO_CONFIRMED_COMPETITOR_DOMAINS_INVALID");
+  }
+  const cleanCompetitorDomains = confirmedCompetitorDomains.map(value => {
+    if (typeof value !== "string" || !value.trim() ||
+        value.trim().length > 253 ||
+        !/^(?:https?:\\/\\/)?(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}(?:[/:?#].*)?$/i.test(value.trim())) {
+      throw new TypeError("SEO_CONFIRMED_COMPETITOR_DOMAIN_INVALID");
+    }
+    return value.trim().toLowerCase().replace(/^https?:\\/\\//, "").split(/[/:?#]/)[0].replace(/^www\\./, "");
+  });
+  if (new Set(cleanCompetitorDomains).size !== cleanCompetitorDomains.length) {
+    throw new TypeError("SEO_CONFIRMED_COMPETITOR_DOMAINS_MUST_BE_UNIQUE");
+  }
+
+  return {
+    brief,
+    query,
+    competitorQueries: cleanCompetitorQueries,
+    confirmedCompetitorDomains: cleanCompetitorDomains
+  };
 }
 
 function isTrustedAdminContext(context) {
@@ -267,7 +292,8 @@ async function runSeoResearch(
       query: item.query,
       evidence: item.evidence
     })),
-    validated.brief.websiteUrl
+    validated.brief.websiteUrl,
+    validated.confirmedCompetitorDomains
   );
 
   return {
