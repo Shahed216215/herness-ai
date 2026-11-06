@@ -7,6 +7,9 @@ on:
     paths:
       - 'services/mira-seo-competitor-intelligence.js'
       - 'services/mira-seo-research-orchestrator.js'
+      - 'services/mira-seo-content-gap-report.js'
+      - 'tools/seo-content-gap-report.js'
+      - 'tests/mira-seo-content-gap-report.test.js'
       - 'tests/mira-seo-competitor-intelligence.test.js'
       - 'tests/mira-seo-research-orchestrator.test.js'
       - '.github/workflows/mira-competitor-intelligence-v1.yml'
@@ -34,8 +37,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Syntax checks
-        run: node --check services/mira-seo-competitor-intelligence.js && node --check services/mira-seo-research-orchestrator.js && node --check tests/mira-seo-competitor-intelligence.test.js && node --check tests/mira-seo-research-orchestrator.test.js
+        run: node --check services/mira-seo-competitor-intelligence.js && node --check services/mira-seo-research-orchestrator.js && node --check services/mira-seo-content-gap-report.js && node --check tools/seo-content-gap-report.js && node --check tests/mira-seo-competitor-intelligence.test.js && node --check tests/mira-seo-research-orchestrator.test.js && node --check tests/mira-seo-content-gap-report.test.js
       - name: Competitor intelligence regression
         run: node tests/mira-seo-competitor-intelligence.test.js
       - name: Governed multi-query research regression
         run: node tests/mira-seo-research-orchestrator.test.js
+      - name: Content gap and deterministic SEO report regression
+        run: node tests/mira-seo-content-gap-report.test.js
