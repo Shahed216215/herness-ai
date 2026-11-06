@@ -131,6 +131,14 @@ test('writer preflight requires the exact login role, limited privileges and for
     () => runtime.verifyWriterPreflight(preflightRow({ inherits_roles: false }), config),
     error => error.code === 'MEMORY_WRITER_REQUIRED_PRIVILEGE_MISSING'
   );
+  assert.throws(
+    () => runtime.verifyWriterPreflight(preflightRow({ owners_delete: true }), config),
+    error => error.code === 'MEMORY_WRITER_EXCESS_PRIVILEGE_DETECTED'
+  );
+  assert.throws(
+    () => runtime.verifyWriterPreflight(preflightRow({ can_login: false }), config),
+    error => error.code === 'MEMORY_WRITER_REQUIRED_PRIVILEGE_MISSING'
+  );
 });
 
 test('writer pool uses a separate URL, explicit write mode and closes after failed preflight', async () => {
