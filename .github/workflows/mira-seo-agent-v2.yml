@@ -3,7 +3,7 @@ name: Mira SEO Agent v2 Offline Tests
 on:
   pull_request:
     branches:
-      - 'work/mira-hfm-v02-phase9-restack-on-current-phase8-20261106'
+      - 'main'
     paths:
       - 'services/mira-seo-engine.js'
       - 'tools/seo-audit.js'
@@ -15,7 +15,7 @@ on:
       - '.github/workflows/mira-seo-agent-v2.yml'
   push:
     branches:
-      - 'work/mira-seo-agent-v2-20261106'
+      - 'work/mira-seo-agent-v2-main-20261106'
     paths:
       - 'services/mira-seo-engine.js'
       - 'tools/seo-audit.js'
