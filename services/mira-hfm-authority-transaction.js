@@ -91,7 +91,7 @@ async function executeWithConsumedAuthority(options = {}) {
       "membership_revision, owner_revision, status, approval_ref, valid_from, expires_at " +
       "FROM mira_hfm.operation_authorities WHERE authority_id = $1 AND project_id = $2 " +
       "AND actor_id = $3 AND request_id = $4 FOR UPDATE",
-      [request.authorityId, request.projectId, request.actorId, request.requestId]
+      [request.authorityId, request.projectId, trustedActor.actorId, request.requestId]
     );
     const authority = authorityResult.rows && authorityResult.rows[0];
     if (!authority || authority.status !== "ISSUED") {
@@ -121,14 +121,14 @@ async function executeWithConsumedAuthority(options = {}) {
       "(event_id, project_id, actor_id, event_type, request_id, occurred_at, " +
       "prior_revision, new_revision, approval_ref, details) " +
       "VALUES ($1, $2, $3, 'AUTHORITY_CONSUMED', $4, clock_timestamp(), $5, $6, $7, $8::jsonb)",
-      [randomUUID(), request.projectId, request.actorId, request.requestId,
+      [randomUUID(), request.projectId, trustedActor.actorId, request.requestId,
         owner.revision, membership.revision, authority.approval_ref,
         JSON.stringify({ authorityId: request.authorityId, operation: request.operation, resource: request.resource, ownerRevision: String(owner.revision), membershipRevision: String(membership.revision) })]
     );
 
     // All protected database reads/writes must use this same client/transaction.
     const value = await options.perform(client, Object.freeze({
-      actorId: request.actorId,
+      actorId: trustedActor.actorId,
       projectId: request.projectId,
       operation: request.operation,
       resource: request.resource,
