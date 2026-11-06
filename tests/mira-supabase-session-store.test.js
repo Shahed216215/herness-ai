@@ -23,28 +23,28 @@ function call(store, method, ...args) {
 async function main() {
   const rows = new Map();
   const requests = [];
-  const fetchImpl = async (rawUrl, options) => {
+  const requestImpl = async (rawUrl, options) => {
     const url = new URL(rawUrl);
     const method = options.method;
     requests.push({ url, options });
 
     if (method === "POST") {
-      const record = JSON.parse(options.body);
+      const record = options.data;
       rows.set(record.sid, record);
-      return response(null, 201);
+      return { status: 201, data: {} };
     }
 
     if (method === "GET") {
       const sid = url.searchParams.get("sid").slice(3);
       const record = rows.get(sid);
-      return response(record ? [record] : []);
+      return { status: 200, data: record ? [record] : [] };
     }
 
     if (method === "PATCH") {
       const sid = url.searchParams.get("sid").slice(3);
       const record = rows.get(sid);
-      if (record) Object.assign(record, JSON.parse(options.body));
-      return response(null, 204);
+      if (record) Object.assign(record, options.data);
+      return { status: 204, data: {} };
     }
 
     if (method === "DELETE") {
@@ -59,16 +59,16 @@ async function main() {
           }
         }
       }
-      return response(null, 204);
+      return { status: 204, data: {} };
     }
 
-    return response(null, 405);
+    return { status: 405, data: {} };
   };
 
   const store = new SupabaseRestSessionStore({
     supabaseUrl: "https://unit-test.supabase.co",
     serviceRoleKey: "test-only-service-role-key",
-    fetchImpl
+    requestImpl
   });
 
   const sessionData = {
@@ -116,7 +116,7 @@ async function main() {
   const failingStore = new SupabaseRestSessionStore({
     supabaseUrl: "https://unit-test.supabase.co",
     serviceRoleKey: "test-only-service-role-key",
-    fetchImpl: async () => response(null, 503)
+    requestImpl: async () => ({ status: 503, data: {} })
   });
 
   await assert.rejects(
@@ -129,7 +129,7 @@ async function main() {
     () => new SupabaseRestSessionStore({
       supabaseUrl: "https://unit-test.supabase.co",
       serviceRoleKey: "",
-      fetchImpl
+      requestImpl
     }),
     /SUPABASE_SERVICE_ROLE_KEY/
   );
