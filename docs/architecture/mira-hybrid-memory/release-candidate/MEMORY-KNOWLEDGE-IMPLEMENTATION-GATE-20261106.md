@@ -64,14 +64,16 @@ No source code, runtime configuration, production database schema/data, secrets,
 
 - Added `services/mira-hfm-vault-crypto.js`: standalone AES-256-GCM envelope encryption for RESTRICTED payloads, per-record random DEK, versioned KEK from server environment, authenticated context binding to record/owner/project/type/classification/schema, and fail-closed key handling.
 - Added `tests/mira-hfm-vault-crypto.test.js` with synthetic tests for round-trip encryption, ciphertext opacity, fresh nonces/DEKs, context binding, missing/invalid keys, tampering, and KEK version rotation.
-- Added the focused test to the configured `npm test` chain.
-- An isolated local Node test harness completed 7/7 test cases successfully. This is not the full repository regression suite and is not exact-head GitHub CI evidence.
+- Added `services/mira-hfm-record-schema.js` with backward-compatible v1.0.0 validation and additive v1.1.0 record families for daily activity, learning, knowledge, social drafts, client vault, and financial vault.
+- Implemented RFC 8785 JCS string content hashing, strict calendar timestamp validation, schema-version-specific record-type allowlists, and mandatory RESTRICTED classification for client/financial records.
+- Added `tests/mira-hfm-record-schema.test.js` and included both focused test files in the configured `npm test` chain.
+- Isolated local Node harness results: vault crypto 7/7 and record schema 11/11. The harness used a local copy of the current branch source; these results are not the full repository regression suite and are not exact-head GitHub CI evidence.
 - Draft PR #70: https://github.com/Shahed216215/herness-ai/pull/70
 - PR #70 is based on PR #66's exact head and remains Draft/Open. The existing runtime-foundation workflow filters pull requests by base branch (`main` or `work/render-main-host-binding-compat-20261106`), so it does not automatically run for PR #70's current base. Exact-head CI remains NOT_RUN / INCONCLUSIVE until a suitable validation path is established.
 
 ## Still not implemented
 
-- No canonical v1.1.0 record validator/schema.
+- No PostgreSQL-backed canonical v1.1.0 record repository or migration.
 - No PostgreSQL Memory repository, migrations, payload write role, or project-scoped Memory Core.
 - No integration of `memory_save`, `knowledge_save`, `knowledge_search`, or client-profile routes.
 - No daily activity/learning capture pipeline.
