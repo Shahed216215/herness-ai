@@ -7,12 +7,14 @@ on:
     paths:
       - "services/mira-hfm-memory-repository.js"
       - "services/mira-hfm-memory-postgres-runtime.js"
+      - "migrations/hfm/005_memory_writer_role_and_project_rls.sql"
       - "services/mira-hfm-daily-knowledge-post.js"
       - "services/mira-hfm-authority-transaction.js"
       - "services/mira-hfm-record-schema.js"
       - "services/mira-hfm-vault-crypto.js"
       - "tests/mira-hfm-memory-repository.test.js"
       - "tests/mira-hfm-memory-postgres-runtime.test.js"
+      - "tests/mira-hfm-memory-writer-rls-migration-contract.test.js"
       - "tests/mira-hfm-daily-knowledge-post.test.js"
       - "tests/mira-hfm-authority-transaction.test.js"
       - "package.json"
@@ -70,5 +72,6 @@ jobs:
           node tests/mira-hfm-memory-repository.test.js
           node tests/mira-hfm-daily-knowledge-post.test.js
           node tests/mira-hfm-memory-postgres-runtime.test.js
+          node tests/mira-hfm-memory-writer-rls-migration-contract.test.js
       - name: Run full repository regression suite
         run: npm test
