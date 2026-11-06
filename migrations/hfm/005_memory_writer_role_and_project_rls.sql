@@ -24,11 +24,17 @@ BEGIN
     CREATE ROLE mira_hfm_memory_writer
       NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT;
   END IF;
-END;
-$$;
 
-ALTER ROLE mira_hfm_memory_writer
-  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT;
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname = 'mira_hfm_memory_writer'
+      AND (rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole
+           OR rolreplication OR rolbypassrls OR rolinherit)
+  ) THEN
+    RAISE EXCEPTION 'HFM_MEMORY_WRITER_ROLE_ATTRIBUTES_MUST_BE_LEAST_PRIVILEGE';
+  END IF;
+END;
+$;
 
 DO $$
 DECLARE
