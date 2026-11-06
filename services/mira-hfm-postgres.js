@@ -78,7 +78,7 @@ function createPool(options = {}) {
     connectionTimeoutMillis: 5000,
     statement_timeout: 5000,
     query_timeout: 6000,
-    application_name: readOnly ? "mira-hfm-readonly" : "mira-hfm-disposable-test",
+    application_name: readOnly ? "mira-hfm-readonly" : (options.applicationName || "mira-hfm-disposable-test"),
     options: readOnly ? "-c default_transaction_read_only=on" : undefined
   });
 
