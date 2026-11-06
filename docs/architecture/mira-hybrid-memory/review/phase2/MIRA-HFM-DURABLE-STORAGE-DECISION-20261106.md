@@ -87,9 +87,9 @@ No existing project owner is imported or inferred by this migration.
 
 ## Source-contract CI evidence
 
-Latest candidate commit: `786e106e717223d6d786502d474a4ec29f3a190f1`
+Latest candidate commit: `b9931ae74b67bd74b905ba6e612cb532b1f18f96`
 
-GitHub Actions run #60 (`42166978595`):
+GitHub Actions run #62 (`42167098189`):
 - `identity-context`: **PASS**, including the project-authority schema source-contract test.
 - `repository-regression`: **PASS**, including the new schema source-contract test at the start of `npm test`.
 
