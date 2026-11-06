@@ -222,7 +222,31 @@ BEGIN
 END;
 $$;
 
-DO $$
+CREATE OR REPLACE FUNCTION mira_hfm.guard_memory_record_update()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+BEGIN
+  IF NEW.memory_id <> OLD.memory_id
+     OR NEW.project_id <> OLD.project_id
+     OR NEW.owner_actor_id <> OLD.owner_actor_id
+     OR NEW.record_type <> OLD.record_type
+     OR NEW.schema_version <> OLD.schema_version
+     OR NEW.classification <> OLD.classification
+     OR NEW.created_at <> OLD.created_at THEN
+    RAISE EXCEPTION 'HFM_MEMORY_RECORD_IDENTITY_IMMUTABLE';
+  END IF;
+  IF NEW.revision <> OLD.revision + 1 THEN
+    RAISE EXCEPTION 'HFM_MEMORY_REVISION_MUST_INCREMENT';
+  END IF;
+  IF NEW.updated_at <= OLD.updated_at THEN
+    RAISE EXCEPTION 'HFM_MEMORY_UPDATED_AT_MUST_ADVANCE';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+DO $
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger
@@ -256,6 +280,56 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger
+    WHERE tgname = 'memory_records_identity_revision_guard'
+      AND tgrelid = 'mira_hfm.memory_records'::regclass
+  ) THEN
+    CREATE TRIGGER memory_records_identity_revision_guard
+      BEFORE UPDATE ON mira_hfm.memory_records
+      FOR EACH ROW EXECUTE FUNCTION mira_hfm.guard_memory_record_update();
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'memory_records_no_delete'
+      AND tgrelid = 'mira_hfm.memory_records'::regclass
+  ) THEN
+    CREATE TRIGGER memory_records_no_delete
+      BEFORE DELETE ON mira_hfm.memory_records
+      FOR EACH ROW EXECUTE FUNCTION mira_hfm.reject_memory_append_only_mutation();
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'memory_records_no_truncate'
+      AND tgrelid = 'mira_hfm.memory_records'::regclass
+  ) THEN
+    CREATE TRIGGER memory_records_no_truncate
+      BEFORE TRUNCATE ON mira_hfm.memory_records
+      FOR EACH STATEMENT EXECUTE FUNCTION mira_hfm.reject_memory_append_only_mutation();
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'memory_operations_no_delete'
+      AND tgrelid = 'mira_hfm.memory_operation_registry'::regclass
+  ) THEN
+    CREATE TRIGGER memory_operations_no_delete
+      BEFORE DELETE ON mira_hfm.memory_operation_registry
+      FOR EACH ROW EXECUTE FUNCTION mira_hfm.reject_memory_append_only_mutation();
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'memory_operations_no_truncate'
+      AND tgrelid = 'mira_hfm.memory_operation_registry'::regclass
+  ) THEN
+    CREATE TRIGGER memory_operations_no_truncate
+      BEFORE TRUNCATE ON mira_hfm.memory_operation_registry
+      FOR EACH STATEMENT EXECUTE FUNCTION mira_hfm.reject_memory_append_only_mutation();
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
     WHERE tgname = 'memory_audit_no_truncate'
       AND tgrelid = 'mira_hfm.memory_audit_events'::regclass
   ) THEN
@@ -275,6 +349,7 @@ FROM PUBLIC;
 
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA mira_hfm FROM PUBLIC;
 REVOKE ALL ON FUNCTION mira_hfm.reject_memory_append_only_mutation() FROM PUBLIC;
+REVOKE ALL ON FUNCTION mira_hfm.guard_memory_record_update() FROM PUBLIC;
 
 COMMENT ON TABLE mira_hfm.memory_records IS
   'HFM canonical current records; PUBLIC payloads may be indexed, private/restricted payloads must be encrypted before persistence.';
