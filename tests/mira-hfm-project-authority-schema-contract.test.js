@@ -20,6 +20,7 @@ for (const table of [
 
 assert.match(sql, /project_id TEXT PRIMARY KEY/);
 assert.match(sql, /project_memberships_one_active_actor/);
+assert.match(sql, /revoked_by_actor_id IS NOT NULL/);
 assert.match(sql, /request_id TEXT NOT NULL UNIQUE/);
 assert.match(sql, /membership_revision BIGINT NOT NULL/);
 assert.match(sql, /owner_revision BIGINT NOT NULL/);
