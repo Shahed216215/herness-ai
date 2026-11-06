@@ -65,6 +65,11 @@ function createPool(options = {}) {
     }
   }
 
+  const readOnly = options.readOnly !== false;
+  if (!readOnly && options.allowWrites !== true) {
+    throw configError("DATABASE_WRITE_MODE_NOT_APPROVED");
+  }
+
   const pool = new Pool({
     connectionString: config.connectionString,
     ssl: { rejectUnauthorized: true },
@@ -73,7 +78,8 @@ function createPool(options = {}) {
     connectionTimeoutMillis: 5000,
     statement_timeout: 5000,
     query_timeout: 6000,
-    application_name: "mira-hfm-readonly"
+    application_name: readOnly ? "mira-hfm-readonly" : "mira-hfm-disposable-test",
+    options: readOnly ? "-c default_transaction_read_only=on" : undefined
   });
 
   if (typeof pool.on === "function") {
