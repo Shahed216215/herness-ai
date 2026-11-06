@@ -37,6 +37,42 @@ Before touching Memory or Knowledge payloads:
 No existing Memory, Knowledge, Project, or Conversation records were read or modified by this audit.
 No provider/API calls, Render changes, database writes, migration execution, merge, or deployment were performed.
 
+
+## Retrieval inventory evidence
+
+Latest CI run: https://github.com/Shahed216215/herness-ai/actions/runs/42194208479
+
+- `MIRA_HFM_RETRIEVAL_CALL_COUNT=36`
+- `MIRA_HFM_RETRIEVAL_CONSUMER_FILE_COUNT=15`
+- `MIRA_HFM_RETRIEVAL_FILES_WITHOUT_BOTH_FILTER_MARKERS=15`
+- `MIRA_HFM_RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED`
+
+The 15 files flagged by this conservative source-marker inventory are:
+- `autonomous-learning-controlled-apply.js`
+- `google-drive.js`
+- `knowledge-controlled-apply.js`
+- `knowledge-memory-evolution.js`
+- `knowledge.js`
+- `memory.js`
+- `routes/knowledge-improvements.js`
+- `server.js`
+- `services/learning.js`
+- `tools/knowledge-backup.js`
+- `tools/knowledge-cleanup.js`
+- `tools/knowledge-count.js`
+- `tools/knowledge-improve.js`
+- `tools/knowledge-search.js`
+- `tools/memory-count.js`
+
+This scanner only checks for trust/quarantine marker presence at file level. It is a triage inventory, not proof that a specific callsite is vulnerable or safe. Each callsite requires contextual control-flow and authorization review.
+
+The same CI run completed successfully:
+- locked dependency install: PASS
+- runtime syntax checks: PASS
+- canonical identity contracts: PASS
+- retrieval callsite inventory: generated; coverage remains REVIEW_REQUIRED
+- configured repository regression suite: PASS
+
 ## Status
 
 `HFM_IDENTITY_TRANSPORT=CI_PASS`
