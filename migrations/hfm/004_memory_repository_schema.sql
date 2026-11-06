@@ -225,7 +225,7 @@ $$;
 CREATE OR REPLACE FUNCTION mira_hfm.guard_memory_record_update()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $$
 BEGIN
   IF NEW.memory_id <> OLD.memory_id
      OR NEW.project_id <> OLD.project_id
@@ -244,9 +244,9 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger
