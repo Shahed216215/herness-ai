@@ -1,6 +1,23 @@
 name: Mira HFM runtime foundation contract
 
 on:
+  push:
+    branches:
+      - integration/hfm-v02-mainline-20261107
+    paths:
+      - "server.js"
+      - "package.json"
+      - "package-lock.json"
+      - "services/mira-hfm-*.js"
+      - "services/mira-memory-host-identity-contract.js"
+      - "services/mira-work-execution-engine.js"
+      - "services/tool-runner.js"
+      - "tools/index.js"
+      - "tools/hfm-database-status.js"
+      - "migrations/hfm/**"
+      - "tests/mira-hfm-*.test.js"
+      - "tests/mira-memory-host-identity-contract.test.js"
+      - ".github/workflows/mira-hfm-runtime-foundation.yml"
   pull_request:
     branches:
       - main

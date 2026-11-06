@@ -3,7 +3,7 @@ name: Mira HFM Memory repository contracts
 on:
   push:
     branches:
-      - work/hfm-memory-core-implementation-20261106
+      - integration/hfm-v02-mainline-20261107
     paths:
       - "services/mira-hfm-memory-repository.js"
       - "services/mira-hfm-memory-postgres-runtime.js"
@@ -22,7 +22,7 @@ on:
       - ".github/workflows/mira-hfm-memory-repository.yml"
   pull_request:
     branches:
-      - work/hfm-authority-relational-integrity-20261106
+      - main
     paths:
       - "services/mira-hfm-memory-postgres-runtime.js"
       - "services/mira-hfm-daily-knowledge-post.js"
