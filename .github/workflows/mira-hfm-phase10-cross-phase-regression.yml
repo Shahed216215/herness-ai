@@ -1,0 +1,170 @@
+name: Mira HFM v0.2 Phase 10 Cross-Phase Offline Regression
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase10-restack-on-current-phase9-20261106
+    paths:
+      - 'server.js'
+      - 'providers/**'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'services/mira-facebook-*.js'
+      - 'services/mira-hfm-*.js'
+      - 'services/mira-request-context.js'
+      - 'tests/mira-facebook-group-memory-*.test.js'
+      - 'tests/mira-hfm-*.test.js'
+      - 'tests/mira-facebook-*.test.js'
+      - 'tests/mira-server-bind-host.test.js'
+      - 'tests/postgres/mira-hfm-phase5-atomic-recovery.integration.sql'
+      - 'supabase/migrations/20261105090000_mira_facebook_group_import_batches.sql'
+      - 'supabase/migrations/20261105120000_mira_facebook_group_import_atomic_recovery.sql'
+      - '.github/workflows/mira-hfm-phase10-cross-phase-regression.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase10/**'
+  pull_request:
+    branches:
+      - work/mira-hfm-v02-phase9-restack-on-current-phase8-20261106
+    paths:
+      - 'server.js'
+      - 'providers/**'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'services/mira-facebook-*.js'
+      - 'services/mira-hfm-*.js'
+      - 'services/mira-request-context.js'
+      - 'tests/mira-facebook-group-memory-*.test.js'
+      - 'tests/mira-hfm-*.test.js'
+      - 'tests/mira-facebook-*.test.js'
+      - 'tests/mira-server-bind-host.test.js'
+      - 'tests/postgres/mira-hfm-phase5-atomic-recovery.integration.sql'
+      - 'supabase/migrations/20261105090000_mira_facebook_group_import_batches.sql'
+      - 'supabase/migrations/20261105120000_mira_facebook_group_import_atomic_recovery.sql'
+      - '.github/workflows/mira-hfm-phase10-cross-phase-regression.yml'
+      - 'docs/architecture/mira-hybrid-memory/phase10/**'
+
+permissions:
+  contents: read
+
+jobs:
+  phase5-offline-and-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mira_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mira_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run Phase 5 and repository regression tests
+        run: |
+          set -euo pipefail
+          node tests/mira-facebook-group-memory-import.test.js
+          node tests/mira-facebook-group-memory-supabase-store.test.js
+          node tests/mira-facebook-group-memory-import-route.test.js
+          node tests/mira-facebook-group-memory-migration-structure.test.js
+          npm run test:offline-static-regression
+          npm test
+      - name: Prepare isolated PostgreSQL roles
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_CONTAINER" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -c "DO \\$\\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN; END IF; IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF; IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN; END IF; END \\$\\$; ALTER ROLE service_role BYPASSRLS;"
+      - name: Apply migrations to ephemeral PostgreSQL only
+        run: |
+          set -euo pipefail
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -f - < supabase/migrations/20261105090000_mira_facebook_group_import_batches.sql
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -f - < supabase/migrations/20261105120000_mira_facebook_group_import_atomic_recovery.sql
+      - name: Verify Phase 5 atomic recovery on ephemeral PostgreSQL
+        run: |
+          set -euo pipefail
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d mira_test -v ON_ERROR_STOP=1 -f - < tests/postgres/mira-hfm-phase5-atomic-recovery.integration.sql
+      - name: Confirm Phase 5 external boundaries
+        run: |
+          echo "LIVE_FACEBOOK_REQUESTS=0"
+          echo "PRIVATE_GROUP_ACCESS=0"
+          echo "CANONICAL_MEMORY_WRITES=0"
+          echo "PRODUCTION_MIGRATION=0"
+
+  phase6-to-phase9-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax check cross-phase runtime
+        run: |
+          set -euo pipefail
+          node --check server.js
+          node --check providers/groq.js
+          node --check services/ai.js
+          node --check services/mira-request-context.js
+          node --check services/mira-hfm-prompt-boundary.js
+          node --check services/mira-hfm-tool-message-normalizer.js
+          node --check routes/mira-hfm-learning-evolution.js
+          node --check services/mira-hfm-public-web-retrieval.js
+          node --check services/mira-hfm-retrieval-optimizer.js
+          node --check services/mira-hfm-retrieval-provider-adapters.js
+      - name: Phase 6 offline contracts
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-public-web-retrieval.test.js
+          node tests/mira-hfm-public-web-retrieval-runtime-integration.test.js
+          node tests/mira-facebook-public-web-research.test.js
+          node tests/mira-hfm-phase6-live-provider-smoke.test.js
+          node tests/mira-facebook-research-archive-approval.test.js
+          node tests/mira-server-bind-host.test.js
+          node tests/mira-hfm-phase6-deployment-preflight.test.js
+          node tests/mira-hfm-tool-registry-policy-parity.test.js
+      - name: Phase 7 encrypted backup contracts
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-encrypted-emergency-backup.test.js
+          node tests/mira-hfm-drive-emergency-backup-adapter.test.js
+          node tests/mira-hfm-drive-backup-id-journal.test.js
+          node tests/mira-hfm-drive-generated-id-upload.test.js
+          node tests/mira-hfm-drive-journaled-cloud-adapter.test.js
+          node tests/mira-hfm-google-drive-generated-id-provider.test.js
+      - name: Phase 8 learning evolution contracts
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-learning-evolution-bridge.test.js
+          node tests/mira-hfm-learning-evolution-route-contract.test.js
+          node tests/mira-hfm-learning-evolution-review-route.test.js
+          node tests/mira-hfm-learning-legacy-compatibility.test.js
+          node tests/mira-hfm-learning-supabase-store.test.js
+          node tests/mira-hfm-learning-generation-cycle.test.js
+          node tests/mira-hfm-learning-generation-cycle-request.test.js
+          node tests/mira-hfm-learning-generation-cycle-server-integration.test.js
+          node tests/mira-hfm-learning-ui-contract.test.js
+      - name: Phase 9 retrieval and prompt/tool isolation contracts
+        run: |
+          set -euo pipefail
+          node tests/mira-hfm-phase9-retrieval-optimizer.test.js
+          node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js
+          node tests/mira-hfm-phase9-prompt-injection-regression.test.js
+          node tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+          node tests/mira-hfm-phase9-runtime-prompt-boundary.test.js
+      - name: Confirm live boundaries remain untouched
+        run: |
+          echo "LIVE_FACEBOOK_REQUESTS=0"
+          echo "LIVE_GOOGLE_DRIVE_OAUTH_API_CALLS=0"
+          echo "LIVE_SUPABASE_CALLS=0"
+          echo "LIVE_MODEL_PROVIDER_CALLS=0"
+          echo "PRODUCTION_MIGRATION=0"
+          echo "PRODUCTION_MEMORY_WRITES=0"
+          echo "RESULT=MIRA_HFM_PHASE10_CROSS_PHASE_OFFLINE_REGRESSION_COMPLETED"
