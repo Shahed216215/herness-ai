@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const Groq = require("groq-sdk");
 const { secureSdkFetch } = require("../services/security/secure-sdk-fetch");
+const { buildGroqMessages } = require("../services/mira-hfm-tool-message-normalizer");
 
 let client = null;
 
@@ -33,49 +34,7 @@ function sleep(ms) {
 }
 
 function buildMessages(options, prompt) {
-  const messages = [];
-
-  if (
-    typeof options.systemInstruction ===
-      "string" &&
-    options.systemInstruction.trim()
-  ) {
-    messages.push({
-      role: "system",
-      content: options.systemInstruction
-    });
-  }
-
-  if (Array.isArray(options.messages)) {
-    for (const message of options.messages) {
-      if (
-        !message ||
-        typeof message !== "object"
-      ) {
-        continue;
-      }
-
-      if (
-        ![
-          "system",
-          "user",
-          "assistant",
-          "tool"
-        ].includes(message.role)
-      ) {
-        continue;
-      }
-
-      messages.push(message);
-    }
-  } else {
-    messages.push({
-      role: "user",
-      content: String(prompt || "")
-    });
-  }
-
-  return messages;
+  return buildGroqMessages(options, prompt);
 }
 
 function buildTools(toolDeclarations) {
@@ -265,5 +224,6 @@ async function generate(prompt, options = {}) {
 
 module.exports = {
   name: "groq",
-  generate
+  generate,
+  buildMessages
 };
