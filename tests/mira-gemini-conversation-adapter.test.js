@@ -107,6 +107,14 @@ const candidateFallback = normalizeGeminiResponse({
   }]
 });
 assert.equal(candidateFallback.functionCalls[0].name, "system_info");
+assert.match(candidateFallback.functionCalls[0].id, /^gemini-response-/);
+const nextCandidateFallback = normalizeGeminiResponse({
+  functionCalls: [{ name: "system_info", args: {} }]
+});
+assert.notEqual(
+  candidateFallback.functionCalls[0].id,
+  nextCandidateFallback.functionCalls[0].id
+);
 
 console.log("PASS: Gemini conversation history, tool calls and tool responses are preserved.");
 console.log("PASS: OpenAI-compatible tool messages are normalized for Gemini.");
