@@ -9,6 +9,8 @@ on:
       - "services/mira-work-execution-engine.js"
       - "server.js"
       - "tests/tool-health-approval-diagnostic.test.js"
+      - "tests/tool-health-authorization-engine-integration.test.js"
+      - "tests/run-agent-http-authorization-integration.test.js"
       - ".github/workflows/tool-health-approval-diagnostic.yml"
 
 permissions:
@@ -31,7 +33,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
 
       - name: Install locked runtime dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
