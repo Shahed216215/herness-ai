@@ -7,6 +7,7 @@ function redactSource(input){
  out=out.replace(/-----BEGIN(?: RSA| EC| OPENSSH)? PRIVATE KEY-----[\s\S]*?-----END(?: RSA| EC| OPENSSH)? PRIVATE KEY-----/g,"[REDACTED_PRIVATE_KEY]");
  out=out.replace(/\b((?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|password|passwd|authorization|bearer)\b\s*[:=]\s*)(["']?)[^"'\s,;]+/gi,"$1[REDACTED]");
  out=out.replace(/\b(Bearer)\s+[A-Za-z0-9._~+\/-]{12,}/gi,"$1 [REDACTED]");
+ out=out.replace(/authorization:\s*\[REDACTED\]\s+[^\s,;]+/gi,"Authorization: [REDACTED]");
  out=out.replace(/\bAKIA[0-9A-Z]{16}\b/g,"[REDACTED_AWS_KEY]");
  out=out.replace(/(https?:\/\/)[^/\s:@]+:[^@\s/]+@/gi,"$1[REDACTED]@");
  return out;
