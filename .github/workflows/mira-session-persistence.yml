@@ -9,6 +9,7 @@ on:
       - "package.json"
       - "services/mira-supabase-session-store.js"
       - "tests/mira-supabase-session-store.test.js"
+      - "tests/mira-session-http-integration.test.js"
       - "supabase/migrations/**"
       - ".github/workflows/mira-session-persistence.yml"
   pull_request:
@@ -18,6 +19,7 @@ on:
       - "package.json"
       - "services/mira-supabase-session-store.js"
       - "tests/mira-supabase-session-store.test.js"
+      - "tests/mira-session-http-integration.test.js"
       - "supabase/migrations/**"
 
 permissions:
