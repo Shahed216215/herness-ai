@@ -1,7 +1,7 @@
 # HFM Memory Repository Schema Design
 
 Date: 2026-11-06
-Status: DESIGN / SOURCE-ONLY / NO DATABASE MIGRATION EXECUTED
+Status: DESIGN + SOURCE-ONLY MIGRATION DRAFT / NO DATABASE MIGRATION EXECUTED
 Parent decision: `HFM-MEMORY-TOPOLOGY-AND-DAILY-KNOWLEDGE-AMENDMENT-20261106.md`
 
 ## 1. Verified current Neon state
@@ -118,9 +118,18 @@ The existing authority transaction primitive is not yet wired to Memory payload 
 9. Integrate existing Memory/Knowledge tools only after authorization and repository tests pass.
 10. Run exact-head CI, full regression, independent security review, disposable DB integration, recovery/restart verification, and then request separate production approval.
 
-## 9. Explicit current state
+## 9. Migration draft evidence
 
-`MEMORY_REPOSITORY_SCHEMA=DESIGN_ONLY`
+Source-only draft: `migrations/hfm/004_memory_repository_schema.sql`.
+
+- Creates empty tables only; no data DML, seed records, writer role, or application grants.
+- Adds classification/payload exclusivity, PUBLIC-only full-text indexing, project foreign keys, immutable version history, idempotency registry, append-only audit, immutable record identity, monotonic revision checks, and no hard-delete guards.
+- Exact-source contract assertions: 7/7 PASS.
+- PostgreSQL parser and disposable-branch execution: NOT_RUN / INCONCLUSIVE. No migration has been executed.
+
+## 10. Explicit current state
+
+`MEMORY_REPOSITORY_SCHEMA=DESIGN_PLUS_SOURCE_ONLY_MIGRATION_DRAFT`
 `CANONICAL_RECORD_VALIDATOR=SOURCE_ADDED_LOCAL_HARNESS_TESTED`
 `VAULT_ENCRYPTION=SOURCE_ADDED_LOCAL_HARNESS_TESTED`
 `POSTGRES_MEMORY_TABLES=NOT_CREATED`
