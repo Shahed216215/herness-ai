@@ -32,7 +32,8 @@ function selectRecentMessages(memory, options = {}) {
         : String(entry.content || "")
     }))
     .filter(entry =>
-      ["system", "user", "assistant"].includes(entry.role)
+      ["user", "assistant"].includes(entry.role) &&
+      typeof entry.content === "string"
     );
 
   const selected = [];
