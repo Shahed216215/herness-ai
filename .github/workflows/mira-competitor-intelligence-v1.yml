@@ -15,6 +15,9 @@ on:
       - 'tests/mira-seo-content-gap-report.test.js'
       - 'tests/mira-seo-report-route.test.js'
       - 'tests/mira-seo-report-ui.test.js'
+      - 'services/mira-marketing-workflow-orchestrator.js'
+      - 'routes/mira-marketing-workflow.js'
+      - 'tests/marketing-workflow-competitor-input.test.js'
       - 'tests/mira-seo-competitor-intelligence.test.js'
       - 'tests/mira-seo-research-orchestrator.test.js'
       - '.github/workflows/mira-competitor-intelligence-v1.yml'
@@ -50,7 +53,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Syntax checks
-        run: node --check services/mira-seo-competitor-intelligence.js && node --check services/mira-seo-research-orchestrator.js && node --check services/mira-seo-content-gap-report.js && node --check routes/mira-seo-report.js && node --check server.js && node --check tools/seo-content-gap-report.js && node --check tests/mira-seo-report-route.test.js && node --check tests/mira-seo-report-ui.test.js && node --check tests/mira-seo-competitor-intelligence.test.js && node --check tests/mira-seo-research-orchestrator.test.js && node --check tests/mira-seo-content-gap-report.test.js
+        run: node --check services/mira-seo-competitor-intelligence.js && node --check services/mira-seo-research-orchestrator.js && node --check services/mira-seo-content-gap-report.js && node --check routes/mira-seo-report.js && node --check server.js && node --check tools/seo-content-gap-report.js && node --check tests/mira-seo-report-route.test.js && node --check services/mira-marketing-workflow-orchestrator.js && node --check routes/mira-marketing-workflow.js && node --check tests/marketing-workflow-competitor-input.test.js && node --check tests/mira-seo-report-ui.test.js && node --check tests/mira-seo-competitor-intelligence.test.js && node --check tests/mira-seo-research-orchestrator.test.js && node --check tests/mira-seo-content-gap-report.test.js
       - name: Competitor intelligence regression
         run: node tests/mira-seo-competitor-intelligence.test.js
       - name: Governed multi-query research regression
@@ -61,3 +64,5 @@ jobs:
         run: node tests/mira-seo-report-route.test.js
       - name: SEO report dashboard integration regression
         run: node tests/mira-seo-report-ui.test.js
+      - name: Marketing workflow competitor input regression
+        run: node tests/marketing-workflow-competitor-input.test.js
