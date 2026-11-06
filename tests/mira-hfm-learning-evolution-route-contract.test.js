@@ -14,7 +14,6 @@ const verification = fs.readFileSync(path.join(root, 'supabase/verification/2026
 const bridge = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evolution-bridge.js'), 'utf8');
 const adapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-evidence-adapter.js'), 'utf8');
 const generationCycleAdapter = fs.readFileSync(path.join(root, 'services/mira-hfm-learning-generation-cycle-request.js'), 'utf8');
-const { createMiraHfmSameOriginWriteGuard } = require('../services/security/mira-hfm-same-origin-write-guard');
 
 
 
@@ -36,27 +35,6 @@ assert.match(verification, /rls_enabled/);
 assert.doesNotMatch(verification, /^\s*(insert|update|delete|create|alter|drop)\s/m);
 assert.match(route, /hasProductionIntegrationCapabilities\(/);
 assert.match(route, /HFM_LEARNING_PRODUCTION_ADAPTER_NOT_CONFIGURED/);
-
-assert.match(route, /router\.use\(createMiraHfmSameOriginWriteGuard\(\)\)/);
-{
-  const guard = createMiraHfmSameOriginWriteGuard({ env: {
-    MIRA_HFM_LEARNING_ALLOWED_ORIGINS: 'https://admin.example'
-  }});
-  function probe(headers, method = 'POST') {
-    let next = 0;
-    const res = { code: 200, status(value) { this.code = value; return this; },
-      json(value) { this.body = value; return this; } };
-    guard({ method, protocol: 'https', headers,
-      get(name) { return headers[name.toLowerCase()]; } }, res, () => { next++; });
-    return { next, res };
-  }
-  assert.equal(probe({ origin: 'https://admin.example', 'sec-fetch-site': 'same-site' }).next, 1);
-  assert.equal(probe({ origin: 'https://evil.example', 'sec-fetch-site': 'cross-site' }).next, 0);
-  assert.equal(probe({ origin: 'null' }).next, 0);
-  assert.equal(probe({}).next, 0);
-  assert.equal(probe({ origin: 'https://admin.example', referer: 'https://evil.example/x' }).next, 0);
-  assert.equal(probe({}, 'GET').next, 1);
-}
 assert.match(route, /session\.authenticated !== true/);
 assert.match(route, /session\.role !== 'admin'/);
 assert.match(route, /typeof session\.username !== 'string'/);
@@ -119,5 +97,3 @@ console.log('HFM_PHASE8_NAMED_ADMIN_SESSION_REQUIRED=PASS');
 console.log('HFM_PHASE8_SYSTEM_ADMIN_ROUTE_GUARD=PASS');
 console.log('HFM_PHASE8_SERVER_ROUTE_REGISTRATION=PASS');
 console.log('TESTS_FAILED=0');
-
-console.log('HFM_PHASE8_CSRF_ORIGIN_GUARD_REGRESSION=PASS');

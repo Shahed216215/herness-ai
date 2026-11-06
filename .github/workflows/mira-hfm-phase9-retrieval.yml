@@ -1,0 +1,43 @@
+name: Mira HFM v0.2 Phase 9 Retrieval
+
+on:
+  pull_request:
+    branches:
+      - 'work/mira-hfm-v02-phase8-restack-on-phase7-20261106'
+    paths:
+      - 'services/mira-hfm-retrieval-optimizer.js'
+      - 'services/mira-hfm-retrieval-provider-adapters.js'
+      - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
+      - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
+      - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
+      - 'tests/mira-hfm-phase9-downstream-proposal-injection.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase9/**'
+      - '.github/workflows/mira-hfm-phase9-retrieval.yml'
+  push:
+    branches:
+      - 'work/mira-hfm-v02-phase9-restack-on-phase8-security-20261106'
+    paths:
+      - 'services/mira-hfm-retrieval-provider-adapters.js'
+      - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
+      - 'services/mira-hfm-retrieval-optimizer.js'
+      - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
+      - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
+      - 'tests/mira-hfm-phase9-downstream-proposal-injection.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase9/**'
+      - '.github/workflows/mira-hfm-phase9-retrieval.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase9-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Syntax check
+        run: node --check services/mira-hfm-retrieval-optimizer.js && node --check services/mira-hfm-retrieval-provider-adapters.js && node --check tests/mira-hfm-phase9-retrieval-optimizer.test.js && node --check tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node --check tests/mira-hfm-phase9-prompt-injection-regression.test.js && node --check tests/mira-hfm-phase9-downstream-proposal-injection.test.js
+      - name: Phase 9 isolated offline tests
+        run: node tests/mira-hfm-phase9-retrieval-optimizer.test.js && node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js && node tests/mira-hfm-phase9-prompt-injection-regression.test.js && node tests/mira-hfm-phase9-downstream-proposal-injection.test.js
