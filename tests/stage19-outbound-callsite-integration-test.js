@@ -7,7 +7,9 @@ const cases = [
   ["tools/web-search.js", "../services/security/secure-provider-request"],
   ["providers/openrouter.js", "../services/security/secure-provider-request"],
   ["providers/deepseek.js", "../services/security/secure-provider-request"],
-  ["providers/huggingface.js", "../services/security/secure-provider-request"]
+  ["providers/huggingface.js", "../services/security/secure-provider-request"],
+  ["providers/anthropic.js", "../services/security/secure-provider-request"],
+  ["providers/xai.js", "../services/security/secure-provider-request"]
 ];
 
 for (const [file, importPath] of cases) {
