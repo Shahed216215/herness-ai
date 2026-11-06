@@ -25,6 +25,17 @@ function normalizeDomain(value) {
   }
 }
 
+function normalizeSourceUrl(value) {
+  try {
+    const parsed = new URL(value);
+    if (!["http:", "https:"].includes(parsed.protocol) ||
+        parsed.username || parsed.password) return null;
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
 function analyzeContentGaps(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new TypeError("SEO_CONTENT_GAP_INPUT_OBJECT_REQUIRED");
@@ -75,16 +86,13 @@ function analyzeContentGaps(input = {}) {
 
     const ownVisible = query.ownDomainVisible;
     const sources = Array.isArray(query.sources) ? query.sources : [];
-    const evidence = sources.filter(source => {
-      const domain = normalizeDomain(source?.url || "");
-      return domain && domain !== ownDomain &&
-        typeof source.title === "string" &&
-        source.title.trim();
-    }).slice(0, 10).map(source => ({
-      domain: normalizeDomain(source.url),
-      title: source.title.slice(0, 300),
-      url: source.url
-    }));
+    const evidence = sources.map(source => {
+      const url = normalizeSourceUrl(source?.url || "");
+      const domain = url ? normalizeDomain(url) : null;
+      if (!domain || domain === ownDomain ||
+          typeof source.title !== "string" || !source.title.trim()) return null;
+      return { domain, title: source.title.trim().slice(0, 300), url };
+    }).filter(Boolean).slice(0, 10);
 
     if (ownVisible !== false || evidence.length === 0) {
       reports.push({
@@ -132,9 +140,11 @@ function analyzeContentGaps(input = {}) {
 }
 
 function markdownEscape(value) {
-  return String(value ?? "—").replace(/[|\r\n]/g, " ").replace(/</g, "&lt;");
+  return String(value ?? "—")
+    .replace(/[|\r\n]/g, " ")
+    .replace(/</g, "&lt;")
+    .replace(/([\\`*_{}\[\]()#+.!|>])/g, "\\$1");
 }
-
 function generateSeoReport(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new TypeError("SEO_REPORT_INPUT_OBJECT_REQUIRED");
