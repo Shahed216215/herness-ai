@@ -1,0 +1,66 @@
+name: Mira HFM Memory repository contracts
+
+on:
+  push:
+    branches:
+      - work/hfm-memory-core-implementation-20261106
+    paths:
+      - "services/mira-hfm-memory-repository.js"
+      - "services/mira-hfm-authority-transaction.js"
+      - "services/mira-hfm-record-schema.js"
+      - "services/mira-hfm-vault-crypto.js"
+      - "tests/mira-hfm-memory-repository.test.js"
+      - "tests/mira-hfm-authority-transaction.test.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/mira-hfm-memory-repository.yml"
+  pull_request:
+    branches:
+      - work/hfm-authority-relational-integrity-20261106
+    paths:
+      - "services/mira-hfm-memory-repository.js"
+      - "services/mira-hfm-authority-transaction.js"
+      - "services/mira-hfm-record-schema.js"
+      - "services/mira-hfm-vault-crypto.js"
+      - "tests/mira-hfm-memory-repository.test.js"
+      - "tests/mira-hfm-authority-transaction.test.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/mira-hfm-memory-repository.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mira-hfm-memory-repository-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  memory-repository-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax-check Memory repository modules
+        run: |
+          node --check services/mira-hfm-memory-repository.js
+          node --check services/mira-hfm-authority-transaction.js
+      - name: Run focused Memory repository tests
+        run: |
+          node tests/mira-hfm-authority-transaction.test.js
+          node tests/mira-hfm-vault-crypto.test.js
+          node tests/mira-hfm-record-schema.test.js
+          node tests/mira-hfm-memory-repository-migration-contract.test.js
+          node tests/mira-hfm-memory-repository.test.js
+      - name: Run full repository regression suite
+        run: npm test
