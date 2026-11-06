@@ -38,7 +38,17 @@ CREATE TABLE IF NOT EXISTS mira_hfm.memory_records (
   classification TEXT NOT NULL
     CHECK (classification IN ('PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED')),
   lifecycle TEXT NOT NULL
-    CHECK (lifecycle IN ('ACTIVE', 'SUPERSEDED', 'ARCHIVED', 'QUARANTINED', 'PENDING_REVIEW')),
+    CHECK (lifecycle IN ('ACTIVE', 'SUPERSEDED', 'ARCHIVED', 'TRASHED', 'QUARANTINED', 'PENDING_REVIEW')),
+  trashed_at TIMESTAMPTZ,
+  trashed_by_actor_id TEXT CHECK (
+    trashed_by_actor_id IS NULL OR
+    (trashed_by_actor_id LIKE 'mira:%' AND length(trashed_by_actor_id) <= 512)
+  ),
+  CHECK (
+    (lifecycle = 'TRASHED' AND trashed_at IS NOT NULL AND trashed_by_actor_id IS NOT NULL)
+    OR
+    (lifecycle <> 'TRASHED' AND trashed_at IS NULL AND trashed_by_actor_id IS NULL)
+  ),
   revision BIGINT NOT NULL CHECK (revision > 0),
   integrity_status TEXT NOT NULL
     CHECK (integrity_status IN ('UNVERIFIED', 'VERIFIED', 'FAILED', 'QUARANTINED')),
@@ -110,7 +120,17 @@ CREATE TABLE IF NOT EXISTS mira_hfm.memory_record_versions (
   classification TEXT NOT NULL
     CHECK (classification IN ('PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED')),
   lifecycle TEXT NOT NULL
-    CHECK (lifecycle IN ('ACTIVE', 'SUPERSEDED', 'ARCHIVED', 'QUARANTINED', 'PENDING_REVIEW')),
+    CHECK (lifecycle IN ('ACTIVE', 'SUPERSEDED', 'ARCHIVED', 'TRASHED', 'QUARANTINED', 'PENDING_REVIEW')),
+  trashed_at TIMESTAMPTZ,
+  trashed_by_actor_id TEXT CHECK (
+    trashed_by_actor_id IS NULL OR
+    (trashed_by_actor_id LIKE 'mira:%' AND length(trashed_by_actor_id) <= 512)
+  ),
+  CHECK (
+    (lifecycle = 'TRASHED' AND trashed_at IS NOT NULL AND trashed_by_actor_id IS NOT NULL)
+    OR
+    (lifecycle <> 'TRASHED' AND trashed_at IS NULL AND trashed_by_actor_id IS NULL)
+  ),
   revision BIGINT NOT NULL CHECK (revision > 0),
   integrity_status TEXT NOT NULL
     CHECK (integrity_status IN ('UNVERIFIED', 'VERIFIED', 'FAILED', 'QUARANTINED')),
