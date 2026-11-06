@@ -4,21 +4,24 @@ const { inspectDatabase } = require("../services/mira-hfm-postgres");
 
 function isTrustedAdmin(context) {
   const actor = context && context.actor;
+  const principal = actor && actor.principal;
   return context &&
     context.status === "ACTOR_RESOLVED" &&
     actor &&
     actor.role === "admin" &&
     typeof actor.actorId === "string" &&
-    actor.actorId.startsWith("mira:") &&
-    actor.principal &&
-    actor.principal.actorType === "HUMAN";
+    actor.actorId.startsWith("mira:mira.admins:") &&
+    principal &&
+    principal.actorId === actor.actorId &&
+    principal.actorType === "HUMAN" &&
+    principal.authenticationMethod === "ADMIN_SUBJECT";
 }
 
 module.exports = {
   name: "hfm_database_status",
   declaration: {
     name: "hfm_database_status",
-    description: "Read-only inspection of the configured Mira HFM Neon PostgreSQL database. Requires a verified admin session. Returns database/schema/table metadata only; never reads table rows, runs migrations, or writes data.",
+    description: "Read-only inspection of the configured Mira HFM Neon PostgreSQL database. Requires a verified canonical admin-subject session. Returns database/schema/table metadata only; never reads table rows, runs migrations, or writes data.",
     parameters: {
       type: "object",
       properties: {}
