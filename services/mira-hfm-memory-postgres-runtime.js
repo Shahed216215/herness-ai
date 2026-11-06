@@ -40,6 +40,7 @@ const PREFLIGHT_SQL = [
   'SELECT current_user AS current_role, current_database() AS database_name,',
   'r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls,',
   'r.rolcreaterole AS can_create_roles, r.rolcreatedb AS can_create_databases,',
+  'r.rolinherit AS inherits_roles,',
   "pg_has_role(current_user, $1, 'MEMBER') AS has_memory_writer_group,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
@@ -79,7 +80,7 @@ const PREFLIGHT_SQL = [
 ].join(' ');
 
 const REQUIRED_TRUE = Object.freeze([
-  'has_memory_writer_group', 'schema_usage',
+  'has_memory_writer_group', 'inherits_roles', 'schema_usage',
   'owners_select', 'memberships_select', 'authorities_select',
   'authorities_update', 'authority_audit_insert',
   'records_select', 'records_insert', 'records_update',
