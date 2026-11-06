@@ -20,6 +20,7 @@ on:
       - 'tests/marketing-workflow-competitor-input.test.js'
       - 'tests/mira-seo-competitor-intelligence.test.js'
       - 'tests/mira-seo-research-orchestrator.test.js'
+      - 'docs/seo/MIRA-COMPETITOR-INTELLIGENCE-V1-20261106.md'
       - '.github/workflows/mira-competitor-intelligence-v1.yml'
   push:
     branches:
@@ -40,6 +41,7 @@ on:
       - 'services/mira-seo-research-orchestrator.js'
       - 'tests/mira-seo-competitor-intelligence.test.js'
       - 'tests/mira-seo-research-orchestrator.test.js'
+      - 'docs/seo/MIRA-COMPETITOR-INTELLIGENCE-V1-20261106.md'
       - '.github/workflows/mira-competitor-intelligence-v1.yml'
 
 permissions:
