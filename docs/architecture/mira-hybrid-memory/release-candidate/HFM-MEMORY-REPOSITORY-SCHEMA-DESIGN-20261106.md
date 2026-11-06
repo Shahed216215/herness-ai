@@ -174,3 +174,24 @@ Runtime and durable-storage responsibilities are separate:
 - A lightweight status panel should distinguish Render runtime availability from Neon database availability and show last confirmed Neon commit time.
 
 Current free-tier planning assumptions to re-check before production: Render Free web services spin down after 15 minutes without inbound traffic and have ephemeral filesystems; Neon Free compute scales to zero after 5 minutes while database storage remains persisted. Quotas and plan terms may change. Do not treat these free tiers as a production durability SLA.
+
+
+## 13. Disposable Neon migration execution evidence (2026-11-06)
+
+Migration 004 was executed successfully as one database transaction on the disposable Neon branch:
+- Project: `steep-grass-38696226`
+- Branch: `mira-hfm-test` (`br-lingering-dawn-a18x6pxx`)
+- Database: `neondb`
+- Source: `migrations/hfm/004_memory_repository_schema.sql` at implementation branch `work/hfm-memory-core-implementation-20261106`
+- The migration was submitted as 22 SQL statements through Neon transaction execution; the transaction returned success for all statements.
+- PostgreSQL inspection confirmed all four Memory tables, their columns, indexes, constraints, and all nine expected triggers.
+- Each of the four new Memory tables contains zero rows.
+- PUBLIC has no SELECT, INSERT, UPDATE, or DELETE privilege on `memory_records`.
+- Production branch `br-crimson-sun-a13xzreh` was rechecked and still has no Memory tables.
+- Existing authority tables on the disposable test branch were preserved.
+
+Scope limitation:
+- This validates PostgreSQL DDL parsing and schema creation on the disposable branch only.
+- No application repository writer, data lifecycle integration, encryption-key provisioning, API, daily capture, Copy UI, Trash/Restore UI, or production integration was tested.
+- The backup branch `mira-hfm-test-pre-003-backup-20261106` remains a separate ready snapshot; it was not modified.
+- PR #70 remains an Open Draft. Exact-head CI and full repository tests remain NOT_RUN.
