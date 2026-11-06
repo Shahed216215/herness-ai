@@ -33,7 +33,7 @@ Phase 9 adds an opt-in, dependency-injected, read-only retrieval optimizer. Exis
 - External snippets remain untrusted evidence. Text found in a Memory record is data, never an instruction to override system, developer, project or user policy.
 - The optimizer prompt-injection regression feeds hostile instruction-like text and adversarial provider fields through retrieval normalization. It verifies the content remains unchanged data, trust stays UNVERIFIED, non-schema action fields are not propagated, and no external action/canonical write occurs in the test harness.
 - A second regression exercises the existing Phase 8 generation-proposal handoff adapter using a hostile public-retrieval evidence snippet. It verifies evidence is converted to `UNVERIFIED` proposal evidence, hostile text remains content rather than executable instructions, attacker-supplied action fields are dropped, named-admin/explicit-opt-in governance remains in force, and the disabled hook fails closed.
-- These tests do NOT prove that the LLM prompt builder or tool router safely isolates all retrieved text during actual model inference. The full `/api/agent` model/tool loop and live generation E2E remain NOT TESTED.
+- The added runtime prompt-boundary suite now exercises the actual `/api/agent` integration points offline: retrieved knowledge is inserted as bounded JSON in a user-role data block, persisted system/tool history is excluded, model tool calls are checked against the registered tool set and execution policy, and named-admin/explicit-review gates are enforced. This is code-level integration evidence, not a live model inference or provider serialization test.
 - Search failure is not evidence of deletion or data loss.
 - Conflicts are surfaced, not silently merged.
 
@@ -48,6 +48,7 @@ Run:
 - `node tests/mira-hfm-phase9-provider-adapters-benchmark.test.js`
 - `node tests/mira-hfm-phase9-prompt-injection-regression.test.js`
 - `node tests/mira-hfm-phase9-downstream-proposal-injection.test.js`
+- `node tests/mira-hfm-phase9-runtime-prompt-boundary.test.js`
 
 The tests use mock facade/archive/group services and synthetic in-memory adapters, including 100/1,000/10,000-record scale cases. They do not access local user data, Facebook, Google Drive, Supabase, Render, external APIs or production storage.
 
@@ -56,7 +57,7 @@ The tests use mock facade/archive/group services and synthetic in-memory adapter
 1. Execute the adapters against the actual authorized local/HFM and Supabase provider instances only after explicit live-test authorization; the current tests use mocks.
 2. Supply the exact deployed model tokenizer encoder and reserve prompt/system/tool overhead in the generation layer.
 3. Run representative provider benchmarks at 1x/10x/100x and measure p50/p95 latency, memory, candidate recall, token use, concurrency and failure/recovery behavior.
-4. Independently test the full `/api/agent` prompt builder, model tool-call loop and tool router with hostile retrieved content; the current downstream test covers only the Phase 8 proposal-handoff boundary.
+4. Run a deployed, explicitly authorized non-production `/api/agent` test with the actual model provider and hostile retrieved content; offline code-level prompt/tool-router boundary coverage now exists, but live model inference and end-to-end tool-loop behavior remain untested.
 5. Integrate into the Mira generation lifecycle only after Phase 8 live Supabase integration and governance gates are completed.
 6. Do not certify 100x end-to-end capacity until provider/runtime measured evidence exists.
 
@@ -64,9 +65,22 @@ VERSION=v0.2
 PHASE9=RETRIEVAL_OPTIMIZER_AND_READ_ONLY_PROVIDER_ADAPTER_CONTRACTS_IMPLEMENTED
 PROMPT_INJECTION_OPTIMIZER_BOUNDARY=REGRESSION_TEST_ADDED
 DOWNSTREAM_PROPOSAL_HANDOFF_BOUNDARY=REGRESSION_TEST_ADDED
-FULL_AGENT_PROMPT_AND_TOOL_ROUTER_ISOLATION=NOT_TESTED
+FULL_AGENT_PROMPT_AND_TOOL_ROUTER_ISOLATION=OFFLINE_RUNTIME_BOUNDARY_TESTED
+LIVE_MODEL_PROMPT_AND_TOOL_LOOP=NOT_TESTED
 LIVE_PROVIDER_EXECUTION=NOT_CERTIFIED
 DEPLOYED_MODEL_TOKENIZER=NOT_CONFIGURED
 SYNTHETIC_1X_10X_100X_BENCHMARK=ADDED
 CAPACITY_100X_END_TO_END=NOT_VERIFIED
 PRODUCTION=NOT_APPROVED
+
+
+## Runtime prompt and tool-router isolation — 2026-11-06
+
+The new `services/mira-hfm-prompt-boundary.js` is wired into the real `/api/agent` loop:
+- Retrieved Knowledge is restricted to two records and an explicit field allowlist, serialized as JSON, and appended as a `user` data message rather than a `system` message.
+- The system instruction now explicitly treats retrieved context, history, tool output and provider output as data, not authority.
+- Persisted conversation replay now permits only `user` and `assistant` messages; stored `system` and `tool` messages are excluded.
+- Model tool calls must name a registered tool, provide object arguments, pass the existing execution policy, and satisfy named-admin gates for sensitive routes.
+- SEO review-decision dispatch requires both its confirmation token and a separate request-level `confirmSeoWorkflowReviewDecision=true` signal; a token embedded only in hostile retrieved text is insufficient.
+
+The Phase 9 workflow now runs `tests/mira-hfm-phase9-runtime-prompt-boundary.test.js` and syntax-checks the modified server, AI instruction, context selector and boundary module. This is offline source/contract integration coverage only. It does not invoke a live model, provider, external tool, or production store. Live `/api/agent` inference/tool-loop E2E remains NOT_TESTED.
