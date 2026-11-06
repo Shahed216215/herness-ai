@@ -30,7 +30,7 @@ $$;
 ALTER ROLE mira_hfm_memory_writer
   NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT;
 
-DO $
+DO $$
 DECLARE
   writer_oid oid;
 BEGIN
@@ -50,7 +50,7 @@ BEGIN
     RAISE EXCEPTION 'HFM_MEMORY_WRITER_GROUP_MUST_NOT_OWN_DATABASE_OBJECTS';
   END IF;
 END;
-$;
+$$;
 
 REVOKE ALL ON TABLE
   mira_hfm.memory_records,
@@ -127,7 +127,7 @@ ALTER TABLE mira_hfm.memory_operation_registry FORCE ROW LEVEL SECURITY;
 ALTER TABLE mira_hfm.memory_audit_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mira_hfm.memory_audit_events FORCE ROW LEVEL SECURITY;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
