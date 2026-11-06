@@ -67,7 +67,7 @@ No source code, runtime configuration, production database schema/data, secrets,
 - Added `services/mira-hfm-record-schema.js` with backward-compatible v1.0.0 validation and additive v1.1.0 record families for daily activity, learning, knowledge, social drafts, client vault, and financial vault.
 - Implemented RFC 8785 JCS string content hashing, strict calendar timestamp validation, schema-version-specific record-type allowlists, and mandatory RESTRICTED classification for client/financial records.
 - Added `tests/mira-hfm-record-schema.test.js` and included both focused test files in the configured `npm test` chain.
-- Isolated local Node harness result: combined vault crypto + record schema 20/20. The harness used a local copy of the current branch source; these results are not the full repository regression suite and are not exact-head GitHub CI evidence.
+- Isolated local Node harness result: combined vault crypto + record schema 21/21. The harness used a local copy of the current branch source; these results are not the full repository regression suite and are not exact-head GitHub CI evidence.
 - Draft PR #70: https://github.com/Shahed216215/herness-ai/pull/70
 - PR #70 is based on PR #66's exact head and remains Draft/Open. The existing runtime-foundation workflow filters pull requests by base branch (`main` or `work/render-main-host-binding-compat-20261106`), so it does not automatically run for PR #70's current base. Exact-head CI remains NOT_RUN / INCONCLUSIVE until a suitable validation path is established.
 
