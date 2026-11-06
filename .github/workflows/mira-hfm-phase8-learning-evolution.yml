@@ -1,0 +1,93 @@
+name: Mira HFM Phase 8 Learning Evolution Bridge
+
+on:
+  push:
+    branches:
+      - work/mira-hfm-v02-phase8-clean-restack-v3-20261105
+    paths:
+      - 'services/mira-hfm-learning-evolution-bridge.js'
+      - 'services/mira-hfm-learning-generation-cycle.js'
+      - 'services/mira-hfm-learning-generation-cycle-request.js'
+      - 'services/mira-hfm-learning-proposal-store.js'
+      - 'services/mira-hfm-learning-proposal-supabase-store.js'
+      - 'services/mira-hfm-learning-evidence-adapter.js'
+      - 'services/mira-hfm-learning-legacy-compatibility.js'
+      - 'services/mira-hfm-legacy-learning-evidence-adapter.js'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'public/index.html'
+      - 'server.js'
+      - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
+      - 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'
+      - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle-request.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle-server-integration.test.js'
+      - 'tests/mira-hfm-learning-ui-contract.test.js'
+      - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
+      - 'tests/mira-hfm-learning-evolution-review-route.test.js'
+      - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
+      - 'tests/mira-hfm-learning-supabase-store.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase8/**'
+      - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
+  pull_request:
+    branches:
+      - 'work/mira-hfm-v02-phase7-restack-on-phase6-20261106'
+    paths:
+      - 'services/mira-hfm-learning-evolution-bridge.js'
+      - 'services/mira-hfm-learning-generation-cycle.js'
+      - 'services/mira-hfm-learning-proposal-store.js'
+      - 'services/mira-hfm-learning-proposal-supabase-store.js'
+      - 'services/mira-hfm-learning-evidence-adapter.js'
+      - 'services/mira-hfm-learning-legacy-compatibility.js'
+      - 'services/mira-hfm-legacy-learning-evidence-adapter.js'
+      - 'routes/mira-hfm-learning-evolution.js'
+      - 'public/index.html'
+      - 'server.js'
+      - 'supabase/migrations/20261105110000_mira_hfm_learning_proposals.sql'
+      - 'supabase/verification/20261105110000_verify_mira_hfm_learning_proposals.sql'
+      - 'tests/mira-hfm-learning-evolution-bridge.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle.test.js'
+      - 'tests/mira-hfm-learning-generation-cycle-server-integration.test.js'
+      - 'tests/mira-hfm-learning-ui-contract.test.js'
+      - 'tests/mira-hfm-learning-evolution-route-contract.test.js'
+      - 'tests/mira-hfm-learning-evolution-review-route.test.js'
+      - 'tests/mira-hfm-learning-legacy-compatibility.test.js'
+      - 'tests/mira-hfm-learning-supabase-store.test.js'
+      - 'docs/architecture/mira-hybrid-memory/phase8/**'
+      - '.github/workflows/mira-hfm-phase8-learning-evolution.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase8-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check Phase 8 JavaScript syntax
+        run: >-
+          node --check server.js &&
+          node --check routes/mira-hfm-learning-evolution.js &&
+          node --check services/mira-hfm-learning-proposal-store.js &&
+          node --check services/mira-hfm-learning-proposal-supabase-store.js &&
+          node --check services/mira-hfm-learning-evidence-adapter.js &&
+          node --check services/mira-hfm-learning-legacy-compatibility.js &&
+          node --check services/mira-hfm-legacy-learning-evidence-adapter.js &&
+          node --check services/mira-hfm-learning-evolution-bridge.js &&
+          node --check services/mira-hfm-learning-generation-cycle.js &&
+          node --check services/mira-hfm-learning-generation-cycle-request.js
+      - name: Run Phase 8 offline contract tests
+        run: >-
+          node tests/mira-hfm-learning-evolution-bridge.test.js &&
+          node tests/mira-hfm-learning-evolution-route-contract.test.js &&
+          node tests/mira-hfm-learning-evolution-review-route.test.js &&
+          node tests/mira-hfm-learning-legacy-compatibility.test.js &&
+          node tests/mira-hfm-learning-supabase-store.test.js &&
+          node tests/mira-hfm-learning-generation-cycle.test.js &&
+          node tests/mira-hfm-learning-generation-cycle-request.test.js &&
+          node tests/mira-hfm-learning-generation-cycle-server-integration.test.js &&
+          node tests/mira-hfm-learning-ui-contract.test.js
