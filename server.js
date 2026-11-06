@@ -67,6 +67,9 @@ const registerKnowledgeImprovementRoutes =
 const registerMiraSeoRoutes =
   require("./routes/mira-seo");
 
+const registerMiraSeoReportRoutes =
+  require("./routes/mira-seo-report");
+
 const registerMiraSeoResearchRoutes =
   require("./routes/mira-seo-research");
 
@@ -147,11 +150,14 @@ app.use(rejectUnsupportedUploads);
 app.use(
   express.json({
     limit: MAX_BODY_SIZE,
-    // The SEO route has its own larger parser after admin authentication.
+    // SEO audit and report routes use bounded parsers after Admin authorization.
     // All other endpoints retain the global 50KB request limit.
     type: req => !(
       req.method === "POST" &&
-      req.path === "/api/admin/mira-seo/audit"
+      [
+        "/api/admin/mira-seo/audit",
+        "/api/admin/mira-seo/report"
+      ].includes(req.path)
     )
   })
 );
@@ -183,6 +189,12 @@ registerKnowledgeImprovementRoutes(
 );
 
 registerMiraSeoRoutes(
+  app,
+  requireAdminPermission,
+  PERMISSIONS
+);
+
+registerMiraSeoReportRoutes(
   app,
   requireAdminPermission,
   PERMISSIONS
