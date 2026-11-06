@@ -259,10 +259,16 @@ function generateSeoReport(input = {}) {
       "| Keyword | Status | Signal | Evidence sources |",
       "|---|---|---|---:|");
     if (!gapRows.length) lines.push("| No keyword rows supplied | — | — | — |");
-    for (const item of gapRows) lines.push("| " +
-      [item.keyword, item.status, item.signal,
-        Array.isArray(item.evidence) ? item.evidence.length : 0]
-        .map(markdownEscape).join(" | ") + " |");
+    for (const item of gapRows) {
+      lines.push("| " +
+        [item.keyword, item.status, item.signal,
+          Array.isArray(item.evidence) ? item.evidence.length : 0]
+          .map(markdownEscape).join(" | ") + " |");
+      for (const source of (Array.isArray(item.evidence) ? item.evidence : [])) {
+        lines.push("  - " + markdownEscape(source.title) + " — " +
+          markdownEscape(source.url));
+      }
+    }
   }
 
   lines.push("", "## Methodology and limitations", "",
