@@ -565,10 +565,11 @@ app.post(
         ) {
           const authenticatedAt = new Date();
           req.session.hfmPrincipal = {
-            issuer: MIRA_HFM_PRINCIPAL_ISSUER,
+            verified: true,
+            issuer: identity.role === "admin" ? "mira.admins" : "mira.users",
             subject: hfmSubjectId.trim(),
-            actorType: identity.role,
-            authenticationMethod: "password_session",
+            actorType: "HUMAN",
+            authenticationMethod: identity.role === "admin" ? "ADMIN_SUBJECT" : "USER_SESSION",
             authenticationRef: req.sessionID,
             authenticatedAt: authenticatedAt.toISOString(),
             expiresAt: new Date(
