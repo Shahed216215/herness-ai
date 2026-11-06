@@ -72,9 +72,10 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS authority_audit_delete,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS authority_audit_truncate,",
   "has_sequence_privilege(current_user, 'mira_hfm.memory_audit_events_event_sequence_seq', 'USAGE') AS audit_sequence_usage,",
-  '(SELECT count(*) = 4 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
+  '(SELECT count(*) = 8 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace ' +
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN " +
-    "('memory_records','memory_record_versions','memory_operation_registry','memory_audit_events') " +
+    "('project_owners','project_memberships','operation_authorities','authority_audit_events'," +
+    "'memory_records','memory_record_versions','memory_operation_registry','memory_audit_events') " +
     'AND c.relrowsecurity = true AND c.relforcerowsecurity = true) AS memory_rls_forced',
   'FROM pg_roles r WHERE r.rolname = current_user'
 ].join(' ');
