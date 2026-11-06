@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - work/render-host-binding-env-compat-audit
+      - work/hfm-phase2-identity-guard-render-base-20261106
 
 permissions:
   contents: read
