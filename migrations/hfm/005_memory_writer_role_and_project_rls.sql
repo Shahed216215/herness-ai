@@ -30,6 +30,28 @@ $$;
 ALTER ROLE mira_hfm_memory_writer
   NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT;
 
+DO $
+DECLARE
+  writer_oid oid;
+BEGIN
+  SELECT oid INTO writer_oid
+  FROM pg_roles
+  WHERE rolname = 'mira_hfm_memory_writer';
+
+  IF EXISTS (SELECT 1 FROM pg_auth_members WHERE member = writer_oid) THEN
+    RAISE EXCEPTION 'HFM_MEMORY_WRITER_GROUP_MUST_NOT_INHERIT_OTHER_ROLES';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relowner = writer_oid)
+     OR EXISTS (SELECT 1 FROM pg_namespace WHERE nspowner = writer_oid)
+     OR EXISTS (SELECT 1 FROM pg_proc WHERE proowner = writer_oid)
+     OR EXISTS (SELECT 1 FROM pg_database WHERE datdba = writer_oid)
+     OR EXISTS (SELECT 1 FROM pg_default_acl WHERE defaclrole = writer_oid) THEN
+    RAISE EXCEPTION 'HFM_MEMORY_WRITER_GROUP_MUST_NOT_OWN_DATABASE_OBJECTS';
+  END IF;
+END;
+$;
+
 REVOKE ALL ON TABLE
   mira_hfm.memory_records,
   mira_hfm.memory_record_versions,
