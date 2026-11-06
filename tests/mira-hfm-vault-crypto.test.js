@@ -51,7 +51,7 @@ test('wrong owner, project, record, type, or schema context fails authentication
     { ownerId: 'mira:other-owner' },
     { projectId: 'other-project' },
     { recordId: 'other-record' },
-    { classification: 'PUBLIC' },
+    { classification: 'PROJECT_PRIVATE' },
     { recordType: 'knowledge_item' },
     { schemaVersion: '1.0.0' }
   ];
