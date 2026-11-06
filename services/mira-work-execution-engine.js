@@ -1109,14 +1109,26 @@ function auditExecutionFailure({
   taskId,
   toolName,
   status,
-  reason
+  reason,
+  auditStatus = "failed",
+  diagnostic = {}
 }) {
+  const safeDiagnostic = {
+    version: 1,
+    decisionStage: "work_authorization",
+    reasonCode: String(diagnostic.reasonCode || ""),
+    category: String(diagnostic.category || ""),
+    risk: String(diagnostic.risk || ""),
+    operation: String(diagnostic.operation || ""),
+    approvalRequired: diagnostic.approvalRequired === true
+  };
+
   return recordAudit({
     actorRole: "system",
     action: "task_execution",
     resource: "task",
     resourceId: taskId || "",
-    status: "failed",
+    status: auditStatus === "blocked" ? "blocked" : "failed",
     details: {
       stage: "5.4",
       engineVersion:
@@ -1125,7 +1137,10 @@ function auditExecutionFailure({
       executionStatus:
         status || "failed",
       reason:
-        String(reason || "")
+        String(reason || ""),
+      ...(auditStatus === "blocked"
+        ? { workAuthDiagnostic: safeDiagnostic }
+        : {})
     }
   });
 }
@@ -1331,7 +1346,15 @@ async function executeWork(
             "approval_required",
           reason:
             workAuthorization.reason ||
-            "Stage 6.3 autonomous work authorization denied execution."
+            "Stage 6.3 autonomous work authorization denied execution.",
+          auditStatus: "blocked",
+          diagnostic: {
+            reasonCode: workAuthorization.reasonCode,
+            category: workAuthorization.category,
+            risk: workAuthorization.risk,
+            operation: workAuthorization.operation,
+            approvalRequired: workAuthorization.approvalRequired
+          }
         });
 
       return {
@@ -1347,7 +1370,16 @@ async function executeWork(
         checks: [],
         authorization: {
           result:
-            workAuthorization
+            workAuthorization,
+          diagnostic: {
+            version: 1,
+            decisionStage: "work_authorization",
+            reasonCode: workAuthorization.reasonCode || "AUTHORIZATION_DENIED",
+            category: workAuthorization.category || "",
+            risk: workAuthorization.risk || "unknown",
+            operation: workAuthorization.operation || "",
+            approvalRequired: workAuthorization.approvalRequired === true
+          }
         },
         results,
         failureAudit:

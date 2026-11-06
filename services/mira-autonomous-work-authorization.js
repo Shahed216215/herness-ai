@@ -220,6 +220,9 @@ function authorizeWork({
     risk,
     operation,
     reason: "",
+    reasonCode: "",
+    decisionStage: "work_authorization",
+    diagnosticVersion: 1,
     category: "",
     safetyState: "",
     governance: {
@@ -232,6 +235,7 @@ function authorizeWork({
 
   if (risk === "unknown") {
     base.reason = "Task risk is unknown; fail closed.";
+    base.reasonCode = "TASK_RISK_UNKNOWN";
     base.category = "unknown_risk";
     return base;
   }
@@ -239,12 +243,14 @@ function authorizeWork({
   if (APPROVAL_REQUIRED_RISKS.has(risk)) {
     base.reason =
       `Task risk '${risk}' requires approval.`;
+    base.reasonCode = "TASK_RISK_REQUIRES_APPROVAL";
     base.category = `${risk}_risk`;
     return base;
   }
 
   if (hardApproval.required) {
     base.reason = hardApproval.reason;
+    base.reasonCode = "HARD_APPROVAL_PATTERN_MATCHED";
     base.category = hardApproval.category;
     return base;
   }
@@ -261,6 +267,7 @@ function authorizeWork({
   if (!isSystemPreAuthorized(risk)) {
     base.reason =
       "Task risk is not covered by the system autonomous pre-authorization policy.";
+    base.reasonCode = "SYSTEM_PREAUTHORIZATION_NOT_GRANTED";
     base.category = "preauthorization_policy_denied";
     return base;
   }
@@ -270,6 +277,7 @@ function authorizeWork({
   if (!safety.ok) {
     base.status = "execution_blocked";
     base.reason = safety.reason;
+    base.reasonCode = "SAFETY_STATE_BLOCKED";
     base.category = "safety_state";
     base.safetyState = String(safety.state || "");
     return base;
@@ -289,6 +297,7 @@ function authorizeWork({
     base.reason =
       policy.reason ||
       "Operation is not permitted by autonomous policy.";
+    base.reasonCode = "OPERATION_POLICY_DENIED";
     base.category = "operation_policy";
     base.safetyState = String(
       policy.safetyState ||
@@ -306,6 +315,7 @@ function authorizeWork({
   base.approvalRequired = false;
   base.reason =
     "Low-risk task is trusted, pre-authorized, safe, and policy-compliant.";
+  base.reasonCode = "LOW_RISK_PREAUTHORIZED";
   base.category = "low_risk_pre_authorized";
   base.safetyState = String(
     policy.safetyState ||

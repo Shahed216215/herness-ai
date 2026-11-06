@@ -1875,7 +1875,13 @@ app.post(
             success:
               engineSucceeded ||
               directDispatchSucceeded,
-            verified
+            verified,
+            ...(executionEvidence?.authorization?.diagnostic
+              ? {
+                  authorizationDiagnostic:
+                    executionEvidence.authorization.diagnostic
+                }
+              : {})
           });
 
           if (
@@ -2572,20 +2578,24 @@ app.post("/api/admin/bug-hunter/preview", requireAdminPermission(PERMISSIONS.SYS
   }
 });
 
-const miraHttpServer = app.listen(
-  PORT,
-  HOST,
-  () => {
-    startAutonomousWorker();
-    console.log("MIRA_SERVER_READY=1");
-    console.log(
-      `AI Agent Dashboard running on http://${HOST}:${PORT}`
-    );
-  }
-);
+if (require.main === module) {
+  const miraHttpServer = app.listen(
+    PORT,
+    HOST,
+    () => {
+      startAutonomousWorker();
+      console.log("MIRA_SERVER_READY=1");
+      console.log(
+        `AI Agent Dashboard running on http://${HOST}:${PORT}`
+      );
+    }
+  );
 
-miraHttpServer.on("error", error => {
-  const code = error && error.code ? error.code : "UNKNOWN";
-  console.error("[MiraServer] LISTEN_FAILED code=" + code);
-  process.exitCode = 1;
-});
+  miraHttpServer.on("error", error => {
+    const code = error && error.code ? error.code : "UNKNOWN";
+    console.error("[MiraServer] LISTEN_FAILED code=" + code);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { app };
