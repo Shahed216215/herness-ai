@@ -1,0 +1,49 @@
+name: Mira Run Agent Gemini Conversation Regression
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'providers/gemini.js'
+      - 'services/mira-gemini-conversation-adapter.js'
+      - 'services/ai.js'
+      - 'server.js'
+      - 'tests/mira-gemini-conversation-adapter.test.js'
+      - 'tests/mira-agent-runner-integration.test.js'
+      - 'tests/mira-gemini-provider-offline.test.js'
+      - '.github/workflows/mira-agent-runner-conversation.yml'
+  push:
+    branches:
+      - 'work/mira-competitor-intelligence-v1-20261106'
+    paths:
+      - 'providers/gemini.js'
+      - 'services/mira-gemini-conversation-adapter.js'
+      - 'services/ai.js'
+      - 'server.js'
+      - 'tests/mira-gemini-conversation-adapter.test.js'
+      - 'tests/mira-agent-runner-integration.test.js'
+      - 'tests/mira-gemini-provider-offline.test.js'
+      - '.github/workflows/mira-agent-runner-conversation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  run-agent-conversation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax checks
+        run: node --check providers/gemini.js && node --check services/mira-gemini-conversation-adapter.js && node --check services/ai.js && node --check server.js && node --check tests/mira-gemini-conversation-adapter.test.js && node --check tests/mira-agent-runner-integration.test.js && node --check tests/mira-gemini-provider-offline.test.js
+      - name: Gemini conversation and tool response regression
+        run: node tests/mira-gemini-conversation-adapter.test.js
+      - name: Dashboard to execution engine integration contract
+        run: node tests/mira-agent-runner-integration.test.js
+      - name: Gemini provider offline request mapping
+        run: node tests/mira-gemini-provider-offline.test.js

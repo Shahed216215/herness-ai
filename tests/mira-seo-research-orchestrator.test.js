@@ -8,6 +8,8 @@ const {
   isTrustedAdminContext
 } = require("../services/mira-seo-research-orchestrator");
 
+const { extractSearchEvidence } = require("../services/mira-seo-research-evidence");
+
 const calls = [];
 let consentAuthorized = true;
 let nextExecution = null;
@@ -138,7 +140,15 @@ async function main() {
 
   assert.equal(result.success, true);
   assert.equal(result.status, "RESEARCH_RESULTS_READY_FOR_REVIEW");
+  assert.equal(result.costPolicy.mode, "NO_PURCHASED_API_REQUIRED");
+  assert.equal(result.costPolicy.paidApiKeyRequired, false);
+  assert.equal(result.costPolicy.userApiPurchaseRequired, false);
+  assert.equal(result.costPolicy.providerUsageCost, "NOT_EXPOSED_BY_HOST_PLATFORM");
   assert.equal(result.evidence.evidenceCount, 1);
+  assert.equal(result.evidence.uniqueDomainCount, 1);
+  assert.equal(result.evidence.evidence[0].sourceDomain, "example.com");
+  assert.equal(result.evidence.evidence[0].providerResultPosition, 1);
+  assert.ok(result.evidence.evidence[0].queryTermCoverage.matchedTerms.includes("seo"));
   assert.equal(calls.length, 1);
   assert.equal(calls[0][1].permissionGranted, true);
   assert.equal(calls[0][1].persist, false);
@@ -147,6 +157,119 @@ async function main() {
   console.log("PASS: consent-backed governed execution");
   console.log("PASS: trusted route context supplies execution permission");
   console.log("PASS: evidence verification and normalization");
+  console.log("PASS: query-term coverage and normalized source-domain signals");
+
+  assert.equal(validateResearchInput({
+    ...validInput,
+    competitorQueries: ["best project management tools", "project management alternatives"]
+  }).competitorQueries.length, 2);
+  assert.deepEqual(validateResearchInput({
+    ...validInput,
+    confirmedCompetitorDomains: ["https://www.alpha.example/path"]
+  }).confirmedCompetitorDomains, ["alpha.example"]);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    confirmedCompetitorDomains: ["not a valid domain"]
+  }), /CONFIRMED_COMPETITOR_DOMAIN_INVALID/);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    confirmedCompetitorDomains: new Array(11).fill("example.com")
+  }), /DOMAINS_INVALID/);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    competitorQueries: ["same query", "same query"]
+  }), /MUST_BE_UNIQUE/);
+  assert.throws(() => validateResearchInput({
+    ...validInput,
+    competitorQueries: new Array(6).fill("extra query")
+  }), /QUERIES_INVALID/);
+
+  nextExecution = {
+    success: true,
+    results: [
+      {
+        tool: "web_search",
+        result: JSON.stringify([
+          { title: "Alpha PM", link: "https://alpha.example/product", snippet: "Project management software." },
+          { title: "Our product", link: "https://example.com/product", snippet: "Project management platform." }
+        ]),
+        verification: { passed: true }
+      },
+      {
+        tool: "web_search",
+        result: JSON.stringify([
+          { title: "Alpha comparison", link: "https://alpha.example/compare", snippet: "Best project management tools." },
+          { title: "Beta guide", link: "https://beta.example/guide", snippet: "Project management alternatives." }
+        ]),
+        verification: { passed: true }
+      },
+      {
+        tool: "web_search",
+        result: JSON.stringify([
+          { title: "Gamma review", link: "https://gamma.example/review", snippet: "Project management alternatives." }
+        ]),
+        verification: { passed: true }
+      }
+    ]
+  };
+  const multi = await runSeoResearch({
+    ...validInput,
+    competitorQueries: [
+      "best project management tools",
+      "project management alternatives"
+    ],
+    confirmedCompetitorDomains: ["alpha.example"]
+  }, trustedContext, {
+    consentService,
+    executeWork: async (...args) => {
+      calls.push(args);
+      return nextExecution;
+    }
+  });
+  assert.equal(multi.success, true);
+  assert.equal(multi.competitorIntelligence.searchCount, 3);
+  assert.equal(multi.competitorIntelligence.competitorDomains[0].domain, "alpha.example");
+  assert.equal(multi.competitorIntelligence.competitorDomains[0].queryCoverageCount, 2);
+  assert.equal(
+    multi.competitorIntelligence.competitorDomains[0].competitorClassification,
+    "CLIENT_CONFIRMED_COMPETITOR"
+  );
+  assert.equal(multi.competitorIntelligence.queryReports[0].ownDomainVisible, true);
+  assert.equal(calls[1][1].toolCalls.length, 3);
+  assert.equal(calls[1][1].toolCalls[0].name, "web_search");
+  assert.equal(calls[1][1].persist, false);
+  console.log("PASS: governed multi-query competitor research and domain coverage");
+
+  const diversity = extractSearchEvidence([
+    {
+      title: "SEO guide",
+      url: "https://example.com/page#first",
+      snippet: "SEO guide for site owners."
+    },
+    {
+      title: "SEO reference",
+      url: "https://example.com/page#second",
+      snippet: "SEO reference and examples."
+    },
+    {
+      title: "Search optimization",
+      url: "https://www.example.com/another",
+      snippet: "Search optimization resource."
+    },
+    {
+      title: "Technical guide",
+      url: "https://other.test/technical",
+      snippet: "Technical guide."
+    }
+  ], "SEO guide");
+
+  assert.equal(diversity.uniqueDomainCount, 2);
+  assert.equal(diversity.duplicateSourceUrlCount, 1);
+  assert.equal(diversity.evidence[0].duplicateSourceUrl, true);
+  assert.equal(diversity.evidence[0].duplicateDomain, true);
+  assert.equal(diversity.evidence[3].duplicateDomain, false);
+  assert.equal(diversity.evidence[0].queryTermCoverage.ratio, 1);
+  console.log("PASS: duplicate URL, domain diversity and query overlap diagnostics");
 
   nextExecution = {
     success: false,
@@ -189,6 +312,30 @@ async function main() {
   assert.equal(malformed.reason, "SEARCH_RESULT_FORMAT_INVALID");
 
   console.log("PASS: malformed search evidence fails closed");
+
+  nextExecution = {
+    success: true,
+    results: [{
+      tool: "web_search",
+      result: JSON.stringify([{
+        title: "Unlinked search result",
+        snippet: "A snippet without a verifiable source URL."
+      }]),
+      verification: { passed: true }
+    }]
+  };
+  const incomplete = await runSeoResearch(validInput, trustedContext, {
+    consentService,
+    executeWork: async (...args) => {
+      calls.push(args);
+      return nextExecution;
+    }
+  });
+  assert.equal(incomplete.success, false);
+  assert.equal(incomplete.status, "INCONCLUSIVE");
+  assert.equal(incomplete.reason, "NO_COMPLETE_SOURCE_EVIDENCE");
+  console.log("PASS: results without complete URL/title/snippet evidence fail closed");
+
   console.log("MOCK_EXECUTION_CALLS=" + calls.length);
   console.log("REAL_TOOL_EXECUTION=NO");
   console.log("NETWORK_CALLS=0");

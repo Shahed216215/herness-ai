@@ -2250,10 +2250,18 @@
               <textarea id="miraMarketingKeywords" rows="4"
                 placeholder="keyword one&#10;keyword two"></textarea>
 
-              <label for="miraMarketingQuery">Live research query</label>
-              <textarea id="miraMarketingQuery" rows="3" maxlength="2000"
-                placeholder="Research search intent, market trends and relevant competitors"
+              <label for="miraMarketingQuery">Primary live research query</label>
+              <textarea id="miraMarketingQuery" rows="3" maxlength="500"
+                placeholder="Primary keyword or search question"
                 required></textarea>
+
+              <label for="miraMarketingCompetitorQueries">Additional competitor research queries (optional, maximum 5)</label>
+              <textarea id="miraMarketingCompetitorQueries" rows="4" maxlength="3000"
+                placeholder="One distinct query per line"></textarea>
+
+              <label for="miraMarketingConfirmedCompetitors">Client-confirmed competitor domains (optional, maximum 10)</label>
+              <textarea id="miraMarketingConfirmedCompetitors" rows="3" maxlength="3000"
+                placeholder="Only domains explicitly confirmed by the client, one per line"></textarea>
 
               <label for="miraMarketingHtml">Optional page HTML for offline audit</label>
               <textarea id="miraMarketingHtml" rows="5" maxlength="204800"
@@ -2292,6 +2300,47 @@
             </div>
             <div id="miraMarketingWorkflowResults" aria-live="polite"
               style="margin-top:12px;"></div>
+          </div>
+
+          <div class="card" id="miraSeoReportPanel" style="margin-top:18px;">
+            <h3>Competitor Content Gap &amp; SEO Report</h3>
+            <p class="card-description">
+              Generate an offline Markdown report from the latest SEO audit and governed
+              competitor research already returned in this session. This action does not
+              start a search, contact Google, fetch a website, publish content or change a client site.
+            </p>
+            <div class="notice-box">
+              Content-gap review needs exact keywords already researched in the competitor
+              workflow. A gap is only a candidate signal from a limited search sample,
+              never proof of missing content or Google ranking.
+            </div>
+            <form id="miraSeoReportForm">
+              <label for="miraSeoReportSiteName">Website / client name</label>
+              <input id="miraSeoReportSiteName" maxlength="120" placeholder="Client business name">
+              <label for="miraSeoReportSiteUrl">Website URL</label>
+              <input id="miraSeoReportSiteUrl" type="url" maxlength="2048" placeholder="https://example.com">
+              <label for="miraSeoReportOwnDomain">Website domain (required for content-gap analysis)</label>
+              <input id="miraSeoReportOwnDomain" maxlength="253" placeholder="example.com">
+              <label for="miraSeoReportKeywords">Exact target keywords used in competitor research (one per line, maximum 30)</label>
+              <textarea id="miraSeoReportKeywords" rows="4" maxlength="4000"
+                placeholder="Paste the same exact queries used in the governed competitor research"></textarea>
+              <label for="miraSeoReportCsv">Optional Search Console CSV export (maximum 200 KB)</label>
+              <textarea id="miraSeoReportCsv" rows="5" maxlength="200000"
+                placeholder="Paste the exported Top queries / Top pages CSV. Parsed locally; no Google login or API."></textarea>
+              <div class="button-row" style="margin-top:12px;">
+                <button id="miraSeoReportGenerate" class="primary-button" type="submit">Generate SEO Report</button>
+                <button id="miraSeoReportCopy" class="secondary-button" type="button" disabled>Copy Markdown</button>
+                <button id="miraSeoReportDownload" class="secondary-button" type="button" disabled>Download .md</button>
+              </div>
+            </form>
+            <p id="miraSeoReportEvidenceStatus" class="notice-box" role="status" aria-live="polite">
+              No previous audit or competitor research has been captured in this page session.
+            </p>
+            <p id="miraSeoReportStatus" role="status" aria-live="polite">Ready. Report generation runs only when submitted.</p>
+            <textarea id="miraSeoReportOutput" rows="18" readonly
+              aria-label="Generated Markdown SEO report"
+              style="width:100%;margin-top:10px;background:#080d18;color:#cdd6ea;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;"
+              placeholder="Generated report will appear here."></textarea>
           </div>
 
         </section>
@@ -10965,6 +11014,10 @@ document.querySelectorAll(
             );
           }
 
+          window.dispatchEvent(new CustomEvent("mira:seo-audit-ready", {
+            detail: result
+          }));
+
           const overview = {
             engine: result.engine,
             version: result.version,
@@ -11347,9 +11400,13 @@ document.querySelectorAll(
 
         let goals;
         let keywords;
+        let competitorQueries;
+        let confirmedCompetitorDomains;
         try {
           goals = splitLines("miraMarketingGoals", 10, "Goals");
           keywords = splitLines("miraMarketingKeywords", 30, "Keywords");
+          competitorQueries = splitLines("miraMarketingCompetitorQueries", 5, "Competitor queries");
+          confirmedCompetitorDomains = splitLines("miraMarketingConfirmedCompetitors", 10, "Confirmed competitor domains");
         } catch (error) {
           status.textContent = error.message;
           return;
@@ -11380,6 +11437,8 @@ document.querySelectorAll(
             sitemapXml: byId("miraMarketingSitemap").value,
             keywords
           },
+          competitorQueries,
+          confirmedCompetitorDomains,
           confirmLiveResearch: true
         };
 
@@ -11393,6 +11452,10 @@ document.querySelectorAll(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
+
+          window.dispatchEvent(new CustomEvent("mira:marketing-workflow-ready", {
+            detail: response
+          }));
 
           const output = document.createElement("pre");
           output.style.whiteSpace = "pre-wrap";
@@ -11416,6 +11479,146 @@ document.querySelectorAll(
       renderReadinessReport();
     })();
 
+</script>
+
+<script id="mira-seo-report-ui-script">
+(function () {
+  "use strict";
+
+  const byId = id => document.getElementById(id);
+  const form = byId("miraSeoReportForm");
+  if (!form || form.dataset.initialized === "true") return;
+  form.dataset.initialized = "true";
+
+  const state = { audit: null, marketing: null, markdown: "" };
+  const status = byId("miraSeoReportStatus");
+  const evidenceStatus = byId("miraSeoReportEvidenceStatus");
+  const output = byId("miraSeoReportOutput");
+  const generate = byId("miraSeoReportGenerate");
+  const copy = byId("miraSeoReportCopy");
+  const download = byId("miraSeoReportDownload");
+
+  function updateEvidenceStatus() {
+    const auditReady = Boolean(state.audit || state.marketing?.audit);
+    const research = state.marketing?.research;
+    const competitorReady = Boolean(
+      research?.success === true &&
+      research?.competitorIntelligence?.queryReports
+    );
+    evidenceStatus.textContent =
+      "SEO audit: " + (auditReady ? "AVAILABLE" : "NOT CAPTURED") +
+      " · Competitor research: " + (competitorReady ? "AVAILABLE" : "NOT CAPTURED") +
+      " · Live research is never started by this report form.";
+  }
+
+  window.addEventListener("mira:seo-audit-ready", event => {
+    state.audit = event.detail || null;
+    updateEvidenceStatus();
+  });
+  window.addEventListener("mira:marketing-workflow-ready", event => {
+    state.marketing = event.detail || null;
+    updateEvidenceStatus();
+  });
+
+  function keywordsFromForm() {
+    return byId("miraSeoReportKeywords").value
+      .split(/[\n,]+/)
+      .map(value => value.trim())
+      .filter(Boolean);
+  }
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const keywords = keywordsFromForm();
+    const research = state.marketing?.research;
+    const competitorIntelligence = research?.competitorIntelligence || null;
+    const ownDomain = byId("miraSeoReportOwnDomain").value.trim();
+
+    if (keywords.length > 30) {
+      status.textContent = "Maximum 30 keywords are allowed.";
+      return;
+    }
+    if (keywords.length && (!ownDomain || !competitorIntelligence)) {
+      status.textContent =
+        "Content-gap analysis needs a website domain and completed competitor research in this page session. You can remove the keywords to generate an audit-only report.";
+      return;
+    }
+
+    const csv = byId("miraSeoReportCsv").value;
+    if (csv.length > 200000) {
+      status.textContent = "Search Console CSV exceeds 200 KB.";
+      return;
+    }
+
+    const payload = {
+      siteName: byId("miraSeoReportSiteName").value.trim(),
+      siteUrl: byId("miraSeoReportSiteUrl").value.trim(),
+      seoAudit: state.audit || state.marketing?.audit || undefined,
+      competitorIntelligence: competitorIntelligence || undefined,
+      targetKeywords: keywords.length ? keywords : undefined,
+      ownDomain: keywords.length ? ownDomain : undefined,
+      searchConsoleCsv: csv || undefined
+    };
+
+    generate.disabled = true;
+    copy.disabled = true;
+    download.disabled = true;
+    status.textContent = "Generating report from supplied evidence…";
+    output.value = "";
+
+    try {
+      const result = await api("/api/admin/mira-seo/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!result || result.success !== true ||
+          typeof result.markdown !== "string") {
+        throw new Error(result?.reason || "Report generation returned an invalid result.");
+      }
+      state.markdown = result.markdown;
+      output.value = state.markdown;
+      status.textContent =
+        "Report generated. Candidate gaps: " +
+        String(result.contentGapAnalysis?.candidateGapCount ?? 0) +
+        ". Review all sources before client delivery.";
+      copy.disabled = false;
+      download.disabled = false;
+    } catch (error) {
+      status.textContent = "Report generation failed: " +
+        String(error.message || error);
+    } finally {
+      generate.disabled = false;
+    }
+  });
+
+  copy.addEventListener("click", async () => {
+    if (!state.markdown) return;
+    try {
+      await navigator.clipboard.writeText(state.markdown);
+      status.textContent = "Markdown copied.";
+    } catch {
+      output.focus();
+      output.select();
+      status.textContent = "Clipboard permission unavailable. Select and copy the report text manually.";
+    }
+  });
+
+  download.addEventListener("click", () => {
+    if (!state.markdown) return;
+    const blob = new Blob([state.markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "mira-seo-report.md";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  updateEvidenceStatus();
+})();
 </script>
 
 

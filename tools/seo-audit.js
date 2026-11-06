@@ -7,7 +7,7 @@ module.exports = {
 
   declaration: {
     name: "seo_audit",
-    description: "Perform offline SEO analysis on user-supplied keywords, HTML, robots.txt and sitemap XML. Does not fetch URLs or access the network.",
+    description: "Perform bounded offline SEO analysis on user-supplied keywords, HTML, robots.txt and sitemap XML. Checks on-page metadata, indexability hints, Open Graph, Twitter Cards, hreflang, JSON-LD syntax, headings, links and visible-content heuristics. Does not fetch URLs or access the network.",
     parameters: {
       type: "object",
       properties: {
@@ -20,6 +20,10 @@ module.exports = {
           type: "string",
           description: "Optional HTML source, maximum 200 KB."
         },
+        pageUrl: {
+          type: "string",
+          description: "Optional absolute HTTP(S) page URL used only to classify supplied canonical and link origins. It is never fetched."
+        },
         robotsTxt: {
           type: "string",
           description: "Optional robots.txt content."
@@ -27,8 +31,13 @@ module.exports = {
         sitemapXml: {
           type: "string",
           description: "Optional sitemap XML content."
+        },
+        searchConsoleCsv: {
+          type: "string",
+          description: "Optional user-exported Google Search Console Performance CSV (Query, Page, Clicks, Impressions, CTR, Position), maximum 200 KB. Parsed locally; no Google login or API call."
         }
-      }
+      },
+      additionalProperties: false
     }
   },
 
