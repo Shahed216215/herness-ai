@@ -84,12 +84,11 @@ assert.throws(() => retrieveCanonicalRecordsWithReport({
 }), /Trusted host authorizeRequest callback/);
 console.log('HFM_FACADE_PROJECT_MISMATCH_AND_MISSING_AUTHORIZER_BLOCK=PASS');
 
-const expired = retrieveCanonicalRecordsWithReport({
+assert.throws(() => retrieveCanonicalRecordsWithReport({
   records: [valid], pendingConflicts: [], projectId: 'project-alpha',
   requestContext: { ...context, expiresAt: '2026-11-05T11:00:00.000Z' },
   authorizeRequest: authorize, now
-});
-assert.equal(expired.records.length, 0);
+}), /expired or not yet valid/);
 console.log('HFM_FACADE_EXPIRED_HOST_AUTHORITY_BLOCK=PASS');
 
 assert.equal(Object.isFrozen(report), true);
