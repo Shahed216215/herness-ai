@@ -7,6 +7,7 @@ const express = require("express");
 const { listProjects: listProjectsForSixMenu } = require("./project-store");
 const rejectUnsupportedUploads = require("./services/security/reject-unsupported-uploads");
 const session = require("express-session");
+const { SupabaseRestSessionStore } = require("./services/mira-supabase-session-store");
 
 const { generate } = require("./services/ai");
 const { selectRecentMessages } = require("./services/mira-request-context");
@@ -166,8 +167,13 @@ app.use(
 // payloads are rejected as well as multipart uploads.
 app.use(rejectUnsupportedUploads);
 
+const miraSessionStore = IS_PRODUCTION
+  ? new SupabaseRestSessionStore()
+  : undefined;
+
 app.use(
   session({
+    ...(miraSessionStore ? { store: miraSessionStore } : {}),
     secret: process.env.MIRA_SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -2579,21 +2585,36 @@ app.post("/api/admin/bug-hunter/preview", requireAdminPermission(PERMISSIONS.SYS
 });
 
 if (require.main === module) {
-  const miraHttpServer = app.listen(
-    PORT,
-    HOST,
-    () => {
-      startAutonomousWorker();
-      console.log("MIRA_SERVER_READY=1");
-      console.log(
-        `AI Agent Dashboard running on http://${HOST}:${PORT}`
-      );
+  const startMiraServer = async () => {
+    if (miraSessionStore) {
+      await miraSessionStore.verifyConnectivity();
+      console.log("MIRA_SESSION_STORE_READY=1");
     }
-  );
 
-  miraHttpServer.on("error", error => {
-    const code = error && error.code ? error.code : "UNKNOWN";
-    console.error("[MiraServer] LISTEN_FAILED code=" + code);
+    const miraHttpServer = app.listen(
+      PORT,
+      HOST,
+      () => {
+        startAutonomousWorker();
+        console.log("MIRA_SERVER_READY=1");
+        console.log(
+          `AI Agent Dashboard running on http://${HOST}:${PORT}`
+        );
+      }
+    );
+
+    miraHttpServer.on("error", error => {
+      const code = error && error.code ? error.code : "UNKNOWN";
+      console.error("[MiraServer] LISTEN_FAILED code=" + code);
+      process.exitCode = 1;
+    });
+  };
+
+  startMiraServer().catch(error => {
+    console.error(
+      "[MiraServer] SESSION_STORE_STARTUP_FAILED " +
+      String(error && error.message ? error.message : "UNKNOWN").slice(0, 200)
+    );
     process.exitCode = 1;
   });
 }

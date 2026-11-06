@@ -1,0 +1,37 @@
+name: Mira session persistence validation
+
+on:
+  push:
+    branches:
+      - work/mira-session-postgres-staging-20261107
+    paths:
+      - "server.js"
+      - "package.json"
+      - "services/mira-supabase-session-store.js"
+      - "tests/mira-supabase-session-store.test.js"
+      - "supabase/migrations/**"
+      - ".github/workflows/mira-session-persistence.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "server.js"
+      - "package.json"
+      - "services/mira-supabase-session-store.js"
+      - "tests/mira-supabase-session-store.test.js"
+      - "supabase/migrations/**"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
