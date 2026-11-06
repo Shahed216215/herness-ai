@@ -2,7 +2,7 @@
 
 Date: 2026-11-06
 Release-candidate branch: `work/hfm-release-candidate-reconciliation-20261106`
-Status: `ARCHITECTURE_DECISION_APPROVED_IMPLEMENTATION_NOT_STARTED`
+Status: `PARTIAL_FOUNDATION_IMPLEMENTED_INTEGRATION_NOT_STARTED`
 
 ## Work performed
 
@@ -58,3 +58,24 @@ The normative topology decision is no longer unresolved. Implementation must sti
 `DEPLOYMENT=NOT_APPROVED`
 
 No source code, runtime configuration, production database schema/data, secrets, or deployment were changed in this documentation step. No scheduled task, reminder, or automation was created.
+
+
+## New implementation evidence (2026-11-06)
+
+- Added `services/mira-hfm-vault-crypto.js`: standalone AES-256-GCM envelope encryption for RESTRICTED payloads, per-record random DEK, versioned KEK from server environment, authenticated context binding to record/owner/project/type/classification/schema, and fail-closed key handling.
+- Added `tests/mira-hfm-vault-crypto.test.js` with synthetic tests for round-trip encryption, ciphertext opacity, fresh nonces/DEKs, context binding, missing/invalid keys, tampering, and KEK version rotation.
+- Added the focused test to the configured `npm test` chain.
+- An isolated local Node test harness completed 7/7 test cases successfully. This is not the full repository regression suite and is not exact-head GitHub CI evidence.
+- Draft PR #70: https://github.com/Shahed216215/herness-ai/pull/70
+- PR #70 is based on PR #66's exact head and remains Draft/Open. The existing runtime-foundation workflow filters pull requests by base branch (`main` or `work/render-main-host-binding-compat-20261106`), so it does not automatically run for PR #70's current base. Exact-head CI remains NOT_RUN / INCONCLUSIVE until a suitable validation path is established.
+
+## Still not implemented
+
+- No canonical v1.1.0 record validator/schema.
+- No PostgreSQL Memory repository, migrations, payload write role, or project-scoped Memory Core.
+- No integration of `memory_save`, `knowledge_save`, `knowledge_search`, or client-profile routes.
+- No daily activity/learning capture pipeline.
+- No social-post draft store, preview UI, or Copy button.
+- No public Facebook/Page URL ingestion adapter or safe web-search pipeline.
+- No encrypted vault UI, authorization-gated decrypt route, blind-index design, or tested recovery/key-custody workflow.
+- No production migration, secret/key configuration, production write, merge, or deployment.
