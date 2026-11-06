@@ -123,7 +123,7 @@ async function main() {
     '"seo, tools","https://example.test/seo",8,500,1.6%,10.5',
     '"seo guide","https://example.test/guide",30,200,15%,3.2',
     '"bad row","https://example.test/bad",oops,20,1%,4'
-  ].join("\\n"));
+  ].join("\n"));
   assert.strictEqual(gsc.importedRows, 3);
   assert.strictEqual(gsc.skippedRows, 1);
   assert.strictEqual(gsc.totals.clicks, 50);
@@ -133,6 +133,19 @@ async function main() {
   assert.ok(gsc.queries[0].opportunitySignals.includes("HIGH_IMPRESSIONS_LOW_CTR_REVIEW"));
   assert.throws(() => analyzeSearchConsoleCsv("Query,Page,Clicks"), /MISSING_COLUMN/);
   assert.throws(() => analyzeSearchConsoleCsv(""), /CSV_REQUIRED/);
+  const queryOnly = analyzeSearchConsoleCsv([
+    "Top queries,Clicks,Impressions,CTR,Position",
+    "seo audit,5,500,1%,7"
+  ].join("\\n"));
+  assert.strictEqual(queryOnly.queries.length, 1);
+  assert.strictEqual(queryOnly.pages.length, 0);
+  const pageOnly = analyzeSearchConsoleCsv([
+    "Top pages,Clicks,Impressions,CTR,Position",
+    "https://example.test/page,5,500,1%,7"
+  ].join("\\n"));
+  assert.strictEqual(pageOnly.pages.length, 1);
+  assert.strictEqual(pageOnly.queries.length, 0);
+
 
   const unscopedLinks = analyzeLinks('<a href="https://outside.test/a">x</a>');
   assert.strictEqual(unscopedLinks.internal, null);
