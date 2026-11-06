@@ -47,8 +47,9 @@ function createTransport(rows) {
   };
 }
 
-function createApp(rows) {
+function createApp(rows, production = false) {
   const app = express();
+  if (production) app.set("trust proxy", 1);
   const store = new SupabaseRestSessionStore({
     supabaseUrl: "https://integration-test.supabase.co",
     serviceRoleKey: "integration-test-only-key",
@@ -63,7 +64,7 @@ function createApp(rows) {
     cookie: {
       httpOnly: true,
       sameSite: "strict",
-      secure: false,
+      secure: production,
       maxAge: 60 * 60 * 1000
     }
   }));
@@ -91,7 +92,8 @@ function createApp(rows) {
       if (error) return res.status(500).json({ success: false });
       res.clearCookie("connect.sid", {
         httpOnly: true,
-        sameSite: "strict"
+        sameSite: "strict",
+        secure: production
       });
       return res.status(200).json({ success: true });
     });
@@ -120,12 +122,32 @@ async function close(server) {
 }
 
 async function main() {
+  // Production's Render TLS-terminating proxy must be trusted for Secure cookies.
+  // A request reported as plain HTTP must not receive a session cookie.
+  const insecureRows = new Map();
+  const insecure = await listen(createApp(insecureRows, true));
+  try {
+    const insecureLogin = await fetch(insecure.baseUrl + "/login", {
+      method: "POST",
+      headers: { "X-Forwarded-Proto": "http" }
+    });
+    assert.equal(insecureLogin.status, 200);
+    assert.equal(insecureLogin.headers.get("set-cookie"), null,
+      "Secure session cookie must not be issued for an HTTP proxy request");
+  } finally {
+    await close(insecure.server);
+  }
+
   const rows = new Map();
-  const first = await listen(createApp(rows));
+  const first = await listen(createApp(rows, true));
+  const proxyHeaders = { "X-Forwarded-Proto": "https" };
   let cookie;
 
   try {
-    const login = await fetch(first.baseUrl + "/login", { method: "POST" });
+    const login = await fetch(first.baseUrl + "/login", {
+      method: "POST",
+      headers: proxyHeaders
+    });
     assert.equal(login.status, 200, "login must create a session");
     const setCookie = login.headers.getSetCookie
       ? login.headers.getSetCookie()[0]
@@ -133,10 +155,12 @@ async function main() {
     assert.ok(setCookie, "login must return a session cookie");
     assert.match(setCookie, /HttpOnly/i);
     assert.match(setCookie, /SameSite=Strict/i);
+    assert.match(setCookie, /Secure/i,
+      "production session cookie must be Secure behind the trusted TLS proxy");
     cookie = setCookie.split(";")[0];
 
     const whoami = await fetch(first.baseUrl + "/me", {
-      headers: { Cookie: cookie }
+      headers: { ...proxyHeaders, Cookie: cookie }
     });
     assert.equal(whoami.status, 200, "session must authenticate subsequent requests");
     assert.deepEqual(await whoami.json(), {
@@ -150,10 +174,10 @@ async function main() {
   }
 
   // A new app/store instance sharing only the durable backing rows models a Render restart.
-  const restarted = await listen(createApp(rows));
+  const restarted = await listen(createApp(rows, true));
   try {
     const restored = await fetch(restarted.baseUrl + "/me", {
-      headers: { Cookie: cookie }
+      headers: { ...proxyHeaders, Cookie: cookie }
     });
     assert.equal(restored.status, 200, "session must survive app/store recreation");
     assert.deepEqual((await restored.json()).user, {
@@ -163,12 +187,12 @@ async function main() {
 
     const logout = await fetch(restarted.baseUrl + "/logout", {
       method: "POST",
-      headers: { Cookie: cookie }
+      headers: { ...proxyHeaders, Cookie: cookie }
     });
     assert.equal(logout.status, 200, "logout must destroy the stored session");
 
     const afterLogout = await fetch(restarted.baseUrl + "/me", {
-      headers: { Cookie: cookie }
+      headers: { ...proxyHeaders, Cookie: cookie }
     });
     assert.equal(afterLogout.status, 401, "destroyed sessions must not authenticate");
     assert.equal(rows.size, 0, "logout must remove the persisted row");
