@@ -207,6 +207,20 @@ const TOOL_POLICIES = Object.freeze({
     explicitConfirmation: false
   },
 
+  source_code_inspect: {
+    operation: "inspect",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
+  database_storage_audit: {
+    operation: "inspect",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
   mira_one_run_audit: {
     operation: "inspect",
     autonomous: true,
