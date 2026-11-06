@@ -126,6 +126,13 @@ async function executeWithConsumedAuthority(options = {}) {
         JSON.stringify({ authorityId: request.authorityId, operation: request.operation, resource: request.resource, ownerRevision: String(owner.revision), membershipRevision: String(membership.revision) })]
     );
 
+    // Project RLS context is transaction-local and is set only after membership
+    // and one-time authority validation. All Memory repository SQL uses this client.
+    await client.query(
+      "SELECT set_config('mira.project_id', $1, true)",
+      [request.projectId]
+    );
+
     // All protected database reads/writes must use this same client/transaction.
     const value = await options.perform(client, Object.freeze({
       actorId: trustedActor.actorId,
