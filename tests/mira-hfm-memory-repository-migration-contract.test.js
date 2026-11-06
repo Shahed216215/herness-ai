@@ -49,6 +49,18 @@ test('repository has project scope, immutable versions, idempotency, and audit h
   assert.match(sql, /BEFORE TRUNCATE ON mira_hfm\.memory_audit_events/);
 });
 
+
+test('immutable version rows preserve canonical type and classification constraints', () => {
+  const start = sql.indexOf('CREATE TABLE IF NOT EXISTS mira_hfm.memory_record_versions');
+  const end = sql.indexOf('CREATE TABLE IF NOT EXISTS mira_hfm.memory_operation_registry');
+  const versions = sql.slice(start, end);
+  assert.match(versions, /record_type TEXT NOT NULL[\\s\\S]*?CHECK \\(record_type IN/);
+  assert.match(versions, /schema_version = '1.0.0'[\\s\\S]*?research_reference/);
+  assert.match(versions, /client_vault_record', 'financial_vault_record'[\\s\\S]*?classification = 'RESTRICTED'/);
+  assert.match(versions, /daily_activity', 'learning_note', 'social_post_draft'[\\s\\S]*?classification = 'PROJECT_PRIVATE'/);
+  assert.match(versions, /jsonb_typeof\\(public_payload -> 'content'\\) = 'string'/);
+});
+
 test('migration does not grant a writer role or broad application privileges', () => {
   assert.doesNotMatch(sql, /\bCREATE\s+ROLE\b/i);
   assert.doesNotMatch(sql, /\bGRANT\s+(INSERT|UPDATE|DELETE|ALL)\b/i);
