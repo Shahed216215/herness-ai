@@ -143,7 +143,7 @@ function markdownEscape(value) {
   return String(value ?? "—")
     .replace(/[|\r\n]/g, " ")
     .replace(/</g, "&lt;")
-    .replace(/([\\`*_{}\[\]()#+.!|>])/g, "\\$1");
+    .replace(/([\\`*{}\[\]()#+.!|>])/g, "\\$1");
 }
 function generateSeoReport(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
