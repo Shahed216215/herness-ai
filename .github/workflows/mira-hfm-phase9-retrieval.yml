@@ -11,10 +11,6 @@ on:
       - 'tests/mira-hfm-same-origin-write-guard.test.js'
       - 'tests/mira-hfm-learning-evolution-review-route.test.js'
       - 'services/mira-hfm-retrieval-provider-adapters.js'
-      - 'services/security/mira-hfm-same-origin-write-guard.js'
-      - 'routes/mira-hfm-learning-evolution.js'
-      - 'tests/mira-hfm-same-origin-write-guard.test.js'
-      - 'tests/mira-hfm-learning-evolution-review-route.test.js'
       - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
       - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
       - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
@@ -23,16 +19,8 @@ on:
       - '.github/workflows/mira-hfm-phase9-retrieval.yml'
   push:
     branches:
-      - 'work/mira-hfm-v02-phase9-restack-on-phase8-security-20261106'
+      - 'work/mira-hfm-v02-phase9-clean-restack-on-phase8-security-20261106'
     paths:
-      - 'services/mira-hfm-retrieval-provider-adapters.js'
-      - 'tests/mira-hfm-phase9-provider-adapters-benchmark.test.js'
-      - 'services/mira-hfm-retrieval-optimizer.js'
-      - 'tests/mira-hfm-phase9-retrieval-optimizer.test.js'
-      - 'tests/mira-hfm-phase9-prompt-injection-regression.test.js'
-      - 'tests/mira-hfm-phase9-downstream-proposal-injection.test.js'
-      - 'docs/architecture/mira-hybrid-memory/phase9/**'
-      - '.github/workflows/mira-hfm-phase9-retrieval.yml'
 
 permissions:
   contents: read
