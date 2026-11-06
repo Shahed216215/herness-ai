@@ -590,9 +590,12 @@ function analyzeSearchConsoleCsv(source) {
   const indexes = {};
   for (const [field, names] of Object.entries(aliases)) {
     indexes[field] = headers.findIndex(value => names.includes(value));
-    if (indexes[field] < 0) {
+    if (["clicks", "impressions", "ctr", "position"].includes(field) && indexes[field] < 0) {
       throw new Error("SEARCH_CONSOLE_CSV_MISSING_COLUMN_" + field.toUpperCase());
     }
+  }
+  if (indexes.query < 0 && indexes.page < 0) {
+    throw new Error("SEARCH_CONSOLE_CSV_QUERY_OR_PAGE_REQUIRED");
   }
 
   const records = [];
@@ -603,9 +606,9 @@ function analyzeSearchConsoleCsv(source) {
       continue;
     }
     try {
-      const query = values[indexes.query].trim();
-      const page = values[indexes.page].trim();
-      if (!query || !page) throw new Error("missing dimension");
+      const query = indexes.query >= 0 ? values[indexes.query].trim() : "";
+      const page = indexes.page >= 0 ? values[indexes.page].trim() : "";
+      if (!query && !page) throw new Error("missing dimension");
       const clicks = parseMetric(values[indexes.clicks], "clicks");
       const impressions = parseMetric(values[indexes.impressions], "impressions");
       const ctr = parseMetric(values[indexes.ctr], "ctr", { percent: true });
@@ -623,6 +626,7 @@ function analyzeSearchConsoleCsv(source) {
   for (const record of records) {
     const queryKey = record.query.toLocaleLowerCase();
     const pageKey = record.page;
+    if (record.query) {
     const q = queryMap.get(queryKey) || {
       query: record.query, clicks: 0, impressions: 0, weightedCtr: 0,
       weightedPosition: 0, rows: 0, pages: new Set()
@@ -632,9 +636,11 @@ function analyzeSearchConsoleCsv(source) {
     q.weightedCtr += record.ctr * record.impressions;
     q.weightedPosition += record.position * record.impressions;
     q.rows++;
-    q.pages.add(pageKey);
+    if (record.page) q.pages.add(pageKey);
     queryMap.set(queryKey, q);
+    }
 
+    if (record.page) {
     const p = pageMap.get(pageKey) || {
       page: pageKey, clicks: 0, impressions: 0, weightedCtr: 0,
       weightedPosition: 0, rows: 0
@@ -645,6 +651,7 @@ function analyzeSearchConsoleCsv(source) {
     p.weightedPosition += record.position * record.impressions;
     p.rows++;
     pageMap.set(pageKey, p);
+    }
   }
   const summarize = item => ({
     ...item,
@@ -691,6 +698,7 @@ function analyzeSearchConsoleCsv(source) {
       "CTR and average position are impressions-weighted when query/page rows are aggregated.",
       "Opportunity labels are review heuristics, not guaranteed ranking or traffic gains.",
       "Only rows included in the supplied export are analyzed; export filters and date range are not independently verified.",
+      "Query-only and page-only Search Console exports are supported; query-to-page mapping requires a combined export containing both dimensions.",
       "No Google account connection, API request or website fetch is performed."
     ]
   };
