@@ -146,6 +146,55 @@ test('completed idempotency key returns the original result without a second wri
   assert.equal(client.calls.length, 2);
 });
 
+test('revision writes append-only history and advances the current revision', async () => {
+  const original = record({
+    recordType: 'knowledge_item',
+    content: 'First public note.',
+    version: { revision: 1, contentHash: createContentHash('First public note.') },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+  });
+  const revised = {
+    ...original,
+    content: 'Revised public note.',
+    timestamps: { ...original.timestamps, updatedAt: '2026-11-06T12:01:00.000Z' },
+    version: { revision: 2, contentHash: createContentHash('Revised public note.') }
+  };
+  const row = {
+    memory_id: original.memoryId, project_id: original.projectId,
+    owner_actor_id: context.actorId, record_type: original.recordType,
+    schema_version: original.schemaVersion, classification: 'PUBLIC',
+    lifecycle: 'ACTIVE', revision: 1, integrity_status: 'VERIFIED',
+    trust_status: 'SOURCE_RECORDED', public_payload: original, encrypted_envelope: null,
+    created_at: new Date(original.timestamps.createdAt),
+    updated_at: new Date(original.timestamps.updatedAt)
+  };
+  const client = fakeClient({
+    query: async sql => {
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith('SELECT memory_id') && sql.includes('FOR UPDATE')) return { rowCount: 1, rows: [row] };
+      if (sql.startsWith('SELECT event_hash')) return { rowCount: 0, rows: [] };
+      return { rowCount: 1, rows: [{}] };
+    }
+  });
+  const result = await repository.reviseMemoryRecord({
+    client,
+    context: { ...context, operation: 'memory.update' },
+    memoryId: original.memoryId,
+    record: revised,
+    idempotencyKey: 'revise-public-1',
+    env
+  });
+  assert.equal(result.status, 'REVISED');
+  assert.equal(result.revision, 2);
+  const versionInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions'));
+  assert.ok(versionInsert);
+  assert.equal(versionInsert.params[7], 2);
+  const update = client.calls.find(call => call.sql.startsWith('UPDATE mira_hfm.memory_records SET revision'));
+  assert.ok(update);
+  assert.equal(update.params[2], 2);
+  assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
+});
+
 test('private read requires explicit authorization and verifies encrypted record context', async () => {
   const privateRecord = record();
   const { createVaultEnvelope } = require('../services/mira-hfm-vault-crypto');
