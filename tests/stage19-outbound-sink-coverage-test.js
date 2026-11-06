@@ -30,7 +30,8 @@ for (const file of files) {
 
 const expected = new Set([
   "services/security/secure-provider-request.js",
-  "scripts/mira-doctor.js"
+  "scripts/mira-doctor.js",
+  "tools/mira-server-control.js"
 ]);
 const actual = new Set(hits.map(hit => hit.file));
 
@@ -43,11 +44,15 @@ for (const file of expected) {
 
 const wrapper = fs.readFileSync("services/security/secure-provider-request.js", "utf8");
 const doctor = fs.readFileSync("scripts/mira-doctor.js", "utf8");
+const controller = fs.readFileSync("tools/mira-server-control.js", "utf8");
 assert.match(wrapper, /maxRedirects\s*:\s*0/);
 assert.match(wrapper, /rejectUnauthorized\s*:\s*true/);
 assert.match(wrapper, /createPinnedLookup/);
 assert.match(doctor, /createPinnedLookup\("api\.groq\.com"/);
 assert.match(doctor, /servername\s*:\s*"api\.groq\.com"/);
+assert.match(controller, /hostname:\s*"127\.0\.0\.1"/);
+assert.match(controller, /port:\s*PORT/);
+assert.match(controller, /path:\s*"\/"/);
 
 console.log(`OUTBOUND_DIRECT_SINKS=${hits.length}`);
 for (const hit of hits) console.log(`REVIEWED_SINK=${hit.file}:${hit.expression}`);
