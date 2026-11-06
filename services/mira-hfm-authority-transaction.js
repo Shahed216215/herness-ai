@@ -75,12 +75,12 @@ async function executeWithConsumedAuthority(options = {}) {
       [trustedActor.actorId]
     );
 
-    // Deterministic lock order: project owner -> actor membership -> one-time authority.
-    // Revocation/owner revision updates must lock these same rows, so they cannot race
-    // between validation and the protected operation's commit.
+    // Read owner and membership under SERIALIZABLE isolation without row-lock privileges.
+    // PostgreSQL SSI detects concurrent owner/membership changes and aborts a conflicting
+    // transaction. The one-time authority row itself is locked before atomic consumption.
     const ownerResult = await client.query(
       "SELECT project_id, owner_actor_id, status, revision " +
-      "FROM mira_hfm.project_owners WHERE project_id = $1 FOR UPDATE",
+      "FROM mira_hfm.project_owners WHERE project_id = $1",
       [request.projectId]
     );
     const owner = ownerResult.rows && ownerResult.rows[0];
