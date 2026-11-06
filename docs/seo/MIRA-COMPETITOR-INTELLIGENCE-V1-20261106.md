@@ -44,6 +44,21 @@ The current implementation reuses the repository's existing governed `web_search
 
 The new multi-query path uses the existing `runSeoResearch` permission boundary. It does not add a new network client, fetch arbitrary websites, access Google Search Console, call PageSpeed APIs, modify websites, publish content, message clients, change consent, migrate databases or deploy services. Existing Admin permission and server-side client-consent checks remain authoritative.
 
+## Evidence-bounded content gap analysis and report generation
+
+The `seo_content_gap_report` tool adds two deterministic, no-paid-API capabilities:
+
+- Content gap review accepts 1–30 user-supplied target keywords and the existing governed competitor intelligence result. It matches a target keyword only to an exact research query. A `CANDIDATE_GAP` is emitted only when the client's own domain was absent from that query's returned sample and at least one complete competitor source URL/title is available. The result includes the source URLs and titles for human review. Unmatched queries, own-domain visibility, or incomplete source evidence remain `INSUFFICIENT_EVIDENCE`.
+- Competitor query reports now preserve up to 10 unique complete source URL/title records per query, derived from the cited evidence URL and validated domain identity.
+- Deterministic Markdown SEO reports combine supplied on-page audit findings, locally parsed Search Console performance, competitor domain evidence and content-gap candidates. Missing input sections are explicitly marked as not supplied; the report does not infer missing metrics.
+- The report tool is auto-registered through the existing `tools/index.js` directory loader. The dedicated regression is included in the competitor-intelligence GitHub Actions workflow.
+
+The gap label is a research prioritization signal, not proof of missing content, a direct commercial competitor, a ranking gap or guaranteed traffic gain. No search volume, CPC, keyword difficulty, traffic, backlinks, market share or conversion data are fabricated. Report generation is deterministic and offline; it does not fetch websites, call Google APIs, publish content, modify client websites or message clients.
+
+## Validation status for this extension
+
+Implementation and regression tests are committed to the existing feature branch. GitHub Actions must complete successfully on the exact latest branch head before this extension is labelled CI PASS. No PR merge or Render deployment is authorized. Production readiness remains `NOT_CERTIFIED`.
+
 ## Remaining work
 
 1. Introduce a reviewed SERP provider contract with explicit country/language/date controls and verified timestamps.
