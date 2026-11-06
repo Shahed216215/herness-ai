@@ -88,3 +88,12 @@ No Supabase migration, production Memory write, OAuth credential access, live Go
 
 ---
 Generated as an additive documentation-only Phase 10 reconciliation on the Phase 9 clean-restack baseline. All work remains Mira HFM v0.2.
+
+
+## Phase 8 Origin/CSRF mitigation update — 2026-11-06
+
+The Phase 8 restack PR #45 added a shared fail-closed same-origin write guard to every HFM Learning & Evolution router POST endpoint. It requires a valid Origin or Referer, rejects opaque/missing/mismatched origins and cross-site Fetch Metadata, and supports an exact comma-separated `MIRA_HFM_LEARNING_ALLOWED_ORIGINS` allowlist for explicitly approved custom domains. GET routes remain unchanged.
+
+Exact-head GitHub Actions run [42150921183](https://github.com/Shahed216215/herness-ai/actions/runs/42150921183) succeeded on Phase 8 head `67c4c5bd17446cb18f1d559b7075788030112c96`; the Phase 8 route-contract suite includes the Origin/CSRF regression assertions.
+
+Disposition: the original missing-Origin-control code gap is mitigated in source and covered by offline regression tests. The independent review item remains **REVIEW_REQUIRED** pending independent security re-review and verification against the actual Render/custom-domain origin topology. No Render environment variables, live service, Supabase migration, deployment, or production data were changed. The Phase 8 migration remains unapplied and full production readiness remains NOT_CERTIFIED.
