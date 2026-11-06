@@ -14,6 +14,8 @@ const ALLOWED_FIELDS = new Set([
   "brief",
   "query",
   "auditInput",
+  "competitorQueries",
+  "confirmedCompetitorDomains",
   "confirmLiveResearch"
 ]);
 
@@ -39,7 +41,9 @@ function validateRequestBody(body) {
   return {
     brief: body.brief,
     query: body.query,
-    auditInput: body.auditInput
+    auditInput: body.auditInput,
+    competitorQueries: body.competitorQueries,
+    confirmedCompetitorDomains: body.confirmedCompetitorDomains
   };
 }
 
