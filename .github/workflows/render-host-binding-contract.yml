@@ -46,7 +46,7 @@ jobs:
           node <<'NODE'
           const assert = require("node:assert/strict");
 
-          const base = process.env.MIRA_BASE_URL.replace(/\\/$/, "");
+          const base = process.env.MIRA_BASE_URL.endsWith("/") ? process.env.MIRA_BASE_URL.slice(0, -1) : process.env.MIRA_BASE_URL;
 
           async function request(path, options = {}) {
             return fetch(base + path, {
