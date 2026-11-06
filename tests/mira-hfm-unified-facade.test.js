@@ -91,6 +91,20 @@ assert.throws(() => retrieveCanonicalRecordsWithReport({
 }), /expired or not yet valid/);
 console.log('HFM_FACADE_EXPIRED_HOST_AUTHORITY_BLOCK=PASS');
 
+const extendedAuthority = retrieveCanonicalRecordsWithReport({
+  records: [valid], pendingConflicts: [], projectId: 'project-alpha',
+  requestContext: context,
+  authorizeRequest: input => ({
+    ...input, decision: 'ALLOW', replayStatus: 'FRESH',
+    issuedAt: '2026-11-05T11:59:30.000Z',
+    expiresAt: '2026-11-05T12:06:00.000Z'
+  }),
+  now
+});
+assert.equal(extendedAuthority.records.length, 0);
+assert.equal(extendedAuthority.excludedSummary.requestDenied, true);
+console.log('HFM_FACADE_AUTHORITY_CANNOT_EXTEND_HOST_EXPIRY=PASS');
+
 assert.equal(Object.isFrozen(report), true);
 assert.equal(Object.isFrozen(report.records), true);
 assert.equal(Object.isFrozen(report.provenance), true);
