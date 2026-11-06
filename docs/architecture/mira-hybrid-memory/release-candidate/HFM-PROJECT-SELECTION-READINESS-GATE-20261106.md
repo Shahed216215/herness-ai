@@ -1,49 +1,51 @@
 # HFM v0.2 — Project Selection Readiness Gate
 
-**Status:** BLOCKED — DESIGN / SOURCE AUDIT ONLY  
-**Scope:** HFM v0.2; no runtime endpoint, database write, or deployment is authorized by this document.
+**Status:** SOURCE COMPONENTS ADDED — DATABASE/RLS VERIFICATION BLOCKED  
+**Scope:** HFM v0.2; no route, database write, or deployment is authorized by this document.
 
-## 1. Finding
+## 1. Current implementation
 
-The project-binding resolver exists, but it deliberately accepts only a binding already issued by trusted server code and stored in the authenticated session. It does not select a project or query Neon.
+The source branch now contains:
 
-The current server does not import the resolver or expose a project-selection route. The current HFM Postgres runtime exposes a dedicated memory-writer pool, not a dedicated read-only project-discovery pool. The authority transaction executor is not a discovery mechanism: it starts a serializable transaction, consumes a one-time authority, writes an audit event, and invokes a protected callback.
+- `services/mira-hfm-project-selection-read-runtime.js`: isolated project-read runtime with a separate connection URL, explicit enable flag, expected database role, Neon/TLS validation inherited from the shared adapter, read-only connection mode, role/grant preflight, FORCE RLS and policy-presence checks, and an actor/project-scoped membership lookup.
+- `tests/mira-hfm-project-selection-read-runtime.test.js`: source-level contract tests for fail-closed config, least-privilege role checks, RLS requirements, authenticated-session actor derivation, parameterized project lookup, read-only transaction boundaries, and no-membership denial.
+- The new test is included in `npm test`.
 
-Therefore, adding a route that merely copies a caller-supplied project ID into the session would create a privilege-escalation vulnerability. Reusing the writer/authority executor for project discovery would also be an unsafe coupling.
+The membership lookup derives the actor internally using `buildTrustedActorContext(req)`; it does not accept actorId from a caller parameter or request body. It sets transaction-local `mira.project_id` and `mira.actor_id`, then queries only the requested project and authenticated actor. It returns only an active owner + time-valid active membership. A hidden or absent row is denied identically.
 
-## 2. Required implementation boundary
+## 2. Required environment configuration
 
-A future project-selection flow must:
+The new read runtime is disabled unless all of these are explicitly configured:
 
-1. Require a valid authenticated session and derive the actor exclusively from `session.hfmPrincipal` through the canonical identity resolver.
-2. Accept a requested project identifier only as an untrusted lookup hint; it must never itself establish access.
-3. Use a dedicated Neon read-only pool and a transaction with statement/lock timeouts. The pool must use TLS verification and enforce read-only mode at both connection and transaction levels.
-4. Query the authoritative owner and membership rows using parameterized SQL. Require an ACTIVE owner, an ACTIVE membership for the derived actor, `valid_from <= clock_timestamp()`, and `expires_at IS NULL OR expires_at > clock_timestamp()`.
-5. Verify that the read-only database role can see the required rows under the existing RLS policies. Empty results caused by RLS must be treated as access denied / unavailable, never as proof that the project does not exist.
-6. Only after successful database verification, regenerate or safely update the server session and set the exact `HFM_PROJECT_BINDING_V1` envelope. The project ID must come from the verified database row.
-7. Clear the binding on logout, session regeneration, membership revocation, owner transfer, and access changes. Revalidate membership inside every sensitive operation; the session binding is a selection hint, not an authorization grant.
-8. Never issue operation authorities as a side effect of project selection.
+- `MIRA_HFM_PROJECT_READ_ENABLED=true`
+- `MIRA_HFM_PROJECT_READ_DATABASE_URL` — dedicated Neon read-only login URL
+- `MIRA_HFM_PROJECT_READ_ROLE` — exact expected PostgreSQL login role name
 
-## 3. Current blockers
+No values or credentials were set by this source-only work. Do not reuse the writer credential. The expected role must be a dedicated LOGIN role with SELECT only on the required owner and membership tables, no superuser/BYPASSRLS, no schema CREATE, and no table write privileges.
 
-- No dedicated read-only HFM project-selection pool/service is wired.
-- The earlier Neon staging audit found the runtime SELECT role had no applicable RLS policy for `memory_records`; visibility of owner/membership rows must be independently verified before an endpoint is enabled.
-- The audited staging owner, membership, and authority tables were empty. No canonical project ID or owner actor has been approved.
-- No verified read-only membership query has been run against the intended staging branch in this work.
-- The project-binding resolver is not integrated into `server.js`.
+## 3. Important RLS requirement
 
-## 4. Acceptance tests before endpoint implementation
+The runtime preflight refuses to become ready unless both `project_owners` and `project_memberships` have RLS and FORCE RLS enabled, applicable policies are present for both tables, and the role has the required SELECT grants without write grants.
 
-- Missing authentication, missing stable principal, invalid project hint, and absent membership all fail closed.
-- A caller cannot select another actor's project by changing JSON, query, tool, or model arguments.
-- Suspended owner, revoked/expired membership, future membership start, and RLS-hidden membership are denied.
-- A successful selection stores only the server-verified project row and derived actor in the session.
-- The selection transaction is read-only; no authority is consumed and no audit or memory data is mutated.
-- Every sensitive memory operation rechecks owner, membership, permission, revision, and one-time authority in its own protected transaction.
-- Logout/session regeneration clears the binding; revocation prevents subsequent use.
+The lookup also sets both project and actor transaction-local context. The final policy expressions must be reviewed against these context values and tested under the actual read-only login. Merely having a policy row in `pg_policies` is not sufficient evidence that it exposes only the intended membership row.
 
-## 5. Disposition
+The earlier staging audit found no applicable policies for the runtime read path (policy count was zero in the inspected scope). Therefore, the current staging database is expected to fail this preflight until a separately reviewed, narrowly scoped policy migration is approved and applied.
 
-**Do not wire a project-selection endpoint yet.** First implement and independently test the dedicated read-only pool and membership repository against the disposable Neon staging branch, then verify the effective RLS policies and actual role visibility. Owner bootstrap remains separately NOT_APPROVED and must not be inferred from a successful login.
+## 4. Not yet wired
 
-No database writes, role changes, policy changes, secrets, Render environment changes, production changes, merge, or deployment were performed for this gate.
+This is a read-runtime component, not a project-selection endpoint. It is not imported by `server.js`, does not mutate session state, does not regenerate sessions, and does not create owner/membership rows. This is intentional: a successful lookup must be connected to a carefully reviewed session lifecycle flow only after the database role and RLS behavior are proven.
+
+The existing session binding resolver still accepts only a binding already issued by trusted server code. It is not an authorization grant. Every sensitive operation must continue to revalidate owner, membership, permissions, revisions, and one-time authority in its own protected transaction.
+
+## 5. Acceptance checks before endpoint integration
+
+- Verify the dedicated role identity and exact target database/branch.
+- Verify SELECT-only grants, no BYPASSRLS/superuser, RLS + FORCE RLS on both tables, and reviewed policy expressions.
+- Execute read-only positive and negative tests with the actual role: active member succeeds; non-member, other actor, suspended owner, revoked membership, future start, expired membership, and cross-project lookup fail.
+- Verify no write is possible in the selection runtime.
+- Only then design the session selection route, including session regeneration and clearing on logout/revocation/access changes.
+- Keep operation-authority issuance separate; project selection never issues authority.
+
+## 6. Disposition
+
+**Database/RLS verification remains BLOCKED.** No actual Neon connection was made in this source-only step; no database writes, role changes, policy changes, secret changes, Render environment changes, production changes, merge, or deployment were performed. The runtime test has been added to the test chain but has not been executed in this environment. Until real database evidence exists, test status remains INCONCLUSIVE.
