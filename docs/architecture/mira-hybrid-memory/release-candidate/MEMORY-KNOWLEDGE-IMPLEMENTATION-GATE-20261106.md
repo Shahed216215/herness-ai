@@ -2,74 +2,59 @@
 
 Date: 2026-11-06
 Release-candidate branch: `work/hfm-release-candidate-reconciliation-20261106`
-Status: `IMPLEMENTATION_BLOCKED_BY_UNRESOLVED_NORMATIVE_DECISION`
+Status: `ARCHITECTURE_DECISION_APPROVED_IMPLEMENTATION_NOT_STARTED`
 
 ## Work performed
 
-Read-only source inspection was continued against runtime-foundation commit `88190a59bad4eb0590f75122978943e5a5c7fe76`, including:
-- `tools/memory-save.js`
-- `tools/knowledge-save.js`
-- `tools/knowledge-search.js`
-- `memory.js` and `knowledge.js`
-- `services/mira-hfm-runtime-identity-context.js`
-- `services/mira-memory-host-identity-contract.js`
-- `services/mira-hfm-authority-transaction.js`
-- `services/mira-hfm-postgres.js`
-- HFM v0.2.4 Phase 2 contract
-- Data Plane contract compatibility review
-- Reconciled Data Plane proposal v0.2
-- Facebook-independent canonical Memory amendment
+Read-only source inspection confirmed the existing Memory/Knowledge tool and storage gaps. The user then explicitly approved topology B, recorded in:
+`HFM-MEMORY-TOPOLOGY-AND-DAILY-KNOWLEDGE-AMENDMENT-20261106.md`.
 
-No source code, runtime configuration, production data, database schema, or deployment was changed in this step.
+The approved decision is:
+- Provider-neutral Mira Memory Core is the canonical service boundary.
+- Neon/PostgreSQL is the durable repository backend behind that boundary.
+- Facebook is an optional read-only public source; no Facebook API token is required for Mira Core Memory.
+- Daily activity and learning are retained with provenance and verification state.
+- Facebook-ready post drafts have a post-style preview and user-click Copy action; user manually publishes them.
+- Client identity, private work details, contracts, and financial/transaction payloads are isolated in an application-encrypted vault.
+- Google Drive is not an implicit fallback.
 
-## Confirmed code-level gaps
+## Confirmed existing code-level gaps (still open)
 
-1. `memory_save` ignores its trusted-context argument and writes to the global legacy local Memory store through `addMemory`.
-2. `knowledge_save` ignores trusted actor/project context and writes to the global legacy Knowledge store; it also performs a Google Drive sync.
+1. `memory_save` ignores trusted-context arguments and writes to the global legacy local Memory store through `addMemory`.
+2. `knowledge_save` writes to the global legacy Knowledge store and also performs Google Drive sync.
 3. `knowledge_search` reads the global local Knowledge store and may replace the result set with Google Drive content. It has no project authorization or classification filter.
 4. Legacy `memory.js` and `knowledge.js` are global file-backed services; no project isolation exists at those storage boundaries.
 5. Runtime identity context can resolve a server-issued actor, but identity transport is not project authorization.
 6. The authority transaction primitive is not wired to these tools. Its database transaction requires UPDATE/INSERT, while the current HFM runtime role is explicitly SELECT-only.
-7. The retrieval bridge imports `mira-memory-unified-facade`, which is absent at the inspected runtime-foundation commit. The bridge must remain NOT_VERIFIED and must not be enabled.
-8. Facebook and Google Drive provider paths must not be used as implicit fallback for canonical Memory operations.
+7. The retrieval bridge imports `mira-memory-unified-facade`, absent at the inspected runtime-foundation commit. It remains NOT_VERIFIED and must not be enabled.
+8. Current Google Drive and local fallback paths must not be used as implicit canonical Memory providers.
 
-## Normative architecture blocker
+## Implementation remains blocked on technical prerequisites
 
-The v0.2.4 contract identifies Facebook Page as a proposed primary provider, Google Drive as emergency backup only, public web as retrieval only, and phone-local storage as not an approved Memory backend.
+The normative topology decision is no longer unresolved. Implementation must still wait until the following are completed on the isolated release-candidate branch:
 
-The reconciled v0.2 data-plane proposal is explicitly DESIGN CANDIDATE / NOT APPROVED / NOT IMPLEMENTED. It requires an explicit versioned decision selecting the role of PostgreSQL/Neon:
-- A. canonical durable Memory payload provider;
-- B. internal durable repository behind a provider-neutral Memory Core, with provider adapters separately defined;
-- C. authority/audit metadata store only.
+1. Reconcile the amendment with HFM v0.2.4 canonical record, trust, integrity, lifecycle, conflict, and authority contracts.
+2. Inspect full runtime identity, project membership/delegation, transaction, migration, storage, and UI paths.
+3. Define the durable schema, narrow repository API, database roles, idempotency, and uncertain-outcome handling.
+4. Implement application-level authenticated encryption with envelope key management outside Neon; missing keys must fail closed. Do not persist client/financial plaintext or keys in database, repository, search index, social drafts, or logs.
+5. Implement daily activity/learning capture with evidence provenance and no fabricated completion/test claims.
+6. Implement social post drafts and explicit user-click Copy only; no auto-publishing.
+7. Implement read-only public Facebook/web retrieval only for accessible permitted content, with SSRF/redirect protections and no login/access-control bypass.
+8. Implement owner/project scope and record-level authorization for every read/write/search/list/count/export/backup/restore path.
+9. Add independent tests for cross-project denial, vault ciphertext-only persistence, key absence/rotation, log redaction, prompt injection, URL/redirect SSRF, copy behavior, idempotency, restart/recovery, and audit integrity.
+10. Exact-head CI, independent security review, disposable database verification, and evidence-backed readiness report.
 
-The proposal explicitly prohibits inferring this choice merely because a Neon project exists. It also prohibits silently replacing the v0.2.4 Facebook Page proposal, phone-local fallback, provider substitution, and hidden network requests.
+## Current execution boundary
 
-The Facebook-independent amendment confirms that Facebook credentials must not be required to authenticate Mira users, authorize projects, read/search/write canonical Memory, and Facebook token absence must not redirect operations to another provider. However, that amendment does not by itself approve Neon as the canonical payload provider.
-
-## Safe next implementation sequence after the topology decision
-
-1. Record the selected provider topology in a versioned, explicitly approved HFM contract amendment.
-2. Define and approve a durable payload repository boundary and narrow write API/role; keep the current runtime metadata role read-only.
-3. Implement canonical v0.2.4 record validation without changing its identifiers or independent integrity/trust/classification/lifecycle states.
-4. Implement owner-project access, membership, delegation, classification, lifecycle, policy and one-time operation authority checks for every read/write/search/list/count/export/backup/restore path.
-5. Add durable audit-intent, operation identity, idempotency and UNKNOWN-outcome reconciliation before enabling writes.
-6. Add isolated fixture tests for cross-project denial, missing/expired/revoked membership, delegation scope, quarantine exclusion, search/count/cache scope, integrity failure, replay, concurrency, uncertain commit, restart and recovery.
-7. Only then connect tool wrappers and routes to the canonical service. Legacy stores remain preserved and must not be silently read as fallback.
-8. Run exact-head CI and independent review. Production migration and deployment remain separate approval gates.
-
-## Decision required to unblock implementation
-
-Select one topology explicitly:
-- **A — Neon/PostgreSQL is the canonical durable Memory payload provider.** Facebook Page remains an optional external source/connector, not a prerequisite for core Memory.
-- **B — Neon/PostgreSQL is an internal repository behind a provider-neutral Memory Core.** The Memory Core remains the canonical service boundary and adapters are selected separately.
-- **C — Neon/PostgreSQL is authority/audit metadata only.** A different canonical payload provider must be selected and verified.
-
-Until this is decided and recorded in a versioned contract amendment:
-`MEMORY_KNOWLEDGE_IMPLEMENTATION=BLOCKED`
+`ARCHITECTURE_DECISION=APPROVED_B`
+`IMPLEMENTATION=NOT_STARTED`
 `LEGACY_DATA=READ_ONLY_PRESERVE`
 `FACEBOOK_TOKEN_REQUIRED_FOR_CORE_MEMORY=NO`
-`SILENT_FALLBACK=PROHIBITED`
+`FACEBOOK_ACCESS=PUBLIC_READ_ONLY_WHEN_PERMITTED`
+`FACEBOOK_AUTO_PUBLISH=PROHIBITED`
+`CLIENT_AND_FINANCIAL_DATA=APPLICATION_ENCRYPTED_VAULT_REQUIRED`
 `PRODUCTION_MIGRATION=NOT_APPROVED`
-`DEPLOYMENT=BLOCKED`
+`PRODUCTION_WRITE=NOT_APPROVED`
+`DEPLOYMENT=NOT_APPROVED`
 
-No scheduled task, reminder, or automation was created.
+No source code, runtime configuration, production database schema/data, secrets, or deployment were changed in this documentation step. No scheduled task, reminder, or automation was created.
