@@ -3,6 +3,7 @@ name: Mira session persistence validation
 on:
   push:
     branches:
+      - main
       - work/mira-session-postgres-staging-20261107
     paths:
       - "server.js"
