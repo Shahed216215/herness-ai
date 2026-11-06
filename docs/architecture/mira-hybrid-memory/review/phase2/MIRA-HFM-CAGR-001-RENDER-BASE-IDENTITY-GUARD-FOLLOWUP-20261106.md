@@ -96,3 +96,26 @@ Run #22 completed with both jobs successful:
 - Dependency install still reports 9 audit findings (6 moderate, 3 high); no automatic fix was applied.
 
 The repository regression chain is now green on the candidate. This does not certify HFM production readiness: the admin subject, bearer subject, canonical host principal normalization, durable project registry, project membership, and operation-scoped authority remain separate gates.
+
+
+## Canonical session principal integration
+
+The candidate now adds a server-issued principal envelope at successful password login and normalizes it through the pure HFM host identity contract:
+
+- Registered user subject: the UUID returned by the authenticated users store.
+- Admin subject: only the separately provisioned UUID in `MIRA_ADMIN_SUBJECT_ID`. This variable has **not** been set or changed in Render. Until provisioned, admin HFM actor context remains unavailable.
+- Legacy configured user login without a stable UUID: no HFM principal is issued; it remains fail-closed.
+- Shared bearer authentication: no HFM principal is issued; it remains fail-closed.
+- Issuer namespace: `mira.users` or `mira.admins`.
+- Authentication method: `USER_SESSION` or `ADMIN_SUBJECT`.
+- Authentication reference: regenerated server-side session ID.
+- `authenticatedAt` and `expiresAt`: created at the successful login boundary using the same eight-hour max-age configured on the session cookie.
+- Canonical actor ID is normalized from issuer + subject; caller-provided role, email, display name, model arguments, and project IDs do not participate.
+
+Latest run #42:
+- Canonical host identity contract tests: **PASS**.
+- Runtime identity context tests: **PASS**.
+- Repository regression suite: **PASS**.
+- Test coverage includes synthetic provisioned-admin subject handling; this does not prove a real Render admin subject has been provisioned or configured.
+
+This establishes a canonical session principal for registered local users and a gated path for an explicitly provisioned admin subject. It does not implement shared-bearer subject mapping, durable owner registry, project membership, or operation-scoped project authority.
