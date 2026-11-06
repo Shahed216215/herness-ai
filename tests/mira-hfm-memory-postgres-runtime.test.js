@@ -18,6 +18,7 @@ function preflightRow(overrides = {}) {
     bypasses_rls: false,
     can_create_roles: false,
     can_create_databases: false,
+    inherits_roles: true,
     has_memory_writer_group: true,
     schema_usage: true,
     schema_create: false,
@@ -105,6 +106,10 @@ test('writer preflight requires the exact login role, limited privileges and for
   assert.throws(
     () => runtime.verifyWriterPreflight(preflightRow({ bypasses_rls: true }), config),
     error => error.code === 'MEMORY_WRITER_EXCESS_PRIVILEGE_DETECTED'
+  );
+  assert.throws(
+    () => runtime.verifyWriterPreflight(preflightRow({ inherits_roles: false }), config),
+    error => error.code === 'MEMORY_WRITER_REQUIRED_PRIVILEGE_MISSING'
   );
 });
 
