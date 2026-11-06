@@ -69,6 +69,11 @@ async function executeWithConsumedAuthority(options = {}) {
       "SELECT set_config('mira.project_id', $1, true)",
       [request.projectId]
     );
+    // Actor scope is transaction-local and derived only from the verified session principal.
+    await client.query(
+      "SELECT set_config('mira.actor_id', $1, true)",
+      [trustedActor.actorId]
+    );
 
     // Deterministic lock order: project owner -> actor membership -> one-time authority.
     // Revocation/owner revision updates must lock these same rows, so they cannot race
