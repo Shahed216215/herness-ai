@@ -5,6 +5,7 @@
 // The protected callback MUST use only the supplied transaction client;
 // external side effects are forbidden because PostgreSQL rollback cannot undo them.
 const { randomUUID } = require("node:crypto");
+const { normalizeTrustedActorIdentity } = require("./mira-memory-host-identity-contract");
 
 function fail(code) {
   const error = new Error(code);
@@ -26,7 +27,6 @@ function validateRequest(input) {
   return Object.freeze({
     authorityId: bounded(input.authorityId, "authorityId", 256),
     projectId: bounded(input.projectId, "projectId", 256),
-    actorId: bounded(input.actorId, "actorId", 512),
     operation: bounded(input.operation, "operation", 128),
     resource: bounded(input.resource, "resource", 512),
     purpose: bounded(input.purpose, "purpose", 512),
@@ -43,6 +43,13 @@ function hasOperationPermission(permissions, operation) {
 
 async function executeWithConsumedAuthority(options = {}) {
   const request = validateRequest(options.request);
+  let trustedActor;
+  try {
+    // Caller must pass the server-held session principal, never a request-body actor ID.
+    trustedActor = normalizeTrustedActorIdentity({ verifiedPrincipal: options.verifiedPrincipal });
+  } catch (_error) {
+    throw fail("HFM_TRUSTED_ACTOR_REQUIRED");
+  }
   if (!options.pool || typeof options.pool.connect !== "function" ||
       typeof options.perform !== "function") {
     throw fail("HFM_AUTHORITY_EXECUTOR_NOT_CONFIGURED");
@@ -71,7 +78,7 @@ async function executeWithConsumedAuthority(options = {}) {
       "SELECT membership_id, project_id, actor_id, permissions, status, revision, " +
       "valid_from, expires_at FROM mira_hfm.project_memberships " +
       "WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp()) FOR UPDATE",
-      [request.projectId, request.actorId]
+      [request.projectId, trustedActor.actorId]
     );
     const membership = membershipResult.rows && membershipResult.rows[0];
     if (!membership) throw fail("HFM_PROJECT_MEMBERSHIP_NOT_ACTIVE");
