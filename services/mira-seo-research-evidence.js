@@ -9,9 +9,7 @@ function parsePayload(raw) {
     }
   }
 
-  return raw && typeof raw === "object" && !Array.isArray(raw)
-    ? raw
-    : null;
+  return raw && typeof raw === "object" ? raw : null;
 }
 
 function tokens(value) {
