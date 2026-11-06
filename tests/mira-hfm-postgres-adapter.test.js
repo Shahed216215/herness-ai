@@ -42,6 +42,14 @@ test("pool enforces TLS verification, small pool and bounded timeouts", () => {
   assert.equal(received.connectionTimeoutMillis, 5000);
   assert.equal(received.statement_timeout, 5000);
   assert.equal(received.application_name, "mira-hfm-readonly");
+  adapter.createPool({
+    env: { MIRA_HFM_DATABASE_URL: validUrl },
+    PoolCtor: FakePool,
+    readOnly: false,
+    allowWrites: true,
+    applicationName: "mira-hfm-memory-writer"
+  });
+  assert.equal(received.application_name, "mira-hfm-memory-writer");
   assert.equal(received.options, "-c default_transaction_read_only=on");
   assert.throws(
     () => adapter.createPool({ env: { MIRA_HFM_DATABASE_URL: validUrl }, PoolCtor: FakePool, readOnly: false }),
