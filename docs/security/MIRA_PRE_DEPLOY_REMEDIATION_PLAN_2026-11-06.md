@@ -239,3 +239,32 @@ A separate, already-open remediation branch exists and should be evaluated rathe
 - Follow-up commit `8fca13e37569089d183e0befbe8eb06af3b27d26` adds the repository-wide outbound sink inventory test to the focused CI step. Its CI run is pending; do not attribute the above green result to this newer commit until its run completes.
 
 **Status:** prior corrected CI head PASS; latest added sink-inventory gate pending. PR #69 and PR #71 remain Draft/open/unmerged; no Render deployment or production change.
+
+## 13. Final source dependency inventory and expanded CI gate — 2026-11-06
+
+### Static source dependency inventory
+- Added `tests/dependency-usage-inventory.test.js`; it scanned 266 production JavaScript files across repository-root JS files and `services`, `routes`, `tools`, `providers`, and `scripts`.
+- CI output: `ARCHIVER_STATIC_IMPORTS=0`, `READDIR_GLOB_STATIC_IMPORTS=0`, `DEPENDENCY_USAGE_INVENTORY=PASS`.
+- This confirms no static direct import of `archiver` or `readdir-glob` in those 266 scanned files. It does not prove absence of dynamically constructed module paths, non-JavaScript imports, or external runtime injection.
+- Combined with the production builder's explicit native ZIP writer and its comment that archiver is deliberately avoided, the current code evidence suggests the direct `archiver` dependency and its `readdir-glob` child chain are unused by the scanned application code. Removing `archiver` and reconsidering the `minimatch` override could reduce dependency surface, but this is a package-manifest/lockfile change and has not been made.
+
+### Outbound sink inventory
+- CI output: `OUTBOUND_DIRECT_SINKS=2`.
+- Reviewed direct sinks:
+  1. `services/security/secure-provider-request.js:axios.request(` — shared wrapper uses `maxRedirects: 0`, pinned DNS lookup, `proxy: false`, and TLS verification.
+  2. `tools/mira-server-control.js:http.get(` — local loopback health probe; test asserts hostname `127.0.0.1`, configured local port, and root path.
+- The static sink inventory is a code-level check, not a full runtime proof. The current shared Axios wrapper does not automatically follow redirects; the direct library test separately verifies patched redirect header handling.
+
+### Latest CI evidence
+- Latest PR #69 head: `aaf496bb0326932a298c18511ca865849d944a7c`.
+- Pull-request workflow run `42247970054`: SUCCESS.
+- Full configured `npm test`: PASS.
+- `READDIR_GLOB_MINIMATCH_COMPATIBILITY=PASS`.
+- `DEPENDENCY_REDIRECT_SECURITY=PASS` (array-form built-in credentials, cross-realm custom sensitive header, Axios redirect).
+- `STAGE19_OUTBOUND_SINK_INVENTORY=PASS`; two reviewed direct sinks.
+- `DEPENDENCY_USAGE_INVENTORY=PASS`; 266 JS files scanned; zero static archiver/readdir-glob imports.
+- `SHEETJS_CDN_PIN=PASS`; npm audit exit code 0; 0 critical, high, moderate, low or info findings.
+- Workflow also uploaded dependency evidence artifact.
+- No dependency manifest/lockfile change, production runtime change, Render change, merge or deployment was made by these test/inventory commits.
+
+**Status:** PR #69's latest PR-triggered CI is green for the dependency patch and expanded source inventory. PR #69 remains Draft/open/unmerged; PR #71 remains Draft/open/unmerged. Overall release remains REVIEW_REQUIRED pending review of the dependency choices, session persistence and explicit merge/deployment approval.
