@@ -235,3 +235,16 @@ The current linear downstream chain is Phase 6 PR #43 → Phase 7 PR #44 → Pha
 - Live model/provider E2E remains NOT_TESTED; no live external call or production write was made.
 
 The earlier stale-base finding for PR #34–#37 is superseded for the current restack by PRs #43–#45 and #48. The original PRs remain untouched. Phase 10 remains INCONCLUSIVE / NOT_CERTIFIED; this restack is not approval to merge, deploy, apply migrations, or run live tests.
+
+
+## Phase 10 cross-phase regression result — 2026-11-06
+
+The Phase 10 cross-phase workflow [42153260912](https://github.com/Shahed216215/herness-ai/actions/runs/42153260912) completed SUCCESS on exact head `302b06e9625ccc246c515b1cbe4e0319c00f3859`.
+
+- Phase 5 job passed locked dependency installation, targeted Facebook Group import tests, offline static regression, full repository `npm test`, and Phase 5 atomic-recovery SQL integration against an ephemeral PostgreSQL 16 service container.
+- The PostgreSQL suite passed role/grant and RLS checks, atomic batch/audit creation, idempotent retry, operation-key identity conflict, immutable batch conflict, rollback on audit failure, and final `POSTGRES_PHASE5_ATOMIC_RECOVERY_INTEGRATION=PASS`.
+- Phase 6, 7, 8 and 9 offline suites and cross-phase syntax checks all passed. Both jobs reported `TESTS_FAILED=0`.
+- A stale startup-contract test was updated to assert the Phase 6 shared bind-host resolver; the first PostgreSQL workflow attempt's shell dollar-quoting issue was corrected. These are regression harness corrections, not production runtime changes.
+- Logs explicitly confirm zero live Facebook, Google Drive OAuth/API, Supabase, model-provider requests and zero production migration.
+
+This upgrades Phase 5–9 evidence to a combined offline regression PASS on the Phase 10 branch. It does not satisfy independent security review, live provider/model E2E, production database migration, production backup/restore, or deployment approval. Phase 10 remains INCONCLUSIVE / NOT_CERTIFIED.
