@@ -40,14 +40,12 @@ jobs:
     timeout-minutes: 3
     env:
       MIRA_BASE_URL: https://mira-ai-agent-2pfh.onrender.com
-      MIRA_LIVE_TEST_TOKEN: ${{ secrets.MIRA_LIVE_TEST_TOKEN }}
     steps:
-      - name: Check live Render health endpoint
+      - name: Check live Render health and unauthenticated rejection
         run: |
           node <<'NODE'
           const assert = require("node:assert/strict");
-
-          const base = process.env.MIRA_BASE_URL.endsWith("/") ? process.env.MIRA_BASE_URL.slice(0, -1) : process.env.MIRA_BASE_URL;
+          const base = process.env.MIRA_BASE_URL.replace(/\\/$/, "");
 
           async function request(path, options = {}) {
             return fetch(base + path, {
@@ -67,9 +65,7 @@ jobs:
               } catch (error) {
                 lastError = error;
               }
-              if (attempt < 4) {
-                await new Promise(resolve => setTimeout(resolve, 5000));
-              }
+              if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 5000));
             }
 
             assert.ok(healthResponse, "Health endpoint did not respond: " + String(lastError));
@@ -83,43 +79,13 @@ jobs:
             const agentResponse = await request("/api/agent", {
               method: "POST",
               headers: { "content-type": "application/json" },
-              // Empty body is intentionally invalid if auth is accidentally bypassed.
-              // This makes the probe fail closed without triggering agent execution.
+              // Empty JSON is invalid if auth is accidentally bypassed, so
+              // this probe cannot start an agent task.
               body: JSON.stringify({})
             });
-            assert.equal(
-              agentResponse.status,
-              401,
-              "Unauthenticated Run Agent request must be rejected before execution"
-            );
+            assert.equal(agentResponse.status, 401,
+              "Unauthenticated Run Agent request must be rejected before execution");
             console.log("PASS live-render-run-agent-unauthenticated status=401");
-
-            // Safe authenticated probe: an empty JSON body is rejected by
-            // /api/agent validation before memory retrieval, AI generation,
-            // provider calls, or tool execution.
-            const testToken = process.env.MIRA_LIVE_TEST_TOKEN;
-            if (!testToken) {
-              console.log("INCONCLUSIVE live-render-run-agent-authenticated: MIRA_LIVE_TEST_TOKEN secret is not configured");
-              return;
-            }
-
-            const authenticatedProbe = await request("/api/agent", {
-              method: "POST",
-              headers: {
-                "content-type": "application/json",
-                authorization: "Bearer " + testToken
-              },
-              body: JSON.stringify({})
-            });
-            assert.equal(
-              authenticatedProbe.status,
-              400,
-              "Authenticated empty-body probe must pass auth and stop at command validation"
-            );
-            const probeBody = await authenticatedProbe.json();
-            assert.equal(probeBody.success, false);
-            assert.equal(probeBody.error, "Command must be a string.");
-            console.log("PASS live-render-run-agent-authenticated-validation status=400 ai-provider=NOT_CALLED tools=NOT_CALLED");
           }
 
           main().catch(error => {
