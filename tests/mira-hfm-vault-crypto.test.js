@@ -51,7 +51,7 @@ test('wrong owner, project, record, type, or schema context fails authentication
     { ownerId: 'mira:other-owner' },
     { projectId: 'other-project' },
     { recordId: 'other-record' },
-    { classification: 'PROJECT_PRIVATE' },
+    { classification: 'PUBLIC' },
     { recordType: 'knowledge_item' },
     { schemaVersion: '1.0.0' }
   ];
@@ -111,6 +111,16 @@ test('tampered ciphertext and malformed envelope fail closed', () => {
 });
 
 
+
+test('project-private daily and social records can also be encrypted at rest', () => {
+  const privateContext = { ...context, classification: 'PROJECT_PRIVATE', recordType: 'social_post_draft' };
+  const envelope = createVaultEnvelope({ record: { title: 'Synthetic draft', body: 'Safe public content' }, context: privateContext, env });
+  assert.deepEqual(
+    decryptVaultEnvelope({ envelope, context: privateContext, env }),
+    { title: 'Synthetic draft', body: 'Safe public content' }
+  );
+});
+
 test('versioned KEKs allow old records to decrypt while new writes use the active version', () => {
   const oldEnvelope = createVaultEnvelope({ record, context, env });
   const rotatedEnv = {
@@ -125,7 +135,7 @@ test('versioned KEKs allow old records to decrypt while new writes use the activ
   assert.deepEqual(decryptVaultEnvelope({ envelope: newEnvelope, context, env: rotatedEnv }), record);
 });
 
-test('vault rejects non-RESTRICTED contexts and non-object records', () => {
+test('vault rejects PUBLIC contexts and non-object records', () => {
   assert.throws(
     () => createVaultEnvelope({
       record,
