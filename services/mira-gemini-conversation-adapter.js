@@ -1,5 +1,7 @@
 "use strict";
 
+let responseSequence = 0;
+
 function parseObject(value) {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value;
@@ -19,7 +21,7 @@ function parseObject(value) {
   }
 }
 
-function normalizeFunctionCall(call, index = 0) {
+function normalizeFunctionCall(call, index = 0, idPrefix = "gemini-call") {
   const nested = call?.function || call?.functionCall || call || {};
   const name = String(call?.name || nested?.name || "").trim();
   if (!name) return null;
@@ -38,7 +40,7 @@ function normalizeFunctionCall(call, index = 0) {
   }
 
   return {
-    id: String(call?.id || `gemini-call-${index + 1}`),
+    id: String(call?.id || `${idPrefix}-${index + 1}`),
     name,
     args
   };
@@ -158,8 +160,10 @@ function normalizeGeminiResponse(response) {
       .map(part => part.functionCall);
   }
 
+  responseSequence += 1;
+  const idPrefix = `gemini-response-${responseSequence}`;
   const functionCalls = rawCalls
-    .map(normalizeFunctionCall)
+    .map((call, index) => normalizeFunctionCall(call, index, idPrefix))
     .filter(Boolean);
 
   let text = "";
