@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - work/render-main-host-binding-compat-20261106
+      - work/hfm-runtime-integration-from-render-main-20261106
     paths:
       - "server.js"
       - "package.json"
