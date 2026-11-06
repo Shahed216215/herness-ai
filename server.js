@@ -125,7 +125,6 @@ const HOST = process.env.HOST || (process.env.RENDER ? "0.0.0.0" : "127.0.0.1");
 const PORT = Number(process.env.PORT) || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const MIRA_SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 8;
-const MIRA_HFM_PRINCIPAL_ISSUER = "mira-local-session-auth";
 const MIRA_STABLE_SUBJECT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 if (IS_PRODUCTION) {
