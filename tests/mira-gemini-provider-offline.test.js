@@ -1,5 +1,7 @@
 "use strict";
 
+// Offline-only contract test: the Google SDK is mocked; no provider request is sent.
+
 const assert = require("node:assert/strict");
 const Module = require("node:module");
 
