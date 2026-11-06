@@ -48,3 +48,18 @@ This is transport plumbing only. It does not establish canonical HFM principal v
 ## Production safety
 
 No Render service settings, environment variables, credentials, production Memory/Knowledge data, project ownership, or membership records were changed. No merge or deployment was performed.
+
+
+## Expanded regression-suite result
+
+A repository-wide regression attempt was added to CI after the focused identity check had passed.
+
+- `npm ci`: **PASS** (242 packages installed from the lockfile).
+- `npm test`: **FAIL / BASELINE TEST-SCRIPT GAP**.
+- The first capacity-register test passed.
+- The script then stopped because `tests/change-management-regression-test.js` is referenced by the Render-base `package.json` test command but is absent from that branch.
+- Because the shell uses `&&`, subsequent repository tests did not run in that attempt.
+- The install reported 9 dependency audit findings (6 moderate, 3 high). No `npm audit fix`, dependency update, or lockfile mutation was attempted.
+- CI workflow was separated into two jobs so the focused identity syntax/test job can complete independently while the repository regression job truthfully reports the existing missing-test-file failure.
+
+This baseline suite failure is not attributed to the identity-context patch. It remains a release gate until the missing test is restored or the package test command is reconciled in a separately reviewed change.
