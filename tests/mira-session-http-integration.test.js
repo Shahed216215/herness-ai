@@ -90,11 +90,8 @@ function createApp(rows, production = false) {
   app.post("/logout", (req, res) => {
     req.session.destroy(error => {
       if (error) return res.status(500).json({ success: false });
-      res.clearCookie("connect.sid", {
-        httpOnly: true,
-        sameSite: "strict",
-        secure: production
-      });
+      // Keep this harness aligned with server.js /api/logout.
+      res.clearCookie("connect.sid");
       return res.status(200).json({ success: true });
     });
   });
@@ -190,6 +187,12 @@ async function main() {
       headers: { ...proxyHeaders, Cookie: cookie }
     });
     assert.equal(logout.status, 200, "logout must destroy the stored session");
+    const clearedCookie = logout.headers.getSetCookie
+      ? logout.headers.getSetCookie().find(value => /^connect\.sid=/i.test(value))
+      : logout.headers.get("set-cookie");
+    assert.ok(clearedCookie, "logout must emit a cleared session cookie");
+    assert.match(clearedCookie, /Expires=/i, "logout cookie must be expired");
+    assert.match(clearedCookie, /Path=\//i, "logout cookie path must match the session cookie path");
 
     const afterLogout = await fetch(restarted.baseUrl + "/me", {
       headers: { ...proxyHeaders, Cookie: cookie }
