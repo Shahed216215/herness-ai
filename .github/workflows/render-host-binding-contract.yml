@@ -1,0 +1,42 @@
+name: Render host binding contract
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "server.js"
+      - "package.json"
+      - "package-lock.json"
+      - "tests/render-host-binding-contract.test.js"
+      - ".github/workflows/render-host-binding-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-host-binding-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render-host-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run repository regression suite and Render host contract
+        run: npm test
