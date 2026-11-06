@@ -219,3 +219,18 @@ Not yet integrated:
 - No KEK or Render environment secret is configured; encrypted operations require explicit server-side key custody before use.
 - No Render deployment, production database change, PR merge, Facebook ingestion, or automatic Facebook publishing occurred.
 - A successful unit/CI run does not prove a live application/database integration.
+
+
+## 15. Daily knowledge post builder (2026-11-06)
+
+Added `services/mira-hfm-daily-knowledge-post.js`:
+- Selects only validated, ACTIVE, same-project `daily_activity` and `learning_note` records classified PROJECT_PRIVATE.
+- Uses an explicit local date and IANA time zone; default is `Asia/Dhaka`.
+- Excludes PUBLIC, RESTRICTED, client vault, financial vault, archived, other-project, and out-of-day records.
+- Produces a deterministic Bengali template with separate activity and learning sections. It does not call an LLM.
+- Redacts obvious email, URL, long phone/number, and currency-amount patterns. This is not a guarantee that names or all sensitive details are removed; the draft must be manually reviewed before copying/posting.
+- Produces a stable project/date draft ID and idempotency key; the resulting `social_post_draft` is PROJECT_PRIVATE.
+- `saveDailyKnowledgePost` persists only through the authority-scoped repository and requires an explicit private-write grant.
+- Output is always `reviewRequired=true` and `autoPublish=false`.
+
+The builder does not capture source activities, schedule itself, or run while Render is asleep. The app must capture activities while active and invoke generation on a later authenticated request after wake. The saved Neon draft then remains available after Render process restart/sleep; Copy UI and Trash UI are still not implemented.
