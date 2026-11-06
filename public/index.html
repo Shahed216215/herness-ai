@@ -2250,10 +2250,18 @@
               <textarea id="miraMarketingKeywords" rows="4"
                 placeholder="keyword one&#10;keyword two"></textarea>
 
-              <label for="miraMarketingQuery">Live research query</label>
-              <textarea id="miraMarketingQuery" rows="3" maxlength="2000"
-                placeholder="Research search intent, market trends and relevant competitors"
+              <label for="miraMarketingQuery">Primary live research query</label>
+              <textarea id="miraMarketingQuery" rows="3" maxlength="500"
+                placeholder="Primary keyword or search question"
                 required></textarea>
+
+              <label for="miraMarketingCompetitorQueries">Additional competitor research queries (optional, maximum 5)</label>
+              <textarea id="miraMarketingCompetitorQueries" rows="4" maxlength="3000"
+                placeholder="One distinct query per line"></textarea>
+
+              <label for="miraMarketingConfirmedCompetitors">Client-confirmed competitor domains (optional, maximum 10)</label>
+              <textarea id="miraMarketingConfirmedCompetitors" rows="3" maxlength="3000"
+                placeholder="Only domains explicitly confirmed by the client, one per line"></textarea>
 
               <label for="miraMarketingHtml">Optional page HTML for offline audit</label>
               <textarea id="miraMarketingHtml" rows="5" maxlength="204800"
@@ -11392,9 +11400,13 @@ document.querySelectorAll(
 
         let goals;
         let keywords;
+        let competitorQueries;
+        let confirmedCompetitorDomains;
         try {
           goals = splitLines("miraMarketingGoals", 10, "Goals");
           keywords = splitLines("miraMarketingKeywords", 30, "Keywords");
+          competitorQueries = splitLines("miraMarketingCompetitorQueries", 5, "Competitor queries");
+          confirmedCompetitorDomains = splitLines("miraMarketingConfirmedCompetitors", 10, "Confirmed competitor domains");
         } catch (error) {
           status.textContent = error.message;
           return;
@@ -11425,6 +11437,8 @@ document.querySelectorAll(
             sitemapXml: byId("miraMarketingSitemap").value,
             keywords
           },
+          competitorQueries,
+          confirmedCompetitorDomains,
           confirmLiveResearch: true
         };
 
