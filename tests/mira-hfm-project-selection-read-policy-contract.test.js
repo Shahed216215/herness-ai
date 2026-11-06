@@ -14,6 +14,24 @@ assert.match(sql, /rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb OR rolcr
 assert.match(sql, /HFM_PROJECT_READER_ROLE_MUST_NOT_INHERIT_PARENT_ROLES/);
 assert.match(sql, /HFM_PROJECT_READER_ROLE_MUST_NOT_OWN_DATABASE_OBJECTS/);
 assert.match(sql, /HFM_PROJECT_READER_POLICY_NAME_COLLISION/);
+assert.match(sql, /0 = ANY\(p\.polroles\)/);
+assert.match(sql, /HFM_PROJECT_SELECTION_PUBLIC_POLICY_EXISTS/);
+assert.match(sql, /HFM_PROJECT_READER_PREEXISTING_POLICY_EXISTS/);
+assert.match(sql, /mira_hfm_project_reader'\) = ANY\(p\.polroles\)/);
+
+const ownerPolicy = sql.match(/CREATE POLICY hfm_project_reader_owner_select[\s\S]*?USING\s*\(([\s\S]*?)\);/);
+const membershipPolicy = sql.match(/CREATE POLICY hfm_project_reader_own_membership_select[\s\S]*?USING\s*\(([\s\S]*?)\);/);
+assert.ok(ownerPolicy, "owner policy expression must be present");
+assert.ok(membershipPolicy, "membership policy expression must be present");
+const normalizePolicy = expression => expression.replace(/\s+/g, "").toLowerCase();
+assert.equal(
+  normalizePolicy(ownerPolicy[1]),
+  "project_id=nullif(current_setting('mira.project_id',true),'')andstatus='active'"
+);
+assert.equal(
+  normalizePolicy(membershipPolicy[1]),
+  "project_id=nullif(current_setting('mira.project_id',true),'')andactor_id=nullif(current_setting('mira.actor_id',true),'')andstatus='active'andvalid_from<=clock_timestamp()and(expires_atisnullorexpires_at>clock_timestamp())"
+);
 assert.match(sql, /pg_shdepend/);
 assert.match(sql, /relrowsecurity AND c\.relforcerowsecurity/);
 assert.match(sql, /GRANT SELECT ON TABLE mira_hfm\.project_owners, mira_hfm\.project_memberships/);
