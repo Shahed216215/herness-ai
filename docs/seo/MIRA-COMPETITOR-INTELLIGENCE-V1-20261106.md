@@ -1,7 +1,7 @@
 # Mira Competitor Research & Live SEO Intelligence v1
 
 Date: 2026-11-06
-Status: IMPLEMENTED ON FEATURE BRANCH; EXTENDED CI PASS (RUNS 42191615737 AND 42191615767)
+Status: IMPLEMENTED ON FEATURE BRANCH; LATEST INTEGRATION CI PASS (EXACT HEAD 8896dabc0413a51dfe3030981bcba074d9f5bbe6)
 
 ## Scope
 
@@ -72,7 +72,7 @@ The dashboard only has access to audit/research results generated in the current
 
 ## Validation status for this extension
 
-Implementation and regression tests are committed to the existing feature branch. GitHub Actions must complete successfully on the exact latest branch head before this extension is labelled CI PASS. No PR merge or Render deployment is authorized. Production readiness remains `NOT_CERTIFIED`.
+Implementation, Admin dashboard wiring and regression tests are committed to the existing feature branch. GitHub Actions completed successfully on exact head `8896dabc0413a51dfe3030981bcba074d9f5bbe6`: Competitor Intelligence run `42197065513` and SEO v2 Offline run `42197065492`. No PR merge or Render deployment is authorized. Production readiness remains `NOT_CERTIFIED`.
 
 ## Remaining work
 
@@ -88,7 +88,13 @@ Production readiness remains NOT_CERTIFIED until provider accuracy, security con
 
 ## Latest validation evidence
 
-- Competitor intelligence workflow: GitHub Actions run `42191615737` — SUCCESS.
-- SEO v2 offline regression workflow: GitHub Actions run `42191615767` — SUCCESS.
-- Both ran against code/test revision `9cfa39680274ab687a668b3f0a9aa7afa924425a`.
-- Offline CI recorded `NETWORK_CALLS=0` and `EXTERNAL_ACTIONS=0`; it does not constitute a live SERP/provider test.
+- Competitor Intelligence v1 workflow: GitHub Actions run `42197065513` — SUCCESS on exact head `8896dabc0413a51dfe3030981bcba074d9f5bbe6`.
+  - Syntax checks PASS.
+  - Competitor source/domain regression PASS.
+  - Governed multi-query research regression PASS.
+  - Content gap and deterministic report regression PASS.
+  - Admin report route regression PASS.
+  - SEO report dashboard integration regression PASS.
+  - Marketing workflow competitor-input validation and forwarding regression PASS.
+- SEO Agent v2 Offline workflow: GitHub Actions run `42197065492` — SUCCESS on the same exact head.
+- Offline CI does not execute live SERP research, Google Search Console OAuth/API, website crawling, client publication or Render deployment. It is not production certification.
