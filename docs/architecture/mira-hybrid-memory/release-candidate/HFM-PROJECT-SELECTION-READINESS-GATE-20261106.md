@@ -23,7 +23,7 @@ The runtime remains disabled unless all are explicitly configured:
 - `MIRA_HFM_PROJECT_READ_DATABASE_URL` — dedicated Neon read-only LOGIN role URL
 - `MIRA_HFM_PROJECT_READ_ROLE` — exact expected PostgreSQL LOGIN role name
 
-No values or credentials were set by this source-only work. Do not reuse the writer credential. The LOGIN role must be a member of `mira_hfm_project_reader` and inherit its grants. The group role itself is NOLOGIN, NOINHERIT, NOSUPERUSER, NOBYPASSRLS, owns no database objects, has no parent-role memberships, and has only USAGE on the schema plus SELECT on the two registry tables. The migration rejects unsafe pre-existing role attributes, parent memberships, object ownership, and policy-name collisions. The preflight checks actual inherited role usage and rejects any write grants.
+No values or credentials were set by this source-only work. Do not reuse the writer credential. The LOGIN role must be a member of `mira_hfm_project_reader` and inherit its grants. The group role itself is NOLOGIN, NOINHERIT, NOSUPERUSER, NOBYPASSRLS, owns no database objects, has no parent-role memberships, and has only USAGE on the schema plus SELECT on the two registry tables. The migration rejects unsafe pre-existing role attributes, parent memberships, object ownership, policy-name collisions, PUBLIC policies on either registry table, and any pre-existing policy assigned to the reader group. The preflight checks actual inherited role usage and rejects any write grants.
 
 ## 3. Staging migration gate
 
