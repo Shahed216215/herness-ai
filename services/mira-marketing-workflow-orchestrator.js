@@ -10,6 +10,7 @@ const {
 
 const {
   runSeoResearch,
+  validateResearchInput,
   isTrustedAdminContext
 } = require("./mira-seo-research-orchestrator");
 
@@ -149,11 +150,20 @@ function validateWorkflowInput(input, dependencies = {}) {
     throw new TypeError("MARKETING_WORKFLOW_AUDIT_INPUT_INVALID");
   }
 
+  const researchBrief = { ...brief };
+  delete researchBrief.clientAuthorization;
+  const researchControls = validateResearchInput({
+    brief: researchBrief,
+    query: input.query.trim(),
+    competitorQueries: cleanCompetitorQueries,
+    confirmedCompetitorDomains
+  });
+
   return {
     brief,
     query: input.query.trim(),
-    competitorQueries: cleanCompetitorQueries,
-    confirmedCompetitorDomains: confirmedCompetitorDomains.map(value => value.trim()),
+    competitorQueries: researchControls.competitorQueries,
+    confirmedCompetitorDomains: researchControls.confirmedCompetitorDomains,
     auditInput
   };
 }
