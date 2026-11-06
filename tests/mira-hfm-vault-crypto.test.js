@@ -45,7 +45,7 @@ test('vault envelope uses fresh data keys and nonces for every encryption', () =
   assert.notEqual(first.payload.ciphertext, second.payload.ciphertext);
 });
 
-test('wrong owner, project, record, classification, type, or schema context fails authentication', () => {
+test('wrong owner, project, record, type, or schema context fails authentication', () => {
   const envelope = createVaultEnvelope({ record, context, env });
   const changes = [
     { ownerId: 'mira:other-owner' },
@@ -108,6 +108,21 @@ test('tampered ciphertext and malformed envelope fail closed', () => {
     }),
     error => error.code === 'MIRA_VAULT_ENVELOPE_INVALID'
   );
+});
+
+
+test('versioned KEKs allow old records to decrypt while new writes use the active version', () => {
+  const oldEnvelope = createVaultEnvelope({ record, context, env });
+  const rotatedEnv = {
+    MIRA_VAULT_ACTIVE_KEK_VERSION: 'v2',
+    MIRA_VAULT_KEK_V1: env.MIRA_VAULT_KEK_V1,
+    MIRA_VAULT_KEK_V2: crypto.randomBytes(32).toString('base64')
+  };
+  const newEnvelope = createVaultEnvelope({ record, context, env: rotatedEnv });
+  assert.equal(oldEnvelope.keyVersion, 'v1');
+  assert.equal(newEnvelope.keyVersion, 'v2');
+  assert.deepEqual(decryptVaultEnvelope({ envelope: oldEnvelope, context, env: rotatedEnv }), record);
+  assert.deepEqual(decryptVaultEnvelope({ envelope: newEnvelope, context, env: rotatedEnv }), record);
 });
 
 test('vault rejects non-RESTRICTED contexts and non-object records', () => {
