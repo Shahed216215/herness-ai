@@ -223,3 +223,15 @@ The safe restack sequence described above has now been carried out on separate a
 The Phase 6 restack reconciled `server.js` while preserving the Phase 5 Facebook Group import route and bounded parser exception, and added the Phase 6 archive route/bind-host helper. Phase 7 restored the missing Google Drive generated-ID provider test after its first CI attempt failed; the corrected exact-head push and PR runs both passed. Phase 8 applied only its reviewed server/UI patch hunks on top of the current Phase 7 branch, preserving inherited changes. Phase 9 was restacked on the new Phase 8 head.
 
 These workflow successes establish only the configured offline contract suites. They do not certify the full product, live provider behavior, deployed runtime, persistence/restart recovery, production security, or readiness to merge/deploy. Phase 10 remains **INCONCLUSIVE / NOT_CERTIFIED** pending the residual evidence and independent review listed in the readiness report. All work remains within Mira HFM v0.2.
+
+
+## Current Phase 6–9 restack lineage update — 2026-11-06
+
+The current linear downstream chain is Phase 6 PR #43 → Phase 7 PR #44 → Phase 8 PR #45 → Phase 9 PR #48. The older Phase 9 PR #46 and Phase 10 PR #47 remain historical open/draft branches; they are not the current downstream chain and were not merged or force-pushed.
+
+- Phase 8 PR #45 is based on Phase 7 PR #44 head `71b4849683100407b6c1ff5c9318defcb57c7df1`. Its current head is `bcfc5f537d522d4f3f5c7be444eaefca7683b4ef`; code/test head `67c4c5bd17446cb18f1d559b7075788030112c96` passed run `42150921183` after adding the shared same-origin CSRF guard.
+- Phase 9 PR #48 is based on the current Phase 8 head `bcfc5f537d522d4f3f5c7be444eaefca7683b4ef`. Its current head is `da1c2ccc954cf686c6e1886a18719dd561ef0b8d`; code/test head `faf5b9a7f0c4941d1af2fd744c540eb3d881180e` passed run `42152153722`.
+- Phase 9 offline regression now exercises the server's actual prompt-boundary wiring, excludes persisted system/tool roles, verifies registered-tool and execution-policy gating, requires separate review confirmation, and tests typed Groq tool-message normalization.
+- Live model/provider E2E remains NOT_TESTED; no live external call or production write was made.
+
+The earlier stale-base finding for PR #34–#37 is superseded for the current restack by PRs #43–#45 and #48. The original PRs remain untouched. Phase 10 remains INCONCLUSIVE / NOT_CERTIFIED; this restack is not approval to merge, deploy, apply migrations, or run live tests.
