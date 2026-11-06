@@ -8,6 +8,8 @@ on:
       - "services/mira-autonomous-work-authorization.js"
       - "services/mira-work-execution-engine.js"
       - "server.js"
+      - "package.json"
+      - "package-lock.json"
       - "tests/tool-health-approval-diagnostic.test.js"
       - "tests/tool-health-authorization-engine-integration.test.js"
       - "tests/run-agent-http-authorization-integration.test.js"
@@ -23,7 +25,7 @@ concurrency:
 jobs:
   approval-diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
@@ -37,6 +39,78 @@ jobs:
 
       - name: Install locked runtime dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run report-only npm dependency security audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > "$RUNNER_TEMP/npm-audit.json"
+          audit_exit=$?
+          set -e
+          node - "$RUNNER_TEMP/npm-audit.json" "$GITHUB_STEP_SUMMARY" "$audit_exit" <<'NODE'
+          const fs = require("node:fs");
+          const [reportPath, summaryPath, auditExit] = process.argv.slice(2);
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+          } catch (error) {
+            const message = "INCONCLUSIVE — npm audit did not return valid JSON: " + error.message;
+            console.log(message);
+            fs.appendFileSync(summaryPath, "### Dependency security audit\n\n" + message + "\n");
+            process.exit(0);
+          }
+
+          const metadata = report.metadata && report.metadata.vulnerabilities;
+          if (!metadata || !report.vulnerabilities) {
+            const detail = report.error
+              ? JSON.stringify(report.error)
+              : "The audit response did not contain the expected vulnerability metadata.";
+            const message = "INCONCLUSIVE — " + detail;
+            console.log(message);
+            fs.appendFileSync(summaryPath, "### Dependency security audit\n\n" + message + "\n");
+            process.exit(0);
+          }
+
+          const entries = Object.entries(report.vulnerabilities);
+          const lines = [
+            "### Dependency security audit",
+            "",
+            "| Severity | Package | Direct | Affected range | Installed paths | Fix available |",
+            "|---|---|---:|---|---|---|"
+          ];
+          for (const [name, item] of entries) {
+            const paths = (item.nodes || []).join(", ") || "not reported";
+            const fix = item.fixAvailable === true
+              ? "Yes (within declared ranges)"
+              : item.fixAvailable === false
+                ? "No automatic fix"
+                : item.fixAvailable && typeof item.fixAvailable === "object"
+                  ? (item.fixAvailable.isSemVerMajor ? "Yes (major change)" : "Yes (review required)")
+                  : "Not reported";
+            lines.push(
+              "| " + item.severity + " | " + name + " | " +
+              (item.isDirect ? "Yes" : "No") + " | " + item.range + " | " +
+              paths + " | " + fix + " |"
+            );
+            for (const advisory of (item.via || []).filter(value => value && typeof value === "object")) {
+              lines.push("");
+              lines.push("Advisory: " + advisory.title + " — " + advisory.url);
+            }
+          }
+
+          const totals = Object.entries(metadata)
+            .map(([key, value]) => key + ": " + value)
+            .join(" · ");
+          lines.splice(1, 0, "", "**Result:** " +
+            (metadata.total === 0 ? "PASS — no known vulnerabilities reported" : "FINDINGS — review required"),
+            "**Counts:** " + totals,
+            "**npm audit exit code:** " + auditExit,
+            "",
+            "This step is report-only; it does not run npm audit fix or modify dependencies.");
+          const output = lines.join("\n") + "\n";
+          console.log(output);
+          fs.appendFileSync(summaryPath, output);
+          NODE
 
       - name: Run offline authorization unit regression
         run: node tests/tool-health-approval-diagnostic.test.js
