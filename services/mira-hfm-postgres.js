@@ -113,6 +113,9 @@ async function inspectDatabase(options = {}) {
       ["mira_hfm"]
     );
     const row = result.rows && result.rows[0] ? result.rows[0] : {};
+    if (row.transaction_read_only !== "on") {
+      throw configError("DATABASE_NOT_READ_ONLY");
+    }
     const schemaExists = row.schema_exists === true;
 
     let tables = [];
@@ -136,7 +139,7 @@ async function inspectDatabase(options = {}) {
       readOnly: true,
       databaseName: String(row.database_name || "").slice(0, 128),
       databaseRole: String(row.database_role || "").slice(0, 128),
-      transactionReadOnly: row.transaction_read_only === "on",
+      transactionReadOnly: true,
       schemaExists,
       tables
     };
