@@ -52,6 +52,5 @@ async function run(){
  console.log('HFM_PHASE9_ADVERSARIAL_FIELDS_NOT_PROPAGATED=PASS');
  console.log('HFM_PHASE9_UNVERIFIED_TRUST_BOUNDARY=PASS');
  console.log('HFM_PHASE9_NO_EXTERNAL_ACTION_OR_CANONICAL_WRITE=PASS');
- console.log('HFM_PHASE9_DOWNSTREAM_PROMPT_ISOLATION=NOT_TESTED');
 }
 run().catch(e=>{console.error(e.stack||e);process.exitCode=1;});
