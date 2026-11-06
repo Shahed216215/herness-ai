@@ -42,6 +42,7 @@ const PREFLIGHT_SQL = [
   'r.rolcreaterole AS can_create_roles, r.rolcreatedb AS can_create_databases,',
   "pg_has_role(current_user, $1, 'MEMBER') AS has_memory_writer_group,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
+  "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'SELECT') AS memberships_select,",
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'SELECT') AS authorities_select,",
@@ -94,8 +95,7 @@ const REQUIRED_FALSE = Object.freeze([
   'versions_update', 'versions_delete', 'versions_truncate',
   'operations_delete', 'operations_truncate',
   'memory_audit_update', 'memory_audit_delete', 'memory_audit_truncate',
-  'authority_audit_update', 'authority_audit_delete', 'authority_audit_truncate', 'schema_create',
-  'can_create_roles', 'can_create_databases'
+  'authority_audit_update', 'authority_audit_delete', 'authority_audit_truncate', 'schema_create'
 ]);
 
 function verifyWriterPreflight(row, config) {
