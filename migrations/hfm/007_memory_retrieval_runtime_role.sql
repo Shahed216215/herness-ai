@@ -53,6 +53,7 @@ BEGIN
         'hfm_memory_reader_owner_select',
         'hfm_memory_reader_membership_select',
         'hfm_memory_reader_authority_consume',
+        'hfm_memory_reader_authority_consume_update',
         'hfm_memory_reader_authority_audit_insert',
         'hfm_memory_reader_memory_select'
       )
@@ -75,6 +76,9 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON SCHEMA mira_hfm FROM mira_hfm_memory_reader;
+REVOKE ALL ON SEQUENCE mira_hfm.authority_audit_events_event_sequence_seq
+FROM mira_hfm_memory_reader;
 REVOKE ALL ON TABLE
   mira_hfm.project_owners,
   mira_hfm.project_memberships,
