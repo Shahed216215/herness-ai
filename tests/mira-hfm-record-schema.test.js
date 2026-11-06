@@ -115,6 +115,16 @@ test('social post drafts must remain project-private until manual user publicati
   assert.equal(validateCanonicalRecord(candidate).valid, false);
 });
 
+test('TRASHED is a valid recoverable lifecycle state for a saved draft', () => {
+  const candidate = record({
+    schemaVersion: SCHEMA_V1_1,
+    recordType: 'social_post_draft',
+    lifecycle: 'TRASHED',
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: [] }
+  });
+  assert.equal(validateCanonicalRecord(candidate).valid, true);
+});
+
 test('unknown fields, invalid trust states, and invalid revision are rejected', () => {
   const candidate = record({
     unexpected: 'not-allowed',
