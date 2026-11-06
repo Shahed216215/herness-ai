@@ -201,9 +201,9 @@ function validateCanonicalRecord(record) {
         record.access?.classification !== 'RESTRICTED') {
       errors.push('record.vault_record.must_be_RESTRICTED');
     }
-    if (record.recordType === 'social_post_draft' &&
+    if (['daily_activity', 'learning_note', 'social_post_draft'].includes(record.recordType) &&
         record.access?.classification !== 'PROJECT_PRIVATE') {
-      errors.push('record.social_post_draft.must_be_PROJECT_PRIVATE');
+      errors.push('record.private_activity_learning_draft.must_be_PROJECT_PRIVATE');
     }
     if (['client_vault_record', 'financial_vault_record'].includes(record.recordType) &&
         typeof record.content === 'string') {
