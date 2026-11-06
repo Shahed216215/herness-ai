@@ -100,8 +100,10 @@ const REQUIRED_FALSE = Object.freeze([
   "is_superuser", "bypasses_rls", "schema_create",
   "owners_insert", "owners_update", "owners_delete", "owners_truncate",
   "owners_references", "owners_trigger",
+  "owners_column_insert", "owners_column_update", "owners_column_references",
   "memberships_insert", "memberships_update", "memberships_delete", "memberships_truncate",
-  "memberships_references", "memberships_trigger"
+  "memberships_references", "memberships_trigger",
+  "memberships_column_insert", "memberships_column_update", "memberships_column_references"
 ]);
 
 function verifyProjectReadPreflight(row, config) {
