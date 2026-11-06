@@ -81,3 +81,12 @@ No source code, runtime configuration, production database schema/data, secrets,
 - No public Facebook/Page URL ingestion adapter or safe web-search pipeline.
 - No encrypted vault UI, authorization-gated decrypt route, blind-index design, or tested recovery/key-custody workflow.
 - No production migration, secret/key configuration, production write, merge, or deployment.
+
+
+## User-confirmed Copy → Facebook → Delete workflow (2026-11-06)
+
+- User manually copies the selected draft from Mira, manually publishes it in Facebook, then uses Mira's Delete action.
+- Copy is a direct user-initiated clipboard operation; copied is not equivalent to published.
+- Delete is a recoverable Neon soft-delete (`TRASHED`), with sanitized audit and immutable revision history. Restore is available from Trash.
+- No automatic permanent purge is authorized.
+- This UI/repository workflow is not yet implemented or tested. The current PR work adds only the schema/lifecycle foundation; Copy UI, Trash UI, and repository transaction integration remain NOT_STARTED.
