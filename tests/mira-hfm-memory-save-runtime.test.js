@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const { tools: registeredTools, declarations: registeredDeclarations } = require('../tools');
 const {
   hasExplicitSaveIntent,
   hasExplicitDailyActivitySaveIntent,
@@ -63,6 +64,9 @@ function baseOptions(overrides = {}) {
 }
 
 (async () => {
+  assert.ok(registeredTools.daily_activity_save);
+  assert.equal(registeredTools.daily_activity_save.name, 'daily_activity_save');
+  assert.ok(registeredDeclarations.some(declaration => declaration.name === 'daily_activity_save'));
   assert.equal(hasExplicitSaveIntent('Remember this: keep my learning plan.'), true);
   assert.equal(hasExplicitSaveIntent('এটা মনে রাখবে: আমার শেখার পরিকল্পনা।'), true);
   assert.equal(hasExplicitSaveIntent('Please save this to your memory.'), true);
