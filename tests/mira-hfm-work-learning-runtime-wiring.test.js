@@ -822,6 +822,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
         authorityConsumed: false,
         approvalRequiredPerRead: false,
         memoryWrites: false,
+        authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
         count: 1, results: [{ id: 'hfm-knowledge-1' }],
         nextCursor: 'opaque-cursor-002', candidateScanCount: 100,
         candidateScanLimit: 2000, scannedPages: 2, candidateScanMayBeIncomplete: true,
