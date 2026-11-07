@@ -1287,7 +1287,8 @@ app.delete(
   async (req, res, next) => {
     try {
       if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true") {
         return res.status(403).json({
           success: false,
           error: "HFM standing authority grants memory.read only; Knowledge deletion is not authorized."
@@ -1395,7 +1396,8 @@ app.get(
         Number(req.query.limit) || 5;
 
       const results = (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true")
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true")
         ? (await searchHfmKnowledge({
             req,
             pool: (await getHfmMemoryReadRuntime()).pool,
@@ -1445,7 +1447,8 @@ app.get(
 
       let entry;
       if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true") {
         const runtime = await getHfmMemoryReadRuntime();
         if (!runtime || runtime.status !== "MEMORY_READ_READY" || !runtime.pool) {
           return res.status(503).json({ success: false, error: "HFM Memory reader is not ready." });
@@ -1499,7 +1502,8 @@ app.post(
   async (req, res, next) => {
     try {
       if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true") {
         return res.status(403).json({
           success: false,
           error: "HFM standing authority grants memory.read only; Knowledge edits are not authorized."
@@ -1738,7 +1742,8 @@ app.post(
         selectRecentMessages(previousMemory);
 
       const recalledKnowledge = (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true")
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true")
         ? (await searchHfmKnowledge({
             req,
             pool: (await getHfmMemoryReadRuntime()).pool,
