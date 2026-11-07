@@ -81,6 +81,8 @@ const bridge = read('services/mira-hfm-work-learning-retrieval.js');
 const runtime = read('services/mira-hfm-work-learning-runtime.js');
 const knowledgeSearch = read('services/mira-hfm-knowledge-search-runtime.js');
 assert.match(server, /searchHfmKnowledge/);
+assert.match(server, /app\.get\(\s*"\/api\/admin\/knowledge\/:id"/);
+assert.match(server, /HFM standing authority grants memory\.read only; Knowledge edits are not authorized/);
 assert.match(server, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"/);
 assert.match(knowledgeSearch, /recordTypes: \['knowledge_item'\]/);
 assert.match(knowledgeSearch, /retrieveCanonicalRecordsWithReport/);
