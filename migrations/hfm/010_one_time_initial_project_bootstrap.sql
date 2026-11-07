@@ -129,13 +129,6 @@ CREATE POLICY hfm_bootstrap_registry_select
     AND project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
-    AND EXISTS (
-      SELECT 1 FROM mira_hfm.bootstrap_registry b
-      WHERE b.bootstrap_key = 'initial'
-        AND b.project_id = NULLIF(current_setting('mira.project_id', true), '')
-        AND b.actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-        AND b.approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
-    )
   );
 
 CREATE POLICY hfm_bootstrap_owner_insert
@@ -191,6 +184,13 @@ CREATE POLICY hfm_bootstrap_audit_insert
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND event_type = 'PROJECT_BOOTSTRAPPED'
     AND approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
+    AND EXISTS (
+      SELECT 1 FROM mira_hfm.bootstrap_registry b
+      WHERE b.bootstrap_key = 'initial'
+        AND b.project_id = NULLIF(current_setting('mira.project_id', true), '')
+        AND b.actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+        AND b.approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
+    )
   );
 
 COMMENT ON TABLE mira_hfm.bootstrap_registry IS
