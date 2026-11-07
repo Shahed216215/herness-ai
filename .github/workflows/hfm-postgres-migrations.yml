@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - work/mira-hfm-v02-runtime-integration
+      - work/mira-hfm-v02-clean-integration-20261107
     paths:
       - "migrations/hfm/**"
       - "services/mira-hfm-authority-issuer-runtime.js"
