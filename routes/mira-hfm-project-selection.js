@@ -10,9 +10,9 @@ const {
   findActiveProjectMembership
 } = require('../services/mira-hfm-project-selection-read-runtime');
 
-function registerMiraHfmProjectSelectionRoute(app, runtimePromise) {
+function registerMiraHfmProjectSelectionRoute(app, getRuntime) {
   if (!app || typeof app.post !== 'function' ||
-      !runtimePromise || typeof runtimePromise.then !== 'function') {
+      !getRuntime || typeof getRuntime !== 'function') {
     throw new TypeError('HFM_PROJECT_SELECTION_ROUTE_DEPENDENCIES_REQUIRED');
   }
 
@@ -43,7 +43,7 @@ function registerMiraHfmProjectSelectionRoute(app, runtimePromise) {
     }
 
     try {
-      const runtime = await runtimePromise;
+      const runtime = await getRuntime();
       if (!runtime || runtime.status !== 'PROJECT_READ_READY' ||
           !runtime.pool || typeof runtime.pool.connect !== 'function') {
         return res.status(503).json({
@@ -64,6 +64,7 @@ function registerMiraHfmProjectSelectionRoute(app, runtimePromise) {
         });
       }
 
+      const previousBinding = req.session.hfmProjectBinding;
       const selectedAt = new Date().toISOString();
       req.session.hfmProjectBinding = {
         verified: true,
@@ -75,7 +76,8 @@ function registerMiraHfmProjectSelectionRoute(app, runtimePromise) {
 
       return req.session.save(error => {
         if (error) {
-          delete req.session.hfmProjectBinding;
+          if (previousBinding === undefined) delete req.session.hfmProjectBinding;
+          else req.session.hfmProjectBinding = previousBinding;
           return res.status(503).json({
             success: false,
             error: 'Unable to persist project selection.'
