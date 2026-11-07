@@ -8,6 +8,7 @@ This document records the HFM v0.2 runtime boundary and exact release gates. It 
 
 - Fail-closed unified retrieval facade. It requires trusted host authorization, project-scoped request context, per-record READ decisions, VERIFIED integrity, trusted state, ACTIVE lifecycle, and conflict exclusion. It has no Local JSON or Google Drive fallback.
 - Work Learning retrieval bridge. It filters through the facade before relevance ranking and returns non-executable, read-only learning candidates.
+- Feature-flagged HFM Work Learning runtime. When `MIRA_HFM_WORK_LEARNING_ENABLED=true`, task planning obtains ACTIVE `learning_note` / `knowledge_item` records through the 365-day standing `memory.read` grant, binds the unified facade's LIST/READ decisions to the transaction-verified actor/project/authority context, and ranks only after HFM eligibility checks. The planner does not consult legacy local cross-task learning or future-strategy stores in this mode. Both Work Learning and standing-read flags must be enabled; otherwise the path remains disabled or fails closed.
 - Dedicated project-selection reader and session-bound project-selection route. Actor identity is derived from the authenticated session principal; a project binding is persisted only after active membership is verified.
 - Dedicated Memory retrieval reader. It verifies database identity, login role, role isolation, effective privileges, forced RLS, and required policies before returning a pool.
 - Authorized Memory reader. It derives actor/project from server-held session state, validates a server-held one-time authority, consumes that authority, appends an audit event, and reads eligible Memory in the same transaction.
@@ -35,7 +36,7 @@ This document records the HFM v0.2 runtime boundary and exact release gates. It 
   - `POST /api/hfm/social-drafts/restore`
 - The one-time authorize route stores its grant in the server-side session and never returns the grant or approval token to the browser. The read route removes that session grant before one-time retrieval; database authority consumption is independently atomic. In standing mode, the read route accepts no client-supplied grant: it discovers the active database grant using the verified actor/project session and performs the read plus audit in one serializable transaction.
 - Migrations 007–011 are source-only drafts for the Memory reader, allowlisted authority issuer, persistent approval nonce ledger, one-time bootstrap role, and 365-day standing read authority.
-- Synthetic tests cover project selection → authorized Memory retrieval, approval signing/replay protection, admin approval issuance, route authentication/origin checks, server-side grant storage, grant removal, and retrieval flow.
+- Synthetic tests cover project selection → authorized Memory retrieval, approval signing/replay protection, 365-day standing authority issue/status/pause/resume/revoke, per-read audit and revoked-grant denial, Work Learning runtime authorization-context binding, feature-flag fail-closed behavior, and the no-legacy-local-fallback task-planning path.
 
 ## Runtime environment variable names
 
@@ -49,6 +50,7 @@ Values must be supplied only after the target database and role credentials are 
 | One-time bootstrap | `MIRA_HFM_BOOTSTRAP_ENABLED`, `MIRA_HFM_BOOTSTRAP_DATABASE_URL`, `MIRA_HFM_BOOTSTRAP_ROLE` |
 | Signed approval flow | `MIRA_HFM_APPROVAL_TOKEN_SECRET` (minimum 32 bytes) |
 | Standing read authority | `MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED` (must remain `false` until Migration 011 and reader/issuer preflights are verified) |
+| HFM Work Learning integration | `MIRA_HFM_WORK_LEARNING_ENABLED` (must remain `false` until standing-read authority and HFM Work Learning record availability are verified) |
 | Memory writer (separate existing path) | `MIRA_HFM_MEMORY_WRITE_ENABLED`, `MIRA_HFM_MEMORY_DATABASE_URL`, `MIRA_HFM_MEMORY_WRITER_ROLE` |
 | Stable admin principal | `MIRA_ADMIN_SUBJECT_ID` |
 
