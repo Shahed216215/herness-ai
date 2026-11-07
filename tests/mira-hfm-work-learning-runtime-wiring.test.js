@@ -282,7 +282,7 @@ const legacyConsumerContracts = [
   ['tools/knowledge-restore.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
   ['tools/knowledge-save.js', /execute: async[\s\S]{0,900}code: "HFM_TOOL_ROUTER_REQUIRED"[\s\S]{0,180}assertLegacyStorageDisabled/],
   ['tools/knowledge-search.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
-  ['tools/learning-save.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/learning-save.js', /execute: async[\s\S]{0,900}code: "HFM_TOOL_ROUTER_REQUIRED"[\s\S]{0,180}assertLegacyStorageDisabled/],
   ['tools/memory-count.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
   ['tools/memory-restore.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
   ['tools/memory-save.js', /execute: async[\s\S]{0,900}code: "HFM_TOOL_ROUTER_REQUIRED"[\s\S]{0,180}assertLegacyStorageDisabled/],
@@ -502,7 +502,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     ['knowledge_backup', {}], ['knowledge_cleanup', { action: 'inspect' }],
     ['knowledge_count', {}], ['knowledge_improve', {}],
     ['knowledge_restore', { confirm: true }],
-    ['knowledge_search', { query: 'Python' }], ['learning_save', { content: 'x' }],
+    ['knowledge_search', { query: 'Python' }],
     ['memory_count', {}], ['memory_restore', { confirm: true }]
   ]) {
     assert.equal(typeof tools[toolName]?.execute, 'function', toolName + ' tool is registered');
@@ -515,6 +515,9 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     title: 'x', url: 'https://example.com', content: 'x'
   })).code, 'HFM_TOOL_ROUTER_REQUIRED');
   assert.equal(JSON.parse(await tools.memory_save.execute({
+    content: 'x'
+  })).code, 'HFM_TOOL_ROUTER_REQUIRED');
+  assert.equal(JSON.parse(await tools.learning_save.execute({
     content: 'x'
   })).code, 'HFM_TOOL_ROUTER_REQUIRED');
   await assert.rejects(
