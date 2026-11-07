@@ -171,6 +171,43 @@ const verifiedLearning = {
   assert.equal(boundedScan.candidateScanMayBeIncomplete, false);
   console.log('HFM_KNOWLEDGE_SEARCH_DISCLOSES_FULL_PAGE_SCAN_LIMIT=PASS');
 
+  let boundedSearchCalls = 0;
+  const boundedKnowledge = await searchHfmKnowledge({
+    req: { session: { hfmPrincipal: { verified: true } } },
+    pool: { connect: async () => ({}) },
+    query: 'Python automation',
+    limit: 5,
+    maxPages: 1,
+    now,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readMemory: async options => {
+      boundedSearchCalls += 1;
+      assert.equal(options.limit, 100);
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED',
+        projectId,
+        records: [knowledge],
+        count: 1,
+        nextCursor: 'bounded-knowledge-continuation',
+        standingAuthority: true,
+        authorityConsumed: false,
+        approvalRequiredPerRead: false,
+        memoryWrites: false,
+        localFallback: false,
+        driveFallback: false,
+        scanStartedAt: '2026-11-07T07:59:00.000Z',
+        standingAuthorityId: hostAuthorizationContext.authorityRef,
+        authorityExpiresAt: hostAuthorizationContext.expiresAt,
+        hostAuthorizationContext: { ...hostAuthorizationContext, requestId: 'hfm-bounded-search-page-001' }
+      };
+    }
+  });
+  assert.equal(boundedSearchCalls, 1);
+  assert.equal(boundedKnowledge.scannedPages, 1);
+  assert.equal(boundedKnowledge.candidateScanMayBeIncomplete, true);
+  assert.equal(boundedKnowledge.nextCursor, 'bounded-knowledge-continuation');
+  console.log('HFM_KNOWLEDGE_SEARCH_EXPOSES_BOUNDED_CONTINUATION=PASS');
+
   await assert.rejects(() => searchHfmKnowledge({
     req: {}, pool: {}, query: 'Python',
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'false' }
