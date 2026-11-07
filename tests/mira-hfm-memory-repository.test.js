@@ -342,7 +342,7 @@ test('standing-read repository context is limited to active Learning/Knowledge a
       queryCount += 1;
       assert.match(sql, /classification <> 'RESTRICTED'/);
       assert.match(sql, /integrity_status = 'VERIFIED'/);
-      assert.match(sql, /trust_status IN \\('CONTENT_VERIFIED', \\'HUMAN_VERIFIED'\\)/);
+      assert.match(sql, /trust_status IN \\('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\\)/);
       assert.deepEqual(params, [
         'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'], 25, true, true
       ]);
