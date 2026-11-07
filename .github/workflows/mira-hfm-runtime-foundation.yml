@@ -70,9 +70,15 @@ jobs:
           node --check services/mira-hfm-standing-read-authority.js
           node --check routes/mira-hfm-standing-read-authority.js
           node --check services/mira-hfm-postgres.js
+          node --check services/mira-hfm-memory-save-runtime.js
+          node --check services/mira-hfm-knowledge-search-runtime.js
+          node --check services/mira-hfm-knowledge-review-runtime.js
           node --check services/mira-work-execution-engine.js
           node --check services/tool-runner.js
           node --check tools/index.js
+          node --check tools/memory-save.js
+          node --check tools/knowledge-save.js
+          node --check tools/knowledge-review-queue.js
           node --check tools/hfm-database-status.js
       - name: Run focused canonical identity contracts
         run: |
