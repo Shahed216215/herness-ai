@@ -19,6 +19,8 @@ const { createAuthorityIssuerPool } = require("./services/mira-hfm-authority-iss
 const { registerMiraHfmAuthorityApprovalRoute } = require("./routes/mira-hfm-authority-approval");
 const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
 const { registerMiraHfmMemoryReadRoute } = require("./routes/mira-hfm-memory-read");
+const { createHfmBootstrapPool } = require("./services/mira-hfm-bootstrap-runtime");
+const { registerMiraHfmInitialBootstrapRoute } = require("./routes/mira-hfm-initial-bootstrap");
 const { startAutonomousWorker } = require("./services/mira-autonomous-worker");
 const { declarations, tools } = require("./tools");
 const firewallDefense = require("./firewall-defense");
@@ -247,6 +249,25 @@ function getHfmMemoryReadRuntime() {
 registerMiraHfmMemoryReadRoute(
   app,
   getHfmMemoryReadRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+
+let hfmInitialBootstrapRuntimePromise = null;
+function getHfmInitialBootstrapRuntime() {
+  if (!hfmInitialBootstrapRuntimePromise) {
+    hfmInitialBootstrapRuntimePromise = createHfmBootstrapPool().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 80)
+        : "HFM_BOOTSTRAP_RUNTIME_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmInitialBootstrapRuntimePromise;
+}
+registerMiraHfmInitialBootstrapRoute(
+  app,
+  getHfmInitialBootstrapRuntime,
   requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
 );
 
