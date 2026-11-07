@@ -1,5 +1,6 @@
-const fs = require("fs");
 const path = require("path");
+const { assertLegacyStorageDisabled } = require('./services/mira-hfm-legacy-storage-guard');
+t path = require("path");
 
 const BASE_DIR = __dirname;
 
@@ -199,6 +200,7 @@ async function loadJsonFileFromDrive(
 }
 
 async function saveKnowledgeToDrive(data) {
+  assertLegacyStorageDisabled();
   if (process.env.MIRA_TEST_OFFLINE_DRIVE === "1") {
     return { success: false, skipped: true, action: "skipped_test_offline" };
   }
@@ -218,6 +220,7 @@ async function saveKnowledgeToDrive(data) {
 }
 
 async function loadKnowledgeFromDrive() {
+  assertLegacyStorageDisabled();
   if (process.env.MIRA_TEST_OFFLINE_DRIVE === "1") return null;
   const drive = await getDrive();
 
@@ -234,6 +237,7 @@ async function loadKnowledgeFromDrive() {
 }
 
 async function saveMemoryToDrive(data) {
+  assertLegacyStorageDisabled();
   if (process.env.MIRA_TEST_OFFLINE_DRIVE === "1") {
     return { success: false, skipped: true, action: "skipped_test_offline" };
   }
@@ -253,6 +257,7 @@ async function saveMemoryToDrive(data) {
 }
 
 async function loadMemoryFromDrive() {
+  assertLegacyStorageDisabled();
   if (process.env.MIRA_TEST_OFFLINE_DRIVE === "1") return null;
   const drive = await getDrive();
 
