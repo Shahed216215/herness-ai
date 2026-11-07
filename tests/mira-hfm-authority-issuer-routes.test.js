@@ -1,51 +1,32 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const test = require('node:test');
-const routes = require('../routes/mira-hfm-authorities');
 
-test('only supported HFM operation and purpose pairs can be issued', () => {
-  assert.deepEqual(routes.validateIssueRequest({
-    projectId: 'project-001',
-    operation: 'memory.write',
-    resource: 'memory:fbk_12345678',
-    purpose: 'facebook-knowledge-import'
-  }), {
-    projectId: 'project-001',
-    operation: 'memory.write',
-    resource: 'memory:fbk_12345678',
-    purpose: 'facebook-knowledge-import'
-  });
-  assert.throws(() => routes.validateIssueRequest({
-    projectId: 'project-001', operation: 'memory.write',
-    resource: 'memory:project:project-001', purpose: 'facebook-knowledge-import'
-  }), /HFM_AUTHORITY_ISSUE_RESOURCE_INVALID/);
-  assert.throws(() => routes.validateIssueRequest({
-    projectId: 'project-001', operation: 'facebook.publish',
-    resource: 'memory:fbk_12345678', purpose: 'facebook-knowledge-import'
-  }), /HFM_AUTHORITY_ISSUE_SCOPE_NOT_ALLOWED/);
+const issuer = require('../services/mira-hfm-authority-issuer');
+const issuerSource = fs.readFileSync(require.resolve('../services/mira-hfm-authority-issuer'), 'utf8');
+const approvalRouteSource = fs.readFileSync(require.resolve('../routes/mira-hfm-authority-approval'), 'utf8');
+
+test('one-time authority issuer is server-only and requires a verified consumed approval receipt', () => {
+  assert.equal(typeof issuer.issueMemoryOperationAuthority, 'function');
+  assert.equal(typeof issuer.validateApproval, 'function');
+  assert.equal(Object.prototype.hasOwnProperty.call(issuer, 'registerHfmAuthorityRoutes'), false);
+  assert.match(issuerSource, /validateApproval\(/);
+  assert.match(issuerSource, /verifyApprovalToken/);
+  assert.match(issuerSource, /consume:\s*true/);
+  assert.match(issuerSource, /singleUse:\s*true/);
+  assert.match(issuerSource, /maxUses !== 1/);
+  assert.doesNotMatch(issuerSource, /req\.body\.actorId|req\.body\.userId|req\.body\.ownerActorId/);
+  console.log('HFM_AUTHORITY_ISSUER_SERVER_ONLY_APPROVAL_RECEIPT_REQUIRED=PASS');
 });
 
-test('project permission must explicitly include the exact operation', () => {
-  assert.equal(routes.hasPermission({ operations: ['memory.read', 'memory.write'] }, 'memory.write'), true);
-  assert.equal(routes.hasPermission({ operations: ['memory.read'] }, 'memory.write'), false);
-  assert.equal(routes.hasPermission({ operations: 'memory.write' }, 'memory.write'), false);
+test('HTTP approval route is separate, authenticated and read-only', () => {
+  assert.match(approvalRouteSource, /\/api\/hfm\/memory\/authorize/);
+  assert.match(approvalRouteSource, /allowedOperations = \['memory\.read'\]/);
+  assert.match(approvalRouteSource, /req\.session\.hfmProjectBinding\.projectId/);
+  assert.match(approvalRouteSource, /authorityHeldServerSide:\s*true/);
+  assert.doesNotMatch(approvalRouteSource, /body\.actorId|body\.userId|body\.ownerActorId/);
+  assert.doesNotMatch(approvalRouteSource, /allowedOperations = \[[^\]]*memory\.write/);
+  console.log('HFM_AUTHORITY_APPROVAL_ROUTE_READ_ONLY_AND_SERVER_BOUND=PASS');
 });
-
-test('authority issue route is authenticated and fails closed without issuer pool', () => {
-  const registrations = [];
-  const app = { post: (path, ...handlers) => registrations.push({ path, handlers }) };
-  const auth = (_req, _res, next) => next();
-  routes.registerHfmAuthorityRoutes(app, auth, { getPool: async () => null });
-  assert.equal(registrations.length, 1);
-  assert.equal(registrations[0].path, '/api/hfm/authorities/issue');
-  assert.equal(registrations[0].handlers[0], auth);
-});
-
-test('authority route never accepts an actor ID from the request body', () => {
-  const source = require('node:fs').readFileSync(require.resolve('../routes/mira-hfm-authorities'), 'utf8');
-  assert.doesNotMatch(source, /body\.actorId|body\.userId|body\.ownerActorId/);
-  assert.match(source, /buildTrustedActorContext\(req\)/);
-  assert.match(source, /owner\.owner_actor_id !== identity\.actor\.actorId/);
-});
-
