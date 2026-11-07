@@ -47,6 +47,9 @@ const client = {
     if (sql.includes('FROM mira_hfm.project_owners')) {
       return { rows: [{ revision: 5, status: 'ACTIVE' }], rowCount: 1 };
     }
+    if (sql.startsWith('SELECT (status =')) {
+      return { rows: [{ membership_valid: true }], rowCount: 1 };
+    }
     if (sql.includes('FROM mira_hfm.project_memberships')) {
       return { rows: [{
         revision: 7, status: 'ACTIVE',
@@ -59,9 +62,6 @@ const client = {
     }
     if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) {
       return { rows: [], rowCount: 1 };
-    }
-    if (sql.startsWith('SELECT (status =')) {
-      return { rows: [{ membership_valid: true }], rowCount: 1 };
     }
     return { rows: [], rowCount: 1 };
   },
