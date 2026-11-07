@@ -410,8 +410,9 @@ async function listMemoryRecords(options = {}) {
     'integrity_status, trust_status, public_payload, encrypted_envelope FROM mira_hfm.memory_records ' +
     'WHERE project_id = $1 AND lifecycle = $2 AND ($3::text[] IS NULL OR record_type = ANY($3::text[])) ' +
     'AND ($5::boolean = false OR classification <> \'RESTRICTED\') ' +
+    'AND ($6::boolean = false OR (integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\'))) ' +
     'ORDER BY updated_at DESC, memory_id ASC LIMIT $4',
-    [context.projectId, lifecycle, recordTypes, limit, standingRead]
+    [context.projectId, lifecycle, recordTypes, limit, standingRead, standingRead]
   );
   return {
     status: 'FOUND',
