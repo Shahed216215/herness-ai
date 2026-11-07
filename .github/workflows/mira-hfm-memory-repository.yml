@@ -29,6 +29,8 @@ on:
       - "tests/mira-hfm-runtime-identity-context.test.js"
       - "routes/mira-hfm-projects.js"
       - "migrations/hfm/008_project_bootstrap_issuer.sql"
+      - "migrations/hfm/009_dedicated_login_principals.sql"
+      - "tests/mira-hfm-dedicated-login-principals-migration-contract.test.js"
       - "tests/mira-hfm-project-bootstrap.test.js"
       - "tests/mira-hfm-project-bootstrap-migration-contract.test.js"
       - "routes/mira-hfm-daily-knowledge.js"
@@ -139,6 +141,7 @@ jobs:
           node tests/mira-hfm-runtime-identity-context.test.js
           node tests/mira-hfm-project-bootstrap.test.js
           node tests/mira-hfm-project-bootstrap-migration-contract.test.js
+          node tests/mira-hfm-dedicated-login-principals-migration-contract.test.js
           node tests/mira-hfm-daily-knowledge-route.test.js
           node tests/mira-hfm-authority-issuer-runtime.test.js
       - name: Run full repository regression suite
