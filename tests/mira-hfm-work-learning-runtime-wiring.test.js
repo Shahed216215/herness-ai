@@ -7,6 +7,19 @@ const path = require('node:path');
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
 
+const { assertLegacyLearningStorageAllowed } = require('../services/learning');
+assert.doesNotThrow(() => assertLegacyLearningStorageAllowed({}));
+assert.throws(
+  () => assertLegacyLearningStorageAllowed({ MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }),
+  error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE'
+);
+assert.throws(
+  () => assertLegacyLearningStorageAllowed({ MIRA_HFM_WORK_LEARNING_ENABLED: 'true' }),
+  error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE'
+);
+console.log('HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE=PASS');
+
+
 const planned = buildPlanFromUnderstanding({
   task: {
     id: 'task-hfm-functional-test',
