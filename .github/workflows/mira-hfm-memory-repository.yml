@@ -117,6 +117,7 @@ jobs:
           node --check services/mira-hfm-authority-issuer-runtime.js
           node --check services/mira-hfm-authority-issuer-pool.js
           node --check routes/mira-hfm-authorities.js
+          node --check server.js
           node --check routes/mira-hfm-projects.js
           node --check routes/mira-hfm-daily-knowledge.js
           node --check tools/facebook-knowledge-search.js
