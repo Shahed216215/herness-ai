@@ -240,7 +240,7 @@ async function setStandingReadAuthorityStatus(options = {}) {
       "paused_at = CASE WHEN $1 = 'PAUSED' THEN clock_timestamp() ELSE NULL END, " +
       "revoked_at = CASE WHEN $1 = 'REVOKED' THEN clock_timestamp() ELSE NULL END " +
       "WHERE standing_authority_id = $2 AND project_id = $3 AND actor_id = $4 " +
-      "AND status IN ('ACTIVE','PAUSED') RETURNING expires_at",
+      "AND status IN ('ACTIVE','PAUSED') AND expires_at > clock_timestamp() RETURNING expires_at",
       [nextStatus, authorityId, admin.projectId, actor.actorId]
     );
     if (updated.rowCount !== 1) fail('HFM_STANDING_READ_STATUS_UPDATE_FAILED');
