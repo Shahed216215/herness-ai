@@ -381,7 +381,7 @@ async function saveHfmMemoryRecord(options = {}) {
     },
     perform: (client, context) => createRecord({
       client, context, record, idempotencyKey,
-      allowPrivateWrite: classification !== 'RESTRICTED',
+      allowPrivateWrite: record.access.classification !== 'RESTRICTED',
       allowRestrictedWrite: isVaultWrite, env
     })
   });
