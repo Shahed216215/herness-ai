@@ -96,7 +96,7 @@ function registerMiraHfmSocialDraftTrashRoute(
           idempotencyKey,
           expectedRecordType: 'social_post_draft',
           env: process.env,
-          allowPrivateLifecycle: false,
+          allowPrivateLifecycle: true,
           allowRestrictedLifecycle: false
         })
       });
