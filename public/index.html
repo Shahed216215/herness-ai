@@ -1423,6 +1423,48 @@
             </button>
           </div>
 
+          <div class="card" id="hfmV02SocialDraftWorkspace" style="margin-bottom:14px;">
+            <div class="section-header" style="margin-bottom:12px;">
+              <div>
+                <h3>HFM v0.2 — Neon Social Drafts</h3>
+                <p>Copy → manually publish in Facebook → move to recoverable Trash. Copy is not Published. Mira never auto-publishes.</p>
+              </div>
+              <span class="status-chip">Manual publish only</span>
+            </div>
+            <div class="grid-2">
+              <div>
+                <label for="hfmV02ProjectId">HFM Project ID</label>
+                <input id="hfmV02ProjectId" type="text" maxlength="128" placeholder="Example: mira-core" style="width:100%;" />
+                <div class="muted" style="font-size:11px;margin-top:5px;">Use the exact project ID approved for HFM v0.2.</div>
+              </div>
+              <div class="button-row" style="align-items:flex-end;">
+                <button id="hfmV02SelectProject" class="secondary-button" type="button">Select Existing Project</button>
+                <button id="hfmV02BootstrapProject" class="primary-button" type="button">Initialize First Project</button>
+              </div>
+            </div>
+            <div class="button-row" style="margin-top:14px;">
+              <button id="hfmV02GenerateDraft" class="primary-button" type="button">Generate Today's Draft</button>
+              <button id="hfmV02LoadActiveDrafts" class="primary-button" type="button">Load Active Drafts</button>
+              <button id="hfmV02LoadTrash" class="secondary-button" type="button">View Trash</button>
+            </div>
+            <div class="card" id="hfmV02StandingReadAuthority" style="margin-top:14px;">
+              <h3>365-Day Standing Read Authority</h3>
+              <p class="muted">One explicit admin approval enables repeated, audited reads for this selected project for up to 365 days. Scope: <strong>memory.read</strong> on Learning and Knowledge records only. No Memory writes, edits, Trash, Restore, Facebook publishing, or Local/Drive fallback. Pause or revoke at any time.</p>
+              <div class="button-row">
+                <button id="hfmV02StandingRefresh" class="secondary-button" type="button">Check Authority</button>
+                <button id="hfmV02StandingIssue" class="primary-button" type="button">Approve 365-Day Read Access</button>
+                <button id="hfmV02StandingPause" class="secondary-button" type="button" hidden>Pause</button>
+                <button id="hfmV02StandingResume" class="secondary-button" type="button" hidden>Resume</button>
+                <button id="hfmV02StandingRevoke" class="danger-button" type="button" hidden>Revoke</button>
+              </div>
+              <div id="hfmV02StandingStatus" class="muted" role="status" aria-live="polite" style="margin-top:10px;">No standing-authority status checked yet.</div>
+            </div>
+            <div id="hfmV02SocialDraftStatus" class="muted" role="status" aria-live="polite" style="margin-top:12px;">
+              HFM routes remain unavailable until the approved Neon schema, dedicated roles and runtime settings are configured.
+            </div>
+            <div id="hfmV02SocialDraftList" style="display:grid;gap:12px;margin-top:14px;"></div>
+          </div>
+
           <div class="grid-2">
 
             <div class="card">
@@ -1793,6 +1835,15 @@
                 Enter a search term to find Knowledge entries.
               </div>
             </div>
+
+            <button
+              id="adminKnowledgeLoadMore"
+              class="secondary-button hidden"
+              type="button"
+              style="margin-top:12px;"
+            >
+              Load more
+            </button>
 
             <div
               id="adminKnowledgeEditor"
@@ -8609,6 +8660,14 @@ document.querySelectorAll(
         "adminKnowledgeResults"
       );
 
+    const adminKnowledgeLoadMore =
+      document.getElementById(
+        "adminKnowledgeLoadMore"
+      );
+
+    let adminKnowledgeNextCursor = null;
+    let adminKnowledgeActiveQuery = "";
+
     const adminKnowledgeEditor =
       document.getElementById(
         "adminKnowledgeEditor"
@@ -8670,17 +8729,20 @@ document.querySelectorAll(
       );
     }
 
-    function renderAdminKnowledgeResults(results) {
+    function renderAdminKnowledgeResults(results, append = false) {
       if (!adminKnowledgeResults) {
         return;
       }
 
-      adminKnowledgeResults.innerHTML = "";
+      if (!append) {
+        adminKnowledgeResults.innerHTML = "";
+      }
 
       if (!Array.isArray(results) || !results.length) {
-        adminKnowledgeResults.innerHTML =
-          '<div class="muted">No Knowledge entries found.</div>';
-
+        if (!append) {
+          adminKnowledgeResults.innerHTML =
+            '<div class="muted">No matching entries on this page.</div>';
+        }
         return;
       }
 
@@ -8783,6 +8845,44 @@ document.querySelectorAll(
       });
     }
 
+    async function requestAdminKnowledgePage(cursor, append) {
+      const cursorQuery = cursor
+        ? "&cursor=" + encodeURIComponent(cursor)
+        : "";
+      const data = await api(
+        "/api/admin/knowledge/search?q=" +
+        encodeURIComponent(adminKnowledgeActiveQuery) +
+        "&limit=20" + cursorQuery
+      );
+
+      renderAdminKnowledgeResults(data.results || [], append);
+      adminKnowledgeNextCursor =
+        typeof data.nextCursor === "string" && data.nextCursor
+          ? data.nextCursor
+          : null;
+
+      if (adminKnowledgeLoadMore) {
+        adminKnowledgeLoadMore.classList.toggle(
+          "hidden",
+          !adminKnowledgeNextCursor
+        );
+      }
+
+      if (adminKnowledgeStatus) {
+        const scanned = Number.isInteger(data.candidateScanCount)
+          ? data.candidateScanCount
+          : null;
+        const coverage = data.candidateScanMayBeIncomplete === true
+          ? " More eligible records are available."
+          : (scanned !== null ? " Search scan complete." : "");
+        adminKnowledgeStatus.textContent =
+          (data.count ?? 0) + " matching entries on this page." +
+          (scanned !== null ? " Scanned " + scanned + " eligible records." : "") +
+          coverage;
+      }
+      return data;
+    }
+
     async function searchAdminKnowledge() {
       clearAdminKnowledgeMessages();
 
@@ -8798,27 +8898,20 @@ document.querySelectorAll(
         return;
       }
 
+      adminKnowledgeActiveQuery = query;
+      adminKnowledgeNextCursor = null;
+      if (adminKnowledgeLoadMore) {
+        adminKnowledgeLoadMore.classList.add("hidden");
+        adminKnowledgeLoadMore.disabled = false;
+      }
+
       if (adminKnowledgeStatus) {
         adminKnowledgeStatus.textContent =
           "Searching Knowledge…";
       }
 
       try {
-        const data =
-          await api(
-            `/api/admin/knowledge/search?q=${encodeURIComponent(
-              query
-            )}&limit=20`
-          );
-
-        renderAdminKnowledgeResults(
-          data.results || []
-        );
-
-        if (adminKnowledgeStatus) {
-          adminKnowledgeStatus.textContent =
-            `${data.count ?? 0} Knowledge entries found.`;
-        }
+        await requestAdminKnowledgePage(null, false);
       } catch (error) {
         showAdminKnowledgeError(
           error.message ||
@@ -8827,6 +8920,33 @@ document.querySelectorAll(
 
         if (adminKnowledgeStatus) {
           adminKnowledgeStatus.textContent = "";
+        }
+        if (adminKnowledgeLoadMore) {
+          adminKnowledgeLoadMore.classList.add("hidden");
+        }
+      }
+    }
+
+    async function loadMoreAdminKnowledge() {
+      if (!adminKnowledgeNextCursor || !adminKnowledgeActiveQuery) {
+        return;
+      }
+      const cursor = adminKnowledgeNextCursor;
+      if (adminKnowledgeLoadMore) {
+        adminKnowledgeLoadMore.disabled = true;
+      }
+      if (adminKnowledgeStatus) {
+        adminKnowledgeStatus.textContent = "Loading the next Knowledge page…";
+      }
+      try {
+        await requestAdminKnowledgePage(cursor, true);
+      } catch (error) {
+        showAdminKnowledgeError(
+          error.message || "The next Knowledge page could not be loaded."
+        );
+      } finally {
+        if (adminKnowledgeLoadMore) {
+          adminKnowledgeLoadMore.disabled = false;
         }
       }
     }
@@ -9116,6 +9236,13 @@ document.querySelectorAll(
       adminKnowledgeSearchButton.addEventListener(
         "click",
         searchAdminKnowledge
+      );
+    }
+
+    if (adminKnowledgeLoadMore) {
+      adminKnowledgeLoadMore.addEventListener(
+        "click",
+        loadMoreAdminKnowledge
       );
     }
 
@@ -12890,6 +13017,355 @@ document.querySelectorAll(
   model.addEventListener("input", updatePreview);
   fallback.addEventListener("change", updatePreview);
   updatePreview();
+})();
+</script>
+
+
+<script>
+/* MIRA_HFM_V02_MANUAL_FACEBOOK_DRAFT_WORKFLOW */
+(() => {
+  "use strict";
+  const root = document.getElementById("hfmV02SocialDraftWorkspace");
+  if (!root) return;
+  const byId = id => document.getElementById(id);
+  const projectField = byId("hfmV02ProjectId");
+  const statusNode = byId("hfmV02SocialDraftStatus");
+  const listNode = byId("hfmV02SocialDraftList");
+  const standingStatusNode = byId("hfmV02StandingStatus");
+  let standingAuthorityId = null;
+  const controls = [
+    byId("hfmV02SelectProject"), byId("hfmV02BootstrapProject"),
+    byId("hfmV02GenerateDraft"), byId("hfmV02LoadActiveDrafts"), byId("hfmV02LoadTrash"),
+    byId("hfmV02StandingRefresh"), byId("hfmV02StandingIssue"),
+    byId("hfmV02StandingPause"), byId("hfmV02StandingResume"), byId("hfmV02StandingRevoke")
+  ];
+
+  function setStatus(message, kind = "muted") {
+    statusNode.className = kind;
+    statusNode.textContent = message;
+  }
+  function setBusy(value) {
+    controls.forEach(button => { if (button) button.disabled = value; });
+  }
+  function selectedProjectId() {
+    return projectField.value.trim();
+  }
+  async function postJson(url, body) {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    let data;
+    try { data = await response.json(); }
+    catch (_error) { throw new Error("Server returned an unreadable response (" + response.status + ")."); }
+    if (!response.ok || !data || data.success !== true) {
+      throw new Error(data && data.error ? data.error : "Request failed (" + response.status + ").");
+    }
+    return data;
+  }
+  async function refreshStandingAuthority() {
+    try {
+      const data = await postJson("/api/hfm/memory/standing-authority/status", {});
+      const authority = data.authority;
+      standingAuthorityId = authority ? authority.standingAuthorityId : null;
+      if (!authority) {
+        standingStatusNode.textContent = "No standing read authority exists for this project.";
+        byId("hfmV02StandingPause").hidden = true;
+        byId("hfmV02StandingResume").hidden = true;
+        byId("hfmV02StandingRevoke").hidden = true;
+        byId("hfmV02StandingIssue").hidden = false;
+        return;
+      }
+      const expiry = new Date(authority.expiresAt).toLocaleString();
+      standingStatusNode.textContent = "Authority: " + authority.authorityStatus +
+        " · Expires: " + expiry + " · ID: " + authority.standingAuthorityId;
+      const active = authority.authorityStatus === "ACTIVE";
+      const paused = authority.authorityStatus === "PAUSED";
+      byId("hfmV02StandingPause").hidden = !active;
+      byId("hfmV02StandingResume").hidden = !paused;
+      byId("hfmV02StandingRevoke").hidden = !(active || paused);
+      byId("hfmV02StandingIssue").hidden = active || paused;
+    } catch (error) {
+      standingAuthorityId = null;
+      standingStatusNode.textContent = "Standing authority status unavailable: " + error.message;
+      byId("hfmV02StandingPause").hidden = true;
+      byId("hfmV02StandingResume").hidden = true;
+      byId("hfmV02StandingRevoke").hidden = true;
+      byId("hfmV02StandingIssue").hidden = false;
+    }
+  }
+  async function issueStandingAuthority() {
+    try { requireProjectInput(); }
+    catch (error) { standingStatusNode.textContent = error.message; return; }
+    const approved = window.confirm(
+      "Approve 365 days of standing HFM memory.read access for the selected project? " +
+      "Mira may repeatedly read ACTIVE learning_note and knowledge_item records without asking again. " +
+      "Every read is audited. No writes, edits, Trash, Restore, publishing, or Local/Drive fallback are allowed. " +
+      "You can pause or revoke this authority at any time."
+    );
+    if (!approved) return;
+    byId("hfmV02StandingIssue").disabled = true;
+    standingStatusNode.textContent = "Issuing the 365-day project-scoped read authority…";
+    try {
+      const data = await postJson("/api/hfm/memory/standing-authority/issue", {
+        confirm: true,
+        purpose: "Admin-approved 365-day standing read access for this project's Learning and Knowledge records."
+      });
+      standingStatusNode.textContent = "Standing authority issued. Expires: " +
+        new Date(data.expiresAt).toLocaleString() + ".";
+      await refreshStandingAuthority();
+    } catch (error) {
+      standingStatusNode.textContent = "Standing authority was not issued: " + error.message;
+    } finally {
+      byId("hfmV02StandingIssue").disabled = false;
+    }
+  }
+  async function updateStandingAuthority(action) {
+    if (!standingAuthorityId) {
+      standingStatusNode.textContent = "Check the current standing authority first.";
+      return;
+    }
+    if (action === "revoke" &&
+        !window.confirm("Revoke this standing read authority permanently? It cannot be resumed.")) return;
+    const button = byId("hfmV02Standing" + action.charAt(0).toUpperCase() + action.slice(1));
+    button.disabled = true;
+    try {
+      await postJson("/api/hfm/memory/standing-authority/" + action, {
+        standingAuthorityId
+      });
+      await refreshStandingAuthority();
+    } catch (error) {
+      standingStatusNode.textContent = "Standing authority update failed: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  function requireProjectInput() {
+    const value = selectedProjectId();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(value)) {
+      throw new Error("Enter a valid HFM Project ID (3–128 characters).");
+    }
+    return value;
+  }
+  async function selectProject() {
+    const projectId = requireProjectInput();
+    setBusy(true);
+    setStatus("Verifying active project membership…");
+    try {
+      const data = await postJson("/api/hfm/projects/select", { projectId });
+      setStatus("Project selected: " + data.project.projectId + " (" + data.project.membershipRole + ").", "success");
+      await refreshStandingAuthority();
+      return data;
+    } catch (error) {
+      setStatus("Project selection not completed: " + error.message, "error");
+      throw error;
+    } finally {
+      setBusy(false);
+    }
+  }
+  byId("hfmV02SelectProject").addEventListener("click", () => {
+    selectProject().catch(() => {});
+  });
+  byId("hfmV02BootstrapProject").addEventListener("click", async () => {
+    let projectId;
+    try { projectId = requireProjectInput(); }
+    catch (error) { setStatus(error.message, "error"); return; }
+    if (!window.confirm("Create the one-time initial HFM project '" + projectId + "' and assign this verified admin as owner? This writes owner, membership and audit rows to Neon. It does not import legacy Memory.")) return;
+    setBusy(true);
+    setStatus("Checking the one-time HFM bootstrap gate…");
+    try {
+      const data = await postJson("/api/hfm/bootstrap/initial-project", {
+        confirm: true, projectId
+      });
+      setStatus("Initial project created. Verifying and selecting it…", "success");
+      await postJson("/api/hfm/projects/select", { projectId });
+      setStatus("Initial HFM project created and selected: " + data.projectId + ".", "success");
+    } catch (error) {
+      setStatus("Initial project setup not completed: " + error.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  function createDraftCard(record, lifecycle) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.style.margin = "0";
+    const heading = document.createElement("h3");
+    heading.textContent = record.source && record.source.sourceId
+      ? record.source.sourceId : "Facebook-ready post draft";
+    const meta = document.createElement("div");
+    meta.className = "muted";
+    meta.style.fontSize = "11px";
+    meta.textContent = "ID: " + record.memoryId + " · Revision: " +
+      (record.version && record.version.revision ? record.version.revision : "—");
+    const content = document.createElement("pre");
+    content.style.whiteSpace = "pre-wrap";
+    content.style.overflowWrap = "anywhere";
+    content.style.font = "inherit";
+    content.style.lineHeight = "1.55";
+    content.style.margin = "12px 0";
+    content.textContent = typeof record.content === "string" ? record.content : "";
+    card.append(heading, meta, content);
+
+    const actions = document.createElement("div");
+    actions.className = "button-row";
+    if (lifecycle === "ACTIVE") {
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "primary-button";
+      copyButton.textContent = "Copy Post";
+      const publishedLabel = document.createElement("label");
+      publishedLabel.style.display = "inline-flex";
+      publishedLabel.style.alignItems = "center";
+      publishedLabel.style.gap = "7px";
+      const publishedCheck = document.createElement("input");
+      publishedCheck.type = "checkbox";
+      const publishedText = document.createElement("span");
+      publishedText.textContent = "I manually published this in Facebook";
+      publishedLabel.append(publishedCheck, publishedText);
+      const trashButton = document.createElement("button");
+      trashButton.type = "button";
+      trashButton.className = "danger-button";
+      trashButton.textContent = "Move to Neon Trash";
+      trashButton.disabled = true;
+      let copied = false;
+      let idempotencyKey = null;
+      copyButton.addEventListener("click", async () => {
+        try {
+          if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+            throw new Error("Clipboard access is unavailable. Open Mira over HTTPS and allow clipboard access.");
+          }
+          await navigator.clipboard.writeText(content.textContent);
+          copied = true;
+          trashButton.disabled = !(copied && publishedCheck.checked);
+          setStatus("Copied to clipboard. Paste and publish it yourself in Facebook. Mira has not published it.", "success");
+        } catch (error) {
+          setStatus("Copy failed: " + error.message, "error");
+        }
+      });
+      publishedCheck.addEventListener("change", () => {
+        trashButton.disabled = !(copied && publishedCheck.checked);
+        if (publishedCheck.checked && copied) {
+          setStatus("You confirmed manual Facebook publication. The recoverable Trash action is available.", "warning");
+        }
+      });
+      trashButton.addEventListener("click", async () => {
+        if (!copied || !publishedCheck.checked) return;
+        if (!window.confirm("You confirmed this draft was manually published in Facebook. Move only this social_post_draft to recoverable Neon Trash? No permanent deletion will occur.")) return;
+        if (!idempotencyKey) idempotencyKey = window.crypto.randomUUID();
+        trashButton.disabled = true;
+        setStatus("Requesting one-time authority and committing recoverable Neon Trash…");
+        try {
+          await postJson("/api/hfm/social-drafts/trash", {
+            confirm: true,
+            memoryId: record.memoryId,
+            purpose: "Admin confirmed manual Facebook publication before moving this social draft to recoverable Trash.",
+            idempotencyKey
+          });
+          card.remove();
+          setStatus("Moved to Neon Trash. The record remains recoverable; no permanent deletion occurred.", "success");
+        } catch (error) {
+          trashButton.disabled = false;
+          setStatus("Trash outcome not confirmed: " + error.message + ". Check Trash before retrying.", "error");
+        }
+      });
+      actions.append(copyButton, publishedLabel, trashButton);
+    } else {
+      const restoreButton = document.createElement("button");
+      restoreButton.type = "button";
+      restoreButton.className = "secondary-button";
+      restoreButton.textContent = "Restore Draft";
+      let restoreIdempotencyKey = null;
+      restoreButton.addEventListener("click", async () => {
+        if (!window.confirm("Restore this social draft from Neon Trash to Active drafts?")) return;
+        restoreButton.disabled = true;
+        setStatus("Requesting one-time restore authority…");
+        try {
+          await postJson("/api/hfm/social-drafts/restore", {
+            confirm: true,
+            memoryId: record.memoryId,
+            purpose: "Admin requested restoration of a social draft from recoverable Trash.",
+            idempotencyKey: restoreIdempotencyKey || (restoreIdempotencyKey = window.crypto.randomUUID())
+          });
+          card.remove();
+          setStatus("Draft restored to Active. It is not published to Facebook.", "success");
+        } catch (error) {
+          restoreButton.disabled = false;
+          setStatus("Restore outcome not confirmed: " + error.message, "error");
+        }
+      });
+      actions.append(restoreButton);
+    }
+    card.append(actions);
+    return card;
+  }
+
+  async function loadDrafts(lifecycle) {
+    setBusy(true);
+    listNode.replaceChildren();
+    setStatus(lifecycle === "TRASHED" ? "Loading recoverable Trash…" : "Loading active Facebook-ready drafts…");
+    try {
+      await postJson("/api/hfm/memory/authorize", {
+        confirm: true,
+        purpose: lifecycle === "TRASHED"
+          ? "List this project's recoverable social post drafts in Trash."
+          : "List this project's active social post drafts for manual Facebook publication."
+      });
+      const data = await postJson("/api/hfm/memory/read", {
+        limit: 100,
+        recordType: "social_post_draft",
+        lifecycle
+      });
+      if (!Array.isArray(data.records) || data.records.length === 0) {
+        setStatus(lifecycle === "TRASHED" ? "Trash is empty for this project." : "No active social post drafts were found.", "muted");
+        return;
+      }
+      data.records.forEach(record => listNode.append(createDraftCard(record, lifecycle)));
+      setStatus(data.records.length + (lifecycle === "TRASHED" ? " recoverable draft(s) in Trash." : " active draft(s) ready for manual review."), "success");
+    } catch (error) {
+      setStatus("HFM draft retrieval not completed: " + error.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  let generatingDraft = false;
+  byId("hfmV02GenerateDraft").addEventListener("click", async () => {
+    if (generatingDraft) return;
+    try { requireProjectInput(); }
+    catch (error) { setStatus(error.message, "error"); return; }
+    if (!window.confirm("Generate today's private Facebook-ready draft from this project's approved daily activity and learning notes? Mira will save a draft only; it will not publish to Facebook.")) return;
+    generatingDraft = true;
+    setBusy(true);
+    setStatus("Generating today's Asia/Dhaka draft using approved HFM Memory…");
+    try {
+      const data = await postJson("/api/hfm/social-drafts/generate-daily", {
+        confirm: true,
+        timeZone: "Asia/Dhaka"
+      });
+      if (data.draftSaved === true) {
+        setStatus("Today's private draft was saved. Review it, copy it, then publish manually in Facebook.", "success");
+        await loadDrafts("ACTIVE");
+      } else {
+        setStatus("No eligible daily activity or learning notes were found. No draft was saved.", "muted");
+      }
+    } catch (error) {
+      setStatus("Daily draft generation not completed: " + error.message, "error");
+    } finally {
+      generatingDraft = false;
+      setBusy(false);
+    }
+  });
+  byId("hfmV02LoadActiveDrafts").addEventListener("click", () => loadDrafts("ACTIVE"));
+  byId("hfmV02LoadTrash").addEventListener("click", () => loadDrafts("TRASHED"));
+  byId("hfmV02StandingRefresh").addEventListener("click", refreshStandingAuthority);
+  byId("hfmV02StandingIssue").addEventListener("click", issueStandingAuthority);
+  byId("hfmV02StandingPause").addEventListener("click", () => updateStandingAuthority("pause"));
+  byId("hfmV02StandingResume").addEventListener("click", () => updateStandingAuthority("resume"));
+  byId("hfmV02StandingRevoke").addEventListener("click", () => updateStandingAuthority("revoke"));
+
 })();
 </script>
 

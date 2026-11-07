@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const storagePath = require('../mira-storage');
 const crypto = require("crypto");
+const { assertLegacyStorageDisabled } = require("./mira-hfm-legacy-storage-guard");
 
 const {
   createProposal,
@@ -174,6 +175,7 @@ function safeValue(
 }
 
 function ensureStore() {
+  assertLegacyStorageDisabled();
   const directory =
     path.dirname(
       LEARNING_FILE
@@ -200,6 +202,7 @@ function ensureStore() {
 }
 
 function loadStore() {
+  assertLegacyStorageDisabled();
   ensureDirectoryOnly();
 
   if (
@@ -263,6 +266,7 @@ function ensureDirectoryOnly() {
 }
 
 function saveStore(store) {
+  assertLegacyStorageDisabled();
   ensureDirectoryOnly();
 
   const normalized = {

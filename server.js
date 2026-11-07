@@ -13,12 +13,26 @@ const { generate } = require("./services/ai");
 const { selectRecentMessages } = require("./services/mira-request-context");
 const { executeWork } = require("./services/mira-work-execution-engine");
 const { buildTrustedActorContext } = require("./services/mira-hfm-runtime-identity-context");
+const { createProjectSelectionReadRuntime } = require("./services/mira-hfm-project-selection-read-runtime");
+const { registerMiraHfmProjectSelectionRoute } = require("./routes/mira-hfm-project-selection");
+const { createAuthorityIssuerPool } = require("./services/mira-hfm-authority-issuer-runtime");
+const { registerMiraHfmAuthorityApprovalRoute } = require("./routes/mira-hfm-authority-approval");
+const { registerMiraHfmStandingReadAuthorityRoutes } = require("./routes/mira-hfm-standing-read-authority");
+const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
+const { searchHfmKnowledge, getHfmKnowledgeById } = require("./services/mira-hfm-knowledge-search-runtime");
+const { createMemoryWriterPool } = require("./services/mira-hfm-memory-postgres-runtime");
+const { persistConversationPair } = require("./services/mira-conversation-memory-persistence");
+const { registerMiraHfmSocialDraftTrashRoute } = require("./routes/mira-hfm-social-draft-trash");
+const { registerMiraHfmSocialDraftRestoreRoute } = require("./routes/mira-hfm-social-draft-restore");
+const { registerMiraHfmDailySocialDraftRoute } = require("./routes/mira-hfm-daily-social-draft");
+const { registerMiraHfmMemoryReadRoute } = require("./routes/mira-hfm-memory-read");
+const { createHfmBootstrapPool } = require("./services/mira-hfm-bootstrap-runtime");
+const { registerMiraHfmInitialBootstrapRoute } = require("./routes/mira-hfm-initial-bootstrap");
 const { startAutonomousWorker } = require("./services/mira-autonomous-worker");
 const { declarations, tools } = require("./tools");
 const firewallDefense = require("./firewall-defense");
 
 const {
-  addMemory,
   getMemory
 } = require("./memory");
 
@@ -187,6 +201,118 @@ app.use(
       maxAge: MIRA_SESSION_MAX_AGE_MS
     }
   })
+);
+
+let hfmProjectReadRuntimePromise = null;
+function getHfmProjectReadRuntime() {
+  if (!hfmProjectReadRuntimePromise) {
+    hfmProjectReadRuntimePromise = createProjectSelectionReadRuntime().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 64)
+        : "PROJECT_READ_RUNTIME_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmProjectReadRuntimePromise;
+}
+
+// Runtime remains disabled unless the dedicated HFM project-reader feature flag is enabled.
+registerMiraHfmProjectSelectionRoute(app, getHfmProjectReadRuntime);
+
+let hfmAuthorityIssuerRuntimePromise = null;
+function getHfmAuthorityIssuerRuntime() {
+  if (!hfmAuthorityIssuerRuntimePromise) {
+    hfmAuthorityIssuerRuntimePromise = createAuthorityIssuerPool().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 80)
+        : "AUTHORITY_ISSUER_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmAuthorityIssuerRuntimePromise;
+}
+registerMiraHfmAuthorityApprovalRoute(
+  app,
+  getHfmAuthorityIssuerRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+registerMiraHfmStandingReadAuthorityRoutes(
+  app,
+  getHfmAuthorityIssuerRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+
+let hfmMemoryReadRuntimePromise = null;
+function getHfmMemoryReadRuntime() {
+  if (!hfmMemoryReadRuntimePromise) {
+    hfmMemoryReadRuntimePromise = createMemoryReadPool().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 80)
+        : "MEMORY_READ_RUNTIME_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmMemoryReadRuntimePromise;
+}
+registerMiraHfmMemoryReadRoute(
+  app,
+  getHfmMemoryReadRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+
+let hfmInitialBootstrapRuntimePromise = null;
+function getHfmInitialBootstrapRuntime() {
+  if (!hfmInitialBootstrapRuntimePromise) {
+    hfmInitialBootstrapRuntimePromise = createHfmBootstrapPool().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 80)
+        : "HFM_BOOTSTRAP_RUNTIME_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmInitialBootstrapRuntimePromise;
+}
+registerMiraHfmInitialBootstrapRoute(
+  app,
+  getHfmInitialBootstrapRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+
+let hfmMemoryWriterRuntimePromise = null;
+function getHfmMemoryWriterRuntime() {
+  if (!hfmMemoryWriterRuntimePromise) {
+    hfmMemoryWriterRuntimePromise = createMemoryWriterPool().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 80)
+        : "MEMORY_WRITER_RUNTIME_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmMemoryWriterRuntimePromise;
+}
+registerMiraHfmSocialDraftTrashRoute(
+  app,
+  getHfmMemoryWriterRuntime,
+  getHfmAuthorityIssuerRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+registerMiraHfmSocialDraftRestoreRoute(
+  app,
+  getHfmMemoryWriterRuntime,
+  getHfmAuthorityIssuerRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+registerMiraHfmDailySocialDraftRoute(
+  app,
+  getHfmMemoryReadRuntime,
+  getHfmMemoryWriterRuntime,
+  getHfmAuthorityIssuerRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
 );
 
 app.use(express.static("public"));
@@ -707,11 +833,27 @@ app.get(
       permissions,
       authentication
     ) => {
-      const memory =
-        buildMemoryStats();
+      const hfmMemoryMode =
+        process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
+      const memory = hfmMemoryMode
+        ? { total: null, maximum: getMemoryLimit(), source: "HFM_MEMORY_MODE_LOCAL_MEMORY_DISABLED" }
+        : buildMemoryStats();
 
-      const knowledge =
-        getKnowledgeStats();
+      const knowledge = hfmMemoryMode
+        ? {
+            total: null,
+            maximum: getCapacity("knowledge"),
+            freeSlots: null,
+            todayLearned: null,
+            learningTotal: null,
+            todaySummary: [],
+            latest: [],
+            source: "HFM_MEMORY_MODE_LOCAL_KNOWLEDGE_DISABLED"
+          }
+        : getKnowledgeStats();
 
       const firewall =
         firewallDefense.getStatus();
@@ -1146,6 +1288,15 @@ app.delete(
   ),
   async (req, res, next) => {
     try {
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+        return res.status(403).json({
+          success: false,
+          error: "HFM standing authority grants memory.read only; Knowledge deletion is not authorized."
+        });
+      }
       const id =
         typeof req.params.id === "string"
           ? req.params.id.trim()
@@ -1247,18 +1398,42 @@ app.get(
       const limit =
         Number(req.query.limit) || 5;
 
-      const results =
-        searchKnowledge(
-          query,
-          limit
-        );
+      const hfmSearchEnabled =
+        process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
+      const cursor =
+        typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+      if (cursor && !hfmSearchEnabled) {
+        return res.status(400).json({
+          success: false,
+          error: "HFM search cursor requires standing-read mode."
+        });
+      }
+      const hfmSearch = hfmSearchEnabled
+        ? await searchHfmKnowledge({
+            req,
+            pool: (await getHfmMemoryReadRuntime()).pool,
+            query,
+            limit,
+            cursor,
+            env: process.env
+          })
+        : null;
+      const results = hfmSearch ? hfmSearch.results : searchKnowledge(query, limit);
 
       return res.json({
         success: true,
         admin: true,
         query,
         count: results.length,
-        results
+        results,
+        candidateScanCount: hfmSearch ? hfmSearch.candidateScanCount : null,
+        candidateScanLimit: hfmSearch ? hfmSearch.candidateScanLimit : null,
+        scannedPages: hfmSearch ? hfmSearch.scannedPages : null,
+        nextCursor: hfmSearch ? hfmSearch.nextCursor : null,
+        candidateScanMayBeIncomplete: hfmSearch ? hfmSearch.candidateScanMayBeIncomplete : false
       });
     } catch (error) {
       next(error);
@@ -1277,7 +1452,7 @@ app.get(
   requireAdminPermission(
     PERMISSIONS.SYSTEM_ADMIN
   ),
-  (req, res, next) => {
+  async (req, res, next) => {
     try {
       const id =
         typeof req.params.id === "string"
@@ -1291,15 +1466,26 @@ app.get(
         });
       }
 
-      const knowledge =
-        getKnowledge();
-
-      const entry =
-        knowledge.find(
-          item =>
-            item &&
-            String(item.id || "") === id
-        );
+      let entry;
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+        const runtime = await getHfmMemoryReadRuntime();
+        if (!runtime || runtime.status !== "MEMORY_READ_READY" || !runtime.pool) {
+          return res.status(503).json({ success: false, error: "HFM Memory reader is not ready." });
+        }
+        const result = await getHfmKnowledgeById({
+          req,
+          pool: runtime.pool,
+          memoryId: id,
+          env: process.env
+        });
+        entry = result.entry;
+      } else {
+        const knowledge = getKnowledge();
+        entry = knowledge.find(item => item && String(item.id || "") === id);
+      }
 
       if (!entry) {
         return res.status(404).json({
@@ -1336,6 +1522,15 @@ app.post(
   ),
   async (req, res, next) => {
     try {
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+          process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+        return res.status(403).json({
+          success: false,
+          error: "HFM standing authority grants memory.read only; Knowledge edits are not authorized."
+        });
+      }
       const id =
         typeof req.params.id === "string"
           ? req.params.id.trim()
@@ -1559,17 +1754,29 @@ app.post(
         });
       }
 
-      const previousMemory =
-        getMemory();
+      const hfmRecallEnabled =
+        process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
+
+      const previousMemory = hfmRecallEnabled ? [] : getMemory();
 
       const messages =
         selectRecentMessages(previousMemory);
 
-      const recalledKnowledge =
-        searchKnowledge(
-          cleanCommand,
-          2
-        );
+      const hfmRecall = hfmRecallEnabled
+        ? await searchHfmKnowledge({
+            req,
+            pool: (await getHfmMemoryReadRuntime()).pool,
+            query: cleanCommand,
+            limit: 2,
+            env: process.env
+          })
+        : null;
+      const recalledKnowledge = hfmRecallEnabled
+        ? hfmRecall.results
+        : searchKnowledge(cleanCommand, 2);
 
       if (
         Array.isArray(recalledKnowledge) &&
@@ -1655,9 +1862,17 @@ app.post(
             "If the user explicitly asks for an answer according to stored knowledge, use only the retrieved stored-knowledge fields as the factual basis of that answer. " +
             "Do not add outside facts and do not present outside facts as if they came from stored knowledge. " +
             "You may explain or organize the retrieved information, but preserve its meaning. " +
-            "If a requested detail is absent from the retrieved knowledge, say that it is not stored rather than guessing. " +
+            "If a requested detail is absent from the retrieved knowledge, say that it was not found in the retrieved candidates rather than guessing. " +
+            "If retrieval coverage is marked incomplete, do not claim the information is not stored; explain that older records may not have been scanned. " +
             "If the retrieved knowledge is insufficient, say so clearly.\n\n" +
-            knowledgeContext
+            knowledgeContext + (hfmRecall?.candidateScanMayBeIncomplete === true
+              ? "\\n\\nRETRIEVAL_COVERAGE_LIMITATION: The bounded multi-page search scanned up to 2,000 eligible candidates; older records may not have been included. If more results are needed, call knowledge_search with the same query and this continuation cursor: " + hfmRecall.nextCursor
+              : "")
+        });
+      } else if (hfmRecall?.candidateScanMayBeIncomplete === true) {
+        messages.push({
+          role: "system",
+          content: "RETRIEVAL_COVERAGE_LIMITATION: No matching item was found in the bounded multi-page scan of up to 2,000 eligible candidates, but older records may not have been scanned. Do not claim that the information is not stored. If more results are needed, call knowledge_search with the same query and this continuation cursor: " + hfmRecall.nextCursor
         });
       }
 
@@ -1843,7 +2058,11 @@ app.post(
                   ],
                   persist: false,
                   permissionGranted: true,
-                  trustedContext: buildTrustedActorContext(req)
+                  trustedContext: buildTrustedActorContext(req),
+                  hfmRequest: req,
+                  getHfmMemoryReadRuntime,
+                  getHfmMemoryWriterRuntime,
+                  getHfmAuthorityIssuerRuntime
                 }
               );
 
@@ -1970,20 +2189,16 @@ app.post(
 
             finalResult = firewallResult;
 
-            addMemory({
-              role: "user",
-              content: cleanCommand
-            });
-
-            addMemory({
-              role: "assistant",
-              content: finalResult
-            });
+            const conversationPersistence = persistConversationPair(
+              { role: "user", content: cleanCommand },
+              { role: "assistant", content: finalResult }
+            );
 
             return res.json({
               success: true,
               role: req.role,
               result: finalResult,
+              conversationPersistence,
               execution: {
                 toolCallCount: toolExecutionTrace.length,
                 trace: toolExecutionTrace
@@ -2052,17 +2267,10 @@ app.post(
             "$1"
           );
 
-      addMemory({
-        role: "user",
-        content:
-          cleanCommand
-      });
-
-      addMemory({
-        role: "assistant",
-        content:
-          finalResult
-      });
+      const conversationPersistence = persistConversationPair(
+        { role: "user", content: cleanCommand },
+        { role: "assistant", content: finalResult }
+      );
 
       return res.json({
         success: true,
@@ -2070,6 +2278,7 @@ app.post(
           req.role,
         result:
           finalResult,
+        conversationPersistence,
         execution: {
           toolCallCount: toolExecutionTrace.length,
           trace: toolExecutionTrace
@@ -2195,6 +2404,17 @@ app.post(
 // This endpoint does not modify knowledge, proposals, snapshots, or Drive data.
 app.get("/api/admin/diagnostic/learning", requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN), (req, res) => {
   try {
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+      return res.status(403).json({
+        success: false,
+        blocked: true,
+        code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_DIAGNOSTIC",
+        error: "Legacy Learning diagnostic cannot inspect local Knowledge while HFM read-only authority mode is enabled."
+      });
+    }
     const {
       applyKnowledgeImprovementControlled
     } = require("./knowledge-controlled-apply");

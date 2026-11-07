@@ -41,7 +41,12 @@ const PREFLIGHT_SQL = [
   'r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls,',
   'r.rolcreaterole AS can_create_roles, r.rolcreatedb AS can_create_databases,',
   'r.rolinherit AS inherits_roles, r.rolcanlogin AS can_login, r.rolreplication AS can_replicate,',
-  "pg_has_role(current_user, $1, 'MEMBER') AS has_memory_writer_group,",
+  "pg_has_role(current_user, $1, 'USAGE') AS has_memory_writer_group,",
+  "NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND g.rolname <> $1) AS role_membership_isolated,",
+  "NOT EXISTS (SELECT 1 FROM pg_auth_members m WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = $1)) AS writer_group_has_no_parent_roles,",
+  "(SELECT rolcanlogin = false AND rolinherit = false AND rolsuper = false AND rolcreatedb = false AND rolcreaterole = false AND rolreplication = false AND rolbypassrls = false FROM pg_roles WHERE rolname = $1) AS writer_group_least_privilege,",
+  "NOT EXISTS (SELECT 1 FROM pg_shdepend d WHERE d.refclassid = 'pg_authid'::regclass AND d.refobjid = (SELECT oid FROM pg_roles WHERE rolname = $1) AND d.deptype = 'o') AS writer_group_owns_no_objects,",
+  "NOT EXISTS (SELECT 1 FROM pg_shdepend d WHERE d.refclassid = 'pg_authid'::regclass AND d.refobjid = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND d.deptype = 'o') AS login_role_owns_no_objects,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
@@ -97,19 +102,29 @@ const PREFLIGHT_SQL = [
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN " +
     "('project_owners','project_memberships','operation_authorities','authority_audit_events'," +
     "'memory_records','memory_record_versions','memory_operation_registry','memory_audit_events') " +
-    'AND c.relrowsecurity = true AND c.relforcerowsecurity = true) AS memory_rls_forced',
+    'AND c.relrowsecurity = true AND c.relforcerowsecurity = true) AS memory_rls_forced,',
+  "(SELECT count(*) = 12 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
+    "AND policyname IN ('hfm_writer_owner_active','hfm_writer_membership_permission'," +
+    "'hfm_writer_consumed_authority_scope','hfm_writer_consume_exact_authority'," +
+    "'hfm_writer_consumed_authority_audit','hfm_writer_memory_record_select_scope'," +
+    "'hfm_writer_memory_record_insert_scope','hfm_writer_memory_record_update_scope'," +
+    "'hfm_writer_memory_version_insert_scope','hfm_writer_operation_registry_scope'," +
+    "'hfm_writer_memory_audit_select_scope','hfm_writer_memory_audit_insert_scope') " +
+    "AND permissive = 'RESTRICTIVE' AND $1 = ANY(roles)) AS writer_actor_scope_policies_present",
   'FROM pg_roles r WHERE r.rolname = current_user'
 ].join(' ');
 
 const REQUIRED_TRUE = Object.freeze([
-  'has_memory_writer_group', 'inherits_roles', 'can_login', 'schema_usage',
+  'has_memory_writer_group', 'role_membership_isolated', 'writer_group_has_no_parent_roles',
+  'writer_group_least_privilege', 'writer_group_owns_no_objects', 'login_role_owns_no_objects',
+  'inherits_roles', 'can_login', 'schema_usage',
   'owners_select', 'memberships_select', 'authorities_select',
   'authorities_update', 'authority_audit_insert',
   'records_select', 'records_insert', 'records_update',
   'versions_insert',
   'operations_select', 'operations_insert', 'operations_update',
   'memory_audit_select', 'memory_audit_insert',
-  'audit_sequence_usage', 'memory_rls_forced'
+  'audit_sequence_usage', 'memory_rls_forced', 'writer_actor_scope_policies_present'
 ]);
 
 const REQUIRED_FALSE = Object.freeze([

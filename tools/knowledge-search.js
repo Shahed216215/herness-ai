@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const { getKnowledge } = require("../knowledge");
 const { loadKnowledgeFromDrive } = require("../google-drive");
 
@@ -22,13 +23,17 @@ module.exports = {
   declaration: {
     name: "knowledge_search",
     description:
-      "Search saved knowledge with relevance ranking and duplicate result filtering.",
+      "Search canonical HFM Knowledge and verified Learning notes with relevance ranking. When a next-page cursor is returned, pass it back to continue the same bounded project-scoped scan.",
     parameters: {
       type: "object",
       properties: {
         query: {
           type: "string",
           description: "The topic, title, URL, or phrase to search for"
+        },
+        cursor: {
+          type: "string",
+          description: "Opaque HFM next-page cursor returned by a previous search; omit for the first page."
         }
       },
       required: ["query"]
@@ -36,6 +41,7 @@ module.exports = {
   },
 
   execute: async ({ query }) => {
+    assertLegacyStorageDisabled();
     const searchQuery = normalize(query);
 
     if (!searchQuery) {
