@@ -174,7 +174,7 @@ function createDatabaseApprovalVerifier(options = {}) {
           "WHERE nonce_hash = $1 AND approval_ref = $2 AND project_id = $3 AND actor_id = $4 " +
           "AND approver_actor_id = $5 AND operation = $6 AND resource = $7 AND purpose = $8 " +
           "AND issued_at = $9 AND expires_at = $10 AND consumed_at IS NULL " +
-          "AND expires_at > clock_timestamp() RETURNING nonce_hash",
+          "AND expires_at > clock_timestamp()",
           [receipt.nonceHash, receipt.approvalRef, receipt.projectId, receipt.actorId,
             receipt.approverActorId, receipt.operation, receipt.resource, receipt.purpose,
             receipt.issuedAt, receipt.expiresAt]
