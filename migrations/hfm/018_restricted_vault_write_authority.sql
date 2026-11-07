@@ -114,7 +114,7 @@ CREATE POLICY hfm_writer_memory_record_insert_scope
         AND authority_row.expires_at > clock_timestamp()
         AND (
           current_setting('mira.operation', true) <> 'memory.vault.write'
-          OR authority_row.purpose LIKE 'hfm-vault:%'
+          OR authority_row.purpose = 'hfm-vault:' || memory_records.record_type || ':explicit-user-request'
         )
     )
   );
@@ -166,7 +166,7 @@ CREATE POLICY hfm_writer_memory_version_insert_scope
         AND authority_row.expires_at > clock_timestamp()
         AND (
           current_setting('mira.operation', true) <> 'memory.vault.write'
-          OR authority_row.purpose LIKE 'hfm-vault:%'
+          OR authority_row.purpose = 'hfm-vault:' || memory_record_versions.record_type || ':explicit-user-request'
         )
     )
   );
