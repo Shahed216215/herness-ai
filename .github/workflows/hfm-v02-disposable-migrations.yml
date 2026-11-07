@@ -161,7 +161,7 @@ jobs:
             WHERE n.nspname = 'mira_hfm'
               AND c.relkind IN ('r', 'p');
 
-            IF protected_table_count <> 12 THEN
+            IF protected_table_count <> 11 THEN
               RAISE EXCEPTION 'HFM_EXPECTED_TABLE_INVENTORY_MISMATCH: %', protected_table_count;
             END IF;
 
