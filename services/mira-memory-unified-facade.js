@@ -155,7 +155,8 @@ function retrieveCanonicalRecordsWithReport({
       memoryId: record.memoryId,
       projectId: record.projectId,
       revision: record.version?.revision,
-      recordDigest: record.version?.contentHash,
+      // A private/restricted content hash can disclose low-entropy plaintext by dictionary attack.
+      recordDigest: classification === 'PUBLIC' ? record.version?.contentHash : null,
       source: Object.freeze({
         sourceType: record.source?.sourceType,
         sourceId: record.source?.sourceId,
