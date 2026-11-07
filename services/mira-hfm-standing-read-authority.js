@@ -132,13 +132,6 @@ async function issueStandingReadAuthority(options = {}) {
         [prior.standing_authority_id, projectId, actor.actorId]
       );
       if (expiredPrior.rowCount !== 1) fail('HFM_STANDING_READ_AUTHORITY_ALREADY_ACTIVE');
-      await client.query(
-        "INSERT INTO mira_hfm.authority_audit_events " +
-        "(event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details) " +
-        "VALUES ($1,$2,$3,'STANDING_READ_AUTHORITY_EXPIRED',$4,clock_timestamp(),$5,$6::jsonb)",
-        [crypto.randomUUID(), projectId, actor.actorId, crypto.randomUUID(), prior.approval_ref,
-          JSON.stringify({ standingAuthorityId: prior.standing_authority_id, expiredBeforeReissue: true })]
-      );
     }
     await client.query(
       "INSERT INTO mira_hfm.standing_read_authorities " +
@@ -148,19 +141,6 @@ async function issueStandingReadAuthority(options = {}) {
       "VALUES ($1,$2,$3,'memory.read',$4,$5,$6,$7,'ACTIVE',$8,$3,$9,$10)",
       [standingAuthorityId, projectId, actor.actorId, resource, purpose,
         owner.revision, membership.revision, approvalRef, validFrom, expiresAt]
-    );
-    await client.query(
-      "INSERT INTO mira_hfm.authority_audit_events " +
-      "(event_id, project_id, actor_id, event_type, request_id, occurred_at, " +
-      "prior_revision, new_revision, approval_ref, details) " +
-      "VALUES ($1,$2,$3,'STANDING_READ_AUTHORITY_ISSUED',$4,clock_timestamp(),$5,$6,$7,$8::jsonb)",
-      [crypto.randomUUID(), projectId, actor.actorId, crypto.randomUUID(),
-        owner.revision, membership.revision, approvalRef,
-        JSON.stringify({
-          standingAuthorityId, operation: 'memory.read', resource,
-          purpose, expiresAt: expiresAt.toISOString(), durationDays: 365,
-          writesAllowed: false, recordTypes: ['learning_note', 'knowledge_item']
-        })]
     );
     const finalMembership = await client.query(
       "SELECT (status = 'ACTIVE' AND valid_from <= clock_timestamp() " +
@@ -244,18 +224,6 @@ async function setStandingReadAuthorityStatus(options = {}) {
       [nextStatus, authorityId, admin.projectId, actor.actorId]
     );
     if (updated.rowCount !== 1) fail('HFM_STANDING_READ_STATUS_UPDATE_FAILED');
-    const eventType = nextStatus === 'PAUSED'
-      ? 'STANDING_READ_AUTHORITY_PAUSED'
-      : nextStatus === 'REVOKED'
-        ? 'STANDING_READ_AUTHORITY_REVOKED'
-        : 'STANDING_READ_AUTHORITY_RESUMED';
-    await client.query(
-      "INSERT INTO mira_hfm.authority_audit_events " +
-      "(event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details) " +
-      "VALUES ($1,$2,$3,$4,$5,clock_timestamp(),$6,$7::jsonb)",
-      [crypto.randomUUID(), admin.projectId, actor.actorId, eventType, crypto.randomUUID(),
-        current.approval_ref, JSON.stringify({ standingAuthorityId: authorityId, status: nextStatus })]
-    );
     await client.query('COMMIT');
     transactionOpen = false;
     return Object.freeze({
