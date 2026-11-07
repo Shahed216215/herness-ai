@@ -205,16 +205,29 @@ function validateCanonicalRecord(record) {
     if (record.access?.classification !== 'PROJECT_PRIVATE') {
       errors.push('record.source_reference.must_be_PROJECT_PRIVATE');
     }
-    if (!['SOURCE_RECORDED', 'QUARANTINED'].includes(record.trust?.status)) {
+    const trustState = record.trust?.status;
+    if (!['SOURCE_RECORDED', 'SOURCE_REACHABLE', 'CONTENT_VERIFIED', 'HUMAN_VERIFIED', 'QUARANTINED'].includes(trustState)) {
       errors.push('record.source_reference.trust_state_invalid');
     }
     if (!['ACTIVE', 'TRASHED', 'SUPERSEDED', 'ARCHIVED', 'QUARANTINED'].includes(record.lifecycle)) {
       errors.push('record.source_reference.lifecycle_invalid');
     }
+    if ((trustState === 'QUARANTINED') !== (record.lifecycle === 'QUARANTINED')) {
+      errors.push('record.source_reference.quarantine_state_mismatch');
+    }
     try {
       const payload = JSON.parse(record.content);
       const validation = validateSourceReferencePayload(payload);
       if (!validation.valid) errors.push(...validation.errors.map(error => 'record.source_reference.' + error));
+      if (trustState === 'SOURCE_REACHABLE' &&
+          !['AVAILABLE', 'PARTIAL'].includes(payload.accessResult)) {
+        errors.push('record.source_reference.reachable_requires_available_or_partial');
+      }
+      if (['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(trustState) &&
+          (!payload.contentHash || !['AVAILABLE', 'PARTIAL'].includes(payload.accessResult) ||
+           !['public_http_fetch', 'manual_import', 'internal_system'].includes(payload.retrievalMethod))) {
+        errors.push('record.source_reference.verified_requires_content_digest_and_capture');
+      }
     } catch (_error) {
       errors.push('record.source_reference.payload_json_required');
     }
