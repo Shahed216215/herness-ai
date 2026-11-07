@@ -10,6 +10,7 @@ const {
   saveHfmMemoryRecord
 } = require('../services/mira-hfm-memory-save-runtime');
 const { validateCanonicalRecord } = require('../services/mira-hfm-record-schema');
+const { extractKnowledgeTitle } = require('../services/mira-hfm-knowledge-search-runtime');
 
 function baseOptions(overrides = {}) {
   return {
@@ -87,6 +88,19 @@ function baseOptions(overrides = {}) {
     'https://example.com/article');
   assert.throws(() => normalizeSourceUrl('http://example.com/article'), /HFM_KNOWLEDGE_SOURCE_URL_NOT_ALLOWED/);
   assert.throws(() => normalizeSourceUrl('https://user:pass@example.com/article'), /HFM_KNOWLEDGE_SOURCE_URL_NOT_ALLOWED/);
+
+  assert.equal(extractKnowledgeTitle({
+    content: 'My saved preference\\n\\nMore detail',
+    source: { sourceId: 'user-confirmed-memory' }
+  }), 'My saved preference');
+  assert.equal(extractKnowledgeTitle({
+    content: JSON.stringify({ title: 'Legacy JSON title', body: 'legacy body' }),
+    source: { sourceId: 'legacy-source-id' }
+  }), 'Legacy JSON title');
+  assert.equal(extractKnowledgeTitle({
+    content: '   ',
+    source: { sourceId: 'fallback-source-id' }
+  }), 'fallback-source-id');
 
   const memoryRecord = buildCanonicalMemoryRecord({
     projectId: 'project-001', memoryId: 'mem-1234567890abcdef',
