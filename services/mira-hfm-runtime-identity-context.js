@@ -51,6 +51,7 @@ function buildTrustedActorContext(req) {
 
   return Object.freeze({
     status: "ACTOR_RESOLVED",
+    verifiedPrincipal: Object.freeze({ ...principal }),
     actor: Object.freeze({
       actorId: normalized.actorId,
       role,
