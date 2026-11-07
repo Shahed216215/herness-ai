@@ -450,3 +450,10 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - Work execution now completes the authenticated standing-read preflight whenever an HFM standing-read runtime is enabled, before task planning, task understanding/model activity, tool-call normalization, or execution. The Work Learning flag controls whether the preflight collects the broader Knowledge/Learning page (`includeLearning=true`) or only the bounded authorization preflight page (`includeLearning=false`).
 - If both HFM standing-read and Work Learning flags are OFF, the read-context resolver returns without opening the HFM runtime, so no unsolicited HFM read occurs. If Work Learning is ON while standing-read is OFF, execution fails closed before planning.
 - The wiring regression was updated to distinguish the two cases: authorization preflight is mandatory for every enabled standing-read work context, while the broader Work Learning retrieval remains feature-flagged.
+
+
+## Standing-read denial-audit RLS scope refinement — 2026-11-07
+
+- A further policy review found that project/actor/request RLS alone did not bind the new standing-read denial/failure audit events to the exact operation and resource. Migration 016 now requires `mira.operation=memory.read`, the transaction-local standing-read marker, and a `details.resource` value equal to the transaction-local resource for `STANDING_READ_AUTHORITY_USED`, `...DENIED`, and `...FAILED` events. The pre-existing one-time `AUTHORITY_CONSUMED` audit path remains separately permitted under its existing request scope.
+- Disposable PostgreSQL CI now tests denial-audit insertion with the valid context and rejects attempts missing the standing-read marker, using a non-read operation, using a mismatched resource, or using a mismatched request ID.
+- This is migration/source hardening only; Migration 016 remains unapplied to live Neon.
