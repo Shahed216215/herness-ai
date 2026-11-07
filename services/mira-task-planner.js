@@ -885,6 +885,13 @@ async function createTaskPlan(
   const originalText =
     normalizeTaskInput(input);
 
+  const hfmWorkLearningEnabled =
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+  if (hfmWorkLearningEnabled &&
+      typeof options.retrieveWorkLearning !== "function") {
+    throw new Error("HFM_WORK_LEARNING_RUNTIME_REQUIRED");
+  }
+
   const understood =
     await understandTask(
       originalText,
@@ -894,10 +901,7 @@ async function createTaskPlan(
     );
 
   let planningOptions = options;
-  if (process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
-    if (typeof options.retrieveWorkLearning !== "function") {
-      throw new Error("HFM_WORK_LEARNING_RUNTIME_REQUIRED");
-    }
+  if (hfmWorkLearningEnabled) {
     const normalizedTask = normalizeUnderstandingTask(understood, originalText);
     const impossible = detectImpossibleTask(originalText).length > 0;
     const hfmWorkLearning = impossible
