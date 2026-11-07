@@ -181,7 +181,7 @@ const pool = { async connect() { return client; } };
   assert.match(PREFLIGHT_SQL, /standing_authority_triggers_present/);
   const standingMigration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/011_standing_read_authority_365_days.sql'), 'utf8');
   assert.match(standingMigration, /CREATE TRIGGER standing_read_authority_audit/);
-  assert.match(standingMigration, /REVOKE ALL ON FUNCTION mira_hfm\\.audit_standing_read_authority_change\\(\\) FROM PUBLIC/);
+  assert.ok(standingMigration.includes('REVOKE ALL ON FUNCTION mira_hfm.audit_standing_read_authority_change() FROM PUBLIC'));
   assert.match(standingMigration, /STANDING_READ_AUTHORITY_ISSUED/);
   assert.match(standingMigration, /STANDING_READ_AUTHORITY_REVOKED/);
   console.log('HFM_AUTHORITY_ISSUER_PREFLIGHT_POLICY_SEMANTICS_REQUIRED=PASS');
