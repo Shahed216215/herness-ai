@@ -6,10 +6,10 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'tests', 'docs', 'reports', 'backups', 'coverage']);
 const SOURCE_EXTENSIONS = new Set(['.js', '.cjs', '.mjs', '.ts']);
-const RETRIEVAL_CALL = /\\b(getKnowledge|searchKnowledge|getMemory|searchMemory|loadKnowledgeFromDrive|loadMemoryFromDrive)\\s*\\(/g;
-const TRUST_FILTER = /\\bfilterTrustedRecords\\s*\\(/;
-const QUARANTINE_FILTER = /\\b(?:filterQuarantinedRecords|isConflictQuarantined|isQuarantined|conflictQuarantineRegistry)\\b/;
-const LEGACY_HFM_GUARD = /assertLegacyStorageDisabled\\s*\\(|denyLegacyKnowledgeImprovementAccess\\s*\\(|HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY|HFM_READ_ONLY_AUTHORITY_BLOCKS_LOCAL_EXPERIENCE|MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED\\s*===\\s*["']true["']/;
+const RETRIEVAL_CALL = /\b(getKnowledge|searchKnowledge|getMemory|searchMemory|loadKnowledgeFromDrive|loadMemoryFromDrive)\s*\(/g;
+const TRUST_FILTER = /\bfilterTrustedRecords\s*\(/;
+const QUARANTINE_FILTER = /\b(?:filterQuarantinedRecords|isConflictQuarantined|isQuarantined|conflictQuarantineRegistry)\b/;
+const LEGACY_HFM_GUARD = /assertLegacyStorageDisabled\s*\(|denyLegacyKnowledgeImprovementAccess\s*\(|HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY|HFM_READ_ONLY_AUTHORITY_BLOCKS_LOCAL_EXPERIENCE|MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED\s*===\s*["']true["']/;
 
 function walk(directory, relative = '') {
   const output = [];
@@ -32,14 +32,14 @@ const findings = [];
 const consumerFiles = new Map();
 for (const file of walk(ROOT)) {
   const source = fs.readFileSync(file.full, 'utf8');
-  const lines = source.split(/\\r?\\n/);
+  const lines = source.split(/\r?\n/);
   const filters = {
     trusted: TRUST_FILTER.test(source),
     quarantine: QUARANTINE_FILTER.test(source),
     legacyGuarded: LEGACY_HFM_GUARD.test(source)
   };
   lines.forEach((line, index) => {
-    if (/^\\s*(?:\\/\\/|\\*|\\*\\/)/.test(line)) return;
+    if (/^\s*(?:\/\/|\*|\*\/)/.test(line)) return;
     RETRIEVAL_CALL.lastIndex = 0;
     let match;
     while ((match = RETRIEVAL_CALL.exec(line)) !== null) {
