@@ -15,12 +15,23 @@ function fail(code) {
 
 function timestampCompareToNow(value, nowMs) {
   if (typeof value !== 'string') return null;
-  const microsecond = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{6}Z$/.test(value);
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.(\\d{1,6}))?Z$/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > monthDays[month - 1] ||
+      hour > 23 || minute > 59 || second > 59) return null;
+  const fraction = (match[7] || '').padEnd(6, '0');
+  const normalized = match[1] + '-' + match[2] + '-' + match[3] + 'T' +
+    match[4] + ':' + match[5] + ':' + match[6] + '.' + fraction + 'Z';
   const nowIso = new Date(nowMs).toISOString().slice(0, 23) + '000Z';
-  if (microsecond) return value < nowIso ? -1 : value > nowIso ? 1 : 0;
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return null;
-  return parsed < nowMs ? -1 : parsed > nowMs ? 1 : 0;
+  return normalized < nowIso ? -1 : normalized > nowIso ? 1 : 0;
 }
 
 function validatePage(page, expected = null, now = new Date()) {
