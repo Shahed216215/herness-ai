@@ -106,6 +106,8 @@ const pool = { async connect() { return client; } };
 
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/013_one_time_initial_project_bootstrap.sql'), 'utf8');
   assert.match(migration, /CREATE TABLE mira_hfm\.bootstrap_registry/);
+  assert.match(migration, /REVOKE ALL ON SCHEMA mira_hfm FROM mira_hfm_bootstrap_operator/);
+  assert.match(migration, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA mira_hfm FROM mira_hfm_bootstrap_operator/);
   assert.match(migration, /bootstrap_key text PRIMARY KEY CHECK \(bootstrap_key = 'initial'\)/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migration, /FORCE ROW LEVEL SECURITY/);
