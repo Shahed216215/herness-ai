@@ -53,7 +53,7 @@ const verifiedLearning = {
       return {
         status: 'AUTHORIZED_AND_COMMITTED',
         projectId,
-        records: [knowledge, verifiedLearning, pendingLearning],
+        records: [knowledge, verifiedLearning, { ...pendingLearning, lifecycle: 'ACTIVE' }],
         count: 3,
         standingAuthority: true,
         authorityConsumed: false,
