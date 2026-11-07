@@ -54,6 +54,8 @@ small{color:var(--muted)}
     </div>
     <label for="sourceUrl">Facebook Page / Group / Post URL</label>
     <input id="sourceUrl" type="url" placeholder="https://www.facebook.com/...">
+    <label for="publishedAt">Original post date/time (optional)</label>
+    <input id="publishedAt" type="datetime-local">
     <label for="sourceFile">Facebook export / text file (optional)</label>
     <input id="sourceFile" type="file" accept=".txt,.csv,.json,.html,text/plain,text/csv,application/json,text/html">
     <label for="content">Copied post text / exported text</label>
@@ -174,6 +176,7 @@ small{color:var(--muted)}
           sourceType: $('sourceType').value,
           sourceId: $('sourceId').value.trim() || 'User supplied Facebook source',
           sourceUrl: $('sourceUrl').value.trim() || null,
+          originalPublishedAt: $('publishedAt').value || null,
           content: $('content').value,
           importFileName: $('sourceFile').files[0]?.name || '',
           importMimeType: $('sourceFile').files[0]?.type || '',
