@@ -67,7 +67,7 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
     .slice(0, limit)
     .map(({ record, score }) => ({
       id: record.memoryId,
-      title: (record.content.split(/\\r?\\n/, 1)[0].trim() || record.source.sourceId).slice(0, 300),
+      title: (record.content.split(/\r?\n/, 1)[0].trim() || record.source.sourceId).slice(0, 300),
       topic: '',
       category: 'Knowledge',
       type: 'knowledge',
