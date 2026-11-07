@@ -53,7 +53,10 @@ async function preflightHfmStandingRead(options = {}) {
     result.standingAuthorityId === context.authorityRef &&
     result.authorityExpiresAt === context.expiresAt &&
     typeof result.scanStartedAt === 'string' && Number.isFinite(Date.parse(result.scanStartedAt)) &&
-    Number.isInteger(result.count) && result.count === result.records.length;
+    Number.isInteger(result.count) && result.count === result.records.length &&
+    result.records.length <= (includeLearning ? 100 : 1) &&
+    (result.nextCursor === undefined || result.nextCursor === null ||
+      (typeof result.nextCursor === 'string' && result.nextCursor.length > 0 && result.nextCursor.length <= 2048));
 
   if (!result || result.status !== 'AUTHORIZED_AND_COMMITTED' ||
       result.standingAuthority !== true ||
