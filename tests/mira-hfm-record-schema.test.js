@@ -62,20 +62,23 @@ test('v1.0.0 rejects new v1.1.0 record types rather than silently coercing them'
   assert.equal(validateCanonicalRecord(candidate).valid, false);
 });
 
-test('v1.1.0 rejects unapproved source_reference and legacy research_reference record types', () => {
-  for (const recordType of ['source_reference', 'research_reference']) {
-    const candidate = record({
-      schemaVersion: SCHEMA_V1_1,
-      recordType,
-      access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
-    });
-    const result = validateCanonicalRecord(candidate);
-    assert.equal(result.valid, false, recordType);
-    assert.ok(
-      result.errors.includes('record.recordType.unsupported_for_schema_version'),
-      recordType + ' must not be silently mapped to an approved family'
-    );
-  }
+test('v1.1.0 rejects unapproved source_reference and preserves research_reference as a distinct legacy type', () => {
+  const unapproved = record({
+    schemaVersion: SCHEMA_V1_1,
+    recordType: 'source_reference',
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
+  });
+  const rejected = validateCanonicalRecord(unapproved);
+  assert.equal(rejected.valid, false);
+  assert.ok(rejected.errors.includes('record.recordType.unsupported_for_schema_version'));
+
+  const legacy = record({
+    schemaVersion: SCHEMA_V1_1,
+    recordType: 'research_reference',
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
+  });
+  assert.equal(validateCanonicalRecord(legacy).valid, true);
+  assert.equal(legacy.recordType, 'research_reference');
 });
 
 test('v1.1.0 accepts daily activity, learning, knowledge, and social draft record families', () => {
