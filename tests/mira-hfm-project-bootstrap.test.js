@@ -12,7 +12,7 @@ const principal = {
   authenticationMethod: 'USER_SESSION',
   authenticationRef: 'project-create-session',
   authenticatedAt: new Date(Date.now() - 1000).toISOString(),
-  expiresAt: new Date(Date.now() + 60000).toISOString()
+  expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
 };
 
 test('project bootstrap accepts only server-generated HFM project ID format', () => {
