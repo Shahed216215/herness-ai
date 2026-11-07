@@ -851,7 +851,7 @@ assert.match(planner, /crossTaskLearning =\s*hfmReadOnlyMode\s*\?/);
 assert.match(planner, /buildExperienceGuidance\(task, options\)/);
 assert.match(planner, /options\.hfmWorkLearning/);
 assert.match(execution, /retrieveHfmWorkLearning/);
-assert.match(execution, /retrieveProjectMemory/);
+assert.match(execution, /preflightHfmStandingRead/);
 assert.match(execution, /preflightWorkLearning = async/);
 assert.match(execution, /HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED/);
 assert.match(execution, /readMemory: async \(\) => preflight/);
