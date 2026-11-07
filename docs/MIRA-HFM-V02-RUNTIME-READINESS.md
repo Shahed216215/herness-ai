@@ -563,3 +563,24 @@ This evidence validates the migration SQL chain in an isolated CI database only.
 - Render-to-Neon identity: **INCONCLUSIVE**.
 - Live Neon migrations 010–018: **NOT_APPLIED / NOT_APPROVED**.
 - HFM v0.2 production deployment: **BLOCKED**. PR #80 remains Draft and unmerged.
+
+## 2026-11-07 superseding CI checkpoint — exact PR HEAD 0f750ce0
+
+The earlier latest-head migration-chain **NOT_VERIFIED** entry above is historical and superseded for disposable CI by current evidence:
+
+- PR #80 exact tested HEAD: `0f750ce0f733cd0972c634af6af98cec4053cc99`.
+- Nine PR workflow checks completed successfully, including Memory repository contracts, HFM runtime foundation, and the new disposable PostgreSQL migration chain.
+- Migration chain run `42379284821` / job `128423294500` applied HFM migrations 001–018 to an ephemeral PostgreSQL 16 database and verified RLS + FORCE RLS on all eight protected HFM tables. Final marker: `HFM_V02_DISPOSABLE_MIGRATION_CHAIN=PASS`.
+- Render live HTTP smoke was skipped; this is not a live service test.
+
+### Updated release disposition
+
+- Disposable PostgreSQL 16 migration chain 001–018: **PASS** on exact PR HEAD above.
+- Live Neon migration compatibility/application: **NOT_VERIFIED / NOT_APPLIED**.
+- Render-to-Neon database identity: **INCONCLUSIVE**.
+- Production role/privilege compatibility and owner-bootstrap approval: **NOT_APPROVED / NOT_VERIFIED**.
+- Render deploy branch remains `main`; HFM candidate is not deployed.
+- PR #80 remains Draft and unmerged.
+- Render environment, secrets, runtime flags, and Neon data/schema remain unchanged.
+
+The disposable CI pass closes the source migration-chain gate only. It does not clear production deployment gates or authorize live database/configuration changes. HFM remains v0.2; no v0.3 work is started.
