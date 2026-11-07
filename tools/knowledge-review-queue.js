@@ -1,6 +1,7 @@
 'use strict';
 
 module.exports = {
+  name: 'knowledge_review_queue',
   declaration: {
     type: 'function',
     function: {
