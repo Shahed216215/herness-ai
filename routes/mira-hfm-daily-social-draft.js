@@ -95,6 +95,7 @@ function registerMiraHfmDailySocialDraftRoute(
         authorityGrant: readAuthority.grant,
         limit: 100,
         lifecycle: 'ACTIVE',
+        recordTypes: ['daily_activity', 'learning_note'],
         env: process.env
       });
       const generated = buildDraft({
