@@ -423,6 +423,8 @@ const pool = { async connect() { return client; } };
   );
   assert.match(failureAuditMigration, /STANDING_READ_AUTHORITY_DENIED/);
   assert.match(failureAuditMigration, /STANDING_READ_AUTHORITY_FAILED/);
+  assert.match(failureAuditMigration, /details->>'operation' = 'memory\\.read'/);
+  assert.match(failureAuditMigration, /details->>'resource' = NULLIF\\(current_setting\\('mira\\.resource', true\\), ''\\)/);
   assert.match(failureAuditMigration, /current_setting\('mira.request_id', true\)/);
   assert.match(failureAuditMigration, /AS RESTRICTIVE/);
   assert.match(failureAuditMigration, /current_setting\('mira.operation', true\) = 'memory.read'/);
