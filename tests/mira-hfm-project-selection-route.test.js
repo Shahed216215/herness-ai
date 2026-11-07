@@ -36,7 +36,7 @@ function request(overrides = {}) {
   return {
     sessionID,
     secure: true,
-    get(name) { return name === 'origin' ? 'https://mira.example' : name === 'host' ? 'mira.example' : undefined; },
+    get: overrides.get || function(name) { return name === 'origin' ? 'https://mira.example' : name === 'host' ? 'mira.example' : undefined; },
     session: {
       authenticated: true, role: 'user', hfmPrincipal: principal,
       save(callback) { callback(null); },
