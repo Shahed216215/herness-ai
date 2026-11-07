@@ -129,6 +129,6 @@ jobs:
             ) THEN
               RAISE EXCEPTION 'HFM_MEMORY_READER_GROUP_HAS_PARENT_ROLE';
             END IF;
-          END $;
+          END $$;
           SELECT 'HFM_V02_DISPOSABLE_MIGRATION_CHAIN=PASS';
           SQL
