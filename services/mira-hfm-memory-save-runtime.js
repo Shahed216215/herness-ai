@@ -147,6 +147,8 @@ async function saveHfmMemoryRecord(options = {}) {
     ? 'User explicitly requested to save a web knowledge source as an unverified item for review.'
     : 'User explicitly requested to save this private memory item.';
   const env = options.env || process.env;
+  if (env.MIRA_HFM_MEMORY_WRITE_ENABLED !== 'true') fail('HFM_MEMORY_WRITE_DISABLED');
+  if (env.MIRA_HFM_AUTHORITY_ISSUER_ENABLED !== 'true') fail('HFM_AUTHORITY_ISSUER_DISABLED');
 
   const issueAuthority = options.issueAuthority || approveAndIssueMemoryOperationAuthority;
   const executeAuthority = options.executeAuthority || executeWithConsumedAuthority;
