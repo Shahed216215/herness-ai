@@ -317,21 +317,21 @@ const knowledgeSearch = read('services/mira-hfm-knowledge-search-runtime.js');
 assert.match(server, /searchHfmKnowledge/);
 assert.match(server, /MIRA_HFM_WORK_LEARNING_ENABLED === "true"/);
 assert.match(server, /HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_DIAGNOSTIC/);
-const legacyGuard = read("services/mira-hfm-legacy-storage-guard.js");
-const legacyMemory = read("memory.js");
-const legacyKnowledge = read("knowledge.js");
-const legacyDrive = read("google-drive.js");
-const legacyEvolution = read("knowledge-memory-evolution.js");
-assert.match(legacyGuard, /HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE/);
+const centralLegacyGuardSource = read("services/mira-hfm-legacy-storage-guard.js");
+const centralLegacyMemorySource = read("memory.js");
+const centralLegacyKnowledgeSource = read("knowledge.js");
+const centralLegacyDriveSource = read("google-drive.js");
+const centralLegacyEvolutionSource = read("knowledge-memory-evolution.js");
+assert.match(centralLegacyGuardSource, /HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE/);
 for (const flag of [
   "MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED",
   "MIRA_HFM_WORK_LEARNING_ENABLED",
   "MIRA_HFM_MEMORY_READ_ENABLED",
   "MIRA_HFM_MEMORY_WRITE_ENABLED"
 ]) {
-  assert.ok(legacyGuard.includes(flag), "legacy storage guard must cover " + flag);
+  assert.ok(centralLegacyGuardSource.includes(flag), "legacy storage guard must cover " + flag);
 }
-for (const source of [legacyMemory, legacyKnowledge, legacyDrive, legacyEvolution]) {
+for (const source of [centralLegacyMemorySource, centralLegacyKnowledgeSource, centralLegacyDriveSource, centralLegacyEvolutionSource]) {
   assert.match(source, /assertLegacyStorageDisabled\(\)/);
 }
 assert.match(server, /HFM_STANDING_READ_ONLY/);
