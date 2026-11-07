@@ -93,11 +93,11 @@ CREATE POLICY hfm_authority_issuer_approval_nonce_consume
     AND consumed_at IS NULL
     AND expires_at > clock_timestamp()
   )
+  -- The column-level GRANT permits changing only consumed_at. The USING
+  -- clause scopes the existing row; this CHECK validates the sole mutable field.
   WITH CHECK (
-    project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND approver_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND consumed_at IS NOT NULL
+    consumed_at IS NOT NULL
+    AND consumed_at <= clock_timestamp()
   );
 
 COMMENT ON TABLE mira_hfm.authority_approval_nonces IS
