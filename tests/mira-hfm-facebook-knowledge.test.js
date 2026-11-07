@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
   normalizeFacebookUrl,
+  extractImportedContent,
   redactSensitiveText,
   buildKnowledgeRecord,
   tokenize
@@ -12,6 +13,7 @@ const { validateCanonicalRecord } = require('../services/mira-hfm-record-schema'
 
 test('accepts only HTTPS Facebook Page and Group URLs without credentials or fragments', () => {
   assert.equal(normalizeFacebookUrl('https://m.facebook.com/example.page/?ref=share'), 'https://www.facebook.com/example.page');
+  assert.equal(normalizeFacebookUrl('https://www.facebook.com/permalink.php?story_fbid=123456&id=789&__tn__=R'), 'https://www.facebook.com/permalink.php?id=789&story_fbid=123456');
   assert.throws(() => normalizeFacebookUrl('http://facebook.com/example'), /HFM_FACEBOOK_SOURCE_URL_NOT_ALLOWED/);
   assert.throws(() => normalizeFacebookUrl('https://facebook.com.evil.example/page'), /HFM_FACEBOOK_SOURCE_URL_NOT_ALLOWED/);
   assert.throws(() => normalizeFacebookUrl('https://user:pass@facebook.com/page'), /HFM_FACEBOOK_SOURCE_URL_NOT_ALLOWED/);
@@ -131,4 +133,26 @@ test('missing web-search provider returns manual-import fallback without making 
 });
 test('tokenizer handles Bengali and English Unicode terms', () => {
   assert.deepEqual(tokenize('AI প্রযুক্তি এবং Python'), ['ai', 'প্রযুক্তি', 'এবং', 'python']);
+});
+
+test('extracts text from Facebook JSON export without storing unrelated metadata', () => {
+  const content = extractImportedContent(JSON.stringify({
+    data: [{ post: { message: 'বাংলা পোস্টের লেখা', created_time: '2026-11-07T00:00:00Z' } }],
+    account: { name: 'Example' }
+  }), { fileName: 'facebook-export.json', mimeType: 'application/json' });
+  assert.equal(content, 'বাংলা পোস্টের লেখা');
+  assert.equal(content.includes('created_time'), false);
+});
+
+test('extracts readable text from HTML exports and removes scripts and markup', () => {
+  const content = extractImportedContent('<html><body><article><p>Public post text &amp; details</p><script>secret()</script></article></body></html>', {
+    fileName: 'facebook-export.html', mimeType: 'text/html'
+  });
+  assert.match(content, /Public post text & details/);
+  assert.doesNotMatch(content, /secret\(\)|<p>|<script>/);
+});
+
+test('rejects malformed or non-text JSON exports', () => {
+  assert.throws(() => extractImportedContent('{bad json', { fileName: 'export.json' }), /HFM_IMPORT_JSON_INVALID/);
+  assert.throws(() => extractImportedContent('{"created_time":"today"}', { fileName: 'export.json' }), /HFM_IMPORT_JSON_NO_TEXT/);
 });
