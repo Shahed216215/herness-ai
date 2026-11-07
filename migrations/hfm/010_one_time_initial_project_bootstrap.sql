@@ -163,7 +163,7 @@ CREATE POLICY hfm_bootstrap_membership_insert
     AND membership_role = 'ADMIN'
     AND status = 'ACTIVE'
     AND revision = 1
-    AND permissions -> 'operations' ? 'memory.read'
+    AND permissions -> 'operations' ?& ARRAY['memory.read','memory.write','memory.trash','memory.restore']
     AND valid_from <= clock_timestamp()
     AND expires_at IS NULL
     AND approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
