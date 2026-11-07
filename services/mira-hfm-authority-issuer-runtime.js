@@ -89,7 +89,8 @@ const PREFLIGHT_SQL = [
     "AND c.relrowsecurity AND c.relforcerowsecurity) AS issuer_rls_forced,",
   "(SELECT count(*) = 4 FROM pg_policies WHERE schemaname = 'mira_hfm' AND policyname IN " +
     "('hfm_authority_issuer_owner_select','hfm_authority_issuer_membership_select'," +
-    "'hfm_authority_issuer_authority_insert','hfm_authority_issuer_audit_insert') AND $1 = ANY(roles)) AS issuer_policies_present,",\n  "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +\n    "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +\n    "AND $1 = ANY(roles) AND policyname NOT IN ('hfm_authority_issuer_owner_select'," +\n    "'hfm_authority_issuer_membership_select','hfm_authority_issuer_authority_insert'," +\n    "'hfm_authority_issuer_audit_insert')) AS issuer_policy_set_exact,",
+    "'hfm_authority_issuer_authority_insert','hfm_authority_issuer_audit_insert') AND $1 = ANY(roles)) AS issuer_policies_present,",
+  "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +\n    "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +\n    "AND $1 = ANY(roles) AND policyname NOT IN ('hfm_authority_issuer_owner_select'," +\n    "'hfm_authority_issuer_membership_select','hfm_authority_issuer_authority_insert'," +\n    "'hfm_authority_issuer_audit_insert')) AS issuer_policy_set_exact,",
   "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
     "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +
     "AND 'public' = ANY(roles)) AS no_public_issuer_policies",
