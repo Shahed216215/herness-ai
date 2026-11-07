@@ -98,7 +98,7 @@ async function bootstrapInitialHfmProject(options = {}) {
       "valid_from, expires_at, granted_by_actor_id, approval_ref) " +
       "VALUES ($1,$2,$3,'ADMIN',$4::jsonb,'ACTIVE',1,$5,NULL,$3,$6)",
       [crypto.randomUUID(), projectId, actorId,
-        JSON.stringify({ operations: ['memory.read'] }), now, approvalRef]
+        JSON.stringify({ operations: ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'] }), now, approvalRef]
     );
     if (membership.rowCount !== 1) fail('HFM_BOOTSTRAP_ADMIN_MEMBERSHIP_INSERT_FAILED');
 
