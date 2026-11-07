@@ -236,6 +236,10 @@ test('invalid date, project and timezone fail closed', () => {
     error => error.code === 'HFM_DAILY_POST_PROJECT_ID_INVALID'
   );
   assert.throws(
+    () => buildDailyKnowledgePost({ records: [], projectId: 'project-001', localDate: '2026-11-06', now: 'invalid' }),
+    error => error.code === 'HFM_DAILY_POST_NOW_INVALID'
+  );
+  assert.throws(
     () => buildDailyKnowledgePost({
       records: [sourceRecord()], projectId: 'project-001',
       localDate: '2026-11-06', timeZone: 'Invalid/Timezone', now
