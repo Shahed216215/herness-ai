@@ -161,7 +161,9 @@ async function saveHfmMemoryRecord(options = {}) {
     .digest('hex').slice(0, 32);
   const record = buildCanonicalMemoryRecord({
     projectId, memoryId, kind, content: options.content,
-    title: options.title, url: options.url, now: options.now
+    title: options.title, url: options.url,
+    userIntent: options.userIntent,
+    now: options.now
   });
   const resource = 'memory:' + memoryId;
   const purpose = kind === 'knowledge_save'
