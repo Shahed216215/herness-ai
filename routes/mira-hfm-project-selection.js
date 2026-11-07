@@ -3,6 +3,7 @@
 const {
   BINDING_VERSION
 } = require('../services/mira-hfm-project-binding-context');
+const { sameOriginRequest } = require('./mira-hfm-authority-approval');
 const {
   buildTrustedActorContext
 } = require('../services/mira-hfm-runtime-identity-context');
@@ -19,6 +20,9 @@ function registerMiraHfmProjectSelectionRoute(app, getRuntime) {
   }
 
   app.post('/api/hfm/projects/select', async (req, res) => {
+    if (!req.get || !req.get('origin') || !sameOriginRequest(req)) {
+      return res.status(403).json({ success: false, error: 'Same-origin request required.' });
+    }
     if (!req.session || req.session.authenticated !== true ||
         !['user', 'admin'].includes(req.session.role)) {
       return res.status(401).json({
