@@ -371,7 +371,7 @@ test('standing-read exact record lookup is project, type, lifecycle, trust and i
   assert.match(sqlSeen, /classification <> 'RESTRICTED'/);
   assert.match(sqlSeen, /integrity_status = 'VERIFIED'/);
   assert.match(sqlSeen, /trust_status IN \('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\)/);
-  await assert.rejects(
+  assert.throws(
     () => repository.getStandingReadMemoryRecord({
       client,
       context: { ...context, operation: 'memory.read', resource: 'memory:other', authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY' },
