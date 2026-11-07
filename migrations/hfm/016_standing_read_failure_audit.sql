@@ -22,7 +22,12 @@ CREATE POLICY hfm_memory_reader_authority_audit_insert
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND (
-      event_type = 'AUTHORITY_CONSUMED'
+      (
+        event_type = 'AUTHORITY_CONSUMED'
+        AND current_setting('mira.operation', true) = 'memory.read'
+        AND details->>'operation' = 'memory.read'
+        AND details->>'resource' = NULLIF(current_setting('mira.resource', true), '')
+      )
       OR (
         event_type IN (
           'STANDING_READ_AUTHORITY_USED',
@@ -47,7 +52,12 @@ CREATE POLICY hfm_reader_authority_audit_request_scope
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND request_id = NULLIF(current_setting('mira.request_id', true), '')
     AND (
-      event_type = 'AUTHORITY_CONSUMED'
+      (
+        event_type = 'AUTHORITY_CONSUMED'
+        AND current_setting('mira.operation', true) = 'memory.read'
+        AND details->>'operation' = 'memory.read'
+        AND details->>'resource' = NULLIF(current_setting('mira.resource', true), '')
+      )
       OR (
         event_type IN (
           'STANDING_READ_AUTHORITY_USED',
@@ -63,7 +73,7 @@ CREATE POLICY hfm_reader_authority_audit_request_scope
 
 COMMENT ON POLICY hfm_memory_reader_authority_audit_insert
   ON mira_hfm.authority_audit_events IS
-  'Allows only one-time authority consumption or standing memory.read outcome events whose transaction-local operation, standing-read marker, and details.resource match the trusted read context.';
+  'Allows one-time AUTHORITY_CONSUMED audit inserts only for memory.read with matching details.operation/resource, plus standing-read outcomes with the transaction-local standing marker and matching resource.';
 
 COMMENT ON POLICY hfm_reader_authority_audit_request_scope
   ON mira_hfm.authority_audit_events IS
