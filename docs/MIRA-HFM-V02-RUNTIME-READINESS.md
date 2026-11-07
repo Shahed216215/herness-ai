@@ -420,7 +420,7 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 
 **Audit date:** 2026-11-07  
 **Clean integration branch:** `work/mira-hfm-v02-clean-integration-20261107`  
-**Latest code-tested head:** `bf5fc8185fe56eda1d76a391da5e79a341cfdfad`  
+**Latest code-tested head:** `ea0b25882003d0213c7d5bb3c1da4af4cf1034b2`  
 **Draft integration PR:** #80  
 **Legacy divergent PR:** #79 (left open and unmerged)  
 **Disposition:** HFM v0.2 remains NOT COMPLETE / NOT DEPLOYABLE
@@ -435,7 +435,7 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 
 ## 2. Current CI evidence
 
-**9/9 PASS** on code head `bf5fc8185fe56eda1d76a391da5e79a341cfdfad`, including the activity-specific intent gate, Bengali save-intent handling, canonical writer, and registration/router regression tests.
+**9/9 PASS** on code head `ea0b25882003d0213c7d5bb3c1da4af4cf1034b2`, including activity-specific intent, Bengali positive/negative intent handling, canonical writer, tool registration, and fail-closed router regression tests.
 
 - HFM runtime foundation contract
 - HFM Memory repository contracts
@@ -478,7 +478,7 @@ The user-approved 2026-11-06 Memory Topology Amendment lists seven domain famili
 
 A source-only proposal now defines the missing contract and recommends a normalized project-scoped `source_references` entity plus a same-project link table; a separately versioned canonical `recordType` (for example v1.2.0) remains an alternative. The representation is unresolved and NOT APPROVED / NOT IMPLEMENTED; no schema or migration change was made for it.
 
-The current tool surface exposes `memory_save`, `knowledge_save`, `learning_save`, and `daily_activity_save`. The new daily-activity path accepts only an exact user-authored summary present in the current user message, requires activity-specific save intent (a generic “remember this” request is insufficient), stores it as a private `daily_activity` record, redacts common sensitive values, and rejects recognized client/contract/financial identifiers. It does not automatically capture tool execution or model-generated summaries. The stricter activity-specific authorization tests initially exposed a Bengali negation-matching defect; the guard was corrected, and the final 9/9 workflow set passed on code head `bf5fc8185fe56eda1d76a391da5e79a341cfdfad`. Source-reference, client-vault, and financial-vault writer workflows remain incomplete. Existing social draft persistence is a separate reviewed writer path.
+The current tool surface exposes `memory_save`, `knowledge_save`, `learning_save`, and `daily_activity_save`. The new daily-activity path accepts only an exact user-authored summary present in the current user message, requires activity-specific save intent (a generic “remember this” request is insufficient), stores it as a private `daily_activity` record, redacts common sensitive values, and rejects recognized client/contract/financial identifiers. It does not automatically capture tool execution or model-generated summaries. The stricter activity-specific authorization tests initially exposed a Bengali negation-matching defect; the guard was corrected, including a regression assertion that “দৈনিক কাজের সারাংশ সংরক্ষণ করো না” is not treated as authorization. The final 9/9 workflow set passed on code head `ea0b25882003d0213c7d5bb3c1da4af4cf1034b2`. Source-reference, client-vault, and financial-vault writer workflows remain incomplete. Existing social draft persistence is a separate reviewed writer path.
 
 ## 6. Remaining v0.2 contract gates
 
