@@ -113,6 +113,32 @@ async function issueStandingReadAuthority(options = {}) {
         !membership.permissions.operations.includes('memory.read')) {
       fail('HFM_STANDING_READ_MEMBERSHIP_PERMISSION_REQUIRED');
     }
+    const priorResult = await client.query(
+      "SELECT standing_authority_id, status, expires_at, approval_ref " +
+      "FROM mira_hfm.standing_read_authorities WHERE project_id = $1 AND actor_id = $2 " +
+      "AND status IN ('ACTIVE','PAUSED') FOR UPDATE",
+      [projectId, actor.actorId]
+    );
+    const prior = priorResult.rows?.[0];
+    if (prior && Date.parse(prior.expires_at) > Date.now()) {
+      fail('HFM_STANDING_READ_AUTHORITY_ALREADY_ACTIVE');
+    }
+    if (prior) {
+      await client.query(
+        "UPDATE mira_hfm.standing_read_authorities SET status = 'EXPIRED', " +
+        "updated_at = clock_timestamp(), paused_at = NULL " +
+        "WHERE standing_authority_id = $1 AND project_id = $2 AND actor_id = $3 " +
+        "AND status IN ('ACTIVE','PAUSED') AND expires_at <= clock_timestamp()",
+        [prior.standing_authority_id, projectId, actor.actorId]
+      );
+      await client.query(
+        "INSERT INTO mira_hfm.authority_audit_events " +
+        "(event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details) " +
+        "VALUES ($1,$2,$3,'STANDING_READ_AUTHORITY_EXPIRED',$4,clock_timestamp(),$5,$6::jsonb)",
+        [crypto.randomUUID(), projectId, actor.actorId, crypto.randomUUID(), prior.approval_ref,
+          JSON.stringify({ standingAuthorityId: prior.standing_authority_id, expiredBeforeReissue: true })]
+      );
+    }
     await client.query(
       "INSERT INTO mira_hfm.standing_read_authorities " +
       "(standing_authority_id, project_id, actor_id, operation, resource, purpose, " +
