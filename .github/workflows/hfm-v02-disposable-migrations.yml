@@ -2,7 +2,7 @@ name: HFM v0.2 disposable PostgreSQL migration chain
 
 on:
   push:
-    branches: [work/mira-hfm-v02-clean-integration-20261107]
+    branches: [work/mira-hfm-v02-clean-integration-20261107, work/hfm-v02-security-ci-hardening-20261107]
     paths:
       - "migrations/hfm/**"
       - ".github/workflows/hfm-v02-disposable-migrations.yml"
@@ -144,4 +144,103 @@ jobs:
             END IF;
           END $$;
           SELECT 'HFM_V02_DISPOSABLE_MIGRATION_CHAIN=PASS';
+          SQL
+
+      - name: Verify all-table FORCE RLS and Reader/Writer negative privilege contracts
+        env:
+          PGPASSWORD: hfm-ci-password
+        run: |
+          psql -h localhost -U postgres -d neondb -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            protected_table_count integer;
+          BEGIN
+            SELECT count(*) INTO protected_table_count
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'mira_hfm'
+              AND c.relkind IN ('r', 'p');
+
+            IF protected_table_count <> 11 THEN
+              RAISE EXCEPTION 'HFM_EXPECTED_TABLE_INVENTORY_MISMATCH: %', protected_table_count;
+            END IF;
+
+            IF EXISTS (
+              SELECT 1
+              FROM pg_class c
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+              WHERE n.nspname = 'mira_hfm'
+                AND c.relkind IN ('r', 'p')
+                AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity)
+            ) THEN
+              RAISE EXCEPTION 'HFM_TABLE_MISSING_ENABLED_OR_FORCED_RLS';
+            END IF;
+
+            -- Reader must retrieve, but must not create or mutate canonical Memory.
+            IF NOT has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_records', 'SELECT')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_records', 'INSERT')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_records', 'UPDATE')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_records', 'DELETE')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_records', 'TRUNCATE')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_record_versions', 'INSERT')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_operation_registry', 'INSERT')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_operation_registry', 'UPDATE')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.memory_audit_events', 'INSERT')
+            THEN
+              RAISE EXCEPTION 'HFM_READER_NEGATIVE_PRIVILEGE_CONTRACT_FAILED';
+            END IF;
+
+            IF NOT has_column_privilege('mira_hfm_memory_reader_login', 'mira_hfm.operation_authorities', 'status', 'UPDATE')
+              OR NOT has_column_privilege('mira_hfm_memory_reader_login', 'mira_hfm.operation_authorities', 'consumed_at', 'UPDATE')
+              OR has_table_privilege('mira_hfm_memory_reader_login', 'mira_hfm.operation_authorities', 'DELETE')
+            THEN
+              RAISE EXCEPTION 'HFM_READER_AUTHORITY_CONSUME_PRIVILEGE_CONTRACT_FAILED';
+            END IF;
+
+            -- Writer may perform bounded writes, never destructive table-wide actions.
+            IF has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'DELETE')
+              OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'TRUNCATE')
+              OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_record_versions', 'UPDATE')
+              OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_record_versions', 'DELETE')
+              OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_audit_events', 'UPDATE')
+              OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_audit_events', 'DELETE')
+              OR has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'payload', 'UPDATE')
+              OR has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'integrity_status', 'UPDATE')
+            THEN
+              RAISE EXCEPTION 'HFM_WRITER_NEGATIVE_PRIVILEGE_CONTRACT_FAILED';
+            END IF;
+
+            IF NOT has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'lifecycle', 'UPDATE')
+              OR NOT has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.operation_authorities', 'status', 'UPDATE')
+            THEN
+              RAISE EXCEPTION 'HFM_WRITER_BOUNDED_UPDATE_PRIVILEGE_CONTRACT_FAILED';
+            END IF;
+          END $$;
+          SQL
+          psql -h localhost -U postgres -d neondb -v ON_ERROR_STOP=1 <<'SQL'
+          SET ROLE mira_hfm_memory_reader_login;
+          DO $$
+          BEGIN
+            IF current_user <> 'mira_hfm_memory_reader_login' THEN
+              RAISE EXCEPTION 'HFM_READER_LOGIN_ROLE_SWITCH_FAILED';
+            END IF;
+            IF NOT row_security_active('mira_hfm.memory_records'::regclass) THEN
+              RAISE EXCEPTION 'HFM_READER_RLS_NOT_ACTIVE';
+            END IF;
+          END $$;
+          SELECT count(*) AS reader_rows_without_project_context FROM mira_hfm.memory_records;
+          RESET ROLE;
+          SET ROLE mira_hfm_memory_writer;
+          DO $$
+          BEGIN
+            IF current_user <> 'mira_hfm_memory_writer' THEN
+              RAISE EXCEPTION 'HFM_WRITER_ROLE_SWITCH_FAILED';
+            END IF;
+            IF NOT row_security_active('mira_hfm.memory_records'::regclass) THEN
+              RAISE EXCEPTION 'HFM_WRITER_RLS_NOT_ACTIVE';
+            END IF;
+          END $$;
+          SELECT count(*) AS writer_rows_without_project_context FROM mira_hfm.memory_records;
+          RESET ROLE;
+          SELECT 'HFM_V02_RLS_AND_ROLE_PRIVILEGE_CONTRACTS=PASS';
           SQL
