@@ -47,7 +47,7 @@ SELECT
   r.rolreplication AS can_replicate,
   r.rolinherit AS inherits_roles,
   r.rolcanlogin AS can_login,
-  pg_has_role(current_user, $1, 'MEMBER') AS has_issuer_group,
+  pg_has_role(current_user, $1, 'USAGE') AS has_issuer_group,
   NOT EXISTS (
     SELECT 1 FROM pg_auth_members m
     JOIN pg_roles granted ON granted.oid = m.roleid
