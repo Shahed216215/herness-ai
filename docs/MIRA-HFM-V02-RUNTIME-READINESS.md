@@ -36,7 +36,7 @@ This document records the HFM v0.2 runtime boundary and exact release gates. It 
   - `POST /api/hfm/social-drafts/restore`
 - The one-time authorize route stores its grant in the server-side session and never returns the grant or approval token to the browser. The read route removes that session grant before one-time retrieval; database authority consumption is independently atomic. In standing mode, the read route accepts no client-supplied grant: it discovers the active database grant using the verified actor/project session and performs the read plus audit in one serializable transaction.
 - Migrations 007–011 are source-only drafts for the Memory reader, allowlisted authority issuer, persistent approval nonce ledger, one-time bootstrap role, and 365-day standing read authority.
-- Synthetic tests cover project selection → authorized Memory retrieval, approval signing/replay protection, 365-day standing authority issue/status/pause/resume/revoke, per-read audit and revoked-grant denial, Work Learning runtime authorization-context binding, feature-flag fail-closed behavior, and the no-legacy-local-fallback task-planning path.
+- Synthetic tests cover project selection → authorized Memory retrieval, approval signing/replay protection, 365-day standing authority issue/status/pause/resume/revoke, route consent and same-origin guards, UI scope/consent controls, per-read audit and revoked-grant denial, Work Learning runtime authorization-context binding, feature-flag fail-closed behavior, and the no-legacy-local-fallback task-planning path.
 
 ## Runtime environment variable names
 
