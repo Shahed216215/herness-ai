@@ -111,7 +111,7 @@ async function bootstrapInitialHfmProject(options = {}) {
           bootstrapVersion: 'HFM_INITIAL_PROJECT_V1',
           ownerActorId: actorId,
           membershipRole: 'ADMIN',
-          permissions: ['memory.read'],
+          permissions: ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'],
           oneTimeOnly: true
         })]
     );
@@ -124,7 +124,7 @@ async function bootstrapInitialHfmProject(options = {}) {
       projectId,
       ownerActorId: actorId,
       membershipRole: 'ADMIN',
-      permissions: Object.freeze(['memory.read']),
+      permissions: Object.freeze(['memory.read', 'memory.write', 'memory.trash', 'memory.restore']),
       approvalRef,
       oneTimeOnly: true,
       memoryRecordsImported: 0
