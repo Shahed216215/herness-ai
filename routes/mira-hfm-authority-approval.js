@@ -30,7 +30,9 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
           req.session.role !== 'admin' || req.role !== 'admin') {
         return res.status(401).json({ success: false, error: 'Authenticated admin session required.' });
       }
-      if (!req.session.hfmPrincipal || !req.session.hfmProjectBinding) {
+      const binding = req.session.hfmProjectBinding;
+      if (!req.session.hfmPrincipal || !binding || binding.verified !== true ||
+          typeof binding.projectId !== 'string' || !binding.projectId.trim()) {
         return res.status(403).json({ success: false, error: 'Verified admin identity and selected project required.' });
       }
       const body = req.body || {};
