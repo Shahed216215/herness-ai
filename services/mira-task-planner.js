@@ -902,6 +902,15 @@ async function createTaskPlan(
   const hfmPreflight = hfmWorkLearningEnabled
     ? await options.preflightWorkLearning()
     : null;
+  if (hfmWorkLearningEnabled &&
+      (!hfmPreflight ||
+       hfmPreflight.status !== "AUTHORIZED_AND_COMMITTED" ||
+       hfmPreflight.standingAuthority !== true ||
+       hfmPreflight.approvalRequiredPerRead !== false ||
+       !Array.isArray(hfmPreflight.records) ||
+       !hfmPreflight.hostAuthorizationContext)) {
+    throw new Error("HFM_WORK_LEARNING_PREFLIGHT_INVALID");
+  }
 
   const understood =
     await understandTask(
