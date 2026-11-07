@@ -48,6 +48,7 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
     results: result.results,
     candidateScanCount: result.candidateScanCount,
     candidateScanLimit: result.candidateScanLimit,
+    scannedPages: result.scannedPages,
     candidateScanMayBeIncomplete: result.candidateScanMayBeIncomplete,
     nextCursor: result.nextCursor,
     localFallback: false,
