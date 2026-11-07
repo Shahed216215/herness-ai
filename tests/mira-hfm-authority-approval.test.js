@@ -41,7 +41,7 @@ const client = {
     }
     if (sql.includes('FROM mira_hfm.project_memberships')) {
       return { rows: [{
-        revision: 8, status: 'ACTIVE', permissions: { operations: ['memory.read'] }
+        revision: 8, status: 'ACTIVE', permissions: { operations: ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'] }
       }], rowCount: 1 };
     }
     if (sql.startsWith('INSERT INTO mira_hfm.authority_approval_nonces')) {
@@ -84,6 +84,30 @@ const env = {
   console.log('HFM_APPROVAL_ISSUE_RECENT_ADMIN_AND_EXPLICIT_CONFIRMATION=PASS');
   console.log('HFM_APPROVAL_NONCE_HASH_ONLY_PERSISTED=PASS');
   console.log('HFM_APPROVAL_ISSUANCE_AUDITED=PASS');
+
+  const trashApproval = await issueApprovalToken({
+    req, pool, env, secret,
+    purpose: 'user confirmed Facebook-published draft trash',
+    operation: 'memory.trash',
+    resource: 'memory:social-draft-001',
+    approvalConfirmed: true
+  });
+  assert.equal(trashApproval.operation, 'memory.trash');
+  assert.equal(trashApproval.resource, 'memory:social-draft-001');
+  const trashInsert = calls.filter(c => c.sql.startsWith('INSERT INTO mira_hfm.authority_approval_nonces')).at(-1);
+  assert.equal(trashInsert.params[4], 'memory.trash');
+  assert.equal(trashInsert.params[5], 'memory:social-draft-001');
+  console.log('HFM_APPROVAL_BINDS_EXACT_MEMORY_TRASH_RESOURCE=PASS');
+
+  await assert.rejects(
+    issueApprovalToken({
+      req, pool, env, secret, purpose: 'permanent purge',
+      operation: 'memory.purge', resource: 'memory:social-draft-001',
+      approvalConfirmed: true
+    }),
+    error => error.code === 'HFM_AUTHORITY_OPERATION_NOT_ALLOWED'
+  );
+  console.log('HFM_APPROVAL_PERMANENT_PURGE_NOT_APPROVABLE=PASS');
 
   const verify = createDatabaseApprovalVerifier({ pool, env, secret });
   const expected = {
@@ -155,6 +179,7 @@ const env = {
   assert.ok(migration.includes('resource = \'memory:project:\' || NULLIF(current_setting(\'mira.project_id\', true), \'\')'));
   assert.match(migration, /consumed_at IS NULL/);
   assert.match(migration, /consumed_at IS NOT NULL/);
+  assert.ok(migration.includes("operation IN ('memory.read','memory.write','memory.trash','memory.restore')"));
   assert.ok(migration.includes('WITH CHECK (consumed_at IS NOT NULL);'));
   assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
   assert.doesNotMatch(migration, /GRANT[^;]+TRUNCATE/i);
