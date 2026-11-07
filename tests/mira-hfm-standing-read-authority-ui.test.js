@@ -20,6 +20,7 @@ for (const id of [
   assert.ok(html.includes('id="' + id + '"'), 'missing UI control ' + id);
 }
 assert.match(html, /365-Day Standing Read Authority/);
+assert.match(html, /id="hfmV02StandingIssue"[^>]*hidden/);
 assert.match(html, /memory\.read/);
 assert.match(html, /Learning and Knowledge records only/);
 assert.match(memoryReadRoute, /\['learning_note', 'knowledge_item'\]/);
