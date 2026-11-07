@@ -208,7 +208,7 @@ function validateCanonicalRecord(record) {
     if (!['SOURCE_RECORDED', 'QUARANTINED'].includes(record.trust?.status)) {
       errors.push('record.source_reference.trust_state_invalid');
     }
-    if (!['ACTIVE', 'ARCHIVED', 'QUARANTINED'].includes(record.lifecycle)) {
+    if (!['ACTIVE', 'TRASHED', 'SUPERSEDED', 'ARCHIVED', 'QUARANTINED'].includes(record.lifecycle)) {
       errors.push('record.source_reference.lifecycle_invalid');
     }
     try {
