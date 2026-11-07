@@ -241,7 +241,12 @@ const pool = { async connect() { return client; } };
     perform: async () => { pausedReadCallbackCalled = true; return {}; }
   }), /HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED/);
   assert.equal(pausedReadCallbackCalled, false);
+  assert.ok(readCalls.some(c =>
+    c.sql.startsWith('INSERT INTO mira_hfm.authority_audit_events') &&
+    c.params?.[3] === 'STANDING_READ_AUTHORITY_DENIED'
+  ), 'paused standing-read denial is persisted after the protected transaction rolls back');
   console.log('HFM_STANDING_READ_PAUSED_GRANT_BLOCKS_FUTURE_READS=PASS');
+  console.log('HFM_STANDING_READ_DENIAL_IS_AUDITED_OUTSIDE_ROLLED_BACK_READ=PASS');
 
   standingRow.status = 'REVOKED';
   let revokedReadCallbackCalled = false;
@@ -326,6 +331,8 @@ const pool = { async connect() { return client; } };
   }), error => error.code === 'HFM_AUDIT_INSERT_FAILED');
   assert.equal(protectedReadRan, false);
   assert.ok(auditFailureCalls.includes('ROLLBACK'));
+  assert.ok(auditFailureCalls.filter(sql => sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')).length >= 2,
+    'failed primary audit triggers a separate denial/failure audit attempt');
   console.log('HFM_STANDING_READ_AUDIT_FAILURE_ROLLS_BACK_AND_BLOCKS_READ=PASS');
 
   const migration = fs.readFileSync(
@@ -352,6 +359,14 @@ const pool = { async connect() { return client; } };
   assert.match(migration, /STANDING_READ_AUTHORITY_EXPIRED/);
   assert.match(migration, /REVOKE ALL ON FUNCTION mira_hfm\.audit_standing_read_authority_change\(\) FROM PUBLIC/);
   assert.match(migration, /REVOKE ALL ON TABLE mira_hfm\.standing_read_authorities FROM PUBLIC/);
+  const failureAuditMigration = fs.readFileSync(
+    path.join(__dirname, '..', 'migrations/hfm/016_standing_read_failure_audit.sql'), 'utf8'
+  );
+  assert.match(failureAuditMigration, /STANDING_READ_AUTHORITY_DENIED/);
+  assert.match(failureAuditMigration, /STANDING_READ_AUTHORITY_FAILED/);
+  assert.match(failureAuditMigration, /current_setting\('mira.request_id', true\)/);
+  assert.match(failureAuditMigration, /AS RESTRICTIVE/);
+  console.log('HFM_STANDING_READ_FAILURE_AUDIT_POLICY_SCOPED_TO_PROJECT_ACTOR_REQUEST=PASS');
   console.log('HFM_STANDING_READ_MIGRATION_RLS_IMMUTABLE_SCOPE_365D=PASS');
 
   const readRoute = fs.readFileSync(
