@@ -199,10 +199,10 @@ test('delete fails closed before any payload write for restricted or unconfirmed
 test('delete retry confirms erased payload and DELETED state before returning DELETED', async () => {
   const context = { ...baseContext, operation: workflow.OPERATIONS.DELETE };
   const payloadDigest = crypto.createHash('sha256')
-    .update(workflow.stableJson({
+    .update(JSON.stringify({
       operation: workflow.OPERATIONS.DELETE,
-      resource: 'memory:post-0001',
-      projectId: 'project-001'
+      projectId: 'project-001',
+      resource: 'memory:post-0001'
     }), 'utf8').digest('hex');
   const client = {
     async query(sql) {
