@@ -1851,6 +1851,11 @@ app.post(
               ? "\\n\\nRETRIEVAL_COVERAGE_LIMITATION: Only the newest 100 eligible candidates were scanned; older records may not have been included."
               : "")
         });
+      } else if (hfmRecall?.candidateScanMayBeIncomplete === true) {
+        messages.push({
+          role: "system",
+          content: "RETRIEVAL_COVERAGE_LIMITATION: No matching item was found in the newest 100 eligible candidates, but older records may not have been scanned. Do not claim that the information is not stored."
+        });
       }
 
       messages.push({
