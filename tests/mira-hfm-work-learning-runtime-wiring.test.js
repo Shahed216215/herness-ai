@@ -170,31 +170,6 @@ try {
 }
 console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_EVOLUTION_ROUTER=PASS');
 
-const { executeTool } = require('../tools');
-const oldToolStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
-const oldToolWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
-try {
-  process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
-  delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
-  for (const toolName of [
-    'memory_save', 'memory_restore', 'memory_count',
-    'knowledge_search', 'knowledge_count', 'knowledge_save',
-    'knowledge_restore', 'knowledge_backup', 'learning_save'
-  ]) {
-    await assert.rejects(
-      () => executeTool(toolName, {}),
-      error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL'
-    );
-  }
-} finally {
-  if (oldToolStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
-  else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldToolStanding;
-  if (oldToolWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
-  else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldToolWork;
-}
-console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_LEARNING_TOOLS=PASS');
-
-
 
 } finally {
   if (oldStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
@@ -279,6 +254,7 @@ console.log('HFM_GENERIC_KNOWLEDGE_SEARCH_AND_CHAT_USE_STANDING_READ=PASS');
 
 const { createContentHash } = require('../services/mira-hfm-record-schema');
 const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-runtime');
+const { executeTool } = require('../tools');
 const { verifyEvolutionState } = require('../knowledge-memory-evolution');
 const legacyEvolution = read('knowledge-memory-evolution.js');
 assert.match(legacyEvolution, /function readJsonFile\(filePath\) \{\s*assertLegacyStorageDisabled\(\);/);
@@ -347,6 +323,34 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     })
   });
   assert.equal(exact.results[0].id, 'memory-knowledge-001');
+  const oldToolStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  const oldToolWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  try {
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    for (const toolName of [
+      'memory_save', 'memory_restore', 'memory_count',
+      'knowledge_search', 'knowledge_count', 'knowledge_save',
+      'knowledge_restore', 'knowledge_backup', 'learning_save'
+    ]) {
+      await assert.rejects(
+        () => executeTool(toolName, {}),
+        error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL'
+      );
+    }
+    delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED = 'true';
+    await assert.rejects(
+      () => executeTool('knowledge_search', {}),
+      error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL'
+    );
+  } finally {
+    if (oldToolStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldToolStanding;
+    if (oldToolWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldToolWork;
+  }
+  console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_LEARNING_TOOLS=PASS');
   await assert.rejects(() => searchHfmKnowledge({
     req: {}, pool: {}, query: 'Python',
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'false' }
