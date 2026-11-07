@@ -107,6 +107,56 @@ function authorizedResult(overrides = {}) {
   );
   console.log('HFM_WORK_PREFLIGHT_REJECTS_MICROSECOND_FUTURE_SCAN_TIMESTAMP=PASS');
 
+  const boundaryNow = new Date('2026-11-07T01:00:00.000Z');
+  const futureIssuedAt = authorizedResult({
+    hostAuthorizationContext: {
+      ...context,
+      issuedAt: '2026-11-07T01:00:00.000001Z'
+    }
+  });
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      now: boundaryNow,
+      readMemory: async () => futureIssuedAt
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
+
+  const expiredWithinMillisecond = authorizedResult({
+    authorityExpiresAt: '2026-11-07T00:59:59.999999Z',
+    hostAuthorizationContext: {
+      ...context,
+      expiresAt: '2026-11-07T00:59:59.999999Z'
+    }
+  });
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      now: boundaryNow,
+      readMemory: async () => expiredWithinMillisecond
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
+
+  const expiresWithinMillisecond = authorizedResult({
+    authorityExpiresAt: '2026-11-07T01:00:00.000001Z',
+    hostAuthorizationContext: {
+      ...context,
+      expiresAt: '2026-11-07T01:00:00.000001Z'
+    }
+  });
+  const validMicrosecondExpiry = await preflightHfmStandingRead({
+    pool: { connect: async () => ({}) },
+    req: {},
+    now: boundaryNow,
+    readMemory: async () => expiresWithinMillisecond
+  });
+  assert.equal(validMicrosecondExpiry.status, 'AUTHORIZED_AND_COMMITTED');
+  console.log('HFM_WORK_PREFLIGHT_MICROSECOND_ISSUED_AT_AND_EXPIRY_BOUNDARIES=PASS');
+
   console.log('HFM_WORK_PREFLIGHT_REJECTS_EXPIRED_AND_FUTURE_AUTHORITY=PASS');
 
   await assert.rejects(
