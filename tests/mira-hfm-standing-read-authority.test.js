@@ -223,6 +223,10 @@ const pool = { async connect() { return client; } };
   assert.ok(readCalls.some(c =>
     c.sql === "SELECT set_config('mira.standing_read_authority', 'true', true)"
   ), 'standing read activates the transaction-local restrictive Memory RLS policy');
+  const ownerRead = readCalls.find(c => c.sql.includes('FROM mira_hfm.project_owners'));
+  const membershipRead = readCalls.find(c => c.sql.includes('FROM mira_hfm.project_memberships'));
+  assert.match(ownerRead.sql, /FOR SHARE$/);
+  assert.match(membershipRead.sql, /FOR SHARE$/);
   assert.ok(readCalls.some(c => c.sql.includes("set_config('mira.operation', 'memory.read'")));
   assert.ok(readCalls.some(c => c.sql.includes("set_config('mira.resource'") && c.params[0] === 'memory:project:' + projectId));
   assert.ok(readCalls.some(c => c.sql.includes("set_config('mira.request_id'") && typeof c.params[0] === 'string'));
