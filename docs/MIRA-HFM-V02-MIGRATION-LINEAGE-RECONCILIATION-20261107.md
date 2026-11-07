@@ -28,6 +28,9 @@ The branch now preserves the exact previously applied 007–009 migration files 
 | 013 | `013_one_time_initial_project_bootstrap.sql` | One-time initial-project bootstrap latch and role |
 | 014 | `014_standing_read_authority_365_days.sql` | Project-scoped, revocable, 365-day standing read authority |
 | 015 | `015_actor_membership_operation_rls.sql` | RESTRICTIVE actor-bound writer/reader RLS for active owner/member, operation permission, exact resource, and live/consumed authority |
+| 016 | `016_memory_record_revision_authority.sql` | Exact-resource memory revision/update and lifecycle authority with immutable version history | SOURCE-ONLY; not approved for live application |
+| 017 | `017_source_reference_record_v1_2.sql` | Adds source_reference under schema v1.2.0 while retaining v1.0.0/v1.1.0 compatibility | SOURCE-ONLY; not approved for live application |
+| 018 | `018_restricted_vault_write_authority.sql` | Distinct memory.vault.write authority and restricted Client/Financial Vault insert policy | SOURCE-ONLY; not approved for live application |
 
 The 007–009 files are copied byte-for-byte from the previously verified Memory Core branch. The new 011 migration uses the existing issuer role rather than creating a second migration identity. It changes the role to NOINHERIT, removes the old project-only/owner-insert issuer policies, and installs the newer actor-bound policies. The dedicated issuer LOGIN principal remains the only intended member and inherits the group because the LOGIN role itself has INHERIT.
 
@@ -47,7 +50,7 @@ A separate Memory Core branch contains `006_social_post_manual_publish_payload_e
 
 ## Validation boundary
 
-The disposable PostgreSQL 16 workflow applies 001–009 in canonical order, then 010–015. Exact PR-head commit `0c9aeed03938cd1a3a966d5b0151729dc4d7b055` passed workflow `42366089608`, including bootstrap/issuer nonce flow, actor-bound writer and reader membership/operation RLS, standing-read RLS and audit behavior, forced RLS, and exact role-boundary checks. The actor-bound negative writer fixture uses an EXPIRED historical membership to satisfy the authority revision FK while verifying that RLS still rejects the write. The standing-read fixture asserts the exact eligible record IDs and excludes pending Knowledge/Social Draft records. Disposable-CI migration validation for 001–015 is **PASS**; live Neon target compatibility remains **NOT_VERIFIED**. No migration was applied to Neon.
+The disposable PostgreSQL 16 workflow applies 001–009 in canonical order, then 010–015. Exact PR-head commit `0c9aeed03938cd1a3a966d5b0151729dc4d7b055` passed workflow `42366089608`, including bootstrap/issuer nonce flow, actor-bound writer and reader membership/operation RLS, standing-read RLS and audit behavior, forced RLS, and exact role-boundary checks. The actor-bound negative writer fixture uses an EXPIRED historical membership to satisfy the authority revision FK while verifying that RLS still rejects the write. The standing-read fixture asserts the exact eligible record IDs and excludes pending Knowledge/Social Draft records. Disposable-CI migration validation for 001–015 on the recorded historical commit is **PASS**; the later 016–018 additions require fresh exact-head CI evidence. Live Neon target compatibility remains **NOT_VERIFIED**. No migration was applied to Neon.
 
 No Neon migration, production data write, role change, Render environment change, feature-flag enablement, merge, or deployment was performed as part of this source-lineage correction.
 
@@ -56,7 +59,7 @@ HFM remains v0.2. No v0.3 work is authorized.
 
 ## 2026-11-07 follow-up: migrations 016–018 and live Neon inventory
 
-A later source review found three additional migration files that were not represented in the canonical table above:
+A later source review found three additional migration files. They are now listed in the canonical source sequence above, but remain source-only and are not approved for live application:
 
 | ID | File | Scope | Disposition |
 |---|---|---|---|
