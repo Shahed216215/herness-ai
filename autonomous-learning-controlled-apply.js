@@ -1,5 +1,6 @@
 "use strict";
 
+const { assertLegacyStorageDisabled } = require("./services/mira-hfm-legacy-storage-guard");
 const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
@@ -65,6 +66,7 @@ function findMatchingKnowledge(
 }
 
 function readLocalKnowledge() {
+  assertLegacyStorageDisabled();
   if (!fs.existsSync(KNOWLEDGE_FILE)) {
     throw new Error(
       "knowledge.json not found"
@@ -88,6 +90,7 @@ function readLocalKnowledge() {
 }
 
 function writeLocalKnowledge(data) {
+  assertLegacyStorageDisabled();
   const tempFile =
     `${KNOWLEDGE_FILE}.${process.pid}.tmp`;
 
@@ -225,6 +228,7 @@ function createVerifiedSnapshot({
 }
 
 async function applyAutonomousLearningControlled({
+  assertLegacyStorageDisabled();
   changeId,
   actor = "system-admin"
 } = {}) {
