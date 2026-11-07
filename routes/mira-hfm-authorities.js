@@ -67,8 +67,9 @@ async function issueAuthorityForTrustedActor(options = {}) {
     await client.query("SET LOCAL statement_timeout = '5000ms'");
     await client.query("SET LOCAL lock_timeout = '3000ms'");
     await client.query("SELECT set_config('mira.project_id', $1, true)", [request.projectId]);
+    await client.query('SELECT pg_advisory_xact_lock(74291, hashtext($1))', [request.projectId]);
     const ownerResult = await client.query(
-      "SELECT owner_actor_id, status, revision FROM mira_hfm.project_owners WHERE project_id = $1 FOR SHARE",
+      "SELECT owner_actor_id, status, revision FROM mira_hfm.project_owners WHERE project_id = $1",
       [request.projectId]
     );
     const owner = ownerResult.rows && ownerResult.rows[0];
@@ -76,7 +77,7 @@ async function issueAuthorityForTrustedActor(options = {}) {
       throw fail('HFM_PROJECT_OWNER_APPROVAL_REQUIRED');
     }
     const membershipResult = await client.query(
-      "SELECT membership_id, permissions, revision FROM mira_hfm.project_memberships WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp()) FOR SHARE",
+      "SELECT membership_id, permissions, revision FROM mira_hfm.project_memberships WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp())",
       [request.projectId, actor.actorId]
     );
     const membership = membershipResult.rows && membershipResult.rows[0];
