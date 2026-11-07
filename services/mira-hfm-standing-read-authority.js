@@ -95,6 +95,12 @@ async function issueStandingReadAuthority(options = {}) {
     await client.query("SET LOCAL lock_timeout = '3000ms'");
     await client.query("SELECT set_config('mira.project_id', $1, true)", [projectId]);
     await client.query("SELECT set_config('mira.actor_id', $1, true)", [actor.actorId]);
+    // Use the same transaction-scoped lock as reads and lifecycle changes.
+    // This serializes issuance with pause/resume/revoke and an in-flight read.
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+      ["hfm-standing-read:" + projectId + ":" + actor.actorId]
+    );
     const ownerResult = await client.query(
       "SELECT revision, status FROM mira_hfm.project_owners WHERE project_id = $1",
       [projectId]
