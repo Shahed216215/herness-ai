@@ -58,6 +58,30 @@ const task = {
   requirements: ['Validate output']
 };
 const req = { session: { hfmPrincipal: { verified: true } } };
+function makePreflight(records = [makeRecord()], overrides = {}) {
+  return {
+    status: 'AUTHORIZED_AND_COMMITTED',
+    projectId: 'project-alpha',
+    standingAuthority: true,
+    standingAuthorityId: hostAuthorizationContext.authorityRef,
+    authorityExpiresAt: hostAuthorizationContext.expiresAt,
+    authorityConsumed: false,
+    approvalRequiredPerRead: false,
+    memoryWrites: false,
+    localFallback: false,
+    driveFallback: false,
+    count: records.length,
+    records,
+    nextCursor: null,
+    scanStartedAt: '2026-11-07T04:00:00.000Z',
+    hostAuthorizationContext,
+    pageCount: 1,
+    candidateScanCount: records.length,
+    candidateScanLimit: 2000,
+    candidateScanMayBeIncomplete: false,
+    ...overrides
+  };
+}
 
 (async () => {
   let readCalls = 0;
@@ -82,28 +106,10 @@ const req = { session: { hfmPrincipal: { verified: true } } };
       MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
       MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
     },
-    readMemory: async options => {
+    preflight: makePreflight([makeRecord()]),
+    readMemory: async () => {
       readCalls += 1;
-      assert.equal(options.standingReadAuthority, true);
-      assert.deepEqual(options.recordTypes, ['learning_note', 'knowledge_item']);
-      assert.equal(options.lifecycle, 'ACTIVE');
-      assert.equal(options.limit, 100);
-      return {
-        status: 'AUTHORIZED_AND_COMMITTED',
-        projectId: 'project-alpha',
-        standingAuthority: true,
-        authorityConsumed: false,
-        approvalRequiredPerRead: false,
-        memoryWrites: false,
-        localFallback: false,
-        driveFallback: false,
-        scanStartedAt: '2026-11-07T04:00:00.000Z',
-        standingAuthorityId: hostAuthorizationContext.authorityRef,
-        authorityExpiresAt: hostAuthorizationContext.expiresAt,
-        hostAuthorizationContext,
-        records: [makeRecord()],
-        count: 1
-      };
+      throw new Error('Work Learning must not perform a database read after preflight');
     }
   });
   assert.equal(result.status, 'HFM_WORK_LEARNING_RETRIEVED');
@@ -119,40 +125,27 @@ const req = { session: { hfmPrincipal: { verified: true } } };
   console.log('HFM_WORK_LEARNING_STANDING_GRANT_GOVERNED_RETRIEVAL=PASS');
 
   const secondPageRecord = { ...makeRecord(), memoryId: 'memory-learning-002' };
-  const pageCursors = [];
+  let postPreflightReadCalls = 0;
   const paginated = await retrieveHfmWorkLearning({
     req, pool: {}, task, now,
     env: {
       MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
       MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
     },
-    readMemory: async options => {
-      pageCursors.push(options.cursor || null);
-      const first = !options.cursor;
-      return {
-        status: 'AUTHORIZED_AND_COMMITTED',
-        projectId: 'project-alpha',
-        standingAuthority: true,
-        authorityConsumed: false,
-        approvalRequiredPerRead: false,
-        memoryWrites: false,
-        localFallback: false,
-        driveFallback: false,
-        scanStartedAt: '2026-11-07T04:00:00.000Z',
-        standingAuthorityId: hostAuthorizationContext.authorityRef,
-        authorityExpiresAt: hostAuthorizationContext.expiresAt,
-        hostAuthorizationContext: { ...hostAuthorizationContext, requestId: first ? 'hfm-read-page-001' : 'hfm-read-page-002' },
-        records: first ? [makeRecord()] : [secondPageRecord],
-        count: 1,
-        nextCursor: first ? 'work-learning-next-page' : null
-      };
+    preflight: makePreflight([makeRecord(), secondPageRecord], {
+      pageCount: 2,
+      candidateScanCount: 2
+    }),
+    readMemory: async () => {
+      postPreflightReadCalls += 1;
+      throw new Error('cursor continuation must finish before task understanding');
     }
   });
-  assert.deepEqual(pageCursors, [null, 'work-learning-next-page']);
+  assert.equal(postPreflightReadCalls, 0);
   assert.equal(paginated.scannedPages, 2);
   assert.equal(paginated.scannedRecords, 2);
   assert.equal(paginated.count, 2);
-  console.log('HFM_WORK_LEARNING_CROSS_PAGE_AGGREGATION=PASS');
+  console.log('HFM_WORK_LEARNING_USES_COMPLETE_PREAUTHORIZED_CROSS_PAGE_SNAPSHOT=PASS');
 
   await assert.rejects(() => retrieveHfmWorkLearning({
     req, pool: {}, task, now, maxPages: 1,
@@ -160,24 +153,11 @@ const req = { session: { hfmPrincipal: { verified: true } } };
       MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
       MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
     },
-    readMemory: async () => ({
-      status: 'AUTHORIZED_AND_COMMITTED',
-      projectId: 'project-alpha',
-      standingAuthority: true,
-      authorityConsumed: false,
-      approvalRequiredPerRead: false,
-      memoryWrites: false,
-      localFallback: false,
-      driveFallback: false,
-      scanStartedAt: '2026-11-07T04:00:00.000Z',
-      standingAuthorityId: hostAuthorizationContext.authorityRef,
-      authorityExpiresAt: hostAuthorizationContext.expiresAt,
-      hostAuthorizationContext,
-      records: [makeRecord()],
-      count: 1,
-      nextCursor: 'unscanned-learning-page'
+    preflight: makePreflight([makeRecord()], {
+      nextCursor: 'unscanned-learning-page',
+      candidateScanMayBeIncomplete: true
     })
-  }), /HFM_WORK_LEARNING_SCAN_INCOMPLETE/);
+  }), /HFM_WORK_LEARNING_PREFLIGHT_SNAPSHOT_REQUIRED/);
   console.log('HFM_WORK_LEARNING_INCOMPLETE_GLOBAL_SCAN_FAILS_CLOSED=PASS');
 
   await assert.rejects(() => retrieveHfmWorkLearning({
@@ -186,23 +166,8 @@ const req = { session: { hfmPrincipal: { verified: true } } };
       MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
       MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
     },
-    readMemory: async () => ({
-      status: 'AUTHORIZED_AND_COMMITTED',
-      projectId: 'project-alpha',
-      standingAuthority: true,
-      authorityConsumed: false,
-      approvalRequiredPerRead: false,
-      memoryWrites: false,
-      localFallback: false,
-      driveFallback: false,
-      scanStartedAt: '2026-11-07T04:00:00.000Z',
-      standingAuthorityId: hostAuthorizationContext.authorityRef,
-      authorityExpiresAt: hostAuthorizationContext.expiresAt,
-      hostAuthorizationContext,
-      records: [makeRecord('project-beta')],
-      count: 1
-    })
-  }), /HFM_STANDING_READ_PAGE_RECORD_SCOPE_INVALID/);
+    preflight: makePreflight([makeRecord('project-beta')])
+  }), /HFM_WORK_LEARNING_RECORD_SCOPE_INVALID/);
   console.log('HFM_WORK_LEARNING_CROSS_PROJECT_RECORD_REJECTED=PASS');
 
   await assert.rejects(() => retrieveHfmWorkLearning({
@@ -211,14 +176,8 @@ const req = { session: { hfmPrincipal: { verified: true } } };
       MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
       MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
     },
-    readMemory: async () => ({
-      status: 'AUTHORIZED_AND_COMMITTED', standingAuthority: true,
-      authorityConsumed: false, approvalRequiredPerRead: false,
-      memoryWrites: false, localFallback: false, driveFallback: false,
-      scanStartedAt: '2026-11-07T04:00:00.000Z',
-      records: [makeRecord()], count: 1
-    })
-  }), /HFM_STANDING_READ_PAGE_AUTHORIZATION_REQUIRED/);
+    preflight: makePreflight([makeRecord()], { hostAuthorizationContext: null })
+  }), /HFM_WORK_LEARNING_PREFLIGHT_SNAPSHOT_REQUIRED/);
   console.log('HFM_WORK_LEARNING_MISSING_HOST_AUTHORIZATION_FAILS_CLOSED=PASS');
   console.log('NETWORK_REQUESTS=0');
   console.log('MEMORY_WRITES=0');
