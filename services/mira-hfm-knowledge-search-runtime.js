@@ -124,7 +124,6 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, cursor, env = p
     candidateScanLimit: 100,
     nextCursor: memory.nextCursor || null,
     candidateScanMayBeIncomplete,
-    nextCursor: memory.nextCursor || null,
     standingAuthority: true,
     authorityExpiresAt: memory.authorityExpiresAt,
     approvalRequiredPerRead: false,
