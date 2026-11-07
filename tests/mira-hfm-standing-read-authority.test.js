@@ -132,7 +132,7 @@ const pool = { async connect() { return client; } };
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'PAUSED'
   });
   assert.equal(paused.authorityStatus, 'PAUSED');
-  assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.includes('STANDING_READ_AUTHORITY_PAUSED')));
+  assert.ok(calls.some(c => Array.isArray(c.params) && c.params.includes('STANDING_READ_AUTHORITY_PAUSED')));
   const resumed = await setStandingReadAuthorityStatus({
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'ACTIVE'
   });
@@ -141,7 +141,7 @@ const pool = { async connect() { return client; } };
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'REVOKED'
   });
   assert.equal(revoked.authorityStatus, 'REVOKED');
-  assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.includes('STANDING_READ_AUTHORITY_REVOKED')));
+  assert.ok(calls.some(c => Array.isArray(c.params) && c.params.includes('STANDING_READ_AUTHORITY_REVOKED')));
   console.log('HFM_STANDING_READ_PAUSE_RESUME_REVOKE_AUDITED=PASS');
 
   standingRow.status = 'ACTIVE';
