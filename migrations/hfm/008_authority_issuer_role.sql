@@ -127,9 +127,12 @@ CREATE POLICY hfm_authority_issuer_authority_insert
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND issued_by_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND status = 'ISSUED'
     AND (
       (operation = 'memory.read' AND resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), ''))
-      OR (operation IN ('memory.write','memory.trash','memory.restore') AND resource ~ '^memory:[A-Za-z0-9][A-Za-z0-9._:-]{2,127}
+      OR (operation IN ('memory.write','memory.trash','memory.restore')
+          AND resource ~ '^memory:[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$')
+    )
     AND valid_from <= clock_timestamp()
     AND expires_at > clock_timestamp()
     AND expires_at <= clock_timestamp() + interval '5 minutes'
@@ -146,27 +149,5 @@ CREATE POLICY hfm_authority_issuer_audit_insert
 
 COMMENT ON ROLE mira_hfm_authority_issuer IS
   'NOLOGIN HFM v0.2 issuer: issues only short-lived, single-use allowlisted Memory authorities and append-only audit events.';
-
-COMMIT;
-)
-    )
-    AND status = 'ISSUED'
-    AND operation IN ('memory.read','memory.write','memory.trash','memory.restore')
-    AND valid_from <= clock_timestamp()
-    AND expires_at > clock_timestamp()
-    AND expires_at <= clock_timestamp() + interval '5 minutes'
-  );
-
-CREATE POLICY hfm_authority_issuer_audit_insert
-  ON mira_hfm.authority_audit_events
-  FOR INSERT TO mira_hfm_authority_issuer
-  WITH CHECK (
-    project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND event_type IN ('AUTHORITY_ISSUED','APPROVAL_TOKEN_ISSUED','APPROVAL_TOKEN_CONSUMED')
-  );
-
-COMMENT ON ROLE mira_hfm_authority_issuer IS
-  'NOLOGIN HFM v0.2 issuer: creates only short-lived single-use memory.read authorities and append-only issuance audit events.';
 
 COMMIT;
