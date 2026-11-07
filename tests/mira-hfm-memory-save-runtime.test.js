@@ -96,6 +96,34 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSourceReferenceSaveIntent('Do not save this source reference.'), false);
   assert.equal(hasExplicitSourceReferenceSaveIntent('সোর্স লিংকটি সংরক্ষণ করো না।'), false);
   assert.equal(hasExplicitSourceReferenceSaveIntent('Remember this URL.'), false);
+
+  assert.equal(hasExplicitVaultSaveIntent(
+    'client_vault_save',
+    'Save this client record to the client vault: client name Example Client, email contact@example.com.'
+  ), true);
+  assert.equal(hasExplicitVaultSaveIntent(
+    'client_vault_save',
+    'এই ক্লায়েন্টের তথ্য ক্লায়েন্ট ভল্টে সংরক্ষণ করো: Example Client'
+  ), true);
+  assert.equal(hasExplicitVaultSaveIntent(
+    'financial_vault_save',
+    'Save this financial transaction to the financial vault: TXN-1042, 1200 BDT.'
+  ), true);
+  assert.equal(hasExplicitVaultSaveIntent(
+    'financial_vault_save',
+    'এই আর্থিক লেনদেনটি ভল্টে সংরক্ষণ করো: TXN-1042'
+  ), true);
+  assert.equal(hasExplicitVaultSaveIntent(
+    'client_vault_save',
+    'Do not save this client record to the client vault.'
+  ), false);
+  assert.equal(hasExplicitVaultSaveIntent(
+    'financial_vault_save',
+    'এই আর্থিক লেনদেনটি ভল্টে সংরক্ষণ করো না।'
+  ), false);
+  assert.equal(hasExplicitVaultSaveIntent('client_vault_save', 'Remember this client.'), false);
+  assert.equal(hasExplicitVaultSaveIntent('financial_vault_save', 'Remember this payment.'), false);
+  assert.equal(hasExplicitVaultSaveIntent('client_vault_save', 'Save this financial transaction.'), false);
   assert.equal(hasExplicitVaultSaveIntent('client_vault_save', 'Save this client record to the client vault.'), true);
   assert.equal(hasExplicitVaultSaveIntent('financial_vault_save', 'Save this financial transaction to the vault.'), true);
   assert.equal(hasExplicitVaultSaveIntent('client_vault_save', 'Do not save this client record.'), false);
