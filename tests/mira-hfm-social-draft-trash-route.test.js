@@ -37,7 +37,7 @@ const fakeExecute = async options => {
 const fakeTrash = async options => {
   trashed += 1;
   assert.equal(options.expectedRecordType, 'social_post_draft');
-  assert.equal(options.allowPrivateLifecycle, false);
+  assert.equal(options.allowPrivateLifecycle, true);
   assert.equal(options.allowRestrictedLifecycle, false);
   assert.equal(options.memoryId, 'social-draft-001');
   assert.equal(options.idempotencyKey, 'hfm-trash-idem-0001');
