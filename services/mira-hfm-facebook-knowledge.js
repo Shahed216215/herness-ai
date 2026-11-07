@@ -45,7 +45,7 @@ function redactSensitiveText(input) {
 function tokenize(value) {
   return String(value || '').toLocaleLowerCase('und')
     .normalize('NFKC')
-    .match(/[\p{L}\p{N}]{2,}/gu) || [];
+    .match(/[\p{L}\p{M}\p{N}]{2,}/gu) || [];
 }
 
 function buildKnowledgeRecord(options = {}) {
@@ -220,5 +220,6 @@ module.exports = Object.freeze({
   buildKnowledgeRecord,
   ingestFacebookKnowledge,
   searchFacebookKnowledge,
+  researchFacebookSource,
   tokenize
 });
