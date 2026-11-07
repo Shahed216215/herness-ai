@@ -32,6 +32,12 @@ function validTime(value, label) {
   return value;
 }
 
+function compareWithNow(value, now) {
+  if (now instanceof Date) return compareTimestampToNow(value, now.getTime());
+  if (typeof now === 'string') return compareTimestamps(value, now);
+  return null;
+}
+
 function validateRequestContext(projectId, context, now) {
   if (!context || typeof context !== 'object' || Array.isArray(context)) {
     fail('Trusted host request context is required.');
@@ -44,12 +50,11 @@ function validateRequestContext(projectId, context, now) {
   const authorityRef = requiredText(context.authorityRef, 'requestContext.authorityRef');
   const issuedAt = validTime(context.issuedAt, 'requestContext.issuedAt');
   const expiresAt = validTime(context.expiresAt, 'requestContext.expiresAt');
-  const current = now instanceof Date ? now.getTime() : Date.parse(now);
-  const issuedComparison = compareTimestampToNow(issuedAt, current);
-  const expiryComparison = compareTimestampToNow(expiresAt, current);
+  const issuedComparison = compareWithNow(issuedAt, now);
+  const expiryComparison = compareWithNow(expiresAt, now);
   const lifetimeComparison = compareTimestamps(expiresAt, issuedAt);
-  if (!Number.isFinite(current) || actorType !== 'HUMAN' ||
-      contextProjectId !== projectId) {
+  if (issuedComparison === null || expiryComparison === null ||
+      actorType !== 'HUMAN' || contextProjectId !== projectId) {
     fail('Request context project scope or actor type is invalid.', 'HFM_MEMORY_PROJECT_SCOPE_MISMATCH');
   }
   if (issuedComparison === null || expiryComparison === null ||
@@ -74,13 +79,12 @@ function verifyAuthorization(decision, expected, operation, resourceScope, now) 
       decision.operation !== operation ||
       decision.resourceScope !== resourceScope ||
       decision.authorityRef !== expected.authorityRef) return false;
-  const current = now instanceof Date ? now.getTime() : Date.parse(now);
-  const issuedComparison = compareTimestampToNow(decision.issuedAt, current);
-  const expiryComparison = compareTimestampToNow(decision.expiresAt, current);
+  const issuedComparison = compareWithNow(decision.issuedAt, now);
+  const expiryComparison = compareWithNow(decision.expiresAt, now);
   const decisionLifetime = compareTimestamps(decision.expiresAt, decision.issuedAt);
   const issuedWithinHost = compareTimestamps(decision.issuedAt, expected.issuedAt);
   const expiryWithinHost = compareTimestamps(decision.expiresAt, expected.expiresAt);
-  return Number.isFinite(current) && issuedComparison !== null && expiryComparison !== null &&
+  return issuedComparison !== null && expiryComparison !== null &&
     decisionLifetime !== null && issuedWithinHost !== null && expiryWithinHost !== null &&
     issuedComparison <= 0 && expiryComparison > 0 && decisionLifetime > 0 &&
     issuedWithinHost >= 0 && expiryWithinHost <= 0;
