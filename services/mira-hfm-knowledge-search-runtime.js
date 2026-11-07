@@ -60,6 +60,9 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
       !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
     fail('HFM_KNOWLEDGE_AUTHORIZED_MEMORY_READ_REQUIRED');
   }
+  if (!Number.isInteger(memory.count) || memory.count < 0 || memory.count > 100) {
+    fail('HFM_KNOWLEDGE_SCAN_COUNT_INVALID');
+  }
   const hostContext = memory.hostAuthorizationContext;
   if (hostContext.projectId !== memory.projectId ||
       typeof hostContext.actorId !== 'string' || !hostContext.actorId.startsWith('mira:')) {
