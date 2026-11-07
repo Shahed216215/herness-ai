@@ -164,7 +164,7 @@ SELECT
          AND with_check LIKE '%APPROVAL_TOKEN_CONSUMED%'
        WHEN 'hfm_authority_issuer_approval_nonce_select' THEN
          cmd = 'SELECT' AND qual LIKE '%project_id%' AND qual LIKE '%actor_id%'
-         AND qual LIKE '%approver_actor_id%' AND qual LIKE '%consumed_at%' AND qual LIKE '%expires_at%'
+         AND qual LIKE '%approver_actor_id%' AND qual NOT LIKE '%consumed_at%' AND qual LIKE '%expires_at%'
          AND with_check IS NULL
        WHEN 'hfm_authority_issuer_approval_nonce_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%project_id%' AND with_check LIKE '%actor_id%'
