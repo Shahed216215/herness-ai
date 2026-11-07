@@ -20,7 +20,7 @@ module.exports = {
     }
   },
 
-  execute: async ({
+  execute: async ({ content }) => {
     if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
         process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
         process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
@@ -32,7 +32,6 @@ module.exports = {
         driveFallback: false
       });
     }
- content }) => {
     if (
       !content ||
       typeof content !== "string" ||
