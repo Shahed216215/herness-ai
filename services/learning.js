@@ -15,7 +15,9 @@ const MAX_SOURCE_CONTENT = 30000;
 // authorized HFM learning-write workflow exists.
 function assertLegacyLearningStorageAllowed(env = process.env) {
   if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-      env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+      env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+      env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+      env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
     const error = new Error("HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE");
     error.code = "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE";
     throw error;
