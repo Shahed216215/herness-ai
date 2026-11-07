@@ -833,11 +833,25 @@ app.get(
       permissions,
       authentication
     ) => {
-      const memory =
-        buildMemoryStats();
+      const hfmReadOnlyMode =
+        process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+      const memory = hfmReadOnlyMode
+        ? { total: null, maximum: getMemoryLimit(), source: "HFM_READ_ONLY_LOCAL_MEMORY_DISABLED" }
+        : buildMemoryStats();
 
-      const knowledge =
-        getKnowledgeStats();
+      const knowledge = hfmReadOnlyMode
+        ? {
+            total: null,
+            maximum: getCapacity("knowledge"),
+            freeSlots: null,
+            todayLearned: null,
+            learningTotal: null,
+            todaySummary: [],
+            latest: [],
+            source: "HFM_STANDING_READ_ONLY"
+          }
+        : getKnowledgeStats();
 
       const firewall =
         firewallDefense.getStatus();
@@ -1713,7 +1727,10 @@ app.post(
       }
 
       const previousMemory =
-        getMemory();
+        process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true"
+          ? []
+          : getMemory();
 
       const messages =
         selectRecentMessages(previousMemory);
