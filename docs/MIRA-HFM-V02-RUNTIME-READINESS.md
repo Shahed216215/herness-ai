@@ -22,7 +22,7 @@ Values must be supplied only after the target database and role credentials are 
 | Purpose | Environment variables |
 |---|---|
 | Project-selection reader | `MIRA_HFM_PROJECT_READ_ENABLED`, `MIRA_HFM_PROJECT_READ_DATABASE_URL`, `MIRA_HFM_PROJECT_READ_ROLE` |
-| Memory retrieval reader | `MIRA_HFM_MEMORY_READ_ENABLED`, `MIRA_HFM_MEMORY_READ_DATABASE_URL`, `MIRA_HFM_MEMORY_READ_ROLE` |
+| Memory retrieval reader | `MIRA_HFM_MEMORY_READ_ENABLED`, `MIRA_HFM_MEMORY_READ_DATABASE_URL`, `MIRA_HFM_MEMORY_READ_ROLE` |\n| One-time authority issuer | `MIRA_HFM_AUTHORITY_ISSUER_ENABLED`, `MIRA_HFM_AUTHORITY_ISSUER_DATABASE_URL`, `MIRA_HFM_AUTHORITY_ISSUER_ROLE` |
 | Memory writer (separate existing path) | `MIRA_HFM_MEMORY_WRITE_ENABLED`, `MIRA_HFM_MEMORY_DATABASE_URL`, `MIRA_HFM_MEMORY_WRITER_ROLE` |
 | Stable admin principal | `MIRA_ADMIN_SUBJECT_ID` |
 
@@ -36,13 +36,13 @@ No values are recorded here. Feature flags must remain disabled until database r
 4. A dedicated LOGIN role must be separately provisioned for each runtime role. It must not inherit unrelated roles, own database objects, or have elevated privileges.
 5. The application must connect using the corresponding dedicated credential. The runtime preflight must verify the exact database and role before enabling a feature flag.
 
-Migration 007 is a source-only draft. Do not execute it until the database target is unambiguously mapped, a backup/recovery point is confirmed, and explicit approval is obtained.
+Migrations 007 and 008 are source-only drafts. Do not execute it until the database target is unambiguously mapped, a backup/recovery point is confirmed, and explicit approval is obtained.
 
 ## Outstanding blockers
 
 - The inspected staging database has no project owner, active membership, or Memory records. Project selection therefore correctly fails closed.
-- The admin HFM subject depends on `MIRA_ADMIN_SUBJECT_ID`; it must match the stable subject derived from successful admin authentication.
-- No approved owner/membership bootstrap or complete one-time authority issuance workflow is implemented.
+- The admin HFM subject depends on `MIRA_ADMIN_SUBJECT_ID`; it must match the stable subject derived from successful admin authentication. The authority issuer also requires a separate login credential inheriting only the issuer group role and a trusted one-time approval-token verifier.
+- No approved owner/membership bootstrap workflow or production approval-token verifier is provisioned. The code-only authority issuer and disabled-by-default issuer runtime are now implemented; it requires a trusted verifier that atomically consumes a signed single-use human approval token and returns a receipt bound to the current admin, project, operation, resource, purpose, and expiry.
 - The Render service's Neon target cannot be conclusively mapped while duplicate Neon projects exist. Do not guess which project is production.
 - The legacy Memory and Knowledge callsites remain in service. The inventory reports them as REVIEW_REQUIRED; they must be migrated in bounded groups with explicit behavior tests before HFM becomes the source of truth.
 - A successful synthetic test does not prove a live Neon policy, credential, or Render environment is correct.
