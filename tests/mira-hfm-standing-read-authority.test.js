@@ -219,7 +219,11 @@ const pool = { async connect() { return client; } };
   assert.equal(readResult.hostAuthorizationContext.projectId, projectId);
   assert.equal(readResult.hostAuthorizationContext.authorityRef, standingRow.standing_authority_id);
   assert.ok(readCalls.some(c => c.sql.includes('STANDING_READ_AUTHORITY_USED')));
+  assert.ok(readCalls.some(c =>
+    c.sql === "SELECT set_config('mira.standing_read_authority', 'true', true)"
+  ), 'standing read activates the transaction-local restrictive Memory RLS policy');
   assert.ok(readCalls.some(c => c.sql === 'COMMIT'));
+  console.log('HFM_STANDING_READ_TRANSACTION_ACTIVATES_RESTRICTIVE_MEMORY_RLS=PASS');
   console.log('HFM_STANDING_READ_EACH_READ_AUDITED_WITHOUT_REAPPROVAL=PASS');
   assert.ok(readCalls.some(c => c.sql.includes("pg_advisory_xact_lock")), "standing read uses transaction-scoped lifecycle lock without table UPDATE permission");
   assert.ok(calls.filter(c => typeof c.sql === "string" && c.sql.includes("pg_advisory_xact_lock")).length >= 3, "pause/resume/revoke serialize on the same authority lock");
@@ -327,6 +331,11 @@ const pool = { async connect() { return client; } };
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migration, /FORCE ROW LEVEL SECURITY/);
   assert.match(migration, /hfm_standing_reader_select/);
+  assert.match(migration, /hfm_standing_reader_memory_scope/);
+  assert.match(migration, /AS RESTRICTIVE/);
+  assert.match(migration, /record_type IN \('learning_note', 'knowledge_item'\)/);
+  assert.match(migration, /integrity_status = 'VERIFIED'/);
+  assert.match(migration, /trust_status IN \('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\)/);
   assert.match(migration, /hfm_standing_issuer_update/);
   assert.match(migration, /HFM_STANDING_READ_AUTHORITY_SCOPE_IMMUTABLE/);
   assert.match(migration, /HFM_STANDING_READ_AUTHORITY_TRANSITION_INVALID/);
