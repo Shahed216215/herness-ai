@@ -24,6 +24,9 @@ test('version history remains metadata-only and cannot be deleted or generally u
   assert.match(sql, /memory_record_versions/);
   assert.match(sql, /HFM_MEMORY_HISTORY_IS_APPEND_ONLY/);
   assert.match(sql, /mira\.memory_payload_erasure_operation_id/);
+  assert.match(sql, /op\.operation = 'memory\.social_post\.delete_payload'/);
+  assert.match(sql, /op\.status = 'REQUESTED'/);
+  assert.match(sql, /NEW\.payload_erased_by_actor_id = OLD\.owner_actor_id/);
   assert.match(sql, /to_jsonb\(NEW\).*to_jsonb\(OLD\)/s);
   assert.match(sql, /GRANT UPDATE ON TABLE mira_hfm\.memory_record_versions TO mira_hfm_memory_writer/);
 });

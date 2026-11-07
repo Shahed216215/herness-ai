@@ -134,7 +134,17 @@ BEGIN
      AND NEW.public_payload IS NULL
      AND NEW.encrypted_envelope IS NULL
      AND NEW.payload_erased_at IS NOT NULL
-     AND NEW.payload_erased_by_actor_id LIKE 'mira:%'
+     AND NEW.payload_erased_by_actor_id = OLD.owner_actor_id
+     AND OLD.project_id = NULLIF(current_setting('mira.project_id', true), '')
+     AND EXISTS (
+       SELECT 1 FROM mira_hfm.memory_operation_registry op
+       WHERE op.operation_id = operation_id
+         AND op.project_id = OLD.project_id
+         AND op.actor_id = OLD.owner_actor_id
+         AND op.operation = 'memory.social_post.delete_payload'
+         AND op.resource = 'memory:' || OLD.memory_id
+         AND op.status = 'REQUESTED'
+     )
      AND (to_jsonb(NEW) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id'])
          = (to_jsonb(OLD) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id']) THEN
     RETURN NEW;
@@ -158,7 +168,17 @@ BEGIN
      AND NEW.public_payload IS NULL
      AND NEW.encrypted_envelope IS NULL
      AND NEW.payload_erased_at IS NOT NULL
-     AND NEW.payload_erased_by_actor_id LIKE 'mira:%'
+     AND NEW.payload_erased_by_actor_id = OLD.owner_actor_id
+     AND OLD.project_id = NULLIF(current_setting('mira.project_id', true), '')
+     AND EXISTS (
+       SELECT 1 FROM mira_hfm.memory_operation_registry op
+       WHERE op.operation_id = operation_id
+         AND op.project_id = OLD.project_id
+         AND op.actor_id = OLD.owner_actor_id
+         AND op.operation = 'memory.social_post.delete_payload'
+         AND op.resource = 'memory:' || OLD.memory_id
+         AND op.status = 'REQUESTED'
+     )
      AND (to_jsonb(NEW) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id'])
          = (to_jsonb(OLD) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id']) THEN
     RETURN NEW;
