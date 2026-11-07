@@ -72,6 +72,68 @@ function authorizedResult(overrides = {}) {
   assert.equal(learningLimit, 100);
   console.log('HFM_WORK_PREFLIGHT_USES_BOUNDED_LEARNING_PAGE=PASS');
 
+  const secondRecord = { ...record, memoryId: 'memory-learning-page-002' };
+  const pageCursors = [];
+  const completePreflight = await preflightHfmStandingRead({
+    pool: { connect: async () => ({}) },
+    req: {},
+    includeLearning: true,
+    now: new Date('2026-11-07T01:00:00.000Z'),
+    readMemory: async options => {
+      pageCursors.push(options.cursor || null);
+      if (!options.cursor) {
+        return authorizedResult({ nextCursor: 'work-learning-page-002' });
+      }
+      return authorizedResult({
+        records: [secondRecord],
+        count: 1,
+        nextCursor: null,
+        hostAuthorizationContext: { ...context, requestId: 'work-learning-page-request-002' }
+      });
+    }
+  });
+  assert.deepEqual(pageCursors, [null, 'work-learning-page-002']);
+  assert.equal(completePreflight.count, 2);
+  assert.equal(completePreflight.records.length, 2);
+  assert.equal(completePreflight.pageCount, 2);
+  assert.equal(completePreflight.candidateScanCount, 2);
+  assert.equal(completePreflight.nextCursor, null);
+  assert.equal(completePreflight.candidateScanMayBeIncomplete, false);
+  console.log('HFM_WORK_PREFLIGHT_AUTHORIZES_ALL_CURSOR_PAGES_BEFORE_RETURN=PASS');
+
+  let failedContinuationCalls = 0;
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      includeLearning: true,
+      now: new Date('2026-11-07T01:00:00.000Z'),
+      readMemory: async options => {
+        failedContinuationCalls += 1;
+        if (!options.cursor) return authorizedResult({ nextCursor: 'work-learning-page-002' });
+        const error = new Error('second page authorization denied');
+        error.code = 'HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED';
+        throw error;
+      }
+    }),
+    error => error.code === 'HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED'
+  );
+  assert.equal(failedContinuationCalls, 2);
+  console.log('HFM_WORK_PREFLIGHT_SECOND_PAGE_DENIAL_FAILS_BEFORE_RETURN=PASS');
+
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      includeLearning: true,
+      maxPages: 1,
+      now: new Date('2026-11-07T01:00:00.000Z'),
+      readMemory: async () => authorizedResult({ nextCursor: 'unscanned-work-learning-page' })
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_SCAN_INCOMPLETE'
+  );
+  console.log('HFM_WORK_PREFLIGHT_INCOMPLETE_GLOBAL_SCAN_FAILS_CLOSED=PASS');
+
   const invalidResults = [
     authorizedResult({ hostAuthorizationContext: { ...context, requestId: '' } }),
     authorizedResult({ hostAuthorizationContext: { ...context, actorType: 'SERVICE' } }),
