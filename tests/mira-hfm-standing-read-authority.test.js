@@ -335,6 +335,21 @@ const pool = { async connect() { return client; } };
     'failed primary audit triggers a separate denial/failure audit attempt');
   console.log('HFM_STANDING_READ_AUDIT_FAILURE_ROLLS_BACK_AND_BLOCKS_READ=PASS');
 
+  standingRow.status = 'ACTIVE';
+  const failedReadStart = readCalls.length;
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return readClient; } },
+    verifiedPrincipal: req.session.hfmPrincipal,
+    projectId,
+    perform: async () => { throw new Error('synthetic protected retrieval failure'); }
+  }), error => error.message === 'synthetic protected retrieval failure' &&
+    error.auditStatus === 'RECORDED');
+  assert.ok(readCalls.slice(failedReadStart).some(c =>
+    c.sql.startsWith('INSERT INTO mira_hfm.authority_audit_events') &&
+    c.params?.[3] === 'STANDING_READ_AUTHORITY_FAILED'
+  ), 'failed protected retrieval is audited independently after rollback');
+  console.log('HFM_STANDING_READ_FAILED_RETRIEVAL_IS_AUDITED=PASS');
+
   const migration = fs.readFileSync(
     path.join(__dirname, '..', 'migrations/hfm/014_standing_read_authority_365_days.sql'), 'utf8'
   );
