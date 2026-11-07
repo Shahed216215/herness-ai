@@ -22,7 +22,7 @@ BEGIN
   -- The previously applied baseline created this NOLOGIN capability role with
   -- PostgreSQL's default INHERIT attribute. Harden the group role in-place;
   -- the dedicated LOGIN principal remains the sole inherited member.
-  ALTER ROLE mira_hfm_authority_issuer NOINHERIT;
+  EXECUTE 'ALTER ROLE mira_hfm_authority_issuer NOINHERIT';
 
   IF EXISTS (
     SELECT 1 FROM pg_roles
