@@ -68,7 +68,9 @@ function registerAutonomousLearningRoutes(
   // handlers can read or mutate proposal/Knowledge state.
   router.use((req, res, next) => {
     if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
       return res.status(403).json({
         success: false,
         blocked: true,
