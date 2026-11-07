@@ -31,8 +31,8 @@ function hasExplicitSaveIntent(value) {
   );
   if (negative) return false;
   const english = /\bremember\s+(?:this|that|it)\b/i.test(value) ||
-    /\b(?:save|store|keep|add)\b.{0,80}\b(?:to|in)\s+(?:your|my|mira(?:'s)?\s+)?memory\b/i.test(value) ||
-    /\b(?:save|store)\s+(?:this|that|it)\s+(?:as|to|in)\s+(?:your|my|mira(?:'s)?\s+)?memory\b/i.test(value);
+    /\b(?:save|store|keep|add)\b.{0,80}\b(?:to|in)\s+(?:(?:your|my)\s+|mira(?:'s)?\s+)?memory\b/i.test(value) ||
+    /\b(?:save|store)\s+(?:this|that|it)\s+(?:as|to|in)\s+(?:(?:your|my)\s+|mira(?:'s)?\s+)?memory\b/i.test(value);
   const bengali = /(?:মনে\s*রাখ(?:ো|বে|বেন|তে)?|মনে\s*রেখ(?:ো|ো)|সংরক্ষণ\s*কর(?:ো|বেন|ে)?|সেভ\s*কর(?:ো|বেন|ে)?|মেমোরি(?:তে)?\s*(?:রাখ|সংরক্ষণ\s*কর)|নোট\s*করে\s*রাখ)/u.test(value);
   return english || bengali;
 }
