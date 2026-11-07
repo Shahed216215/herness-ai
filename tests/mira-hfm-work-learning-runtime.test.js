@@ -113,6 +113,7 @@ function makePreflight(records = [makeRecord()], overrides = {}) {
     }
   });
   assert.equal(result.status, 'HFM_WORK_LEARNING_RETRIEVED');
+  assert.equal(readCalls, 0, 'ranking must not perform a second HFM read after preflight');
   assert.equal(result.count, 1);
   assert.equal(result.transfers[0].sourceTaskId, 'task-previous');
   assert.equal(result.transfers[0].projectId, 'project-alpha');
