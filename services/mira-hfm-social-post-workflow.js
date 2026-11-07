@@ -33,13 +33,13 @@ function validateWorkflowContext(context, operation, memoryId) {
   return context;
 }
 
-function assertSocialPostRecord(row, context) {
+function assertSocialPostRecord(row, context, options = {}) {
   if (!row) throw fail('HFM_SOCIAL_POST_NOT_FOUND');
   if (row.project_id !== context.projectId) throw fail('HFM_SOCIAL_POST_PROJECT_SCOPE_MISMATCH');
   if (row.owner_actor_id !== context.actorId) throw fail('HFM_SOCIAL_POST_OWNER_MISMATCH');
   if (row.record_type !== 'social_post_draft') throw fail('HFM_SOCIAL_POST_TYPE_INVALID');
   if (row.classification !== 'PROJECT_PRIVATE') throw fail('HFM_SOCIAL_POST_CLASSIFICATION_INVALID');
-  if (row.payload_erased_at) throw fail('HFM_SOCIAL_POST_PAYLOAD_ALREADY_ERASED');
+  if (row.payload_erased_at && options.allowErased !== true) throw fail('HFM_SOCIAL_POST_PAYLOAD_ALREADY_ERASED');
   return row;
 }
 
@@ -266,9 +266,16 @@ async function deleteSocialPostPayload(options = {}) {
   validateWorkflowContext(context, OPERATIONS.DELETE, memoryId);
   if (options.userConfirmedDelete !== true) throw fail('HFM_SOCIAL_POST_DELETE_CONFIRMATION_REQUIRED');
   const row = await loadRecord(client, context, memoryId);
-  assertSocialPostRecord(row, context);
+  assertSocialPostRecord(row, context, { allowErased: true });
   const operation = await beginOperation(client, context, memoryId, OPERATIONS.DELETE, options.idempotencyKey);
-  if (operation.duplicate) return { status: 'DELETED', duplicate: true, memoryId };
+  if (operation.duplicate) {
+    const state = await getStateRow(client, context.projectId, memoryId);
+    if (row.payload_erased_at && state && state.status === 'DELETED' && state.payload_erased_at) {
+      return { status: 'DELETED', duplicate: true, memoryId };
+    }
+    return { status: 'DELETE_STATUS_UNKNOWN', duplicate: true, memoryId };
+  }
+  if (row.payload_erased_at) throw fail('HFM_SOCIAL_POST_PAYLOAD_ALREADY_ERASED');
   const current = await getStateRow(client, context.projectId, memoryId);
   const pendingStatus = nextSocialPostStatus(current && current.status, 'DELETE');
   await updateStatus(client, context, memoryId, pendingStatus);
