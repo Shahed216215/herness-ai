@@ -55,6 +55,15 @@ assert.match(memoryRuntime, /env\[ENABLED_ENV\] !== 'true'/);
 assert.match(bootstrapRuntime, /env\[ENABLED_ENV\] !== 'true'/);
 assert.match(writerRuntime, /env\[ENABLED_ENV\] !== 'true'/);
 assert.match(server, /registerMiraHfmProjectSelectionRoute/);
+const knowledgeDetailStart = server.indexOf('"/api/admin/knowledge/:id"');
+const knowledgeEditStart = server.indexOf('"/api/admin/knowledge/:id/edit"');
+assert.ok(knowledgeDetailStart >= 0 && knowledgeEditStart > knowledgeDetailStart);
+const knowledgeDetailRoute = server.slice(knowledgeDetailStart, knowledgeEditStart);
+assert.match(server, /getHfmKnowledgeById/);
+assert.match(knowledgeDetailRoute, /getHfmKnowledgeById\(\{/);
+assert.match(knowledgeDetailRoute, /memoryId:\s*id/);
+assert.match(knowledgeDetailRoute, /entry = result\.entry/);
+assert.doesNotMatch(knowledgeDetailRoute, /searchHfmKnowledge/);
 
 console.log('HFM_RUNTIME_AUTHORITY_AND_MEMORY_ROUTES_WIRED=PASS');
 console.log('HFM_RUNTIME_ROUTES_REQUIRE_SYSTEM_ADMIN=PASS');
