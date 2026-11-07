@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { issueMemoryReadAuthority, issueMemoryOperationAuthority } = require('../services/mira-hfm-authority-issuer');
+const { issueMemoryReadAuthority, issueMemoryOperationAuthority, ALLOWED_MEMORY_OPERATIONS } = require('../services/mira-hfm-authority-issuer');
 const {
   REQUIRED_TRUE, REQUIRED_FALSE, PREFLIGHT_SQL, verifyAuthorityIssuerPreflight,
   getAuthorityIssuerConfig
@@ -53,7 +53,7 @@ const client = {
     if (sql.includes('FROM mira_hfm.project_memberships')) {
       return { rows: [{
         revision: 7, status: 'ACTIVE',
-        permissions: { operations: ['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore'] },
+        permissions: { operations: ['memory.read', 'memory.write', 'memory.vault.write', 'memory.update', 'memory.trash', 'memory.restore'] },
         valid_from: new Date(now - 60000).toISOString(), expires_at: null
       }], rowCount: 1 };
     }
@@ -151,6 +151,35 @@ const pool = { async connect() { return client; } };
   assert.equal(writeInsert.params[3], 'memory.trash');
   assert.equal(writeInsert.params[4], writeResource);
   console.log('HFM_AUTHORITY_ISSUER_ALLOWLISTED_TRASH_SCOPE=PASS');
+
+  const vaultResource = 'memory:client-vault-001';
+  const vaultReceipt = {
+    ...receipt,
+    operation: 'memory.vault.write',
+    resource: vaultResource,
+    purpose: 'hfm-vault:client_vault_record:explicit-user-request'
+  };
+  const vaultResult = await issueMemoryOperationAuthority({
+    req, pool, purpose: vaultReceipt.purpose, operation: vaultReceipt.operation,
+    resource: vaultReceipt.resource, approvalToken: 'signed-vault-approval-token',
+    env: { MIRA_ADMIN_SUBJECT_ID: subject },
+    verifyApprovalToken: async (_token, expected, options) => {
+      assert.deepEqual(options, { consume: true, singleUse: true });
+      assert.deepEqual(expected, {
+        projectId, actorId, approverActorId: actorId,
+        operation: 'memory.vault.write', resource: vaultResource,
+        purpose: vaultReceipt.purpose
+      });
+      return vaultReceipt;
+    }
+  });
+  assert.equal(vaultResult.operation, 'memory.vault.write');
+  assert.equal(vaultResult.resource, vaultResource);
+  const vaultInsert = calls.filter(c => c.sql.startsWith('INSERT INTO mira_hfm.operation_authorities')).at(-1);
+  assert.equal(vaultInsert.params[3], 'memory.vault.write');
+  assert.equal(vaultInsert.params[4], vaultResource);
+  assert.equal(ALLOWED_MEMORY_OPERATIONS.has('memory.vault.write'), true);
+  console.log('HFM_AUTHORITY_ISSUER_ALLOWLISTED_EXACT_VAULT_WRITE=PASS');
 
   await assert.rejects(() => issueMemoryOperationAuthority({
     req, pool, purpose: 'unsafe', operation: 'memory.purge',
