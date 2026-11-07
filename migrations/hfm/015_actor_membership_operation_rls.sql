@@ -553,7 +553,7 @@ GRANT UPDATE (status, result_code, updated_at)
 CREATE OR REPLACE FUNCTION mira_hfm.guard_memory_lifecycle_only_update()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $$
 DECLARE
   operation_name TEXT := NULLIF(current_setting('mira.operation', true), '');
   actor_name TEXT := NULLIF(current_setting('mira.actor_id', true), '');
@@ -588,7 +588,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS memory_records_lifecycle_update_guard ON mira_hfm.memory_records;
 CREATE TRIGGER memory_records_lifecycle_update_guard
@@ -598,7 +598,7 @@ CREATE TRIGGER memory_records_lifecycle_update_guard
 CREATE OR REPLACE FUNCTION mira_hfm.guard_memory_operation_registry_update()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $$
 BEGIN
   IF NEW.operation_id IS DISTINCT FROM OLD.operation_id
      OR NEW.project_id IS DISTINCT FROM OLD.project_id
@@ -619,7 +619,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS memory_operation_registry_update_guard ON mira_hfm.memory_operation_registry;
 CREATE TRIGGER memory_operation_registry_update_guard
