@@ -90,6 +90,9 @@ test("authorized operation locks owner, membership, authority; consumes and audi
   const membershipLock = sql.findIndex(x => x.includes("FROM mira_hfm.project_memberships"));
   const authorityLock = sql.findIndex(x => x.includes("FROM mira_hfm.operation_authorities"));
   const consume = sql.findIndex(x => x.startsWith("UPDATE mira_hfm.operation_authorities"));
+  const consumeCall = f.calls.find(x => x.sql.startsWith("UPDATE mira_hfm.operation_authorities"));
+  assert.match(consumeCall.sql, /project_id = \\$2 AND actor_id = \\$3 AND request_id = \\$4/);
+  assert.deepEqual(consumeCall.params, [request.authorityId, request.projectId, actorId, request.requestId]);
   const audit = sql.findIndex(x => x.startsWith("INSERT INTO mira_hfm.authority_audit_events"));
   const projectScope = sql.findIndex(x => x.includes("set_config('mira.project_id'"));
   const actorScope = sql.findIndex(x => x.includes("set_config('mira.actor_id'"));
