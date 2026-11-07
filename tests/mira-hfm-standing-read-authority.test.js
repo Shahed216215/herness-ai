@@ -406,6 +406,9 @@ const pool = { async connect() { return client; } };
   assert.match(failureAuditMigration, /STANDING_READ_AUTHORITY_FAILED/);
   assert.match(failureAuditMigration, /current_setting\('mira.request_id', true\)/);
   assert.match(failureAuditMigration, /AS RESTRICTIVE/);
+  assert.match(failureAuditMigration, /current_setting\('mira.operation', true\) = 'memory.read'/);
+  assert.match(failureAuditMigration, /current_setting\('mira.standing_read_authority', true\) = 'true'/);
+  assert.match(failureAuditMigration, /details->>'resource'/);
   console.log('HFM_STANDING_READ_FAILURE_AUDIT_POLICY_SCOPED_TO_PROJECT_ACTOR_REQUEST=PASS');
   console.log('HFM_STANDING_READ_MIGRATION_RLS_IMMUTABLE_SCOPE_365D=PASS');
 
