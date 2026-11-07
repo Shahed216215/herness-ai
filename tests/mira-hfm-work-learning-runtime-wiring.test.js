@@ -89,6 +89,66 @@ assert.match(knowledgeSearch, /driveFallback: false/);
 assert.match(knowledgeSearch, /HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED/);
 console.log('HFM_GENERIC_KNOWLEDGE_SEARCH_AND_CHAT_USE_STANDING_READ=PASS');
 
+const { createContentHash } = require('../services/mira-hfm-record-schema');
+const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-runtime');
+(async () => {
+  const now = new Date().toISOString();
+  const content = 'Verified Python automation research and reproducible testing notes.';
+  const record = {
+    schemaVersion: '1.1.0',
+    memoryId: 'memory-knowledge-001',
+    projectId: 'project-alpha',
+    recordType: 'knowledge_item',
+    content,
+    source: { sourceType: 'web_search', sourceId: 'python-automation-guide', sourceUrl: 'https://example.test/python', observedAt: now },
+    timestamps: { createdAt: now, updatedAt: now },
+    version: { revision: 1, contentHash: createContentHash(content) },
+    integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
+    trust: { status: 'HUMAN_VERIFIED' },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-alpha'] },
+    lifecycle: 'ACTIVE'
+  };
+  const result = await searchHfmKnowledge({
+    req: {}, pool: {},
+    query: 'Python automation testing',
+    limit: 5,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readMemory: async options => {
+      assert.equal(options.standingReadAuthority, true);
+      assert.deepEqual(options.recordTypes, ['knowledge_item']);
+      assert.equal(options.lifecycle, 'ACTIVE');
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha',
+        records: [record], standingAuthority: true,
+        approvalRequiredPerRead: false,
+        authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+        hostAuthorizationContext: {
+          actorId: 'mira:actor-001', actorType: 'HUMAN',
+          projectId: 'project-alpha', purpose: 'knowledge search',
+          requestId: 'request-knowledge-001', authorityRef: 'standing-001',
+          issuedAt: new Date(Date.now() - 1000).toISOString(),
+          expiresAt: new Date(Date.now() + 86400000).toISOString()
+        }
+      };
+    }
+  });
+  assert.equal(result.status, 'AUTHORIZED_AND_COMMITTED');
+  assert.equal(result.count, 1);
+  assert.equal(result.results[0].id, 'memory-knowledge-001');
+  assert.equal(result.results[0].content, content);
+  assert.equal(result.localFallback, false);
+  assert.equal(result.driveFallback, false);
+  await assert.rejects(() => searchHfmKnowledge({
+    req: {}, pool: {}, query: 'Python',
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'false' }
+  }), error => error.code === 'HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED');
+  console.log('HFM_KNOWLEDGE_SEARCH_RETRIEVES_ONLY_AUTHORIZED_ELIGIBLE_RECORDS=PASS');
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+
 
 assert.match(planner, /process\.env\.MIRA_HFM_WORK_LEARNING_ENABLED === "true"/);
 assert.match(planner, /HFM_WORK_LEARNING_RUNTIME_REQUIRED/);
