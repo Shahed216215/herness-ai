@@ -78,6 +78,12 @@ SELECT
   has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'SELECT') AS approval_nonce_select,
   has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'INSERT') AS approval_nonce_insert,
   has_column_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'consumed_at', 'UPDATE') AS approval_nonce_consumed_update,
+  NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'mira_hfm' AND table_name = 'authority_approval_nonces'
+      AND column_name <> 'consumed_at'
+      AND has_column_privilege(current_user, 'mira_hfm.authority_approval_nonces', column_name, 'UPDATE')
+  ) AS approval_nonce_only_consumed_update,
   has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'UPDATE') AS approval_nonce_table_update,
   has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'DELETE') AS approval_nonce_delete,
   has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'TRUNCATE') AS approval_nonce_truncate,
@@ -157,7 +163,7 @@ const REQUIRED_TRUE = Object.freeze([
   'issuer_group_least_privilege', 'issuer_group_owns_no_objects', 'inherits_roles', 'can_login',
   'schema_usage', 'owners_select', 'memberships_select', 'authorities_insert',
   'audit_insert', 'audit_sequence_usage', 'approval_nonce_select', 'approval_nonce_insert',
-  'approval_nonce_consumed_update', 'issuer_rls_forced', 'issuer_policies_present',
+  'approval_nonce_consumed_update', 'approval_nonce_only_consumed_update', 'issuer_rls_forced', 'issuer_policies_present',
   'issuer_policy_set_exact', 'no_public_issuer_policies'
 ]);
 const REQUIRED_FALSE = Object.freeze([
