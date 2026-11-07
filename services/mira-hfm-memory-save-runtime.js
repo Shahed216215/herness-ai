@@ -106,10 +106,13 @@ function buildCanonicalMemoryRecord(options = {}) {
   if (!Number.isFinite(Date.parse(now))) fail('HFM_MEMORY_SAVE_TIMESTAMP_INVALID');
 
   const kind = options.kind;
-  if (!['memory_save', 'knowledge_save', 'learning_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
+  if (!['memory_save', 'knowledge_save', 'learning_save', 'daily_activity_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
   const body = boundedText(options.content, MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
-  if (kind === 'memory_save' && !isUserAuthoredMemoryContent(options.userIntent, body)) {
-    fail('HFM_MEMORY_SAVE_CONTENT_NOT_PRESENT_IN_USER_INTENT');
+  if ((kind === 'memory_save' || kind === 'daily_activity_save') &&
+      !isUserAuthoredMemoryContent(options.userIntent, body)) {
+    fail(kind === 'daily_activity_save'
+      ? 'HFM_DAILY_ACTIVITY_CONTENT_NOT_PRESENT_IN_USER_INTENT'
+      : 'HFM_MEMORY_SAVE_CONTENT_NOT_PRESENT_IN_USER_INTENT');
   }
   let content = body;
   let sourceType = 'manual';
@@ -118,6 +121,16 @@ function buildCanonicalMemoryRecord(options = {}) {
   let recordType = 'knowledge_item';
   let trustStatus = 'HUMAN_VERIFIED';
   let lifecycle = 'ACTIVE';
+
+  if (kind === 'daily_activity_save') {
+    if (hasVaultOnlyDailyActivityContent(body)) {
+      fail('HFM_DAILY_ACTIVITY_SENSITIVE_CONTENT_REQUIRES_VAULT');
+    }
+    content = redactDailyActivityContent(body);
+    if (!content) fail('HFM_DAILY_ACTIVITY_CONTENT_EMPTY_AFTER_REDACTION');
+    sourceId = 'user-confirmed-daily-activity';
+    recordType = 'daily_activity';
+  }
 
   if (kind === 'knowledge_save' || kind === 'learning_save') {
     const isLearning = kind === 'learning_save';
@@ -200,7 +213,9 @@ async function saveHfmMemoryRecord(options = {}) {
     ? 'User explicitly requested to save a knowledge source privately as an unverified item for review.'
     : kind === 'learning_save'
       ? 'User explicitly requested to save a learning note privately as an unverified item for review.'
-      : 'User explicitly requested to save this private memory item.';
+      : kind === 'daily_activity_save'
+        ? 'User explicitly requested to save an exact user-authored daily activity summary privately.'
+        : 'User explicitly requested to save this private memory item.';
   const env = options.env || process.env;
   if (env.MIRA_HFM_MEMORY_WRITE_ENABLED !== 'true') fail('HFM_MEMORY_WRITE_DISABLED');
   if (env.MIRA_HFM_AUTHORITY_ISSUER_ENABLED !== 'true') fail('HFM_AUTHORITY_ISSUER_DISABLED');
@@ -250,6 +265,7 @@ async function saveHfmMemoryRecord(options = {}) {
     memoryId,
     projectId,
     recordType: record.recordType,
+    contentRedacted: kind === 'daily_activity_save' && record.content !== String(options.content).trim(),
     classification: 'PROJECT_PRIVATE',
     trust: record.trust.status,
     lifecycle: record.lifecycle,
@@ -263,6 +279,8 @@ async function saveHfmMemoryRecord(options = {}) {
 
 module.exports = Object.freeze({
   hasExplicitSaveIntent,
+  redactDailyActivityContent,
+  hasVaultOnlyDailyActivityContent,
   normalizeIntentText,
   isUserAuthoredMemoryContent,
   deriveIdempotencyKey,
