@@ -65,6 +65,53 @@ try {
     assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENTS');
   }
   console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENT_ROUTES=PASS');
+const registerAutonomousLearningRoutes = require('../routes/autonomous-learning');
+let autonomousRouter;
+registerAutonomousLearningRoutes({
+  use: (_path, router) => { autonomousRouter = router; }
+}, () => (_req, _res, next) => next && next(), {
+  SYSTEM_ADMIN: 'system-admin'
+});
+const autonomousGuard = autonomousRouter.stack[0].handle;
+const oldStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+const oldWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+try {
+  process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+  delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  let denied = false;
+  autonomousGuard({}, {
+    status(code) { assert.equal(code, 403); return this; },
+    json(payload) {
+      denied = true;
+      assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_AUTONOMOUS_LEARNING');
+      return this;
+    }
+  }, () => assert.fail('router must deny HFM mode'));
+  assert.equal(denied, true);
+  delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  process.env.MIRA_HFM_WORK_LEARNING_ENABLED = 'true';
+  let workDenied = false;
+  autonomousGuard({}, {
+    status(code) { assert.equal(code, 403); return this; },
+    json(payload) {
+      workDenied = true;
+      assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_AUTONOMOUS_LEARNING');
+      return this;
+    }
+  }, () => assert.fail('router must deny Work Learning mode'));
+  assert.equal(workDenied, true);
+  delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  let continued = false;
+  autonomousGuard({}, {}, () => { continued = true; });
+  assert.equal(continued, true);
+  console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_AUTONOMOUS_LEARNING_ROUTER=PASS');
+} finally {
+  if (oldStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldStanding;
+  if (oldWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldWork;
+}
+
 } finally {
   if (previousStandingFlag === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
   else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = previousStandingFlag;
