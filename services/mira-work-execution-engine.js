@@ -1234,7 +1234,7 @@ async function executeWork(
   const hfmReadContext = await resolveHfmReadToolContext(options, process.env);
   hfmMemoryReadRuntime = hfmReadContext.runtime;
   hfmToolContext = hfmReadContext.toolContext;
-  const hfmWriteToolContext = await resolveHfmWriteToolContext(options, process.env, input);
+
 
   if (
     options.plan &&
@@ -1358,6 +1358,13 @@ async function executeWork(
       recoveryRequired: false
     };
   }
+
+  const requiresHfmMemoryWrite = normalizedCalls.calls.some(call =>
+    call.name === "memory_save" || call.name === "knowledge_save"
+  );
+  const hfmWriteToolContext = requiresHfmMemoryWrite
+    ? await resolveHfmWriteToolContext(options, process.env, input)
+    : null;
 
   const results = [];
 
