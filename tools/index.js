@@ -50,7 +50,7 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
   });
 }
 
-async function executeHfmKnowledgeReviewQueue(args, trustedContext) {
+async function executeHfmKnowledgeReviewQueue(args, trustedContext, review = require("../services/mira-hfm-knowledge-review-runtime").listPendingHfmKnowledgeForReview) {
   const context = trustedContext && trustedContext.hfmReadOnly;
   if (!context || !context.req || !context.pool ||
       typeof context.pool.connect !== "function") {
@@ -104,7 +104,6 @@ async function executeHfmKnowledgeReviewQueue(args, trustedContext) {
     error.code = "HFM_KNOWLEDGE_REVIEW_ISSUER_NOT_READY";
     throw error;
   }
-  const review = require("../services/mira-hfm-knowledge-review-runtime").listPendingHfmKnowledgeForReview;
   const result = await review({
     req: context.req,
     pool: context.pool,
