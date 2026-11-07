@@ -206,7 +206,7 @@ async function executeWithStandingReadAuthority(options = {}) {
     await client.query("SELECT set_config('mira.standing_read_authority', 'true', true)");
 
     const ownerResult = await client.query(
-      "SELECT project_id, status, revision FROM mira_hfm.project_owners WHERE project_id = $1 FOR SHARE",
+      "SELECT project_id, status, revision FROM mira_hfm.project_owners WHERE project_id = $1",
       [projectId]
     );
     const owner = ownerResult.rows && ownerResult.rows[0];
@@ -216,7 +216,7 @@ async function executeWithStandingReadAuthority(options = {}) {
       "SELECT membership_id, project_id, actor_id, permissions, status, revision, valid_from, expires_at " +
       "FROM mira_hfm.project_memberships WHERE project_id = $1 AND actor_id = $2 " +
       "AND status = 'ACTIVE' AND valid_from <= clock_timestamp() " +
-      "AND (expires_at IS NULL OR expires_at > clock_timestamp()) FOR SHARE",
+      "AND (expires_at IS NULL OR expires_at > clock_timestamp())",
       [projectId, trustedActor.actorId]
     );
     const membership = membershipResult.rows && membershipResult.rows[0];
