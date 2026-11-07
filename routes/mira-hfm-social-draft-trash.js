@@ -22,7 +22,7 @@ function registerMiraHfmSocialDraftTrashRoute(
   }
 
   app.post('/api/hfm/social-drafts/trash', requireAdmin, async (req, res) => {
-    if (!sameOriginRequest(req)) {
+    if (!req.get || !req.get('origin') || !sameOriginRequest(req)) {
       return res.status(403).json({ success: false, error: 'Same-origin request required.' });
     }
     if (!req.session || req.session.authenticated !== true ||
