@@ -80,7 +80,9 @@ function record(memoryId) {
   await assert.rejects(() => collectStandingReadPages({
     readMemory: async () => {
       calls += 1;
-      return page([record('memory-' + calls)], 'repeating-cursor');
+      return page([record('memory-' + calls)], 'repeating-cursor', {
+        hostAuthorizationContext: { ...context, requestId: 'request-page-' + calls }
+      });
     },
     readOptions: {},
     maxPages: 3
@@ -110,7 +112,9 @@ function record(memoryId) {
 
   await assert.rejects(() => collectStandingReadPages({
     readMemory: async options => options.cursor
-      ? page([record('memory-001')])
+      ? page([record('memory-001')], null, {
+          hostAuthorizationContext: { ...context, requestId: 'request-page-002' }
+        })
       : page([record('memory-001')], 'duplicate-record-cursor'),
     readOptions: {}
   }), /HFM_STANDING_READ_PAGE_DUPLICATE_RECORD/);
