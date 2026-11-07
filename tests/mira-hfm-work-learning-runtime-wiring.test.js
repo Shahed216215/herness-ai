@@ -139,6 +139,38 @@ try {
 }
 console.log('HFM_AUTHORITY_MODE_BLOCKS_LOCAL_EXPERIENCE_LESSONS=PASS');
 
+const registerMiraEvolutionRoutes = require('../routes/mira-evolution');
+let miraEvolutionRouter;
+registerMiraEvolutionRoutes({
+  use: (_path, router) => { miraEvolutionRouter = router; }
+}, () => (_req, _res, next) => next && next(), {
+  SYSTEM_ADMIN: 'system-admin'
+});
+const evolutionGuard = miraEvolutionRouter.stack[0].handle;
+const oldEvolutionStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+const oldEvolutionWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+try {
+  process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+  delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  let evolutionDenied = false;
+  evolutionGuard({}, {
+    status(code) { assert.equal(code, 403); return this; },
+    json(payload) {
+      evolutionDenied = true;
+      assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_EVOLUTION');
+      return this;
+    }
+  }, () => assert.fail('legacy Evolution router must be blocked'));
+  assert.equal(evolutionDenied, true);
+} finally {
+  if (oldEvolutionStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldEvolutionStanding;
+  if (oldEvolutionWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldEvolutionWork;
+}
+console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_EVOLUTION_ROUTER=PASS');
+
+
 } finally {
   if (oldStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
   else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldStanding;
