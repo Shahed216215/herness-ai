@@ -50,16 +50,60 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
   });
 }
 
+async function executeHfmMemorySave(kind, args, trustedContext) {
+  const context = trustedContext && trustedContext.hfmWrite;
+  if (!context || !context.req || !context.writerPool || !context.issuerPool ||
+      typeof context.writerPool.connect !== "function" ||
+      typeof context.issuerPool.connect !== "function") {
+    const error = new Error("Server-held HFM writer, issuer, and verified request context are required.");
+    error.code = "HFM_MEMORY_WRITE_CONTEXT_REQUIRED";
+    throw error;
+  }
+  const save = require("../services/mira-hfm-memory-save-runtime").saveHfmMemoryRecord;
+  const result = await save({
+    ...context,
+    kind,
+    content: typeof args?.content === "string" ? args.content : "",
+    ...(kind === "knowledge_save" ? {
+      title: args?.title,
+      url: args?.url
+    } : {})
+  });
+  return JSON.stringify({
+    ...result,
+    source: "HFM_V02_CANONICAL",
+    localFallback: false,
+    driveFallback: false,
+    message: result.lifecycle === "PENDING_REVIEW"
+      ? "Knowledge source saved privately as pending review; it is excluded from trusted search until verified."
+      : "Memory saved privately to the canonical HFM repository."
+  });
+}
+
 async function executeTool(name, args, trustedContext = null) {
   const hfmReadOnlyMode =
     process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
     process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
-  if (hfmReadOnlyMode && name === "knowledge_search") {
+  const hfmWriteMode = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
+  const hfmMemoryMode = hfmReadOnlyMode || hfmWriteMode;
+
+  if (hfmMemoryMode && name === "knowledge_search") {
+    if (!hfmReadOnlyMode) {
+      const error = new Error("HFM standing-read authority is required for Knowledge search.");
+      error.code = "HFM_MEMORY_READ_MODE_REQUIRED";
+      throw error;
+    }
     return executeHfmKnowledgeSearch(args, trustedContext);
   }
-  if (hfmReadOnlyMode && /^(memory|knowledge|learning)_/.test(String(name || ""))) {
-    const error = new Error("HFM standing authority grants memory.read only; legacy Memory, Knowledge, and Learning tools are unavailable.");
-    error.code = "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL";
+  if (hfmWriteMode && name === "memory_save") {
+    return executeHfmMemorySave("memory_save", args, trustedContext);
+  }
+  if (hfmWriteMode && name === "knowledge_save") {
+    return executeHfmMemorySave("knowledge_save", args, trustedContext);
+  }
+  if (hfmMemoryMode && /^(memory|knowledge|learning)_/.test(String(name || ""))) {
+    const error = new Error("Legacy Memory, Knowledge, and Learning storage is disabled in HFM mode; unsupported operations fail closed without local or Drive fallback.");
+    error.code = "HFM_LEGACY_STORAGE_DISABLED";
     throw error;
   }
   if (!tools[name]) {
@@ -73,5 +117,6 @@ module.exports = {
   tools,
   declarations,
   executeTool,
-  executeHfmKnowledgeSearch
+  executeHfmKnowledgeSearch,
+  executeHfmMemorySave
 };
