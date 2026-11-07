@@ -58,7 +58,8 @@ jobs:
             migrations/hfm/007_memory_retrieval_runtime_role.sql \
             migrations/hfm/008_authority_issuer_role.sql \
             migrations/hfm/009_authority_approval_nonce_registry.sql \
-            migrations/hfm/010_one_time_initial_project_bootstrap.sql
+            migrations/hfm/010_one_time_initial_project_bootstrap.sql \
+            migrations/hfm/011_standing_read_authority_365_days.sql
           do
             echo "APPLYING=$migration"
             docker exec -i "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d neondb < "$migration"
