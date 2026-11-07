@@ -388,6 +388,10 @@ function baseOptions(overrides = {}) {
       () => executeTool('memory_save', { content: 'Remember this.' }, null),
       error => error && error.code === 'HFM_LEGACY_STORAGE_DISABLED'
     );
+    await assert.rejects(
+      () => executeTool('daily_activity_save', { content: 'Daily activity.' }, null),
+      error => error && error.code === 'HFM_LEGACY_STORAGE_DISABLED'
+    );
     const directMemorySave = require('../tools/memory-save');
     const directKnowledgeSave = require('../tools/knowledge-save');
     const directLearningSave = require('../tools/learning-save');
