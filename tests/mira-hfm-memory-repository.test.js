@@ -573,7 +573,7 @@ test('standing-read repository context is limited to active Learning/Knowledge a
     authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
   };
   let queryCount = 0;
-  const scanStartedAt = new Date().toISOString().replace(/\\.(\\d{3})Z$/, (_, ms) => '.' + ms + '000Z');
+  const scanStartedAt = new Date().toISOString().replace(/\.(\d{3})Z$/, (_, ms) => '.' + ms + '000Z');
   const client = {
     async query(sql, params) {
       queryCount += 1;
@@ -675,7 +675,7 @@ test('standing-read keyset pagination is project-bound, stable and audited per p
   const client = {
     async query(sql, params = []) {
       calls.push({ sql, params });
-      if (sql.includes('SELECT transaction_timestamp() AS scan_started_at')) {
+      if (sql.includes('AS scan_started_at')) {
         return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
       }
       assert.match(sql, /updated_at <= \$5::timestamptz/);
