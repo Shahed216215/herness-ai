@@ -88,6 +88,47 @@ async function executeHfmKnowledgeReviewQueue(args, trustedContext) {
   });
 }
 
+async function executeHfmKnowledgeReviewQueue(args, trustedContext) {
+  const context = trustedContext && trustedContext.hfmReadOnly;
+  if (!context || !context.req || !context.pool ||
+      typeof context.pool.connect !== "function" ||
+      typeof context.getAuthorityIssuerRuntime !== "function") {
+    const error = new Error("Server-held HFM reader, issuer resolver, and verified request context are required.");
+    error.code = "HFM_KNOWLEDGE_REVIEW_CONTEXT_REQUIRED";
+    throw error;
+  }
+  const issuer = await context.getAuthorityIssuerRuntime();
+  if (!issuer || issuer.status !== "AUTHORITY_ISSUER_READY" ||
+      !issuer.pool || typeof issuer.pool.connect !== "function") {
+    const error = new Error("HFM authority issuer is not ready for a one-time pending-knowledge review.");
+    error.code = "HFM_KNOWLEDGE_REVIEW_ISSUER_NOT_READY";
+    throw error;
+  }
+  const review = require("../services/mira-hfm-knowledge-review-runtime").listPendingHfmKnowledgeForReview;
+  const result = await review({
+    req: context.req,
+    pool: context.pool,
+    issuerPool: issuer.pool,
+    env: context.env || process.env,
+    userIntent: context.userIntent,
+    limit: Number.isInteger(args?.limit) ? args.limit : 20
+  });
+  if (!result || result.status !== "REVIEW_REQUIRED" ||
+      result.standingAuthority !== false || result.authorityConsumed !== true ||
+      result.writeAllowed !== false || result.localFallback !== false ||
+      result.driveFallback !== false || !Array.isArray(result.items)) {
+    const error = new Error("Pending HFM Knowledge review did not return a verified one-time read.");
+    error.code = "HFM_KNOWLEDGE_REVIEW_AUTHORIZED_READ_REQUIRED";
+    throw error;
+  }
+  return JSON.stringify({
+    success: true,
+    source: "HFM_V02_PENDING_REVIEW",
+    ...result,
+    message: "These sources are unverified and are not trusted task context. Human review is required."
+  });
+}
+
 async function executeHfmMemorySave(kind, args, trustedContext) {
   const context = trustedContext && trustedContext.hfmWrite;
   if (!context || !context.req || !context.writerPool || !context.issuerPool ||
@@ -141,6 +182,9 @@ async function executeTool(name, args, trustedContext = null) {
     }
     return executeHfmKnowledgeSearch(args, trustedContext);
   }
+  if (hfmReadOnlyMode && name === "knowledge_review_queue") {
+    return executeHfmKnowledgeReviewQueue(args, trustedContext);
+  }
   if (hfmWriteMode && name === "memory_save") {
     return executeHfmMemorySave("memory_save", args, trustedContext);
   }
@@ -165,5 +209,6 @@ module.exports = {
   executeTool,
   executeHfmKnowledgeSearch,
   executeHfmMemorySave,
+  executeHfmKnowledgeReviewQueue,
   executeHfmKnowledgeReviewQueue
 };
