@@ -5,6 +5,7 @@ const { tools: registeredTools, declarations: registeredDeclarations } = require
 const {
   hasExplicitSaveIntent,
   hasExplicitDailyActivitySaveIntent,
+  hasExplicitSourceReferenceSaveIntent,
   hasVaultOnlyDailyActivityContent,
   isUserAuthoredMemoryContent,
   deriveIdempotencyKey,
@@ -12,7 +13,7 @@ const {
   buildCanonicalMemoryRecord,
   saveHfmMemoryRecord
 } = require('../services/mira-hfm-memory-save-runtime');
-const { validateCanonicalRecord } = require('../services/mira-hfm-record-schema');
+const { validateCanonicalRecord, SCHEMA_V1_2 } = require('../services/mira-hfm-record-schema');
 const { extractKnowledgeTitle } = require('../services/mira-hfm-knowledge-search-runtime');
 const { hasExplicitReviewIntent, safeReviewSourceUrl, listPendingHfmKnowledgeForReview } = require('../services/mira-hfm-knowledge-review-runtime');
 
@@ -67,6 +68,9 @@ function baseOptions(overrides = {}) {
   assert.ok(registeredTools.daily_activity_save);
   assert.equal(registeredTools.daily_activity_save.name, 'daily_activity_save');
   assert.ok(registeredDeclarations.some(declaration => declaration.name === 'daily_activity_save'));
+  assert.ok(registeredTools.source_reference_save);
+  assert.equal(registeredTools.source_reference_save.name, 'source_reference_save');
+  assert.ok(registeredDeclarations.some(declaration => declaration.name === 'source_reference_save'));
   assert.equal(hasExplicitSaveIntent('Remember this: keep my learning plan.'), true);
   assert.equal(hasExplicitSaveIntent('এটা মনে রাখবে: আমার শেখার পরিকল্পনা।'), true);
   assert.equal(hasExplicitSaveIntent('Please save this to your memory.'), true);
@@ -81,6 +85,12 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitDailyActivitySaveIntent('Do not record the daily activity.'), false);
   assert.equal(hasExplicitDailyActivitySaveIntent('আজকের কাজ সংরক্ষণ করো না।'), false);
   assert.equal(hasExplicitDailyActivitySaveIntent('Remember this: I completed Python practice.'), false);
+  assert.equal(hasExplicitSourceReferenceSaveIntent('Save this source reference: https://example.com/article'), true);
+  assert.equal(hasExplicitSourceReferenceSaveIntent('Please save this link for later: https://example.com/article'), true);
+  assert.equal(hasExplicitSourceReferenceSaveIntent('এই সোর্স লিংকটি সংরক্ষণ করো: https://example.com/article'), true);
+  assert.equal(hasExplicitSourceReferenceSaveIntent('Do not save this source reference.'), false);
+  assert.equal(hasExplicitSourceReferenceSaveIntent('সোর্স লিংকটি সংরক্ষণ করো না।'), false);
+  assert.equal(hasExplicitSourceReferenceSaveIntent('Remember this URL.'), false);
   assert.equal(hasVaultOnlyDailyActivityContent('Client ID: C-1042 was updated.'), true);
   assert.equal(hasVaultOnlyDailyActivityContent('Contract #CT-2026-91 was signed.'), true);
   assert.equal(hasVaultOnlyDailyActivityContent('Invoice number INV-2026-001 was received.'), true);
@@ -379,6 +389,79 @@ function baseOptions(overrides = {}) {
   assert.equal(learningResult.lifecycle, 'PENDING_REVIEW');
   assert.equal(learningResult.searchEligible, false);
 
+  const sourcePrincipal = {
+    verified: true,
+    issuer: 'mira.admins',
+    subject: '11111111-1111-4111-8111-111111111111',
+    actorType: 'HUMAN',
+    authenticationMethod: 'ADMIN_SUBJECT',
+    authenticationRef: 'source-reference-session-001',
+    authenticatedAt: new Date(Date.now() - 30000).toISOString(),
+    expiresAt: new Date(Date.now() + 3600000).toISOString()
+  };
+  let sourceReferenceSaved = null;
+  const sourceUrl = 'https://example.com/article?token=private-value#section';
+  const sourceReferenceResult = await saveHfmMemoryRecord(baseOptions({
+    kind: 'source_reference_save',
+    content: '',
+    url: sourceUrl,
+    sourceType: 'web',
+    userIntent: 'Save this source reference: ' + sourceUrl,
+    taskId: 'task-source-reference-001',
+    toolCallId: 'call-source-reference-001',
+    toolName: 'source_reference_save',
+    req: {
+      session: {
+        authenticated: true,
+        role: 'admin',
+        hfmPrincipal: sourcePrincipal,
+        hfmProjectBinding: { verified: true, projectId: 'project-001' }
+      }
+    },
+    createRecord: async input => {
+      sourceReferenceSaved = input;
+      return { status: 'CREATED', memoryId: input.record.memoryId, revision: 1 };
+    }
+  }));
+  const sourcePayload = JSON.parse(sourceReferenceSaved.record.content);
+  assert.equal(sourceReferenceSaved.record.schemaVersion, SCHEMA_V1_2);
+  assert.equal(sourceReferenceSaved.record.recordType, 'source_reference');
+  assert.equal(validateCanonicalRecord(sourceReferenceSaved.record).valid, true);
+  assert.equal(sourceReferenceSaved.record.access.classification, 'PROJECT_PRIVATE');
+  assert.equal(sourceReferenceSaved.record.trust.status, 'SOURCE_RECORDED');
+  assert.equal(sourceReferenceSaved.record.lifecycle, 'ACTIVE');
+  assert.equal(sourcePayload.accessResult, 'NOT_FETCHED');
+  assert.equal(sourcePayload.retrievalMethod, 'user_supplied_url');
+  assert.equal(sourcePayload.canonicalUrl, 'https://example.com/article');
+  assert.equal(sourcePayload.canonicalUrl.includes('private-value'), false);
+  assert.match(sourcePayload.provenanceActor, /^mira:/);
+  assert.match(sourcePayload.provenanceEventId, /^evt-[a-f0-9]{64}$/);
+  assert.equal(sourceReferenceResult.recordType, 'source_reference');
+  assert.equal(sourceReferenceResult.trust, 'SOURCE_RECORDED');
+  assert.equal(sourceReferenceResult.searchEligible, false);
+  assert.equal(sourceReferenceResult.localFallback, false);
+  assert.equal(sourceReferenceResult.driveFallback, false);
+  await assert.rejects(
+    () => saveHfmMemoryRecord(baseOptions({
+      kind: 'source_reference_save',
+      url: sourceUrl,
+      userIntent: 'Remember this URL: ' + sourceUrl,
+      req: { session: { authenticated: true, role: 'admin', hfmPrincipal: sourcePrincipal,
+        hfmProjectBinding: { verified: true, projectId: 'project-001' } } }
+    })),
+    /HFM_MEMORY_SAVE_EXPLICIT_USER_INTENT_REQUIRED/
+  );
+  await assert.rejects(
+    () => saveHfmMemoryRecord(baseOptions({
+      kind: 'source_reference_save',
+      url: 'https://example.com/not-in-message',
+      userIntent: 'Save this source reference: https://example.com/article',
+      req: { session: { authenticated: true, role: 'admin', hfmPrincipal: sourcePrincipal,
+        hfmProjectBinding: { verified: true, projectId: 'project-001' } } }
+    })),
+    /HFM_SOURCE_REFERENCE_URL_NOT_PRESENT_IN_USER_INTENT/
+  );
+
   const { executeTool, executeHfmMemorySave, declarations } = require('../tools');
   assert.equal(declarations.some(tool => tool.name === 'daily_activity_save'), true);
   const previousWriteFlag = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
@@ -402,6 +485,10 @@ function baseOptions(overrides = {}) {
     );
     await assert.rejects(
       () => executeTool('daily_activity_save', { content: 'Daily activity.' }, null),
+      error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
+    );
+    await assert.rejects(
+      () => executeTool('source_reference_save', { url: 'https://example.com/article' }, null),
       error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
     );
     await assert.rejects(
@@ -429,6 +516,7 @@ function baseOptions(overrides = {}) {
     const directKnowledgeSave = require('../tools/knowledge-save');
     const directLearningSave = require('../tools/learning-save');
     const directDailyActivitySave = require('../tools/daily-activity-save');
+    const directSourceReferenceSave = require('../tools/source-reference-save');
     const directLearningResult = await directLearningSave.execute({ content: 'Learning source.' })
       .then(value => JSON.parse(value))
       .catch(error => ({ code: error && error.code }));
@@ -446,6 +534,10 @@ function baseOptions(overrides = {}) {
       .then(value => JSON.parse(value))
       .catch(error => ({ code: error && error.code }));
     assert.equal(directDailyActivityResult.code, 'HFM_TOOL_ROUTER_REQUIRED');
+    const directSourceReferenceResult = await directSourceReferenceSave.execute({ url: 'https://example.com/article' })
+      .then(value => JSON.parse(value))
+      .catch(error => ({ code: error && error.code }));
+    assert.equal(directSourceReferenceResult.code, 'HFM_TOOL_ROUTER_REQUIRED');
 
     let routedOptions = null;
     const routed = JSON.parse(await executeHfmMemorySave(
