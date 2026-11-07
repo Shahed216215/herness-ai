@@ -128,7 +128,7 @@ const pool = { async connect() { return client; } };
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/008_authority_issuer_role.sql'), 'utf8');
   assert.match(migration, /NOLOGIN NOINHERIT NOSUPERUSER/);
   assert.match(migration, /GRANT INSERT ON TABLE mira_hfm\.operation_authorities/);
-  assert.match(migration, /event_type = 'AUTHORITY_ISSUED'/);
+  assert.ok(migration.includes("event_type IN ('AUTHORITY_ISSUED','APPROVAL_TOKEN_ISSUED','APPROVAL_TOKEN_CONSUMED')"));
   assert.match(migration, /operation = 'memory\.read'/);
   assert.ok(migration.includes("issued_by_actor_id = NULLIF(current_setting('mira.actor_id', true), '')"));
   assert.ok(migration.includes("resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), '')"));
