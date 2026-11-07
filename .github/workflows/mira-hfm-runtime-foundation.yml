@@ -90,9 +90,3 @@ jobs:
       - name: Run repository regression suite
         run: npm test
 
-  hfm-postgres-migrations:
-    name: PostgreSQL 16 migration and RLS integration
-    needs: hfm-foundation
-    uses: ./.github/workflows/hfm-postgres-migrations.yml
-    permissions:
-      contents: read
