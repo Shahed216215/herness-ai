@@ -495,3 +495,10 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - All nine relevant GitHub Actions workflows completed PASS at that code-verification head: HFM runtime foundation `42375823093`, Memory repository contracts `42375823035`, PostgreSQL 16 migration/RLS integration `42375823028`, session persistence/full npm test `42375823010`, dependency remediation `42375823043`, Render host binding `42375823000`, Tool health approval `42375823001`, Competitor Intelligence `42375823018`, and Run Agent regression `42375823003`.
 - At that same snapshot PR #79 was Open, non-draft, unmerged, and `mergeable=true`; exact compare was 1,131 commits ahead, 3 behind `main`, with 130 changed files. The large ancestry divergence remains a separate merge-integrity concern; no rebase, force-push, merge, deployment, or live database/configuration action was performed.
 - Production readiness remains NOT_CERTIFIED; live Render flag values remain NOT_VERIFIED and migrations 010–016 remain unapplied to live Neon.
+
+
+## Complete Work Learning authorization before model activity — 2026-11-07
+
+- The earlier ordering preflighted the first page before task understanding but deferred cursor continuation reads until after the model returned a normalized task. That left a later-page expiry, cursor, or authorization failure possible after model activity had already begun.
+- Work Learning preflight now collects and validates the complete bounded standing-read page set (up to the configured 20-page ceiling) before `understandTask`. Any later-page authorization failure or incomplete scan aborts before model/planning/execution. The planner then ranks only this preauthorized immutable snapshot in memory; the Work Learning ranking stage no longer opens a database connection or performs cursor reads.
+- Regression tests assert that all page reads complete before preflight returns, that a second-page denial fails the preflight, that incomplete scans fail closed, and that the post-preflight ranking stage performs zero reads.
