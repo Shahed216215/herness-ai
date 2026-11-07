@@ -11,7 +11,7 @@ function fail(code) {
   throw error;
 }
 function queryTerms(value) {
-  return new Set(String(value || '').toLowerCase().match(/[\\p{L}\\p{N}][\\p{L}\\p{N}_-]{1,}/gu) || []);
+  return new Set(String(value || '').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}_-]{1,}/gu) || []);
 }
 function extractKnowledgeTitle(record) {
   const content = typeof record?.content === 'string' ? record.content.trim() : '';
@@ -24,7 +24,7 @@ function extractKnowledgeTitle(record) {
       // Fall through to the first content line for non-JSON records.
     }
   }
-  const firstLine = content.split(/\\r?\\n/, 1)[0].trim();
+  const firstLine = content.split(/\r?\n/, 1)[0].trim();
   const sourceId = typeof record?.source?.sourceId === 'string' ? record.source.sourceId : 'Untitled memory';
   return (firstLine || sourceId).slice(0, 300);
 }
