@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 const {
   SOURCE_REFERENCE_VERSION,
@@ -75,4 +77,19 @@ test('user-supplied source payload is NOT_FETCHED, deterministic, and secret-fre
   assert.equal(first.canonicalUrl.includes('secret'), false);
   assert.match(first.sourceId, /^src-[a-f0-9]{64}$/);
   assert.equal(validateSourceReferencePayload(first).valid, true);
+});
+
+test('migration 017 preserves v1.0/v1.1 compatibility and adds v1.2 source_reference to both record tables', () => {
+  const migration = fs.readFileSync(
+    path.join(__dirname, '..', 'migrations/hfm/017_source_reference_record_v1_2.sql'),
+    'utf8'
+  );
+  assert.match(migration, /memory_records_schema_compatibility_v12_check/);
+  assert.match(migration, /memory_record_versions_schema_compatibility_v12_check/);
+  assert.match(migration, /schema_version = '1\.0\.0' AND record_type IN/);
+  assert.match(migration, /schema_version = '1\.1\.0' AND record_type IN/);
+  assert.match(migration, /schema_version = '1\.2\.0' AND record_type IN/);
+  assert.match(migration, /record_type <> 'source_reference'/);
+  assert.match(migration, /schema_version = '1\.2\.0' AND classification = 'PROJECT_PRIVATE'/);
+  assert.match(migration, /SOURCE-ONLY DRAFT/);
 });
