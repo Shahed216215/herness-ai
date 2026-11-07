@@ -13,12 +13,14 @@ const memoryRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-memory-
 const bootstrapRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-bootstrap-runtime.js'), 'utf8');
 const bootstrapRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-initial-bootstrap.js'), 'utf8');
 const trashRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-social-draft-trash.js'), 'utf8');
+const restoreRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-social-draft-restore.js'), 'utf8');
 const writerRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-memory-postgres-runtime.js'), 'utf8');
 
 assert.match(server, /registerMiraHfmAuthorityApprovalRoute\s*\(/);
 assert.match(server, /registerMiraHfmMemoryReadRoute\s*\(/);
 assert.match(server, /registerMiraHfmInitialBootstrapRoute\s*\(/);
 assert.match(server, /registerMiraHfmSocialDraftTrashRoute\s*\(/);
+assert.match(server, /registerMiraHfmSocialDraftRestoreRoute\s*\(/);
 assert.match(server, /requireAdminPermission\(PERMISSIONS\.SYSTEM_ADMIN\)/);
 assert.match(server, /createAuthorityIssuerPool/);
 assert.match(server, /createMemoryReadPool/);
@@ -30,6 +32,8 @@ assert.match(bootstrapRoute, /app\.post\('\/api\/hfm\/bootstrap\/initial-project
 assert.match(trashRoute, /app\.post\('\/api\/hfm\/social-drafts\/trash'/);
 assert.match(trashRoute, /expectedRecordType: 'social_post_draft'/);
 assert.match(trashRoute, /hardDelete: false/);
+assert.match(restoreRoute, /app\.post\('\/api\/hfm\/social-drafts\/restore'/);
+assert.match(restoreRoute, /expectedRecordType: 'social_post_draft'/);
 assert.match(approvalRoute, /hfmPendingMemoryAuthority/);
 assert.match(memoryRoute, /delete req\.session\.hfmPendingMemoryAuthority/);
 assert.match(issuerRuntime, /env\[ENABLED_ENV\] !== 'true'/);
@@ -42,6 +46,7 @@ console.log('HFM_RUNTIME_AUTHORITY_AND_MEMORY_ROUTES_WIRED=PASS');
 console.log('HFM_RUNTIME_ROUTES_REQUIRE_SYSTEM_ADMIN=PASS');
 console.log('HFM_INITIAL_BOOTSTRAP_ROUTE_WIRED_AND_DISABLED_BY_DEFAULT=PASS');
 console.log('HFM_SOCIAL_DRAFT_TRASH_ROUTE_WIRED_AND_DISABLED_BY_DEFAULT=PASS');
+console.log('HFM_SOCIAL_DRAFT_RESTORE_ROUTE_WIRED_AND_DISABLED_BY_DEFAULT=PASS');
 console.log('HFM_RUNTIME_DATABASE_POOLS_LAZY_AND_DISABLED_BY_DEFAULT=PASS');
 console.log('HFM_RUNTIME_AUTHORITY_REMAINS_SERVER_SESSION_ONLY=PASS');
 console.log('NETWORK_REQUESTS=0');
