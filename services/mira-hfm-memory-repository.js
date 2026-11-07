@@ -6,6 +6,7 @@ const { createVaultEnvelope, decryptVaultEnvelope } = require('./mira-hfm-vault-
 
 const MAX_PAGE_SIZE = 100;
 const OPERATION_CONTEXT = 'HFM_CONSUMED_ONE_TIME_AUTHORITY';
+const STANDING_READ_CONTEXT = 'HFM_ACTIVE_STANDING_READ_AUTHORITY';
 
 function fail(code) {
   const error = new Error(code);
@@ -36,7 +37,11 @@ function requireTransaction(options) {
   const client = options && options.client;
   const context = options && options.context;
   if (!client || typeof client.query !== 'function') throw fail('HFM_MEMORY_TRANSACTION_CLIENT_REQUIRED');
-  if (!context || context.authorityContext !== OPERATION_CONTEXT ||
+  const validOneTimeContext = context && context.authorityContext === OPERATION_CONTEXT;
+  const validStandingReadContext = context &&
+    context.authorityContext === STANDING_READ_CONTEXT &&
+    context.operation === 'memory.read';
+  if (!context || (!validOneTimeContext && !validStandingReadContext) ||
       typeof context.actorId !== 'string' || !context.actorId.startsWith('mira:') ||
       typeof context.projectId !== 'string' || !context.projectId ||
       typeof context.operation !== 'string' || !context.operation ||
