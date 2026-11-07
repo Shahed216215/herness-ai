@@ -69,7 +69,7 @@ jobs:
             migrations/hfm/012_authority_approval_nonce_registry.sql \
             migrations/hfm/013_one_time_initial_project_bootstrap.sql \
             migrations/hfm/014_standing_read_authority_365_days.sql \
-            migrations/hfm/015_actor_membership_operation_rls.sql
+            migrations/hfm/015_actor_membership_operation_rls.sql \
             migrations/hfm/016_memory_record_revision_authority.sql
           do
             echo "APPLYING=$migration"
