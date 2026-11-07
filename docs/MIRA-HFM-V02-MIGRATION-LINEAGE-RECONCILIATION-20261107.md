@@ -46,7 +46,7 @@ A separate Memory Core branch contains `006_social_post_manual_publish_payload_e
 
 ## Validation boundary
 
-The updated disposable PostgreSQL workflow is configured to run 001–009 in canonical order, then 010–014. Its exact-head execution has not yet been observed for the current branch head. Until the workflow completes successfully, migration validation for this revision is **INCONCLUSIVE**.
+The updated disposable PostgreSQL 16 workflow applied 001–009 in canonical order, then 010–014, and passed on code commit `645af36db7a3150d2f53f8570228b93cebab7ba6`. Bootstrap/issuer nonce flow, 365-day standing-read RLS and audit behavior, forced RLS, and exact role-boundary checks all completed successfully. The later `80aedfabd5c07d2f573c9f222eced0178605aeb8` commit changed documentation only; it did not alter migration SQL or the workflow. Disposable-CI migration validation is **PASS**; live Neon target compatibility remains **NOT_VERIFIED**.
 
 No Neon migration, production data write, role change, Render environment change, feature-flag enablement, merge, or deployment was performed as part of this source-lineage correction.
 
