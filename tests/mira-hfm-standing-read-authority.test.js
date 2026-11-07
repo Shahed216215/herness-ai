@@ -224,6 +224,44 @@ const pool = { async connect() { return client; } };
   assert.equal(revokedReadCallbackCalled, false);
   console.log('HFM_STANDING_READ_REVOKED_GRANT_BLOCKS_FUTURE_READS=PASS');
 
+  // Audit insertion is part of the same SERIALIZABLE transaction as retrieval.
+  // If it fails, the protected read callback must never run and the transaction rolls back.
+  const auditFailureCalls = [];
+  let protectedReadRan = false;
+  const auditFailureClient = {
+    async query(sql) {
+      auditFailureCalls.push(sql);
+      if (sql.includes('FROM mira_hfm.project_owners')) {
+        return { rows: [{ project_id: projectId, status: 'ACTIVE', revision: 4 }] };
+      }
+      if (sql.includes('FROM mira_hfm.project_memberships')) {
+        return { rows: [{
+          membership_id: 'membership-audit-failure', status: 'ACTIVE',
+          revision: 8, permissions: { operations: ['memory.read'] }
+        }] };
+      }
+      if (sql.includes('FROM mira_hfm.standing_read_authorities')) {
+        return { rows: [{ ...standingRow, status: 'ACTIVE' }] };
+      }
+      if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) {
+        const error = new Error('simulated audit persistence failure');
+        error.code = 'HFM_AUDIT_INSERT_FAILED';
+        throw error;
+      }
+      return { rows: [{ membership_valid: true }], rowCount: 1 };
+    },
+    release() {}
+  };
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return auditFailureClient; } },
+    verifiedPrincipal: req.session.hfmPrincipal,
+    projectId,
+    perform: async () => { protectedReadRan = true; return {}; }
+  }), error => error.code === 'HFM_AUDIT_INSERT_FAILED');
+  assert.equal(protectedReadRan, false);
+  assert.ok(auditFailureCalls.includes('ROLLBACK'));
+  console.log('HFM_STANDING_READ_AUDIT_FAILURE_ROLLS_BACK_AND_BLOCKS_READ=PASS');
+
   const migration = fs.readFileSync(
     path.join(__dirname, '..', 'migrations/hfm/011_standing_read_authority_365_days.sql'), 'utf8'
   );
