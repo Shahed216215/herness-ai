@@ -196,3 +196,9 @@ These are synthetic/offline or disposable-CI results. They are not live Neon or 
 
 This is read-only topology evidence only. It does not authorize applying migrations, creating owner/membership data, provisioning login credentials, enabling HFM flags, merging PR #79, or deploying.
 
+
+## Latest memory-mode gate regression — 2026-11-07
+
+- The HFM runtime wiring regression suite now asserts that admin Knowledge recall and diagnostic/local-storage guards cover the full Memory-mode flag set, including the dedicated Memory reader and writer flags. This complements the server transcript adapter test and the direct legacy-tool router-denial tests.
+- Exact functional-code commit `102bb0a5c1372744bc3910071e3e3c8444ab4d41`: **10/10 GitHub checks completed successfully; 0 failures; 0 pending**. The session-persistence workflow was not triggered for this test-only commit; its prior exact-commit result remains successful on `4f56b9572e8ba7e368acbcd73183e1cfa32e8d53`.
+- No live HFM flag was enabled, and no database, credential, Render, deployment, merge, or Facebook API/publishing action was performed.
