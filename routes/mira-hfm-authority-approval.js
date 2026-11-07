@@ -53,14 +53,30 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin) {
           purpose: body.purpose.trim(),
           approvalConfirmed: true
         });
-        return res.status(201).json({
-          success: true,
-          status: result.status,
+        if (req.session.hfmPendingMemoryAuthority) {
+          return res.status(409).json({ success: false, error: 'An unconsumed HFM Memory authority is already pending.' });
+        }
+        const previousPending = req.session.hfmPendingMemoryAuthority;
+        req.session.hfmPendingMemoryAuthority = {
           projectId: result.projectId,
-          operation: result.operation,
           grant: result.grant,
-          singleUse: result.singleUse,
           expiresAt: result.expiresAt
+        };
+        return req.session.save(error => {
+          if (error) {
+            if (previousPending === undefined) delete req.session.hfmPendingMemoryAuthority;
+            else req.session.hfmPendingMemoryAuthority = previousPending;
+            return res.status(503).json({ success: false, error: 'Unable to persist server-side Memory authority.' });
+          }
+          return res.status(201).json({
+            success: true,
+            status: result.status,
+            projectId: result.projectId,
+            operation: result.operation,
+            singleUse: result.singleUse,
+            expiresAt: result.expiresAt,
+            authorityHeldServerSide: true
+          });
         });
       } catch (error) {
         const code = typeof error?.code === 'string' ? error.code : 'HFM_AUTHORITY_ISSUE_FAILED';
