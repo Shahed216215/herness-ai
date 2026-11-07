@@ -23,8 +23,10 @@ function boundedText(value, max, code) {
 
 function redactDailyActivityContent(value) {
   return String(value || '')
-    .replace(/\b(?:api[_ -]?key|access[_ -]?token|password|passwd|secret|authorization|bearer)\b\s*(?:is|[:=])\s*[^\s,;]+/gi, '[credential omitted]')
-    .replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,})\b/g, '[credential omitted]')
+    .replace(/\b(?:api[_ -]?key|access[_ -]?token|password|passwd|secret|authorization)\b\s*(?:is|[:=])\s*(?:bearer\s+)?[^\s,;]+/gi, '[credential omitted]')
+    .replace(/\bbearer\s+[A-Za-z0-9._~+/-]{12,}/gi, '[credential omitted]')
+    .replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/g, '[credential omitted]')
+    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[credential omitted]')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email omitted]')
     .replace(/(?:\+?\d[\d\s().-]{8,}\d)/g, match =>
       match.replace(/\D/g, '').length >= 10 ? '[phone/number omitted]' : match)
