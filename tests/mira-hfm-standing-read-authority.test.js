@@ -428,6 +428,15 @@ const pool = { async connect() { return client; } };
   assert.match(failureAuditMigration, /current_setting\('mira.operation', true\) = 'memory.read'/);
   assert.match(failureAuditMigration, /current_setting\('mira.standing_read_authority', true\) = 'true'/);
   assert.match(failureAuditMigration, /details->>'resource'/);
+  const failureAuditScript = fs.readFileSync(
+    path.join(__dirname, '..', 'scripts/hfm-postgres-standing-read-audit-test.sh'), 'utf8'
+  );
+  assert.match(failureAuditScript, /jsonb_build_object\('operation','memory.read'/);
+  assert.match(failureAuditScript, /ci-standing-denied-wrong-request/);
+  assert.match(failureAuditScript, /ci-standing-denied-no-flag/);
+  assert.match(failureAuditScript, /ci-standing-denied-wrong-operation/);
+  assert.match(failureAuditScript, /ci-standing-denied-wrong-resource/);
+  console.log('HFM_STANDING_READ_FAILURE_AUDIT_SCRIPT_COVERS_RESTRICTIVE_CONTEXT=PASS');
   console.log('HFM_STANDING_READ_FAILURE_AUDIT_POLICY_SCOPED_TO_PROJECT_ACTOR_REQUEST=PASS');
   console.log('HFM_STANDING_READ_MIGRATION_RLS_IMMUTABLE_SCOPE_365D=PASS');
 
