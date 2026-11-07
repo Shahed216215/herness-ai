@@ -73,6 +73,26 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'HFM_MEMORY_READER_FORCED_RLS_REQUIRED';
   END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'mira_hfm'
+      AND tablename IN (
+        'project_owners','project_memberships','operation_authorities',
+        'authority_audit_events','memory_records'
+      )
+      AND 'public' = ANY(roles)
+  ) THEN
+    RAISE EXCEPTION 'HFM_MEMORY_READER_PUBLIC_POLICY_CONFLICT';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'mira_hfm'
+      AND (SELECT oid FROM pg_roles WHERE rolname = 'mira_hfm_memory_reader') = ANY(roles)
+  ) THEN
+    RAISE EXCEPTION 'HFM_MEMORY_READER_PREEXISTING_POLICY_CONFLICT';
+  END IF;
 END;
 $$;
 
