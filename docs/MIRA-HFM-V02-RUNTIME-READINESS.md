@@ -285,6 +285,7 @@ Target inspected: project steep-grass-38696226, branch br-crimson-sun-a13xzreh, 
 - Production database authorization: REVIEW_REQUIRED — RLS/FORCE RLS is present, but reader role absent and issuer attributes conflict with the intended hardened contract.
 - Render runtime: INCONCLUSIVE — service configuration observed; HFM environment names/values not available from the inspected endpoint.
 - Deployment and PR merge: NOT_APPROVED — explicit user approval and all live gates remain required.
+- Migration rollback design is prepared in [MIRA-HFM-V02-MIGRATION-ROLLBACK-PLAN.md](MIRA-HFM-V02-MIGRATION-ROLLBACK-PLAN.md). It is a non-destructive, design-only plan; no snapshot, restore rehearsal, migration, or rollback operation has been performed.
 
 
 ## Standing-read identity, preflight, Unicode search and final CI verification — 2026-11-07
