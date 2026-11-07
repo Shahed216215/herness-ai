@@ -259,6 +259,13 @@ function baseOptions(overrides = {}) {
       () => executeTool('knowledge_search', { query: 'test' }, null),
       error => error && error.code === 'HFM_MEMORY_READ_MODE_REQUIRED'
     );
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+    await assert.rejects(
+      () => executeTool('knowledge_review_queue', { limit: 5 }, null),
+      error => error && error.code === 'HFM_KNOWLEDGE_REVIEW_HFM_CONTEXT_REQUIRED'
+    );
+    const directReviewQueue = require('../tools/knowledge-review-queue');
+    assert.equal(JSON.parse(await directReviewQueue.execute({ limit: 5 })).code, 'HFM_TOOL_ROUTER_REQUIRED');
     process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = 'false';
     process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
     await assert.rejects(
