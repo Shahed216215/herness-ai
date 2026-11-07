@@ -15,7 +15,7 @@ function queryTerms(value) {
 function scoreRecord(query, record) {
   const tokens = queryTerms(query);
   if (!tokens.size) return 0;
-  const searchable = [record.content, record.source?.sourceId, record.source?.sourceUrl]
+  const searchable = [record.memoryId, record.content, record.source?.sourceId, record.source?.sourceUrl]
     .filter(value => typeof value === 'string').join(' ').toLowerCase();
   let score = 0;
   for (const token of tokens) {
