@@ -201,6 +201,33 @@ small{color:var(--muted)}
         a.href = item.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = item.title || item.url;
         line.append(a, document.createTextNode(' — ' + (item.content || item.snippet || '')));
         root.append(line);
+        const importSnippet = document.createElement('button');
+        importSnippet.textContent = 'Import this evidence to Neon';
+        importSnippet.addEventListener('click', async () => {
+          try {
+            if (!$('publicConfirm').checked) throw new Error('Confirm public, authorized, non-restricted content before import.');
+            const snippet = item.content || item.snippet || '';
+            if (!snippet.trim()) throw new Error('This result has no text snippet to import.');
+            const id = 'fbk_' + crypto.randomUUID().replace(/-/g, '');
+            const grant = await authority('memory.write', 'memory:' + id, 'facebook-knowledge-import');
+            const saved = await request('/api/hfm/facebook-knowledge/import', {
+              method: 'POST',
+              body: JSON.stringify(withAuthority({
+                memoryId: id,
+                idempotencyKey: crypto.randomUUID(),
+                sourceType: $('sourceType').value,
+                sourceId: $('sourceId').value.trim() || item.title || 'Public Facebook search result',
+                sourceUrl: item.url,
+                content: snippet,
+                collectionMethod: 'public_url_preview',
+                publicContentConfirmed: true
+              }, grant))
+            });
+            $('memoryId').value = saved.memoryId;
+            status(saved.status === 'DUPLICATE' ? 'Duplicate evidence already stored: ' + saved.memoryId : 'Public search evidence saved to Neon: ' + saved.memoryId);
+          } catch (error) { status(error.message, true); }
+        });
+        root.append(importSnippet);
       }
     } catch (error) { status(error.message, true); }
   });
