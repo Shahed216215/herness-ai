@@ -64,7 +64,6 @@ CREATE POLICY hfm_authority_issuer_approval_nonce_select
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND approver_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND consumed_at IS NULL
     AND expires_at > clock_timestamp()
   );
 
