@@ -197,6 +197,13 @@ const TOOL_POLICIES = Object.freeze({
     explicitConfirmation: false
   },
 
+  daily_activity_save: {
+    operation: "file_modify",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
   system_info: {
     operation: "inspect",
     autonomous: true,
