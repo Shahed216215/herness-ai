@@ -301,7 +301,7 @@ test('project-scoped list supports an allowlisted social-draft filter', async ()
   const client = fakeClient({
     query: async (sql, params) => {
       if (sql.startsWith('SELECT memory_id') && sql.includes('ORDER BY updated_at')) {
-        assert.deepEqual(params, ['project-001', 'ACTIVE', ['social_post_draft'], 25, false]);
+        assert.deepEqual(params, ['project-001', 'ACTIVE', ['social_post_draft'], 25, false, false]);
         return { rowCount: 1, rows: [row] };
       }
       return { rowCount: 0, rows: [] };
@@ -341,8 +341,10 @@ test('standing-read repository context is limited to active Learning/Knowledge a
     async query(sql, params) {
       queryCount += 1;
       assert.match(sql, /classification <> 'RESTRICTED'/);
+      assert.match(sql, /integrity_status = 'VERIFIED'/);
+      assert.match(sql, /trust_status IN \\('CONTENT_VERIFIED', \\'HUMAN_VERIFIED'\\)/);
       assert.deepEqual(params, [
-        'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'], 25, true
+        'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'], 25, true, true
       ]);
       return { rowCount: 0, rows: [] };
     }
