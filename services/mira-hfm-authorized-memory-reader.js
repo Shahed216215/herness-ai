@@ -57,10 +57,17 @@ async function retrieveProjectMemory(options = {}) {
     if (options.recordType !== undefined && !allowedRecordTypes.includes(options.recordType)) {
       fail('HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID');
     }
-    if (options.recordTypes !== undefined &&
-        (!Array.isArray(options.recordTypes) ||
-         options.recordTypes.length === 0 ||
-         options.recordTypes.some(type => !allowedRecordTypes.includes(type)))) {
+    if (options.recordType !== undefined && options.recordTypes !== undefined) {
+      fail('HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID');
+    }
+    const requestedRecordTypes = options.recordType !== undefined
+      ? [options.recordType]
+      : (options.recordTypes === undefined ? allowedRecordTypes : options.recordTypes);
+    if (!Array.isArray(requestedRecordTypes) ||
+        requestedRecordTypes.length < 1 ||
+        requestedRecordTypes.length > allowedRecordTypes.length ||
+        requestedRecordTypes.some(type => !allowedRecordTypes.includes(type)) ||
+        new Set(requestedRecordTypes).size !== requestedRecordTypes.length) {
       fail('HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID');
     }
     const result = await executeWithStandingReadAuthority({
@@ -74,7 +81,7 @@ async function retrieveProjectMemory(options = {}) {
         limit,
         lifecycle: 'ACTIVE',
         recordType: options.recordType,
-        recordTypes: options.recordType ? [options.recordType] : allowedRecordTypes,
+        recordTypes: requestedRecordTypes,
         cursor: options.cursor,
         allowPrivateRead: true,
         env: options.env || process.env
