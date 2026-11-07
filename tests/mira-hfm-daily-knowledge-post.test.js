@@ -127,6 +127,30 @@ test('daily post ID and idempotency key are stable for the same project and loca
   assert.equal(first.idempotencyKey, second.idempotencyKey);
 });
 
+test('same-day retries produce an identical canonical draft despite different request times or source ordering', () => {
+  const records = [
+    sourceRecord({ memoryId: 'retry-source-b', content: 'Practised Python lists.' }),
+    sourceRecord({ memoryId: 'retry-source-a', recordType: 'learning_note', content: 'Reviewed JSON objects.' })
+  ];
+  const first = buildDailyKnowledgePost({
+    records,
+    projectId: 'project-001',
+    localDate: '2026-11-06',
+    timeZone: 'Asia/Dhaka',
+    now: '2026-11-06T12:00:00.000Z'
+  });
+  const retry = buildDailyKnowledgePost({
+    records: [...records].reverse(),
+    projectId: 'project-001',
+    localDate: '2026-11-06',
+    timeZone: 'Asia/Dhaka',
+    now: '2026-11-06T20:30:00.000Z'
+  });
+  assert.deepEqual(retry.draft, first.draft);
+  assert.equal(first.draft.timestamps.createdAt, '2026-11-05T18:00:00.000Z');
+  assert.equal(retry.idempotencyKey, first.idempotencyKey);
+});
+
 test('saving a daily draft requires an explicit private-write grant', async () => {
   await assert.rejects(
     saveDailyKnowledgePost({
