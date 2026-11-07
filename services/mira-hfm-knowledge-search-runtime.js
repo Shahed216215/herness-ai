@@ -24,7 +24,7 @@ function scoreRecord(query, record) {
   return score / tokens.size;
 }
 
-async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.env, now = new Date() } = {}) {
+async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.env, now = new Date(), readMemory = retrieveProjectMemory } = {}) {
   if (typeof query !== 'string' || !query.trim() || query.length > 2000) {
     fail('HFM_KNOWLEDGE_SEARCH_QUERY_INVALID');
   }
@@ -34,7 +34,8 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
   if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true') {
     fail('HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED');
   }
-  const memory = await retrieveProjectMemory({
+  if (typeof readMemory !== 'function') fail('HFM_KNOWLEDGE_READ_RUNTIME_INVALID');
+  const memory = await readMemory({
     pool, req, standingReadAuthority: true,
     recordTypes: ['knowledge_item'], lifecycle: 'ACTIVE', limit: 100, env
   });
