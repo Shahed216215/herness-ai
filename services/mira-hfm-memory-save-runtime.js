@@ -33,7 +33,8 @@ function hasExplicitSaveIntent(value) {
   const english = /\bremember\s+(?:this|that|it)\b/i.test(value) ||
     /\b(?:save|store|keep|add)\b.{0,100}\b(?:to|in)\s+(?:(?:your|my)\s+|mira(?:'s)?\s+)?(?:memory|knowledge\s+base)\b/i.test(value) ||
     /\b(?:save|store)\s+(?:this|that|it|the\s+learning)\s+(?:as|to|in)\s+(?:(?:your|my)\s+|mira(?:'s)?\s+)?(?:memory|knowledge\s+base)\b/i.test(value);
-  const bengali = /(?:মনে\s*রাখ(?:ো|বে|বেন|তে)?|মনে\s*রেখ(?:ো|ো))/u.test(value) ||\n    /(?:সংরক্ষণ|সেভ|রাখ).{0,60}(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস)|(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস).{0,60}(?:রাখ|সংরক্ষণ|সেভ)/u.test(value);
+  const bengali = /(?:মনে\s*রাখ(?:ো|বে|বেন|তে)?|মনে\s*রেখ(?:ো|ো))/u.test(value) ||
+    /(?:সংরক্ষণ|সেভ|রাখ).{0,60}(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস)|(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস).{0,60}(?:রাখ|সংরক্ষণ|সেভ)/u.test(value);
   return english || bengali;
 }
 
