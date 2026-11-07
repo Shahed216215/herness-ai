@@ -108,6 +108,8 @@ const memoryPool = { async connect() { return memoryClient; } };
 
   const req = {
     role: 'user',
+    secure: true,
+    get(name) { return name === 'origin' ? 'https://mira.example' : name === 'host' ? 'mira.example' : undefined; },
     sessionID,
     session: {
       authenticated: true, role: 'user', hfmPrincipal: principal,
