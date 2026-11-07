@@ -122,6 +122,88 @@ test('missing project binding, malformed grant, and caller-supplied project cann
   console.log('HFM_AUTHORIZED_MEMORY_READ_FAILS_CLOSED=PASS');
 });
 
+test('standing read authority returns transaction-bound host authorization context without a per-read grant', async () => {
+  const adminSessionId = 'standing-reader-admin-session';
+  const adminPrincipal = {
+    verified: true,
+    issuer: 'mira.admins',
+    subject: '11111111-1111-4111-8111-111111111111',
+    actorType: 'HUMAN',
+    authenticationMethod: 'ADMIN_SUBJECT',
+    authenticationRef: adminSessionId,
+    authenticatedAt: new Date(now - 60000).toISOString(),
+    expiresAt: new Date(now + 60 * 60_000).toISOString()
+  };
+  const adminActorId = 'mira:mira.admins:' + adminPrincipal.subject;
+  const standingAuthorityId = 'standing-reader-authority-001';
+  const standingAuthority = {
+    standing_authority_id: standingAuthorityId,
+    project_id: projectId,
+    actor_id: adminActorId,
+    operation: 'memory.read',
+    resource: 'memory:project:' + projectId,
+    purpose: 'approved Learning and Knowledge retrieval',
+    owner_revision: 3,
+    membership_revision: 7,
+    status: 'ACTIVE',
+    approval_ref: 'standing-approval-001',
+    valid_from: new Date(now - 30000).toISOString(),
+    expires_at: new Date(now + 365 * 24 * 60 * 60 * 1000 - 30000).toISOString()
+  };
+  const calls = [];
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      if (sql.startsWith("SELECT (status = 'ACTIVE'")) return { rows: [{ membership_valid: true }] };
+      if (sql.includes('FROM mira_hfm.project_owners')) return { rows: [{
+        project_id: projectId, status: 'ACTIVE', revision: 3
+      }] };
+      if (sql.includes('FROM mira_hfm.project_memberships')) return { rows: [{
+        membership_id: 'membership-standing-reader-001',
+        project_id: projectId, actor_id: adminActorId,
+        permissions: { operations: ['memory.read'] }, status: 'ACTIVE',
+        revision: 7, valid_from: new Date(now - 60000).toISOString(), expires_at: null
+      }] };
+      if (sql.includes('FROM mira_hfm.standing_read_authorities')) return { rows: [standingAuthority] };
+      if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM mira_hfm.memory_records')) return { rows: [] };
+      return { rowCount: 1, rows: [] };
+    },
+    release() { calls.push({ sql: 'RELEASE', params: [] }); }
+  };
+  const standingReq = {
+    role: 'admin',
+    sessionID: adminSessionId,
+    session: {
+      authenticated: true, role: 'admin', hfmPrincipal: adminPrincipal,
+      hfmProjectBinding: {
+        verified: true, bindingVersion: BINDING_VERSION,
+        actorId: adminActorId, projectId,
+        selectedAt: new Date(now - 1000).toISOString()
+      }
+    }
+  };
+  const result = await retrieveProjectMemory({
+    pool: { async connect() { return client; } },
+    req: standingReq,
+    standingReadAuthority: true,
+    recordTypes: ['learning_note', 'knowledge_item'],
+    lifecycle: 'ACTIVE',
+    limit: 100,
+    env: {}
+  });
+  assert.equal(result.status, 'AUTHORIZED_AND_COMMITTED');
+  assert.equal(result.standingAuthority, true);
+  assert.equal(result.authorityConsumed, false);
+  assert.equal(result.approvalRequiredPerRead, false);
+  assert.equal(result.hostAuthorizationContext.actorId, adminActorId);
+  assert.equal(result.hostAuthorizationContext.projectId, projectId);
+  assert.equal(result.hostAuthorizationContext.authorityRef, standingAuthorityId);
+  assert.ok(calls.some(item => item.sql.includes('STANDING_READ_AUTHORITY_USED')));
+  assert.ok(calls.some(item => item.sql.includes('FROM mira_hfm.memory_records')));
+  console.log('HFM_AUTHORIZED_MEMORY_READ_STANDING_CONTEXT_PROPAGATED=PASS');
+});
+
 test('invalid limits and missing pool are rejected before database access', async () => {
   const f = fixture();
   await assert.rejects(
