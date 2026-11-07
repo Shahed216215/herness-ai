@@ -76,32 +76,8 @@ CREATE POLICY hfm_authority_issuer_approval_nonce_insert
     AND approver_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND (
       (operation = 'memory.read' AND resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), ''))
-      OR (operation IN ('memory.write','memory.trash','memory.restore') AND resource ~ '^memory:[A-Za-z0-9][A-Za-z0-9._:-]{2,127}
-    AND consumed_at IS NULL
-    AND issued_at <= clock_timestamp()
-    AND expires_at > clock_timestamp()
-    AND expires_at <= clock_timestamp() + interval '5 minutes'
-  );
-
-CREATE POLICY hfm_authority_issuer_approval_nonce_consume
-  ON mira_hfm.authority_approval_nonces
-  FOR UPDATE TO mira_hfm_authority_issuer
-  USING (
-    project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND approver_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND consumed_at IS NULL
-    AND expires_at > clock_timestamp()
-  )
-  -- The column-level GRANT permits changing only consumed_at. The USING
-  -- clause scopes the existing row; this CHECK validates the sole mutable field.
-  WITH CHECK (consumed_at IS NOT NULL AND consumed_at <= clock_timestamp());
-
-COMMENT ON TABLE mira_hfm.authority_approval_nonces IS
-  'HFM v0.2 hashed nonce ledger for signed, single-use, short-lived human approval tokens.';
-
-COMMIT;
-)
+      OR (operation IN ('memory.write','memory.trash','memory.restore')
+          AND resource ~ '^memory:[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$')
     )
     AND consumed_at IS NULL
     AND issued_at <= clock_timestamp()
@@ -121,7 +97,7 @@ CREATE POLICY hfm_authority_issuer_approval_nonce_consume
   )
   -- The column-level GRANT permits changing only consumed_at. The USING
   -- clause scopes the existing row; this CHECK validates the sole mutable field.
-  WITH CHECK (consumed_at IS NOT NULL);
+  WITH CHECK (consumed_at IS NOT NULL AND consumed_at <= clock_timestamp());
 
 COMMENT ON TABLE mira_hfm.authority_approval_nonces IS
   'HFM v0.2 hashed nonce ledger for signed, single-use, short-lived human approval tokens.';
