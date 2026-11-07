@@ -38,7 +38,7 @@ const {
 } = require("../capability-profile");
 
 const { retrieveHfmWorkLearning } = require("./mira-hfm-work-learning-runtime");
-const { retrieveProjectMemory } = require("./mira-hfm-authorized-memory-reader");
+const { preflightHfmStandingRead } = require("./mira-hfm-work-preflight");
 
 /*
  * Stage 5.4
@@ -1244,6 +1244,18 @@ async function executeWork(
   hfmMemoryReadRuntime = hfmReadContext.runtime;
   hfmToolContext = hfmReadContext.toolContext;
 
+  // A standing-read flag is a hard pre-planning gate even when Work Learning
+  // is disabled. Reuse the audited snapshot below when Work Learning is on.
+  let hfmStandingReadPreflight = null;
+  if (hfmMemoryReadRuntime) {
+    hfmStandingReadPreflight = await preflightHfmStandingRead({
+      pool: hfmMemoryReadRuntime.pool,
+      req: options.hfmRequest,
+      env: process.env,
+      includeLearning: hfmWorkLearningEnabled
+    });
+  }
+
 
   if (
     options.plan &&
@@ -1264,24 +1276,7 @@ async function executeWork(
     };
     if (hfmWorkLearningEnabled) {
       const hfmRuntime = hfmMemoryReadRuntime;
-      plannerOptions.preflightWorkLearning = async () => {
-        const memory = await retrieveProjectMemory({
-          pool: hfmRuntime.pool,
-          req: options.hfmRequest,
-          standingReadAuthority: true,
-          recordTypes: ["learning_note", "knowledge_item"],
-          lifecycle: "ACTIVE",
-          limit: 100,
-          env: process.env
-        });
-        if (!memory || memory.status !== "AUTHORIZED_AND_COMMITTED" ||
-            memory.standingAuthority !== true ||
-            memory.approvalRequiredPerRead !== false ||
-            !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
-          throw new Error("HFM_WORK_LEARNING_AUTHORIZED_MEMORY_READ_REQUIRED");
-        }
-        return memory;
-      };
+      plannerOptions.preflightWorkLearning = async () => hfmStandingReadPreflight;
       plannerOptions.retrieveWorkLearning = async ({ task, preflight }) =>
         retrieveHfmWorkLearning({
           req: options.hfmRequest,
