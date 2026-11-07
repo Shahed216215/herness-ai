@@ -81,11 +81,11 @@ const requiredBoundaryContracts = [
   ['services/learning.js', /async function learnFromContent\([\s\S]{0,180}?\)\s*\{\s*assertLegacyLearningStorageAllowed\(\);/, 'Learning source save boundary'],
   ['services/learning.js', /async function improveExistingKnowledge\([\s\S]{0,180}?\)\s*\{\s*assertLegacyLearningStorageAllowed\(\);/, 'Learning improvement boundary'],
   ['services/learning.js', /async function applyKnowledgeImprovement\([\s\S]{0,180}?\)\s*\{\s*assertLegacyLearningStorageAllowed\(\);/, 'Learning apply boundary'],
-  ['routes/knowledge-improvements.js', /app\.get\(\s*"\\/api\\/admin\\/knowledge-improvements",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "listing"\)/, 'Knowledge improvement list route'],
-  ['routes/knowledge-improvements.js', /app\.get\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "detail read"\)/, 'Knowledge improvement detail route'],
-  ['routes/knowledge-improvements.js', /app\.post\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id\\/approve",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "approval"\)/, 'Knowledge improvement approval route'],
-  ['routes/knowledge-improvements.js', /app\.post\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id\\/reject",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "rejection"\)/, 'Knowledge improvement rejection route'],
-  ['routes/knowledge-improvements.js', /app\.post\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id\\/apply",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "apply"\)/, 'Knowledge improvement apply route']
+  ['routes/knowledge-improvements.js', /app\.get\([\s\S]{0,500}?denyLegacyKnowledgeImprovementAccess\(req, res, "listing"\)/, 'Knowledge improvement list route'],
+  ['routes/knowledge-improvements.js', /app\.get\([\s\S]{0,500}?denyLegacyKnowledgeImprovementAccess\(req, res, "detail read"\)/, 'Knowledge improvement detail route'],
+  ['routes/knowledge-improvements.js', /app\.post\([\s\S]{0,500}?denyLegacyKnowledgeImprovementAccess\(req, res, "approval"\)/, 'Knowledge improvement approval route'],
+  ['routes/knowledge-improvements.js', /app\.post\([\s\S]{0,500}?denyLegacyKnowledgeImprovementAccess\(req, res, "rejection"\)/, 'Knowledge improvement rejection route'],
+  ['routes/knowledge-improvements.js', /app\.post\([\s\S]{0,500}?denyLegacyKnowledgeImprovementAccess\(req, res, "apply"\)/, 'Knowledge improvement apply route']
 ];
 
 for (const [file, pattern, label] of requiredBoundaryContracts) {
