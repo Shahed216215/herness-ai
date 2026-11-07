@@ -464,3 +464,9 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 
 - Issuance and pause/resume/revoke lifecycle checks now use PostgreSQL `clock_timestamp()` to determine whether an existing authority is still live. This avoids JavaScript millisecond truncation against PostgreSQL microsecond `timestamptz` values; the database remains the time authority for grant lifecycle transitions.
 - Regression coverage asserts that both active-grant collision detection and lifecycle expiry decisions use the database-derived `is_live` value rather than `Date.parse(expires_at)`.
+
+
+## Denied/failed read audit visibility — 2026-11-07
+
+- The Memory read route now includes `auditStatus` only when the standing-read transaction explicitly reports `RECORDED` or `FAILED`. This lets callers distinguish a denied/failed read whose durable audit event was written from a read failure whose audit insert also failed, without exposing authority secrets or actor credentials.
+- Route regression coverage checks both values. The underlying read remains fail-closed in either case; no local or Drive fallback is attempted.
