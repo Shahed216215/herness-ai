@@ -63,6 +63,22 @@ function registerAutonomousLearningRoutes(
   const router =
     express.Router();
 
+  // This router is backed by legacy proposal storage and controlled apply.
+  // HFM grants memory.read only, so block every legacy endpoint before route
+  // handlers can read or mutate proposal/Knowledge state.
+  router.use((req, res, next) => {
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+      return res.status(403).json({
+        success: false,
+        blocked: true,
+        code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_AUTONOMOUS_LEARNING",
+        reason: "HFM standing authority grants memory.read only; legacy autonomous Learning routes are unavailable."
+      });
+    }
+    return next();
+  });
+
   const requireSystemAdmin =
     requireAdminPermission(
       PERMISSIONS.SYSTEM_ADMIN
