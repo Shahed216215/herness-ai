@@ -35,6 +35,8 @@ function response() {
 function request(overrides = {}) {
   return {
     sessionID,
+    secure: true,
+    get(name) { return name === 'origin' ? 'https://mira.example' : name === 'host' ? 'mira.example' : undefined; },
     session: {
       authenticated: true, role: 'user', hfmPrincipal: principal,
       save(callback) { callback(null); },
@@ -82,6 +84,15 @@ function fakePool({ noMembership = false } = {}) {
     item.params[0] === actorId));
   assert.equal(res.body.project.membershipRole, 'ADMIN');
   console.log('HFM_PROJECT_SELECTION_REQUIRES_ACTIVE_SESSION_MEMBERSHIP=PASS');
+
+  const crossOriginReq = request({
+    get(name) { return name === 'origin' ? 'https://evil.example' : name === 'host' ? 'mira.example' : undefined; }
+  });
+  crossOriginReq.role = 'user';
+  const crossOriginRes = response();
+  await app.handler(crossOriginReq, crossOriginRes);
+  assert.equal(crossOriginRes.statusCode, 403);
+  console.log('HFM_PROJECT_SELECTION_CROSS_ORIGIN_BLOCK=PASS');
 
   const disabledApp = appFixture(async () => ({ status: 'DISABLED', pool: null }));
   const disabledRes = response();
