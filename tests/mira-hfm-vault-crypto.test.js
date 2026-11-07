@@ -151,6 +151,8 @@ test('private idempotency digests are keyed and reconcilable across KEK rotation
   const afterRotation = createVaultDigestCandidates(canonical, rotated);
   assert.notEqual(afterRotation.activeDigest, first.activeDigest);
   assert.ok(afterRotation.candidates.includes(first.activeDigest));
+  assert.deepEqual(afterRotation.candidates.length, 2);
+  assert.equal(afterRotation.candidates[0], afterRotation.activeDigest);
 });
 
 test('vault rejects PUBLIC contexts and non-object records', () => {
