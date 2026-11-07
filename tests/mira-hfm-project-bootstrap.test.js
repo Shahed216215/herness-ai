@@ -59,7 +59,7 @@ test('project bootstrap is idempotent for the same active owner and membership',
         return { rows: [{ owner_actor_id: 'mira:mira.users:' + principal.subject, status: 'ACTIVE', revision: 1 }] };
       }
       if (sql.includes('FROM mira_hfm.project_memberships')) {
-        return { rows: [{ membership_id: 'mbr_existing', status: 'ACTIVE' }] };
+        return { rows: [{ membership_id: 'mbr_existing', status: 'ACTIVE', permissions: { operations: ['memory.read','memory.write','memory.update','memory.trash','memory.restore'] } }] };
       }
       return { rows: [], rowCount: 1 };
     },
