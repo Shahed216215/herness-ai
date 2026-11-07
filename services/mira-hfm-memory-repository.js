@@ -378,12 +378,26 @@ async function listMemoryRecords(options = {}) {
     }
     recordTypes = [...recordTypes];
   }
+  const standingRead = context.authorityContext === STANDING_READ_CONTEXT;
+  if (standingRead) {
+    const standingTypes = new Set(['learning_note', 'knowledge_item']);
+    if (lifecycle !== 'ACTIVE') {
+      throw fail('HFM_STANDING_READ_LIFECYCLE_SCOPE_INVALID');
+    }
+    if (!recordTypes || recordTypes.some(type => !standingTypes.has(type))) {
+      throw fail('HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID');
+    }
+    if (options.allowRestrictedRead === true) {
+      throw fail('HFM_STANDING_READ_RESTRICTED_READ_NOT_ALLOWED');
+    }
+  }
   const result = await client.query(
     'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
     'integrity_status, trust_status, public_payload, encrypted_envelope FROM mira_hfm.memory_records ' +
     'WHERE project_id = $1 AND lifecycle = $2 AND ($3::text[] IS NULL OR record_type = ANY($3::text[])) ' +
+    'AND ($5::boolean = false OR classification <> \'RESTRICTED\') ' +
     'ORDER BY updated_at DESC, memory_id ASC LIMIT $4',
-    [context.projectId, lifecycle, recordTypes, limit]
+    [context.projectId, lifecycle, recordTypes, limit, standingRead]
   );
   return {
     status: 'FOUND',
