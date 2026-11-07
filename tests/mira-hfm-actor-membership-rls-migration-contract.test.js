@@ -44,6 +44,7 @@ test('writer RLS requires active owner, actor membership permission, exact resou
   assert.match(migration, /permissions -> 'operations' \? NULLIF\(current_setting\('mira\.operation', true\), ''\)/);
   assert.match(migration, /owner_actor_id = NULLIF\(current_setting\('mira\.actor_id', true\), ''\)/);
   assert.match(migration, /authority_row\.status = 'CONSUMED'/);
+  assert.match(migration, /CREATE POLICY hfm_reader_consumed_authority_select[\s\S]*?status = 'CONSUMED'/);
   assert.match(migration, /classification IN \('PUBLIC', 'PROJECT_PRIVATE'\)/);
   assert.doesNotMatch(migration, /classification IN \('PUBLIC', 'PROJECT_PRIVATE', 'RESTRICTED'\)/);
 });
@@ -51,6 +52,7 @@ test('writer RLS requires active owner, actor membership permission, exact resou
 test('reader RLS requires memory.read membership and a live standing or consumed authority', () => {
   for (const policy of [
     'hfm_reader_membership_permission',
+    'hfm_reader_consumed_authority_select',
     'hfm_reader_consumed_authority_scope',
     'hfm_reader_consume_exact_authority',
     'hfm_reader_authority_audit_request_scope',
