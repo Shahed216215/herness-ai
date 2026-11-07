@@ -1,5 +1,7 @@
 name: Mira HFM PostgreSQL migration integration
 
+# Keep this disposable PostgreSQL chain in the clean-integration PR gate; it applies 001–018 only to an ephemeral CI database.
+
 on:
   push:
     branches:
