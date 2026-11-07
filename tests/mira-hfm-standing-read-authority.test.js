@@ -147,6 +147,7 @@ const pool = { async connect() { return client; } };
       if (sql.includes('FROM mira_hfm.project_owners')) {
         return { rows: [{ project_id: projectId, status: 'ACTIVE', revision: 4 }] };
       }
+      if (sql.startsWith("SELECT (status = 'ACTIVE'")) return { rows: [{ membership_valid: true }] };
       if (sql.includes('FROM mira_hfm.project_memberships')) {
         return { rows: [{
           membership_id: 'membership-standing-001', project_id: projectId,
@@ -159,7 +160,6 @@ const pool = { async connect() { return client; } };
         return { rows: [standingRow] };
       }
       if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) return { rowCount: 1, rows: [] };
-      if (sql.startsWith("SELECT (status = 'ACTIVE'")) return { rows: [{ membership_valid: true }] };
       return { rowCount: 1, rows: [] };
     },
     release() {}
