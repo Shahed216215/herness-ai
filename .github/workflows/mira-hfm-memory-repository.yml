@@ -15,6 +15,8 @@ on:
       - "services/mira-hfm-standing-read-pages.js"
       - "services/mira-hfm-record-schema.js"
       - "services/mira-hfm-vault-crypto.js"
+      - "migrations/hfm/018_restricted_vault_write_authority.sql"
+      - "tests/mira-hfm-vault-write-authority-migration-contract.test.js"
       - "tests/mira-hfm-memory-repository.test.js"
       - "tests/mira-hfm-memory-postgres-runtime.test.js"
       - "tests/mira-hfm-memory-writer-rls-migration-contract.test.js"
@@ -99,6 +101,7 @@ jobs:
         run: |
           node tests/mira-hfm-authority-transaction.test.js
           node tests/mira-hfm-vault-crypto.test.js
+          node tests/mira-hfm-vault-write-authority-migration-contract.test.js
           node tests/mira-hfm-record-schema.test.js
           node tests/mira-hfm-memory-repository-migration-contract.test.js
           node tests/mira-hfm-memory-repository.test.js
