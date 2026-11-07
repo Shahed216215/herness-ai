@@ -42,7 +42,7 @@ jobs:
         run: |
           createdb -h localhost -U postgres neondb
           psql -h localhost -U postgres -d neondb -v ON_ERROR_STOP=1 -c "CREATE ROLE mira_hfm_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
-      - name: Apply HFM v0.2 migrations 001 through 018 in order
+      - name: Apply HFM v0.2 migrations 001 through 019 in order
         env:
           PGPASSWORD: hfm-ci-password
         run: |
@@ -65,7 +65,8 @@ jobs:
             migrations/hfm/015_actor_membership_operation_rls.sql \
             migrations/hfm/016_memory_record_revision_authority.sql \
             migrations/hfm/017_source_reference_record_v1_2.sql \
-            migrations/hfm/018_restricted_vault_write_authority.sql
+            migrations/hfm/018_restricted_vault_write_authority.sql \
+            migrations/hfm/019_memory_reader_login_principal.sql
           do
             test -s "$migration"
             echo "APPLYING=$migration"
