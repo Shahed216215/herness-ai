@@ -479,7 +479,7 @@ The user-approved 2026-11-06 Memory Topology Amendment lists seven domain famili
 
 A source-only proposal now defines the missing contract and recommends a normalized project-scoped `source_references` entity plus a same-project link table; a separately versioned canonical `recordType` (for example v1.2.0) remains an alternative. The representation is unresolved and NOT APPROVED / NOT IMPLEMENTED; no schema or migration change was made for it.
 
-The current tool surface exposes `memory_save`, `knowledge_save`, and `learning_save`; the dedicated daily activity, source-reference, client-vault, and financial-vault writer workflows are not yet complete end-to-end. Existing social draft persistence is a separate reviewed writer path.
+The current tool surface exposes `memory_save`, `knowledge_save`, `learning_save`, and `daily_activity_save`. The new daily-activity path accepts only an exact user-authored summary present in the current user message, requires explicit save intent, stores it as a private `daily_activity` record, redacts common sensitive values, and rejects recognized client/contract/financial identifiers. It does not automatically capture tool execution or model-generated summaries. Source-reference, client-vault, and financial-vault writer workflows remain incomplete. Existing social draft persistence is a separate reviewed writer path.
 
 ## 6. Remaining v0.2 contract gates
 
@@ -492,7 +492,8 @@ Until the corresponding contracts are approved and implemented:
 - Knowledge/Learning review remains read-only; `promotionSupported: false`, `writeAllowed: false`.
 - Canonical transcript persistence remains disabled/non-persistent in HFM mode; local and Drive fallback remain blocked.
 - `source_reference` has no canonical v1.1.0 record type or writer.
-- Daily activity and restricted vault writer workflows remain incomplete.
+- Manual user-confirmed daily-activity writing is implemented in code and CI-tested; automatic capture from tool execution remains incomplete.
+- Restricted client-vault and financial-vault writer workflows remain incomplete.
 
 ## 7. CI live-network guard
 
