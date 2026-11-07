@@ -10,6 +10,17 @@ function fail(code) {
   throw error;
 }
 
+function timestampAtOrBeforeNow(value, nowMs) {
+  if (typeof value !== 'string') return false;
+  if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{6}Z$/.test(value)) {
+    if (!Number.isFinite(Date.parse(value.slice(0, 23) + 'Z'))) return false;
+    const nowIso = new Date(nowMs).toISOString().slice(0, 23) + '000Z';
+    return value <= nowIso;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && parsed <= nowMs;
+}
+
 async function preflightHfmStandingRead(options = {}) {
   const pool = options.pool;
   const req = options.req;
@@ -58,8 +69,7 @@ async function preflightHfmStandingRead(options = {}) {
     typeof result.projectId === 'string' && result.projectId.length > 0 &&
     result.standingAuthorityId === context.authorityRef &&
     result.authorityExpiresAt === context.expiresAt &&
-    typeof result.scanStartedAt === 'string' && Number.isFinite(Date.parse(result.scanStartedAt)) &&
-    Date.parse(result.scanStartedAt) <= now.getTime() &&
+    timestampAtOrBeforeNow(result.scanStartedAt, now.getTime()) &&
     Number.isInteger(result.count) && result.count === result.records.length &&
     result.records.length <= (includeLearning ? 100 : 1) &&
     (result.nextCursor === undefined || result.nextCursor === null ||
