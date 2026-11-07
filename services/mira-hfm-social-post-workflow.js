@@ -69,10 +69,11 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
-async function loadRecord(client, context, memoryId) {
+async function loadRecord(client, context, memoryId, options = {}) {
+  const lockClause = options.forUpdate === false ? '' : ' FOR UPDATE';
   const result = await client.query(
     'SELECT memory_id, project_id, owner_actor_id, record_type, classification, lifecycle, revision, ' +
-    'payload_erased_at FROM mira_hfm.memory_records WHERE project_id = $1 AND memory_id = $2 FOR UPDATE',
+    'payload_erased_at FROM mira_hfm.memory_records WHERE project_id = $1 AND memory_id = $2' + lockClause,
     [context.projectId, memoryId]
   );
   return result.rows && result.rows[0];
@@ -189,9 +190,10 @@ async function listSocialPostDrafts(options = {}) {
   const result = await client.query(
     'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
     'integrity_status, trust_status, public_payload, encrypted_envelope, created_at, updated_at, payload_erased_at ' +
-    'FROM mira_hfm.memory_records WHERE project_id = $1 AND record_type = \'social_post_draft\' ' +
-    'AND classification = \'PROJECT_PRIVATE\' ORDER BY created_at DESC, memory_id ASC LIMIT $2',
-    [context.projectId, limit]
+    'FROM mira_hfm.memory_records WHERE project_id = $1 AND owner_actor_id = $2 ' +
+    'AND record_type = \'social_post_draft\' AND classification = \'PROJECT_PRIVATE\' ' +
+    'ORDER BY created_at DESC, memory_id ASC LIMIT $3',
+    [context.projectId, context.actorId, limit]
   );
   const drafts = [];
   for (const row of result.rows || []) {
@@ -315,7 +317,7 @@ async function deleteSocialPostPayload(options = {}) {
 async function getSocialPostStatus(options = {}) {
   const { client, context, memoryId } = options;
   validateWorkflowContext(context, 'memory.read', memoryId);
-  const row = await loadRecord(client, context, memoryId);
+  const row = await loadRecord(client, context, memoryId, { forUpdate: false });
   if (!row) return { status: 'NOT_FOUND', memoryId };
   if (row.project_id !== context.projectId || row.owner_actor_id !== context.actorId ||
       row.record_type !== 'social_post_draft' || row.classification !== 'PROJECT_PRIVATE') {

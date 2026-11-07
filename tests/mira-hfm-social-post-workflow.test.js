@@ -107,7 +107,8 @@ test('archive returns sanitized metadata for erased drafts without decrypting pa
   assert.equal(result.drafts[0].content, null);
   assert.equal(result.drafts[0].source, null);
   assert.match(calls[0].sql, /project_id = \$1 AND record_type = 'social_post_draft'/);
-  assert.deepEqual(calls[0].params, ['project-001', 25]);
+  assert.match(calls[0].sql, /owner_actor_id = \$2/);
+  assert.deepEqual(calls[0].params, ['project-001', 'mira:creator-001', 25]);
 });
 
 test('archive rejects wrong project scope and does not return restricted records', async () => {
@@ -287,4 +288,24 @@ test('Published status requires explicit user confirmation and is not Facebook-v
   assert.equal(stateWrite.params[3], 'USER_CONFIRMED_PUBLISHED');
   const auditWrite = client.calls.find(x => x.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events'));
   assert.match(auditWrite.params[11], /USER_ACTION_NOT_FACEBOOK_VERIFIED/);
+});
+
+
+test('status reads do not acquire a write lock', async () => {
+  const calls = [];
+  const client = {
+    async query(sql) {
+      calls.push(sql);
+      if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) return { rows: [{ ...draft }] };
+      if (sql.startsWith('SELECT status, copied_at')) return { rows: [{ status: 'COPIED', copied_at: null, published_confirmed_at: null }] };
+      throw new Error('unexpected SQL: ' + sql);
+    }
+  };
+  const result = await workflow.getSocialPostStatus({
+    client, context: { ...baseContext, operation: 'memory.read', resource: 'memory:post-0001' },
+    memoryId: 'post-0001'
+  });
+  assert.equal(result.status, 'COPIED');
+  const recordRead = calls.find(sql => sql.startsWith('SELECT memory_id, project_id, owner_actor_id'));
+  assert.doesNotMatch(recordRead, /FOR UPDATE/i);
 });
