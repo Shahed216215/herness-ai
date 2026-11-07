@@ -163,6 +163,8 @@ const pool = { async connect() { return client; } };
 
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/011_authority_issuer_role_hardening.sql'), 'utf8');
   assert.match(migration, /ALTER ROLE mira_hfm_authority_issuer NOINHERIT/);
+  assert.match(migration, /HFM_AUTHORITY_ISSUER_UNEXPECTED_POLICY_CONFLICT/);
+  assert.match(migration, /policyname NOT IN/);
   for (const legacyPolicy of ['authority_issuer_owner_read','authority_issuer_membership_read','authority_issuer_insert','authority_issuer_audit_insert','authority_issuer_owner_insert','authority_issuer_membership_insert']) {
     assert.ok(migration.includes('DROP POLICY IF EXISTS ' + legacyPolicy), 'legacy permissive policy must be removed: ' + legacyPolicy);
   }
