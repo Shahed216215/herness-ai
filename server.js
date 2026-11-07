@@ -1431,6 +1431,7 @@ app.get(
         results,
         candidateScanCount: hfmSearch ? hfmSearch.candidateScanCount : null,
         candidateScanLimit: hfmSearch ? hfmSearch.candidateScanLimit : null,
+        scannedPages: hfmSearch ? hfmSearch.scannedPages : null,
         nextCursor: hfmSearch ? hfmSearch.nextCursor : null,
         candidateScanMayBeIncomplete: hfmSearch ? hfmSearch.candidateScanMayBeIncomplete : false
       });
