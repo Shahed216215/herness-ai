@@ -2,7 +2,7 @@
 -- Do not execute on production. Review and approve the complete migration chain first.
 -- CI validation uses a disposable PostgreSQL 16 database only; no live data is touched.
 -- This migration adds exact-resource memory.update authority for PROJECT_PRIVATE/PUBLIC
--- canonical records while preserving trust immutability and append-only version history.
+-- canonical records while preserving trust/integrity immutability and append-only version history.
 
 BEGIN;
 
@@ -121,11 +121,11 @@ CREATE POLICY hfm_writer_memory_record_update_scope
   );
 
 -- Keep table-level UPDATE revoked. Grant only fields required for canonical revision
--- plus the existing lifecycle transition fields. Trust status remains immutable here.
+-- plus the existing lifecycle transition fields. Trust and integrity status remain immutable here.
 REVOKE UPDATE ON TABLE mira_hfm.memory_records FROM mira_hfm_memory_writer;
 GRANT UPDATE (
   lifecycle, trashed_at, trashed_by_actor_id, revision, updated_at,
-  integrity_status, public_payload, encrypted_envelope
+  public_payload, encrypted_envelope
 ) ON TABLE mira_hfm.memory_records TO mira_hfm_memory_writer;
 
 -- Allow memory.update to append a new immutable version without changing trust state,
@@ -155,7 +155,7 @@ BEGIN
        OR NEW.trashed_at IS DISTINCT FROM OLD.trashed_at
        OR NEW.trashed_by_actor_id IS DISTINCT FROM OLD.trashed_by_actor_id
        OR NEW.trust_status IS DISTINCT FROM OLD.trust_status
-       OR NEW.integrity_status NOT IN ('UNVERIFIED', 'VERIFIED') THEN
+       OR NEW.integrity_status IS DISTINCT FROM OLD.integrity_status THEN
       RAISE EXCEPTION 'HFM_MEMORY_REVISION_TRANSITION_INVALID';
     END IF;
   ELSIF operation_name IN ('memory.trash', 'memory.restore') THEN
