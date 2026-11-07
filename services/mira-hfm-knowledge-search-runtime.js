@@ -40,7 +40,7 @@ function scoreRecord(query, record) {
   return score / tokens.size;
 }
 
-async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.env, now = new Date(), readMemory = retrieveProjectMemory } = {}) {
+async function searchHfmKnowledge({ req, pool, query, limit = 5, cursor, env = process.env, now = new Date(), readMemory = retrieveProjectMemory } = {}) {
   if (typeof query !== 'string' || !query.trim() || query.length > 2000) {
     fail('HFM_KNOWLEDGE_SEARCH_QUERY_INVALID');
   }
@@ -53,7 +53,7 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
   if (typeof readMemory !== 'function') fail('HFM_KNOWLEDGE_READ_RUNTIME_INVALID');
   const memory = await readMemory({
     pool, req, standingReadAuthority: true,
-    recordTypes: ['knowledge_item', 'learning_note'], lifecycle: 'ACTIVE', limit: 100, env
+    recordTypes: ['knowledge_item', 'learning_note'], lifecycle: 'ACTIVE', limit: 100, cursor, env
   });
   if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
       memory.standingAuthority !== true || memory.approvalRequiredPerRead !== false ||
@@ -119,7 +119,8 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
     results: Object.freeze(results),
     candidateScanCount,
     candidateScanLimit: 100,
-    candidateScanMayBeIncomplete: candidateScanCount === 100,
+    nextCursor: memory.nextCursor || null,
+    candidateScanMayBeIncomplete: typeof memory.nextCursor === 'string' && memory.nextCursor.length > 0,
     standingAuthority: true,
     authorityExpiresAt: memory.authorityExpiresAt,
     approvalRequiredPerRead: false,
