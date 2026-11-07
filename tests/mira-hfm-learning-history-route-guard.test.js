@@ -23,11 +23,13 @@ const guardRegistration = registrations.find(item =>
   item.type === 'use' && typeof item.handlers[0] === 'function'
 );
 assert.ok(guardRegistration, 'global legacy history guard must be registered');
+assert.equal(guardRegistration.handlers.length, 2, 'admin authentication must precede the HFM mode guard');
+assert.equal(typeof guardRegistration.handlers[0], 'function', 'system-admin middleware must run first');
 assert.ok(registrations.findIndex(item => item === guardRegistration) <
   registrations.findIndex(item => item.type === 'get'),
   'guard must precede every local history route');
 
-const guard = guardRegistration.handlers[0];
+const guard = guardRegistration.handlers[1];
 const flags = [
   'MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED',
   'MIRA_HFM_WORK_LEARNING_ENABLED',
