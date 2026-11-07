@@ -79,6 +79,16 @@ const execution = read('services/mira-work-execution-engine.js');
 const server = read('server.js');
 const bridge = read('services/mira-hfm-work-learning-retrieval.js');
 const runtime = read('services/mira-hfm-work-learning-runtime.js');
+const knowledgeSearch = read('services/mira-hfm-knowledge-search-runtime.js');
+assert.match(server, /searchHfmKnowledge/);
+assert.match(server, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"/);
+assert.match(knowledgeSearch, /recordTypes: \['knowledge_item'\]/);
+assert.match(knowledgeSearch, /retrieveCanonicalRecordsWithReport/);
+assert.match(knowledgeSearch, /localFallback: false/);
+assert.match(knowledgeSearch, /driveFallback: false/);
+assert.match(knowledgeSearch, /HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED/);
+console.log('HFM_GENERIC_KNOWLEDGE_SEARCH_AND_CHAT_USE_STANDING_READ=PASS');
+
 
 assert.match(planner, /process\.env\.MIRA_HFM_WORK_LEARNING_ENABLED === "true"/);
 assert.match(planner, /HFM_WORK_LEARNING_RUNTIME_REQUIRED/);
