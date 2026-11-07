@@ -510,6 +510,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     console.log('HFM_WORK_LEARNING_DENIED_PREFLIGHT_STOPS_BEFORE_PLANNING=PASS');
 
     delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
     let disabledRuntimeResolved = false;
     const disabledResult = await executeWork('all HFM read flags disabled', {
       plan: {},
