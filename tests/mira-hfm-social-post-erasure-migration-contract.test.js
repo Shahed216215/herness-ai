@@ -72,6 +72,7 @@ test('migration PL/pgSQL blocks use valid balanced dollar-quote delimiters', () 
     (sql.match(/^\$\$;$/gm) || []).length);
 });
 
+
 test('provenance retention migration is source-only and retains only allowlisted metadata', () => {
   assert.match(provenanceSql, /SOURCE-ONLY/i);
   assert.match(provenanceSql, /memory_social_post_state/);
@@ -80,4 +81,10 @@ test('provenance retention migration is source-only and retains only allowlisted
   assert.match(provenanceSql, /sourceType/);
   assert.match(provenanceSql, /collectionMethod/);
   assert.doesNotMatch(provenanceSql, /content|encrypted_envelope|access_token|private_payload/i);
+});
+
+test('optional originalPublishedAt provenance is limited to JSON null or string', () => {
+  assert.match(provenanceSql, /NOT \(provenance_metadata \? 'originalPublishedAt'\)/);
+  assert.match(provenanceSql, /provenance_metadata->'originalPublishedAt' = 'null'::jsonb/);
+  assert.match(provenanceSql, /jsonb_typeof\(provenance_metadata->'originalPublishedAt'\) = 'string'/);
 });
