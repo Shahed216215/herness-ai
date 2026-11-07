@@ -45,6 +45,12 @@ function registerMiraHfmMemoryReadRoute(
     }
 
     const body = req.body || {};
+    const cursor = body.cursor;
+    if (cursor !== undefined && cursor !== null && cursor !== '') {
+      if (!standingMode || typeof cursor !== 'string' || cursor.length > 2048) {
+        return res.status(400).json({ success: false, error: 'A bounded page cursor is available only in standing-read mode.' });
+      }
+    }
     const limit = body.limit === undefined ? 50 : body.limit;
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
       return res.status(400).json({ success: false, error: 'limit must be an integer from 1 to 100.' });
@@ -87,6 +93,7 @@ function registerMiraHfmMemoryReadRoute(
             limit,
             recordType: body.recordType,
             lifecycle: standingMode ? 'ACTIVE' : body.lifecycle,
+            ...(standingMode && cursor ? { cursor } : {}),
             env
           });
           return res.json({
@@ -95,6 +102,8 @@ function registerMiraHfmMemoryReadRoute(
             projectId: result.projectId,
             count: result.count,
             records: result.records,
+            nextCursor: standingMode ? (result.nextCursor || null) : null,
+            scanStartedAt: standingMode ? (result.scanStartedAt || null) : null,
             authorityConsumed: result.authorityConsumed,
             standingAuthority: result.standingAuthority === true,
             standingAuthorityId: result.standingAuthorityId,
