@@ -257,7 +257,7 @@ function baseOptions(overrides = {}) {
   assert.equal(pendingResult.lifecycle, 'PENDING_REVIEW');
   assert.equal(pendingResult.searchEligible, false);
 
-  const { executeTool } = require('../tools');
+  const { executeTool, executeHfmMemorySave } = require('../tools');
   const previousWriteFlag = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
   const previousReadFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
   const previousWorkFlag = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
@@ -302,35 +302,35 @@ function baseOptions(overrides = {}) {
     assert.ok(['HFM_TOOL_ROUTER_REQUIRED', 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'].includes(directMemoryResult.code));
     assert.ok(['HFM_TOOL_ROUTER_REQUIRED', 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'].includes(directKnowledgeResult.code));
 
-    const servicePath = require.resolve('../services/mira-hfm-memory-save-runtime');
-    const serviceModule = require.cache[servicePath];
-    const originalSave = serviceModule.exports.saveHfmMemoryRecord;
     let routedOptions = null;
-    serviceModule.exports.saveHfmMemoryRecord = async options => {
-      routedOptions = options;
-      return {
-        success: true, saved: true, status: 'CREATED',
-        memoryId: 'mem-tool-route-0001', lifecycle: 'ACTIVE',
-        classification: 'PROJECT_PRIVATE', trust: 'HUMAN_VERIFIED',
-        searchable: true, localFallback: false, driveFallback: false
-      };
-    };
-    const routed = JSON.parse(await executeTool('memory_save', { content: 'I prefer concise Bengali explanations.' }, {
-      hfmWrite: {
-        req: { session: { authenticated: true, role: 'admin' } },
-        writerPool: { connect: async () => ({}) },
-        issuerPool: { connect: async () => ({}) },
-        userIntent: 'Remember this: I prefer concise Bengali explanations.',
-        taskId: 'task-001', toolCallId: 'call-001', toolName: 'memory_save'
+    const routed = JSON.parse(await executeHfmMemorySave(
+      'memory_save',
+      { content: 'I prefer concise Bengali explanations.' },
+      {
+        hfmWrite: {
+          req: { session: { authenticated: true, role: 'admin' } },
+          writerPool: { connect: async () => ({}) },
+          issuerPool: { connect: async () => ({}) },
+          userIntent: 'Remember this: I prefer concise Bengali explanations.',
+          taskId: 'task-001', toolCallId: 'call-001', toolName: 'memory_save'
+        }
+      },
+      async options => {
+        routedOptions = options;
+        return {
+          success: true, saved: true, status: 'CREATED',
+          memoryId: 'mem-tool-route-0001', lifecycle: 'ACTIVE',
+          classification: 'PROJECT_PRIVATE', trust: 'HUMAN_VERIFIED',
+          searchable: true, localFallback: false, driveFallback: false
+        };
       }
-    }));
+    ));
     assert.equal(routed.source, 'HFM_V02_CANONICAL');
     assert.equal(routed.localFallback, false);
     assert.equal(routed.driveFallback, false);
     assert.equal(routedOptions.kind, 'memory_save');
     assert.equal(routedOptions.content, 'I prefer concise Bengali explanations.');
     assert.match(routedOptions.userIntent, /Remember this/);
-    serviceModule.exports.saveHfmMemoryRecord = originalSave;
   } finally {
     if (previousWriteFlag === undefined) delete process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
     else process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = previousWriteFlag;
