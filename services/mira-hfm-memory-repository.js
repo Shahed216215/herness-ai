@@ -132,6 +132,8 @@ function decodeStoredRow(row, options = {}) {
       record.schemaVersion !== row.schema_version ||
       record.access.classification !== row.classification ||
       record.version.revision !== Number(row.revision) ||
+      record.integrity.status !== row.integrity_status ||
+      record.trust.status !== row.trust_status ||
       record.lifecycle !== row.lifecycle) {
     throw fail('HFM_MEMORY_STORED_RECORD_METADATA_MISMATCH');
   }
