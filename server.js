@@ -101,6 +101,7 @@ const registerMiraHfmSocialPostRoutes = require("./routes/mira-hfm-social-posts"
 const registerFacebookKnowledgeRoutes = require("./routes/mira-hfm-facebook-knowledge");
 const registerHfmAuthorityRoutes = require("./routes/mira-hfm-authorities");
 const registerHfmProjectRoutes = require("./routes/mira-hfm-projects");
+const registerDailyKnowledgeRoutes = require("./routes/mira-hfm-daily-knowledge");
 const { getAuthorityIssuerPool } = require("./services/mira-hfm-authority-issuer-pool");
 const { getMemoryWriterPool } = require("./services/mira-hfm-memory-writer-pool");
 const registerClientCommunicationRoutes =
@@ -2251,6 +2252,8 @@ registerHfmAuthorityRoutes(app, requireAgentAuth, {
 registerHfmProjectRoutes(app, requireAgentAuth, {
   getPool: getAuthorityIssuerPool
 });
+
+registerDailyKnowledgeRoutes(app, requireAgentAuth);
 
 registerWorkAcceptanceRoutes(
   app,
