@@ -22,6 +22,11 @@ function preflightRow(overrides = {}) {
     can_login: true,
     can_replicate: false,
     has_memory_writer_group: true,
+    role_membership_isolated: true,
+    writer_group_has_no_parent_roles: true,
+    writer_group_least_privilege: true,
+    writer_group_owns_no_objects: true,
+    login_role_owns_no_objects: true,
     schema_usage: true,
     schema_create: false,
     owners_select: true,
@@ -134,6 +139,10 @@ test('writer preflight requires the exact login role, limited privileges and for
   assert.throws(
     () => runtime.verifyWriterPreflight(preflightRow({ owners_delete: true }), config),
     error => error.code === 'MEMORY_WRITER_EXCESS_PRIVILEGE_DETECTED'
+  );
+  assert.throws(
+    () => runtime.verifyWriterPreflight(preflightRow({ role_membership_isolated: false }), config),
+    error => error.code === 'MEMORY_WRITER_REQUIRED_PRIVILEGE_MISSING'
   );
   assert.throws(
     () => runtime.verifyWriterPreflight(preflightRow({ can_login: false }), config),
