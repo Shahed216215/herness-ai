@@ -397,6 +397,100 @@ test('standing-read repository context is limited to active Learning/Knowledge a
   assert.equal(queryCount, 2);
 });
 
+test('standing-read keyset pagination is project-bound, stable and audited per page', async () => {
+  const standingContext = {
+    ...context,
+    operation: 'memory.read',
+    resource: 'memory:project:project-001',
+    authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
+  };
+  const scanStartedAt = '2026-11-07T10:00:00.000Z';
+  const firstUpdatedAt = '2026-11-07T09:00:00.000Z';
+  const secondUpdatedAt = '2026-11-07T08:00:00.000Z';
+  function publicKnowledge(memoryId, updatedAt) {
+    const value = record({
+      memoryId,
+      recordType: 'knowledge_item',
+      timestamps: { createdAt: now, updatedAt },
+      trust: { status: 'HUMAN_VERIFIED' },
+      access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+    });
+    return {
+      memory_id: memoryId,
+      project_id: 'project-001',
+      owner_actor_id: context.actorId,
+      record_type: 'knowledge_item',
+      schema_version: '1.1.0',
+      classification: 'PUBLIC',
+      lifecycle: 'ACTIVE',
+      revision: 1,
+      integrity_status: 'VERIFIED',
+      trust_status: 'HUMAN_VERIFIED',
+      public_payload: value,
+      encrypted_envelope: null,
+      updated_at: updatedAt,
+      scan_started_at: scanStartedAt
+    };
+  }
+  const firstRow = publicKnowledge('memory-page-001', firstUpdatedAt);
+  const secondRow = publicKnowledge('memory-page-002', secondUpdatedAt);
+  const calls = [];
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      if (sql.includes('SELECT transaction_timestamp() AS scan_started_at')) {
+        return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
+      }
+      assert.match(sql, /updated_at <= \\$5::timestamptz/);
+      assert.match(sql, /updated_at < \\$6::timestamptz/);
+      if (params[5] === null) {
+        assert.deepEqual(params, [
+          'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'],
+          2, scanStartedAt, null, null
+        ]);
+        return { rowCount: 2, rows: [firstRow, secondRow] };
+      }
+      assert.deepEqual(params, [
+        'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'],
+        2, scanStartedAt, firstUpdatedAt, 'memory-page-001'
+      ]);
+      return { rowCount: 1, rows: [secondRow] };
+    }
+  };
+  const firstPage = await repository.listMemoryRecords({
+    client, context: standingContext, recordTypes: ['learning_note', 'knowledge_item'],
+    lifecycle: 'ACTIVE', limit: 1, allowPrivateRead: true, env
+  });
+  assert.equal(firstPage.count, 1);
+  assert.equal(firstPage.records[0].memoryId, 'memory-page-001');
+  assert.ok(firstPage.nextCursor);
+  const cursorPayload = JSON.parse(Buffer.from(firstPage.nextCursor, 'base64url').toString('utf8'));
+  assert.equal(cursorPayload.projectId, 'project-001');
+  assert.equal(cursorPayload.scanStartedAt, scanStartedAt);
+  assert.equal(cursorPayload.updatedAt, firstUpdatedAt);
+  assert.equal(cursorPayload.memoryId, 'memory-page-001');
+
+  const secondPage = await repository.listMemoryRecords({
+    client, context: standingContext, recordTypes: ['learning_note', 'knowledge_item'],
+    lifecycle: 'ACTIVE', limit: 1, cursor: firstPage.nextCursor,
+    allowPrivateRead: true, env
+  });
+  assert.equal(secondPage.count, 1);
+  assert.equal(secondPage.records[0].memoryId, 'memory-page-002');
+  assert.equal(secondPage.nextCursor, null);
+  assert.equal(calls.length, 3, 'each page executes in its own authorized read transaction');
+  await assert.rejects(
+    repository.listMemoryRecords({
+      client,
+      context: { ...standingContext, projectId: 'other-project', resource: 'memory:project:other-project' },
+      recordTypes: ['learning_note', 'knowledge_item'],
+      lifecycle: 'ACTIVE', limit: 1, cursor: firstPage.nextCursor,
+      allowPrivateRead: true, env
+    }),
+    error => error.code === 'HFM_MEMORY_PAGE_CURSOR_INVALID'
+  );
+});
+
 test('trash requires explicit private lifecycle grant and writes a recoverable revision', async () => {
   const privateRecord = record();
   const { createVaultEnvelope } = require('../services/mira-hfm-vault-crypto');
