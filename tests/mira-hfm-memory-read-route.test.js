@@ -116,6 +116,30 @@ async function invoke(req, runtime = async () => ({
   assert.equal(expired.statusCode, 403);
   console.log('HFM_MEMORY_READ_EXPIRED_GRANT_CLEAR=PASS');
 
+  const wrongOperation = await invoke(makeReq({
+    session: {
+      authenticated: true, role: 'admin',
+      hfmProjectBinding: { verified: true, projectId: 'project-alpha' },
+      hfmPendingMemoryAuthority: {
+        projectId: 'project-alpha', operation: 'memory.trash',
+        resource: 'memory:social-draft-001',
+        grant: { authorityId: 'authority-001', purpose: 'approved retrieval', requestId: 'request-001' },
+        expiresAt: new Date(Date.now() + 60000).toISOString()
+      },
+      save(callback) { callback(null); }
+    }
+  }));
+  assert.equal(wrongOperation.statusCode, 403);
+  console.log('HFM_MEMORY_READ_WRONG_OPERATION_GRANT_BLOCK=PASS');
+
+  const invalidLifecycle = await invoke(makeReq({ body: { limit: 25, lifecycle: 'PURGED' } }));
+  assert.equal(invalidLifecycle.statusCode, 400);
+  console.log('HFM_MEMORY_READ_INVALID_LIFECYCLE_FILTER_BLOCK=PASS');
+
+  const invalidType = await invoke(makeReq({ body: { limit: 25, recordType: 'unknown_type' } }));
+  assert.equal(invalidType.statusCode, 400);
+  console.log('HFM_MEMORY_READ_INVALID_RECORD_TYPE_FILTER_BLOCK=PASS');
+
   const disabled = await invoke(makeReq(), async () => ({ status: 'DISABLED', pool: null }));
   assert.equal(disabled.statusCode, 503);
   console.log('HFM_MEMORY_READ_DISABLED_RUNTIME_FAIL_CLOSED=PASS');
