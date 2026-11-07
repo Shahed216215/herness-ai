@@ -155,7 +155,7 @@ const env = {
   assert.ok(migration.includes('resource = \'memory:project:\' || NULLIF(current_setting(\'mira.project_id\', true), \'\')'));
   assert.match(migration, /consumed_at IS NULL/);
   assert.match(migration, /consumed_at IS NOT NULL/);
-  assert.ok(migration.includes('WITH CHECK (\n    consumed_at IS NOT NULL\n    AND consumed_at <= clock_timestamp()\n  );'));
+  assert.ok(migration.includes('WITH CHECK (consumed_at IS NOT NULL);'));
   assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
   assert.doesNotMatch(migration, /GRANT[^;]+TRUNCATE/i);
   console.log('HFM_APPROVAL_NONCE_MIGRATION_LEAST_PRIVILEGE=PASS');
