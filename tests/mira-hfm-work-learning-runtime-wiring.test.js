@@ -266,6 +266,36 @@ const { verifyEvolutionState } = require('../knowledge-memory-evolution');
 const legacyEvolution = read('knowledge-memory-evolution.js');
 assert.match(legacyEvolution, /function readJsonFile\(filePath\) \{\s*assertLegacyStorageDisabled\(\);/);
 assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*assertLegacyStorageDisabled\(\);/);
+const legacyConsumerContracts = [
+  ['autonomous-learning-controlled-apply.js', /function readLocalKnowledge\(\) \{\s*assertLegacyStorageDisabled\(\);[\s\S]*function writeLocalKnowledge\(data\) \{\s*assertLegacyStorageDisabled\(\);/],
+  ['knowledge-controlled-apply.js', /async function applyKnowledgeImprovementControlled\([\s\S]*?\) \{\s*assertLegacyStorageDisabled\(\);/],
+  ['google-drive.js', /async function (?:saveKnowledgeToDrive|loadKnowledgeFromDrive|saveMemoryToDrive|loadMemoryFromDrive)\(data?\) \{\s*assertLegacyStorageDisabled\(\);/],
+  ['knowledge.js', /function loadKnowledge\(\) \{\s*assertLegacyStorageDisabled\(\);[\s\S]*function saveLocalKnowledge\(data\) \{\s*assertLegacyStorageDisabled\(\);/],
+  ['memory.js', /function loadMemory\(\) \{\s*assertLegacyStorageDisabled\(\);[\s\S]*function saveMemory\(memory\) \{\s*assertLegacyStorageDisabled\(\);/],
+  ['routes/knowledge-improvements.js', /denyLegacyKnowledgeImprovementAccess/],
+  ['server.js', /HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_DIAGNOSTIC/],
+  ['services/learning.js', /function assertLegacyLearningStorageAllowed/],
+  ['tools/knowledge-backup.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/knowledge-cleanup.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/knowledge-count.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/knowledge-improve.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/knowledge-restore.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/knowledge-save.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/knowledge-search.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/learning-save.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/memory-count.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/memory-restore.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/memory-save.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['services/mira-work-learning-engine.js', /function loadStore\(\) \{\s*assertLegacyStorageDisabled\(\);[\s\S]*function saveStore\(store\) \{\s*assertLegacyStorageDisabled\(\);/],
+  ['services/mira-task-planner.js', /const hfmReadOnlyMode =[\s\S]*process\.env\.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED/],
+  ['routes/autonomous-learning.js', /HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_AUTONOMOUS_LEARNING/],
+  ['routes/mira-evolution.js', /HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_EVOLUTION/],
+  ['routes/learning-history.js', /HFM_READ_ONLY_AUTHORITY_BLOCKS_LOCAL_EXPERIENCE_LESSONS/]
+];
+for (const [file, pattern] of legacyConsumerContracts) {
+  assert.match(read(file), pattern, file + ' must enforce the HFM read-only boundary');
+}
+console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
 (async () => {
   const serverHeldReq = { serverHeld: true };
   const readerPool = { connect: async () => ({ release() {} }) };
