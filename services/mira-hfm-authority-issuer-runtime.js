@@ -39,7 +39,11 @@ const PREFLIGHT_SQL = [
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'INSERT') AS owners_insert,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'INSERT') AS memberships_insert,",
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'SELECT') AS memberships_select,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'UPDATE') AS owners_update,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'UPDATE') AS memberships_update,",
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'INSERT') AS authorities_insert,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'INSERT') AS audit_insert,",
   "has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'USAGE') AS audit_sequence_usage,",
@@ -57,8 +61,8 @@ function verify(row, config) {
   if (!row || row.current_role !== config.expectedRole || row.database_name !== config.databaseName) {
     throw fail('AUTHORITY_ISSUER_IDENTITY_MISMATCH');
   }
-  const requiredTrue = ['has_issuer_group','inherits_roles','can_login','schema_usage','owners_select','memberships_select','authorities_insert','audit_insert','audit_sequence_usage','authority_rls_forced'];
-  const requiredFalse = ['is_superuser','bypasses_rls','can_create_roles','can_create_databases','can_replicate','schema_create','memory_select','memory_insert','memory_update','versions_select','versions_insert','operations_select'];
+  const requiredTrue = ['has_issuer_group','inherits_roles','can_login','schema_usage','owners_select','memberships_select','owners_insert','memberships_insert','authorities_insert','audit_insert','audit_sequence_usage','authority_rls_forced'];
+  const requiredFalse = ['is_superuser','bypasses_rls','owners_update','memberships_update','can_create_roles','can_create_databases','can_replicate','schema_create','memory_select','memory_insert','memory_update','versions_select','versions_insert','operations_select'];
   for (const field of requiredTrue) if (row[field] !== true) throw fail('AUTHORITY_ISSUER_REQUIRED_PRIVILEGE_MISSING');
   for (const field of requiredFalse) if (row[field] !== false) throw fail('AUTHORITY_ISSUER_EXCESS_PRIVILEGE');
   return Object.freeze({ status: 'AUTHORITY_ISSUER_READY', role: config.expectedRole, databaseName: config.databaseName });
