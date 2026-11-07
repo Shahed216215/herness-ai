@@ -155,7 +155,40 @@ function authorizedResult(overrides = {}) {
     readMemory: async () => expiresWithinMillisecond
   });
   assert.equal(validMicrosecondExpiry.status, 'AUTHORIZED_AND_COMMITTED');
+  const offsetFutureIssuedAt = authorizedResult({
+    hostAuthorizationContext: {
+      ...context,
+      issuedAt: '2026-11-07T02:00:00.000001+01:00'
+    }
+  });
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      now: boundaryNow,
+      readMemory: async () => offsetFutureIssuedAt
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
+
+  const offsetExpiredAuthority = authorizedResult({
+    authorityExpiresAt: '2026-11-07T01:59:59.999999+01:00',
+    hostAuthorizationContext: {
+      ...context,
+      expiresAt: '2026-11-07T01:59:59.999999+01:00'
+    }
+  });
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      now: boundaryNow,
+      readMemory: async () => offsetExpiredAuthority
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
   console.log('HFM_WORK_PREFLIGHT_MICROSECOND_ISSUED_AT_AND_EXPIRY_BOUNDARIES=PASS');
+  console.log('HFM_WORK_PREFLIGHT_MICROSECOND_RFC3339_OFFSET_BOUNDARIES=PASS');
 
   console.log('HFM_WORK_PREFLIGHT_REJECTS_EXPIRED_AND_FUTURE_AUTHORITY=PASS');
 
