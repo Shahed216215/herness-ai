@@ -22,6 +22,8 @@ function registerMiraHfmMemoryReadRoute(app, getRuntime, requireAdmin, readMemor
       const binding = req.session.hfmProjectBinding;
       const pending = req.session.hfmPendingMemoryAuthority;
       if (!binding || binding.verified !== true || !pending ||
+          pending.operation !== 'memory.read' ||
+          pending.resource !== 'memory:project:' + binding.projectId ||
           pending.projectId !== binding.projectId ||
           !pending.grant || typeof pending.grant !== 'object') {
         return res.status(403).json({ success: false, error: 'A server-held authority for the selected project is required.' });
