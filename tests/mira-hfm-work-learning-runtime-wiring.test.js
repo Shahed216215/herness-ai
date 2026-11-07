@@ -53,6 +53,8 @@ registerKnowledgeImprovementRoutes(fakeApp, () => (_req, _res, next) => next && 
 });
 const previousStandingFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
 const previousWorkFlag = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+const previousMemoryReadFlag = process.env.MIRA_HFM_MEMORY_READ_ENABLED;
+const previousMemoryWriteFlag = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
 process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
 delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
 try {
@@ -76,6 +78,24 @@ try {
     assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENTS');
   }
   console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENT_ROUTES=PASS');
+  for (const flag of ['MIRA_HFM_MEMORY_READ_ENABLED', 'MIRA_HFM_MEMORY_WRITE_ENABLED']) {
+    delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    process.env[flag] = 'true';
+    const handler = registeredKnowledgeRoutes.get('GET /api/admin/knowledge-improvements');
+    let blocked = false;
+    handler({ params: { id: 'legacy-proposal' }, role: 'admin' }, {
+      status(code) { assert.equal(code, 403); return this; },
+      json(payload) {
+        blocked = true;
+        assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENTS');
+        return this;
+      }
+    });
+    assert.equal(blocked, true, flag + ' must block legacy improvement routes');
+    delete process.env[flag];
+  }
+
 const registerAutonomousLearningRoutes = require('../routes/autonomous-learning');
 let autonomousRouter;
 registerAutonomousLearningRoutes({
@@ -194,6 +214,10 @@ console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_EVOLUTION_ROUTER=PASS');
   else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = previousStandingFlag;
   if (previousWorkFlag === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
   else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = previousWorkFlag;
+  if (previousMemoryReadFlag === undefined) delete process.env.MIRA_HFM_MEMORY_READ_ENABLED;
+  else process.env.MIRA_HFM_MEMORY_READ_ENABLED = previousMemoryReadFlag;
+  if (previousMemoryWriteFlag === undefined) delete process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
+  else process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = previousMemoryWriteFlag;
 }
 
 
