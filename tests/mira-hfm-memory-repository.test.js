@@ -337,14 +337,22 @@ test('standing-read repository context is limited to active Learning/Knowledge a
     authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
   };
   let queryCount = 0;
+  const scanStartedAt = new Date().toISOString();
   const client = {
     async query(sql, params) {
       queryCount += 1;
+      if (sql.includes('SELECT transaction_timestamp() AS scan_started_at')) {
+        assert.deepEqual(params, []);
+        return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
+      }
       assert.match(sql, /classification <> 'RESTRICTED'/);
       assert.match(sql, /integrity_status = 'VERIFIED'/);
-      assert.match(sql, /trust_status IN \('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\)/);
+      assert.match(sql, /trust_status IN \\('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\\)/);
+      assert.match(sql, /updated_at <= \\$5::timestamptz/);
+      assert.match(sql, /ORDER BY updated_at DESC, memory_id ASC LIMIT \\$4/);
       assert.deepEqual(params, [
-        'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'], 25, true, true
+        'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'], 26,
+        scanStartedAt, null, null
       ]);
       return { rowCount: 0, rows: [] };
     }
@@ -386,7 +394,7 @@ test('standing-read repository context is limited to active Learning/Knowledge a
     lifecycle: 'ACTIVE', allowPrivateRead: true, env
   });
   assert.equal(result.count, 0);
-  assert.equal(queryCount, 1);
+  assert.equal(queryCount, 2);
 });
 
 test('trash requires explicit private lifecycle grant and writes a recoverable revision', async () => {
