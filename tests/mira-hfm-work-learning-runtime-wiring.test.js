@@ -255,7 +255,9 @@ console.log('HFM_GENERIC_KNOWLEDGE_SEARCH_AND_CHAT_USE_STANDING_READ=PASS');
 
 const { createContentHash } = require('../services/mira-hfm-record-schema');
 const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-runtime');
-const { executeTool, executeHfmKnowledgeSearch } = require('../tools');
+const { tools, executeTool, executeHfmKnowledgeSearch } = require('../tools');
+const { applyAutonomousLearningControlled } = require('../autonomous-learning-controlled-apply');
+const { applyKnowledgeImprovementControlled } = require('../knowledge-controlled-apply');
 const { verifyEvolutionState } = require('../knowledge-memory-evolution');
 const legacyEvolution = read('knowledge-memory-evolution.js');
 assert.match(legacyEvolution, /function readJsonFile\(filePath\) \{\s*assertLegacyStorageDisabled\(\);/);
@@ -430,6 +432,29 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldToolWork;
   }
   console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_LEARNING_TOOLS=PASS');
+  for (const [toolName, args] of [
+    ['knowledge_backup', {}], ['knowledge_cleanup', { action: 'inspect' }],
+    ['knowledge_count', {}], ['knowledge_improve', {}],
+    ['knowledge_restore', { confirm: true }], ['knowledge_save', { title: 'x', content: 'x' }],
+    ['knowledge_search', { query: 'Python' }], ['learning_save', { content: 'x' }],
+    ['memory_count', {}], ['memory_restore', { confirm: true }],
+    ['memory_save', { content: 'x' }]
+  ]) {
+    assert.equal(typeof tools[toolName]?.execute, 'function', toolName + ' tool is registered');
+    await assert.rejects(
+      () => tools[toolName].execute(args),
+      error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
+    );
+  }
+  await assert.rejects(
+    () => applyAutonomousLearningControlled(),
+    error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
+  );
+  await assert.rejects(
+    () => applyKnowledgeImprovementControlled(),
+    error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
+  );
+  console.log('HFM_AUTHORITY_MODE_BLOCKS_DIRECT_LEGACY_TOOL_AND_CONTROLLED_APPLY_CALLS=PASS');
   const hfmToolContext = {
     hfmReadOnly: { req: { serverHeld: true }, pool: { connect: async () => ({}) }, env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' } }
   };
