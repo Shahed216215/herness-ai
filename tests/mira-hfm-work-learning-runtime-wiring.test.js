@@ -421,7 +421,9 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   assert.ok(executeWorkStart >= 0 && readContextPosition > executeWorkStart &&
     authorityPreflightPosition > readContextPosition && taskPlanningPosition > authorityPreflightPosition,
     'enabled standing-read context must be authorized before task planning/model activity');
-  assert.match(execution, /if \(hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/);
+  assert.match(execution, /if \(hfmWorkLearningEnabled && hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/);
+assert.doesNotMatch(execution, /if \(hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/,
+  'standing-read context alone must not trigger an unsolicited Work preflight when Work Learning is disabled');
   assert.match(execution, /preflightWorkLearning = async \(\) => hfmStandingReadPreflight/);
   console.log('HFM_STANDING_READ_AUTHORITY_PREFLIGHT_PRECEDES_WORK_PLANNING=PASS');
 
