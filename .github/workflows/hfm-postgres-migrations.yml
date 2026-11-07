@@ -57,7 +57,8 @@ jobs:
             migrations/hfm/006_project_selection_read_policy.sql \
             migrations/hfm/007_memory_retrieval_runtime_role.sql \
             migrations/hfm/008_authority_issuer_role.sql \
-            migrations/hfm/009_authority_approval_nonce_registry.sql
+            migrations/hfm/009_authority_approval_nonce_registry.sql \
+            migrations/hfm/010_one_time_initial_project_bootstrap.sql
           do
             echo "APPLYING=$migration"
             docker exec -i "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d neondb < "$migration"
@@ -102,10 +103,10 @@ jobs:
             WHERE n.nspname = 'mira_hfm'
               AND c.relname IN (
                 'project_owners','project_memberships','operation_authorities',
-                'authority_audit_events','authority_approval_nonces','memory_records'
+                'authority_audit_events','authority_approval_nonces','memory_records','bootstrap_registry'
               )
               AND c.relrowsecurity AND c.relforcerowsecurity;
-            IF protected_tables <> 6 THEN
+            IF protected_tables <> 7 THEN
               RAISE EXCEPTION 'HFM_CI_FORCED_RLS_TABLE_COUNT_MISMATCH: %', protected_tables;
             END IF;
 
