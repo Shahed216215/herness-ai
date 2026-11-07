@@ -45,7 +45,7 @@ function hasExplicitDailyActivitySaveIntent(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
   const text = value.toLowerCase();
   if (/\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,70}\b(?:daily activity|daily work summary|activity log)\b/i.test(text) ||
-      /(?:দৈনিক\s*কাজ|আজকের\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ\s*কর(?:ো|বেন)?|সেভ\s*কর(?:ো|বেন)?|রেকর্ড\s*কর(?:ো|বেন)?|লিখে\s*রাখ(?:ো|বে|বেন)?)/u.test(value)) {
+      /(?:দৈনিক\s*কাজ|আজকের\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ\s*কর(?:ো|বেন)?|সেভ\s*কর(?:ো|বেন)?|রেকর্ড\s*কর(?:ো|বেন)?|লিখে\s*রাখ(?:ো|বে|বেন)?).{0,10}না/u.test(value)) {
     return false;
   }
   const english = /\b(?:save|store|record|log)\b.{0,100}\b(?:daily activity|daily work summary|activity log)\b/i.test(value) ||
