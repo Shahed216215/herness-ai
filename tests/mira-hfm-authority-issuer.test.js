@@ -162,7 +162,10 @@ const pool = { async connect() { return client; } };
   console.log('HFM_AUTHORITY_ISSUER_MISSING_VERIFIER_BLOCK=PASS');
 
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/011_authority_issuer_role_hardening.sql'), 'utf8');
-  assert.match(migration, /NOLOGIN NOINHERIT NOSUPERUSER/);
+  assert.match(migration, /ALTER ROLE mira_hfm_authority_issuer NOINHERIT/);
+  for (const legacyPolicy of ['authority_issuer_owner_read','authority_issuer_membership_read','authority_issuer_insert','authority_issuer_audit_insert','authority_issuer_owner_insert','authority_issuer_membership_insert']) {
+    assert.ok(migration.includes('DROP POLICY IF EXISTS ' + legacyPolicy), 'legacy permissive policy must be removed: ' + legacyPolicy);
+  }
   assert.match(migration, /GRANT INSERT ON TABLE mira_hfm\.operation_authorities/);
   assert.ok(migration.includes("event_type IN ('AUTHORITY_ISSUED','APPROVAL_TOKEN_ISSUED','APPROVAL_TOKEN_CONSUMED')"));
   for (const operation of ["'memory.read'", "'memory.write'", "'memory.trash'", "'memory.restore'"]) {
