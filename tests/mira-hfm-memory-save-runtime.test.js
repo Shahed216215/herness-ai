@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const {
   hasExplicitSaveIntent,
+  isUserAuthoredMemoryContent,
   deriveIdempotencyKey,
   normalizeSourceUrl,
   buildCanonicalMemoryRecord,
@@ -66,6 +67,14 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSaveIntent("I don't think you should remember this."), false);
   assert.equal(hasExplicitSaveIntent('এটা মনে রাখবে না।'), false);
   assert.equal(hasExplicitSaveIntent('Explain how memory works.'), false);
+  assert.equal(isUserAuthoredMemoryContent(
+    'Remember this: I prefer concise Bengali explanations.',
+    'I prefer concise Bengali explanations.'
+  ), true);
+  assert.equal(isUserAuthoredMemoryContent(
+    'Remember this: I prefer concise Bengali explanations.',
+    'The user prefers concise Bengali explanations and likes examples.'
+  ), false);
 
   const firstKey = deriveIdempotencyKey('task-001', 'call-001', 'memory_save');
   assert.equal(firstKey, deriveIdempotencyKey('task-001', 'call-001', 'memory_save'));
@@ -133,6 +142,12 @@ function baseOptions(overrides = {}) {
       env: { MIRA_HFM_MEMORY_WRITE_ENABLED: 'false', MIRA_HFM_AUTHORITY_ISSUER_ENABLED: 'true' }
     })),
     /HFM_MEMORY_SAVE_EXPLICIT_USER_INTENT_REQUIRED|HFM_MEMORY_WRITE_DISABLED/
+  );
+  await assert.rejects(
+    () => saveHfmMemoryRecord(baseOptions({
+      content: 'The user likes examples and prefers concise Bengali explanations.'
+    })),
+    /HFM_MEMORY_SAVE_CONTENT_NOT_PRESENT_IN_USER_INTENT/
   );
   await assert.rejects(
     () => saveHfmMemoryRecord(baseOptions({ userIntent: 'Explain memory storage.' })),
