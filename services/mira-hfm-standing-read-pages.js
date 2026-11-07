@@ -29,7 +29,11 @@ function validatePage(page, expected = null) {
   if (typeof page.projectId !== 'string' || !page.projectId ||
       context.projectId !== page.projectId ||
       typeof context.actorId !== 'string' || !context.actorId.startsWith('mira:') ||
+      context.actorType !== 'HUMAN' ||
       typeof context.authorityRef !== 'string' || !context.authorityRef ||
+      typeof context.requestId !== 'string' || !context.requestId ||
+      typeof context.purpose !== 'string' || !context.purpose ||
+      typeof context.issuedAt !== 'string' || !Number.isFinite(Date.parse(context.issuedAt)) ||
       typeof context.expiresAt !== 'string' || !Number.isFinite(Date.parse(context.expiresAt)) ||
       typeof page.scanStartedAt !== 'string' || !Number.isFinite(Date.parse(page.scanStartedAt))) {
     fail('HFM_STANDING_READ_PAGE_CONTEXT_INVALID');
@@ -43,6 +47,8 @@ function validatePage(page, expected = null) {
     context.actorId !== expected.actorId ||
     context.projectId !== expected.projectId ||
     context.authorityRef !== expected.authorityRef ||
+    context.purpose !== expected.purpose ||
+    context.issuedAt !== expected.issuedAt ||
     context.expiresAt !== expected.expiresAt ||
     page.scanStartedAt !== expected.scanStartedAt
   )) {
@@ -74,6 +80,7 @@ async function collectStandingReadPages({
   const records = [];
   const seenIds = new Set();
   const seenCursors = new Set(readOptions.cursor ? [readOptions.cursor] : []);
+  const seenRequestIds = new Set();
   let expected = null;
   let firstContext = null;
   let pageCount = 0;
@@ -81,14 +88,20 @@ async function collectStandingReadPages({
 
   while (page) {
     const validated = validatePage(page, expected);
+    if (seenRequestIds.has(validated.context.requestId)) {
+      fail('HFM_STANDING_READ_PAGE_AUDIT_REQUEST_REPLAY');
+    }
+    seenRequestIds.add(validated.context.requestId);
     if (!expected) {
       firstContext = validated.context;
       expected = {
-      actorId: validated.context.actorId,
-      projectId: validated.context.projectId,
-      authorityRef: validated.context.authorityRef,
-      expiresAt: validated.context.expiresAt,
-      scanStartedAt: page.scanStartedAt
+        actorId: validated.context.actorId,
+        projectId: validated.context.projectId,
+        authorityRef: validated.context.authorityRef,
+        purpose: validated.context.purpose,
+        issuedAt: validated.context.issuedAt,
+        expiresAt: validated.context.expiresAt,
+        scanStartedAt: page.scanStartedAt
       };
     }
     for (const record of page.records) {
