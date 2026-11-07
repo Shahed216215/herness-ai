@@ -151,6 +151,30 @@ const req = { session: { hfmPrincipal: { verified: true } } };
   console.log('HFM_WORK_LEARNING_CROSS_PAGE_AGGREGATION=PASS');
 
   await assert.rejects(() => retrieveHfmWorkLearning({
+    req, pool: {}, task, now, maxPages: 1,
+    env: {
+      MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
+      MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
+    },
+    readMemory: async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId: 'project-alpha',
+      standingAuthority: true,
+      authorityConsumed: false,
+      approvalRequiredPerRead: false,
+      memoryWrites: false,
+      localFallback: false,
+      driveFallback: false,
+      scanStartedAt: '2026-11-07T04:00:00.000Z',
+      hostAuthorizationContext,
+      records: [makeRecord()],
+      count: 1,
+      nextCursor: 'unscanned-learning-page'
+    })
+  }), /HFM_WORK_LEARNING_SCAN_INCOMPLETE/);
+  console.log('HFM_WORK_LEARNING_INCOMPLETE_GLOBAL_SCAN_FAILS_CLOSED=PASS');
+
+  await assert.rejects(() => retrieveHfmWorkLearning({
     req, pool: {}, task, now,
     env: {
       MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
