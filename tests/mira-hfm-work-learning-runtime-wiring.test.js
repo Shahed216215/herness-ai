@@ -589,7 +589,7 @@ assert.match(planner, /HFM_WORK_LEARNING_PREFLIGHT_INVALID/);
 assert.ok(planner.indexOf("HFM_WORK_LEARNING_PREFLIGHT_INVALID") < planner.indexOf("await understandTask("));
 assert.ok(planner.indexOf("await options.preflightWorkLearning()") < planner.indexOf("await understandTask("));
 assert.match(planner, /const hfmReadOnlyMode =\s*options\.useHfmWorkLearning === true \|\|[\s\S]*?const strategies =\s*hfmReadOnlyMode\s*\?\s*\[\]/);
-assert.match(planner, /options\.useHfmWorkLearning === true\s*\?/);
+assert.match(planner, /crossTaskLearning =\s*hfmReadOnlyMode\s*\?/);
 assert.match(planner, /buildExperienceGuidance\(task, options\)/);
 assert.match(planner, /options\.hfmWorkLearning/);
 assert.match(execution, /retrieveHfmWorkLearning/);
