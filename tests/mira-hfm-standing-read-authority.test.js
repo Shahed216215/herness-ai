@@ -51,7 +51,9 @@ const standingRow = {
   owner_revision: 4, membership_revision: 8, status: 'ACTIVE',
   approval_ref: 'approval-standing-001',
   valid_from: new Date(now - 1000).toISOString(),
-  expires_at: new Date(now + STANDING_READ_TTL_MS).toISOString()
+  expires_at: new Date(now + STANDING_READ_TTL_MS).toISOString(),
+  valid_from_rfc3339: '2026-11-07T00:00:00.123456Z',
+  expires_at_rfc3339: '2027-11-07T00:00:00.654321Z'
 };
 const client = {
   async query(sql, params = []) {
@@ -229,6 +231,12 @@ const pool = { async connect() { return client; } };
   assert.equal(readResult.hostAuthorizationContext.actorId, actorId);
   assert.equal(readResult.hostAuthorizationContext.projectId, projectId);
   assert.equal(readResult.hostAuthorizationContext.authorityRef, standingRow.standing_authority_id);
+  assert.equal(readResult.hostAuthorizationContext.issuedAt, standingRow.valid_from_rfc3339);
+  assert.equal(readResult.hostAuthorizationContext.expiresAt, standingRow.expires_at_rfc3339);
+  assert.equal(readResult.authorityExpiresAt, standingRow.expires_at_rfc3339);
+  assert.ok(readCalls.some(c =>
+    c.sql.includes('valid_from_rfc3339') && c.sql.includes('expires_at_rfc3339')
+  ), 'database timestamps are serialized as exact UTC microsecond RFC3339 strings');
   assert.ok(readCalls.some(c => c.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(readCalls.some(c =>
     c.sql === "SELECT set_config('mira.standing_read_authority', 'true', true)"
