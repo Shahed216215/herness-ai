@@ -23,7 +23,7 @@ module.exports = {
   declaration: {
     name: "knowledge_search",
     description:
-      "Search saved knowledge with relevance ranking and duplicate result filtering.",
+      "Search canonical HFM Knowledge and verified Learning notes with relevance ranking. When a next-page cursor is returned, pass it back to continue the same bounded project-scoped scan.",
     parameters: {
       type: "object",
       properties: {
