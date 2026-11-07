@@ -2,10 +2,10 @@
 
 **Document ID:** HFM-SRC-2026-11-07-01  
 **Date:** 2026-11-07  
-**Status:** PROPOSED / NOT APPROVED / NOT IMPLEMENTED  
+**Status:** PROPOSAL WITH REPRESENTATION DECIDED FOR HFM v0.2; REMAINING CONTRACT GAPS OPEN  
 **Architecture authority:** User-approved HFM Memory Topology & Daily Knowledge Amendment (2026-11-06)  
 **Current schema baseline:** Canonical record schema v1.1.0  
-**Representation:** unresolved; normalized domain entity recommended, canonical record type is an alternative  
+**Representation:** canonical record type selected for v0.2 as schema 1.2.0 by HFM-SRC-DECISION-2026-11-07-01  
 **Release boundary:** HFM v0.2 only
 
 > The approved topology amendment lists `source_reference` as the seventh domain record family, but its v1.1.0 schema-compatibility section and the implemented v1.1.0 validator omit a `source_reference` record type. This proposal resolves the gap for review only. It does not authorize schema changes, migrations, production writes, credentials, or deployment.
@@ -153,19 +153,16 @@ After approval, isolated tests must cover:
 - No Facebook login bypass, private group scraping, API write, or Google Drive fallback.
 - Disposable PostgreSQL and synthetic fixtures only; no production data or credentials.
 
-## 10. Approval checklist
+## 10. Remaining contract decisions
 
-This proposal remains NOT APPROVED until the contract owner explicitly decides:
-- whether `source_reference` is a distinct canonical record type (recommended to match the approved topology amendment);
-- the normalized entity-vs-canonical-record representation and exact payload schema;
-- the link-table or nested source link name/cardinality and dependency behavior;
-- source type and access-result enums;
-- trust/lifecycle behavior for unavailable, partial, blocked, and quarantined sources;
-- classification defaults and encryption/HMAC requirements;
-- the operation names, resource binding, RLS roles, and audit topology;
-- retention, archival, and deletion semantics for source references and dependent records.
+The representation decision is recorded in HFM-SRC-DECISION-2026-11-07-01 and selects a separately versioned canonical source_reference record under schema 1.2.0. Remaining contract decisions include:
+- Knowledge/Learning link field, cardinality, and same-project resolution semantics;
+- whether future public web retrieval and Facebook metadata capture are supported and under which access policies;
+- trust promotion criteria for AVAILABLE, PARTIAL, CONTENT_VERIFIED, and HUMAN_VERIFIED states;
+- source-specific archive/quarantine transitions and reviewer authority;
+- retention, export, correction, and deletion semantics for references and dependent records.
 
-Approval must identify this exact document ID and revision. Approval does not itself authorize migration, grants, credentials, production writes, runtime activation, merge, or deployment.
+The v0.2 implementation is intentionally limited to user-supplied HTTPS URLs marked NOT_FETCHED/SOURCE_RECORDED. This implementation decision does not authorize production migration, grants, credentials, production writes, runtime activation, merge, or deployment.
 
 ## 11. Implementation decision and current disposition
 
