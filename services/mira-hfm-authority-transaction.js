@@ -222,7 +222,7 @@ async function executeWithStandingReadAuthority(options = {}) {
     // memory-reader role any UPDATE privilege on the authority table.
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-      [options.standingAuthorityLockKey || ("hfm-standing-read:" + projectId + ":" + trustedActor.actorId)]
+      ["hfm-standing-read:" + projectId + ":" + trustedActor.actorId]
     );
     const authorityResult = await client.query(
       "SELECT standing_authority_id, project_id, actor_id, operation, resource, purpose, " +
