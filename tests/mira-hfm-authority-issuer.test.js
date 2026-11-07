@@ -31,8 +31,9 @@ const req = {
   }
 };
 const receipt = {
-  verified: true, approved: true, approvalRef: 'human-approval-issuer-test',
-  projectId, actorId, operation: 'memory.read',
+  verified: true, approved: true, consumed: true, maxUses: 1,
+  approvalRef: 'human-approval-issuer-test',
+  projectId, actorId, approverActorId: actorId, operation: 'memory.read',
   resource: 'memory:project:' + projectId,
   purpose: 'approved memory retrieval',
   issuedAt: new Date(now - 1000).toISOString(),
@@ -75,7 +76,7 @@ const pool = { async connect() { return client; } };
     verifyApprovalToken: async (token, expected) => {
       assert.equal(token, 'signed-approval-token');
       assert.deepEqual(expected, {
-        projectId, actorId, operation: 'memory.read',
+        projectId, actorId, approverActorId: actorId, operation: 'memory.read',
         resource: 'memory:project:' + projectId, purpose: receipt.purpose
       });
       return receipt;
