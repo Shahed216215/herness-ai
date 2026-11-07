@@ -22,6 +22,7 @@ BEGIN
     WHERE schemaname = 'mira_hfm'
       AND policyname IN (
         'hfm_standing_reader_select',
+        'hfm_standing_reader_memory_scope',
         'hfm_standing_issuer_select',
         'hfm_standing_issuer_insert',
         'hfm_standing_issuer_update'
@@ -94,6 +95,24 @@ CREATE POLICY hfm_standing_reader_select
     AND status = 'ACTIVE'
     AND valid_from <= clock_timestamp()
     AND expires_at > clock_timestamp()
+  );
+
+-- When the dedicated reader is executing a standing grant, constrain the
+-- underlying Memory table itself to verified Knowledge/Learning records.
+-- The setting is transaction-local and is set only by the standing-read executor.
+CREATE POLICY hfm_standing_reader_memory_scope
+  ON mira_hfm.memory_records
+  AS RESTRICTIVE
+  FOR SELECT TO mira_hfm_memory_reader
+  USING (
+    NULLIF(current_setting('mira.standing_read_authority', true), '') IS DISTINCT FROM 'true'
+    OR (
+      record_type IN ('learning_note', 'knowledge_item')
+      AND lifecycle = 'ACTIVE'
+      AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
+      AND integrity_status = 'VERIFIED'
+      AND trust_status IN ('CONTENT_VERIFIED', 'HUMAN_VERIFIED')
+    )
   );
 
 CREATE POLICY hfm_standing_issuer_select
