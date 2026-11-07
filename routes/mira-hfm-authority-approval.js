@@ -43,7 +43,7 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
         return res.status(400).json({ success: false, error: 'A bounded approval purpose is required.' });
       }
       const operation = typeof body.operation === 'string' ? body.operation : 'memory.read';
-      const allowedOperations = ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'];
+      const allowedOperations = ['memory.read'];
       if (!allowedOperations.includes(operation)) {
         return res.status(400).json({ success: false, error: 'Unsupported Memory operation.' });
       }
