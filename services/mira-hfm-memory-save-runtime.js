@@ -26,7 +26,8 @@ function redactDailyActivityContent(value) {
     .replace(/\b(?:api[_ -]?key|access[_ -]?token|password|passwd|secret|authorization|bearer)\b\s*(?:is|[:=])\s*[^\s,;]+/gi, '[credential omitted]')
     .replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,})\b/g, '[credential omitted]')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email omitted]')
-    .replace(/(?:\+?\d[\d\s().-]{8,}\d)/g, '[phone/number omitted]')
+    .replace(/(?:\+?\d[\d\s().-]{8,}\d)/g, match =>
+      match.replace(/\D/g, '').length >= 10 ? '[phone/number omitted]' : match)
     .replace(/(?:BDT|USD|৳|\$)\s?[\d,]+(?:\.\d{1,2})?/gi, '[amount omitted]')
     .replace(/\bhttps?:\/\/\S+/gi, '[link omitted]')
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
@@ -35,7 +36,7 @@ function redactDailyActivityContent(value) {
 }
 
 function hasVaultOnlyDailyActivityContent(value) {
-  return /\b(?:private key|client email|client phone|bank account|account number|card number|invoice number|transaction id|payment reference|contract text|contract clause)\b/i.test(String(value || ''));
+  return /\b(?:private key|client email|client phone|client name|client address|client id|customer email|customer phone|customer name|customer address|bank account|account number|card number|invoice(?: number)?|transaction(?: id| reference)?|payment reference|contract(?: text| clause)?)\b/i.test(String(value || ''));
 }
 
 function hasExplicitSaveIntent(value) {
