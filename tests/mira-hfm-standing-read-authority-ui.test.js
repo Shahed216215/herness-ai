@@ -25,7 +25,7 @@ assert.match(html, /Learning and Knowledge records only/);
 assert.match(memoryReadRoute, /\['learning_note', 'knowledge_item'\]/);
 assert.match(html, /window\.confirm\([\s\S]*Approve 365 days/);
 assert.match(html, /Every read is audited/);
-assert.match(html, /No writes, edits, Trash, Restore/);
+assert.match(html, /No Memory writes, edits, Trash, Restore/);
 assert.match(html, /standing-authority\/issue/);
 assert.match(html, /standing-authority\/pause/);
 assert.match(html, /standing-authority\/resume/);
