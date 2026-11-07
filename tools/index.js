@@ -94,7 +94,7 @@ async function executeHfmKnowledgeReviewQueue(args, trustedContext) {
       typeof context.pool.connect !== "function" ||
       typeof context.getAuthorityIssuerRuntime !== "function") {
     const error = new Error("Server-held HFM reader, issuer resolver, and verified request context are required.");
-    error.code = "HFM_KNOWLEDGE_REVIEW_CONTEXT_REQUIRED";
+    error.code = "HFM_KNOWLEDGE_REVIEW_HFM_CONTEXT_REQUIRED";
     throw error;
   }
   const issuer = await context.getAuthorityIssuerRuntime();
