@@ -86,6 +86,41 @@ const verifiedLearning = {
   assert.equal(result.driveFallback, false);
   console.log('HFM_KNOWLEDGE_SEARCH_INCLUDES_VERIFIED_LEARNING_NOTES=PASS');
 
+  const bengaliKnowledge = buildCanonicalMemoryRecord({
+    projectId,
+    memoryId: 'mem-knowledge-search-bengali-001',
+    kind: 'memory_save',
+    content: 'বাংলা ভাষায় অটোমেশন শেখার জন্য Python ব্যবহার করো।',
+    userIntent: 'Remember this: বাংলা ভাষায় অটোমেশন শেখার জন্য Python ব্যবহার করো।',
+    now: '2026-11-07T07:15:00.000Z'
+  });
+  const bengaliSearch = await searchHfmKnowledge({
+    req: { session: { hfmPrincipal: { verified: true } } },
+    pool: { connect: async () => ({}) },
+    query: 'বাংলা অটোমেশন',
+    limit: 5,
+    now,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readMemory: async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId,
+      records: [bengaliKnowledge],
+      count: 1,
+      standingAuthority: true,
+      authorityConsumed: false,
+      approvalRequiredPerRead: false,
+      memoryWrites: false,
+      localFallback: false,
+      driveFallback: false,
+      scanStartedAt: '2026-11-07T07:59:00.000Z',
+      authorityExpiresAt: hostAuthorizationContext.expiresAt,
+      hostAuthorizationContext
+    })
+  });
+  assert.equal(bengaliSearch.count, 1);
+  assert.equal(bengaliSearch.results[0].id, bengaliKnowledge.memoryId);
+  console.log('HFM_KNOWLEDGE_SEARCH_UNICODE_BENGALI_TOKENIZATION=PASS');
+
   const manyRecords = Array.from({ length: 100 }, (_, index) => ({
     ...knowledge,
     memoryId: 'mem-scan-bound-' + String(index).padStart(3, '0')
