@@ -120,6 +120,7 @@ SELECT
          AND with_check LIKE '%revision%' AND with_check LIKE '%bootstrap_approval_ref%'
        WHEN 'hfm_bootstrap_membership_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%membership_role%' AND with_check LIKE '%memory.read%'
+         AND with_check LIKE '%memory.write%' AND with_check LIKE '%memory.trash%' AND with_check LIKE '%memory.restore%'
          AND with_check LIKE '%granted_by_actor_id%' AND with_check LIKE '%bootstrap_approval_ref%'
        WHEN 'hfm_bootstrap_audit_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%PROJECT_BOOTSTRAPPED%' AND with_check LIKE '%bootstrap_approval_ref%'
