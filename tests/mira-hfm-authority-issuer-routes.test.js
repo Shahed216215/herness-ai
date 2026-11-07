@@ -42,5 +42,5 @@ test('authority route never accepts an actor ID from the request body', () => {
   const source = require('node:fs').readFileSync(require.resolve('../routes/mira-hfm-authorities'), 'utf8');
   assert.doesNotMatch(source, /body\.actorId|body\.userId|body\.ownerActorId/);
   assert.match(source, /buildTrustedActorContext\(req\)/);
-  assert.match(source, /owner\.owner_actor_id !== identity\.actor\.actorId/);
+  assert.match(source, /owner\.owner_actor_id !== actor\.actorId/);
 });
