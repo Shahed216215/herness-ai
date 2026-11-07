@@ -97,6 +97,7 @@ REVOKE ALL ON SEQUENCE mira_hfm.authority_audit_events_event_sequence_seq
 FROM mira_hfm_bootstrap_operator;
 
 GRANT USAGE ON SCHEMA mira_hfm TO mira_hfm_bootstrap_operator;
+GRANT SELECT, INSERT ON TABLE mira_hfm.bootstrap_registry TO mira_hfm_bootstrap_operator;
 GRANT INSERT ON TABLE
   mira_hfm.bootstrap_registry,
   mira_hfm.project_owners,
@@ -120,6 +121,23 @@ CREATE POLICY hfm_bootstrap_registry_insert
     AND created_at <= clock_timestamp()
   );
 
+CREATE POLICY hfm_bootstrap_registry_select
+  ON mira_hfm.bootstrap_registry
+  FOR SELECT TO mira_hfm_bootstrap_operator
+  USING (
+    bootstrap_key = 'initial'
+    AND project_id = NULLIF(current_setting('mira.project_id', true), '')
+    AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
+    AND EXISTS (
+      SELECT 1 FROM mira_hfm.bootstrap_registry b
+      WHERE b.bootstrap_key = 'initial'
+        AND b.project_id = NULLIF(current_setting('mira.project_id', true), '')
+        AND b.actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+        AND b.approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
+    )
+  );
+
 CREATE POLICY hfm_bootstrap_owner_insert
   ON mira_hfm.project_owners
   FOR INSERT TO mira_hfm_bootstrap_operator
@@ -133,6 +151,13 @@ CREATE POLICY hfm_bootstrap_owner_insert
     AND approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
     AND assigned_at <= clock_timestamp()
     AND updated_at >= assigned_at
+    AND EXISTS (
+      SELECT 1 FROM mira_hfm.bootstrap_registry b
+      WHERE b.bootstrap_key = 'initial'
+        AND b.project_id = NULLIF(current_setting('mira.project_id', true), '')
+        AND b.actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+        AND b.approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
+    )
   );
 
 CREATE POLICY hfm_bootstrap_membership_insert
@@ -149,6 +174,13 @@ CREATE POLICY hfm_bootstrap_membership_insert
     AND valid_from <= clock_timestamp()
     AND expires_at IS NULL
     AND approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
+    AND EXISTS (
+      SELECT 1 FROM mira_hfm.bootstrap_registry b
+      WHERE b.bootstrap_key = 'initial'
+        AND b.project_id = NULLIF(current_setting('mira.project_id', true), '')
+        AND b.actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+        AND b.approval_ref = NULLIF(current_setting('mira.bootstrap_approval_ref', true), '')
+    )
   );
 
 CREATE POLICY hfm_bootstrap_audit_insert
