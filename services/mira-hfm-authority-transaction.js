@@ -285,7 +285,17 @@ async function executeWithStandingReadAuthority(options = {}) {
       value,
       standingAuthorityId: authority.standing_authority_id,
       authorityExpiresAt: new Date(authority.expires_at).toISOString(),
-      authorityConsumed: false
+      authorityConsumed: false,
+      hostAuthorizationContext: Object.freeze({
+        actorId: trustedActor.actorId,
+        actorType: "HUMAN",
+        projectId,
+        purpose: authority.purpose,
+        requestId,
+        authorityRef: authority.standing_authority_id,
+        issuedAt: new Date(authority.valid_from).toISOString(),
+        expiresAt: new Date(authority.expires_at).toISOString()
+      })
     };
   } catch (error) {
     if (transactionOpen) {
