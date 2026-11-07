@@ -544,6 +544,8 @@ assert.match(execution, /resolveHfmReadToolContext/);
 assert.match(execution, /resolveHfmWriteToolContext/);
 assert.match(execution, /MIRA_HFM_MEMORY_WRITE_ENABLED/);
 assert.match(execution, /hfmWrite: Object\.freeze/);
+assert.match(execution, /requiresHfmMemoryWrite/);
+assert.match(execution, /normalizedCalls\.calls\.some/);
 assert.match(execution, /if \(!standingReadEnabled && !workLearningEnabled\)/);
 assert.match(execution, /hfmReadOnly: hfmToolContext/);
 assert.match(execution, /options\.hfmRequest/);
