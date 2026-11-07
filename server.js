@@ -21,6 +21,7 @@ const { registerMiraHfmStandingReadAuthorityRoutes } = require("./routes/mira-hf
 const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
 const { searchHfmKnowledge } = require("./services/mira-hfm-knowledge-search-runtime");
 const { createMemoryWriterPool } = require("./services/mira-hfm-memory-postgres-runtime");
+const { persistConversationMessage } = require("./services/mira-conversation-memory-persistence");
 const { registerMiraHfmSocialDraftTrashRoute } = require("./routes/mira-hfm-social-draft-trash");
 const { registerMiraHfmSocialDraftRestoreRoute } = require("./routes/mira-hfm-social-draft-restore");
 const { registerMiraHfmDailySocialDraftRoute } = require("./routes/mira-hfm-daily-social-draft");
@@ -2151,12 +2152,12 @@ app.post(
 
             finalResult = firewallResult;
 
-            addMemory({
+            persistConversationMessage({
               role: "user",
               content: cleanCommand
             });
 
-            addMemory({
+            persistConversationMessage({
               role: "assistant",
               content: finalResult
             });
@@ -2233,13 +2234,13 @@ app.post(
             "$1"
           );
 
-      addMemory({
+      persistConversationMessage({
         role: "user",
         content:
           cleanCommand
       });
 
-      addMemory({
+      persistConversationMessage({
         role: "assistant",
         content:
           finalResult
