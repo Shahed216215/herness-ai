@@ -108,6 +108,14 @@ async function invoke(req, runtime = async () => ({
   assert.equal(disabled.statusCode, 503);
   console.log('HFM_APPROVAL_ROUTE_DISABLED_RUNTIME_FAIL_CLOSED=PASS');
 
+  const success = await invoke(makeReq());
+  assert.equal(success.statusCode, 201);
+  assert.equal(success.payload.status, 'AUTHORITY_ISSUED');
+  assert.equal(success.payload.grant.authorityId, 'authority-001');
+  assert.equal(Object.prototype.hasOwnProperty.call(success.payload, 'token'), false);
+  assert.equal(approvalCalls, 1);
+  console.log('HFM_APPROVAL_ROUTE_ISSUES_AUTHORITY_WITHOUT_LEAKING_TOKEN=PASS');
+
   console.log('NETWORK_REQUESTS=0');
   console.log('DATABASE_WRITES=0');
 })().catch(error => {
