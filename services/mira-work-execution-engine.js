@@ -1634,7 +1634,7 @@ async function executeWork(
           hfmWrite: Object.freeze({
             ...hfmWriteToolContext,
             taskId: plan.taskId,
-            toolCallId: call.id,
+            toolCallId: call.id || ('index-' + index),
             toolName: call.name
           })
         } : {})
