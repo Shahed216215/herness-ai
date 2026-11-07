@@ -45,7 +45,7 @@ jobs:
           docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE DATABASE neondb"
           docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE ROLE mira_hfm_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
 
-      - name: Apply HFM migrations 001 through 009 in order
+      - name: Apply HFM migrations 001 through 011 in order
         run: |
           set -euo pipefail
           for migration in \
