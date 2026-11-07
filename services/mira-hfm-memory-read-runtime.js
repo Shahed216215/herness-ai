@@ -82,7 +82,7 @@ const PREFLIGHT_SQL = [
   "has_column_privilege(current_user, 'mira_hfm.operation_authorities', 'approval_ref', 'UPDATE') AS authorities_approval_update,",
   "has_column_privilege(current_user, 'mira_hfm.operation_authorities', 'valid_from', 'UPDATE') AS authorities_valid_from_update,",
   "has_column_privilege(current_user, 'mira_hfm.operation_authorities', 'expires_at', 'UPDATE') AS authorities_expires_update,",
-  "has_column_privilege(current_user, 'mira_hfm.operation_authorities', 'revoked_at', 'UPDATE') AS authorities_revoked_update,"
+  "has_column_privilege(current_user, 'mira_hfm.operation_authorities', 'revoked_at', 'UPDATE') AS authorities_revoked_update,",
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'INSERT') AS authorities_insert,",
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'DELETE') AS authorities_delete,",
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'TRUNCATE') AS authorities_truncate,",
