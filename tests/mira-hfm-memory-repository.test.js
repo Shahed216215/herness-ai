@@ -573,11 +573,11 @@ test('standing-read repository context is limited to active Learning/Knowledge a
     authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
   };
   let queryCount = 0;
-  const scanStartedAt = new Date().toISOString();
+  const scanStartedAt = new Date().toISOString().replace(/\\.(\\d{3})Z$/, (_, ms) => '.' + ms + '000Z');
   const client = {
     async query(sql, params) {
       queryCount += 1;
-      if (sql.includes('SELECT transaction_timestamp() AS scan_started_at')) {
+      if (sql.includes('AS scan_started_at')) {
         assert.equal(params, undefined);
         return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
       }
@@ -640,9 +640,9 @@ test('standing-read keyset pagination is project-bound, stable and audited per p
     resource: 'memory:project:project-001',
     authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
   };
-  const scanStartedAt = '2026-11-07T10:00:00.000Z';
-  const firstUpdatedAt = '2026-11-07T09:00:00.000Z';
-  const secondUpdatedAt = '2026-11-07T08:00:00.000Z';
+  const scanStartedAt = '2026-11-07T10:00:00.000000Z';
+  const firstUpdatedAt = '2026-11-07T09:00:00.123456Z';
+  const secondUpdatedAt = '2026-11-07T09:00:00.123455Z';
   function publicKnowledge(memoryId, updatedAt) {
     const value = record({
       memoryId,
@@ -664,7 +664,8 @@ test('standing-read keyset pagination is project-bound, stable and audited per p
       trust_status: 'HUMAN_VERIFIED',
       public_payload: value,
       encrypted_envelope: null,
-      updated_at: updatedAt,
+      updated_at: new Date(updatedAt),
+      updated_at_cursor: updatedAt,
       scan_started_at: scanStartedAt
     };
   }
