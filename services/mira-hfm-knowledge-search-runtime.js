@@ -1,0 +1,97 @@
+'use strict';
+
+const { retrieveProjectMemory } = require('./mira-hfm-authorized-memory-reader');
+const { retrieveCanonicalRecordsWithReport } = require('./mira-memory-unified-facade');
+const { buildHfmAuthorizeRequest } = require('./mira-hfm-work-learning-runtime');
+
+function fail(code) {
+  const error = new Error(code);
+  error.code = code;
+  throw error;
+}
+function queryTerms(value) {
+  return new Set(String(value || '').toLowerCase().match(/[a-z0-9][a-z0-9_-]{1,}/g) || []);
+}
+function scoreRecord(query, record) {
+  const tokens = queryTerms(query);
+  if (!tokens.size) return 0;
+  const searchable = [record.content, record.source?.sourceId, record.source?.sourceUrl]
+    .filter(value => typeof value === 'string').join(' ').toLowerCase();
+  let score = 0;
+  for (const token of tokens) {
+    if (searchable.includes(token)) score += 1;
+  }
+  return score / tokens.size;
+}
+
+async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.env, now = new Date() } = {}) {
+  if (typeof query !== 'string' || !query.trim() || query.length > 2000) {
+    fail('HFM_KNOWLEDGE_SEARCH_QUERY_INVALID');
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    fail('HFM_KNOWLEDGE_SEARCH_LIMIT_INVALID');
+  }
+  if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true') {
+    fail('HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED');
+  }
+  const memory = await retrieveProjectMemory({
+    pool, req, standingReadAuthority: true,
+    recordTypes: ['knowledge_item'], lifecycle: 'ACTIVE', limit: 100, env
+  });
+  if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
+      memory.standingAuthority !== true || memory.approvalRequiredPerRead !== false ||
+      !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
+    fail('HFM_KNOWLEDGE_AUTHORIZED_MEMORY_READ_REQUIRED');
+  }
+  const hostContext = memory.hostAuthorizationContext;
+  if (hostContext.projectId !== memory.projectId ||
+      typeof hostContext.actorId !== 'string' || !hostContext.actorId.startsWith('mira:')) {
+    fail('HFM_KNOWLEDGE_HOST_AUTHORIZATION_CONTEXT_INVALID');
+  }
+  const report = retrieveCanonicalRecordsWithReport({
+    records: memory.records,
+    projectId: hostContext.projectId,
+    requestContext: hostContext,
+    authorizeRequest: buildHfmAuthorizeRequest(
+      hostContext, memory.records.map(record => record.memoryId)
+    ),
+    now
+  });
+  const results = report.records
+    .filter(record => record.recordType === 'knowledge_item')
+    .map(record => ({ record, score: scoreRecord(query, record) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score ||
+      a.record.memoryId.localeCompare(b.record.memoryId))
+    .slice(0, limit)
+    .map(({ record, score }) => ({
+      id: record.memoryId,
+      title: record.source.sourceId,
+      topic: '',
+      category: 'Knowledge',
+      type: 'knowledge',
+      url: record.source.sourceUrl || '',
+      source: record.source.sourceUrl || record.source.sourceId,
+      content: record.content,
+      savedAt: record.timestamps.createdAt,
+      score,
+      projectId: record.projectId,
+      revision: record.version.revision,
+      trust: record.trust.status,
+      integrity: record.integrity.status
+    }));
+  return Object.freeze({
+    success: true,
+    status: 'AUTHORIZED_AND_COMMITTED',
+    projectId: memory.projectId,
+    count: results.length,
+    results: Object.freeze(results),
+    standingAuthority: true,
+    authorityExpiresAt: memory.authorityExpiresAt,
+    approvalRequiredPerRead: false,
+    localFallback: false,
+    driveFallback: false
+  });
+}
+
+module.exports = Object.freeze({ searchHfmKnowledge });
