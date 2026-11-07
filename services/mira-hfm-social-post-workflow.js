@@ -271,7 +271,7 @@ async function confirmSocialPostPublished(options = {}) {
 
 function cleanMetadataText(value, max = 128) {
   if (typeof value !== 'string') return null;
-  const clean = value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').replace(/\\s+/g, ' ').trim();
+  const clean = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
   return clean ? clean.slice(0, max) : null;
 }
 
