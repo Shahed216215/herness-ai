@@ -482,17 +482,18 @@ The current tool surface exposes `memory_save`, `knowledge_save`, `learning_save
 
 ## 6. Remaining v0.2 contract gates
 
-Four source-only proposals are present and explicitly NOT APPROVED / NOT IMPLEMENTED:
+Five source-only proposals are present and explicitly NOT APPROVED / NOT IMPLEMENTED:
 - `HFM-KNOWLEDGE-REVIEW-AND-TRUST-PROMOTION-CONTRACT-PROPOSAL-20261107.md`
 - `HFM-CANONICAL-CONVERSATION-TRANSCRIPT-PERSISTENCE-PROPOSAL-20261107.md`
 - `HFM-SOURCE-REFERENCE-RECORD-CONTRACT-PROPOSAL-20261107.md`
 - `HFM-RESTRICTED-VAULT-WRITER-CONTRACT-PROPOSAL-20261107.md`
+- `HFM-DAILY-ACTIVITY-PROVENANCE-PROPOSAL-20261107.md`
 
 Until the corresponding contracts are approved and implemented:
 - Knowledge/Learning review remains read-only; `promotionSupported: false`, `writeAllowed: false`.
 - Canonical transcript persistence remains disabled/non-persistent in HFM mode; local and Drive fallback remain blocked.
 - `source_reference` has no canonical v1.1.0 record type or writer.
-- Manual user-confirmed daily-activity writing is implemented in code and CI-tested; automatic capture from tool execution remains incomplete.
+- Manual user-provided daily-activity writing is implemented in code and CI-tested. It does not yet distinguish USER_PROVIDED / OBSERVED / INFERRED / VERIFIED in the canonical envelope, nor capture server-verified tool execution/project evidence; the provenance contract proposal remains NOT APPROVED / NOT IMPLEMENTED.
 - Restricted client-vault and financial-vault writer workflows remain incomplete.
 
 ## 7. CI live-network guard
