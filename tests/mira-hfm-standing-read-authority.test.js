@@ -137,6 +137,9 @@ const pool = { async connect() { return client; } };
   standingRow.expires_at = new Date(now - 1000).toISOString();
   const expiredStatus = await getStandingReadAuthorityStatus({ req, pool, env });
   assert.equal(expiredStatus.authority.authorityStatus, 'EXPIRED');
+  await assert.rejects(() => setStandingReadAuthorityStatus({
+    req, pool, env, standingAuthorityId: standingRow.standing_authority_id, status: 'ACTIVE'
+  }), error => error.code === 'HFM_STANDING_READ_AUTHORITY_EXPIRED');
   standingRow.expires_at = originalExpiry;
   console.log('HFM_STANDING_READ_EXPIRED_GRANT_STATUS=PASS');
 
