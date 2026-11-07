@@ -37,6 +37,9 @@ const {
   getSkillTools
 } = require("../capability-profile");
 
+const { retrieveHfmWorkLearning } = require("./mira-hfm-work-learning-runtime");
+const { preflightHfmStandingRead } = require("./mira-hfm-work-preflight");
+
 /*
  * Stage 5.4
  *
@@ -145,6 +148,13 @@ const TOOL_POLICIES = Object.freeze({
   },
 
   knowledge_search: {
+    operation: "read",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
+  knowledge_review_queue: {
     operation: "read",
     autonomous: true,
     humanApprovalRequired: false,
@@ -1152,6 +1162,66 @@ function auditExecutionFailure({
   });
 }
 
+async function resolveHfmReadToolContext(options = {}, env = process.env, userIntent = '') {
+  const workLearningEnabled = env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+  const standingReadEnabled = env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true";
+  if (workLearningEnabled && !standingReadEnabled) {
+    throw new Error("HFM_WORK_LEARNING_STANDING_AUTHORITY_DISABLED");
+  }
+  if (!standingReadEnabled && !workLearningEnabled) {
+    return Object.freeze({ runtime: null, toolContext: null });
+  }
+  if (!options.hfmRequest || typeof options.getHfmMemoryReadRuntime !== "function") {
+    throw new Error(workLearningEnabled
+      ? "HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED"
+      : "HFM_STANDING_READ_AUTHENTICATED_RUNTIME_REQUIRED");
+  }
+  const runtime = await options.getHfmMemoryReadRuntime();
+  if (!runtime || runtime.status !== "MEMORY_READ_READY" ||
+      !runtime.pool || typeof runtime.pool.connect !== "function") {
+    throw new Error(workLearningEnabled
+      ? "HFM_WORK_LEARNING_MEMORY_READER_NOT_READY"
+      : "HFM_STANDING_READ_MEMORY_READER_NOT_READY");
+  }
+  return Object.freeze({
+    runtime,
+    toolContext: Object.freeze({
+      req: options.hfmRequest,
+      pool: runtime.pool,
+      env,
+      userIntent,
+      getAuthorityIssuerRuntime: options.getHfmAuthorityIssuerRuntime
+    })
+  });
+}
+
+async function resolveHfmWriteToolContext(options = {}, env = process.env, userIntent = '') {
+  if (env.MIRA_HFM_MEMORY_WRITE_ENABLED !== "true") return null;
+  if (!options.hfmRequest ||
+      typeof options.getHfmMemoryWriterRuntime !== "function" ||
+      typeof options.getHfmAuthorityIssuerRuntime !== "function") {
+    throw new Error("HFM_MEMORY_WRITE_AUTHENTICATED_RUNTIMES_REQUIRED");
+  }
+  const [writer, issuer] = await Promise.all([
+    options.getHfmMemoryWriterRuntime(),
+    options.getHfmAuthorityIssuerRuntime()
+  ]);
+  if (!writer || writer.status !== "MEMORY_WRITER_READY" ||
+      !writer.pool || typeof writer.pool.connect !== "function") {
+    throw new Error("HFM_MEMORY_WRITER_NOT_READY");
+  }
+  if (!issuer || issuer.status !== "AUTHORITY_ISSUER_READY" ||
+      !issuer.pool || typeof issuer.pool.connect !== "function") {
+    throw new Error("HFM_AUTHORITY_ISSUER_NOT_READY");
+  }
+  return Object.freeze({
+    req: options.hfmRequest,
+    writerPool: writer.pool,
+    issuerPool: issuer.pool,
+    userIntent
+  });
+}
+
 async function executeWork(
   input,
   options = {}
@@ -1159,6 +1229,35 @@ async function executeWork(
   const startedAt = now();
 
   let planning;
+  let hfmToolContext = null;
+  let hfmMemoryReadRuntime = null;
+  const hfmWorkLearningEnabled = process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+
+  if (hfmWorkLearningEnabled && options.plan && typeof options.plan === "object") {
+    throw new Error("HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED");
+  }
+
+  // Resolve the read-only tool context for standing-read mode independently
+  // of Work Learning. knowledge_search is routed to HFM whenever either
+  // read-only flag is enabled and must never lose its server-held context.
+  const hfmReadContext = await resolveHfmReadToolContext(options, process.env, input);
+  hfmMemoryReadRuntime = hfmReadContext.runtime;
+  hfmToolContext = hfmReadContext.toolContext;
+
+  // Work Learning is the only mode that requests an automatic HFM
+  // retrieval for task planning. A standing-read runtime may still be
+  // available for an explicitly requested knowledge_search tool call, but
+  // Work Learning OFF must not trigger an unsolicited background read.
+  let hfmStandingReadPreflight = null;
+  if (hfmWorkLearningEnabled && hfmMemoryReadRuntime) {
+    hfmStandingReadPreflight = await preflightHfmStandingRead({
+      pool: hfmMemoryReadRuntime.pool,
+      req: options.hfmRequest,
+      env: process.env,
+      includeLearning: hfmWorkLearningEnabled
+    });
+  }
+
 
   if (
     options.plan &&
@@ -1174,13 +1273,22 @@ async function executeWork(
       planningOnly: true
     };
   } else {
+    const plannerOptions = {
+      persist: options.persist !== false
+    };
+    if (hfmWorkLearningEnabled) {
+      plannerOptions.preflightWorkLearning = async () => hfmStandingReadPreflight;
+      plannerOptions.retrieveWorkLearning = async ({ task, preflight }) =>
+        retrieveHfmWorkLearning({
+          task,
+          preflight,
+          env: process.env
+        });
+    }
     planning =
       await createTaskPlan(
         input,
-        {
-          persist:
-            options.persist !== false
-        }
+        plannerOptions
       );
   }
 
@@ -1253,6 +1361,14 @@ async function executeWork(
       recoveryRequired: false
     };
   }
+
+  const requiresHfmMemoryWrite = normalizedCalls.calls.some(call =>
+    call.name === "memory_save" || call.name === "knowledge_save" ||
+    call.name === "learning_save"
+  );
+  const hfmWriteToolContext = requiresHfmMemoryWrite
+    ? await resolveHfmWriteToolContext(options, process.env, input)
+    : null;
 
   const results = [];
 
@@ -1520,11 +1636,25 @@ async function executeWork(
     let toolResult;
 
     try {
+      const toolTrustedContext = {
+        ...(options.trustedContext && typeof options.trustedContext === "object"
+          ? options.trustedContext
+          : {}),
+        ...(hfmToolContext ? { hfmReadOnly: hfmToolContext } : {}),
+        ...(hfmWriteToolContext ? {
+          hfmWrite: Object.freeze({
+            ...hfmWriteToolContext,
+            taskId: plan.taskId,
+            toolCallId: call.id || ('index-' + index),
+            toolName: call.name
+          })
+        } : {})
+      };
       toolResult =
         await runTool(
           call.name,
           call.args,
-          options.trustedContext || null
+          Object.keys(toolTrustedContext).length ? Object.freeze(toolTrustedContext) : null
         );
     } catch (error) {
       const failure =
@@ -1668,5 +1798,7 @@ module.exports = {
   resolveSkillToolCandidates,
   inferToolCalls,
   verifyExecutionResult,
+  resolveHfmReadToolContext,
+  resolveHfmWriteToolContext,
   executeWork
 };

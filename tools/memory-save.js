@@ -1,4 +1,5 @@
 const { addMemory } = require("../memory");
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 
 module.exports = {
   name: "memory_save",
@@ -6,7 +7,7 @@ module.exports = {
   declaration: {
     name: "memory_save",
     description:
-      "Save an important user-provided fact or instruction to Mira's conversation memory when the user explicitly asks Mira to remember it.",
+      "Save an important user-provided fact or instruction only when the user explicitly asks Mira to remember it. Store the exact user-authored text from the current message; do not paraphrase, infer, or add details. If the user refers to earlier context that is not repeated in the current message, ask them to restate the exact text.",
     parameters: {
       type: "object",
       properties: {
@@ -21,6 +22,19 @@ module.exports = {
   },
 
   execute: async ({ content }) => {
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+      return JSON.stringify({
+        success: false,
+        saved: false,
+        code: "HFM_TOOL_ROUTER_REQUIRED",
+        localFallback: false,
+        driveFallback: false
+      });
+    }
+    assertLegacyStorageDisabled();
     if (
       !content ||
       typeof content !== "string" ||

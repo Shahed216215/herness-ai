@@ -25,6 +25,25 @@ function registerLearningHistoryRoutes(
       PERMISSIONS.SYSTEM_ADMIN
     );
 
+  function denyLegacyLearningHistory(req, res, next) {
+    const env = process.env;
+    const hfmMode = env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+      env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+      env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+      env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
+    if (hfmMode) {
+      return res.status(403).json({
+        success: false,
+        blocked: true,
+        code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_HISTORY",
+        error: "Legacy local Learning History is not an authorized HFM memory source."
+      });
+    }
+    return next();
+  }
+
+  router.use(requireSystemAdmin, denyLegacyLearningHistory);
+
   router.get(
     "/stats",
     requireSystemAdmin,
@@ -48,6 +67,15 @@ function registerLearningHistoryRoutes(
     "/lessons",
     requireSystemAdmin,
     (req, res) => {
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+        return res.status(403).json({
+          success: false,
+          blocked: true,
+          code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LOCAL_EXPERIENCE_LESSONS",
+          error: "Local experience lessons are not an authorized HFM memory source."
+        });
+      }
       try {
         const limit =
           Math.min(

@@ -1,0 +1,62 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+const route = fs.readFileSync(path.join(__dirname, '..', 'routes', 'mira-hfm-standing-read-authority.js'), 'utf8');
+const memoryReadRoute = fs.readFileSync(path.join(__dirname, '..', 'routes', 'mira-hfm-memory-read.js'), 'utf8');
+
+for (const id of [
+  'hfmV02StandingReadAuthority',
+  'hfmV02StandingRefresh',
+  'hfmV02StandingIssue',
+  'hfmV02StandingPause',
+  'hfmV02StandingResume',
+  'hfmV02StandingRevoke',
+  'hfmV02StandingStatus'
+]) {
+  assert.ok(html.includes('id="' + id + '"'), 'missing UI control ' + id);
+}
+assert.match(html, /365-Day Standing Read Authority/);
+assert.match(html, /id="hfmV02StandingIssue"[^>]*hidden/);
+assert.match(html, /memory\.read/);
+assert.match(html, /Learning and Knowledge records only/);
+assert.match(memoryReadRoute, /\['learning_note', 'knowledge_item'\]/);
+assert.match(html, /window\.confirm\([\s\S]*Approve 365 days/);
+assert.match(html, /Every read is audited/);
+assert.match(html, /No Memory writes, edits, Trash, Restore/);
+assert.match(html, /standing-authority\/issue/);
+assert.match(html, /standing-authority\/" \+ action/);
+assert.match(html, /updateStandingAuthority\("pause"\)/);
+assert.match(html, /updateStandingAuthority\("resume"\)/);
+assert.match(html, /updateStandingAuthority\("revoke"\)/);
+assert.match(route, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true'/);
+assert.match(route, /featureEnabled: process\.env\.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === 'true'/);
+assert.match(html, /const featureEnabled = data\.featureEnabled;/);
+assert.match(html, /typeof data\.featureEnabled !== "boolean"/);
+assert.match(html, /hasOwnProperty\.call\(data, "authority"\)/);
+assert.match(html, /!\["ACTIVE", "PAUSED", "REVOKED", "EXPIRED"\]\.includes\(authority\.authorityStatus\)/);
+assert.match(html, /return \{ ok: false, authority: null, featureEnabled: false \}/);
+assert.match(html, /data\.status !== "STANDING_READ_AUTHORITY_ISSUED"/);
+assert.match(html, /verified\.authority\.authorityStatus !== "ACTIVE"/);
+assert.match(html, /verified\.authority\.standingAuthorityId !== data\.standingAuthorityId/);
+assert.match(html, /Standing authority verified ACTIVE/);
+assert.match(html, /active backend authority could not be verified/);
+assert.ok(html.indexOf('await refreshStandingAuthority()') < html.indexOf('Standing authority verified ACTIVE'),
+  'the UI must refresh backend status before reporting an issued authority as active');
+assert.match(html, /The HFM standing-read feature is disabled/);
+assert.match(html, /hidden = !featureEnabled/);
+assert.match(html, /hidden = !\(terminal && featureEnabled\)/);
+assert.match(route, /body\.confirm !== true/);
+assert.match(route, /sameOriginRequest\(req\)/);
+assert.match(route, /STANDING_READ_AUTHORITY_NOT_FOUND|setStandingReadAuthorityStatus/);
+assert.match(html, /Standing authority status unavailable:[\s\S]*?byId\("hfmV02StandingIssue"\)\.hidden = true;/);
+assert.match(html, /const terminal = authority\.authorityStatus === "REVOKED" \|\|[\s\S]*?byId\("hfmV02StandingIssue"\)\.hidden = !\(terminal && featureEnabled\);/);
+console.log('HFM_STANDING_READ_UI_STATUS_UNAVAILABLE_DOES_NOT_OFFER_NEW_GRANT=PASS');
+console.log('HFM_STANDING_READ_UI_365_DAY_SCOPE_AND_CONSENT=PASS');
+console.log('HFM_STANDING_READ_UI_PAUSE_RESUME_REVOKE_CONTROLS=PASS');
+console.log('HFM_STANDING_READ_UI_NO_WRITE_OR_PUBLISH_SCOPE=PASS');
+console.log('NETWORK_REQUESTS=0');
+console.log('DATABASE_WRITES=0');

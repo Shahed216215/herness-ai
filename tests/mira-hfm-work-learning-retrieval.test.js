@@ -36,7 +36,7 @@ function authorize(input) {
 }
 function record({ id, projectId = 'project-alpha', taskId, title, lessons,
   lifecycle = 'ACTIVE', integrity = 'VERIFIED', trust = 'CONTENT_VERIFIED',
-  recordType = 'lesson', sourceId = id }) {
+  recordType = 'learning_note', sourceId = id }) {
   const content = JSON.stringify({
     domain: 'work_learning',
     record: {
@@ -47,7 +47,7 @@ function record({ id, projectId = 'project-alpha', taskId, title, lessons,
     }
   });
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: '1.1.0',
     memoryId: id,
     projectId,
     recordType,
@@ -125,11 +125,35 @@ assert.equal(result.transfers[0].governance.executable, false);
 assert.equal(result.transfers[0].governance.modifiesCode, false);
 assert.equal(result.governance.rankedAfterHfmEligibilityFilter, true);
 assert.equal(result.excludedSummary.totalCandidates, 6);
-assert.equal(result.excludedSummary.eligibleCount, 4);
-assert.equal(result.excludedSummary.excludedCount, 2);
+assert.equal(result.excludedSummary.eligibleCount, 3);
+assert.equal(result.excludedSummary.excludedCount, 3);
+assert.equal(result.excludedSummary.eligibleCount + result.excludedSummary.excludedCount, result.excludedSummary.totalCandidates);
 assert.ok(authorizationCalls.some(x => x.operation === 'LIST'));
 assert.ok(authorizationCalls.some(x => x.operation === 'READ'));
 console.log('WORK_LEARNING_PROJECT_SCOPED_FILTER_BEFORE_RANKING_PASS');
+
+const bengaliLearning = record({
+  id: 'memory-bengali-learning-001',
+  taskId: 'task-bengali-previous',
+  title: 'বাংলা অটোমেশন নির্ভরযোগ্যতা',
+  lessons: ['বাংলা অটোমেশন নিরাপত্তা যাচাই']
+});
+const bengaliResult = retrieveProjectScopedWorkLearning({
+  records: [bengaliLearning],
+  pendingConflicts: [],
+  projectId: 'project-alpha',
+  requestContext,
+  authorizeRequest: authorize,
+  taskText: 'বাংলা অটোমেশন',
+  currentTaskId: 'task-bengali-current',
+  limit: 5,
+  now
+});
+assert.equal(bengaliResult.count, 1);
+assert.equal(bengaliResult.transfers[0].learningId, 'memory-bengali-learning-001');
+assert.equal(bengaliResult.transfers[0].relevance.score, 1);
+console.log('WORK_LEARNING_BENGALI_UNICODE_RELEVANCE_PASS');
+
 
 assert.throws(() => retrieveProjectScopedWorkLearning({
   records: [activeOtherTask], pendingConflicts: [],

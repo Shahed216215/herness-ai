@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const fs = require("fs");
 const path = require("path");
 
@@ -151,6 +152,7 @@ module.exports = {
   },
 
   execute: async ({ action }) => {
+    assertLegacyStorageDisabled();
     if (action === "inspect") {
       const result = await inspectKnowledge();
 

@@ -2,16 +2,19 @@
 
 const { getCapacity } = require('./capacity-config');
 const localStore = require('./services/mira-local-memory-store');
+const { assertLegacyStorageDisabled } = require('./services/mira-hfm-legacy-storage-guard');
 
 function getMaxMemory() {
   return getCapacity('memory');
 }
 
 function loadMemory() {
+  assertLegacyStorageDisabled();
   return localStore.readMemory();
 }
 
 function saveMemory(memory) {
+  assertLegacyStorageDisabled();
   if (!Array.isArray(memory)) {
     throw new Error('Memory must be an array.');
   }

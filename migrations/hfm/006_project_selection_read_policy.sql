@@ -88,6 +88,11 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON SCHEMA mira_hfm FROM mira_hfm_project_reader;
+REVOKE ALL ON ALL TABLES IN SCHEMA mira_hfm FROM mira_hfm_project_reader;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA mira_hfm FROM mira_hfm_project_reader;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA mira_hfm FROM mira_hfm_project_reader;
+
 GRANT USAGE ON SCHEMA mira_hfm TO mira_hfm_project_reader;
 GRANT SELECT ON TABLE mira_hfm.project_owners, mira_hfm.project_memberships
   TO mira_hfm_project_reader;
