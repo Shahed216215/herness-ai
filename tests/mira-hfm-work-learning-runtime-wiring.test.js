@@ -346,7 +346,7 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     process.env.MIRA_HFM_WORK_LEARNING_ENABLED = 'true';
     await assert.rejects(
       () => executeTool('knowledge_search', {}),
-      error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL'
+      error => error.code === 'HFM_KNOWLEDGE_TOOL_HFM_CONTEXT_REQUIRED'
     );
   } finally {
     if (oldToolStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
