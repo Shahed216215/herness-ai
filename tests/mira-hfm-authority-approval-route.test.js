@@ -86,6 +86,12 @@ async function invoke(req, runtime = async () => ({
   assert.equal(wrongOrigin.statusCode, 403);
   console.log('HFM_APPROVAL_ROUTE_CROSS_ORIGIN_BLOCK=PASS');
 
+  const writeOperationDenied = await invoke(makeReq({
+    body: { confirm: true, purpose: 'unsupported browser grant', operation: 'memory.write', resource: 'memory:record-001' }
+  }));
+  assert.equal(writeOperationDenied.statusCode, 400);
+  console.log('HFM_APPROVAL_ROUTE_READ_ONLY_SESSION_GRANT=PASS');
+
   const disabled = await invoke(makeReq(), async () => ({ status: 'DISABLED', pool: null }));
   assert.equal(disabled.statusCode, 503);
   console.log('HFM_APPROVAL_ROUTE_DISABLED_RUNTIME_FAIL_CLOSED=PASS');
