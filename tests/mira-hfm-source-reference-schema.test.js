@@ -40,7 +40,8 @@ test('source reference URL canonicalization strips query and fragment and preser
 test('source reference payload requires explicit not-fetched semantics and server provenance', () => {
   assert.deepEqual(validateSourceReferencePayload(validPayload()), { valid: true, errors: [] });
   const mismatch = validateSourceReferencePayload(validPayload({ accessResult: 'AVAILABLE' }));
-  assert.equal(mismatch.valid, true);
+  assert.equal(mismatch.valid, false);
+  assert.ok(mismatch.errors.includes('payload.user_supplied_url_must_not_claim_fetch_result'));
   const badActor = validateSourceReferencePayload(validPayload({ provenanceActor: 'admin-001' }));
   assert.equal(badActor.valid, false);
   assert.ok(badActor.errors.includes('payload.provenanceActor.invalid'));
@@ -72,6 +73,6 @@ test('user-supplied source payload is NOT_FETCHED, deterministic, and secret-fre
   assert.equal(first.retrievalMethod, 'user_supplied_url');
   assert.equal(first.canonicalUrl, 'https://example.com/article');
   assert.equal(first.canonicalUrl.includes('secret'), false);
-  assert.equal(first.sourceId, 'src-' + 'a'.repeat(64) === first.sourceId ? first.sourceId : first.sourceId);
+  assert.match(first.sourceId, /^src-[a-f0-9]{64}$/);
   assert.equal(validateSourceReferencePayload(first).valid, true);
 });
