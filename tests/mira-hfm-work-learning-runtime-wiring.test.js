@@ -1042,7 +1042,11 @@ assert.ok(execution.indexOf('if (hfmWorkLearningEnabled && hfmMemoryReadRuntime)
 assert.match(execution, /Work Learning is the only mode that requests an automatic HFM/);
 assert.match(execution, /Work Learning OFF must not trigger an unsolicited background read/);
 assert.match(execution, /hfmWorkLearningEnabled\) \{[\s\S]{0,700}plannerOptions\.preflightWorkLearning = async/);
-assert.match(execution, /readMemory: async \(\{ cursor \} = \{\}\) => cursor[\s\S]{0,900}: preflight/);
+assert.match(preflight, /const pages = await collectStandingReadPages/);
+assert.match(preflight, /pages\.candidateScanMayBeIncomplete/);
+assert.match(preflight, /candidateScanMayBeIncomplete: false/);
+assert.ok(preflight.indexOf('await collectStandingReadPages(') < preflight.indexOf('return Object.freeze('));
+assert.doesNotMatch(execution, /readMemory: async/);
 assert.ok(planner.indexOf('await options.preflightWorkLearning()') < planner.indexOf('await understandTask('));
 assert.ok(planner.indexOf('await understandTask(') < planner.indexOf('await options.retrieveWorkLearning('));
 assert.match(server, /hfmRequest: req/);
