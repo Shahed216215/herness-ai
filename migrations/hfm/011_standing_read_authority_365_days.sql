@@ -237,7 +237,7 @@ BEGIN
       'status', NEW.status,
       'priorStatus', prior_status,
       'expiresAt', NEW.expires_at,
-      'durationDays', floor(extract(epoch FROM (NEW.expires_at - NEW.valid_from)) / 86400)
+      'durationDays', ceil(extract(epoch FROM (NEW.expires_at - NEW.valid_from)) / 86400)
     )
   );
   RETURN NEW;
