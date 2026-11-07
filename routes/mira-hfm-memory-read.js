@@ -73,6 +73,7 @@ function registerMiraHfmMemoryReadRoute(app, getRuntime, requireAdmin, readMemor
               authorityGrant: grant,
               limit,
               recordType: body.recordType,
+              lifecycle: body.lifecycle,
               env: process.env
             });
             return res.json({
