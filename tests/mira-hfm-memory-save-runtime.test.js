@@ -11,7 +11,7 @@ const {
 } = require('../services/mira-hfm-memory-save-runtime');
 const { validateCanonicalRecord } = require('../services/mira-hfm-record-schema');
 const { extractKnowledgeTitle } = require('../services/mira-hfm-knowledge-search-runtime');
-const { hasExplicitReviewIntent, listPendingHfmKnowledgeForReview } = require('../services/mira-hfm-knowledge-review-runtime');
+const { hasExplicitReviewIntent, safeReviewSourceUrl, listPendingHfmKnowledgeForReview } = require('../services/mira-hfm-knowledge-review-runtime');
 
 function baseOptions(overrides = {}) {
   return {
@@ -107,6 +107,8 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitReviewIntent('Do not show pending knowledge.'), false);
   assert.equal(hasExplicitReviewIntent('অযাচাইকৃত জ্ঞান রিভিউ করে দেখাও।'), true);
   assert.equal(hasExplicitReviewIntent('Remember this preference.'), false);
+  assert.equal(safeReviewSourceUrl('https://example.com/article?token=secret#section'), 'https://example.com/article');
+  assert.equal(safeReviewSourceUrl('https://user:pass@example.com/article'), null);
 
   const pendingRecord = buildCanonicalMemoryRecord({
     projectId: 'project-001', memoryId: 'mem-pending-review-001',
