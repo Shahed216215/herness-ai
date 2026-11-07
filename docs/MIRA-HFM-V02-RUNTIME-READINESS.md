@@ -72,6 +72,9 @@ Migrations 007–011 are source-only drafts. Do not execute them until the targe
 
 ## Outstanding blockers
 
+- **Migration lineage collision:** this branch's migrations 007–009 reuse IDs already applied in the previously verified Neon production lineage for different SQL contents. Migration 008 also assumes an issuer-role attribute that the prior migration did not set and introduces a second permissive policy set. Do not apply 007–011 to any existing Neon target until the migration identity, role, policy, and target-branch reconciliation is complete. See [Migration Lineage Reconciliation](MIRA-HFM-V02-MIGRATION-LINEAGE-RECONCILIATION-20261107.md).
+
+
 - Latest read-only staging inspection shows `project_owners=1`, `project_memberships=1`, `memory_records=1`, `operation_authorities=0`, and `authority_audit_events=2`; one active owner row matches one active ADMIN membership. The membership currently grants `memory.read` but not `memory.write`, `memory.trash`, or `memory.restore`. Row provenance has not been independently certified. Preserve all existing rows; do not treat staging as empty or run the one-time bootstrap migration against it.
 - The admin HFM subject must be provisioned and match `MIRA_ADMIN_SUBJECT_ID`.
 - Migrations 007–011 are not applied in the inspected staging database; the nonce registry, bootstrap latch, standing-authority registry and new runtime role grants are not present there.
