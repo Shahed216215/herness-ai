@@ -87,7 +87,7 @@ function buildKnowledgeRecord(options = {}) {
     version: { revision: 1, contentHash: createContentHash(clean.content) },
     integrity: { status: 'UNVERIFIED', algorithm: 'SHA-256' },
     trust: { status: 'SOURCE_RECORDED' },
-    access: { classification: 'PUBLIC', allowedProjectIds: [] },
+    access: { classification: 'PUBLIC', allowedProjectIds: [projectId] },
     lifecycle: 'ACTIVE'
   };
   const validation = validateCanonicalRecord(record);
