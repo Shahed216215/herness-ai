@@ -20,6 +20,10 @@ This document records the HFM v0.2 runtime boundary and exact release gates. It 
 - Persistent approval nonce ledger. Raw HMAC tokens are not stored. Nonces are hashed, scoped, short-lived, single-use and audited on issuance/consumption.
 - One-time initial-project bootstrap route and source-only Migration 013. It creates only the initial owner, matching ADMIN membership, one-time bootstrap latch and audit row in one transaction; it imports no legacy Memory.
 - Daily social-draft generation route. It reads eligible active daily activity/learning notes using a one-time `memory.read` authority, builds a Bangladesh-time-zone daily post, and writes a private `social_post_draft` through a separate one-time `memory.write` authority and dedicated writer transaction.
+- Canonical agent Memory save integration. With `MIRA_HFM_MEMORY_WRITE_ENABLED=true`, the existing `memory_save` tool is routed to a new HFM-only writer runtime; it accepts only explicit user save intent, writes a private `knowledge_item` with HUMAN_VERIFIED trust and ACTIVE lifecycle, and uses a server-held one-time `memory.write` authority plus deterministic task/tool-call idempotency. It does not call legacy JSON or Google Drive stores.
+- Canonical agent Knowledge save integration. With the same write flag, `knowledge_save` stores a private `knowledge_item` as SOURCE_RECORDED/PENDING_REVIEW after validating and sanitizing an HTTPS source URL. It is deliberately excluded from trusted search until a separate verification/update workflow exists; it does not elevate external source content to trusted knowledge.
+- HFM write context is server-held: the execution engine resolves the dedicated writer and authority-issuer pools and passes the authenticated request, original user intent, task ID, and tool-call ID. Missing runtime, disabled flags, absent membership permission, invalid user intent, or failed authority checks fail closed. Direct legacy tool execution also refuses HFM mode; no local or Drive fallback is used.
+
 - Manual Facebook workflow in the existing Knowledge & Memory section: generate a private draft, copy it with the browser clipboard, manually publish it in Facebook, explicitly confirm publication, and move only that `social_post_draft` to recoverable Neon Trash. No Facebook API publishing or auto-publish path exists. Trash can be listed and restored; it is not a hard delete.
 - Authenticated same-origin HTTP routes:
   - `POST /api/hfm/projects/select`
@@ -55,6 +59,19 @@ Values must be supplied only after the target database and role credentials are 
 | Stable admin principal | `MIRA_ADMIN_SUBJECT_ID` |
 
 Feature flags must remain disabled until database readiness, target mapping, role provisioning and owner/membership bootstrap are verified. No secret values are recorded in this document.
+
+## Canonical agent Memory write mode
+
+The writer remains disabled by default. The following must all be independently ready before enabling it:
+
+- `MIRA_HFM_MEMORY_WRITE_ENABLED=true` and `MIRA_HFM_AUTHORITY_ISSUER_ENABLED=true`.
+- Dedicated `MIRA_HFM_MEMORY_DATABASE_URL` and `MIRA_HFM_MEMORY_WRITER_ROLE` for the Memory writer.
+- Dedicated `MIRA_HFM_AUTHORITY_ISSUER_DATABASE_URL` and `MIRA_HFM_AUTHORITY_ISSUER_ROLE` for the issuer.
+- `MIRA_HFM_APPROVAL_TOKEN_SECRET` and stable `MIRA_ADMIN_SUBJECT_ID` for signed, single-use approval.
+- `MIRA_VAULT_ACTIVE_KEK_VERSION` and the matching versioned `MIRA_VAULT_KEK_Vn` key for encrypted PROJECT_PRIVATE payloads.
+- The selected project membership must explicitly include `memory.write`. The last inspected staging membership contained `memory.read` only; it does not currently authorize writes. No membership or credential was changed.
+
+This mode supports record creation only. It does not add `memory.update`, trust promotion, permanent deletion, or restricted client/financial vault writes. Knowledge sources saved by `knowledge_save` remain PENDING_REVIEW until a separately approved update/verification contract and workflow exist. Do not enable the writer flag based solely on the presence of the code.
 
 ## Private payload digest and audit-chain hardening
 
