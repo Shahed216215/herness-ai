@@ -53,7 +53,7 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
   if (typeof readMemory !== 'function') fail('HFM_KNOWLEDGE_READ_RUNTIME_INVALID');
   const memory = await readMemory({
     pool, req, standingReadAuthority: true,
-    recordTypes: ['knowledge_item'], lifecycle: 'ACTIVE', limit: 100, env
+    recordTypes: ['knowledge_item', 'learning_note'], lifecycle: 'ACTIVE', limit: 100, env
   });
   if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
       memory.standingAuthority !== true || memory.approvalRequiredPerRead !== false ||
@@ -75,7 +75,7 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
     now
   });
   const results = report.records
-    .filter(record => record.recordType === 'knowledge_item')
+    .filter(record => ['knowledge_item', 'learning_note'].includes(record.recordType))
     .map(record => ({ record, score: scoreRecord(query, record) }))
     .filter(item => item.score > 0)
     .sort((a, b) => b.score - a.score ||
@@ -85,8 +85,8 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
       id: record.memoryId,
       title: extractKnowledgeTitle(record),
       topic: '',
-      category: 'Knowledge',
-      type: 'knowledge',
+      category: record.recordType === 'learning_note' ? 'Learning' : 'Knowledge',
+      type: record.recordType === 'learning_note' ? 'learning' : 'knowledge',
       url: typeof record.source.sourceUrl === 'string' ? record.source.sourceUrl.slice(0, 1000) : '',
       source: (record.source.sourceUrl || record.source.sourceId).slice(0, 1000),
       content: record.content.slice(0, 20000),
