@@ -920,7 +920,7 @@ assert.match(execution, /options\.hfmRequest/);
 assert.match(execution, /env\.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"/);
 assert.ok(execution.indexOf('getHfmMemoryReadRuntime') < execution.indexOf('await preflightHfmStandingRead('));
 assert.ok(execution.indexOf('await preflightHfmStandingRead(') < execution.indexOf('await createTaskPlan('));
-assert.ok(execution.indexOf('await preflightHfmStandingRead(') < execution.indexOf('normalizeToolCalls('));
+assert.ok(execution.indexOf('await preflightHfmStandingRead(') < execution.indexOf('const normalizedCalls ='));
 assert.ok(execution.indexOf('if (!standingReadEnabled && !workLearningEnabled)') <
   execution.indexOf('const runtime = await options.getHfmMemoryReadRuntime()'));
 assert.match(execution, /if \(hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/);
