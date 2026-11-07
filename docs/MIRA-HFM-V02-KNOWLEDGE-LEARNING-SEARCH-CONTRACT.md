@@ -22,7 +22,7 @@ Both record types use the same project-scoped canonical repository and the stand
 ## Retrieval behavior
 
 - `knowledge_search` reads both `knowledge_item` and `learning_note` under standing read authority.
-- Search results label the record type as Knowledge or Learning. The current read adapter scans at most the 100 most recently updated eligible candidates; it returns `candidateScanCount`, `candidateScanLimit`, and `candidateScanMayBeIncomplete` so a full 100-record scan is not presented as exhaustive. Cursor-based exhaustive search remains a v0.2 completion item.
+- Search results label the record type as Knowledge or Learning. The current read adapter scans at most 100 most recently updated eligible candidates per page and returns `candidateScanCount`, `candidateScanLimit`, `candidateScanMayBeIncomplete`, and an opaque `nextCursor`. The standing-read repository uses a project/type/lifecycle-bound keyset cursor and a fixed scan-start timestamp; callers can continue page-by-page until `nextCursor` is null. Chat recall and the admin API expose the cursor so additional pages can be requested without treating a partial page as exhaustive.
 - The Work Learning transfer adapter remains narrower: it accepts only structured `legacy_import` records in the `work_learning` domain. A generic learning note is never converted into executable task instructions.
 - No local or Drive fallback is permitted when HFM mode is active.
 
