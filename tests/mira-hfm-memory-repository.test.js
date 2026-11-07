@@ -158,7 +158,8 @@ test('restricted client and financial vault records are encrypted before insert 
       recordType,
       content,
       version: { revision: 1, contentHash: createContentHash(content) },
-      access: { classification: 'RESTRICTED', allowedProjectIds: ['project-001'] }
+      access: { classification: 'RESTRICTED', allowedProjectIds: ['project-001'] },
+      lifecycle: 'PENDING_REVIEW'
     });
     const vaultContext = {
       ...context,
