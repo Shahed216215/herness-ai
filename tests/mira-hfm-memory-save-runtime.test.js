@@ -119,6 +119,15 @@ function baseOptions(overrides = {}) {
     userIntent: 'Remember this: Pending source content.',
     now: '2026-11-07T07:00:00.000Z'
   });
+  const pendingLearningRecord = buildCanonicalMemoryRecord({
+    projectId: 'project-001', memoryId: 'mem-pending-learning-001',
+    kind: 'learning_save', title: 'Pending learning title',
+    url: 'https://example.com/learning',
+    content: 'Pending learning content.',
+    userIntent: 'Save this learning note to my knowledge base.',
+    now: '2026-11-07T07:00:00.000Z'
+  });
+  assert.equal(hasExplicitReviewIntent('Show pending learning notes for review.'), true);
   let reviewReadRequest = null;
   const reviewQueue = await listPendingHfmKnowledgeForReview({
     req: {
@@ -132,7 +141,7 @@ function baseOptions(overrides = {}) {
     pool: { connect: async () => ({}) },
     issuerPool: { connect: async () => ({}) },
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
-    userIntent: 'Show pending knowledge sources for review.',
+    userIntent: 'Show pending knowledge sources and learning notes for review.'
     issueAuthority: async input => ({
       status: 'AUTHORITY_ISSUED',
       projectId: 'project-001',
@@ -154,18 +163,20 @@ function baseOptions(overrides = {}) {
         approvalRequiredPerRead: true,
         projectId: 'project-001',
         hostAuthorizationContext: { projectId: 'project-001', actorId: 'mira:admin-001' },
-        records: [pendingRecord]
+        records: [pendingRecord, pendingLearningRecord]
       };
     }
   });
   assert.equal(reviewReadRequest.lifecycle, 'PENDING_REVIEW');
-  assert.deepEqual(reviewReadRequest.recordTypes, ['knowledge_item']);
+  assert.deepEqual(reviewReadRequest.recordTypes, ['knowledge_item', 'learning_note']);
   assert.equal(reviewQueue.status, 'REVIEW_REQUIRED');
-  assert.equal(reviewQueue.count, 1);
+  assert.equal(reviewQueue.count, 2);
   assert.equal(reviewQueue.items[0].title, 'Pending source title');
   assert.equal(reviewQueue.items[0].trust, 'SOURCE_RECORDED');
   assert.equal(reviewQueue.items[0].eligibleForTrustedSearch, false);
   assert.equal(reviewQueue.items[0].requiresHumanReview, true);
+  assert.equal(reviewQueue.items[1].recordType, 'learning_note');
+  assert.equal(reviewQueue.items[1].eligibleForTrustedSearch, false);
   assert.equal(reviewQueue.promotionSupported, false);
   await assert.rejects(
     () => listPendingHfmKnowledgeForReview({
