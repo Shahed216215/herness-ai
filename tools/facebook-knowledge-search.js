@@ -14,11 +14,11 @@ module.exports = {
     parameters: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'HFM project ID authorized for the current user.' },
+        projectId: { type: 'string', description: 'Optional HFM project ID; defaults to the authenticated session active project.' },
         query: { type: 'string', description: 'Bengali or English question or search terms.' },
         limit: { type: 'integer', minimum: 1, maximum: 10 }
       },
-      required: ['projectId', 'query']
+      required: ['query']
     }
   },
   execute: async ({ projectId, query, limit = 5 }, trustedContext = null) => {
@@ -26,15 +26,17 @@ module.exports = {
         !trustedContext.verifiedPrincipal || !trustedContext.actor?.actorId) {
       return JSON.stringify({ status: 'IDENTITY_UNAVAILABLE', results: [] });
     }
-    if (typeof projectId !== 'string' || !projectId.trim() ||
+    const selectedProjectId = typeof projectId === 'string' && projectId.trim()
+      ? projectId.trim() : trustedContext.activeProjectId;
+    if (typeof selectedProjectId !== 'string' || !selectedProjectId.trim() ||
         typeof query !== 'string' || !query.trim()) {
       return JSON.stringify({ status: 'INVALID_QUERY', results: [] });
     }
     try {
       const request = {
-        projectId: projectId.trim(),
+        projectId: selectedProjectId,
         operation: 'memory.read',
-        resource: 'memory:project:' + projectId.trim(),
+        resource: 'memory:project:' + selectedProjectId,
         purpose: 'facebook-knowledge-search'
       };
       const grant = await issueAuthorityForTrustedActor({
