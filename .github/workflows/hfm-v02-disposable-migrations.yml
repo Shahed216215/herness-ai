@@ -124,6 +124,7 @@ jobs:
               WHERE member_role.rolname = 'mira_hfm_memory_reader_login'
                 AND granted_role.rolname = 'mira_hfm_memory_reader'
                 AND NOT m.admin_option
+                AND m.inherit_option
             ) <> 1 OR EXISTS (
               SELECT 1 FROM pg_auth_members m
               JOIN pg_roles member_role ON member_role.oid = m.member
