@@ -202,3 +202,9 @@ This is read-only topology evidence only. It does not authorize applying migrati
 - The HFM runtime wiring regression suite now asserts that admin Knowledge recall and diagnostic/local-storage guards cover the full Memory-mode flag set, including the dedicated Memory reader and writer flags. This complements the server transcript adapter test and the direct legacy-tool router-denial tests.
 - Exact functional-code commit `102bb0a5c1372744bc3910071e3e3c8444ab4d41`: **10/10 GitHub checks completed successfully; 0 failures; 0 pending**. The session-persistence workflow was not triggered for this test-only commit; its prior exact-commit result remains successful on `4f56b9572e8ba7e368acbcd73183e1cfa32e8d53`.
 - No live HFM flag was enabled, and no database, credential, Render, deployment, merge, or Facebook API/publishing action was performed.
+
+
+## Legacy-store denial matrix — 2026-11-07
+
+- Focused HFM wiring regression now exercises the full four-flag matrix against both the generic legacy-storage guard and the legacy Learning service: standing-read, Work Learning, Memory reader, and Memory writer modes all reject local JSON/Drive storage paths. Outside HFM mode, the legacy behavior remains available as before.
+- Exact functional-code commit `6c8196eb2b97c8d190de1b57cc35b161ebe84d05`: **10/10 GitHub checks PASS, 0 failures, 0 pending**, including HFM foundation, repository contracts, offline regression, dependency remediation, and PostgreSQL 001–014 integration.
