@@ -41,7 +41,12 @@ const PREFLIGHT_SQL = [
   'r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls,',
   'r.rolcreaterole AS can_create_roles, r.rolcreatedb AS can_create_databases,',
   'r.rolinherit AS inherits_roles, r.rolcanlogin AS can_login, r.rolreplication AS can_replicate,',
-  "pg_has_role(current_user, $1, 'MEMBER') AS has_memory_writer_group,",
+  "pg_has_role(current_user, $1, 'USAGE') AS has_memory_writer_group,
+  NOT EXISTS (SELECT 1 FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND g.rolname <> $1) AS role_membership_isolated,
+  NOT EXISTS (SELECT 1 FROM pg_auth_members m WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = $1)) AS writer_group_has_no_parent_roles,
+  (SELECT rolcanlogin = false AND rolinherit = false AND rolsuper = false AND rolcreatedb = false AND rolcreaterole = false AND rolreplication = false AND rolbypassrls = false FROM pg_roles WHERE rolname = $1) AS writer_group_least_privilege,
+  NOT EXISTS (SELECT 1 FROM pg_shdepend d WHERE d.refclassid = 'pg_authid'::regclass AND d.refobjid = (SELECT oid FROM pg_roles WHERE rolname = $1) AND d.deptype = 'o') AS writer_group_owns_no_objects,
+  NOT EXISTS (SELECT 1 FROM pg_shdepend d WHERE d.refclassid = 'pg_authid'::regclass AND d.refobjid = (SELECT oid FROM pg_roles WHERE rolname = current_user) AND d.deptype = 'o') AS login_role_owns_no_objects,",
   "has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,",
   "has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'SELECT') AS owners_select,",
@@ -102,7 +107,9 @@ const PREFLIGHT_SQL = [
 ].join(' ');
 
 const REQUIRED_TRUE = Object.freeze([
-  'has_memory_writer_group', 'inherits_roles', 'can_login', 'schema_usage',
+  'has_memory_writer_group', 'role_membership_isolated', 'writer_group_has_no_parent_roles',
+  'writer_group_least_privilege', 'writer_group_owns_no_objects', 'login_role_owns_no_objects',
+  'inherits_roles', 'can_login', 'schema_usage',
   'owners_select', 'memberships_select', 'authorities_select',
   'authorities_update', 'authority_audit_insert',
   'records_select', 'records_insert', 'records_update',
