@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const {
   learnFromContent
 } = require("../services/learning");
@@ -38,6 +39,7 @@ module.exports = {
     sourceUrl,
     content
   }) => {
+    assertLegacyStorageDisabled();
     const result = await learnFromContent({
       content,
       sourceTitle,
