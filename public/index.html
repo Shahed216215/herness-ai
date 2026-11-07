@@ -1423,6 +1423,35 @@
             </button>
           </div>
 
+          <div class="card" id="hfmV02SocialDraftWorkspace" style="margin-bottom:14px;">
+            <div class="section-header" style="margin-bottom:12px;">
+              <div>
+                <h3>HFM v0.2 — Neon Social Drafts</h3>
+                <p>Copy → manually publish in Facebook → move to recoverable Trash. Copy is not Published. Mira never auto-publishes.</p>
+              </div>
+              <span class="status-chip">Manual publish only</span>
+            </div>
+            <div class="grid-2">
+              <div>
+                <label for="hfmV02ProjectId">HFM Project ID</label>
+                <input id="hfmV02ProjectId" type="text" maxlength="128" placeholder="Example: mira-core" style="width:100%;" />
+                <div class="muted" style="font-size:11px;margin-top:5px;">Use the exact project ID approved for HFM v0.2.</div>
+              </div>
+              <div class="button-row" style="align-items:flex-end;">
+                <button id="hfmV02SelectProject" class="secondary-button" type="button">Select Existing Project</button>
+                <button id="hfmV02BootstrapProject" class="primary-button" type="button">Initialize First Project</button>
+              </div>
+            </div>
+            <div class="button-row" style="margin-top:14px;">
+              <button id="hfmV02LoadActiveDrafts" class="primary-button" type="button">Load Active Drafts</button>
+              <button id="hfmV02LoadTrash" class="secondary-button" type="button">View Trash</button>
+            </div>
+            <div id="hfmV02SocialDraftStatus" class="muted" role="status" aria-live="polite" style="margin-top:12px;">
+              HFM routes remain unavailable until the approved Neon schema, dedicated roles and runtime settings are configured.
+            </div>
+            <div id="hfmV02SocialDraftList" style="display:grid;gap:12px;margin-top:14px;"></div>
+          </div>
+
           <div class="grid-2">
 
             <div class="card">
