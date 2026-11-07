@@ -139,7 +139,8 @@ function buildCanonicalMemoryRecord(options = {}) {
 
   const kind = options.kind;
   if (!['memory_save', 'knowledge_save', 'learning_save', 'daily_activity_save', 'source_reference_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
-  const body = boundedText(options.content, MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
+  const body = boundedText(kind === 'source_reference_save' ? options.url : options.content,
+    MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
   if (kind === 'daily_activity_save' &&
       !hasExplicitDailyActivitySaveIntent(options.userIntent)) {
     fail('HFM_DAILY_ACTIVITY_EXPLICIT_USER_INTENT_REQUIRED');
@@ -248,7 +249,11 @@ function buildCanonicalMemoryRecord(options = {}) {
 }
 
 async function saveHfmMemoryRecord(options = {}) {
-  if (!hasExplicitSaveIntent(options.userIntent)) fail('HFM_MEMORY_SAVE_EXPLICIT_USER_INTENT_REQUIRED');
+  if (!hasExplicitSaveIntent(options.userIntent) &&
+      !hasExplicitDailyActivitySaveIntent(options.userIntent) &&
+      !hasExplicitSourceReferenceSaveIntent(options.userIntent)) {
+    fail('HFM_MEMORY_SAVE_EXPLICIT_USER_INTENT_REQUIRED');
+  }
   const req = options.req;
   if (!req || !req.session || req.session.authenticated !== true ||
       req.session.role !== 'admin' || !req.session.hfmPrincipal) {
@@ -277,6 +282,11 @@ async function saveHfmMemoryRecord(options = {}) {
     projectId, memoryId, kind, content: options.content,
     title: options.title, url: options.url,
     userIntent: options.userIntent,
+    req: options.req,
+    taskId: options.taskId,
+    toolCallId: options.toolCallId,
+    toolName: options.toolName,
+    sourceType: options.sourceType,
     now: options.now
   });
   const resource = 'memory:' + memoryId;
