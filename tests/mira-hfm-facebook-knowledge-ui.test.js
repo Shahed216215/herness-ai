@@ -22,5 +22,8 @@ test('UI uses same-origin authenticated requests and does not contain Facebook A
   assert.match(html, /credentials: 'same-origin'/);
   assert.doesNotMatch(html, /graph\.facebook\.com|access_token|facebook\.com\/login|document\.cookie/i);
   assert.match(html, /single-use authority|single-use/i);
+  assert.match(html, /id="sourceFile"/);
+  assert.match(html, /id="publicConfirm"/);
+  assert.match(html, /publicContentConfirmed: \$\('publicConfirm'\)\.checked/);
 });
 
