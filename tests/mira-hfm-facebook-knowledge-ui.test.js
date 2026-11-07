@@ -31,6 +31,8 @@ test('UI uses same-origin authenticated requests and does not contain Facebook A
   assert.match(html, /Import this evidence to Neon/);
   assert.match(html, /collectionMethod: 'public_url_preview'/);
   assert.match(html, /importFileName:/);
+  assert.match(html, /originalPublishedAt: item\.publishedAt/);
+  assert.match(html, /id="publishedAt"/);
   assert.match(html, /id="publicConfirm"/);
   assert.match(html, /publicContentConfirmed: \$\('publicConfirm'\)\.checked/);
 });
