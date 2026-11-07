@@ -26,6 +26,7 @@ const fakeRead = async options => {
   readCalls += 1;
   assert.equal(options.limit, 100);
   assert.equal(options.lifecycle, 'ACTIVE');
+  assert.deepEqual(options.recordTypes, ['daily_activity', 'learning_note']);
   return { status: 'AUTHORIZED_AND_COMMITTED', records: [{ recordType: 'daily_activity' }, { recordType: 'learning_note' }] };
 };
 const fakeBuild = options => {
