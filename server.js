@@ -1403,12 +1403,21 @@ app.get(
         process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
         process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
         process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
+      const cursor =
+        typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+      if (cursor && !hfmSearchEnabled) {
+        return res.status(400).json({
+          success: false,
+          error: "HFM search cursor requires standing-read mode."
+        });
+      }
       const hfmSearch = hfmSearchEnabled
         ? await searchHfmKnowledge({
             req,
             pool: (await getHfmMemoryReadRuntime()).pool,
             query,
             limit,
+            cursor,
             env: process.env
           })
         : null;
@@ -1422,6 +1431,7 @@ app.get(
         results,
         candidateScanCount: hfmSearch ? hfmSearch.candidateScanCount : null,
         candidateScanLimit: hfmSearch ? hfmSearch.candidateScanLimit : null,
+        nextCursor: hfmSearch ? hfmSearch.nextCursor : null,
         candidateScanMayBeIncomplete: hfmSearch ? hfmSearch.candidateScanMayBeIncomplete : false
       });
     } catch (error) {
