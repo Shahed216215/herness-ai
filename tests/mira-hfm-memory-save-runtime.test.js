@@ -90,7 +90,7 @@ function baseOptions(overrides = {}) {
   assert.throws(() => normalizeSourceUrl('https://user:pass@example.com/article'), /HFM_KNOWLEDGE_SOURCE_URL_NOT_ALLOWED/);
 
   assert.equal(extractKnowledgeTitle({
-    content: 'My saved preference\\n\\nMore detail',
+    content: 'My saved preference\n\nMore detail',
     source: { sourceId: 'user-confirmed-memory' }
   }), 'My saved preference');
   assert.equal(extractKnowledgeTitle({
