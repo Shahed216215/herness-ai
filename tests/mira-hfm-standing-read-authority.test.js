@@ -202,6 +202,8 @@ const pool = { async connect() { return client; } };
   assert.ok(readCalls.some(c => c.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(readCalls.some(c => c.sql === 'COMMIT'));
   console.log('HFM_STANDING_READ_EACH_READ_AUDITED_WITHOUT_REAPPROVAL=PASS');
+  assert.ok(readCalls.some(c => c.sql.includes("FOR SHARE")), "standing authority row is shared-locked against concurrent pause/revoke");
+  console.log("HFM_STANDING_READ_AUTHORITY_LOCKED_AGAINST_CONCURRENT_LIFECYCLE_CHANGE=PASS");
   standingRow.status = 'PAUSED';
   let pausedReadCallbackCalled = false;
   await assert.rejects(() => executeWithStandingReadAuthority({
