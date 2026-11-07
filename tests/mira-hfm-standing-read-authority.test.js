@@ -169,24 +169,26 @@ const pool = { async connect() { return client; } };
   console.log('HFM_STANDING_READ_PAUSE_RESUME_REVOKE_AUDITED=PASS');
 
   standingRow.status = 'ACTIVE';
+  let readerPermissions = ['memory.read'];
   const readCalls = [];
   const readClient = {
     async query(sql, params = []) {
       readCalls.push({ sql, params });
       if (sql.includes('FROM mira_hfm.project_owners')) {
-        return { rows: [{ project_id: projectId, status: 'ACTIVE', revision: 4 }] };
+        return { rows: params[0] === projectId ? [{ project_id: projectId, status: 'ACTIVE', revision: 4 }] : [] };
       }
       if (sql.startsWith("SELECT (status = 'ACTIVE'")) return { rows: [{ membership_valid: true }] };
       if (sql.includes('FROM mira_hfm.project_memberships')) {
-        return { rows: [{
+        return { rows: params[0] === projectId && params[1] === actorId ? [{
           membership_id: 'membership-standing-001', project_id: projectId,
-          actor_id: actorId, permissions: { operations: ['memory.read'] },
+          actor_id: actorId, permissions: { operations: readerPermissions },
           status: 'ACTIVE', revision: 8,
           valid_from: new Date(now - 60000).toISOString(), expires_at: null
-        }] };
+        }] : [] };
       }
       if (sql.includes('FROM mira_hfm.standing_read_authorities')) {
-        return { rows: sql.includes("status = 'ACTIVE'") && standingRow.status !== 'ACTIVE' ? [] : [standingRow] };
+        return { rows: params[0] === projectId && params[1] === actorId &&
+          !(sql.includes("status = 'ACTIVE'") && standingRow.status !== 'ACTIVE') ? [standingRow] : [] };
       }
       if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) return { rowCount: 1, rows: [] };
       return { rowCount: 1, rows: [] };
@@ -236,6 +238,42 @@ const pool = { async connect() { return client; } };
   }), /HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED/);
   assert.equal(revokedReadCallbackCalled, false);
   console.log('HFM_STANDING_READ_REVOKED_GRANT_BLOCKS_FUTURE_READS=PASS');
+
+  standingRow.status = 'ACTIVE';
+  const otherProject = 'project-beta';
+  let crossProjectReadRan = false;
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return readClient; } },
+    verifiedPrincipal: req.session.hfmPrincipal,
+    projectId: otherProject,
+    perform: async () => { crossProjectReadRan = true; return {}; }
+  }), /HFM_PROJECT_OWNER_NOT_ACTIVE/);
+  assert.equal(crossProjectReadRan, false);
+  console.log('HFM_STANDING_READ_CROSS_PROJECT_ACCESS_BLOCKED=PASS');
+
+  const otherSubject = '22222222-2222-4222-8222-222222222222';
+  const otherPrincipal = { ...req.session.hfmPrincipal, subject: otherSubject };
+  let unauthorizedReadRan = false;
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return readClient; } },
+    verifiedPrincipal: otherPrincipal,
+    projectId,
+    perform: async () => { unauthorizedReadRan = true; return {}; }
+  }), /HFM_PROJECT_MEMBERSHIP_NOT_ACTIVE/);
+  assert.equal(unauthorizedReadRan, false);
+  console.log('HFM_STANDING_READ_UNAUTHORIZED_ACTOR_BLOCKED=PASS');
+
+  readerPermissions = ['memory.write'];
+  let writeOnlyReadRan = false;
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return readClient; } },
+    verifiedPrincipal: req.session.hfmPrincipal,
+    projectId,
+    perform: async () => { writeOnlyReadRan = true; return {}; }
+  }), /HFM_OPERATION_NOT_GRANTED/);
+  assert.equal(writeOnlyReadRan, false);
+  readerPermissions = ['memory.read'];
+  console.log('HFM_STANDING_READ_WRITE_ONLY_MEMBERSHIP_BLOCKED=PASS');
 
   // Audit insertion is part of the same SERIALIZABLE transaction as retrieval.
   // If it fails, the protected read callback must never run and the transaction rolls back.
