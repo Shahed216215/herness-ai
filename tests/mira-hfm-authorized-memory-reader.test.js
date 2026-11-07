@@ -165,6 +165,9 @@ test('standing read authority returns transaction-bound host authorization conte
         revision: 7, valid_from: new Date(now - 60000).toISOString(), expires_at: null
       }] };
       if (sql.includes('FROM mira_hfm.standing_read_authorities')) return { rows: [standingAuthority] };
+      if (sql.startsWith('SELECT transaction_timestamp() AS scan_started_at')) {
+        return { rows: [{ scan_started_at: new Date(now).toISOString() }] };
+      }
       if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) return { rowCount: 1, rows: [] };
       if (sql.includes('FROM mira_hfm.memory_records')) return { rows: [] };
       return { rowCount: 1, rows: [] };
@@ -198,6 +201,7 @@ test('standing read authority returns transaction-bound host authorization conte
   assert.equal(result.approvalRequiredPerRead, false);
   assert.equal(result.hostAuthorizationContext.actorId, adminActorId);
   assert.equal(result.hostAuthorizationContext.projectId, projectId);
+  assert.equal(result.scanStartedAt, new Date(now).toISOString());
   assert.equal(result.hostAuthorizationContext.authorityRef, standingAuthorityId);
   assert.ok(calls.some(item => item.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(calls.some(item => item.sql.includes('FROM mira_hfm.memory_records')));
