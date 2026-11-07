@@ -74,6 +74,18 @@ test('create requires a consumed authority context and the same transaction clie
     repository.createMemoryRecord({ client, context, record: record({ access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001', 'other-project'] } }), idempotencyKey: 'idem-3', allowPrivateWrite: true, env }),
     error => error.code === 'HFM_MEMORY_CROSS_PROJECT_SHARING_NOT_SUPPORTED'
   );
+  const standingReadContext = {
+    ...context,
+    operation: 'memory.read',
+    authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
+  };
+  await assert.rejects(
+    repository.createMemoryRecord({
+      client, context: standingReadContext, record: record(),
+      idempotencyKey: 'idem-standing-write', allowPrivateWrite: true, env
+    }),
+    error => error.code === 'HFM_MEMORY_OPERATION_SCOPE_INVALID'
+  );
   assert.equal(client.calls.length, 0);
 });
 
