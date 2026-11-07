@@ -153,7 +153,7 @@ small{color:var(--muted)}
   $('sourceFile').addEventListener('change', async () => {
     const file = $('sourceFile').files[0];
     if (!file) return;
-    if (file.size > 45000) { status('File too large. Use a text export under 45 KB.', true); $('sourceFile').value = ''; return; }
+    if (file.size > 30000) { status('File too large. Use a text export under 30 KB.', true); $('sourceFile').value = ''; return; }
     try { $('content').value = await file.text(); status('File loaded locally. Review the text and confirm it is public before import.'); }
     catch (_error) { status('Unable to read this file as text.', true); }
   });
