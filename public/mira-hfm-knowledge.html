@@ -197,7 +197,7 @@ small{color:var(--muted)}
         const line = document.createElement('p');
         const a = document.createElement('a');
         a.href = item.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = item.title || item.url;
-        line.append(a, document.createTextNode(' — ' + item.snippet));
+        line.append(a, document.createTextNode(' — ' + (item.content || item.snippet || '')));
         root.append(line);
       }
     } catch (error) { status(error.message, true); }
