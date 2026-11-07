@@ -52,3 +52,27 @@ The disposable PostgreSQL 16 workflow applies 001–009 in canonical order, then
 No Neon migration, production data write, role change, Render environment change, feature-flag enablement, merge, or deployment was performed as part of this source-lineage correction.
 
 HFM remains v0.2. No v0.3 work is authorized.
+
+
+## 2026-11-07 follow-up: migrations 016–018 and live Neon inventory
+
+A later source review found three additional migration files that were not represented in the canonical table above:
+
+| ID | File | Scope | Disposition |
+|---|---|---|---|
+| 016 | `016_memory_record_revision_authority.sql` | Exact-resource `memory.update`/trash/restore authority, revision/version history, and constrained writer update policy | SOURCE-ONLY; not approved for live application |
+| 017 | `017_source_reference_record_v1_2.sql` | Adds `source_reference` under schema v1.2.0 while retaining v1.0.0/v1.1.0 compatibility | SOURCE-ONLY; not approved for live application |
+| 018 | `018_restricted_vault_write_authority.sql` | Adds distinct `memory.vault.write` authority and restricted Client/Financial Vault insert policy | SOURCE-ONLY; not approved for live application |
+
+**Workflow/lineage mismatch:** `.github/workflows/hfm-postgres-migrations.yml` currently applies 001–018 in its disposable PostgreSQL job, while the canonical lineage section and its recorded CI evidence cover only 001–015. This mismatch must be reconciled before relying on that workflow as a release gate. The latest clean-integration HEAD `c23995c54928f7d6e318c9ea7656713542cc27d3` had seven observed GitHub workflow checks complete successfully (HFM foundation, Memory repository, session persistence, Render host binding, dependency remediation, Run Agent regression, Competitor Intelligence, and approval diagnostic); the commit's workflow-run listing did not include the PostgreSQL migration-chain workflow. Therefore migration validation on the latest HEAD is **NOT_VERIFIED**, not PASS.
+
+### Read-only Neon branch inventory
+
+Inspected using read-only SQL on 2026-11-07; no schema or data was changed:
+
+- Project `steep-grass-38696226` (`mira-ai-agent-db`), default branch `br-crimson-sun-a13xzreh` (`production`): eight HFM tables; all eight had RLS and FORCE RLS enabled; policy counts per table matched the eight-table baseline; owner, membership, Memory, operation-authority, and audit/registry tables each returned zero rows.
+- Same project branch `br-sparkling-dew-a19hib3f` (`mira-hfm-prod-migration-candidate-20261107`): same eight tables, RLS/FORCE RLS and policy counts, and zero rows in the inspected owner/membership/Memory/authority/audit registries.
+- Staging branch `br-lingering-dawn-a18x6pxx` (`mira-hfm-test`): nine HFM tables including `memory_social_post_state`; it contains 3 owners, 3 memberships, 1 Memory record, 1 operation authority, 3 authority audit events, 1 operation-registry row, and 1 Memory version. Preserve all rows; Migration 013 remains NOT_APPLICABLE to this non-empty branch.
+- Same-name second project `fancy-wave-81945737` has no `mira_hfm` tables on its inspected default branch. Project names alone do not establish the Render target.
+
+The Render service's active database target still cannot be read through the available secret-safe service-inspection surface. Do not infer that Render uses either Neon project. No migration, role change, data write, or environment mutation was performed.
