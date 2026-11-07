@@ -110,6 +110,7 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitReviewIntent('Show pending knowledge sources for review.'), true);
   assert.equal(hasExplicitReviewIntent('Do not show pending knowledge.'), false);
   assert.equal(hasExplicitReviewIntent('অযাচাইকৃত জ্ঞান রিভিউ করে দেখাও।'), true);
+  assert.equal(hasExplicitReviewIntent('অপেক্ষমাণ শেখার নোটগুলো দেখাও।'), true);
   assert.equal(hasExplicitReviewIntent('Remember this preference.'), false);
   assert.equal(safeReviewSourceUrl('https://example.com/article?token=secret#section'), 'https://example.com/article');
   assert.equal(safeReviewSourceUrl('https://user:pass@example.com/article'), null);
