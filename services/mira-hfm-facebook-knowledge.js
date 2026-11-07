@@ -49,6 +49,7 @@ function tokenize(value) {
 }
 
 function buildKnowledgeRecord(options = {}) {
+  if (options.publicContentConfirmed !== true) throw fail('HFM_KNOWLEDGE_PUBLIC_CONTENT_CONFIRMATION_REQUIRED');
   const projectId = options.projectId;
   const sourceType = options.sourceType;
   const sourceUrl = options.sourceUrl ? normalizeFacebookUrl(options.sourceUrl) : null;
