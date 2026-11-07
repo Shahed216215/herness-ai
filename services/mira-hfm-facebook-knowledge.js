@@ -40,7 +40,7 @@ function redactSensitiveText(input) {
   }
   let content = input.normalize('NFC').replace(/\r\n?/g, '\n').trim();
   const restrictedPatterns = [
-    /(?:private[_ -]?key|client[_ -]?record|customer[_ -]?record|invoice[_ -]?(?:id|no|number)|bank[_ -]?account|account[_ -]?number|transaction[_ -]?id|financial[_ -]?statement|salary[_ -]?record|internal[_ -]?only|restricted[_ -]?data)\s*[:=]/i,
+    /["']?(?:private[_ -]?key|client[_ -]?record|customer[_ -]?record|invoice[_ -]?(?:id|no|number)|bank[_ -]?account|account[_ -]?number|transaction[_ -]?id|financial[_ -]?statement|salary[_ -]?record|internal[_ -]?only|restricted[_ -]?data)["']?\s*[:=]/i,
     /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i,
     /\bAKIA[0-9A-Z]{16}\b/,
     /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/
