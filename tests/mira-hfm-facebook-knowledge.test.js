@@ -67,14 +67,15 @@ test('rejects unsupported source kinds and invalid content', () => {
 
 
 test('public search fallback uses a fixed web-search endpoint and filters non-Facebook results', async () => {
-  let calledUrl = null;
+  const calledUrls = [];
   let requestBody = null;
   const result = await require('../services/mira-hfm-facebook-knowledge').researchFacebookSource({
     sourceUrl: 'https://facebook.com/example.page',
     apiKey: 'synthetic-test-key',
     fetchImpl: async (url, options) => {
-      calledUrl = url;
+      calledUrls.push(url);
       requestBody = JSON.parse(options.body);
+      if (url === 'https://api.tavily.com/extract') return { ok: true, json: async () => ({ results: [] }) };
       return {
         ok: true,
         json: async () => ({
@@ -86,11 +87,37 @@ test('public search fallback uses a fixed web-search endpoint and filters non-Fa
       };
     }
   });
-  assert.equal(calledUrl, 'https://api.tavily.com/search');
+  assert.deepEqual(calledUrls, ['https://api.tavily.com/extract', 'https://api.tavily.com/search']);
   assert.equal(requestBody.include_domains[0], 'facebook.com');
   assert.equal(result.status, 'SEARCH_RESULTS_FOUND');
   assert.equal(result.results.length, 1);
   assert.equal(result.results[0].verificationStatus, 'SOURCE_RECORDED');
+});
+
+
+test('public extraction returns exact Facebook source content without login or Facebook API', async () => {
+  const result = await require('../services/mira-hfm-facebook-knowledge').researchFacebookSource({
+    sourceUrl: 'https://www.facebook.com/example.page/posts/123',
+    apiKey: 'synthetic-test-key',
+    fetchImpl: async (url, options) => {
+      assert.equal(url, 'https://api.tavily.com/extract');
+      const body = JSON.parse(options.body);
+      assert.deepEqual(body.urls, ['https://www.facebook.com/example.page/posts/123']);
+      return {
+        ok: true,
+        json: async () => ({
+          results: [{
+            url: 'https://www.facebook.com/example.page/posts/123',
+            title: 'Public post title',
+            raw_content: 'Publicly extractable post text'
+          }]
+        })
+      };
+    }
+  });
+  assert.equal(result.status, 'PUBLIC_CONTENT_RETRIEVED');
+  assert.equal(result.results[0].content, 'Publicly extractable post text');
+  assert.equal(result.results[0].verificationStatus, 'SOURCE_REACHABLE');
 });
 
 test('missing web-search provider returns manual-import fallback without making a request', async () => {
