@@ -72,6 +72,11 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
           resource,
           approvalConfirmed: true
         });
+        if (!result || result.status !== 'AUTHORITY_ISSUED' ||
+            result.projectId !== projectId || result.operation !== operation ||
+            result.resource !== resource || !result.grant) {
+          return res.status(503).json({ success: false, error: 'Issued Memory authority did not match the approved operation scope.' });
+        }
         const previousPending = req.session.hfmPendingMemoryAuthority;
         req.session.hfmPendingMemoryAuthority = {
           projectId: result.projectId,
