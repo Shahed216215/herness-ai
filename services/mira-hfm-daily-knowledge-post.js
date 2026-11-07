@@ -118,6 +118,10 @@ function buildDailyKnowledgePost(options = {}) {
     throw fail('HFM_DAILY_POST_PROJECT_ID_INVALID');
   }
   if (!validDate(localDate)) throw fail('HFM_DAILY_POST_LOCAL_DATE_INVALID');
+  const requestTimestamp = options.now || new Date().toISOString();
+  if (typeof requestTimestamp !== 'string' || !Number.isFinite(Date.parse(requestTimestamp))) {
+    throw fail('HFM_DAILY_POST_NOW_INVALID');
+  }
   const collected = collectDailySourceRecords(options.records, projectId, localDate, timeZone);
   if (collected.activities.length === 0 && collected.learnings.length === 0) {
     return Object.freeze({
@@ -129,6 +133,7 @@ function buildDailyKnowledgePost(options = {}) {
     });
   }
 
+  // A fixed local-day boundary keeps the immutable draft digest stable across same-day retries.
   const stableTimestamp = localDateStartTimestamp(localDate, timeZone);
   const compareMemoryId = (left, right) => left.memoryId < right.memoryId ? -1 : left.memoryId > right.memoryId ? 1 : 0;
   collected.activities.sort(compareMemoryId);
