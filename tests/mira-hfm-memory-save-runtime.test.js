@@ -175,21 +175,21 @@ function baseOptions(overrides = {}) {
     delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
     await assert.rejects(
       () => executeTool('memory_save', { content: 'Remember this.' }, null),
-      /HFM_MEMORY_WRITE_CONTEXT_REQUIRED/
+      error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
     );
     await assert.rejects(
       () => executeTool('knowledge_save', { title: 'Title', url: 'https://example.com', content: 'Source.' }, null),
-      /HFM_MEMORY_WRITE_CONTEXT_REQUIRED/
+      error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
     );
     await assert.rejects(
       () => executeTool('knowledge_search', { query: 'test' }, null),
-      /HFM_MEMORY_READ_MODE_REQUIRED/
+      error => error && error.code === 'HFM_MEMORY_READ_MODE_REQUIRED'
     );
     process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = 'false';
     process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
     await assert.rejects(
       () => executeTool('memory_save', { content: 'Remember this.' }, null),
-      /HFM_LEGACY_STORAGE_DISABLED/
+      error => error && error.code === 'HFM_LEGACY_STORAGE_DISABLED'
     );
     const directMemorySave = require('../tools/memory-save');
     const directKnowledgeSave = require('../tools/knowledge-save');
