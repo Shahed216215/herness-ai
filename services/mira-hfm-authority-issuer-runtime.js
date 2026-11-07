@@ -133,13 +133,13 @@ SELECT
        'hfm_authority_issuer_approval_nonce_select',
        'hfm_authority_issuer_approval_nonce_insert',
        'hfm_authority_issuer_approval_nonce_consume')
-     AND $1 = ANY(roles)) AS issuer_policies_present,
+     AND $1::name = ANY(roles)) AS issuer_policies_present,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
       AND tablename IN ('project_owners','project_memberships','operation_authorities',
                         'authority_audit_events','authority_approval_nonces')
-      AND $1 = ANY(roles)
+      AND $1::name = ANY(roles)
       AND policyname NOT IN ('hfm_authority_issuer_owner_select',
         'hfm_authority_issuer_membership_select',
         'hfm_authority_issuer_authority_insert',
@@ -185,7 +185,7 @@ SELECT
        'hfm_authority_issuer_approval_nonce_select',
        'hfm_authority_issuer_approval_nonce_insert',
        'hfm_authority_issuer_approval_nonce_consume')
-     AND $1 = ANY(roles)) AS issuer_policy_semantics_exact,
+     AND $1::name = ANY(roles)) AS issuer_policy_semantics_exact,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
