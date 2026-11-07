@@ -143,6 +143,25 @@ async function invoke(req, runtime = async () => ({
   console.log('HFM_MEMORY_READ_STANDING_PAGINATION_CURSOR_ROUNDTRIP=PASS');
   console.log('HFM_MEMORY_READ_STANDING_AUTHORITY_NO_PER_READ_GRANT=PASS');
 
+  const invalidStandingCursor = await invoke(
+    makeReq({
+      body: { limit: 20, recordType: 'learning_note', cursor: 'not-a-valid-base64url-cursor' },
+      session: {
+        authenticated: true, role: 'admin',
+        hfmProjectBinding: { verified: true, projectId: 'project-alpha' }
+      }
+    }),
+    async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+    async () => {
+      const error = new Error('invalid cursor');
+      error.code = 'HFM_MEMORY_PAGE_CURSOR_INVALID';
+      throw error;
+    },
+    { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }
+  );
+  assert.equal(invalidStandingCursor.statusCode, 400);
+  console.log('HFM_MEMORY_READ_MALFORMED_CURSOR_CLIENT_ERROR=PASS');
+
   const standingTrashBlocked = await invoke(
     makeReq({ body: { limit: 20, recordType: 'social_post_draft', lifecycle: 'TRASHED' } }),
     async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
