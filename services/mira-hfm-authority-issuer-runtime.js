@@ -148,6 +148,44 @@ SELECT
         'hfm_authority_issuer_approval_nonce_insert',
         'hfm_authority_issuer_approval_nonce_consume')
   ) AS issuer_policy_set_exact,
+  (SELECT count(*) = 7 AND bool_and(
+     CASE policyname
+       WHEN 'hfm_authority_issuer_owner_select' THEN
+         cmd = 'SELECT' AND qual LIKE '%project_id%' AND qual LIKE '%ACTIVE%' AND with_check IS NULL
+       WHEN 'hfm_authority_issuer_membership_select' THEN
+         cmd = 'SELECT' AND qual LIKE '%project_id%' AND qual LIKE '%actor_id%'
+         AND qual LIKE '%valid_from%' AND qual LIKE '%expires_at%' AND with_check IS NULL
+       WHEN 'hfm_authority_issuer_authority_insert' THEN
+         cmd = 'INSERT' AND with_check LIKE '%project_id%' AND with_check LIKE '%actor_id%'
+         AND with_check LIKE '%issued_by_actor_id%' AND with_check LIKE '%memory.read%'
+         AND with_check LIKE '%resource%' AND with_check LIKE '%expires_at%'
+       WHEN 'hfm_authority_issuer_audit_insert' THEN
+         cmd = 'INSERT' AND with_check LIKE '%project_id%' AND with_check LIKE '%actor_id%'
+         AND with_check LIKE '%APPROVAL_TOKEN_CONSUMED%'
+       WHEN 'hfm_authority_issuer_approval_nonce_select' THEN
+         cmd = 'SELECT' AND qual LIKE '%project_id%' AND qual LIKE '%actor_id%'
+         AND qual LIKE '%approver_actor_id%' AND qual LIKE '%consumed_at%' AND qual LIKE '%expires_at%'
+         AND with_check IS NULL
+       WHEN 'hfm_authority_issuer_approval_nonce_insert' THEN
+         cmd = 'INSERT' AND with_check LIKE '%project_id%' AND with_check LIKE '%actor_id%'
+         AND with_check LIKE '%approver_actor_id%' AND with_check LIKE '%memory.read%'
+         AND with_check LIKE '%resource%' AND with_check LIKE '%expires_at%'
+       WHEN 'hfm_authority_issuer_approval_nonce_consume' THEN
+         cmd = 'UPDATE' AND qual LIKE '%consumed_at%' AND qual LIKE '%expires_at%'
+         AND with_check LIKE '%consumed_at%' AND with_check LIKE '%project_id%'
+       ELSE false
+     END
+   )
+   FROM pg_policies
+   WHERE schemaname = 'mira_hfm'
+     AND policyname IN ('hfm_authority_issuer_owner_select',
+       'hfm_authority_issuer_membership_select',
+       'hfm_authority_issuer_authority_insert',
+       'hfm_authority_issuer_audit_insert',
+       'hfm_authority_issuer_approval_nonce_select',
+       'hfm_authority_issuer_approval_nonce_insert',
+       'hfm_authority_issuer_approval_nonce_consume')
+     AND $1 = ANY(roles)) AS issuer_policy_semantics_exact,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
@@ -164,7 +202,7 @@ const REQUIRED_TRUE = Object.freeze([
   'schema_usage', 'owners_select', 'memberships_select', 'authorities_insert',
   'audit_insert', 'audit_sequence_usage', 'approval_nonce_select', 'approval_nonce_insert',
   'approval_nonce_consumed_update', 'approval_nonce_only_consumed_update', 'issuer_rls_forced', 'issuer_policies_present',
-  'issuer_policy_set_exact', 'no_public_issuer_policies'
+  'issuer_policy_set_exact', 'issuer_policy_semantics_exact', 'no_public_issuer_policies'
 ]);
 const REQUIRED_FALSE = Object.freeze([
   'is_superuser', 'bypasses_rls', 'can_create_databases', 'can_create_roles',
