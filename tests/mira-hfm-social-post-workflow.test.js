@@ -231,3 +231,60 @@ test('delete retry confirms erased payload and DELETED state before returning DE
   assert.equal(result.status, 'DELETED');
   assert.equal(result.duplicate, true);
 });
+
+function createStatusFlowClient() {
+  const calls = [];
+  return {
+    calls,
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) return { rows: [{ ...draft, payload_erased_at: null }] };
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [{ operation_id: 'op-status-001' }] };
+      if (sql.startsWith('SELECT status, copied_at')) return { rows: [] };
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith('SELECT event_hash FROM mira_hfm.memory_audit_events')) return { rows: [] };
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith("UPDATE mira_hfm.memory_operation_registry SET status = 'COMPLETED'")) return { rowCount: 1, rows: [] };
+      throw new Error('unexpected SQL: ' + sql);
+    }
+  };
+}
+
+test('Copy status records only metadata after successful client-side clipboard copy', async () => {
+  const client = createStatusFlowClient();
+  const result = await workflow.markSocialPostCopied({
+    client,
+    context: { ...baseContext, operation: workflow.OPERATIONS.COPY },
+    memoryId: 'post-0001',
+    idempotencyKey: 'copy-post-0001'
+  });
+  assert.equal(result.status, 'COPIED');
+  const stateWrite = client.calls.find(x => x.sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state'));
+  assert.equal(stateWrite.params[3], 'COPIED');
+  assert.equal(client.calls.some(x => /facebook|graph\.facebook|publish/i.test(x.sql)), false);
+  assert.equal(client.calls.some(x => x.params.some(p => typeof p === 'string' && p.includes('private post body'))), false);
+});
+
+test('Published status requires explicit user confirmation and is not Facebook-verified', async () => {
+  const client = createStatusFlowClient();
+  await assert.rejects(
+    workflow.confirmSocialPostPublished({
+      client, context: { ...baseContext, operation: workflow.OPERATIONS.PUBLISH },
+      memoryId: 'post-0001', idempotencyKey: 'publish-post-no-confirm',
+      userConfirmedPublished: false
+    }),
+    /HFM_SOCIAL_POST_USER_CONFIRMATION_REQUIRED/
+  );
+  assert.equal(client.calls.some(x => /^INSERT |^UPDATE /i.test(x.sql)), false);
+  const result = await workflow.confirmSocialPostPublished({
+    client, context: { ...baseContext, operation: workflow.OPERATIONS.PUBLISH },
+    memoryId: 'post-0001', idempotencyKey: 'publish-post-0001',
+    userConfirmedPublished: true
+  });
+  assert.equal(result.status, 'USER_CONFIRMED_PUBLISHED');
+  assert.equal(result.confirmationSource, 'USER_ACTION_NOT_FACEBOOK_VERIFIED');
+  const stateWrite = client.calls.find(x => x.sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state'));
+  assert.equal(stateWrite.params[3], 'USER_CONFIRMED_PUBLISHED');
+  const auditWrite = client.calls.find(x => x.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events'));
+  assert.match(auditWrite.params[11], /USER_ACTION_NOT_FACEBOOK_VERIFIED/);
+});
