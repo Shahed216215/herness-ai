@@ -1182,7 +1182,8 @@ async function resolveHfmReadToolContext(options = {}, env = process.env, userIn
       req: options.hfmRequest,
       pool: runtime.pool,
       env,
-      userIntent
+      userIntent,
+      getAuthorityIssuerRuntime: options.getHfmAuthorityIssuerRuntime
     })
   });
 }
