@@ -90,3 +90,48 @@ test('copy acknowledgement requires explicit successful clipboard result before 
   assert.equal(response.payload.code, 'HFM_SOCIAL_POST_CLIPBOARD_CONFIRMATION_REQUIRED');
   assert.equal(poolCalls, 0);
 });
+
+
+test('publication confirmation is rejected before writer-pool access', async () => {
+  const { app, routes } = fakeApp();
+  let poolCalls = 0;
+  const auth = (_req, _res, next) => next();
+  registerRoutes(app, auth, { getPool: async () => { poolCalls += 1; return null; } });
+  const route = routes.find(x => x.method === 'post' && x.path === '/api/hfm/social-posts/:memoryId/published');
+  const handler = route.handlers[route.handlers.length - 1];
+  const response = {
+    statusCode: 200, payload: null,
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.payload = value; return this; }
+  };
+  await handler({
+    params: { memoryId: 'post-0001' },
+    body: { projectId: 'project-001', authorityId: 'authority-001', requestId: 'request-001', idempotencyKey: 'publish-001', userConfirmedPublished: false },
+    session: null, role: 'user', sessionID: null
+  }, response);
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.payload.code, 'HFM_SOCIAL_POST_USER_CONFIRMATION_REQUIRED');
+  assert.equal(poolCalls, 0);
+});
+
+test('payload deletion confirmation is rejected before writer-pool access', async () => {
+  const { app, routes } = fakeApp();
+  let poolCalls = 0;
+  const auth = (_req, _res, next) => next();
+  registerRoutes(app, auth, { getPool: async () => { poolCalls += 1; return null; } });
+  const route = routes.find(x => x.method === 'delete' && x.path === '/api/hfm/social-posts/:memoryId');
+  const handler = route.handlers[route.handlers.length - 1];
+  const response = {
+    statusCode: 200, payload: null,
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.payload = value; return this; }
+  };
+  await handler({
+    params: { memoryId: 'post-0001' },
+    body: { projectId: 'project-001', authorityId: 'authority-001', requestId: 'request-001', idempotencyKey: 'delete-001', userConfirmedDelete: false },
+    session: null, role: 'user', sessionID: null
+  }, response);
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.payload.code, 'HFM_SOCIAL_POST_DELETE_CONFIRMATION_REQUIRED');
+  assert.equal(poolCalls, 0);
+});
