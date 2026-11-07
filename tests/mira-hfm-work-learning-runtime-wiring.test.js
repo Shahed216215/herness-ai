@@ -473,7 +473,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     ]) {
       await assert.rejects(
         () => executeTool(toolName, {}),
-        error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL'
+        error => error.code === 'HFM_LEGACY_STORAGE_DISABLED'
       );
     }
     await assert.rejects(
