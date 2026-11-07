@@ -67,8 +67,16 @@ BEGIN
     WHERE schemaname = 'mira_hfm'
       AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events')
       AND 'mira_hfm_authority_issuer' = ANY(roles)
+      AND policyname NOT IN (
+        'authority_issuer_owner_read',
+        'authority_issuer_membership_read',
+        'authority_issuer_insert',
+        'authority_issuer_audit_insert',
+        'authority_issuer_owner_insert',
+        'authority_issuer_membership_insert'
+      )
   ) THEN
-    RAISE EXCEPTION 'HFM_AUTHORITY_ISSUER_PREEXISTING_POLICY_CONFLICT';
+    RAISE EXCEPTION 'HFM_AUTHORITY_ISSUER_UNEXPECTED_POLICY_CONFLICT';
   END IF;
 
   IF EXISTS (
