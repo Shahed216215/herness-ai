@@ -75,6 +75,7 @@ async function retrieveProjectMemory(options = {}) {
         lifecycle: 'ACTIVE',
         recordType: options.recordType,
         recordTypes: options.recordType ? [options.recordType] : allowedRecordTypes,
+        cursor: options.cursor,
         allowPrivateRead: true,
         env: options.env || process.env
       })
@@ -84,6 +85,8 @@ async function retrieveProjectMemory(options = {}) {
       projectId,
       records: Object.freeze([...(result.value.records || [])]),
       count: result.value.count,
+      nextCursor: result.value.nextCursor || null,
+      scanStartedAt: result.value.scanStartedAt || null,
       authorityConsumed: false,
       standingAuthority: true,
       standingAuthorityId: result.standingAuthorityId,
