@@ -1282,22 +1282,9 @@ async function executeWork(
       plannerOptions.preflightWorkLearning = async () => hfmStandingReadPreflight;
       plannerOptions.retrieveWorkLearning = async ({ task, preflight }) =>
         retrieveHfmWorkLearning({
-          req: options.hfmRequest,
-          pool: hfmRuntime.pool,
           task,
-          env: process.env,
-          readMemory: async ({ cursor } = {}) => cursor
-            ? retrieveProjectMemory({
-                pool: hfmRuntime.pool,
-                req: options.hfmRequest,
-                standingReadAuthority: true,
-                recordTypes: ["learning_note", "knowledge_item"],
-                lifecycle: "ACTIVE",
-                limit: 100,
-                cursor,
-                env: process.env
-              })
-            : preflight
+          preflight,
+          env: process.env
         });
     }
     planning =
