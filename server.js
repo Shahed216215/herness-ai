@@ -1866,13 +1866,13 @@ app.post(
             "If retrieval coverage is marked incomplete, do not claim the information is not stored; explain that older records may not have been scanned. " +
             "If the retrieved knowledge is insufficient, say so clearly.\n\n" +
             knowledgeContext + (hfmRecall?.candidateScanMayBeIncomplete === true
-              ? "\\n\\nRETRIEVAL_COVERAGE_LIMITATION: Only the newest 100 eligible candidates were scanned; older records may not have been included."
+              ? "\\n\\nRETRIEVAL_COVERAGE_LIMITATION: The current page scanned up to 100 eligible candidates; older records may not have been included. If more results are needed, call knowledge_search with the same query and this next-page cursor: " + hfmRecall.nextCursor
               : "")
         });
       } else if (hfmRecall?.candidateScanMayBeIncomplete === true) {
         messages.push({
           role: "system",
-          content: "RETRIEVAL_COVERAGE_LIMITATION: No matching item was found in the newest 100 eligible candidates, but older records may not have been scanned. Do not claim that the information is not stored."
+          content: "RETRIEVAL_COVERAGE_LIMITATION: No matching item was found in this page of up to 100 eligible candidates, but older records may not have been scanned. Do not claim that the information is not stored. If more results are needed, call knowledge_search with the same query and this next-page cursor: " + hfmRecall.nextCursor
         });
       }
 
