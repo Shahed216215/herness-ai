@@ -37,6 +37,7 @@ test('client vault schema accepts bounded client identity/contact data and rejec
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', adminPassword: 'not-allowed' }).valid, false);
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', unknownField: 'not-allowed' }).valid, false);
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', phone: '1234567890123456' }).valid, false);
+  assert.equal(validateClientVaultPayload({ clientId: '1234567890', clientName: 'Example Client' }).valid, false);
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', website: 'https://example.com/?access_token=secret' }).valid, false);
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', notes: '4111111111111111' }).valid, false);
 });
