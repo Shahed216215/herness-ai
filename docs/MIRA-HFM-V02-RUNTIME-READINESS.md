@@ -109,3 +109,12 @@ These are synthetic/offline or disposable-CI results. They are not live Neon or 
 - Do not set HFM feature flags to `true` before dedicated roles, database target mapping, owner/membership bootstrap, and authority issuance are verified.
 - Ask for explicit approval before any database migration, bootstrap write, production environment mutation, merge, or Render deployment.
 - Stay within HFM v0.2. Do not create v0.3 work.
+
+## Latest standing-read boundary hardening and CI evidence — 2026-11-07
+
+- Repository-level defense in depth now enforces Standing Read Authority scope even if an internal caller bypasses the authorized-reader adapter: a standing-read transaction must explicitly filter to `learning_note` and/or `knowledge_item`, must use `ACTIVE` lifecycle, cannot request restricted-read permission, and the SQL query excludes `RESTRICTED` rows before decoding.
+- Focused repository regression tests cover missing record-type scope, disallowed `social_post_draft`, non-ACTIVE lifecycle, restricted-read escalation, and the valid Learning/Knowledge-only query.
+- Latest branch head: `087f8b6e69c5402f17843e17e2a1066d7e96dcf3`.
+- Current head GitHub checks: **10/10 completed successfully**. The Memory repository workflow completed syntax checks, focused repository tests, and the full `npm test` regression suite.
+- Current head PostgreSQL integration job completed successfully: migrations 001–011 applied only to a disposable PostgreSQL 16 CI database; one-time bootstrap/nonce flow, 365-day standing-read RLS/audit behavior, forced RLS, and role-boundary checks passed.
+- This is code/CI evidence only. No live Neon migration, staging row mutation, credential provisioning, Render environment change, deployment, or PR merge was performed. PR #79 remains Open/Draft/Unmerged; all live activation flags remain disabled pending the separately approved release gates above.
