@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
+const { preflightHfmStandingRead } = require('../services/mira-hfm-work-preflight');
 
 const localWorkLearning = read('services/mira-work-learning-engine.js');
 assert.match(localWorkLearning, /function loadStore\(\) \{\s*assertLegacyStorageDisabled\(\);/);
@@ -409,6 +410,74 @@ for (const [file, pattern] of legacyConsumerContracts) {
 }
 console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
 (async () => {
+  const executeWorkStart = execution.indexOf('async function executeWork(');
+  const readContextPosition = execution.indexOf('const hfmReadContext = await resolveHfmReadToolContext', executeWorkStart);
+  const authorityPreflightPosition = execution.indexOf('await preflightHfmStandingRead(', readContextPosition);
+  const taskPlanningPosition = execution.indexOf('await createTaskPlan(', authorityPreflightPosition);
+  assert.ok(executeWorkStart >= 0 && readContextPosition > executeWorkStart &&
+    authorityPreflightPosition > readContextPosition && taskPlanningPosition > authorityPreflightPosition,
+    'standing memory.read authority must be validated before task planning/model activity');
+  assert.match(execution, /preflightWorkLearning = async \(\) => hfmStandingReadPreflight/);
+  console.log('HFM_STANDING_READ_AUTHORITY_PREFLIGHT_PRECEDES_WORK_PLANNING=PASS');
+
+  const authorizedPreflight = {
+    status: 'AUTHORIZED_AND_COMMITTED',
+    projectId: 'project-alpha',
+    records: [],
+    standingAuthority: true,
+    authorityConsumed: false,
+    approvalRequiredPerRead: false,
+    memoryWrites: false,
+    localFallback: false,
+    driveFallback: false,
+    hostAuthorizationContext: {
+      actorId: 'mira:actor-001',
+      projectId: 'project-alpha',
+      authorityRef: 'standing-authority-001',
+      expiresAt: new Date(Date.now() + 86400000).toISOString()
+    }
+  };
+  const preflightOptions = {
+    req: serverHeldReq,
+    pool: readerPool,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readMemory: async input => {
+      assert.equal(input.req, serverHeldReq);
+      assert.equal(input.pool, readerPool);
+      assert.equal(input.standingReadAuthority, true);
+      assert.deepEqual(input.recordTypes, ['learning_note', 'knowledge_item']);
+      assert.equal(input.lifecycle, 'ACTIVE');
+      assert.equal(input.limit, 1);
+      return authorizedPreflight;
+    }
+  };
+  const standingOnlyPreflight = await preflightHfmStandingRead(preflightOptions);
+  assert.equal(standingOnlyPreflight, authorizedPreflight);
+  const learningPreflight = await preflightHfmStandingRead({
+    ...preflightOptions,
+    includeLearning: true,
+    readMemory: async input => {
+      assert.equal(input.limit, 100);
+      return authorizedPreflight;
+    }
+  });
+  assert.equal(learningPreflight, authorizedPreflight);
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      ...preflightOptions,
+      readMemory: async () => ({ ...authorizedPreflight, localFallback: true })
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      ...preflightOptions,
+      readMemory: async () => ({ ...authorizedPreflight, memoryWrites: true })
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
+  console.log('HFM_STANDING_READ_PREFLIGHT_FAILS_CLOSED_NO_FALLBACK_NO_WRITE=PASS');
+
   const serverHeldReq = { serverHeld: true };
   const readerPool = { connect: async () => ({ release() {} }) };
   const reviewIssuerPool = { connect: async () => ({ release() {} }) };
