@@ -99,6 +99,19 @@ async function invoke(req, runtime = async () => ({
   assert.equal(approvalCalls, 1);
   console.log('HFM_APPROVAL_ROUTE_ISSUES_AUTHORITY_WITHOUT_LEAKING_TOKEN=PASS');
 
+  const duplicatePending = await invoke(makeReq({
+    session: {
+      authenticated: true, role: 'admin',
+      hfmPrincipal: { verified: true },
+      hfmProjectBinding: { verified: true },
+      hfmPendingMemoryAuthority: { projectId: 'project-alpha' },
+      save(callback) { callback(null); }
+    }
+  }));
+  assert.equal(duplicatePending.statusCode, 409);
+  assert.equal(approvalCalls, 1);
+  console.log('HFM_APPROVAL_ROUTE_DUPLICATE_PENDING_AUTHORITY_BLOCK_BEFORE_ISSUE=PASS');
+
   console.log('NETWORK_REQUESTS=0');
   console.log('DATABASE_WRITES=0');
 })().catch(error => {
