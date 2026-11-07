@@ -856,7 +856,7 @@ assert.match(execution, /retrieveHfmWorkLearning/);
 assert.match(execution, /preflightHfmStandingRead/);
 assert.match(execution, /preflightWorkLearning = async/);
 assert.match(execution, /HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED/);
-assert.match(execution, /readMemory: async \(\) => preflight/);
+assert.match(execution, /readMemory: async \(\{ cursor \} = \{\}\) => cursor[\s\S]{0,500}: preflight/);\nassert.match(execution, /retrieveProjectMemory\(\{[\s\S]{0,250}cursor,/);
 assert.match(execution, /HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED/);
 assert.match(execution, /toolContext: Object\.freeze/);
 assert.match(execution, /resolveHfmReadToolContext/);
