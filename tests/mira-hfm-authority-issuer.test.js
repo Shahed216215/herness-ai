@@ -165,7 +165,7 @@ const pool = { async connect() { return client; } };
   assert.match(migration, /NOLOGIN NOINHERIT NOSUPERUSER/);
   assert.match(migration, /GRANT INSERT ON TABLE mira_hfm\.operation_authorities/);
   assert.ok(migration.includes("event_type IN ('AUTHORITY_ISSUED','APPROVAL_TOKEN_ISSUED','APPROVAL_TOKEN_CONSUMED')"));
-  assert.match(migration, /operation IN \\('memory\\.read','memory\\.write','memory\\.trash','memory\\.restore'\\)/);
+  assert.ok(migration.includes("operation IN ('memory.read','memory.write','memory.trash','memory.restore')"));
   assert.ok(migration.includes("issued_by_actor_id = NULLIF(current_setting('mira.actor_id', true), '')"));
   assert.ok(migration.includes("resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), '')"));
   assert.match(migration, /expires_at <= clock_timestamp\(\) \+ interval '5 minutes'/);
