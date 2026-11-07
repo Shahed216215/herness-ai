@@ -82,6 +82,9 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, cursor, env = p
     ),
     now
   });
+  const candidateScanMayBeIncomplete =
+    (typeof memory.nextCursor === 'string' && memory.nextCursor.length > 0) ||
+    (memory.nextCursor === undefined && candidateScanCount === 100);
   const results = report.records
     // Defense in depth: only expose canonical records that are independently
     // ACTIVE, integrity-verified and in an eligible trusted state. The unified
@@ -120,7 +123,8 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, cursor, env = p
     candidateScanCount,
     candidateScanLimit: 100,
     nextCursor: memory.nextCursor || null,
-    candidateScanMayBeIncomplete: typeof memory.nextCursor === 'string' && memory.nextCursor.length > 0,
+    candidateScanMayBeIncomplete,
+    nextCursor: memory.nextCursor || null,
     standingAuthority: true,
     authorityExpiresAt: memory.authorityExpiresAt,
     approvalRequiredPerRead: false,
