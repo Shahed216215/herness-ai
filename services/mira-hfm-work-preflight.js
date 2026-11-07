@@ -12,10 +12,14 @@ function fail(code) {
 
 function compareTimestampToNow(value, nowMs) {
   if (typeof value !== 'string' || !Number.isFinite(nowMs)) return null;
-  if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{6}Z$/.test(value)) {
-    if (!Number.isFinite(Date.parse(value.slice(0, 23) + 'Z'))) return null;
-    const nowIso = new Date(nowMs).toISOString().slice(0, 23) + '000Z';
-    return value < nowIso ? -1 : value > nowIso ? 1 : 0;
+  const match = /^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:[.]([0-9]{1,9}))?(Z|[+-][0-9]{2}:[0-9]{2})$/.exec(value);
+  if (match) {
+    const wholeSecondMs = Date.parse(match[1] + match[3]);
+    if (!Number.isFinite(wholeSecondMs)) return null;
+    const fractionalMicros = Number(((match[2] || '') + '000000').slice(0, 6));
+    const valueMicros = wholeSecondMs * 1000 + fractionalMicros;
+    const nowMicros = Math.trunc(nowMs) * 1000;
+    return valueMicros < nowMicros ? -1 : valueMicros > nowMicros ? 1 : 0;
   }
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) return null;
