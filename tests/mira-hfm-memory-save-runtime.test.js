@@ -141,7 +141,7 @@ function baseOptions(overrides = {}) {
     pool: { connect: async () => ({}) },
     issuerPool: { connect: async () => ({}) },
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
-    userIntent: 'Show pending knowledge sources and learning notes for review.'
+    userIntent: 'Show pending knowledge sources and learning notes for review.',
     issueAuthority: async input => ({
       status: 'AUTHORITY_ISSUED',
       projectId: 'project-001',
