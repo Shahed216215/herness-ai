@@ -183,7 +183,8 @@ function buildCanonicalMemoryRecord(options = {}) {
     } catch (_error) {
       fail('HFM_SOURCE_REFERENCE_TRUSTED_ACTOR_REQUIRED');
     }
-    const eventSeed = boundedText(options.taskId, 256, 'HFM_MEMORY_SAVE_TASK_ID_REQUIRED') + '\u0000' +
+    const eventSeed = projectId + '\u0000' +
+      boundedText(options.taskId, 256, 'HFM_MEMORY_SAVE_TASK_ID_REQUIRED') + '\u0000' +
       boundedText(options.toolCallId, 256, 'HFM_MEMORY_SAVE_TOOL_CALL_ID_REQUIRED') + '\u0000' +
       boundedText(options.toolName || kind, 64, 'HFM_MEMORY_SAVE_TOOL_NAME_REQUIRED');
     const provenanceEventId = 'evt-' + crypto.createHash('sha256').update(eventSeed, 'utf8').digest('hex');
