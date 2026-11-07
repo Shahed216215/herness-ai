@@ -18,6 +18,7 @@ const FORBIDDEN_KEYS = new Set([
   'iban', 'swift', 'recoverycode', 'sshkey', 'accesskey',
   'nationalid', 'passportnumber', 'taxid', 'taxpayerid'
 ]);
+const FORBIDDEN_KEY_PATTERN = /(?:password|passcode|secret|token|apikey|privatekey|authorization|bearer|cookie|session|otp|pin|cvv|cvc|cardnumber|accountnumber|routingnumber|iban|swift|recoverycode|sshkey|accesskey|nationalid|passportnumber|taxid|taxpayerid)/;
 const MAX_DEPTH = 5;
 const MAX_STRING = 4096;
 const MAX_FIELDS = 24;
@@ -50,7 +51,7 @@ function validateScalar(value, path, errors, depth = 0) {
   }
   if (typeof value === 'string') {
     if (value.length > MAX_STRING || value.trim() !== value) errors.push(path + '.string_invalid');
-    if (/(?:-----BEGIN [A-Z ]*PRIVATE KEY-----|bearer\s+[A-Za-z0-9._~+/-]{12,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|(?:sk|pk)-[A-Za-z0-9_-]{24,})/i.test(value)) {
+    if (/(?:-----BEGIN [A-Z ]*PRIVATE KEY-----|bearer\s+[A-Za-z0-9._~+/-]{12,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|(?:sk|pk)-[A-Za-z0-9_-]{24,}|sk_(?:live|test)_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|ya29\.[A-Za-z0-9._-]{16,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})/i.test(value)) {
       errors.push(path + '.credential_value_rejected');
     }
     return;
@@ -64,7 +65,10 @@ function validateScalar(value, path, errors, depth = 0) {
     const keys = Object.keys(value);
     if (keys.length > MAX_FIELDS) errors.push(path + '.too_many_fields');
     for (const key of keys) {
-      if (FORBIDDEN_KEYS.has(normalizeKey(key))) errors.push(path + '.credential_field_rejected:' + key);
+      const normalizedKey = normalizeKey(key);
+      if (FORBIDDEN_KEYS.has(normalizedKey) || FORBIDDEN_KEY_PATTERN.test(normalizedKey)) {
+        errors.push(path + '.credential_field_rejected:' + key);
+      }
       validateScalar(value[key], path + '.' + key, errors, depth + 1);
     }
     return;
@@ -127,18 +131,32 @@ function validateClientVaultPayload(payload) {
   }
   if (payload.phone !== undefined &&
       (typeof payload.phone !== 'string' || !/^[+()\-\s\d]{7,24}$/.test(payload.phone) ||
-       payload.phone.replace(/\D/g, '').length < 7 || payload.phone.replace(/\D/g, '').length > 20)) {
+       payload.phone.replace(/\D/g, '').length < 7 || payload.phone.replace(/\D/g, '').length > 15)) {
     errors.push('client.phone_invalid');
   }
   if (payload.website !== undefined) {
     try {
       const url = new URL(payload.website);
-      if (url.protocol !== 'https:' || url.username || url.password) errors.push('client.website_invalid');
+      if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
+          url.hostname === 'localhost' || url.hostname.endsWith('.local') ||
+          /(?:^|[\\/._-])(?:access[_-]?token|auth(?:orization)?|session(?:id)?|api[_-]?key|client[_-]?secret|password|signature|credential|private[_-]?key)(?:[\\/._=-]|$)/i.test(decodeURIComponent(url.pathname))) {
+        errors.push('client.website_invalid');
+      }
     } catch (_error) {
       errors.push('client.website_invalid');
     }
   }
   return Object.freeze({ valid: errors.length === 0, errors: Object.freeze(errors) });
+}
+
+function isCalendarDate(value) {
+  if (typeof value !== 'string') return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1];
 }
 
 function validateFinancialVaultPayload(payload) {
@@ -167,8 +185,7 @@ function validateFinancialVaultPayload(payload) {
   }
   for (const field of ['transactionDate', 'dueDate']) {
     if (payload[field] !== undefined &&
-        (typeof payload[field] !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(payload[field]) ||
-         !Number.isFinite(Date.parse(payload[field] + 'T00:00:00Z')))) {
+        !isCalendarDate(payload[field]))) {
       errors.push('financial.' + field + '_invalid');
     }
   }
