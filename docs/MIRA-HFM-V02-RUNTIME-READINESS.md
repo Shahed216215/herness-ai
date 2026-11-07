@@ -216,4 +216,67 @@ This is read-only topology evidence only. It does not authorize applying migrati
 - The search service validates scan counts against the actual returned bounded record array. When a reader omits the optional count, the array length is used; a full 100-record page is conservatively marked potentially incomplete.
 - The Learning History global-guard regression test now keeps the Express Router stub active through route registration, matching the route module's runtime behavior. The route-level guard blocks all four HFM Memory modes before any legacy local history route.
 - Exact functional-code commit `cd2c5481a59bd8aa21841ce9291ae6b382d51a07`: **10/10 GitHub checks PASS, 0 failures, 0 pending**, including HFM foundation, repository contracts, offline regression, dependency remediation, and PostgreSQL 001–014 integration.
-- Cursor-based exhaustive Knowledge/Learning pagination remains an identified v0.2 completion gap. The current API discloses the 100-record scan boundary rather than presenting partial coverage as exhaustive; do not enable HFM runtime flags on the assumption that exhaustive pagination is complete.
+- The repository now implements project/type/lifecycle-bound keyset pagination for standing-authorized Knowledge/Learning reads, with a maximum of 100 candidates per page and a nextCursor propagated through the search service, admin API, and knowledge_search tool. This is a paging primitive, not proof that every caller automatically traverses every page; exhaustive end-to-end retrieval and relevance aggregation across all pages remain unverified. The cursor is an untrusted pagination hint, not an authorization token; each page still requires fresh database authorization.
+
+
+## Canonical data-plane and runtime completion audit — 2026-11-07
+
+This addendum records a read-only inspection of the implementation branch, current production Neon branch, and Render service. It does not authorize production changes.
+
+### Canonical record-family coverage
+
+- The current canonical schema services/mira-hfm-record-schema.js defines six HFM v1.1 extended record types: daily_activity, learning_note, knowledge_item, social_post_draft, client_vault_record, and financial_vault_record.
+- The requested source_reference family is not present in the schema allowlist or repository record-type allowlist. Legacy research_reference is a distinct legacy type and is not silently treated as an equivalent. No schema, trust state, or migration is invented here; the source-reference family remains REVIEW_REQUIRED pending its approved canonical contract.
+- Existing repository writes validate the canonical record schema, enforce project scope, apply classification-specific encryption, preserve record versions, use idempotency keys, and append transactional audit events. The implemented record-family list remains incomplete until source_reference has an approved schema and lifecycle contract.
+
+### Human review and trust lifecycle
+
+- The current review runtime can read same-project PENDING_REVIEW knowledge_item and learning_note records through a consumed one-time read authority.
+- Its returned contract explicitly reports promotionSupported: false and writeAllowed: false. No human decision / trust-promotion transition is implemented by this runtime. Pending records remain excluded from trusted retrieval.
+- Trust promotion is NOT_APPROVED / REVIEW_REQUIRED until the authorized transition contract, reviewer identity binding, immutable decision event, replay protection, and least-privilege database grants are specified and approved. No automatic promotion was added.
+
+### Conversation transcript persistence
+
+- services/mira-conversation-memory-persistence.js is an HFM-mode legacy-storage isolation gate. When any HFM Memory mode flag is active it returns persisted: false, source: HFM_CANONICAL_TRANSCRIPT_NOT_CONFIGURED, and both fallback indicators false.
+- This correctly prevents local/Drive fallback, but there is no canonical transcript writer or verified User/Assistant/Tool transcript record contract in the inspected branch. Canonical transcript persistence therefore remains INCONCLUSIVE; HFM-mode messages are safely not persisted rather than redirected to a noncanonical store.
+
+### Standing-read pagination
+
+- Repository keyset pagination is implemented for ACTIVE, verified, non-restricted knowledge_item / learning_note reads, with fixed scan-start timestamp and a bounded 100-record page.
+- The search runtime, admin API, and Work knowledge_search expose nextCursor. Automatic exhaustive traversal and cross-page relevance aggregation are not established by the inspected contracts. A caller must continue with the returned cursor; one page must not be described as a complete project-wide search.
+
+### Live Neon production branch — read-only inspection
+
+Target inspected: project steep-grass-38696226, branch br-crimson-sun-a13xzreh, database neondb.
+
+- Eight baseline mira_hfm tables are present. All eight report both RLS enabled and FORCE RLS enabled.
+- The four observed HFM roles are the baseline writer/issuer group and login principals. The dedicated mira_hfm_memory_reader role is absent.
+- Registries are empty at inspection: project owners 0, project memberships 0, operation authorities 0, Memory records 0.
+- The observed SQL role attributes do not match the intended hardened issuer contract: mira_hfm_authority_issuer.rolinherit = true, while source Migration 011 requires NOINHERIT. SQL also reports mira_hfm_authority_issuer_login.rolcanlogin = true and rolinherit = true; the Neon role-list metadata simultaneously labels that principal no_login. This control-plane/SQL discrepancy requires reconciliation before any runtime credential is used.
+- The baseline issuer and writer grants/policies are not the final reader/issuer split described by source migrations 010–014. Migrations 010–014 are not applied on this production branch; no standing-read-authority table or nonce registry was observed.
+- No production SQL write, migration, role change, seed, or data mutation was performed. The test branch with existing owner/membership/authority/Memory rows remains preserved and is not a bootstrap target.
+
+### Render runtime — read-only inspection
+
+- Service mira-ai-agent is configured against repository Shahed216215/herness-ai, branch main, with Auto Deploy on commit. It is a Free web service using npm install and node server.js; its configured health-check path is empty.
+- The latest observed live deployment is main commit 881a1deebf5d97a7590aa2b14242a8f32aadf627. No HFM branch deployment occurred.
+- The available Render service inspection did not expose environment-variable names, so HFM flag/credential presence is INCONCLUSIVE. No secret values were requested or emitted; no environment or secret was changed.
+
+### CI evidence and release boundary
+
+- Functional-code commit b7656ac766e1a42a9e7b4eabd67b005dd01fffaa has nine associated PR-triggered GitHub Actions workflows; all nine completed with conclusion success. The exact-commit combined status endpoint returned no status entries, so the workflow conclusions are the available CI evidence.
+- Documentation follow-up commit a2664b584caceb0235b13a319fb7487065ac2046 also has nine associated PR-triggered workflows completed successfully.
+- This evidence is synthetic/offline or disposable-PostgreSQL CI. It does not establish live Neon role/credential readiness or Render HFM runtime readiness.
+- PR #79 remains Open/Draft. The branch is diverged from main and is not a safe direct merge/deployment candidate. Render Auto Deploy is enabled on main; no merge or deployment was attempted.
+
+### Current completion disposition
+
+- Canonical data plane: REVIEW_REQUIRED — six of seven requested families are represented; source_reference contract is absent.
+- Human review/trust promotion: NOT_APPROVED — review queue is read-only; no approved promotion contract.
+- Canonical transcript persistence: INCONCLUSIVE — safe isolation exists; canonical writer/schema absent.
+- Legacy local/Drive isolation: PASS for the four HFM Memory mode flags covered by branch regression tests; do not infer all legacy consumers are migrated.
+- Production database authorization: REVIEW_REQUIRED — RLS/FORCE RLS is present, but reader role absent and issuer attributes conflict with the intended hardened contract.
+- Render runtime: INCONCLUSIVE — service configuration observed; HFM environment names/values not available from the inspected endpoint.
+- Deployment and PR merge: NOT_APPROVED — explicit user approval and all live gates remain required.
+
+HFM v0.2 is NOT complete. No production migration, data write, credential change, Render configuration change, deployment, PR merge, trust promotion, or Facebook API action was performed.
