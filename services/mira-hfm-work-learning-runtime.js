@@ -1,6 +1,8 @@
 'use strict';
 
 const { retrieveProjectScopedWorkLearning } = require('./mira-hfm-work-learning-retrieval');
+const { compareTimestampToNow, compareTimestamps } = require('./mira-hfm-timestamp');
+const { PAGE_SIZE, MAX_STANDING_READ_PAGES } = require('./mira-hfm-standing-read-pages');
 
 const MAX_MEMORY_SCAN = 100;
 
@@ -79,6 +81,16 @@ async function retrieveHfmWorkLearning(options = {}) {
   if (!taskText || !currentTaskId) fail('HFM_WORK_LEARNING_TASK_CONTEXT_REQUIRED');
 
   const memory = options.preflight;
+  const hostContext = memory && memory.hostAuthorizationContext;
+  const nowMs = now.getTime();
+  const issuedAtOrder = hostContext
+    ? compareTimestampToNow(hostContext.issuedAt, nowMs) : null;
+  const expiresAtOrder = hostContext
+    ? compareTimestampToNow(hostContext.expiresAt, nowMs) : null;
+  const expiresAfterIssue = hostContext
+    ? compareTimestamps(hostContext.expiresAt, hostContext.issuedAt) : null;
+  const scanStartedOrder = memory
+    ? compareTimestampToNow(memory.scanStartedAt, nowMs) : null;
   if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
       memory.standingAuthority !== true ||
       memory.authorityConsumed !== false ||
@@ -92,26 +104,37 @@ async function retrieveHfmWorkLearning(options = {}) {
       !Number.isInteger(memory.count) ||
       memory.count !== memory.records.length ||
       !Number.isInteger(memory.pageCount) ||
-      memory.pageCount < 1 ||
+      memory.pageCount < 1 || memory.pageCount > MAX_STANDING_READ_PAGES ||
       !Number.isInteger(memory.candidateScanCount) ||
       memory.candidateScanCount !== memory.records.length ||
-      !memory.hostAuthorizationContext) {
+      memory.candidateScanLimit !== PAGE_SIZE * MAX_STANDING_READ_PAGES ||
+      memory.candidateScanCount > memory.candidateScanLimit ||
+      memory.records.length > memory.candidateScanLimit ||
+      !memory.hostAuthorizationContext ||
+      typeof memory.projectId !== 'string' || !memory.projectId ||
+      memory.standingAuthorityId !== hostContext.authorityRef ||
+      memory.authorityExpiresAt !== hostContext.expiresAt ||
+      hostContext.projectId !== memory.projectId ||
+      hostContext.actorType !== 'HUMAN' ||
+      typeof hostContext.actorId !== 'string' || !hostContext.actorId.startsWith('mira:') ||
+      typeof hostContext.authorityRef !== 'string' || !hostContext.authorityRef ||
+      typeof hostContext.requestId !== 'string' || !hostContext.requestId ||
+      typeof hostContext.purpose !== 'string' || !hostContext.purpose ||
+      issuedAtOrder === null || issuedAtOrder > 0 ||
+      expiresAtOrder !== 1 || expiresAfterIssue === null || expiresAfterIssue <= 0 ||
+      scanStartedOrder === null || scanStartedOrder > 0) {
     fail('HFM_WORK_LEARNING_PREFLIGHT_SNAPSHOT_REQUIRED');
   }
+  const seenMemoryIds = new Set();
   for (const record of memory.records) {
-    if (!record || record.projectId !== memory.projectId ||
+    if (!record || typeof record.memoryId !== 'string' || !record.memoryId ||
+        seenMemoryIds.has(record.memoryId) ||
+        record.projectId !== memory.projectId ||
         !['learning_note', 'knowledge_item'].includes(record.recordType) ||
         record.lifecycle !== 'ACTIVE') {
       fail('HFM_WORK_LEARNING_RECORD_SCOPE_INVALID');
     }
-  }
-  const hostContext = memory.hostAuthorizationContext;
-  if (hostContext.projectId !== memory.projectId ||
-      typeof hostContext.actorId !== 'string' ||
-      !hostContext.actorId.startsWith('mira:') ||
-      typeof hostContext.authorityRef !== 'string' ||
-      typeof hostContext.requestId !== 'string') {
-    fail('HFM_WORK_LEARNING_HOST_AUTHORIZATION_CONTEXT_INVALID');
+    seenMemoryIds.add(record.memoryId);
   }
 
   const result = bridge({
