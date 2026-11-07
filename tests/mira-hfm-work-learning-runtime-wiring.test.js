@@ -15,6 +15,8 @@ assert.match(planner, /process\.env\.MIRA_HFM_WORK_LEARNING_ENABLED === "true"/)
 assert.match(planner, /HFM_WORK_LEARNING_RUNTIME_REQUIRED/);
 assert.match(planner, /options\.useHfmWorkLearning === true\s*\? \[\]/);
 assert.match(planner, /options\.useHfmWorkLearning === true\s*\?/);
+assert.match(planner, /buildExperienceGuidance\(task, options\)/);
+assert.match(planner, /options\.hfmWorkLearning/);
 assert.match(execution, /retrieveHfmWorkLearning/);
 assert.match(execution, /HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED/);
 assert.match(execution, /options\.hfmRequest/);
