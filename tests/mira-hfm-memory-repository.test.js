@@ -371,6 +371,51 @@ test('standing-read exact record lookup is project, type, lifecycle, trust and i
   assert.match(sqlSeen, /classification <> 'RESTRICTED'/);
   assert.match(sqlSeen, /integrity_status = 'VERIFIED'/);
   assert.match(sqlSeen, /trust_status IN \('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\)/);
+
+  const storedRow = {
+    memory_id: expected.memoryId,
+    project_id: expected.projectId,
+    owner_actor_id: context.actorId,
+    record_type: expected.recordType,
+    schema_version: expected.schemaVersion,
+    classification: 'PUBLIC',
+    lifecycle: 'ACTIVE',
+    revision: 1,
+    integrity_status: 'VERIFIED',
+    trust_status: 'HUMAN_VERIFIED',
+    public_payload: expected,
+    encrypted_envelope: null
+  };
+  const invalidRows = [
+    { memory_id: 'different-memory-id' },
+    { project_id: 'project-beta' },
+    { record_type: 'social_post_draft' },
+    { lifecycle: 'TRASHED' },
+    { classification: 'RESTRICTED' },
+    { integrity_status: 'FAILED' },
+    { trust_status: 'SOURCE_RECORDED' }
+  ];
+  for (const invalidFields of invalidRows) {
+    const invalidClient = fakeClient({
+      query: async () => ({ rowCount: 1, rows: [{ ...storedRow, ...invalidFields }] })
+    });
+    await assert.rejects(
+      repository.getStandingReadMemoryRecord({
+        client: invalidClient,
+        context: {
+          ...context,
+          operation: 'memory.read',
+          resource: 'memory:project:project-001',
+          authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
+        },
+        memoryId: expected.memoryId,
+        recordTypes: ['knowledge_item', 'learning_note'],
+        env
+      }),
+      error => error.code === 'HFM_STANDING_READ_RECORD_SCOPE_INVALID'
+    );
+  }
+  console.log('HFM_REPOSITORY_STANDING_READ_REVALIDATES_RETURNED_ROW=PASS');
   assert.throws(
     () => repository.getStandingReadMemoryRecord({
       client,
