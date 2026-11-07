@@ -377,8 +377,10 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
     delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
     const standingOnlyPlan = buildPlanFromUnderstanding({
-      id: 'standing-only-task', title: 'Prepare a simple research summary',
-      description: 'Prepare a simple research summary', requirements: []
+      task: {
+        id: 'standing-only-task', title: 'Prepare a simple research summary',
+        description: 'Prepare a simple research summary', requirements: []
+      }
     }, 'Prepare a simple research summary', { persist: false });
     assert.deepEqual(standingOnlyPlan.experienceGuidance.strategies, []);
     assert.deepEqual(standingOnlyPlan.experienceGuidance.crossTaskLearning.transfers, []);
