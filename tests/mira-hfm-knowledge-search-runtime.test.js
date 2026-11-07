@@ -72,7 +72,7 @@ const verifiedLearning = {
   assert.equal(result.status, 'AUTHORIZED_AND_COMMITTED');
   assert.equal(result.count, 2);
   assert.equal(result.candidateScanCount, 3);
-  assert.equal(result.candidateScanLimit, 100);
+  assert.equal(result.candidateScanLimit, 2000);
   assert.equal(result.candidateScanMayBeIncomplete, false);
   assert.deepEqual(result.results.map(item => item.type).sort(), ['knowledge', 'learning']);
   const learningResult = result.results.find(item => item.id === verifiedLearning.memoryId);
