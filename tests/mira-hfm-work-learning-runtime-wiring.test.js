@@ -435,7 +435,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
       actorId: 'mira:actor-001',
       projectId: 'project-alpha',
       authorityRef: 'standing-authority-001',
-      expiresAt: new Date(Date.now() + 86400000).toISOString()
+      expiresAt: expiresAt
     }
   };
   const preflightReq = { serverHeld: true };
@@ -590,6 +590,8 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   console.log('HFM_STANDING_READ_CONTEXT_FAILS_CLOSED_WHEN_UNAVAILABLE=PASS');
 
   const now = new Date().toISOString();
+  const issuedAt = new Date(Date.now() - 1000).toISOString();
+  const expiresAt = new Date(Date.now() + 86400000).toISOString();
   const content = 'Verified Python automation research and reproducible testing notes.';
   const record = {
     schemaVersion: '1.1.0',
@@ -624,13 +626,13 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
         driveFallback: false,
         scanStartedAt: now,
         standingAuthorityId: 'standing-001',
-        authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+        authorityExpiresAt: expiresAt,
         hostAuthorizationContext: {
           actorId: 'mira:actor-001', actorType: 'HUMAN',
           projectId: 'project-alpha', purpose: 'knowledge search',
           requestId: 'request-knowledge-001', authorityRef: 'standing-001',
-          issuedAt: new Date(Date.now() - 1000).toISOString(),
-          expiresAt: new Date(Date.now() + 86400000).toISOString()
+          issuedAt: issuedAt,
+          expiresAt: expiresAt
         }
       };
     }
@@ -652,13 +654,13 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
       memoryWrites: false, localFallback: false, driveFallback: false,
       scanStartedAt: now,
       standingAuthorityId: 'standing-001',
-      authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+      authorityExpiresAt: expiresAt,
       hostAuthorizationContext: {
         actorId: 'mira:actor-001', actorType: 'HUMAN',
         projectId: 'project-alpha', purpose: 'knowledge detail',
         requestId: 'request-knowledge-detail-001', authorityRef: 'standing-001',
-        issuedAt: new Date(Date.now() - 1000).toISOString(),
-        expiresAt: new Date(Date.now() + 86400000).toISOString()
+        issuedAt: issuedAt,
+        expiresAt: expiresAt
       }
     })
   });
