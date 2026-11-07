@@ -107,10 +107,11 @@ const PREFLIGHT_SQL = [
   "(SELECT count(*) = 6 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " +
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships','operation_authorities'," +
     "'authority_audit_events','memory_records','standing_read_authorities') AND c.relrowsecurity AND c.relforcerowsecurity) AS retrieval_rls_forced,",
-  "(SELECT count(*) = 7 FROM pg_policies WHERE schemaname = 'mira_hfm' AND policyname IN " +
+  "(SELECT count(*) = 8 FROM pg_policies WHERE schemaname = 'mira_hfm' AND policyname IN " +
     "('hfm_memory_reader_owner_select','hfm_memory_reader_membership_select'," +
     "'hfm_memory_reader_authority_consume','hfm_memory_reader_authority_consume_update'," +
     "'hfm_memory_reader_authority_audit_insert','hfm_memory_reader_memory_select'," +
+    "'hfm_memory_reader_trashed_social_draft_select') " +
     "'hfm_standing_reader_select') " +
     "AND $1 = ANY(roles)) AS retrieval_policies_present,",
   "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
@@ -126,6 +127,18 @@ const PREFLIGHT_SQL = [
     "AND permissive = 'RESTRICTIVE' AND $1 = ANY(roles) " +
     "AND qual LIKE '%learning_note%' AND qual LIKE '%knowledge_item%' AND qual LIKE '%ACTIVE%' AND qual LIKE '%PUBLIC%' AND qual LIKE '%PROJECT_PRIVATE%' AND qual LIKE '%integrity_status%' AND qual LIKE '%trust_status%') " +
     "AS standing_read_scope_policy_present,",
+  "EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
+    "AND tablename = 'memory_records' AND policyname = 'hfm_memory_reader_trashed_social_draft_select' " +
+    "AND permissive = 'PERMISSIVE' AND $1 = ANY(roles) " +
+    "AND qual LIKE '%TRASHED%' AND qual LIKE '%social_post_draft%' " +
+    "AND qual LIKE '%PUBLIC%' AND qual LIKE '%PROJECT_PRIVATE%') " +
+    "AS trashed_social_draft_select_policy_present,",
+  "EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
+    "AND tablename = 'memory_records' AND policyname = 'hfm_reader_memory_membership_authority_scope' " +
+    "AND permissive = 'RESTRICTIVE' AND $1 = ANY(roles) " +
+    "AND qual LIKE '%TRASHED%' AND qual LIKE '%social_post_draft%' " +
+    "AND qual LIKE '%mira.standing_read_authority%') " +
+    "AS reader_trashed_draft_scope_policy_present,",
   'FROM pg_roles r WHERE r.rolname = current_user'
 ].join(' ');
 
@@ -138,7 +151,8 @@ const REQUIRED_TRUE = Object.freeze([
   'records_select', 'standing_authorities_select', 'audit_sequence_usage',
   'retrieval_rls_forced', 'retrieval_policies_present',
   'no_public_retrieval_policies', 'reader_actor_scope_policies_present',
-  'standing_read_scope_policy_present'
+  'standing_read_scope_policy_present', 'trashed_social_draft_select_policy_present',
+  'reader_trashed_draft_scope_policy_present'
 ]);
 
 const REQUIRED_FALSE = Object.freeze([
