@@ -47,6 +47,8 @@ function preflightRow(overrides = {}) {
     authority_audit_insert: true, authority_audit_select: false, authority_audit_update: false,
     authority_audit_delete: false, authority_audit_truncate: false,
     records_select: true, records_insert: false, records_update: false, records_delete: false, records_truncate: false,
+    standing_authorities_select: true, standing_authorities_insert: false,
+    standing_authorities_update: false, standing_authorities_delete: false, standing_authorities_truncate: false,
     audit_sequence_usage: true, audit_sequence_select: false, audit_sequence_update: false,
     retrieval_rls_forced: true, retrieval_policies_present: true, no_public_retrieval_policies: true,
     ...overrides
@@ -69,6 +71,8 @@ for (const patch of [
   }, { authorities_consumed_at_update: false }, { authorities_id_update: true },
   { owners_insert: true }, { memberships_update: true }, { authorities_insert: true }, { authorities_update: true },
   { authority_audit_update: true }, { records_insert: true }, { records_update: true },
+  { standing_authorities_select: false }, { standing_authorities_insert: true },
+  { standing_authorities_update: true }, { standing_authorities_delete: true },
   { schema_create: true }, { retrieval_rls_forced: false },
   { retrieval_policies_present: false }, { no_public_retrieval_policies: false },
   { current_role: 'wrong_role' }, { database_name: 'production' }
