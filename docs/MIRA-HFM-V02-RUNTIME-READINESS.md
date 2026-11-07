@@ -178,6 +178,14 @@ These are synthetic/offline or disposable-CI results. They are not live Neon or 
 - Render service `mira-ai-agent` remains on `main` with Auto Deploy enabled. Its last observed live deployment is commit `881a1deebf5d97a7590aa2b14242a8f32aadf627`. No HFM environment variables, secrets, feature flags, service settings, or deployments were changed during this work.
 
 
+
+## Conversation transcript isolation and migration-fixture precision — 2026-11-07
+
+- All four server chat transcript persistence callsites now use the HFM-aware persistence gate. When any of the standing-read, Work Learning, Memory reader, or Memory writer flags is enabled, transcript persistence does not write to legacy local Memory and reports no Local JSON/Drive fallback; canonical transcript persistence remains unconfigured, so the transcript is not silently redirected elsewhere.
+- A focused regression test covers all four flags and verifies legacy transcript behavior is preserved only when HFM mode is inactive. The server is statically checked to contain only the four adapter calls and no direct local `addMemory` writes.
+- The disposable PostgreSQL standing-authority fixture now uses `statement_timestamp()` for both `valid_from` and the 365-day expiry calculation. This avoids a microsecond drift between separate `clock_timestamp()` calls causing a valid exactly-365-day fixture to violate the RLS maximum-duration policy. The 366-day negative case remains rejected.
+- Exact functional/workflow commit `4f56b9572e8ba7e368acbcd73183e1cfa32e8d53`: **11/11 GitHub checks PASS, 0 failures, 0 pending**, including the PostgreSQL 001–014 chain and HFM transcript isolation tests.
+
 ## Latest HFM v0.2 runtime verification — 2026-11-07
 
 - Functional-code head: `b7656ac766e1a42a9e7b4eabd67b005dd01fffaa`.
