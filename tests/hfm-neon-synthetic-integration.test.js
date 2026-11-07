@@ -5,7 +5,7 @@ const crypto = require("node:crypto");
 const adapter = require("../services/mira-hfm-postgres");
 
 function normalizeNeonHost(host) {
-  return String(host || "").trim().toLowerCase().replace(/-pooler(?=\\.)/, "");
+  return String(host || "").trim().toLowerCase().replace(/-pooler(?=\.)/, "");
 }
 
 async function main() {
