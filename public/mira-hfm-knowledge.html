@@ -39,6 +39,9 @@ small{color:var(--muted)}
     <label for="projectId">Project ID</label>
     <input id="projectId" autocomplete="off" placeholder="Create a new HFM project or enter an existing ID">
     <div class="actions"><button class="primary" id="createProjectBtn">Create / Activate My HFM Project</button></div>
+    <div class="actions"><button class="primary" id="dailyGenerateBtn">Generate Daily Knowledge</button></div>
+    <label for="dailyDraft">Daily draft preview (manual review required)</label>
+    <textarea id="dailyDraft" readonly placeholder="Generate today's knowledge draft from committed activity and learning records..."></textarea>
     <div id="status" class="status" role="status">Not connected yet. Sign in to Mira first.</div>
   </section>
 
@@ -272,6 +275,13 @@ small{color:var(--muted)}
     if (data.projectId) $('projectId').value = data.projectId;
     status(data.projectId ? 'Authenticated session active. Project: ' + data.projectId : 'Authenticated. Create your HFM project to begin.');
   }).catch(() => status('Sign in to Mira before using Facebook Knowledge.', true));
+  $('dailyGenerateBtn').addEventListener('click', async () => {
+    try {
+      const result = await request('/api/hfm/daily-knowledge/generate', { method: 'POST', body: JSON.stringify({}) });
+      $('dailyDraft').value = result.draft?.content || '';
+      status(result.status + (result.memoryId ? ' • ' + result.memoryId : '') + ' • Manual review required; no Facebook publishing occurs.');
+    } catch (error) { status(error.message, true); }
+  });
   $('createProjectBtn').addEventListener('click', async () => {
     try {
       let id = $('projectId').value.trim();
