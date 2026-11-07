@@ -538,3 +538,9 @@ Migration source review also found migrations 016–018, while the lineage docum
 - Latest-head disposable migration-chain CI: NOT_VERIFIED.
 - HFM runtime flags/secrets: unchanged and not verified as configured.
 - HFM v0.2 production deployment: BLOCKED pending exact database identity, migration-lineage reconciliation, migration-chain CI on current HEAD, role/privilege compatibility review, and explicit approval for live database/configuration changes.
+
+## 2026-11-07 follow-up: revision integrity guard and current PR CI
+
+Migration 016 and the canonical Memory repository revision path were hardened so `memory.update` cannot change `integrity_status` or `trust_status`. The writer's column-level UPDATE grant excludes `integrity_status`; the trigger rejects any integrity/trust metadata change; the repository validates the incoming integrity status against the stored row and no longer updates that column. Regression coverage rejects integrity-status tampering and confirms the revision UPDATE statement does not touch trust/integrity metadata.
+
+Exact branch HEAD `4a4fb954c31e7dd76c2bc55935a010224c0754ca` completed the eight existing PR workflow checks successfully: HFM runtime foundation, Memory repository contracts, session persistence, Render host binding, dependency remediation, Run Agent regression, Competitor Intelligence, and approval diagnostic. Render live HTTP smoke was skipped. The standalone `hfm-postgres-migrations.yml` push run still produced a failed run with zero jobs; no disposable PostgreSQL 001–018 execution evidence was obtained. Its migration-chain status remains **NOT_VERIFIED** (not PASS). This branch remains Draft and unmerged; Render and Neon were not changed.
