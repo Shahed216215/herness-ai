@@ -6,6 +6,7 @@ const {
   hasExplicitSaveIntent,
   hasExplicitDailyActivitySaveIntent,
   hasExplicitSourceReferenceSaveIntent,
+  hasExplicitVaultSaveIntent,
   hasVaultOnlyDailyActivityContent,
   isUserAuthoredMemoryContent,
   deriveIdempotencyKey,
@@ -71,6 +72,10 @@ function baseOptions(overrides = {}) {
   assert.ok(registeredTools.source_reference_save);
   assert.equal(registeredTools.source_reference_save.name, 'source_reference_save');
   assert.ok(registeredDeclarations.some(declaration => declaration.name === 'source_reference_save'));
+  assert.ok(registeredTools.client_vault_save);
+  assert.ok(registeredDeclarations.some(declaration => declaration.name === 'client_vault_save'));
+  assert.ok(registeredTools.financial_vault_save);
+  assert.ok(registeredDeclarations.some(declaration => declaration.name === 'financial_vault_save'));
   assert.equal(hasExplicitSaveIntent('Remember this: keep my learning plan.'), true);
   assert.equal(hasExplicitSaveIntent('এটা মনে রাখবে: আমার শেখার পরিকল্পনা।'), true);
   assert.equal(hasExplicitSaveIntent('Please save this to your memory.'), true);
@@ -91,6 +96,11 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSourceReferenceSaveIntent('Do not save this source reference.'), false);
   assert.equal(hasExplicitSourceReferenceSaveIntent('সোর্স লিংকটি সংরক্ষণ করো না।'), false);
   assert.equal(hasExplicitSourceReferenceSaveIntent('Remember this URL.'), false);
+  assert.equal(hasExplicitVaultSaveIntent('client_vault_save', 'Save this client record to the client vault.'), true);
+  assert.equal(hasExplicitVaultSaveIntent('financial_vault_save', 'Save this financial transaction to the vault.'), true);
+  assert.equal(hasExplicitVaultSaveIntent('client_vault_save', 'Do not save this client record.'), false);
+  assert.equal(hasExplicitVaultSaveIntent('financial_vault_save', 'আর্থিক রেকর্ড ভল্টে সংরক্ষণ করো না।'), false);
+  assert.equal(hasExplicitVaultSaveIntent('client_vault_save', 'Remember this client information.'), false);
   assert.equal(hasVaultOnlyDailyActivityContent('Client ID: C-1042 was updated.'), true);
   assert.equal(hasVaultOnlyDailyActivityContent('Contract #CT-2026-91 was signed.'), true);
   assert.equal(hasVaultOnlyDailyActivityContent('Invoice number INV-2026-001 was received.'), true);
@@ -441,7 +451,130 @@ function baseOptions(overrides = {}) {
   assert.equal(sourceReferenceResult.searchEligible, false);
   assert.equal(sourceReferenceResult.localFallback, false);
   assert.equal(sourceReferenceResult.driveFallback, false);
+
+  const clientVaultPayload = {
+    clientId: 'C-1042',
+    clientName: 'Example Client',
+    email: 'contact@example.com',
+    phone: '+8801712345678'
+  };
+  let clientVaultSaved = null;
+  let clientVaultAuthority = null;
+  const clientVaultResult = await saveHfmMemoryRecord(baseOptions({
+    kind: 'client_vault_save',
+    content: JSON.stringify(clientVaultPayload),
+    userIntent: 'Save this client record to the client vault: client ID C-1042, client name Example Client, email contact@example.com, phone +8801712345678.',
+    taskId: 'task-client-vault-001',
+    toolCallId: 'call-client-vault-001',
+    toolName: 'client_vault_save',
+    req: {
+      session: {
+        authenticated: true,
+        role: 'admin',
+        hfmPrincipal: sourcePrincipal,
+        hfmProjectBinding: { verified: true, projectId: 'project-001' }
+      }
+    },
+    issueAuthority: async input => {
+      clientVaultAuthority = input;
+      return {
+        status: 'AUTHORITY_ISSUED',
+        projectId: input.req.session.hfmProjectBinding.projectId,
+        operation: input.operation,
+        resource: input.resource,
+        grant: { authorityId: 'authority-client-vault-001', purpose: input.purpose, requestId: 'request-client-vault-001' }
+      };
+    },
+    createRecord: async input => {
+      clientVaultSaved = input;
+      return { status: 'CREATED', memoryId: input.record.memoryId, revision: 1 };
+    }
+  }));
+  assert.equal(clientVaultAuthority.operation, 'memory.vault.write');
+  assert.match(clientVaultAuthority.purpose, /^hfm-vault:client_vault_record:/);
+  assert.equal(clientVaultSaved.allowRestrictedWrite, true);
+  assert.equal(clientVaultSaved.allowPrivateWrite, false);
+  assert.equal(clientVaultSaved.record.recordType, 'client_vault_record');
+  assert.equal(clientVaultSaved.record.access.classification, 'RESTRICTED');
+  assert.equal(clientVaultSaved.record.trust.status, 'SOURCE_RECORDED');
+  assert.equal(clientVaultSaved.record.lifecycle, 'PENDING_REVIEW');
+  assert.equal(validateCanonicalRecord(clientVaultSaved.record).valid, true);
+  assert.equal(clientVaultResult.classification, 'RESTRICTED');
+  assert.equal(clientVaultResult.searchEligible, false);
+  assert.equal(clientVaultResult.localFallback, false);
+  assert.equal(clientVaultResult.driveFallback, false);
+
+  const financialVaultPayload = {
+    transactionReference: 'TXN-1042',
+    counterparty: 'Example Client',
+    amount: 1200,
+    currency: 'BDT',
+    transactionDate: '2026-11-07',
+    status: 'paid',
+    accountLast4: '1234'
+  };
+  let financialVaultSaved = null;
+  let financialVaultAuthority = null;
+  const financialVaultResult = await saveHfmMemoryRecord(baseOptions({
+    kind: 'financial_vault_save',
+    content: JSON.stringify(financialVaultPayload),
+    userIntent: 'Save this financial transaction to the financial vault: transaction TXN-1042, counterparty Example Client, amount 1200 BDT, date 2026-11-07, status paid, account ending 1234.',
+    taskId: 'task-financial-vault-001',
+    toolCallId: 'call-financial-vault-001',
+    toolName: 'financial_vault_save',
+    req: {
+      session: {
+        authenticated: true,
+        role: 'admin',
+        hfmPrincipal: sourcePrincipal,
+        hfmProjectBinding: { verified: true, projectId: 'project-001' }
+      }
+    },
+    issueAuthority: async input => {
+      financialVaultAuthority = input;
+      return {
+        status: 'AUTHORITY_ISSUED',
+        projectId: input.req.session.hfmProjectBinding.projectId,
+        operation: input.operation,
+        resource: input.resource,
+        grant: { authorityId: 'authority-financial-vault-001', purpose: input.purpose, requestId: 'request-financial-vault-001' }
+      };
+    },
+    createRecord: async input => {
+      financialVaultSaved = input;
+      return { status: 'CREATED', memoryId: input.record.memoryId, revision: 1 };
+    }
+  }));
+  assert.equal(financialVaultAuthority.operation, 'memory.vault.write');
+  assert.equal(financialVaultSaved.allowRestrictedWrite, true);
+  assert.equal(financialVaultSaved.allowPrivateWrite, false);
+  assert.equal(financialVaultSaved.record.recordType, 'financial_vault_record');
+  assert.equal(financialVaultSaved.record.access.classification, 'RESTRICTED');
+  assert.equal(financialVaultSaved.record.lifecycle, 'PENDING_REVIEW');
+  assert.equal(validateCanonicalRecord(financialVaultSaved.record).valid, true);
+  assert.equal(financialVaultResult.classification, 'RESTRICTED');
+  assert.equal(financialVaultResult.searchEligible, false);
+  assert.equal(financialVaultResult.localFallback, false);
+  assert.equal(financialVaultResult.driveFallback, false);
+
   await assert.rejects(
+    () => saveHfmMemoryRecord(baseOptions({
+      kind: 'client_vault_save',
+      content: JSON.stringify(clientVaultPayload),
+      userIntent: 'Remember this client record: client ID C-1042, client name Example Client, email contact@example.com, phone +8801712345678.',
+      req: {
+        session: {
+          authenticated: true,
+          role: 'admin',
+          hfmPrincipal: sourcePrincipal,
+          hfmProjectBinding: { verified: true, projectId: 'project-001' }
+        }
+      }
+    })),
+    /HFM_VAULT_EXPLICIT_USER_INTENT_REQUIRED/
+  );
+
+  const { executeTool, executeHfmMemorySave, declarations } = require('../tools');  await assert.rejects(
     () => saveHfmMemoryRecord(baseOptions({
       kind: 'source_reference_save',
       url: sourceUrl,
@@ -492,6 +625,14 @@ function baseOptions(overrides = {}) {
       error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
     );
     await assert.rejects(
+      () => executeTool('client_vault_save', { payload: { clientName: 'Example Client' } }, null),
+      error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
+    );
+    await assert.rejects(
+      () => executeTool('financial_vault_save', { payload: { transactionReference: 'TXN-1' } }, null),
+      error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
+    );
+    await assert.rejects(
       () => executeTool('knowledge_search', { query: 'test' }, null),
       error => error && error.code === 'HFM_MEMORY_READ_MODE_REQUIRED'
     );
@@ -517,6 +658,8 @@ function baseOptions(overrides = {}) {
     const directLearningSave = require('../tools/learning-save');
     const directDailyActivitySave = require('../tools/daily-activity-save');
     const directSourceReferenceSave = require('../tools/source-reference-save');
+    const directClientVaultSave = require('../tools/client-vault-save');
+    const directFinancialVaultSave = require('../tools/financial-vault-save');
     const directLearningResult = await directLearningSave.execute({ content: 'Learning source.' })
       .then(value => JSON.parse(value))
       .catch(error => ({ code: error && error.code }));
@@ -538,6 +681,8 @@ function baseOptions(overrides = {}) {
       .then(value => JSON.parse(value))
       .catch(error => ({ code: error && error.code }));
     assert.equal(directSourceReferenceResult.code, 'HFM_TOOL_ROUTER_REQUIRED');
+    assert.equal(JSON.parse(await directClientVaultSave.execute({})).code, 'HFM_TOOL_ROUTER_REQUIRED');
+    assert.equal(JSON.parse(await directFinancialVaultSave.execute({})).code, 'HFM_TOOL_ROUTER_REQUIRED');
 
     let routedOptions = null;
     const routed = JSON.parse(await executeHfmMemorySave(
