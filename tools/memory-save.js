@@ -32,7 +32,7 @@ module.exports = {
         driveFallback: false
       });
     }
-    require("../services/mira-hfm-legacy-storage-guard").assertLegacyStorageDisabled();
+    assertLegacyStorageDisabled();
     if (
       !content ||
       typeof content !== "string" ||
