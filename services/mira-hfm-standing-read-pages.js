@@ -75,18 +75,22 @@ async function collectStandingReadPages({
   const seenIds = new Set();
   const seenCursors = new Set();
   let expected = null;
+  let firstContext = null;
   let pageCount = 0;
   let candidateScanCount = 0;
 
   while (page) {
     const validated = validatePage(page, expected);
-    if (!expected) expected = {
+    if (!expected) {
+      firstContext = validated.context;
+      expected = {
       actorId: validated.context.actorId,
       projectId: validated.context.projectId,
       authorityRef: validated.context.authorityRef,
       expiresAt: validated.context.expiresAt,
       scanStartedAt: page.scanStartedAt
-    };
+      };
+    }
     for (const record of page.records) {
       if (seenIds.has(record.memoryId)) fail('HFM_STANDING_READ_PAGE_DUPLICATE_RECORD');
       seenIds.add(record.memoryId);
@@ -104,9 +108,7 @@ async function collectStandingReadPages({
 
   return Object.freeze({
     projectId: expected.projectId,
-    hostAuthorizationContext: firstPage
-      ? firstPage.hostAuthorizationContext
-      : null,
+    hostAuthorizationContext: firstContext,
     records: Object.freeze(records),
     pageCount,
     candidateScanCount,
