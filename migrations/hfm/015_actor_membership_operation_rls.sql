@@ -233,7 +233,16 @@ CREATE POLICY hfm_writer_memory_record_update_scope
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND current_setting('mira.resource', true) = 'memory:' || memory_id
     AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
-    AND lifecycle IN ('ACTIVE', 'TRASHED')
+    AND (
+      (current_setting('mira.operation', true) = 'memory.trash'
+        AND lifecycle = 'TRASHED'
+        AND trashed_by_actor_id = NULLIF(current_setting('mira.actor_id', true), ''))
+      OR
+      (current_setting('mira.operation', true) = 'memory.restore'
+        AND lifecycle = 'ACTIVE'
+        AND trashed_at IS NULL
+        AND trashed_by_actor_id IS NULL)
+    )
     AND EXISTS (
       SELECT 1 FROM mira_hfm.project_owners owner_row
       WHERE owner_row.project_id = memory_records.project_id
