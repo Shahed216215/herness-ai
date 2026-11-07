@@ -35,6 +35,17 @@ assert.match(html, /updateStandingAuthority\("revoke"\)/);
 assert.match(route, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true'/);
 assert.match(route, /featureEnabled: process\.env\.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === 'true'/);
 assert.match(html, /const featureEnabled = data\.featureEnabled === true/);
+assert.match(html, /typeof data\.featureEnabled !== "boolean"/);
+assert.match(html, /hasOwnProperty\.call\(data, "authority"\)/);
+assert.match(html, /!\["ACTIVE", "PAUSED", "REVOKED", "EXPIRED"\]\.includes\(authority\.authorityStatus\)/);
+assert.match(html, /return \{ ok: false, authority: null, featureEnabled: false \}/);
+assert.match(html, /data\.status !== "STANDING_READ_AUTHORITY_ISSUED"/);
+assert.match(html, /verified\.authority\.authorityStatus !== "ACTIVE"/);
+assert.match(html, /verified\.authority\.standingAuthorityId !== data\.standingAuthorityId/);
+assert.match(html, /Standing authority verified ACTIVE/);
+assert.match(html, /active backend authority could not be verified/);
+assert.ok(html.indexOf('await refreshStandingAuthority()') < html.indexOf('Standing authority verified ACTIVE'),
+  'the UI must refresh backend status before reporting an issued authority as active');
 assert.match(html, /The HFM standing-read feature is disabled/);
 assert.match(html, /hidden = !featureEnabled/);
 assert.match(html, /hidden = !\(terminal && featureEnabled\)/);
