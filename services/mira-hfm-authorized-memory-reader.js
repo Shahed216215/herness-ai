@@ -5,7 +5,7 @@
 // HTTP/model arguments are never accepted as actor or project identity.
 
 const { buildTrustedProjectContext } = require('./mira-hfm-project-binding-context');
-const { executeWithConsumedAuthority } = require('./mira-hfm-authority-transaction');
+const { executeWithConsumedAuthority, executeWithStandingReadAuthority } = require('./mira-hfm-authority-transaction');
 const { listMemoryRecords } = require('./mira-hfm-memory-repository');
 
 function fail(code) {
@@ -43,8 +43,59 @@ async function retrieveProjectMemory(options = {}) {
   if (projectContext.status !== 'PROJECT_CONTEXT_RESOLVED') {
     fail('HFM_MEMORY_READ_TRUSTED_PROJECT_CONTEXT_REQUIRED');
   }
-  const grant = validateAuthorityGrant(options.authorityGrant);
   const projectId = projectContext.project.projectId;
+  const limit = options.limit === undefined ? 100 : options.limit;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    fail('HFM_MEMORY_READ_LIMIT_INVALID');
+  }
+
+  if (options.standingReadAuthority === true) {
+    const allowedRecordTypes = ['learning_note', 'knowledge_item'];
+    if (options.lifecycle !== undefined && options.lifecycle !== 'ACTIVE') {
+      fail('HFM_STANDING_READ_LIFECYCLE_SCOPE_INVALID');
+    }
+    if (options.recordType !== undefined && !allowedRecordTypes.includes(options.recordType)) {
+      fail('HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID');
+    }
+    if (options.recordTypes !== undefined &&
+        (!Array.isArray(options.recordTypes) ||
+         options.recordTypes.length === 0 ||
+         options.recordTypes.some(type => !allowedRecordTypes.includes(type)))) {
+      fail('HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID');
+    }
+    const result = await executeWithStandingReadAuthority({
+      pool,
+      verifiedPrincipal: options.req.session.hfmPrincipal,
+      projectId,
+      resource: 'memory:project:' + projectId,
+      perform: (client, context) => listMemoryRecords({
+        client,
+        context,
+        limit,
+        lifecycle: 'ACTIVE',
+        recordType: options.recordType,
+        recordTypes: options.recordType ? [options.recordType] : allowedRecordTypes,
+        allowPrivateRead: true,
+        env: options.env || process.env
+      })
+    });
+    return Object.freeze({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId,
+      records: Object.freeze([...(result.value.records || [])]),
+      count: result.value.count,
+      authorityConsumed: false,
+      standingAuthority: true,
+      standingAuthorityId: result.standingAuthorityId,
+      authorityExpiresAt: result.authorityExpiresAt,
+      approvalRequiredPerRead: false,
+      memoryWrites: false,
+      localFallback: false,
+      driveFallback: false
+    });
+  }
+
+  const grant = validateAuthorityGrant(options.authorityGrant);
   const limit = options.limit === undefined ? 100 : options.limit;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
     fail('HFM_MEMORY_READ_LIMIT_INVALID');
@@ -79,6 +130,7 @@ async function retrieveProjectMemory(options = {}) {
     records: Object.freeze([...(result.value.records || [])]),
     count: result.value.count,
     authorityConsumed: true,
+    standingAuthority: false,
     memoryWrites: false,
     localFallback: false,
     driveFallback: false
