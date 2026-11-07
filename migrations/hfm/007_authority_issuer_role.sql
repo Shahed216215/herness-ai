@@ -1,6 +1,6 @@
 -- HFM v0.2 isolated authority issuer role for one-time operation grants.
 -- SOURCE-ONLY. Never execute on production without a separate explicit approval.
--- This creates a NOLOGIN group only; no password, login, connection URL or secret is created.
+-- This creates a NOLOGIN group only; no login credential, connection URL or secret is created.
 -- The issuer is distinct from the Memory writer and cannot write Memory payloads.
 
 BEGIN;
