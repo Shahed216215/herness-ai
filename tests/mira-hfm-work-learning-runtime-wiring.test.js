@@ -170,6 +170,31 @@ try {
 }
 console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_EVOLUTION_ROUTER=PASS');
 
+const { executeTool } = require('../tools');
+const oldToolStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+const oldToolWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+try {
+  process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+  delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  for (const toolName of [
+    'memory_save', 'memory_restore', 'memory_count',
+    'knowledge_search', 'knowledge_count', 'knowledge_save',
+    'knowledge_restore', 'knowledge_backup', 'learning_save'
+  ]) {
+    await assert.rejects(
+      () => executeTool(toolName, {}),
+      error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL'
+    );
+  }
+} finally {
+  if (oldToolStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldToolStanding;
+  if (oldToolWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldToolWork;
+}
+console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_LEARNING_TOOLS=PASS');
+
+
 
 } finally {
   if (oldStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
