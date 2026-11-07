@@ -76,6 +76,7 @@ SELECT
   has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'INSERT') AS audit_insert,
   has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'SELECT') AS standing_authorities_select,
   has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'INSERT') AS standing_authorities_insert,
+  has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'UPDATE') AS standing_authorities_table_update,
   has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', 'status', 'UPDATE') AS standing_status_update,
   has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', 'updated_at', 'UPDATE') AS standing_updated_at_update,
   has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', 'paused_at', 'UPDATE') AS standing_paused_at_update,
@@ -203,6 +204,10 @@ SELECT
   (SELECT count(*) = 3 FROM pg_policies WHERE schemaname = 'mira_hfm'
     AND policyname IN ('hfm_standing_issuer_select','hfm_standing_issuer_insert','hfm_standing_issuer_update')
     AND $1::name = ANY(roles)) AS standing_authority_policies_present,
+  NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm'
+    AND tablename = 'standing_read_authorities' AND $1::name = ANY(roles)
+    AND policyname NOT IN ('hfm_standing_issuer_select','hfm_standing_issuer_insert','hfm_standing_issuer_update'))
+    AS standing_authority_policy_set_exact,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
@@ -221,7 +226,7 @@ const REQUIRED_TRUE = Object.freeze([
   'standing_authorities_select', 'standing_authorities_insert',
   'standing_status_update', 'standing_updated_at_update', 'standing_paused_at_update',
   'standing_revoked_at_update', 'standing_only_status_metadata_update',
-  'standing_authority_policies_present',
+  'standing_authority_policies_present', 'standing_authority_policy_set_exact',
   'approval_nonce_consumed_update', 'approval_nonce_only_consumed_update', 'issuer_rls_forced', 'issuer_policies_present',
   'issuer_policy_set_exact', 'issuer_policy_semantics_exact', 'no_public_issuer_policies'
 ]);
@@ -239,7 +244,7 @@ const REQUIRED_FALSE = Object.freeze([
   'owners_truncate', 'memberships_truncate', 'authorities_truncate', 'audit_truncate',
   'approval_nonce_table_update', 'approval_nonce_delete', 'approval_nonce_truncate',
   'approval_nonce_hash_update', 'approval_nonce_ref_update',
-  'standing_authorities_delete', 'standing_authorities_truncate'
+  'standing_authorities_table_update', 'standing_authorities_delete', 'standing_authorities_truncate'
 ]);
 function verifyAuthorityIssuerPreflight(row, config) {
   if (!row || row.current_role !== config.expectedRole || row.database_name !== config.databaseName) {
