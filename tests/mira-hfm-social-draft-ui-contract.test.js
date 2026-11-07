@@ -17,6 +17,12 @@ assert.match(html, /navigator\.clipboard\.writeText/);
 assert.match(html, /I manually published this in Facebook/);
 assert.match(html, /Copy is not Published/);
 assert.match(html, /Generate Today's Draft/);
+const hfmWorkflow = html.slice(markerIndex, scriptEnd);
+assert.equal((hfmWorkflow.match(/byId\("hfmV02GenerateDraft"\)\.addEventListener\("click"/g) || []).length, 1,
+  'Generate Draft must have exactly one click handler');
+assert.match(hfmWorkflow, /if \(generatingDraft\) return;/,
+  'Generate Draft must ignore a repeated click while a request is in flight');
+
 assert.match(html, /Mira never auto-publishes/);
 assert.match(html, /\/api\/hfm\/social-drafts\/generate-daily/);
 assert.match(html, /\/api\/hfm\/memory\/authorize/);
