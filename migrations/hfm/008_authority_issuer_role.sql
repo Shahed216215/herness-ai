@@ -141,7 +141,7 @@ CREATE POLICY hfm_authority_issuer_audit_insert
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND event_type = 'AUTHORITY_ISSUED'
+    AND event_type IN ('AUTHORITY_ISSUED','APPROVAL_TOKEN_ISSUED','APPROVAL_TOKEN_CONSUMED')
   );
 
 COMMENT ON ROLE mira_hfm_authority_issuer IS
