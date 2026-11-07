@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const sql = fs.readFileSync(
-  path.join(__dirname, '..', 'migrations', 'hfm', '007_memory_retrieval_runtime_role.sql'),
+  path.join(__dirname, '..', 'migrations', 'hfm', '010_memory_retrieval_runtime_role.sql'),
   'utf8'
 );
 
