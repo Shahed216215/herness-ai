@@ -298,7 +298,8 @@ async function getStandingReadAuthorityStatus(options = {}) {
       status: row ? 'STANDING_READ_AUTHORITY_FOUND' : 'STANDING_READ_AUTHORITY_NOT_FOUND',
       authority: row ? Object.freeze({
         standingAuthorityId: row.standing_authority_id,
-        authorityStatus: row.status,
+        authorityStatus: row.status !== 'REVOKED' && Date.parse(row.expires_at) <= Date.now()
+          ? 'EXPIRED' : row.status,
         purpose: row.purpose,
         validFrom: new Date(row.valid_from).toISOString(),
         expiresAt: new Date(row.expires_at).toISOString()
