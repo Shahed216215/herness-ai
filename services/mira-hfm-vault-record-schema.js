@@ -122,6 +122,13 @@ function validateClientVaultPayload(payload) {
     errors.push('client.fields_invalid');
   }
   validateScalar(payload, 'client', errors);
+  for (const key of keys) {
+    if (typeof payload[key] !== 'string') errors.push('client.' + key + '_must_be_string');
+  }
+  if (payload.status !== undefined &&
+      !['prospect', 'active', 'paused', 'completed', 'inactive', 'unknown'].includes(payload.status)) {
+    errors.push('client.status_invalid');
+  }
   if (!payload.clientName && !payload.clientId && !payload.organization) {
     errors.push('client.identity_required');
   }
@@ -168,6 +175,15 @@ function validateFinancialVaultPayload(payload) {
     errors.push('financial.fields_invalid');
   }
   validateScalar(payload, 'financial', errors);
+  for (const key of keys) {
+    if (key !== 'amount' && typeof payload[key] !== 'string') {
+      errors.push('financial.' + key + '_must_be_string');
+    }
+  }
+  if (payload.status !== undefined &&
+      !['pending', 'paid', 'overdue', 'refunded', 'cancelled', 'disputed', 'unknown'].includes(payload.status)) {
+    errors.push('financial.status_invalid');
+  }
   if (!payload.transactionReference && !payload.invoiceReference && !payload.counterparty) {
     errors.push('financial.reference_or_counterparty_required');
   }
