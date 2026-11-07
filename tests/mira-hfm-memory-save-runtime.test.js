@@ -115,6 +115,7 @@ function baseOptions(overrides = {}) {
     kind: 'knowledge_save', title: 'Pending source title',
     url: 'https://example.com/pending',
     content: 'Pending source content.',
+    userIntent: 'Remember this: Pending source content.',
     now: '2026-11-07T07:00:00.000Z'
   });
   let reviewReadRequest = null;
