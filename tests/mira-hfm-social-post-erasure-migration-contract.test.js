@@ -100,6 +100,6 @@ test('synthetic Neon writes require an exact separately approved test endpoint h
 });
 
 test('synthetic Neon workflow requires and passes the disposable endpoint host allowlist', () => {
-  assert.match(neonWorkflow, /MIRA_HFM_TEST_DATABASE_HOST: \$\{\{ vars\.MIRA_HFM_TEST_DATABASE_HOST \}\}/);
-  assert.match(neonWorkflow, /\|\| -z "\$\{MIRA_HFM_TEST_DATABASE_HOST:-\}"/);
+  assert.ok(neonWorkflow.includes('MIRA_HFM_TEST_DATABASE_HOST: ${{ vars.MIRA_HFM_TEST_DATABASE_HOST }}'));
+  assert.ok(neonWorkflow.includes('|| [ -z "${MIRA_HFM_TEST_DATABASE_HOST:-}" ]'));
 });
