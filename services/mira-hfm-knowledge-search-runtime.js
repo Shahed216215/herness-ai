@@ -12,6 +12,22 @@ function fail(code) {
 function queryTerms(value) {
   return new Set(String(value || '').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}_-]{1,}/gu) || []);
 }
+function extractKnowledgeTitle(record) {
+  const content = typeof record?.content === 'string' ? record.content.trim() : '';
+  if (content.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(content);
+      const candidate = parsed.title || parsed.record?.title || parsed.task?.title;
+      if (typeof candidate === 'string' && candidate.trim()) return candidate.trim().slice(0, 300);
+    } catch (_error) {
+      // Fall through to the first content line for non-JSON records.
+    }
+  }
+  const firstLine = content.split(/\r?\n/, 1)[0].trim();
+  const sourceId = typeof record?.source?.sourceId === 'string' ? record.source.sourceId : 'Untitled memory';
+  return (firstLine || sourceId).slice(0, 300);
+}
+
 function scoreRecord(query, record) {
   const tokens = queryTerms(query);
   if (!tokens.size) return 0;
@@ -67,7 +83,7 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
     .slice(0, limit)
     .map(({ record, score }) => ({
       id: record.memoryId,
-      title: (record.content.split(/\r?\n/, 1)[0].trim() || record.source.sourceId).slice(0, 300),
+      title: extractKnowledgeTitle(record),
       topic: '',
       category: 'Knowledge',
       type: 'knowledge',
@@ -95,4 +111,4 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
   });
 }
 
-module.exports = Object.freeze({ searchHfmKnowledge });
+module.exports = Object.freeze({ searchHfmKnowledge, extractKnowledgeTitle });
