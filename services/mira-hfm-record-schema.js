@@ -90,7 +90,7 @@ function validateCanonicalRecord(record) {
 
   const topKeys = [
     'schemaVersion', 'memoryId', 'projectId', 'recordType', 'content',
-    'source', 'timestamps', 'version', 'integrity', 'trust', 'access', 'lifecycle'
+    'source', 'provenance', 'timestamps', 'version', 'integrity', 'trust', 'access', 'lifecycle'
   ];
   hasOnlyKeys(record, topKeys, 'record', errors);
   for (const key of topKeys) {
@@ -126,6 +126,32 @@ function validateCanonicalRecord(record) {
       errors.push('record.source.sourceUrl.invalid');
     }
     if (!isRfc3339(record.source.observedAt)) errors.push('record.source.observedAt.invalid');
+  }
+
+  if (record.provenance !== undefined) {
+    if (!isPlainObject(record.provenance)) {
+      errors.push('record.provenance.object_required');
+    } else {
+      hasOnlyKeys(record.provenance, [
+        'collectionMethod', 'capturedAt', 'originalPublishedAt',
+        'verificationStatus', 'redactionApplied'
+      ], 'record.provenance', errors);
+      if (!['manual_copy', 'user_file_import', 'public_url_preview', 'web_search'].includes(record.provenance.collectionMethod)) {
+        errors.push('record.provenance.collectionMethod.invalid');
+      }
+      if (!isRfc3339(record.provenance.capturedAt)) errors.push('record.provenance.capturedAt.invalid');
+      if (!(record.provenance.originalPublishedAt === null ||
+          record.provenance.originalPublishedAt === undefined ||
+          isRfc3339(record.provenance.originalPublishedAt))) {
+        errors.push('record.provenance.originalPublishedAt.invalid');
+      }
+      if (!['SOURCE_RECORDED', 'SOURCE_REACHABLE', 'CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(record.provenance.verificationStatus)) {
+        errors.push('record.provenance.verificationStatus.invalid');
+      }
+      if (typeof record.provenance.redactionApplied !== 'boolean') {
+        errors.push('record.provenance.redactionApplied.invalid');
+      }
+    }
   }
 
   if (!isPlainObject(record.timestamps)) {
