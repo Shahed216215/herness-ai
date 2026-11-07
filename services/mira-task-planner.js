@@ -1038,5 +1038,6 @@ module.exports = {
   buildDeliverable,
   detectMissingRequirements,
   detectImpossibleTask,
-  normalizeUnderstandingTask
+  normalizeUnderstandingTask,
+  buildPlanFromUnderstanding
 };
