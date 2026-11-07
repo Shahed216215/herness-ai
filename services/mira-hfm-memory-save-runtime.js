@@ -21,22 +21,42 @@ function boundedText(value, max, code) {
   return value.trim();
 }
 
+function redactDailyActivityContent(value) {
+  return String(value || '')
+    .replace(/\b(?:api[_ -]?key|access[_ -]?token|password|passwd|secret|authorization|bearer)\b\s*(?:is|[:=])\s*[^\s,;]+/gi, '[credential omitted]')
+    .replace(/\b(?:sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{20,})\b/g, '[credential omitted]')
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email omitted]')
+    .replace(/(?:\+?\d[\d\s().-]{8,}\d)/g, '[phone/number omitted]')
+    .replace(/(?:BDT|USD|৳|\$)\s?[\d,]+(?:\.\d{1,2})?/gi, '[amount omitted]')
+    .replace(/\bhttps?:\/\/\S+/gi, '[link omitted]')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasVaultOnlyDailyActivityContent(value) {
+  return /\b(?:private key|client email|client phone|bank account|account number|card number|invoice number|transaction id|payment reference|contract text|contract clause)\b/i.test(String(value || ''));
+}
+
 function hasExplicitSaveIntent(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
   const text = value.toLowerCase();
   const positiveNegationException = /\b(?:don't|do not)\s+forget\s+to\s+(?:remember|save|store|keep)\b/i.test(text);
   const negative = !positiveNegationException && (
-    /\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,50}\b(?:remember|save|store|keep)\b/i.test(text) ||
+    /\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,50}\b(?:remember|save|store|keep|record|log)\b/i.test(text) ||
     /(?:মনে\s*রাখ(?:ো|বে|বেন)?\s*না|মনে\s*রেখো\s*না|সংরক্ষণ\s*কর(?:ো|বেন)?\s*না|সেভ\s*কর(?:ো|বেন)?\s*না|রাখবে\s*না)/u.test(value)
   );
   if (negative) return false;
   const english = /\bremember\s+(?:this|that|it)\b/i.test(value) ||
     /\b(?:save|store|keep|add)\b.{0,100}\b(?:to|in)\s+(?:(?:your|my)\s+|mira(?:'s)?\s+)?(?:memory|knowledge\s+base)\b/i.test(value) ||
-    /\b(?:save|store)\s+(?:this|that|it|the\s+learning)\s+(?:as|to|in)\s+(?:(?:your|my)\s+|mira(?:'s)?\s+)?(?:memory|knowledge\s+base)\b/i.test(value);
+    /\b(?:save|store)\s+(?:this|that|it|the\s+learning)\s+(?:as|to|in)\s+(?:(?:your|my)\s+|mira(?:'s)?\s+)?(?:memory|knowledge\s+base)\b/i.test(value) ||
+    /\b(?:save|store|record|log)\b.{0,100}\b(?:daily activity|daily work summary|activity log)\b/i.test(value);
   const bengali = /(?:মনে\s*রাখ(?:ো|বে|বেন|তে)?|মনে\s*রেখ(?:ো|ো))/u.test(value) ||
-    /(?:সংরক্ষণ|সেভ|রাখ).{0,60}(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস)|(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস).{0,60}(?:রাখ|সংরক্ষণ|সেভ)/u.test(value);
+    /(?:সংরক্ষণ|সেভ|রাখ).{0,60}(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস)|(?:মেমোরি|স্মৃতি|জ্ঞানভাণ্ডার|জ্ঞানভান্ডার|নলেজ\s*বেস).{0,60}(?:রাখ|সংরক্ষণ|সেভ)/u.test(value) ||
+    /(?:দৈনিক\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ)/u.test(value);
   return english || bengali;
 }
+
 
 function deriveIdempotencyKey(taskId, toolCallId, toolName) {
   const task = boundedText(taskId, 256, 'HFM_MEMORY_SAVE_TASK_ID_REQUIRED');
