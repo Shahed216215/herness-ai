@@ -379,7 +379,7 @@ function getStandingReadMemoryRecord(options = {}) {
     throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
   }
   if (context.resource !== expectedResource) {
-    throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+    throw fail('HFM_STANDING_READ_RESOURCE_SCOPE_INVALID');
   }
   const memoryId = boundedText(options.memoryId, 128, 'HFM_MEMORY_ID_INVALID');
   const recordTypes = options.recordTypes === undefined
