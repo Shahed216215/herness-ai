@@ -10,7 +10,7 @@ function fail(code) {
   throw error;
 }
 function queryTerms(value) {
-  return new Set(String(value || '').toLowerCase().match(/[a-z0-9][a-z0-9_-]{1,}/g) || []);
+  return new Set(String(value || '').toLowerCase().match(/[\\p{L}\\p{N}][\\p{L}\\p{N}_-]{1,}/gu) || []);
 }
 function scoreRecord(query, record) {
   const tokens = queryTerms(query);
@@ -67,13 +67,13 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
     .slice(0, limit)
     .map(({ record, score }) => ({
       id: record.memoryId,
-      title: record.source.sourceId,
+      title: record.source.sourceId.slice(0, 300),
       topic: '',
       category: 'Knowledge',
       type: 'knowledge',
-      url: record.source.sourceUrl || '',
-      source: record.source.sourceUrl || record.source.sourceId,
-      content: record.content,
+      url: typeof record.source.sourceUrl === 'string' ? record.source.sourceUrl.slice(0, 1000) : '',
+      source: (record.source.sourceUrl || record.source.sourceId).slice(0, 1000),
+      content: record.content.slice(0, 20000),
       savedAt: record.timestamps.createdAt,
       score,
       projectId: record.projectId,
