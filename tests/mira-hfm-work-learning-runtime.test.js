@@ -180,6 +180,34 @@ function makePreflight(records = [makeRecord()], overrides = {}) {
     preflight: makePreflight([makeRecord()], { hostAuthorizationContext: null })
   }), /HFM_WORK_LEARNING_PREFLIGHT_SNAPSHOT_REQUIRED/);
   console.log('HFM_WORK_LEARNING_MISSING_HOST_AUTHORIZATION_FAILS_CLOSED=PASS');
+
+  for (const invalidSnapshot of [
+    makePreflight([makeRecord()], { authorityExpiresAt: '2027-11-08T04:00:00.000000Z' }),
+    makePreflight([makeRecord()], { scanStartedAt: '2026-11-07T05:00:00.000001Z' }),
+    makePreflight([makeRecord()], { pageCount: 21 }),
+    makePreflight([makeRecord()], { candidateScanLimit: 100 }),
+    makePreflight([makeRecord()], {
+      hostAuthorizationContext: { ...hostAuthorizationContext, actorType: 'SERVICE' }
+    })
+  ]) {
+    await assert.rejects(() => retrieveHfmWorkLearning({
+      req, pool: {}, task, now,
+      env: {
+        MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
+        MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
+      },
+      preflight: invalidSnapshot
+    }), /HFM_WORK_LEARNING_PREFLIGHT_SNAPSHOT_REQUIRED/);
+  }
+  await assert.rejects(() => retrieveHfmWorkLearning({
+    req, pool: {}, task, now,
+    env: {
+      MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
+      MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
+    },
+    preflight: makePreflight([makeRecord(), makeRecord()])
+  }), /HFM_WORK_LEARNING_RECORD_SCOPE_INVALID/);
+  console.log('HFM_WORK_LEARNING_SNAPSHOT_SCOPE_TIME_AND_SCAN_LIMITS_VALIDATED=PASS');
   console.log('NETWORK_REQUESTS=0');
   console.log('MEMORY_WRITES=0');
   console.log('LOCAL_OR_DRIVE_FALLBACK=NO');
