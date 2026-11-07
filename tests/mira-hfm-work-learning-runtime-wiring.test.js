@@ -23,6 +23,12 @@ assert.throws(
   () => assertLegacyStorageDisabled({ MIRA_HFM_WORK_LEARNING_ENABLED: 'true' }),
   error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
 );
+for (const flag of ['MIRA_HFM_MEMORY_READ_ENABLED', 'MIRA_HFM_MEMORY_WRITE_ENABLED']) {
+  assert.throws(
+    () => assertLegacyStorageDisabled({ [flag]: 'true' }),
+    error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
+  );
+}
 const knowledgeStore = read('knowledge.js');
 const memoryStore = read('memory.js');
 const driveStore = read('google-drive.js');
@@ -200,6 +206,12 @@ assert.throws(
   () => assertLegacyLearningStorageAllowed({ MIRA_HFM_WORK_LEARNING_ENABLED: 'true' }),
   error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE'
 );
+for (const flag of ['MIRA_HFM_MEMORY_READ_ENABLED', 'MIRA_HFM_MEMORY_WRITE_ENABLED']) {
+  assert.throws(
+    () => assertLegacyLearningStorageAllowed({ [flag]: 'true' }),
+    error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE'
+  );
+}
 console.log('HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE=PASS');
 
 
