@@ -108,6 +108,21 @@ test('v1.2.0 accepts source_reference only with a validated private source paylo
     access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
   });
   assert.equal(validateCanonicalRecord(candidate).valid, true);
+  const trashedCopy = {
+    ...candidate,
+    lifecycle: 'TRASHED',
+    timestamps: { ...candidate.timestamps, updatedAt: '2026-11-07T12:01:00.000Z' },
+    trashedAt: undefined
+  };
+  assert.equal(validateCanonicalRecord(trashedCopy).valid, true);
+  const publicDailyActivity = record({
+    schemaVersion: SCHEMA_V1_2,
+    recordType: 'daily_activity',
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+  });
+  assert.ok(validateCanonicalRecord(publicDailyActivity).errors.includes(
+    'record.private_activity_learning_draft.must_be_PROJECT_PRIVATE'
+  ));
   const publicCopy = {
     ...candidate,
     access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
