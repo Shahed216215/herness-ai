@@ -13083,10 +13083,12 @@ document.querySelectorAll(
         " · Expires: " + expiry + " · ID: " + authority.standingAuthorityId;
       const active = authority.authorityStatus === "ACTIVE";
       const paused = authority.authorityStatus === "PAUSED";
+      const terminal = authority.authorityStatus === "REVOKED" ||
+        authority.authorityStatus === "EXPIRED";
       byId("hfmV02StandingPause").hidden = !active;
       byId("hfmV02StandingResume").hidden = !paused;
       byId("hfmV02StandingRevoke").hidden = !(active || paused);
-      byId("hfmV02StandingIssue").hidden = active || paused;
+      byId("hfmV02StandingIssue").hidden = !terminal;
     } catch (error) {
       standingAuthorityId = null;
       standingStatusNode.textContent = "Standing authority status unavailable: " + error.message;
