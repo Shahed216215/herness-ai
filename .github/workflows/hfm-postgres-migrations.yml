@@ -139,7 +139,7 @@ jobs:
             WHERE n.nspname = 'mira_hfm'
               AND c.relname IN (
                 'project_owners','project_memberships','operation_authorities',
-                'authority_audit_events','authority_approval_nonces','memory_records','bootstrap_registry'
+                'authority_audit_events','authority_approval_nonces','memory_records','bootstrap_registry','standing_read_authorities'
               )
               AND c.relrowsecurity AND c.relforcerowsecurity;
             IF protected_tables <> 8 THEN
