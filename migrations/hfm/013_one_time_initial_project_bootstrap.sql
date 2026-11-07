@@ -86,6 +86,8 @@ CREATE TABLE mira_hfm.bootstrap_registry (
   created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
+REVOKE ALL ON SCHEMA mira_hfm FROM mira_hfm_bootstrap_operator;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA mira_hfm FROM mira_hfm_bootstrap_operator;
 REVOKE ALL ON TABLE mira_hfm.bootstrap_registry FROM PUBLIC;
 REVOKE ALL ON TABLE mira_hfm.bootstrap_registry FROM mira_hfm_bootstrap_operator;
 REVOKE ALL ON TABLE
