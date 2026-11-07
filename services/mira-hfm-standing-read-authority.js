@@ -197,6 +197,10 @@ async function setStandingReadAuthorityStatus(options = {}) {
     await client.query("SET LOCAL lock_timeout = '3000ms'");
     await client.query("SELECT set_config('mira.project_id', $1, true)", [admin.projectId]);
     await client.query("SELECT set_config('mira.actor_id', $1, true)", [actor.actorId]);
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+      ["hfm-standing-read:" + admin.projectId + ":" + actor.actorId]
+    );
     const currentResult = await client.query(
       "SELECT standing_authority_id, status, expires_at, approval_ref " +
       "FROM mira_hfm.standing_read_authorities " +
