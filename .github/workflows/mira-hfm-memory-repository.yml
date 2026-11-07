@@ -7,6 +7,9 @@ on:
     paths:
       - "services/mira-hfm-memory-repository.js"
       - "services/mira-hfm-social-post-workflow.js"
+      - "routes/mira-hfm-social-posts.js"
+      - "services/mira-hfm-memory-writer-pool.js"
+      - "tests/mira-hfm-social-post-routes.test.js"
       - "migrations/hfm/006_social_post_manual_publish_payload_erasure.sql"
       - "tests/mira-hfm-social-post-workflow.test.js"
       - "tests/mira-hfm-social-post-erasure-migration-contract.test.js"
@@ -79,6 +82,8 @@ jobs:
           node --check services/mira-hfm-daily-knowledge-post.js
           node --check services/mira-hfm-authority-transaction.js
           node --check services/mira-hfm-social-post-workflow.js
+          node --check routes/mira-hfm-social-posts.js
+          node --check services/mira-hfm-memory-writer-pool.js
       - name: Run focused Memory repository tests
         run: |
           node tests/mira-hfm-authority-transaction.test.js
@@ -90,6 +95,7 @@ jobs:
           node tests/mira-hfm-memory-postgres-runtime.test.js
           node tests/mira-hfm-memory-writer-rls-migration-contract.test.js
           node tests/mira-hfm-social-post-workflow.test.js
+          node tests/mira-hfm-social-post-routes.test.js
           node tests/mira-hfm-social-post-erasure-migration-contract.test.js
       - name: Run full repository regression suite
         run: npm test
