@@ -65,6 +65,13 @@ test('payload erasure guards permit only payload fields to change', () => {
   assert.doesNotMatch(sql, /to_jsonb\(NEW\)\s*-\s*ARRAY/);
 });
 
+test('migration PL/pgSQL blocks use valid balanced dollar-quote delimiters', () => {
+  assert.doesNotMatch(sql, /^DO \$(?!\$)/m);
+  assert.doesNotMatch(sql, /^\$;$/m);
+  assert.equal((sql.match(/^DO \$\$/gm) || []).length,
+    (sql.match(/^\$\$;$/gm) || []).length);
+});
+
 test('provenance retention migration is source-only and retains only allowlisted metadata', () => {
   assert.match(provenanceSql, /SOURCE-ONLY/i);
   assert.match(provenanceSql, /memory_social_post_state/);
