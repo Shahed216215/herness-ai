@@ -84,7 +84,7 @@ function createVaultDigestCandidates(canonicalText, env = process.env) {
   const activeVersion = activeKeyVersion(env);
   const versions = Object.keys(env || {})
     .filter(name => /^MIRA_VAULT_KEK_V[1-9][0-9]*$/.test(name))
-    .map(name => name.slice('MIRA_VAULT_KEK_'.length));
+    .map(name => name.slice('MIRA_VAULT_KEK_'.length).toLowerCase());
   if (!versions.includes(activeVersion)) versions.push(activeVersion);
   versions.sort((a, b) => Number(b.slice(1)) - Number(a.slice(1)));
   const ordered = [activeVersion, ...versions.filter(version => version !== activeVersion)];
