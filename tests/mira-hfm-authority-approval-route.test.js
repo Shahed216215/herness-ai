@@ -110,7 +110,7 @@ async function invoke(req, runtime = async () => ({
     session: {
       authenticated: true, role: 'admin',
       hfmPrincipal: { verified: true },
-      hfmProjectBinding: { verified: true },
+      hfmProjectBinding: { verified: true, projectId: 'project-alpha' },
       hfmPendingMemoryAuthority: { projectId: 'project-alpha' },
       save(callback) { callback(null); }
     }
