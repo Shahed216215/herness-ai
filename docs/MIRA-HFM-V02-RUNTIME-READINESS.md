@@ -487,6 +487,7 @@ Three source-only proposals are present and explicitly NOT APPROVED / NOT IMPLEM
 - `HFM-KNOWLEDGE-REVIEW-AND-TRUST-PROMOTION-CONTRACT-PROPOSAL-20261107.md`
 - `HFM-CANONICAL-CONVERSATION-TRANSCRIPT-PERSISTENCE-PROPOSAL-20261107.md`
 - `HFM-SOURCE-REFERENCE-RECORD-CONTRACT-PROPOSAL-20261107.md`
+- `HFM-RESTRICTED-VAULT-WRITER-CONTRACT-PROPOSAL-20261107.md`
 
 Until the corresponding contracts are approved and implemented:
 - Knowledge/Learning review remains read-only; `promotionSupported: false`, `writeAllowed: false`.
