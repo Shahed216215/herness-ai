@@ -25,6 +25,11 @@ assert.throws(() => runtime.getMemoryReadConfig({
   MIRA_HFM_MEMORY_READ_DATABASE_URL: 'postgresql://reader:secret@db.example.com/neondb?sslmode=require'
 }), error => error.code === 'DATABASE_HOST_NOT_ALLOWLISTED');
 console.log('MEMORY_READ_CONFIG_FAILS_CLOSED=PASS');
+assert.match(runtime.PREFLIGHT_SQL, /reader_actor_scope_policies_present/);
+assert.match(runtime.PREFLIGHT_SQL, /hfm_reader_memory_membership_authority_scope/);
+assert.match(runtime.PREFLIGHT_SQL, /standing_read_scope_policy_present/);
+assert.match(runtime.PREFLIGHT_SQL, /permissive = 'RESTRICTIVE'/);
+console.log('MEMORY_READ_PREFLIGHT_REQUIRES_ACTOR_BOUND_STANDING_RLS=PASS');
 
 function preflightRow(overrides = {}) {
   return {
