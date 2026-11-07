@@ -6,6 +6,7 @@ const fakeReadMemory = async options => {
   retrievalCalls += 1;
   assert.equal(options.authorityGrant.authorityId, 'authority-001');
   assert.equal(options.limit, 25);
+  assert.equal(options.recordType, 'social_post_draft');
   return {
     status: 'AUTHORIZED_AND_COMMITTED',
     projectId: 'project-alpha',
@@ -27,7 +28,7 @@ function makeReq(overrides = {}) {
       if (name === 'host') return 'mira.example';
       return undefined;
     },
-    body: { limit: 25 },
+    body: { limit: 25, recordType: 'social_post_draft' },
     session: {
       authenticated: true,
       role: 'admin',
