@@ -41,3 +41,27 @@ test('HTTP route source contains no Facebook login, API publishing or external F
   assert.match(source, /userConfirmedDelete === true/);
   assert.match(source, /executeWithConsumedAuthority/);
 });
+
+test('unverified browser identity is rejected before writer-pool access', async () => {
+  const { app, routes } = fakeApp();
+  let poolCalls = 0;
+  const auth = (_req, _res, next) => next();
+  registerRoutes(app, auth, { getPool: async () => { poolCalls += 1; return null; } });
+  const route = routes.find(x => x.method === 'get' && x.path === '/api/hfm/social-posts');
+  const handler = route.handlers[route.handlers.length - 1];
+  const response = {
+    statusCode: 200,
+    payload: null,
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.payload = value; return this; }
+  };
+  await handler({
+    query: { projectId: 'project-001', authorityId: 'authority-001', requestId: 'request-001' },
+    session: null,
+    role: 'user',
+    sessionID: null
+  }, response);
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.payload.code, 'HFM_TRUSTED_ACTOR_REQUIRED');
+  assert.equal(poolCalls, 0);
+});
