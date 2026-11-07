@@ -1836,6 +1836,15 @@
               </div>
             </div>
 
+            <button
+              id="adminKnowledgeLoadMore"
+              class="secondary-button hidden"
+              type="button"
+              style="margin-top:12px;"
+            >
+              Load more
+            </button>
+
             <div
               id="adminKnowledgeEditor"
               class="hidden"
@@ -8651,6 +8660,14 @@ document.querySelectorAll(
         "adminKnowledgeResults"
       );
 
+    const adminKnowledgeLoadMore =
+      document.getElementById(
+        "adminKnowledgeLoadMore"
+      );
+
+    let adminKnowledgeNextCursor = null;
+    let adminKnowledgeActiveQuery = "";
+
     const adminKnowledgeEditor =
       document.getElementById(
         "adminKnowledgeEditor"
@@ -8712,17 +8729,20 @@ document.querySelectorAll(
       );
     }
 
-    function renderAdminKnowledgeResults(results) {
+    function renderAdminKnowledgeResults(results, append = false) {
       if (!adminKnowledgeResults) {
         return;
       }
 
-      adminKnowledgeResults.innerHTML = "";
+      if (!append) {
+        adminKnowledgeResults.innerHTML = "";
+      }
 
       if (!Array.isArray(results) || !results.length) {
-        adminKnowledgeResults.innerHTML =
-          '<div class="muted">No Knowledge entries found.</div>';
-
+        if (!append) {
+          adminKnowledgeResults.innerHTML =
+            '<div class="muted">No matching entries on this page.</div>';
+        }
         return;
       }
 
@@ -8825,6 +8845,44 @@ document.querySelectorAll(
       });
     }
 
+    async function requestAdminKnowledgePage(cursor, append) {
+      const cursorQuery = cursor
+        ? "&cursor=" + encodeURIComponent(cursor)
+        : "";
+      const data = await api(
+        "/api/admin/knowledge/search?q=" +
+        encodeURIComponent(adminKnowledgeActiveQuery) +
+        "&limit=20" + cursorQuery
+      );
+
+      renderAdminKnowledgeResults(data.results || [], append);
+      adminKnowledgeNextCursor =
+        typeof data.nextCursor === "string" && data.nextCursor
+          ? data.nextCursor
+          : null;
+
+      if (adminKnowledgeLoadMore) {
+        adminKnowledgeLoadMore.classList.toggle(
+          "hidden",
+          !adminKnowledgeNextCursor
+        );
+      }
+
+      if (adminKnowledgeStatus) {
+        const scanned = Number.isInteger(data.candidateScanCount)
+          ? data.candidateScanCount
+          : null;
+        const coverage = data.candidateScanMayBeIncomplete === true
+          ? " More eligible records are available."
+          : (scanned !== null ? " Search scan complete." : "");
+        adminKnowledgeStatus.textContent =
+          (data.count ?? 0) + " matching entries on this page." +
+          (scanned !== null ? " Scanned " + scanned + " eligible records." : "") +
+          coverage;
+      }
+      return data;
+    }
+
     async function searchAdminKnowledge() {
       clearAdminKnowledgeMessages();
 
@@ -8840,27 +8898,20 @@ document.querySelectorAll(
         return;
       }
 
+      adminKnowledgeActiveQuery = query;
+      adminKnowledgeNextCursor = null;
+      if (adminKnowledgeLoadMore) {
+        adminKnowledgeLoadMore.classList.add("hidden");
+        adminKnowledgeLoadMore.disabled = false;
+      }
+
       if (adminKnowledgeStatus) {
         adminKnowledgeStatus.textContent =
           "Searching Knowledge…";
       }
 
       try {
-        const data =
-          await api(
-            `/api/admin/knowledge/search?q=${encodeURIComponent(
-              query
-            )}&limit=20`
-          );
-
-        renderAdminKnowledgeResults(
-          data.results || []
-        );
-
-        if (adminKnowledgeStatus) {
-          adminKnowledgeStatus.textContent =
-            `${data.count ?? 0} Knowledge entries found.`;
-        }
+        await requestAdminKnowledgePage(null, false);
       } catch (error) {
         showAdminKnowledgeError(
           error.message ||
@@ -8869,6 +8920,33 @@ document.querySelectorAll(
 
         if (adminKnowledgeStatus) {
           adminKnowledgeStatus.textContent = "";
+        }
+        if (adminKnowledgeLoadMore) {
+          adminKnowledgeLoadMore.classList.add("hidden");
+        }
+      }
+    }
+
+    async function loadMoreAdminKnowledge() {
+      if (!adminKnowledgeNextCursor || !adminKnowledgeActiveQuery) {
+        return;
+      }
+      const cursor = adminKnowledgeNextCursor;
+      if (adminKnowledgeLoadMore) {
+        adminKnowledgeLoadMore.disabled = true;
+      }
+      if (adminKnowledgeStatus) {
+        adminKnowledgeStatus.textContent = "Loading the next Knowledge page…";
+      }
+      try {
+        await requestAdminKnowledgePage(cursor, true);
+      } catch (error) {
+        showAdminKnowledgeError(
+          error.message || "The next Knowledge page could not be loaded."
+        );
+      } finally {
+        if (adminKnowledgeLoadMore) {
+          adminKnowledgeLoadMore.disabled = false;
         }
       }
     }
@@ -9158,6 +9236,13 @@ document.querySelectorAll(
       adminKnowledgeSearchButton.addEventListener(
         "click",
         searchAdminKnowledge
+      );
+    }
+
+    if (adminKnowledgeLoadMore) {
+      adminKnowledgeLoadMore.addEventListener(
+        "click",
+        loadMoreAdminKnowledge
       );
     }
 
