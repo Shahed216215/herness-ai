@@ -76,6 +76,7 @@ test("authorized operation locks owner, membership, authority; consumes and audi
     async perform(client, context) {
       callbackClient = client;
       assert.equal(context.actorId, actorId);
+      assert.equal(context.projectOwnerActorId, owner.owner_actor_id);
       assert.equal(context.authorityContext, 'HFM_CONSUMED_ONE_TIME_AUTHORITY');
       assert.equal(context.resource, request.resource);
       assert.equal(context.purpose, request.purpose);

@@ -23,6 +23,7 @@ function validateWorkflowContext(context, operation, memoryId) {
   if (!context || context.authorityContext !== AUTHORITY_CONTEXT ||
       typeof context.actorId !== 'string' || !context.actorId.startsWith('mira:') ||
       typeof context.projectId !== 'string' || !context.projectId ||
+      context.projectOwnerActorId !== context.actorId ||
       context.operation !== operation ||
       context.resource !== 'memory:' + memoryId ||
       typeof context.requestId !== 'string' || !context.requestId) {

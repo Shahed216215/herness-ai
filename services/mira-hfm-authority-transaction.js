@@ -136,6 +136,7 @@ async function executeWithConsumedAuthority(options = {}) {
     // All protected database reads/writes must use this same client/transaction.
     const value = await options.perform(client, Object.freeze({
       actorId: trustedActor.actorId,
+      projectOwnerActorId: owner.owner_actor_id,
       projectId: request.projectId,
       operation: request.operation,
       resource: request.resource,
