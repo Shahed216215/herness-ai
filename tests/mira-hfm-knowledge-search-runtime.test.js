@@ -80,6 +80,31 @@ const verifiedLearning = {
   assert.equal(result.driveFallback, false);
   console.log('HFM_KNOWLEDGE_SEARCH_INCLUDES_VERIFIED_LEARNING_NOTES=PASS');
 
+  const manyRecords = Array.from({ length: 100 }, (_, index) => ({
+    ...knowledge,
+    memoryId: 'mem-scan-bound-' + String(index).padStart(3, '0')
+  }));
+  const boundedScan = await searchHfmKnowledge({
+    req: { session: { hfmPrincipal: { verified: true } } },
+    pool: { connect: async () => ({}) },
+    query: 'Python automation',
+    limit: 5,
+    now,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readMemory: async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId,
+      records: manyRecords,
+      standingAuthority: true,
+      approvalRequiredPerRead: false,
+      hostAuthorizationContext
+    })
+  });
+  assert.equal(boundedScan.candidateScanCount, 100);
+  assert.equal(boundedScan.candidateScanLimit, 100);
+  assert.equal(boundedScan.candidateScanMayBeIncomplete, true);
+  console.log('HFM_KNOWLEDGE_SEARCH_DISCLOSES_FULL_PAGE_SCAN_LIMIT=PASS');
+
   await assert.rejects(() => searchHfmKnowledge({
     req: {}, pool: {}, query: 'Python',
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'false' }
