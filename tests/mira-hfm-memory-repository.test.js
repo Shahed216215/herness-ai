@@ -436,9 +436,16 @@ test('standing-read exact record lookup is project, type, lifecycle, trust and i
     );
   }
   console.log('HFM_REPOSITORY_STANDING_READ_REVALIDATES_RETURNED_ROW=PASS');
+  let invalidScopeQueryCalled = false;
+  const invalidScopeClient = fakeClient({
+    query: async () => {
+      invalidScopeQueryCalled = true;
+      return { rowCount: 0, rows: [] };
+    }
+  });
   assert.throws(
     () => repository.getStandingReadMemoryRecord({
-      client,
+      client: invalidScopeClient,
       context: { ...context, operation: 'memory.read', resource: 'memory:other', authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY' },
       memoryId: expected.memoryId,
       recordTypes: ['knowledge_item'],
@@ -446,6 +453,8 @@ test('standing-read exact record lookup is project, type, lifecycle, trust and i
     }),
     error => error.code === 'HFM_STANDING_READ_RESOURCE_SCOPE_INVALID'
   );
+  assert.equal(invalidScopeQueryCalled, false, 'invalid resource scope is rejected before querying the repository');
+  console.log('HFM_REPOSITORY_STANDING_READ_RESOURCE_SCOPE_REJECTED_BEFORE_QUERY=PASS');
   assert.throws(
     () => repository.getStandingReadMemoryRecord({
       client,
