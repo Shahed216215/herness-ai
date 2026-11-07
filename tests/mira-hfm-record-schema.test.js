@@ -2,9 +2,11 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { buildUserSuppliedSourceReferencePayload } = require('../services/mira-hfm-source-reference-schema');
 const {
   SCHEMA_V1,
   SCHEMA_V1_1,
+  SCHEMA_V1_2,
   validateCanonicalRecord,
   createContentHash
 } = require('../services/mira-hfm-record-schema');
@@ -79,6 +81,44 @@ test('v1.1.0 rejects unapproved source_reference and preserves research_referenc
   });
   assert.equal(validateCanonicalRecord(legacy).valid, true);
   assert.equal(legacy.recordType, 'research_reference');
+});
+
+test('v1.2.0 accepts source_reference only with a validated private source payload', () => {
+  const payload = buildUserSuppliedSourceReferencePayload({
+    url: 'https://example.com/article?token=secret',
+    sourceType: 'web',
+    provenanceActor: 'mira:mira.admins:admin-001',
+    provenanceEventId: 'evt-' + 'c'.repeat(64),
+    retrievedAt: '2026-11-07T12:00:00.000Z'
+  });
+  const content = JSON.stringify(payload);
+  const candidate = record({
+    schemaVersion: SCHEMA_V1_2,
+    recordType: 'source_reference',
+    content,
+    source: {
+      sourceType: 'web',
+      sourceId: payload.sourceId,
+      sourceUrl: payload.canonicalUrl,
+      observedAt: payload.retrievedAt
+    },
+    version: { revision: 1, contentHash: createContentHash(content) },
+    trust: { status: 'SOURCE_RECORDED' },
+    lifecycle: 'ACTIVE',
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
+  });
+  assert.equal(validateCanonicalRecord(candidate).valid, true);
+  const publicCopy = {
+    ...candidate,
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+  };
+  assert.ok(validateCanonicalRecord(publicCopy).errors.includes('record.source_reference.must_be_PROJECT_PRIVATE'));
+  const invalidPayload = {
+    ...candidate,
+    content: JSON.stringify({ ...payload, unexpected: true }),
+    version: { revision: 1, contentHash: createContentHash(JSON.stringify({ ...payload, unexpected: true })) }
+  };
+  assert.equal(validateCanonicalRecord(invalidPayload).valid, false);
 });
 
 test('v1.1.0 accepts daily activity, learning, knowledge, and social draft record families', () => {
