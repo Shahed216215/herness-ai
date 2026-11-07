@@ -375,6 +375,15 @@ const pool = { async connect() { return client; } };
   ), 'failed protected retrieval is audited independently after rollback');
   console.log('HFM_STANDING_READ_FAILED_RETRIEVAL_IS_AUDITED=PASS');
 
+  const authorityLifecycle = fs.readFileSync(
+    path.join(__dirname, '..', 'services/mira-hfm-standing-read-authority.js'), 'utf8'
+  );
+  assert.match(authorityLifecycle, /\(expires_at > clock_timestamp\(\)\) AS is_live/);
+  assert.match(authorityLifecycle, /if \(prior && prior\.is_live === true\)/);
+  assert.match(authorityLifecycle, /if \(current\.is_live !== true\) fail\('HFM_STANDING_READ_AUTHORITY_EXPIRED'\)/);
+  assert.doesNotMatch(authorityLifecycle, /Date\.parse\((?:prior|current)\.expires_at\)/);
+  console.log('HFM_STANDING_READ_LIFECYCLE_EXPIRY_USES_DATABASE_MICROSECOND_PRECISION=PASS');
+
   const migration = fs.readFileSync(
     path.join(__dirname, '..', 'migrations/hfm/014_standing_read_authority_365_days.sql'), 'utf8'
   );
