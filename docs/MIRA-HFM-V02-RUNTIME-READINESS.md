@@ -52,11 +52,10 @@ Feature flags must remain disabled until database readiness, target mapping, rol
 2. Migration 006 defines the project-selection NOLOGIN group role and its two read-only RLS policies.
 3. Migration 007 defines the separate Memory retrieval NOLOGIN role and its narrowly scoped SELECT / authority-consumption / audit-insert privileges.
 4. Migration 008 defines the separate NOLOGIN authority-issuer role, active owner/membership reads, and narrowly scoped insertion for the four allowlisted Memory operations.
-
-6. Migration 010 defines the one-time initial-project bootstrap latch and insert-only owner/membership/audit path. It does not seed or import Memory.
 5. Migration 009 defines the forced-RLS hashed nonce registry. The issuer can SELECT/INSERT scoped nonce rows and update only `consumed_at`; it cannot update nonce identity/scope fields, DELETE, or TRUNCATE.
-6. Separately provision a dedicated LOGIN role for each runtime group role. Each login must inherit only its matching NOLOGIN group role, must not own database objects, and must have no elevated privileges.
-7. Configure the application with the matching dedicated credentials and exact target database. Runtime preflights must verify database identity, role identity, effective privileges, RLS and exact policies before the routes can operate.
+6. Migration 010 defines the one-time initial-project bootstrap latch and insert-only owner/membership/audit path. It does not seed or import Memory.
+7. Separately provision a dedicated LOGIN role for each runtime group role. Each login must inherit only its matching NOLOGIN group role, must not own database objects, and must have no elevated privileges.
+8. Configure the application with the matching dedicated credentials and exact target database. Runtime preflights must verify database identity, role identity, effective privileges, RLS and exact policies before the routes can operate.
 
 Migrations 007–010 are source-only drafts. Do not execute them until the target database is unambiguously mapped, a backup/recovery point is confirmed, and explicit staging approval is obtained.
 
