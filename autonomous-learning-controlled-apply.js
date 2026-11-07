@@ -228,10 +228,10 @@ function createVerifiedSnapshot({
 }
 
 async function applyAutonomousLearningControlled({
-  assertLegacyStorageDisabled();
   changeId,
   actor = "system-admin"
 } = {}) {
+  assertLegacyStorageDisabled();
   if (
     typeof changeId !== "string" ||
     changeId.trim() === ""
