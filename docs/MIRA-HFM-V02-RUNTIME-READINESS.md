@@ -435,7 +435,7 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 
 ## 2. Current CI evidence
 
-<escape>**9/9 PASS**</escape> on clean branch head `580f56e091cee28e5612d077ee29d8fbf66b4f15`.
+**9/9 PASS** on clean branch head `580f56e091cee28e5612d077ee29d8fbf66b4f15`.
 
 - HFM runtime foundation contract
 - HFM Memory repository contracts
