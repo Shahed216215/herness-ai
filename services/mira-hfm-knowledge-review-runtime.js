@@ -76,7 +76,7 @@ async function listPendingHfmKnowledgeForReview({
 
   const memory = await readMemory({
     pool, req, authorityGrant: authority.grant,
-    recordTypes: ['knowledge_item'], lifecycle: 'PENDING_REVIEW',
+    recordTypes: ['knowledge_item', 'learning_note'], lifecycle: 'PENDING_REVIEW',
     limit, env, now
   });
   if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
@@ -92,7 +92,7 @@ async function listPendingHfmKnowledgeForReview({
 
   const items = memory.records
     .filter(record => record && record.projectId === binding.projectId &&
-      record.recordType === 'knowledge_item' &&
+      ['knowledge_item', 'learning_note'].includes(record.recordType) &&
       record.lifecycle === 'PENDING_REVIEW' &&
       record.trust?.status === 'SOURCE_RECORDED' &&
       record.integrity?.status === 'VERIFIED' &&
@@ -100,6 +100,7 @@ async function listPendingHfmKnowledgeForReview({
     .slice(0, limit)
     .map(record => Object.freeze({
       id: record.memoryId,
+      recordType: record.recordType,
       title: extractKnowledgeTitle(record),
       content: record.content.slice(0, 10000),
       sourceUrl: safeReviewSourceUrl(record.source?.sourceUrl),
