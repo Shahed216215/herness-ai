@@ -64,9 +64,8 @@ async function retrieveHfmWorkLearning(options = {}) {
   if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true') {
     fail('HFM_WORK_LEARNING_STANDING_AUTHORITY_DISABLED');
   }
-  const readMemory = options.readMemory || retrieveProjectMemory;
   const bridge = options.bridge || retrieveProjectScopedWorkLearning;
-  if (typeof readMemory !== 'function' || typeof bridge !== 'function') {
+  if (typeof bridge !== 'function') {
     fail('HFM_WORK_LEARNING_RUNTIME_DEPENDENCY_INVALID');
   }
   const task = options.task && typeof options.task === 'object' ? options.task : {};
