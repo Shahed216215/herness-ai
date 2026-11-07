@@ -24,6 +24,8 @@ function page(records, nextCursor = null, overrides = {}) {
     localFallback: false,
     driveFallback: false,
     projectId: 'project-alpha',
+    standingAuthorityId: context.authorityRef,
+    authorityExpiresAt: context.expiresAt,
     hostAuthorizationContext: context,
     scanStartedAt,
     records,
