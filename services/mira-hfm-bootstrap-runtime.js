@@ -68,7 +68,14 @@ SELECT
       AND d.refobjid = (SELECT oid FROM pg_roles WHERE rolname = $1)
       AND d.deptype = 'o'
   ) AS bootstrap_group_owns_no_objects,
+  NOT EXISTS (
+    SELECT 1 FROM pg_shdepend d
+    WHERE d.refclassid = 'pg_authid'::regclass
+      AND d.refobjid = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+      AND d.deptype = 'o'
+  ) AS login_role_owns_no_objects,
   has_schema_privilege(current_user, 'mira_hfm', 'USAGE') AS schema_usage,
+  has_schema_privilege(current_user, 'mira_hfm', 'CREATE') AS schema_create,
   has_table_privilege(current_user, 'mira_hfm.bootstrap_registry', 'INSERT') AS latch_insert,
   has_table_privilege(current_user, 'mira_hfm.project_owners', 'INSERT') AS owners_insert,
   has_table_privilege(current_user, 'mira_hfm.project_memberships', 'INSERT') AS memberships_insert,
@@ -134,7 +141,7 @@ WHERE r.rolname = current_user
 const REQUIRED_TRUE = Object.freeze([
   'has_bootstrap_group', 'role_membership_isolated',
   'bootstrap_group_has_no_parent_roles', 'bootstrap_group_least_privilege',
-  'bootstrap_group_owns_no_objects', 'inherits_roles', 'can_login',
+  'bootstrap_group_owns_no_objects', 'login_role_owns_no_objects', 'inherits_roles', 'can_login',
   'schema_usage', 'latch_insert', 'owners_insert', 'memberships_insert',
   'audit_insert', 'audit_sequence_usage', 'bootstrap_rls_forced',
   'bootstrap_policies_present', 'bootstrap_policy_semantics_exact',
