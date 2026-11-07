@@ -11,6 +11,8 @@ This is a migration identity collision, not a harmless filename difference. A fr
 
 ## Conflicting migration identities
 
+Migration 006 also has competing source definitions: this runtime branch uses `006_project_selection_read_policy.sql`, while the separate Memory Core branch contains `006_social_post_manual_publish_payload_erasure.sql`. Neither was present in the previously verified applied Neon production set. The social-post payload-erasure migration was not applicable to the inspected target because its prerequisite state table/columns were absent. Keep the project-selection policy as the active 006 source for this runtime branch; keep the social-post erasure migration deferred and do not merge both under the same ID.
+
 | Migration ID | Previously applied Neon production lineage | Runtime-integration branch |
 |---|---|---|
 | 007 | `007_authority_issuer_role.sql` — creates the authority issuer capability role and project-scoped issuer policies | `007_memory_retrieval_runtime_role.sql` — creates a dedicated Memory reader role |
