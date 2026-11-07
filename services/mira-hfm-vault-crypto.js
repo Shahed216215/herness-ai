@@ -77,6 +77,39 @@ function activeKeyVersion(env) {
   return version;
 }
 
+function createVaultDigestCandidates(canonicalText, env = process.env) {
+  if (typeof canonicalText !== 'string' || !canonicalText) {
+    throw fail('MIRA_VAULT_DIGEST_INPUT_INVALID');
+  }
+  const activeVersion = activeKeyVersion(env);
+  const versions = Object.keys(env || {})
+    .filter(name => /^MIRA_VAULT_KEK_V[1-9][0-9]*$/.test(name))
+    .map(name => name.slice('MIRA_VAULT_KEK_'.length));
+  if (!versions.includes(activeVersion)) versions.push(activeVersion);
+  versions.sort((a, b) => Number(b.slice(1)) - Number(a.slice(1)));
+  const ordered = [activeVersion, ...versions.filter(version => version !== activeVersion)];
+  const digests = [];
+  for (const version of ordered) {
+    const kek = resolveKey(version, env);
+    let derived;
+    try {
+      derived = Buffer.from(crypto.hkdfSync(
+        'sha256',
+        kek,
+        Buffer.from('mira-hfm-idempotency-digest-salt-v1', 'utf8'),
+        Buffer.from('mira-hfm-idempotency-digest-v1', 'utf8'),
+        32
+      ));
+      digests.push(crypto.createHmac('sha256', derived)
+        .update(canonicalText, 'utf8').digest('hex'));
+    } finally {
+      kek.fill(0);
+      if (derived) derived.fill(0);
+    }
+  }
+  return Object.freeze({ activeDigest: digests[0], candidates: Object.freeze(digests) });
+}
+
 function payloadAad(context) {
   return Buffer.from(JSON.stringify([
     'mira-hfm-vault-payload',
@@ -245,5 +278,6 @@ module.exports = Object.freeze({
   MAX_PLAINTEXT_BYTES,
   validateContext,
   createVaultEnvelope,
-  decryptVaultEnvelope
+  decryptVaultEnvelope,
+  createVaultDigestCandidates
 });
