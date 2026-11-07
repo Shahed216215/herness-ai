@@ -68,7 +68,7 @@ Migrations 007–010 are source-only drafts. Do not execute them until the targe
 - HFM runtime feature flags and database credentials remain disabled/unconfigured in Render; no live HFM read/write/trash/restore has been verified.
 - The manual social-draft UI is implemented but cannot function against the live service until the database and runtime gates above are completed.
 - The staging-to-Render production Neon target cannot be conclusively mapped while duplicate Neon projects exist. Do not guess which project is production.
-- Legacy Memory and Knowledge consumers remain in service. The retrieval callsite inventory reports REVIEW_REQUIRED; they must be migrated in bounded groups with explicit behavior tests before HFM becomes the source of truth.
+- Legacy Memory and Knowledge consumers remain in service. The retrieval callsite inventory reports 36 calls across 15 files, all requiring review. The Work Learning bridge is currently defined and unit-tested but has no runtime callsite in `server.js` or `services/learning.js`; those paths still call legacy `searchKnowledge`. Do not describe the bridge as integrated into live learning until a caller is wired and behavior tests prove the HFM eligibility/authorization boundary. Migrate consumers in bounded groups with explicit behavior tests before HFM becomes the source of truth.
 - A successful synthetic test does not prove a live Neon policy, credential, session-store, or Render environment is correct.
 
 ## Staging database read-only inspection
