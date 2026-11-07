@@ -71,6 +71,10 @@ const client = {
     if (sql.startsWith('UPDATE mira_hfm.authority_approval_nonces')) {
       return { rowCount: 1, rows: [] };
     }
+    if (sql.includes('FROM mira_hfm.standing_read_authorities') &&
+        sql.includes('SELECT standing_authority_id, status, expires_at, approval_ref')) {
+      return { rows: [], rowCount: 0 };
+    }
     if (sql.includes('FROM mira_hfm.standing_read_authorities')) {
       return { rows: [standingRow], rowCount: 1 };
     }
