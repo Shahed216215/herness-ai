@@ -14,9 +14,9 @@ function sameOriginRequest(req) {
   }
 }
 
-function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin) {
+function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, issueAuthority = approveAndIssueMemoryReadAuthority) {
   if (!app || typeof app.post !== 'function' ||
-      typeof getRuntime !== 'function' || typeof requireAdmin !== 'function') {
+      typeof getRuntime !== 'function' || typeof requireAdmin !== 'function' || typeof issueAuthority !== 'function') {
     throw new TypeError('HFM_AUTHORITY_APPROVAL_ROUTE_DEPENDENCIES_REQUIRED');
   }
 
@@ -46,7 +46,7 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin) {
             !runtime.pool || typeof runtime.pool.connect !== 'function') {
           return res.status(503).json({ success: false, error: 'HFM authority issuer is not ready.' });
         }
-        const result = await approveAndIssueMemoryReadAuthority({
+        const result = await issueAuthority({
           req,
           pool: runtime.pool,
           env: process.env,
