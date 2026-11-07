@@ -325,6 +325,7 @@ async function reviseMemoryRecord(options = {}) {
       nextRecord.schemaVersion !== row.schema_version ||
       nextRecord.access.classification !== row.classification ||
       nextRecord.lifecycle !== row.lifecycle ||
+      nextRecord.trust.status !== row.trust_status ||
       nextRecord.timestamps.createdAt !== new Date(row.created_at).toISOString() ||
       nextRecord.version.revision !== Number(row.revision) + 1 ||
       Date.parse(nextRecord.timestamps.updatedAt) <= Date.parse(row.updated_at)) {
@@ -334,11 +335,11 @@ async function reviseMemoryRecord(options = {}) {
   const payload = storedPayload(nextRecord, row.owner_actor_id, options.env || process.env);
   await insertVersion(client, nextRecord, row.owner_actor_id, payload);
   const update = await client.query(
-    'UPDATE mira_hfm.memory_records SET revision = $3, integrity_status = $4, trust_status = $5, ' +
-    'public_payload = $6::jsonb, encrypted_envelope = $7::jsonb, updated_at = $8 ' +
-    'WHERE project_id = $1 AND memory_id = $2 AND revision = $9 RETURNING memory_id',
+    'UPDATE mira_hfm.memory_records SET revision = $3, integrity_status = $4, ' +
+    'public_payload = $5::jsonb, encrypted_envelope = $6::jsonb, updated_at = $7 ' +
+    'WHERE project_id = $1 AND memory_id = $2 AND revision = $8 RETURNING memory_id',
     [context.projectId, memoryId, nextRecord.version.revision,
-      nextRecord.integrity.status, nextRecord.trust.status,
+      nextRecord.integrity.status,
       payload.publicPayload === null ? null : JSON.stringify(payload.publicPayload),
       payload.encryptedEnvelope === null ? null : JSON.stringify(payload.encryptedEnvelope),
       nextRecord.timestamps.updatedAt, row.revision]
