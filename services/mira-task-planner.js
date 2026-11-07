@@ -503,8 +503,12 @@ function buildExperienceGuidance(
   task,
   options = {}
 ) {
+  const hfmReadOnlyMode =
+    options.useHfmWorkLearning === true ||
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
   const strategies =
-    options.useHfmWorkLearning === true
+    hfmReadOnlyMode
       ? []
       : futureStrategyEngine.getStrategiesForTask(
           task,
@@ -519,7 +523,7 @@ function buildExperienceGuidance(
       : [];
 
   const crossTaskLearning =
-    options.useHfmWorkLearning === true
+    hfmReadOnlyMode
       ? (options.hfmWorkLearning || {
           engineVersion: "HFM_V02",
           taskId: task?.id || "",
