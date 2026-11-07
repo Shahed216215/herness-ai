@@ -38,6 +38,8 @@ test('HTTP route source contains no Facebook login, API publishing or external F
   const source = fs.readFileSync('routes/mira-hfm-social-posts.js', 'utf8');
   assert.doesNotMatch(source, /graph\.facebook\.com|facebook\.com\/.*\/feed|access_token|publish_to_facebook/i);
   assert.match(source, /workflow\.OPERATIONS\.PUBLISH/);
+  assert.match(source, /clipboardCopySucceeded !== true/);
+  assert.match(source, /value\.status === 'NOT_FOUND'/);
   assert.match(source, /userConfirmedDelete === true/);
   assert.match(source, /executeWithConsumedAuthority/);
 });
@@ -63,5 +65,28 @@ test('unverified browser identity is rejected before writer-pool access', async 
   }, response);
   assert.equal(response.statusCode, 403);
   assert.equal(response.payload.code, 'HFM_TRUSTED_ACTOR_REQUIRED');
+  assert.equal(poolCalls, 0);
+});
+
+
+test('copy acknowledgement requires explicit successful clipboard result before pool access', async () => {
+  const { app, routes } = fakeApp();
+  let poolCalls = 0;
+  const auth = (_req, _res, next) => next();
+  registerRoutes(app, auth, { getPool: async () => { poolCalls += 1; return null; } });
+  const route = routes.find(x => x.method === 'post' && x.path === '/api/hfm/social-posts/:memoryId/copy');
+  const handler = route.handlers[route.handlers.length - 1];
+  const response = {
+    statusCode: 200, payload: null,
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.payload = value; return this; }
+  };
+  await handler({
+    params: { memoryId: 'post-0001' },
+    body: { projectId: 'project-001', authorityId: 'authority-001', requestId: 'request-001', idempotencyKey: 'copy-001', clipboardCopySucceeded: false },
+    session: null, role: 'user', sessionID: null
+  }, response);
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.payload.code, 'HFM_SOCIAL_POST_CLIPBOARD_CONFIRMATION_REQUIRED');
   assert.equal(poolCalls, 0);
 });

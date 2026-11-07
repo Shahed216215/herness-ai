@@ -95,6 +95,7 @@ function registerMiraHfmSocialPostRoutes(app, requireAgentAuth, options = {}) {
       const value = await perform(req, req.query, 'memory.read',
         'memory:' + memoryId, PURPOSES.STATUS,
         (client, context) => workflow.getSocialPostStatus({ client, context, memoryId }));
+      if (value.status === 'NOT_FOUND') return res.status(404).json({ ok: false, code: 'HFM_SOCIAL_POST_NOT_FOUND' });
       return res.json({ ok: true, ...value });
     } catch (error) { return sendError(res, error); }
   });
@@ -103,6 +104,7 @@ function registerMiraHfmSocialPostRoutes(app, requireAgentAuth, options = {}) {
     try {
       const memoryId = requiredText(req.params.memoryId, 128);
       const projectId = requiredText(req.body && req.body.projectId);
+      if (req.body.clipboardCopySucceeded !== true) throw fail('HFM_SOCIAL_POST_CLIPBOARD_CONFIRMATION_REQUIRED');
       const value = await perform(req, req.body, workflow.OPERATIONS.COPY,
         'memory:' + memoryId, PURPOSES.COPY,
         (client, context) => workflow.markSocialPostCopied({
