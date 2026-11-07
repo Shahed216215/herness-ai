@@ -81,9 +81,12 @@ const client = {
       return { rows: [standingRow], rowCount: 1 };
     }
     if (sql.includes("SET status = 'EXPIRED'")) {
-      standingRow.status = 'EXPIRED';
-      standingRow.paused_at = null;
-      return { rows: [{ status: 'EXPIRED', expires_at: standingRow.expires_at }], rowCount: 1 };
+      if (Date.parse(standingRow.expires_at) <= Date.now()) {
+        standingRow.status = 'EXPIRED';
+        standingRow.paused_at = null;
+        return { rows: [{ status: 'EXPIRED', expires_at: standingRow.expires_at }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
     }
     if (sql.startsWith('UPDATE mira_hfm.standing_read_authorities')) {
       const status = params[0];
