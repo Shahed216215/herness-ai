@@ -7,7 +7,8 @@ const {
   STANDING_READ_TTL_MS,
   validateStandingReceipt,
   issueStandingReadAuthority,
-  setStandingReadAuthorityStatus
+  setStandingReadAuthorityStatus,
+  getStandingReadAuthorityStatus
 } = require('../services/mira-hfm-standing-read-authority');
 const { executeWithStandingReadAuthority } = require('../services/mira-hfm-authority-transaction');
 
@@ -127,6 +128,11 @@ const pool = { async connect() { return client; } };
   assert.ok(calls.some(c => c.sql.startsWith('INSERT INTO mira_hfm.standing_read_authorities')));
   assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.includes('STANDING_READ_AUTHORITY_ISSUED')));
   console.log('HFM_STANDING_READ_365_DAY_PROJECT_SCOPED_ISSUE=PASS');
+  const statusResult = await getStandingReadAuthorityStatus({ req, pool, env });
+  assert.equal(statusResult.status, 'STANDING_READ_AUTHORITY_FOUND');
+  assert.equal(statusResult.authority.authorityStatus, 'ACTIVE');
+  assert.equal(statusResult.authority.expiresAt, standingRow.expires_at);
+  console.log('HFM_STANDING_READ_STATUS_LOOKUP_AND_EXPIRY=PASS');
 
   const paused = await setStandingReadAuthorityStatus({
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'PAUSED'
@@ -162,7 +168,7 @@ const pool = { async connect() { return client; } };
         }] };
       }
       if (sql.includes('FROM mira_hfm.standing_read_authorities')) {
-        return { rows: [standingRow] };
+        return { rows: sql.includes("status = 'ACTIVE'") && standingRow.status !== 'ACTIVE' ? [] : [standingRow] };
       }
       if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) return { rowCount: 1, rows: [] };
       return { rowCount: 1, rows: [] };
@@ -185,6 +191,16 @@ const pool = { async connect() { return client; } };
   assert.ok(readCalls.some(c => c.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(readCalls.some(c => c.sql === 'COMMIT'));
   console.log('HFM_STANDING_READ_EACH_READ_AUDITED_WITHOUT_REAPPROVAL=PASS');
+  standingRow.status = 'REVOKED';
+  let revokedReadCallbackCalled = false;
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return readClient; } },
+    verifiedPrincipal: req.session.hfmPrincipal,
+    projectId,
+    perform: async () => { revokedReadCallbackCalled = true; return {}; }
+  }), /HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED/);
+  assert.equal(revokedReadCallbackCalled, false);
+  console.log('HFM_STANDING_READ_REVOKED_GRANT_BLOCKS_FUTURE_READS=PASS');
 
   const migration = fs.readFileSync(
     path.join(__dirname, '..', 'migrations/hfm/011_standing_read_authority_365_days.sql'), 'utf8'
