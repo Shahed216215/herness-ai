@@ -316,6 +316,74 @@ test('private read requires explicit authorization and verifies encrypted record
   assert.equal(result.record.content, privateRecord.content);
 });
 
+test('standing-read exact record lookup is project, type, lifecycle, trust and integrity scoped', async () => {
+  const content = 'Verified exact Knowledge record for project lookup.';
+  const expected = record({
+    memoryId: 'knowledge-exact-001',
+    recordType: 'knowledge_item',
+    content,
+    version: { revision: 1, contentHash: createContentHash(content) },
+    trust: { status: 'HUMAN_VERIFIED' },
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+  });
+  let sqlSeen = '';
+  let paramsSeen = null;
+  const client = fakeClient({
+    query: async (sql, params) => {
+      sqlSeen = sql;
+      paramsSeen = params;
+      return {
+        rowCount: 1,
+        rows: [{
+          memory_id: expected.memoryId,
+          project_id: expected.projectId,
+          owner_actor_id: context.actorId,
+          record_type: expected.recordType,
+          schema_version: expected.schemaVersion,
+          classification: 'PUBLIC',
+          lifecycle: 'ACTIVE',
+          revision: 1,
+          integrity_status: 'VERIFIED',
+          trust_status: 'HUMAN_VERIFIED',
+          public_payload: expected,
+          encrypted_envelope: null
+        }]
+      };
+    }
+  });
+  const result = await repository.getStandingReadMemoryRecord({
+    client,
+    context: {
+      ...context,
+      operation: 'memory.read',
+      resource: 'memory:project:project-001',
+      authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
+    },
+    memoryId: expected.memoryId,
+    recordTypes: ['knowledge_item', 'learning_note'],
+    env
+  });
+  assert.equal(result.status, 'FOUND');
+  assert.equal(result.record.memoryId, expected.memoryId);
+  assert.equal(result.record.content, content);
+  assert.deepEqual(paramsSeen, ['project-001', expected.memoryId, ['knowledge_item', 'learning_note']]);
+  assert.match(sqlSeen, /lifecycle = 'ACTIVE'/);
+  assert.match(sqlSeen, /classification <> 'RESTRICTED'/);
+  assert.match(sqlSeen, /integrity_status = 'VERIFIED'/);
+  assert.match(sqlSeen, /trust_status IN \('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\)/);
+  await assert.rejects(
+    repository.getStandingReadMemoryRecord({
+      client,
+      context: { ...context, operation: 'memory.read', resource: 'memory:other', authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY' },
+      memoryId: expected.memoryId,
+      recordTypes: ['knowledge_item'],
+      env
+    }),
+    error => error.code === 'HFM_STANDING_READ_RECORD_SCOPE_INVALID'
+  );
+  console.log('HFM_REPOSITORY_STANDING_READ_EXACT_RECORD_SCOPE=PASS');
+});
+
 test('project-scoped list supports an allowlisted social-draft filter', async () => {
   const draft = record({
     recordType: 'social_post_draft',
