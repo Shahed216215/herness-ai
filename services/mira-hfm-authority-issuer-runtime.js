@@ -74,6 +74,18 @@ SELECT
   has_table_privilege(current_user, 'mira_hfm.project_memberships', 'SELECT') AS memberships_select,
   has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'INSERT') AS authorities_insert,
   has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'INSERT') AS audit_insert,
+  has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'SELECT') AS standing_authorities_select,
+  has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'INSERT') AS standing_authorities_insert,
+  has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', 'status', 'UPDATE') AS standing_status_update,
+  has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', 'updated_at', 'UPDATE') AS standing_updated_at_update,
+  has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', 'paused_at', 'UPDATE') AS standing_paused_at_update,
+  has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', 'revoked_at', 'UPDATE') AS standing_revoked_at_update,
+  NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'mira_hfm'
+    AND table_name = 'standing_read_authorities'
+    AND column_name NOT IN ('status','updated_at','paused_at','revoked_at')
+    AND has_column_privilege(current_user, 'mira_hfm.standing_read_authorities', column_name, 'UPDATE')) AS standing_only_status_metadata_update,
+  has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'DELETE') AS standing_authorities_delete,
+  has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'TRUNCATE') AS standing_authorities_truncate,
   has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'USAGE') AS audit_sequence_usage,
   has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'SELECT') AS approval_nonce_select,
   has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'INSERT') AS approval_nonce_insert,
@@ -117,11 +129,11 @@ SELECT
   has_table_privilege(current_user, 'mira_hfm.project_memberships', 'TRUNCATE') AS memberships_truncate,
   has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'TRUNCATE') AS authorities_truncate,
   has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS audit_truncate,
-  (SELECT count(*) = 5
+  (SELECT count(*) = 6
    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE n.nspname = 'mira_hfm'
      AND c.relname IN ('project_owners','project_memberships','operation_authorities',
-                       'authority_audit_events','authority_approval_nonces')
+                       'authority_audit_events','authority_approval_nonces','standing_read_authorities')
      AND c.relrowsecurity AND c.relforcerowsecurity) AS issuer_rls_forced,
   (SELECT count(*) = 7
    FROM pg_policies
@@ -188,11 +200,14 @@ SELECT
        'hfm_authority_issuer_approval_nonce_insert',
        'hfm_authority_issuer_approval_nonce_consume')
      AND $1::name = ANY(roles)) AS issuer_policy_semantics_exact,
+  (SELECT count(*) = 3 FROM pg_policies WHERE schemaname = 'mira_hfm'
+    AND policyname IN ('hfm_standing_issuer_select','hfm_standing_issuer_insert','hfm_standing_issuer_update')
+    AND $1::name = ANY(roles)) AS standing_authority_policies_present,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
       AND tablename IN ('project_owners','project_memberships','operation_authorities',
-                        'authority_audit_events','authority_approval_nonces')
+                        'authority_audit_events','authority_approval_nonces','standing_read_authorities')
       AND 'public' = ANY(roles)
   ) AS no_public_issuer_policies
 FROM pg_roles r
@@ -203,6 +218,10 @@ const REQUIRED_TRUE = Object.freeze([
   'issuer_group_least_privilege', 'issuer_group_owns_no_objects', 'inherits_roles', 'can_login',
   'schema_usage', 'owners_select', 'memberships_select', 'authorities_insert',
   'audit_insert', 'audit_sequence_usage', 'approval_nonce_select', 'approval_nonce_insert',
+  'standing_authorities_select', 'standing_authorities_insert',
+  'standing_status_update', 'standing_updated_at_update', 'standing_paused_at_update',
+  'standing_revoked_at_update', 'standing_only_status_metadata_update',
+  'standing_authority_policies_present',
   'approval_nonce_consumed_update', 'approval_nonce_only_consumed_update', 'issuer_rls_forced', 'issuer_policies_present',
   'issuer_policy_set_exact', 'issuer_policy_semantics_exact', 'no_public_issuer_policies'
 ]);
@@ -219,7 +238,8 @@ const REQUIRED_FALSE = Object.freeze([
   'audit_sequence_select', 'audit_sequence_update',
   'owners_truncate', 'memberships_truncate', 'authorities_truncate', 'audit_truncate',
   'approval_nonce_table_update', 'approval_nonce_delete', 'approval_nonce_truncate',
-  'approval_nonce_hash_update', 'approval_nonce_ref_update'
+  'approval_nonce_hash_update', 'approval_nonce_ref_update',
+  'standing_authorities_delete', 'standing_authorities_truncate'
 ]);
 function verifyAuthorityIssuerPreflight(row, config) {
   if (!row || row.current_role !== config.expectedRole || row.database_name !== config.databaseName) {
