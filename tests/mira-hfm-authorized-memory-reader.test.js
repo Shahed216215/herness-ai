@@ -190,7 +190,7 @@ test('standing read authority returns transaction-bound host authorization conte
     pool: { async connect() { return client; } },
     req: standingReq,
     standingReadAuthority: true,
-    recordTypes: ['learning_note', 'knowledge_item'],
+    recordTypes: ['knowledge_item'],
     lifecycle: 'ACTIVE',
     limit: 100,
     env: {}
@@ -205,6 +205,7 @@ test('standing read authority returns transaction-bound host authorization conte
   assert.equal(result.hostAuthorizationContext.authorityRef, standingAuthorityId);
   assert.ok(calls.some(item => item.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(calls.some(item => item.sql.includes('FROM mira_hfm.memory_records')));
+  assert.deepEqual(calls.find(item => item.sql.includes('FROM mira_hfm.memory_records')).params[2], ['knowledge_item']);
   console.log('HFM_AUTHORIZED_MEMORY_READ_STANDING_CONTEXT_PROPAGATED=PASS');
 });
 
