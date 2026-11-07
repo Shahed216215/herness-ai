@@ -1,4 +1,5 @@
 const { addKnowledge } = require("../knowledge");
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 
 module.exports = {
   name: "knowledge_save",
@@ -31,6 +32,7 @@ module.exports = {
   execute: async ({ title, url, content }) => {
     if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
         process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
         process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
       return JSON.stringify({
         success: false,
