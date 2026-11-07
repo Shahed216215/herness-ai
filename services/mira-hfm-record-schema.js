@@ -1,9 +1,11 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { validateSourceReferencePayload } = require('./mira-hfm-source-reference-schema');
 
 const SCHEMA_V1 = '1.0.0';
 const SCHEMA_V1_1 = '1.1.0';
+const SCHEMA_V1_2 = '1.2.0';
 const LEGACY_RECORD_TYPES = Object.freeze([
   'fact', 'decision', 'preference', 'procedure', 'lesson', 'experience',
   'strategy', 'project', 'conversation_reference', 'knowledge', 'research_reference'
@@ -12,6 +14,7 @@ const EXTENDED_RECORD_TYPES = Object.freeze([
   'daily_activity', 'learning_note', 'knowledge_item', 'social_post_draft',
   'client_vault_record', 'financial_vault_record'
 ]);
+const SOURCE_REFERENCE_RECORD_TYPES = Object.freeze(['source_reference']);
 const SOURCE_TYPES = Object.freeze([
   'facebook_page', 'facebook_group', 'web', 'manual', 'legacy_import',
   'internal_system', 'google_drive_backup'
@@ -98,16 +101,18 @@ function validateCanonicalRecord(record) {
   }
 
   const schemaVersion = record.schemaVersion;
-  if (![SCHEMA_V1, SCHEMA_V1_1].includes(schemaVersion)) {
+  if (![SCHEMA_V1, SCHEMA_V1_1, SCHEMA_V1_2].includes(schemaVersion)) {
     errors.push('record.schemaVersion.unsupported');
   }
 
   if (!stringLength(record.memoryId, 8, 128)) errors.push('record.memoryId.invalid');
   if (!stringLength(record.projectId, 1, 128)) errors.push('record.projectId.invalid');
 
-  const allowedRecordTypes = schemaVersion === SCHEMA_V1_1
-    ? LEGACY_RECORD_TYPES.concat(EXTENDED_RECORD_TYPES)
-    : LEGACY_RECORD_TYPES;
+  const allowedRecordTypes = schemaVersion === SCHEMA_V1_2
+    ? LEGACY_RECORD_TYPES.concat(EXTENDED_RECORD_TYPES, SOURCE_REFERENCE_RECORD_TYPES)
+    : schemaVersion === SCHEMA_V1_1
+      ? LEGACY_RECORD_TYPES.concat(EXTENDED_RECORD_TYPES)
+      : LEGACY_RECORD_TYPES;
   if (typeof record.recordType !== 'string' || !allowedRecordTypes.includes(record.recordType)) {
     errors.push('record.recordType.unsupported_for_schema_version');
   }
@@ -196,6 +201,25 @@ function validateCanonicalRecord(record) {
 
   if (!LIFECYCLE_STATES.includes(record.lifecycle)) errors.push('record.lifecycle.invalid');
 
+  if (schemaVersion === SCHEMA_V1_2 && record.recordType === 'source_reference') {
+    if (record.access?.classification !== 'PROJECT_PRIVATE') {
+      errors.push('record.source_reference.must_be_PROJECT_PRIVATE');
+    }
+    if (!['SOURCE_RECORDED', 'QUARANTINED'].includes(record.trust?.status)) {
+      errors.push('record.source_reference.trust_state_invalid');
+    }
+    if (!['ACTIVE', 'ARCHIVED', 'QUARANTINED'].includes(record.lifecycle)) {
+      errors.push('record.source_reference.lifecycle_invalid');
+    }
+    try {
+      const payload = JSON.parse(record.content);
+      const validation = validateSourceReferencePayload(payload);
+      if (!validation.valid) errors.push(...validation.errors.map(error => 'record.source_reference.' + error));
+    } catch (_error) {
+      errors.push('record.source_reference.payload_json_required');
+    }
+  }
+
   if (schemaVersion === SCHEMA_V1_1) {
     if (['client_vault_record', 'financial_vault_record'].includes(record.recordType) &&
         record.access?.classification !== 'RESTRICTED') {
@@ -238,6 +262,7 @@ function createContentHash(content) {
 module.exports = Object.freeze({
   SCHEMA_V1,
   SCHEMA_V1_1,
+  SCHEMA_V1_2,
   LEGACY_RECORD_TYPES,
   EXTENDED_RECORD_TYPES,
   SOURCE_TYPES,
