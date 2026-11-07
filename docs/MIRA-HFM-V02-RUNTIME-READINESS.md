@@ -458,3 +458,9 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - A further policy review found that project/actor/request RLS alone did not bind the new standing-read denial/failure audit events to the exact operation and resource. Migration 016 now requires `mira.operation=memory.read`, the transaction-local standing-read marker, and a `details.resource` value equal to the transaction-local resource for `STANDING_READ_AUTHORITY_USED`, `...DENIED`, and `...FAILED` events. The pre-existing one-time `AUTHORITY_CONSUMED` audit path remains separately permitted under its existing request scope.
 - Disposable PostgreSQL CI now tests denial-audit insertion with the valid context and rejects attempts missing the standing-read marker, using a non-read operation, using a mismatched resource, or using a mismatched request ID.
 - This is migration/source hardening only; Migration 016 remains unapplied to live Neon.
+
+
+## Standing-authority lifecycle timestamp precision — 2026-11-07
+
+- Issuance and pause/resume/revoke lifecycle checks now use PostgreSQL `clock_timestamp()` to determine whether an existing authority is still live. This avoids JavaScript millisecond truncation against PostgreSQL microsecond `timestamptz` values; the database remains the time authority for grant lifecycle transitions.
+- Regression coverage asserts that both active-grant collision detection and lifecycle expiry decisions use the database-derived `is_live` value rather than `Date.parse(expires_at)`.
