@@ -6,7 +6,7 @@ const path = require('node:path');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
-const { resolveHfmReadToolContext } = require('../services/mira-work-execution-engine');
+const { resolveHfmReadToolContext, resolveHfmWriteToolContext } = require('../services/mira-work-execution-engine');
 
 const { assertLegacyLearningStorageAllowed } = require('../services/learning');
 const { assertLegacyStorageDisabled } = require('../services/mira-hfm-legacy-storage-guard');
@@ -295,6 +295,43 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     MIRA_HFM_WORK_LEARNING_ENABLED: 'true'
   });
   assert.equal(bothFlagsContext.toolContext.pool, readerPool);
+  const writerPool = { connect: async () => ({ release() {} }) };
+  const issuerPool = { connect: async () => ({ release() {} }) };
+  const writeContext = await resolveHfmWriteToolContext({
+    hfmRequest: serverHeldReq,
+    getHfmMemoryWriterRuntime: async () => ({ status: 'MEMORY_WRITER_READY', pool: writerPool }),
+    getHfmAuthorityIssuerRuntime: async () => ({ status: 'AUTHORITY_ISSUER_READY', pool: issuerPool })
+  }, {
+    MIRA_HFM_MEMORY_WRITE_ENABLED: 'true',
+    MIRA_HFM_AUTHORITY_ISSUER_ENABLED: 'true'
+  }, 'Remember this: my preferred learning format is Bengali.');
+  assert.equal(writeContext.req, serverHeldReq);
+  assert.equal(writeContext.writerPool, writerPool);
+  assert.equal(writeContext.issuerPool, issuerPool);
+  assert.match(writeContext.userIntent, /Remember this/);
+  assert.equal(await resolveHfmWriteToolContext({}, {}), null);
+  await assert.rejects(
+    () => resolveHfmWriteToolContext({}, { MIRA_HFM_MEMORY_WRITE_ENABLED: 'true' }),
+    /HFM_MEMORY_WRITE_AUTHENTICATED_RUNTIMES_REQUIRED/
+  );
+  await assert.rejects(
+    () => resolveHfmWriteToolContext({
+      hfmRequest: serverHeldReq,
+      getHfmMemoryWriterRuntime: async () => ({ status: 'DISABLED', pool: null }),
+      getHfmAuthorityIssuerRuntime: async () => ({ status: 'AUTHORITY_ISSUER_READY', pool: issuerPool })
+    }, { MIRA_HFM_MEMORY_WRITE_ENABLED: 'true' }),
+    /HFM_MEMORY_WRITER_NOT_READY/
+  );
+  await assert.rejects(
+    () => resolveHfmWriteToolContext({
+      hfmRequest: serverHeldReq,
+      getHfmMemoryWriterRuntime: async () => ({ status: 'MEMORY_WRITER_READY', pool: writerPool }),
+      getHfmAuthorityIssuerRuntime: async () => ({ status: 'DISABLED', pool: null })
+    }, { MIRA_HFM_MEMORY_WRITE_ENABLED: 'true' }),
+    /HFM_AUTHORITY_ISSUER_NOT_READY/
+  );
+  console.log('HFM_MEMORY_WRITE_CONTEXT_BINDS_VERIFIED_WRITER_AND_ISSUER=PASS');
+  console.log('HFM_MEMORY_WRITE_CONTEXT_FAILS_CLOSED_WHEN_UNAVAILABLE=PASS');
   console.log('HFM_STANDING_READ_TOOL_CONTEXT_AVAILABLE_WITHOUT_WORK_LEARNING=PASS');
   console.log('HFM_STANDING_READ_CONTEXT_FAILS_CLOSED_WHEN_UNAVAILABLE=PASS');
 
@@ -468,6 +505,9 @@ assert.match(execution, /readMemory: async \(\) => preflight/);
 assert.match(execution, /HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED/);
 assert.match(execution, /toolContext: Object\.freeze/);
 assert.match(execution, /resolveHfmReadToolContext/);
+assert.match(execution, /resolveHfmWriteToolContext/);
+assert.match(execution, /MIRA_HFM_MEMORY_WRITE_ENABLED/);
+assert.match(execution, /hfmWrite: Object\.freeze/);
 assert.match(execution, /if \(!standingReadEnabled && !workLearningEnabled\)/);
 assert.match(execution, /hfmReadOnly: hfmToolContext/);
 assert.match(execution, /options\.hfmRequest/);
@@ -476,6 +516,8 @@ assert.ok(execution.indexOf('getHfmMemoryReadRuntime') < execution.indexOf('awai
 assert.ok(planner.indexOf('HFM_WORK_LEARNING_RUNTIME_REQUIRED') < planner.indexOf('await understandTask('));
 assert.match(server, /hfmRequest: req/);
 assert.match(server, /getHfmMemoryReadRuntime/);
+assert.match(server, /getHfmMemoryWriterRuntime/);
+assert.match(server, /getHfmAuthorityIssuerRuntime/);
 assert.match(bridge, /canonical\.recordType !== 'learning_note'/);
 assert.match(bridge, /rankedAfterHfmEligibilityFilter: true/);
 assert.match(runtime, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true'/);
