@@ -121,10 +121,10 @@ async function executeWithConsumedAuthority(options = {}) {
 
     const consumeResult = await client.query(
       "UPDATE mira_hfm.operation_authorities SET status = 'CONSUMED', consumed_at = clock_timestamp() " +
-      "WHERE authority_id = $1 AND status = 'ISSUED' " +
-      "AND valid_from <= clock_timestamp() AND expires_at > clock_timestamp() " +
-      "RETURNING authority_id",
-      [request.authorityId]
+      "WHERE authority_id = $1 AND project_id = $2 AND actor_id = $3 AND request_id = $4 " +
+      "AND status = 'ISSUED' AND valid_from <= clock_timestamp() " +
+      "AND expires_at > clock_timestamp() RETURNING authority_id",
+      [request.authorityId, request.projectId, trustedActor.actorId, request.requestId]
     );
     if (!consumeResult.rowCount) throw fail("HFM_AUTHORITY_EXPIRED_OR_ALREADY_USED");
 
