@@ -330,7 +330,7 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
     for (const toolName of [
       'memory_save', 'memory_restore', 'memory_count',
-      'knowledge_search', 'knowledge_count', 'knowledge_save',
+      'knowledge_count', 'knowledge_save',
       'knowledge_restore', 'knowledge_backup', 'learning_save'
     ]) {
       await assert.rejects(
@@ -338,6 +338,10 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
         error => error.code === 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_TOOL'
       );
     }
+    await assert.rejects(
+      () => executeTool('knowledge_search', {}, null),
+      error => error.code === 'HFM_KNOWLEDGE_TOOL_HFM_CONTEXT_REQUIRED'
+    );
     delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
     process.env.MIRA_HFM_WORK_LEARNING_ENABLED = 'true';
     await assert.rejects(
@@ -424,6 +428,8 @@ assert.match(execution, /preflightWorkLearning = async/);
 assert.match(execution, /HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED/);
 assert.match(execution, /readMemory: async \(\) => preflight/);
 assert.match(execution, /HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED/);
+assert.match(execution, /hfmToolContext = Object\.freeze/);
+assert.match(execution, /hfmReadOnly: hfmToolContext/);
 assert.match(execution, /options\.hfmRequest/);
 assert.match(execution, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== "true"/);
 assert.ok(execution.indexOf('getHfmMemoryReadRuntime') < execution.indexOf('await createTaskPlan('));
