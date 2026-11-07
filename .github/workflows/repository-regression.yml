@@ -1,0 +1,38 @@
+name: Repository regression suite
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/repository-regression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run full repository regression suite
+        run: npm test
