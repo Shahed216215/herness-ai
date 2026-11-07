@@ -1407,7 +1407,7 @@ app.get(
   requireAdminPermission(
     PERMISSIONS.SYSTEM_ADMIN
   ),
-  (req, res, next) => {
+  async (req, res, next) => {
     try {
       const id =
         typeof req.params.id === "string"
@@ -1421,15 +1421,24 @@ app.get(
         });
       }
 
-      const knowledge =
-        getKnowledge();
-
-      const entry =
-        knowledge.find(
-          item =>
-            item &&
-            String(item.id || "") === id
-        );
+      let entry;
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true") {
+        const runtime = await getHfmMemoryReadRuntime();
+        if (!runtime || runtime.status !== "MEMORY_READ_READY" || !runtime.pool) {
+          return res.status(503).json({ success: false, error: "HFM Memory reader is not ready." });
+        }
+        const result = await searchHfmKnowledge({
+          req,
+          pool: runtime.pool,
+          query: id,
+          limit: 100,
+          env: process.env
+        });
+        entry = result.results.find(item => item.id === id || item.title === id);
+      } else {
+        const knowledge = getKnowledge();
+        entry = knowledge.find(item => item && String(item.id || "") === id);
+      }
 
       if (!entry) {
         return res.status(404).json({
@@ -1466,6 +1475,13 @@ app.post(
   ),
   async (req, res, next) => {
     try {
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+        return res.status(403).json({
+          success: false,
+          error: "HFM standing authority grants memory.read only; Knowledge edits are not authorized."
+        });
+      }
       const id =
         typeof req.params.id === "string"
           ? req.params.id.trim()
