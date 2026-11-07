@@ -111,6 +111,27 @@ function record(memoryId) {
   console.log('HFM_STANDING_READ_PAGES_SNAPSHOT_CONSISTENCY=PASS');
 
   await assert.rejects(() => collectStandingReadPages({
+    readMemory: async () => page([record('memory-expired')], null, {
+      hostAuthorizationContext: {
+        ...context,
+        expiresAt: new Date(Date.now() - 1000).toISOString()
+      },
+      authorityExpiresAt: new Date(Date.now() - 1000).toISOString()
+    }),
+    readOptions: {}
+  }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
+  await assert.rejects(() => collectStandingReadPages({
+    readMemory: async () => page([record('memory-future-issued')], null, {
+      hostAuthorizationContext: {
+        ...context,
+        issuedAt: new Date(Date.now() + 60000).toISOString()
+      }
+    }),
+    readOptions: {}
+  }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
+  console.log('HFM_STANDING_READ_PAGES_EXPIRED_AND_FUTURE_AUTHORITY_BLOCKED=PASS');
+
+  await assert.rejects(() => collectStandingReadPages({
     readMemory: async options => options.cursor
       ? page([record('memory-002')], null, {
           hostAuthorizationContext: { ...context, actorId: 'mira:actor-other', requestId: 'request-page-002' }
