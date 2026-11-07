@@ -298,4 +298,5 @@ test('extracts only post text columns from CSV exports with quoted commas and ne
   assert.ok(content.includes('দ্বিতীয় লাইন\nএখানে'));
   assert.doesNotMatch(content, /post_id|2026-11-07|2026-11-08/);
   assert.throws(() => extractImportedContent('id,date\n1,today', { fileName: 'export.csv' }), /HFM_IMPORT_CSV_NO_TEXT_COLUMN/);
+  assert.throws(() => extractImportedContent('message\\n"unfinished', { fileName: 'export.csv' }), /HFM_IMPORT_CSV_INVALID/);
 });
