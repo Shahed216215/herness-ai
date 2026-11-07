@@ -83,6 +83,16 @@ test('retained source and provenance metadata is allowlisted and excludes payloa
     sourceId: 'page-123',
     observedAt: '2026-11-07T00:00:00.000Z'
   });
+  assert.equal(workflow.sanitizedSourceMetadata({
+    sourceType: 'facebook_page',
+    sourceId: 'EAABabcdefghijklmnopqrstuvwxyz0123456789',
+    observedAt: '2026-11-07T00:00:00Z'
+  }).sourceId, 'REDACTED');
+  assert.equal(workflow.sanitizedSourceMetadata({
+    sourceType: 'facebook_page',
+    sourceId: 'https://facebook.com/private',
+    observedAt: '2026-11-07T00:00:00Z'
+  }).sourceId, 'REDACTED');
   assert.deepEqual(workflow.sanitizedProvenanceMetadata({
     collectionMethod: 'web_search',
     capturedAt: '2026-11-07T00:01:00Z',

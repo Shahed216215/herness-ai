@@ -276,11 +276,20 @@ function cleanMetadataText(value, max = 128) {
 }
 
 function sanitizedSourceMetadata(source = {}) {
+  const sourceTypes = new Set([
+    'facebook_page','facebook_group','web','manual','legacy_import',
+    'internal_system','google_drive_backup'
+  ]);
+  const sourceId = cleanMetadataText(source.sourceId, 128);
+  const unsafeSourceId = !sourceId ||
+    /^https?:\\/\\//i.test(sourceId) ||
+    /@|access[_-]?token|bearer/i.test(sourceId) ||
+    /^(?=.*[A-Za-z])[A-Za-z0-9_-]{32,}$/.test(sourceId);
   return Object.freeze({
-    sourceType: cleanMetadataText(source.sourceType, 48),
-    sourceId: cleanMetadataText(source.sourceId, 128),
+    sourceType: sourceTypes.has(source.sourceType) ? source.sourceType : 'unknown',
+    sourceId: unsafeSourceId ? 'REDACTED' : sourceId,
     observedAt: typeof source.observedAt === 'string' && Number.isFinite(Date.parse(source.observedAt))
-      ? new Date(source.observedAt).toISOString() : null
+      ? new Date(source.observedAt).toISOString() : '1970-01-01T00:00:00.000Z'
   });
 }
 
