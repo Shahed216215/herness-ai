@@ -125,7 +125,8 @@ async function executeHfmMemorySave(kind, args, trustedContext, save = require("
 async function executeTool(name, args, trustedContext = null) {
   const hfmReadOnlyMode =
     process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-    process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+    process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true";
   const hfmWriteMode = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
   const hfmMemoryMode = hfmReadOnlyMode || hfmWriteMode;
 
