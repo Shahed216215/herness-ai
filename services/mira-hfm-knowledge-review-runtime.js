@@ -20,6 +20,19 @@ function hasExplicitReviewIntent(value) {
   return english || bengali;
 }
 
+function safeReviewSourceUrl(value) {
+  if (typeof value !== 'string' || !value.trim() || value.length > 2048) return null;
+  try {
+    const parsed = new URL(value);
+    if (!['https:', 'http:'].includes(parsed.protocol) || parsed.username || parsed.password) return null;
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.origin + parsed.pathname;
+  } catch (_error) {
+    return null;
+  }
+}
+
 async function listPendingHfmKnowledgeForReview({
   req, pool, limit = 20, env = process.env, userIntent,
   now = new Date(), readMemory = retrieveProjectMemory
@@ -71,7 +84,7 @@ async function listPendingHfmKnowledgeForReview({
       id: record.memoryId,
       title: extractKnowledgeTitle(record),
       content: record.content.slice(0, 10000),
-      sourceUrl: typeof record.source?.sourceUrl === 'string' ? record.source.sourceUrl : null,
+      sourceUrl: safeReviewSourceUrl(record.source?.sourceUrl),
       createdAt: record.timestamps.createdAt,
       revision: record.version.revision,
       trust: record.trust.status,
@@ -99,5 +112,6 @@ async function listPendingHfmKnowledgeForReview({
 
 module.exports = Object.freeze({
   hasExplicitReviewIntent,
+  safeReviewSourceUrl,
   listPendingHfmKnowledgeForReview
 });
