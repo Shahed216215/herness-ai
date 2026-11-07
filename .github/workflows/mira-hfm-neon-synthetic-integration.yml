@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/mira-hfm-neon-synthetic-integration.yml"
       - "tests/hfm-neon-synthetic-integration.test.js"
+      - "tests/hfm-neon-synthetic-integration-contract.test.js"
   workflow_dispatch:
     inputs:
       confirm_disposable_branch:
@@ -37,6 +38,8 @@ jobs:
           node-version: "22"
       - name: Syntax-check synthetic integration test
         run: node --check tests/hfm-neon-synthetic-integration.test.js
+      - name: Verify disposable endpoint guard contract
+        run: node tests/hfm-neon-synthetic-integration-contract.test.js
 
   synthetic-neon-integration:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_disposable_branch == 'I_CREATED_A_DISPOSABLE_NEON_BRANCH' }}
@@ -59,16 +62,18 @@ jobs:
         shell: bash
         env:
           MIRA_HFM_TEST_DATABASE_URL: ${{ secrets.MIRA_HFM_TEST_DATABASE_URL }}
+          MIRA_HFM_TEST_DATABASE_HOST: ${{ vars.MIRA_HFM_TEST_DATABASE_HOST }}
           MIRA_HFM_PRODUCTION_DATABASE_HOST: ${{ vars.MIRA_HFM_PRODUCTION_DATABASE_HOST }}
         run: |
-          if [ -z "${MIRA_HFM_TEST_DATABASE_URL:-}" ] || [ -z "${MIRA_HFM_PRODUCTION_DATABASE_HOST:-}" ]; then
+          if [ -z "${MIRA_HFM_TEST_DATABASE_URL:-}" ] || [ -z "${MIRA_HFM_TEST_DATABASE_HOST:-}" ] || [ -z "${MIRA_HFM_PRODUCTION_DATABASE_HOST:-}" ]; then
             echo "HFM_NEON_TEST_DATABASE=NOT_APPROVED"
-            echo "Configure environment secret MIRA_HFM_TEST_DATABASE_URL and environment variable MIRA_HFM_PRODUCTION_DATABASE_HOST in hfm-disposable-neon."
+            echo "Configure MIRA_HFM_TEST_DATABASE_URL, MIRA_HFM_TEST_DATABASE_HOST and MIRA_HFM_PRODUCTION_DATABASE_HOST in hfm-disposable-neon."
             exit 2
           fi
       - name: Run isolated synthetic Neon transaction test
         env:
           MIRA_HFM_TEST_DATABASE_URL: ${{ secrets.MIRA_HFM_TEST_DATABASE_URL }}
+          MIRA_HFM_TEST_DATABASE_HOST: ${{ vars.MIRA_HFM_TEST_DATABASE_HOST }}
           MIRA_HFM_PRODUCTION_DATABASE_HOST: ${{ vars.MIRA_HFM_PRODUCTION_DATABASE_HOST }}
           MIRA_HFM_TEST_DATABASE_ALLOW_WRITES: I_CREATED_A_DISPOSABLE_NEON_BRANCH
           NODE_ENV: test
