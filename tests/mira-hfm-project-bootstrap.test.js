@@ -50,6 +50,31 @@ test('project bootstrap binds owner and membership to the verified session princ
   assert.ok(calls.some(x => x.sql.startsWith('COMMIT')));
 });
 
+test('project bootstrap is idempotent for the same active owner and membership', async () => {
+  const calls = [];
+  const client = {
+    async query(sql) {
+      calls.push(sql);
+      if (sql.includes('FROM mira_hfm.project_owners')) {
+        return { rows: [{ owner_actor_id: 'mira:mira.users:' + principal.subject, status: 'ACTIVE', revision: 1 }] };
+      }
+      if (sql.includes('FROM mira_hfm.project_memberships')) {
+        return { rows: [{ membership_id: 'mbr_existing', status: 'ACTIVE' }] };
+      }
+      return { rows: [], rowCount: 1 };
+    },
+    release() {}
+  };
+  const result = await projects.createOwnedProject({
+    pool: { connect: async () => client },
+    verifiedPrincipal: principal,
+    projectId: 'hfm_0123456789abcdef0123456789abcdef'
+  });
+  assert.equal(result.status, 'ALREADY_EXISTS');
+  assert.ok(calls.some(sql => sql.includes('FROM mira_hfm.project_memberships')));
+  assert.equal(calls.some(sql => sql.startsWith('INSERT INTO mira_hfm.project_owners')), false);
+});
+
 test('project bootstrap fails closed when another owner already holds the ID', async () => {
   const client = {
     async query(sql) {
