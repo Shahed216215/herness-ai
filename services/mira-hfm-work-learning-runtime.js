@@ -2,6 +2,7 @@
 
 const { retrieveProjectMemory } = require('./mira-hfm-authorized-memory-reader');
 const { retrieveProjectScopedWorkLearning } = require('./mira-hfm-work-learning-retrieval');
+const { collectStandingReadPages, MAX_STANDING_READ_PAGES } = require('./mira-hfm-standing-read-pages');
 
 const MAX_MEMORY_SCAN = 100;
 
@@ -77,7 +78,7 @@ async function retrieveHfmWorkLearning(options = {}) {
     : typeof task.taskId === 'string' ? task.taskId.trim() : '';
   if (!taskText || !currentTaskId) fail('HFM_WORK_LEARNING_TASK_CONTEXT_REQUIRED');
 
-  const memory = await readMemory({
+  const firstPage = await readMemory({
     pool: options.pool,
     req: options.req,
     standingReadAuthority: true,
@@ -86,6 +87,37 @@ async function retrieveHfmWorkLearning(options = {}) {
     limit: MAX_MEMORY_SCAN,
     env
   });
+  const pages = await collectStandingReadPages({
+    readMemory,
+    firstPage,
+    readOptions: {
+      pool: options.pool,
+      req: options.req,
+      standingReadAuthority: true,
+      recordTypes: ['learning_note', 'knowledge_item'],
+      lifecycle: 'ACTIVE',
+      env
+    },
+    maxPages: options.maxPages === undefined ? MAX_STANDING_READ_PAGES : options.maxPages
+  });
+  if (pages.candidateScanMayBeIncomplete) {
+    fail('HFM_WORK_LEARNING_SCAN_INCOMPLETE');
+  }
+  const memory = {
+    status: 'AUTHORIZED_AND_COMMITTED',
+    standingAuthority: true,
+    approvalRequiredPerRead: false,
+    projectId: pages.projectId,
+    records: pages.records,
+    hostAuthorizationContext: pages.hostAuthorizationContext,
+    authorityExpiresAt: pages.hostAuthorizationContext.expiresAt,
+    pageCount: pages.pageCount,
+    candidateScanCount: pages.candidateScanCount,
+    candidateScanMayBeIncomplete: false,
+    localFallback: false,
+    driveFallback: false,
+    memoryWrites: false
+  };
   if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
       memory.standingAuthority !== true ||
       memory.approvalRequiredPerRead !== false ||
@@ -122,7 +154,11 @@ async function retrieveHfmWorkLearning(options = {}) {
     approvalRequiredPerRead: false,
     localFallback: false,
     driveFallback: false,
-    memoryWrites: false
+    memoryWrites: false,
+    scannedPages: pages.pageCount,
+    scannedRecords: pages.candidateScanCount,
+    candidateScanMayBeIncomplete: pages.candidateScanMayBeIncomplete,
+    nextCursor: pages.nextCursor
   });
 }
 
