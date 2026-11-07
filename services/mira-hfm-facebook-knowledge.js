@@ -83,6 +83,31 @@ function extractImportedContent(input, options = {}) {
     visit(parsed);
     content = pieces.length ? [...new Set(pieces)].join('\n\n') : '';
     if (!content) throw fail('HFM_IMPORT_JSON_NO_TEXT');
+  } else if (name.endsWith('.csv') || mime.includes('csv')) {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    for (let index = 0; index < input.length; index += 1) {
+      const char = input[index];
+      if (char === '"') {
+        if (quoted && input[index + 1] === '"') { cell += '"'; index += 1; }
+        else quoted = !quoted;
+      } else if (char === ',' && !quoted) {
+        row.push(cell); cell = '';
+      } else if ((char === '\n' || char === '\r') && !quoted) {
+        if (char === '\r' && input[index + 1] === '\n') index += 1;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      } else {
+        cell += char;
+      }
+    }
+    row.push(cell);
+    if (row.some(value => value.trim())) rows.push(row);
+    const headers = (rows.shift() || []).map(value => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+    const textColumns = headers.map((header, index) => /^(message|text|content|post|post_text|caption|body|description|title)$/.test(header) ? index : -1).filter(index => index >= 0);
+    if (!textColumns.length) throw fail('HFM_IMPORT_CSV_NO_TEXT_COLUMN');
+    content = rows.map(values => textColumns.map(index => String(values[index] || '').trim()).filter(Boolean).join('\n'))
+      .filter(Boolean).join('\n\n');
+    if (!content) throw fail('HFM_IMPORT_CSV_NO_TEXT');
   } else if (name.endsWith('.html') || mime.includes('html') || /<html[\s>]/i.test(input)) {
     content = input
       .replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
