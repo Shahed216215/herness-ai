@@ -111,6 +111,9 @@ test('writer config rejects missing URL, invalid role and non-Neon hosts', () =>
 });
 
 test('writer preflight requires the exact login role, limited privileges and forced RLS', () => {
+  assert.match(runtime.PREFLIGHT_SQL, /writer_actor_scope_policies_present/);
+  assert.match(runtime.PREFLIGHT_SQL, /hfm_writer_memory_record_insert_scope/);
+  assert.match(runtime.PREFLIGHT_SQL, /permissive = 'RESTRICTIVE'/);
   const config = runtime.getMemoryWriterConfig(validEnv);
   const report = runtime.verifyWriterPreflight(preflightRow(), config);
   assert.equal(report.status, 'MEMORY_WRITER_READY');
