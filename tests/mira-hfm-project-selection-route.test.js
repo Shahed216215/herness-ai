@@ -40,8 +40,7 @@ function request(overrides = {}) {
       save(callback) { callback(null); },
       ...(overrides.session || {})
     },
-    body: { projectId, actorId: 'attacker', ...(overrides.body || {}) },
-    ...overrides
+    body: { projectId, actorId: 'attacker', ...(overrides.body || {}) }
   };
 }
 function fakePool({ noMembership = false } = {}) {
