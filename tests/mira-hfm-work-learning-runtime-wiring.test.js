@@ -1011,8 +1011,11 @@ assert.ok(execution.indexOf('await preflightHfmStandingRead(') < execution.index
 assert.ok(execution.indexOf('await preflightHfmStandingRead(') < execution.indexOf('const normalizedCalls ='));
 assert.ok(execution.indexOf('if (!standingReadEnabled && !workLearningEnabled)') <
   execution.indexOf('const runtime = await options.getHfmMemoryReadRuntime()'));
-assert.match(execution, /if \(hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/);
-assert.match(execution, /includeLearning: hfmWorkLearningEnabled/);
+assert.match(execution, /if \(hfmWorkLearningEnabled && hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/);
+assert.match(execution, /includeLearning: true/);
+assert.ok(execution.indexOf('if (hfmWorkLearningEnabled && hfmMemoryReadRuntime)') <
+  execution.indexOf('await preflightHfmStandingRead('));
+assert.match(execution, /Standing-read preflight is required only when Work Learning is enabled/);
 assert.match(execution, /hfmWorkLearningEnabled\) \{[\s\S]{0,700}plannerOptions\.preflightWorkLearning = async/);
 assert.match(execution, /readMemory: async \(\{ cursor \} = \{\}\) => cursor[\s\S]{0,900}: preflight/);
 assert.ok(planner.indexOf('await options.preflightWorkLearning()') < planner.indexOf('await understandTask('));
