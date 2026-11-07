@@ -154,7 +154,7 @@ const verifiedLearning = {
         localFallback: false,
         driveFallback: false,
         scanStartedAt: '2026-11-07T07:59:00.000Z',
-        hostAuthorizationContext
+        hostAuthorizationContext: { ...hostAuthorizationContext, requestId: first ? 'hfm-search-page-001' : 'hfm-search-page-002' }
       };
     }
   });
