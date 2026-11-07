@@ -248,3 +248,98 @@ jobs:
           RESET ROLE;
           SELECT 'HFM_V02_RLS_AND_ROLE_PRIVILEGE_CONTRACTS=PASS';
           SQL
+
+      - name: Execute Reader and Writer forbidden-operation probes
+        env:
+          PGPASSWORD: hfm-ci-password
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -d neondb -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          SET LOCAL ROLE mira_hfm_memory_reader_login;
+          DO $
+          DECLARE
+            denied boolean;
+          BEGIN
+            denied := false;
+            BEGIN
+              EXECUTE 'INSERT INTO mira_hfm.memory_records DEFAULT VALUES';
+            EXCEPTION WHEN insufficient_privilege THEN
+              denied := true;
+            END;
+            IF NOT denied THEN RAISE EXCEPTION 'HFM_READER_INSERT_WAS_NOT_DENIED'; END IF;
+
+            denied := false;
+            BEGIN
+              EXECUTE 'UPDATE mira_hfm.memory_records SET lifecycle = lifecycle WHERE false';
+            EXCEPTION WHEN insufficient_privilege THEN
+              denied := true;
+            END;
+            IF NOT denied THEN RAISE EXCEPTION 'HFM_READER_UPDATE_WAS_NOT_DENIED'; END IF;
+
+            denied := false;
+            BEGIN
+              EXECUTE 'DELETE FROM mira_hfm.memory_records WHERE false';
+            EXCEPTION WHEN insufficient_privilege THEN
+              denied := true;
+            END;
+            IF NOT denied THEN RAISE EXCEPTION 'HFM_READER_DELETE_WAS_NOT_DENIED'; END IF;
+
+            denied := false;
+            BEGIN
+              EXECUTE 'UPDATE mira_hfm.memory_operation_registry SET status = status WHERE false';
+            EXCEPTION WHEN insufficient_privilege THEN
+              denied := true;
+            END;
+            IF NOT denied THEN RAISE EXCEPTION 'HFM_READER_OPERATION_REGISTRY_UPDATE_WAS_NOT_DENIED'; END IF;
+
+            denied := false;
+            BEGIN
+              EXECUTE 'INSERT INTO mira_hfm.memory_audit_events DEFAULT VALUES';
+            EXCEPTION WHEN insufficient_privilege THEN
+              denied := true;
+            END;
+            IF NOT denied THEN RAISE EXCEPTION 'HFM_READER_AUDIT_INSERT_WAS_NOT_DENIED'; END IF;
+          END $;
+          ROLLBACK;
+          SQL
+
+          psql -h localhost -U postgres -d neondb -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          SET LOCAL ROLE mira_hfm_memory_writer;
+          DO $
+          DECLARE
+            denied boolean;
+            statement text;
+          BEGIN
+            FOREACH statement IN ARRAY ARRAY[
+              'UPDATE mira_hfm.memory_records SET memory_id = memory_id WHERE false',
+              'UPDATE mira_hfm.memory_records SET project_id = project_id WHERE false',
+              'UPDATE mira_hfm.memory_records SET owner_actor_id = owner_actor_id WHERE false',
+              'UPDATE mira_hfm.memory_records SET record_type = record_type WHERE false',
+              'UPDATE mira_hfm.memory_records SET integrity_status = integrity_status WHERE false',
+              'UPDATE mira_hfm.memory_records SET trust_status = trust_status WHERE false',
+              'UPDATE mira_hfm.memory_record_versions SET revision = revision WHERE false',
+              'DELETE FROM mira_hfm.memory_record_versions WHERE false',
+              'UPDATE mira_hfm.memory_audit_events SET event_type = event_type WHERE false',
+              'DELETE FROM mira_hfm.memory_audit_events WHERE false',
+              'DELETE FROM mira_hfm.memory_records WHERE false',
+              'TRUNCATE mira_hfm.memory_records'
+            ]
+            LOOP
+              denied := false;
+              BEGIN
+                EXECUTE statement;
+              EXCEPTION WHEN insufficient_privilege THEN
+                denied := true;
+              END;
+              IF NOT denied THEN
+                RAISE EXCEPTION 'HFM_WRITER_FORBIDDEN_OPERATION_SUCCEEDED: %', statement;
+              END IF;
+            END LOOP;
+          END $;
+          ROLLBACK;
+          SQL
+          echo "HFM_V02_READER_WRITER_FORBIDDEN_OPERATION_PROBES=PASS"
+          echo "HFM_V02_PROBE_SCOPE=DISPOSABLE_POSTGRESQL_ONLY"
+          SQL
