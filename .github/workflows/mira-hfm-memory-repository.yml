@@ -33,6 +33,7 @@ on:
       - "tests/mira-hfm-project-bootstrap-migration-contract.test.js"
       - "routes/mira-hfm-daily-knowledge.js"
       - "tests/mira-hfm-daily-knowledge-route.test.js"
+      - "tests/mira-hfm-authority-issuer-runtime.test.js"
       - "tests/mira-hfm-social-post-routes.test.js"
       - "migrations/hfm/006_social_post_manual_publish_payload_erasure.sql"
       - "tests/mira-hfm-social-post-workflow.test.js"
@@ -139,5 +140,6 @@ jobs:
           node tests/mira-hfm-project-bootstrap.test.js
           node tests/mira-hfm-project-bootstrap-migration-contract.test.js
           node tests/mira-hfm-daily-knowledge-route.test.js
+          node tests/mira-hfm-authority-issuer-runtime.test.js
       - name: Run full repository regression suite
         run: npm test
