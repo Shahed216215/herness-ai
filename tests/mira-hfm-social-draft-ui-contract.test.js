@@ -3,7 +3,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'public/index.html'), 'utf8');
+const scriptMatch = html.match(/<script>\\s*\\/\\* MIRA_HFM_V02_MANUAL_FACEBOOK_DRAFT_WORKFLOW \\*\\/([\\s\\S]*?)<\\/script>/);
+assert.ok(scriptMatch, 'HFM manual social-draft workflow script must be present');
+assert.doesNotThrow(() => new vm.Script(scriptMatch[1]), 'HFM manual social-draft workflow script must parse');
 
 assert.match(html, /hfmV02SocialDraftWorkspace/);
 assert.match(html, /navigator\.clipboard\.writeText/);
@@ -24,6 +28,7 @@ assert.match(html, /Copy failed:/);
 assert.match(html, /Trash outcome not confirmed:/);
 assert.match(html, /Restore outcome not confirmed:/);
 
+console.log('HFM_SOCIAL_DRAFT_UI_SCRIPT_SYNTAX=PASS');
 console.log('HFM_SOCIAL_DRAFT_UI_MANUAL_COPY_ONLY=PASS');
 console.log('HFM_SOCIAL_DRAFT_UI_EXPLICIT_MANUAL_PUBLISH_CONFIRMATION=PASS');
 console.log('HFM_SOCIAL_DRAFT_UI_RECOVERABLE_TRASH_AND_RESTORE=PASS');
