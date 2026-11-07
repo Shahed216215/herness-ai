@@ -442,3 +442,10 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - Authority issuance is no longer shown as successful merely because the issue endpoint returned HTTP success. The UI requires the expected issuance status and authority ID, then refreshes backend status and verifies that the same authority is actually `ACTIVE` before displaying success. If that readback cannot be confirmed, the UI says the result is unverified and instructs the operator to refresh status before retrying.
 - Regression coverage asserts fail-closed behavior for missing/malformed backend state and prevents an unverified issuance response from producing a false ACTIVE success message.
 - These are source and CI changes only. No live authority was issued, no feature flag was enabled, and no live database or deployment was changed.
+
+
+## Standing-read preflight coverage across Work flags — 2026-11-07
+
+- Work execution now completes the authenticated standing-read preflight whenever an HFM standing-read runtime is enabled, before task planning, task understanding/model activity, tool-call normalization, or execution. The Work Learning flag controls whether the preflight collects the broader Knowledge/Learning page (`includeLearning=true`) or only the bounded authorization preflight page (`includeLearning=false`).
+- If both HFM standing-read and Work Learning flags are OFF, the read-context resolver returns without opening the HFM runtime, so no unsolicited HFM read occurs. If Work Learning is ON while standing-read is OFF, execution fails closed before planning.
+- The wiring regression was updated to distinguish the two cases: authorization preflight is mandatory for every enabled standing-read work context, while the broader Work Learning retrieval remains feature-flagged.
