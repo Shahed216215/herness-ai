@@ -35,6 +35,8 @@ assert.match(route, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true'/);
 assert.match(route, /body\.confirm !== true/);
 assert.match(route, /sameOriginRequest\(req\)/);
 assert.match(route, /STANDING_READ_AUTHORITY_NOT_FOUND|setStandingReadAuthorityStatus/);
+assert.match(html, /Standing authority status unavailable:[\\s\\S]*?byId\\("hfmV02StandingIssue"\\)\\.hidden = true;/);
+console.log('HFM_STANDING_READ_UI_STATUS_UNAVAILABLE_DOES_NOT_OFFER_NEW_GRANT=PASS');
 console.log('HFM_STANDING_READ_UI_365_DAY_SCOPE_AND_CONSENT=PASS');
 console.log('HFM_STANDING_READ_UI_PAUSE_RESUME_REVOKE_CONTROLS=PASS');
 console.log('HFM_STANDING_READ_UI_NO_WRITE_OR_PUBLISH_SCOPE=PASS');
