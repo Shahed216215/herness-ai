@@ -449,7 +449,7 @@ function baseOptions(overrides = {}) {
       req: { session: { authenticated: true, role: 'admin', hfmPrincipal: sourcePrincipal,
         hfmProjectBinding: { verified: true, projectId: 'project-001' } } }
     })),
-    /HFM_MEMORY_SAVE_EXPLICIT_USER_INTENT_REQUIRED/
+    /HFM_SOURCE_REFERENCE_EXPLICIT_USER_INTENT_REQUIRED/
   );
   await assert.rejects(
     () => saveHfmMemoryRecord(baseOptions({
