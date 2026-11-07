@@ -5,16 +5,17 @@ const crypto = require("node:crypto");
 const adapter = require("../services/mira-hfm-postgres");
 
 function normalizeNeonHost(host) {
-  return String(host || "").trim().toLowerCase().replace(/-pooler(?=\.)/, "");
+  return String(host || "").trim().toLowerCase().replace(/-pooler(?=\\.)/, "");
 }
 
 async function main() {
   const url = process.env.MIRA_HFM_TEST_DATABASE_URL;
+  const testHost = process.env.MIRA_HFM_TEST_DATABASE_HOST;
   const productionHost = process.env.MIRA_HFM_PRODUCTION_DATABASE_HOST;
   const consent = process.env.MIRA_HFM_TEST_DATABASE_ALLOW_WRITES;
-  if (!url || !productionHost || consent !== "I_CREATED_A_DISPOSABLE_NEON_BRANCH") {
+  if (!url || !testHost || !productionHost || consent !== "I_CREATED_A_DISPOSABLE_NEON_BRANCH") {
     console.log("HFM_NEON_SYNTHETIC_TEST=NOT_APPROVED");
-    console.log("Require a disposable test URL, the production Neon endpoint hostname, and explicit disposable-branch confirmation.");
+    console.log("Require a disposable test URL, its exact approved Neon hostname, the production Neon endpoint hostname, and explicit disposable-branch confirmation.");
     process.exitCode = 2;
     return;
   }
@@ -22,6 +23,12 @@ async function main() {
   console.log("HFM_NEON_TEST_SCOPE=DATABASE_CONNECTION_AND_TRANSACTION_SMOKE_ONLY");
   if (!/^[a-z0-9.-]+$/i.test(productionHost) || !productionHost.includes(".")) {
     throw new Error("PRODUCTION_DATABASE_HOST_INVALID");
+  }
+  if (!/^[a-z0-9.-]+$/i.test(testHost) || !testHost.includes(".")) {
+    throw new Error("TEST_DATABASE_HOST_INVALID");
+  }
+  if (normalizeNeonHost(testHost) === normalizeNeonHost(productionHost)) {
+    throw new Error("TEST_DATABASE_HOST_MUST_DIFFER_FROM_PRODUCTION");
   }
 
   let testEndpoint;
@@ -32,6 +39,9 @@ async function main() {
   }
   if (!["postgres:", "postgresql:"].includes(testEndpoint.protocol)) {
     throw new Error("TEST_DATABASE_URL_PROTOCOL_INVALID");
+  }
+  if (normalizeNeonHost(testEndpoint.hostname) !== normalizeNeonHost(testHost)) {
+    throw new Error("TEST_DATABASE_URL_HOST_MISMATCH");
   }
   if (normalizeNeonHost(testEndpoint.hostname) === normalizeNeonHost(productionHost)) {
     throw new Error("TEST_DATABASE_MUST_NOT_USE_PRODUCTION_NEON_ENDPOINT");
