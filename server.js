@@ -21,7 +21,7 @@ const { registerMiraHfmStandingReadAuthorityRoutes } = require("./routes/mira-hf
 const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
 const { searchHfmKnowledge } = require("./services/mira-hfm-knowledge-search-runtime");
 const { createMemoryWriterPool } = require("./services/mira-hfm-memory-postgres-runtime");
-const { persistConversationMessage } = require("./services/mira-conversation-memory-persistence");
+const { persistConversationPair } = require("./services/mira-conversation-memory-persistence");
 const { registerMiraHfmSocialDraftTrashRoute } = require("./routes/mira-hfm-social-draft-trash");
 const { registerMiraHfmSocialDraftRestoreRoute } = require("./routes/mira-hfm-social-draft-restore");
 const { registerMiraHfmDailySocialDraftRoute } = require("./routes/mira-hfm-daily-social-draft");
@@ -2189,20 +2189,16 @@ app.post(
 
             finalResult = firewallResult;
 
-            persistConversationMessage({
-              role: "user",
-              content: cleanCommand
-            });
-
-            persistConversationMessage({
-              role: "assistant",
-              content: finalResult
-            });
+            const conversationPersistence = persistConversationPair(
+              { role: "user", content: cleanCommand },
+              { role: "assistant", content: finalResult }
+            );
 
             return res.json({
               success: true,
               role: req.role,
               result: finalResult,
+              conversationPersistence,
               execution: {
                 toolCallCount: toolExecutionTrace.length,
                 trace: toolExecutionTrace
@@ -2271,17 +2267,10 @@ app.post(
             "$1"
           );
 
-      persistConversationMessage({
-        role: "user",
-        content:
-          cleanCommand
-      });
-
-      persistConversationMessage({
-        role: "assistant",
-        content:
-          finalResult
-      });
+      const conversationPersistence = persistConversationPair(
+        { role: "user", content: cleanCommand },
+        { role: "assistant", content: finalResult }
+      );
 
       return res.json({
         success: true,
@@ -2289,6 +2278,7 @@ app.post(
           req.role,
         result:
           finalResult,
+        conversationPersistence,
         execution: {
           toolCallCount: toolExecutionTrace.length,
           trace: toolExecutionTrace
