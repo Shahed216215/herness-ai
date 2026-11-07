@@ -658,14 +658,10 @@ async function changeLifecycle(options, targetLifecycle) {
   await insertVersion(client, nextRecord, row.owner_actor_id, payload, trashAt, trashedBy);
   const update = await client.query(
     'UPDATE mira_hfm.memory_records SET lifecycle = $3, trashed_at = $4, trashed_by_actor_id = $5, ' +
-    'revision = $6, integrity_status = $7, trust_status = $8, public_payload = $9::jsonb, ' +
-    'encrypted_envelope = $10::jsonb, updated_at = $11 ' +
-    'WHERE project_id = $1 AND memory_id = $2 AND revision = $12 RETURNING memory_id',
+    'revision = $6, updated_at = $7 ' +
+    'WHERE project_id = $1 AND memory_id = $2 AND revision = $8 RETURNING memory_id',
     [context.projectId, memoryId, targetLifecycle, trashAt, trashedBy,
-      nextRecord.version.revision, nextRecord.integrity.status, nextRecord.trust.status,
-      payload.publicPayload === null ? null : JSON.stringify(payload.publicPayload),
-      payload.encryptedEnvelope === null ? null : JSON.stringify(payload.encryptedEnvelope),
-      now, row.revision]
+      nextRecord.version.revision, now, row.revision]
   );
   if (update.rowCount !== 1) throw fail('HFM_MEMORY_REVISION_CONFLICT');
   await appendAudit(client, context, operation.operationId, memoryId,
