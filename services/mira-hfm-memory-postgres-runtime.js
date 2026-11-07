@@ -102,7 +102,15 @@ const PREFLIGHT_SQL = [
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN " +
     "('project_owners','project_memberships','operation_authorities','authority_audit_events'," +
     "'memory_records','memory_record_versions','memory_operation_registry','memory_audit_events') " +
-    'AND c.relrowsecurity = true AND c.relforcerowsecurity = true) AS memory_rls_forced',
+    'AND c.relrowsecurity = true AND c.relforcerowsecurity = true) AS memory_rls_forced,',
+  "(SELECT count(*) = 12 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
+    "AND policyname IN ('hfm_writer_owner_active','hfm_writer_membership_permission'," +
+    "'hfm_writer_consumed_authority_scope','hfm_writer_consume_exact_authority'," +
+    "'hfm_writer_consumed_authority_audit','hfm_writer_memory_record_select_scope'," +
+    "'hfm_writer_memory_record_insert_scope','hfm_writer_memory_record_update_scope'," +
+    "'hfm_writer_memory_version_insert_scope','hfm_writer_operation_registry_scope'," +
+    "'hfm_writer_memory_audit_select_scope','hfm_writer_memory_audit_insert_scope') " +
+    "AND permissive = 'RESTRICTIVE' AND $1 = ANY(roles)) AS writer_actor_scope_policies_present",
   'FROM pg_roles r WHERE r.rolname = current_user'
 ].join(' ');
 
@@ -116,7 +124,7 @@ const REQUIRED_TRUE = Object.freeze([
   'versions_insert',
   'operations_select', 'operations_insert', 'operations_update',
   'memory_audit_select', 'memory_audit_insert',
-  'audit_sequence_usage', 'memory_rls_forced'
+  'audit_sequence_usage', 'memory_rls_forced', 'writer_actor_scope_policies_present'
 ]);
 
 const REQUIRED_FALSE = Object.freeze([
