@@ -52,7 +52,8 @@ function makeReq(overrides = {}) {
       authenticated: true,
       role: 'admin',
       hfmPrincipal: { verified: true },
-      hfmProjectBinding: { verified: true }
+      hfmProjectBinding: { verified: true },
+      save(callback) { callback(null); }
     },
     body: { confirm: true, purpose: 'approved retrieval' },
     ...overrides
@@ -111,8 +112,10 @@ async function invoke(req, runtime = async () => ({
   const success = await invoke(makeReq());
   assert.equal(success.statusCode, 201);
   assert.equal(success.payload.status, 'AUTHORITY_ISSUED');
-  assert.equal(success.payload.grant.authorityId, 'authority-001');
+  assert.equal(success.payload.authorityHeldServerSide, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(success.payload, 'grant'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(success.payload, 'token'), false);
+  assert.equal(success.payload.projectId, 'project-alpha');
   assert.equal(approvalCalls, 1);
   console.log('HFM_APPROVAL_ROUTE_ISSUES_AUTHORITY_WITHOUT_LEAKING_TOKEN=PASS');
 
