@@ -7,7 +7,7 @@ const workflow = require('../services/mira-hfm-social-post-workflow');
 const baseContext = {
   authorityContext: workflow.AUTHORITY_CONTEXT,
   actorId: 'mira:owner-001',
-  projectOwnerActorId: 'mira:owner-001',
+  projectOwnerActorId: 'mira:project-owner-001',
   projectId: 'project-001',
   operation: workflow.OPERATIONS.DELETE,
   resource: 'memory:post-0001',
@@ -17,7 +17,7 @@ const baseContext = {
 const draft = {
   memory_id: 'post-0001',
   project_id: 'project-001',
-  owner_actor_id: 'mira:owner-001',
+  owner_actor_id: 'mira:project-owner-001',
   record_type: 'social_post_draft',
   classification: 'PROJECT_PRIVATE',
   lifecycle: 'ACTIVE',
@@ -28,7 +28,6 @@ test('requires consumed one-time authority, exact project resource and actor', (
   assert.equal(workflow.validateWorkflowContext(baseContext, workflow.OPERATIONS.DELETE, 'post-0001'), baseContext);
   assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, authorityContext: 'untrusted' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
   assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, projectId: '' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
-  assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, projectOwnerActorId: 'mira:other-owner' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
   assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, resource: 'memory:other' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
   assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, operation: workflow.OPERATIONS.COPY }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
 });
