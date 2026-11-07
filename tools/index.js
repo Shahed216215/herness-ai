@@ -208,6 +208,5 @@ module.exports = {
   executeTool,
   executeHfmKnowledgeSearch,
   executeHfmMemorySave,
-  executeHfmKnowledgeReviewQueue,
   executeHfmKnowledgeReviewQueue
 };
