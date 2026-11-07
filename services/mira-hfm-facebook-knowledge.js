@@ -100,6 +100,7 @@ function extractImportedContent(input, options = {}) {
         cell += char;
       }
     }
+    if (quoted) throw fail('HFM_IMPORT_CSV_INVALID');
     row.push(cell);
     if (row.some(value => value.trim())) rows.push(row);
     const headers = (rows.shift() || []).map(value => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
