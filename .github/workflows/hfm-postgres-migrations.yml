@@ -1,0 +1,115 @@
+name: Mira HFM PostgreSQL migration integration
+
+on:
+  pull_request:
+    paths:
+      - "migrations/hfm/**"
+      - "services/mira-hfm-authority-issuer-runtime.js"
+      - "services/mira-hfm-authority-approval.js"
+      - ".github/workflows/hfm-postgres-migrations.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-migration-chain:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: hfm-ci-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create isolated HFM test database and legacy runtime role
+        run: |
+          docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE DATABASE neondb"
+          docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE ROLE mira_hfm_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
+
+      - name: Apply HFM migrations 001 through 009 in order
+        run: |
+          set -euo pipefail
+          for migration in \
+            migrations/hfm/001_project_authority_registry.sql \
+            migrations/hfm/002_runtime_readonly_grants.sql \
+            migrations/hfm/003_authority_relational_integrity.sql \
+            migrations/hfm/004_memory_repository_schema.sql \
+            migrations/hfm/005_memory_writer_role_and_project_rls.sql \
+            migrations/hfm/006_project_selection_read_policy.sql \
+            migrations/hfm/007_memory_retrieval_runtime_role.sql \
+            migrations/hfm/008_authority_issuer_role.sql \
+            migrations/hfm/009_authority_approval_nonce_registry.sql
+          do
+            echo "APPLYING=$migration"
+            docker exec -i "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d neondb < "$migration"
+          done
+
+      - name: Verify forced RLS, exact role boundaries and approval nonce privileges
+        run: |
+          docker exec -i "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d neondb <<'SQL'
+          DO $$
+          DECLARE
+            protected_tables integer;
+            issuer_policies integer;
+          BEGIN
+            SELECT count(*) INTO protected_tables
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'mira_hfm'
+              AND c.relname IN (
+                'project_owners','project_memberships','operation_authorities',
+                'authority_audit_events','authority_approval_nonces','memory_records'
+              )
+              AND c.relrowsecurity AND c.relforcerowsecurity;
+            IF protected_tables <> 6 THEN
+              RAISE EXCEPTION 'HFM_CI_FORCED_RLS_TABLE_COUNT_MISMATCH: %', protected_tables;
+            END IF;
+
+            SELECT count(*) INTO issuer_policies
+            FROM pg_policies
+            WHERE schemaname = 'mira_hfm'
+              AND 'mira_hfm_authority_issuer' = ANY(roles);
+            IF issuer_policies <> 7 THEN
+              RAISE EXCEPTION 'HFM_CI_ISSUER_POLICY_COUNT_MISMATCH: %', issuer_policies;
+            END IF;
+
+            IF NOT has_table_privilege('mira_hfm_authority_issuer', 'mira_hfm.authority_approval_nonces', 'SELECT')
+               OR NOT has_table_privilege('mira_hfm_authority_issuer', 'mira_hfm.authority_approval_nonces', 'INSERT')
+               OR NOT has_column_privilege('mira_hfm_authority_issuer', 'mira_hfm.authority_approval_nonces', 'consumed_at', 'UPDATE') THEN
+              RAISE EXCEPTION 'HFM_CI_ISSUER_NONCE_REQUIRED_PRIVILEGE_MISSING';
+            END IF;
+
+            IF has_table_privilege('mira_hfm_authority_issuer', 'mira_hfm.authority_approval_nonces', 'UPDATE')
+               OR has_table_privilege('mira_hfm_authority_issuer', 'mira_hfm.authority_approval_nonces', 'DELETE')
+               OR has_table_privilege('mira_hfm_authority_issuer', 'mira_hfm.authority_approval_nonces', 'TRUNCATE')
+               OR has_column_privilege('mira_hfm_authority_issuer', 'mira_hfm.authority_approval_nonces', 'nonce_hash', 'UPDATE') THEN
+              RAISE EXCEPTION 'HFM_CI_ISSUER_NONCE_EXCESS_PRIVILEGE';
+            END IF;
+
+            IF has_table_privilege('mira_hfm_memory_reader', 'mira_hfm.memory_records', 'INSERT')
+               OR has_table_privilege('mira_hfm_memory_reader', 'mira_hfm.memory_records', 'UPDATE')
+               OR has_table_privilege('mira_hfm_memory_reader', 'mira_hfm.memory_records', 'DELETE') THEN
+              RAISE EXCEPTION 'HFM_CI_MEMORY_READER_EXCESS_PRIVILEGE';
+            END IF;
+
+            IF has_table_privilege('mira_hfm_authority_issuer', 'mira_hfm.operation_authorities', 'UPDATE')
+               OR has_table_privilege('mira_hfm_authority_issuer', 'mira_hfm.operation_authorities', 'DELETE') THEN
+              RAISE EXCEPTION 'HFM_CI_ISSUER_AUTHORITY_EXCESS_PRIVILEGE';
+            END IF;
+          END;
+          $$;
+          SELECT 'HFM_POSTGRES_MIGRATION_CHAIN=PASS';
+          SELECT 'HFM_FORCED_RLS_AND_ROLE_PRIVILEGES=PASS';
+          SELECT 'HFM_APPROVAL_NONCE_SINGLE_COLUMN_UPDATE=PASS';
+          SQL
