@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { retrieveProjectMemory } = require('../services/mira-hfm-authorized-memory-reader');
+const { retrieveProjectMemory, retrieveProjectMemoryRecord } = require('../services/mira-hfm-authorized-memory-reader');
 const { BINDING_VERSION } = require('../services/mira-hfm-project-binding-context');
 
 const now = Date.now();
@@ -203,6 +203,24 @@ test('standing read authority returns transaction-bound host authorization conte
   assert.equal(result.hostAuthorizationContext.projectId, projectId);
   assert.equal(result.scanStartedAt, new Date(now).toISOString());
   assert.equal(result.hostAuthorizationContext.authorityRef, standingAuthorityId);
+  const exactRead = await retrieveProjectMemoryRecord({
+    pool: { async connect() { return client; } },
+    req: standingReq,
+    standingReadAuthority: true,
+    memoryId: 'knowledge-exact-001',
+    recordTypes: ['knowledge_item'],
+    env: {}
+  });
+  assert.equal(exactRead.status, 'AUTHORIZED_AND_COMMITTED');
+  assert.equal(exactRead.recordStatus, 'NOT_FOUND');
+  assert.equal(exactRead.record, null);
+  assert.equal(exactRead.standingAuthority, true);
+  assert.equal(exactRead.authorityConsumed, false);
+  assert.equal(exactRead.memoryWrites, false);
+  assert.equal(exactRead.localFallback, false);
+  assert.equal(exactRead.driveFallback, false);
+  assert.ok(calls.filter(item => item.sql.includes('STANDING_READ_AUTHORITY_USED')).length >= 2);
+  console.log('HFM_AUTHORIZED_MEMORY_READ_EXACT_RECORD_LOOKUP_USES_STANDING_AUDIT=PASS');
   assert.ok(calls.some(item => item.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(calls.some(item => item.sql.includes('FROM mira_hfm.memory_records')));
   assert.deepEqual(calls.find(item => item.sql.includes('FROM mira_hfm.memory_records')).params[2], ['knowledge_item']);
