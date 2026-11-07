@@ -845,7 +845,7 @@ function buildPlanFromUnderstanding(
   });
 
   const experienceGuidance =
-    buildExperienceGuidance(task);
+    buildExperienceGuidance(task, options);
 
   applyExperienceGuidance(
     plan,
