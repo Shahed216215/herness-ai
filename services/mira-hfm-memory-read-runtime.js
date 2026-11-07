@@ -92,6 +92,11 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS authority_audit_delete,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS authority_audit_truncate,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'SELECT') AS records_select,",
+  "has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'SELECT') AS standing_authorities_select,",
+  "has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'INSERT') AS standing_authorities_insert,",
+  "has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'UPDATE') AS standing_authorities_update,",
+  "has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'DELETE') AS standing_authorities_delete,",
+  "has_table_privilege(current_user, 'mira_hfm.standing_read_authorities', 'TRUNCATE') AS standing_authorities_truncate,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'INSERT') AS records_insert,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'UPDATE') AS records_update,",
   "has_table_privilege(current_user, 'mira_hfm.memory_records', 'DELETE') AS records_delete,",
@@ -99,16 +104,17 @@ const PREFLIGHT_SQL = [
   "has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'USAGE') AS audit_sequence_usage,",
   "has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'SELECT') AS audit_sequence_select,",
   "has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'UPDATE') AS audit_sequence_update,",
-  "(SELECT count(*) = 5 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " +
+  "(SELECT count(*) = 6 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " +
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships','operation_authorities'," +
-    "'authority_audit_events','memory_records') AND c.relrowsecurity AND c.relforcerowsecurity) AS retrieval_rls_forced,",
-  "(SELECT count(*) = 6 FROM pg_policies WHERE schemaname = 'mira_hfm' AND policyname IN " +
+    "'authority_audit_events','memory_records','standing_read_authorities') AND c.relrowsecurity AND c.relforcerowsecurity) AS retrieval_rls_forced,",
+  "(SELECT count(*) = 7 FROM pg_policies WHERE schemaname = 'mira_hfm' AND policyname IN " +
     "('hfm_memory_reader_owner_select','hfm_memory_reader_membership_select'," +
     "'hfm_memory_reader_authority_consume','hfm_memory_reader_authority_consume_update'," +
-    "'hfm_memory_reader_authority_audit_insert','hfm_memory_reader_memory_select') " +
+    "'hfm_memory_reader_authority_audit_insert','hfm_memory_reader_memory_select'," +
+    "'hfm_standing_reader_select') " +
     "AND $1 = ANY(roles)) AS retrieval_policies_present,",
   "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
-    "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events','memory_records') " +
+    "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events','memory_records','standing_read_authorities') " +
     "AND 'public' = ANY(roles)) AS no_public_retrieval_policies",
   'FROM pg_roles r WHERE r.rolname = current_user'
 ].join(' ');
@@ -119,7 +125,7 @@ const REQUIRED_TRUE = Object.freeze([
   'reader_group_owns_no_objects', 'inherits_roles', 'can_login',
   'schema_usage', 'owners_select', 'memberships_select',
   'authorities_select', 'authorities_status_update', 'authorities_consumed_at_update', 'authority_audit_insert',
-  'records_select', 'audit_sequence_usage',
+  'records_select', 'standing_authorities_select', 'audit_sequence_usage',
   'retrieval_rls_forced', 'retrieval_policies_present',
   'no_public_retrieval_policies'
 ]);
@@ -138,6 +144,8 @@ const REQUIRED_FALSE = Object.freeze([
   'authorities_insert', 'authorities_delete', 'authorities_truncate',
   'authority_audit_select', 'authority_audit_update', 'authority_audit_delete',
   'authority_audit_truncate',
+  'standing_authorities_insert', 'standing_authorities_update',
+  'standing_authorities_delete', 'standing_authorities_truncate',
   'records_insert', 'records_update', 'records_delete', 'records_truncate',
   'audit_sequence_select', 'audit_sequence_update'
 ]);
