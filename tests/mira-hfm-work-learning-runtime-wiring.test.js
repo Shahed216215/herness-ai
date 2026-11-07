@@ -501,10 +501,9 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   for (const [toolName, args] of [
     ['knowledge_backup', {}], ['knowledge_cleanup', { action: 'inspect' }],
     ['knowledge_count', {}], ['knowledge_improve', {}],
-    ['knowledge_restore', { confirm: true }], ['knowledge_save', { title: 'x', content: 'x' }],
+    ['knowledge_restore', { confirm: true }],
     ['knowledge_search', { query: 'Python' }], ['learning_save', { content: 'x' }],
-    ['memory_count', {}], ['memory_restore', { confirm: true }],
-    ['memory_save', { content: 'x' }]
+    ['memory_count', {}], ['memory_restore', { confirm: true }]
   ]) {
     assert.equal(typeof tools[toolName]?.execute, 'function', toolName + ' tool is registered');
     await assert.rejects(
@@ -512,6 +511,12 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
       error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
     );
   }
+  assert.equal(JSON.parse(await tools.knowledge_save.execute({
+    title: 'x', url: 'https://example.com', content: 'x'
+  })).code, 'HFM_TOOL_ROUTER_REQUIRED');
+  assert.equal(JSON.parse(await tools.memory_save.execute({
+    content: 'x'
+  })).code, 'HFM_TOOL_ROUTER_REQUIRED');
   await assert.rejects(
     () => applyAutonomousLearningControlled(),
     error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
