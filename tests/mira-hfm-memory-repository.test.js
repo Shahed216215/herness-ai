@@ -679,6 +679,8 @@ test('standing-read keyset pagination is project-bound, stable and audited per p
         return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
       }
       assert.match(sql, /updated_at <= \$5::timestamptz/);
+      assert.match(sql, /updated_at_cursor/);
+      assert.match(sql, /to_char\(updated_at AT TIME ZONE 'UTC'/);
       assert.match(sql, /updated_at < \$6::timestamptz/);
       if (params[5] === null) {
         assert.deepEqual(params, [
