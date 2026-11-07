@@ -328,7 +328,7 @@ const pool = { async connect() { return client; } };
     verifiedPrincipal: req.session.hfmPrincipal,
     projectId,
     perform: async () => { protectedReadRan = true; return {}; }
-  }), error => error.code === 'HFM_AUDIT_INSERT_FAILED');
+  }), error => error.code === 'HFM_AUDIT_INSERT_FAILED' && error.auditStatus === 'FAILED');
   assert.equal(protectedReadRan, false);
   assert.ok(auditFailureCalls.includes('ROLLBACK'));
   assert.ok(auditFailureCalls.filter(sql => sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')).length >= 2,
