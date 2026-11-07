@@ -420,8 +420,8 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 
 **Audit date:** 2026-11-07  
 **Clean integration branch:** `work/mira-hfm-v02-clean-integration-20261107`  
-**Current clean branch head:** `b4b1794d9bc84356564d2bf8adba5ab6e64e7667`  
-**Latest code-tested head:** `580f56e091cee28e5612d077ee29d8fbf66b4f15`  
+**Current clean branch head:** `13899a025c4caa851179f106cd66e12422399912`  
+**Latest code-tested head:** `69b9dac1e29c1aade2ca694b0a94d9271dc016c9`  
 **Draft integration PR:** #80  
 **Legacy divergent PR:** #79 (left open and unmerged)  
 **Disposition:** HFM v0.2 remains NOT COMPLETE / NOT DEPLOYABLE
@@ -436,7 +436,7 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 
 ## 2. Current CI evidence
 
-**9/9 PASS** on code head `580f56e091cee28e5612d077ee29d8fbf66b4f15`. Subsequent commits through `b4b1794d9bc84356564d2bf8adba5ab6e64e7667` changed documentation only; no tested code changed.
+**9/9 PASS** on code head `69b9dac1e29c1aade2ca694b0a94d9271dc016c9`. Subsequent commit `13899a025c4caa851179f106cd66e12422399912` changed readiness documentation only; no tested code changed.
 
 - HFM runtime foundation contract
 - HFM Memory repository contracts
