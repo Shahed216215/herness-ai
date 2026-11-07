@@ -1,46 +1,53 @@
 # Mira HFM v0.2 — Migration Lineage Reconciliation
 
 Date: 2026-11-07  
-Status: **REVIEW_REQUIRED — no migration execution authorized by this record**
+Status: **SOURCE_LINEAGE_RECONCILED / LIVE_TARGET_REVIEW_REQUIRED**
 
-## Finding
+## Finding and source correction
 
-The runtime-integration branch currently contains migrations numbered 007–011. The existing Neon production lineage previously verified for the HFM Memory foundation already applied migrations numbered 007–009 from the separate Memory Core branch. Those IDs refer to different SQL contents.
+The runtime-integration branch originally reused migration IDs 007–009 for SQL that differed from the previously applied Neon production lineage. That source-level collision has now been corrected on this branch.
 
-This is a migration identity collision, not a harmless filename difference. A fresh disposable PostgreSQL chain can pass while the same migration files remain unsafe or inapplicable to an already-migrated Neon database.
+The branch now preserves the exact previously applied 007–009 migration files from the Memory Core lineage and moves the runtime-integration additions to 010–014. The disposable PostgreSQL workflow has been updated to apply the preserved baseline followed by the additive runtime migrations.
 
-## Conflicting migration identities
+## Canonical migration sequence in this branch
 
-Migration 006 also has competing source definitions: this runtime branch uses `006_project_selection_read_policy.sql`, while the separate Memory Core branch contains `006_social_post_manual_publish_payload_erasure.sql`. Neither was present in the previously verified applied Neon production set. The social-post payload-erasure migration was not applicable to the inspected target because its prerequisite state table/columns were absent. Keep the project-selection policy as the active 006 source for this runtime branch; keep the social-post erasure migration deferred and do not merge both under the same ID.
-
-| Migration ID | Previously applied Neon production lineage | Runtime-integration branch |
+| ID | Canonical migration | Purpose |
 |---|---|---|
-| 007 | `007_authority_issuer_role.sql` — creates the authority issuer capability role and project-scoped issuer policies | `007_memory_retrieval_runtime_role.sql` — creates a dedicated Memory reader role |
-| 008 | `008_project_bootstrap_issuer.sql` — adds owner/membership INSERT capability to the existing authority issuer role | `008_authority_issuer_role.sql` — redefines/hardens the same authority issuer role and policy set |
-| 009 | `009_dedicated_login_principals.sql` — creates dedicated writer/issuer LOGIN principals | `009_authority_approval_nonce_registry.sql` — creates the approval nonce registry |
+| 001 | `001_project_authority_registry.sql` | Project authority registry |
+| 002 | `002_runtime_readonly_grants.sql` | Optional legacy runtime read grants; target-specific prerequisite remains unverified |
+| 003 | `003_authority_relational_integrity.sql` | Relational integrity |
+| 004 | `004_memory_repository_schema.sql` | Canonical Memory repository schema |
+| 005 | `005_memory_writer_role_and_project_rls.sql` | Memory writer capability and project RLS |
+| 006 | `006_project_selection_read_policy.sql` | Project-selection reader policy |
+| 007 | `007_authority_issuer_role.sql` | Previously applied authority issuer capability role |
+| 008 | `008_project_bootstrap_issuer.sql` | Previously applied owner/membership bootstrap capability extension |
+| 009 | `009_dedicated_login_principals.sql` | Previously applied writer/issuer LOGIN principals |
+| 010 | `010_memory_retrieval_runtime_role.sql` | Constrained Memory reader role |
+| 011 | `011_authority_issuer_role_hardening.sql` | Hardens the existing issuer role and replaces legacy permissive issuer policies |
+| 012 | `012_authority_approval_nonce_registry.sql` | Persistent single-use approval nonce registry |
+| 013 | `013_one_time_initial_project_bootstrap.sql` | One-time initial-project bootstrap latch and role |
+| 014 | `014_standing_read_authority_365_days.sql` | Project-scoped, revocable, 365-day standing read authority |
 
-The runtime branch's 010 bootstrap and 011 standing-read migrations depend on the runtime branch's versions of 007–009. They must not be assumed to follow the already-applied production lineage.
+The 007–009 files are copied byte-for-byte from the previously verified Memory Core branch. The new 011 migration uses the existing issuer role rather than creating a second migration identity. It changes the role to NOINHERIT, removes the old project-only/owner-insert issuer policies, and installs the newer actor-bound policies. The dedicated issuer LOGIN principal remains the only intended member and inherits the group because the LOGIN role itself has INHERIT.
 
-## Additional compatibility conflicts
+## Migration 006 source conflict
 
-1. The previously applied 007 issuer migration creates `mira_hfm_authority_issuer` without explicitly setting `NOINHERIT`. Runtime migration 008 requires an existing issuer role to have `rolinherit = false`; it therefore fails its own role-attribute preflight against that previously created role unless a reviewed compatibility migration is prepared.
-2. The previous issuer migration created policy names `authority_issuer_owner_read`, `authority_issuer_membership_read`, `authority_issuer_insert`, and `authority_issuer_audit_insert`. Runtime migration 008 adds a second set of issuer policies. PostgreSQL permissive policies combine with OR semantics; retaining both sets may preserve broader access than the newer actor-bound policy intended.
-3. Runtime migration 010 is a one-time bootstrap and explicitly requires empty owner, membership, operation-authority, and Memory registries. A separate read-only staging inspection recorded existing owner, membership, and Memory rows. It is not applicable to that non-empty staging target.
-4. The Neon target mapping remains ambiguous across the duplicate projects/branches previously inspected. Production and staging migration histories must not be conflated.
+A separate Memory Core branch contains `006_social_post_manual_publish_payload_erasure.sql`. That migration was not applied to the inspected Neon target because its prerequisite social-post state table/columns were absent. The runtime-integration branch keeps `006_project_selection_read_policy.sql`, which is required by project-selection runtime preflight. Do not merge both different SQL files under migration ID 006. Keep the social-post payload-erasure migration deferred until its schema prerequisite and a new canonical migration identity are reviewed.
 
-## Required reconciliation before any staging or production migration
+## Live-target prerequisites remain
 
-- Obtain a read-only migration inventory from the exact target Neon project and branch, including table/role/policy state and any migration ledger that exists.
-- Preserve the existing 007–009 applied SQL identity. Never overwrite an applied migration ID with different contents.
-- Prepare a new, strictly additive migration sequence after the highest verified applied ID. Each new migration must declare exact prerequisites and be tested against a disposable database seeded with the **same prior 001–009 schema and role state**, not only a fresh empty database.
-- Replace duplicate issuer policies rather than leaving permissive legacy policies active. Verify the resulting exact policy set and effective grants for every dedicated LOGIN principal.
-- Keep the bootstrap route/migration disabled for any target containing owner, membership, authority, or Memory rows. Do not rewrite or delete those rows to make the bootstrap precondition pass.
-- Verify the target branch identity, snapshot/recovery point, dedicated role credentials, and runtime preflight before considering activation.
+1. The exact Neon project and branch used by Render are not yet unambiguously mapped. Do not conflate the previously verified production branch with the non-empty staging branch.
+2. Migration 002 was not applied to the previously inspected production target because its legacy runtime role was absent. Whether it is required for the final target must be determined from the exact role/runtime design; do not apply it by default.
+3. Migration 006 is source-only and must be tested against the exact target's policy state before any application.
+4. Migration 013 bootstrap requires empty owner, membership, operation-authority, and Memory registries. The inspected staging target already contained owner, membership, and Memory rows, so migration 013 is **NOT_APPLICABLE** to that target. Preserve those rows.
+5. Migration 011 must be validated against the exact target role attributes and legacy policy names. It deliberately drops six prior issuer policy names and replaces them with actor-bound policies; review its effects before applying.
+6. Dedicated LOGIN role credentials, exact grants, RLS policies, and runtime preflight must be verified without exposing credential values.
+7. Any previously existing operation-registry rows created before private payload digests were keyed must be treated as legacy idempotency evidence. Do not replay those idempotency keys blindly; reconcile them through a controlled, audited process.
 
-## Current disposition
+## Validation boundary
 
-- Migrations 007–011 in the runtime-integration branch remain **SOURCE_ONLY / NOT_APPLIED**.
-- Migration 010 initial bootstrap is **NOT_APPLICABLE** to the inspected non-empty staging registry.
-- Migration 011 standing-read authority remains **SOURCE_ONLY** until its role/policy dependencies are reconciled against the actual target lineage.
-- No Neon migration, data write, role change, Render environment change, feature-flag enablement, merge, or deployment was performed as part of this reconciliation.
-- HFM remains v0.2. No v0.3 work is authorized.
+The updated disposable PostgreSQL workflow is configured to run 001–009 in canonical order, then 010–014. Its exact-head execution has not yet been observed for the current branch head. Until the workflow completes successfully, migration validation for this revision is **INCONCLUSIVE**.
+
+No Neon migration, production data write, role change, Render environment change, feature-flag enablement, merge, or deployment was performed as part of this source-lineage correction.
+
+HFM remains v0.2. No v0.3 work is authorized.
