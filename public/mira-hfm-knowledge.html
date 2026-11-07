@@ -175,6 +175,8 @@ small{color:var(--muted)}
           sourceId: $('sourceId').value.trim() || 'User supplied Facebook source',
           sourceUrl: $('sourceUrl').value.trim() || null,
           content: $('content').value,
+          importFileName: $('sourceFile').files[0]?.name || '',
+          importMimeType: $('sourceFile').files[0]?.type || '',
           collectionMethod: $('sourceFile').files.length ? 'user_file_import' : 'manual_copy',
           publicContentConfirmed: $('publicConfirm').checked
         }, grant))
