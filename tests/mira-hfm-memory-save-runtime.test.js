@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   hasExplicitSaveIntent,
   hasExplicitDailyActivitySaveIntent,
+  hasVaultOnlyDailyActivityContent,
   isUserAuthoredMemoryContent,
   deriveIdempotencyKey,
   normalizeSourceUrl,
@@ -71,6 +72,17 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো।'), true);
   assert.equal(hasExplicitDailyActivitySaveIntent('Save this daily activity summary to Mira Memory.'), true);
   assert.equal(hasExplicitDailyActivitySaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো।'), true);
+  assert.equal(hasExplicitDailyActivitySaveIntent('আজকের কাজের সারাংশ সেভ করে রাখো।'), true);
+  assert.equal(hasExplicitDailyActivitySaveIntent('Please record my activity log for today.'), true);
+  assert.equal(hasExplicitDailyActivitySaveIntent('Do not record the daily activity.'), false);
+  assert.equal(hasExplicitDailyActivitySaveIntent('আজকের কাজ সংরক্ষণ করো না।'), false);
+  assert.equal(hasExplicitDailyActivitySaveIntent('Remember this: I completed Python practice.'), false);
+  assert.equal(hasVaultOnlyDailyActivityContent('Client ID: C-1042 was updated.'), true);
+  assert.equal(hasVaultOnlyDailyActivityContent('Contract #CT-2026-91 was signed.'), true);
+  assert.equal(hasVaultOnlyDailyActivityContent('Invoice number INV-2026-001 was received.'), true);
+  assert.equal(hasVaultOnlyDailyActivityContent('Bank account ref: ACCT-77881.'), true);
+  assert.equal(hasVaultOnlyDailyActivityContent('National ID number was provided.'), true);
+  assert.equal(hasVaultOnlyDailyActivityContent('Completed Python practice and fixed a local test.'), false);
   assert.equal(hasExplicitDailyActivitySaveIntent('Remember this: I completed Python practice.'), false);
   assert.equal(hasExplicitDailyActivitySaveIntent('Do not save daily activity.'), false);
   assert.equal(hasExplicitDailyActivitySaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো না।'), false);
