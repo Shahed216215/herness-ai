@@ -88,10 +88,14 @@ function registerMiraHfmMemoryReadRoute(
             pool: runtime.pool,
             req,
             ...(standingMode
-              ? { standingReadAuthority: true, recordTypes: ['learning_note', 'knowledge_item'] }
-              : { authorityGrant: grant }),
+              ? {
+                  standingReadAuthority: true,
+                  ...(body.recordType === undefined
+                    ? { recordTypes: ['learning_note', 'knowledge_item'] }
+                    : { recordType: body.recordType })
+                }
+              : { authorityGrant: grant, recordType: body.recordType }),
             limit,
-            recordType: body.recordType,
             lifecycle: standingMode ? 'ACTIVE' : body.lifecycle,
             ...(standingMode && cursor ? { cursor } : {}),
             env
