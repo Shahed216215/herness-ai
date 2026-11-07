@@ -347,7 +347,7 @@ test('standing-read repository context is limited to active Learning/Knowledge a
       }
       assert.match(sql, /classification <> 'RESTRICTED'/);
       assert.match(sql, /integrity_status = 'VERIFIED'/);
-      assert.match(sql, /trust_status IN \\('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\\)/);
+      assert.match(sql, /trust_status IN \('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\)/);
       assert.match(sql, /updated_at <= \$5::timestamptz/);
       assert.match(sql, /ORDER BY updated_at DESC, memory_id ASC LIMIT \$4/);
       assert.deepEqual(params, [
