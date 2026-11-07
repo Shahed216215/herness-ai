@@ -52,6 +52,8 @@ function buildTrustedActorContext(req) {
   return Object.freeze({
     status: "ACTOR_RESOLVED",
     verifiedPrincipal: Object.freeze({ ...principal }),
+    activeProjectId: typeof session.hfmActiveProjectId === "string" && /^hfm_[0-9a-f]{32}$/.test(session.hfmActiveProjectId)
+      ? session.hfmActiveProjectId : null,
     actor: Object.freeze({
       actorId: normalized.actorId,
       role,
