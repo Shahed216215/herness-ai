@@ -15,6 +15,8 @@ const { executeWork } = require("./services/mira-work-execution-engine");
 const { buildTrustedActorContext } = require("./services/mira-hfm-runtime-identity-context");
 const { createProjectSelectionReadRuntime } = require("./services/mira-hfm-project-selection-read-runtime");
 const { registerMiraHfmProjectSelectionRoute } = require("./routes/mira-hfm-project-selection");
+const { createAuthorityIssuerPool } = require("./services/mira-hfm-authority-issuer-runtime");
+const { registerMiraHfmAuthorityApprovalRoute } = require("./routes/mira-hfm-authority-approval");
 const { startAutonomousWorker } = require("./services/mira-autonomous-worker");
 const { declarations, tools } = require("./tools");
 const firewallDefense = require("./firewall-defense");
@@ -207,6 +209,25 @@ function getHfmProjectReadRuntime() {
 
 // Runtime remains disabled unless the dedicated HFM project-reader feature flag is enabled.
 registerMiraHfmProjectSelectionRoute(app, getHfmProjectReadRuntime);
+
+let hfmAuthorityIssuerRuntimePromise = null;
+function getHfmAuthorityIssuerRuntime() {
+  if (!hfmAuthorityIssuerRuntimePromise) {
+    hfmAuthorityIssuerRuntimePromise = createAuthorityIssuerPool().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 80)
+        : "AUTHORITY_ISSUER_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmAuthorityIssuerRuntimePromise;
+}
+registerMiraHfmAuthorityApprovalRoute(
+  app,
+  getHfmAuthorityIssuerRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
 
 app.use(express.static("public"));
 
