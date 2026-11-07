@@ -910,8 +910,20 @@ async function createTaskPlan(
       (!hfmPreflight ||
        hfmPreflight.status !== "AUTHORIZED_AND_COMMITTED" ||
        hfmPreflight.standingAuthority !== true ||
+       hfmPreflight.authorityConsumed !== false ||
        hfmPreflight.approvalRequiredPerRead !== false ||
+       hfmPreflight.memoryWrites !== false ||
+       hfmPreflight.localFallback !== false ||
+       hfmPreflight.driveFallback !== false ||
+       hfmPreflight.candidateScanMayBeIncomplete !== false ||
+       hfmPreflight.nextCursor !== null ||
        !Array.isArray(hfmPreflight.records) ||
+       !Number.isInteger(hfmPreflight.count) ||
+       hfmPreflight.count !== hfmPreflight.records.length ||
+       !Number.isInteger(hfmPreflight.pageCount) ||
+       hfmPreflight.pageCount < 1 ||
+       !Number.isInteger(hfmPreflight.candidateScanCount) ||
+       hfmPreflight.candidateScanCount !== hfmPreflight.records.length ||
        !hfmPreflight.hostAuthorizationContext)) {
     throw new Error("HFM_WORK_LEARNING_PREFLIGHT_INVALID");
   }
