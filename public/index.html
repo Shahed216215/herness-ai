@@ -13068,8 +13068,20 @@ document.querySelectorAll(
   async function refreshStandingAuthority() {
     try {
       const data = await postJson("/api/hfm/memory/standing-authority/status", {});
+      if (typeof data.featureEnabled !== "boolean") {
+        throw new Error("Backend feature state is missing or invalid.");
+      }
       const authority = data.authority;
-      const featureEnabled = data.featureEnabled === true;
+      const featureEnabled = data.featureEnabled;
+      if (authority !== null && authority !== undefined &&
+          (!authority || typeof authority !== "object" ||
+           typeof authority.standingAuthorityId !== "string" ||
+           !authority.standingAuthorityId.trim() ||
+           !["ACTIVE", "PAUSED", "REVOKED", "EXPIRED"].includes(authority.authorityStatus) ||
+           typeof authority.expiresAt !== "string" ||
+           !Number.isFinite(Date.parse(authority.expiresAt)))) {
+        throw new Error("Backend returned an invalid standing-authority state.");
+      }
       standingAuthorityId = authority ? authority.standingAuthorityId : null;
       if (!authority) {
         standingStatusNode.textContent = featureEnabled
@@ -13079,7 +13091,7 @@ document.querySelectorAll(
         byId("hfmV02StandingResume").hidden = true;
         byId("hfmV02StandingRevoke").hidden = true;
         byId("hfmV02StandingIssue").hidden = !featureEnabled;
-        return;
+        return { ok: true, authority: null, featureEnabled };
       }
       const expiry = new Date(authority.expiresAt).toLocaleString();
       standingStatusNode.textContent = "Authority: " + authority.authorityStatus +
@@ -13092,6 +13104,7 @@ document.querySelectorAll(
       byId("hfmV02StandingResume").hidden = !paused;
       byId("hfmV02StandingRevoke").hidden = !(active || paused);
       byId("hfmV02StandingIssue").hidden = !(terminal && featureEnabled);
+      return { ok: true, authority, featureEnabled };
     } catch (error) {
       standingAuthorityId = null;
       standingStatusNode.textContent = "Standing authority status unavailable: " + error.message;
@@ -13099,6 +13112,7 @@ document.querySelectorAll(
       byId("hfmV02StandingResume").hidden = true;
       byId("hfmV02StandingRevoke").hidden = true;
       byId("hfmV02StandingIssue").hidden = true;
+      return { ok: false, authority: null, featureEnabled: false };
     }
   }
   async function issueStandingAuthority() {
@@ -13118,9 +13132,20 @@ document.querySelectorAll(
         confirm: true,
         purpose: "Admin-approved 365-day standing read access for this project's Learning and Knowledge records."
       });
-      standingStatusNode.textContent = "Standing authority issued. Expires: " +
-        new Date(data.expiresAt).toLocaleString() + ".";
-      await refreshStandingAuthority();
+      if (data.status !== "STANDING_READ_AUTHORITY_ISSUED" ||
+          typeof data.standingAuthorityId !== "string" || !data.standingAuthorityId.trim()) {
+        throw new Error("Issuance response did not contain a verifiable authority identity.");
+      }
+      const verified = await refreshStandingAuthority();
+      if (!verified.ok || !verified.authority ||
+          verified.authority.authorityStatus !== "ACTIVE" ||
+          verified.authority.standingAuthorityId !== data.standingAuthorityId) {
+        standingStatusNode.textContent =
+          "Issuance response received, but the active backend authority could not be verified. Refresh status before retrying.";
+        return;
+      }
+      standingStatusNode.textContent = "Standing authority verified ACTIVE. Expires: " +
+        new Date(verified.authority.expiresAt).toLocaleString() + ".";
     } catch (error) {
       standingStatusNode.textContent = "Standing authority was not issued: " + error.message;
     } finally {
