@@ -1968,7 +1968,9 @@ app.post(
                   ],
                   persist: false,
                   permissionGranted: true,
-                  trustedContext: buildTrustedActorContext(req)
+                  trustedContext: buildTrustedActorContext(req),
+                  hfmRequest: req,
+                  getHfmMemoryReadRuntime
                 }
               );
 
