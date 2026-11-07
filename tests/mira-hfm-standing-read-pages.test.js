@@ -128,6 +128,36 @@ function record(memoryId) {
   console.log('HFM_STANDING_READ_PAGES_MICROSECOND_TIMESTAMP_VALIDATION=PASS');
 
   await assert.rejects(() => collectStandingReadPages({
+    readMemory: async () => page([], null, {
+      scanStartedAt: '2026-11-07T12:00:00.000000001Z'
+    }),
+    readOptions: {},
+    now: new Date('2026-11-07T12:00:00.000Z')
+  }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
+  await assert.rejects(() => collectStandingReadPages({
+    readMemory: async () => page([], null, {
+      hostAuthorizationContext: {
+        ...context,
+        issuedAt: '2026-11-07T13:00:00.000001+01:00'
+      }
+    }),
+    readOptions: {},
+    now: new Date('2026-11-07T12:00:00.000Z')
+  }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
+  await assert.rejects(() => collectStandingReadPages({
+    readMemory: async () => page([], null, {
+      hostAuthorizationContext: {
+        ...context,
+        expiresAt: '2026-11-07T11:59:59.999999-00:00'
+      },
+      authorityExpiresAt: '2026-11-07T11:59:59.999999-00:00'
+    }),
+    readOptions: {},
+    now: new Date('2026-11-07T12:00:00.000Z')
+  }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
+  console.log('HFM_STANDING_READ_PAGES_NANOSECOND_AND_OFFSET_EXPIRY_BOUNDARIES=PASS');
+
+  await assert.rejects(() => collectStandingReadPages({
     readMemory: async () => page([record('memory-expired')], null, {
       hostAuthorizationContext: {
         ...context,
