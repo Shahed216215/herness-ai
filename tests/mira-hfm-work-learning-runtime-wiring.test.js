@@ -509,8 +509,10 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
       'Work Learning ON must verify authority against the authoritative HFM reader');
     console.log('HFM_WORK_LEARNING_DENIED_PREFLIGHT_STOPS_BEFORE_PLANNING=PASS');
 
-    delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
-    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'false';
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED = 'false';
+    assert.equal(process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED, 'false');
+    assert.equal(process.env.MIRA_HFM_WORK_LEARNING_ENABLED, 'false');
     let disabledRuntimeResolved = false;
     const disabledResult = await executeWork('all HFM read flags disabled', {
       plan: {},
