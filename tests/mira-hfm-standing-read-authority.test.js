@@ -57,6 +57,9 @@ const client = {
     if (sql.includes('FROM mira_hfm.project_owners')) {
       return { rows: [{ revision: 4, status: 'ACTIVE', project_id: projectId }], rowCount: 1 };
     }
+    if (sql.startsWith('SELECT (status =')) {
+      return { rows: [{ membership_valid: true }], rowCount: 1 };
+    }
     if (sql.includes('FROM mira_hfm.project_memberships')) {
       return { rows: [{
         membership_id: 'membership-standing-001',
@@ -64,9 +67,6 @@ const client = {
         permissions: { operations: ['memory.read'] },
         valid_from: new Date(now - 60000).toISOString(), expires_at: null
       }], rowCount: 1 };
-    }
-    if (sql.startsWith('SELECT (status =')) {
-      return { rows: [{ membership_valid: true }], rowCount: 1 };
     }
     if (sql.startsWith('UPDATE mira_hfm.authority_approval_nonces')) {
       return { rowCount: 1, rows: [] };
