@@ -90,6 +90,19 @@ async function invoke(path, req) {
     assert.equal(missingProject.statusCode, 403);
     console.log('HFM_STANDING_ROUTE_VERIFIED_PROJECT_REQUIRED=PASS');
 
+
+    const unauthorizedUser = await invoke('/api/hfm/memory/standing-authority/issue', makeReq({
+      role: 'user',
+      session: {
+        authenticated: true, role: 'user',
+        hfmPrincipal: { verified: true },
+        hfmProjectBinding: { verified: true, projectId: 'project-alpha' }
+      },
+      body: { confirm: true, purpose: 'unauthorized attempt' }
+    }));
+    assert.equal(unauthorizedUser.statusCode, 401);
+    console.log('HFM_STANDING_ROUTE_NON_ADMIN_ACCESS_BLOCK=PASS');
+
     const invalidId = await invoke('/api/hfm/memory/standing-authority/pause', makeReq({
       body: { standingAuthorityId: ' ' }
     }));
