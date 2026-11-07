@@ -158,7 +158,7 @@ small{color:var(--muted)}
       recordStatus.textContent = 'Neon Status: ' + (draft.status || 'SAVED') +
         ' • Payload: ' + (draft.payloadErased ? 'ERASED' : 'RETAINED');
       const copyStatus = document.createElement('small');
-      copyStatus.textContent = 'Copy Status: ' + (state.socialPostCopyStatus[draft.memoryId] || 'NOT_COPIED');
+      copyStatus.textContent = 'Copy Status: ' + (state.socialPostCopyStatus[draft.memoryId] || (['COPIED','USER_CONFIRMED_PUBLISHED'].includes(draft.status) ? 'COPIED' : 'NOT_COPIED'));
       const actions = document.createElement('div');
       actions.className = 'actions';
       const copy = document.createElement('button');
@@ -182,7 +182,9 @@ small{color:var(--muted)}
                 clipboardCopySucceeded: true
               }, grant))
             });
+            draft.status = saved.status;
             recordStatus.textContent = 'Neon Status: ' + saved.status + ' • Payload: RETAINED';
+            published.disabled = false;
             socialPostStatus('COPIED — Neon acknowledgement saved.');
           } catch (syncError) {
             socialPostStatus('COPIED — clipboard succeeded, but Neon acknowledgement needs retry: ' + syncError.message, true);
