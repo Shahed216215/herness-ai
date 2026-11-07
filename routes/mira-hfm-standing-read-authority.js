@@ -33,7 +33,7 @@ function registerMiraHfmStandingReadAuthorityRoutes(app, getRuntime, requireAdmi
     return true;
   };
 
-  app.get('/api/hfm/memory/standing-authority/status', requireAdmin, async (req, res) => {
+  app.post('/api/hfm/memory/standing-authority/status', requireAdmin, async (req, res) => {
     if (!guard(req, res)) return;
     try {
       const runtime = await getRuntime();
