@@ -364,14 +364,15 @@ async function executeWithStandingReadAuthority(options = {}) {
       try { await client.query("ROLLBACK"); } catch (_rollbackError) {}
       transactionOpen = false;
     }
-    error.auditStatus = await persistStandingReadFailureAudit(client, {
+    const failure = error instanceof Error ? error : new Error(String(error));
+    failure.auditStatus = await persistStandingReadFailureAudit(client, {
       projectId,
       actorId: trustedActor.actorId,
       resource,
       requestId,
-      error
+      error: failure
     });
-    throw error;
+    throw failure;
   } finally {
     try { client.release(); } catch (_releaseError) {}
   }
