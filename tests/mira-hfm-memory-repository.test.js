@@ -300,6 +300,7 @@ test('revision writes append-only history and advances the current revision', as
   assert.doesNotMatch(update.sql, /trust_status|integrity_status/);
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
 
+  // Integrity metadata cannot be promoted or downgraded through a memory revision.
   const alteredIntegrity = {
     ...revised,
     integrity: { ...revised.integrity, status: 'UNVERIFIED' }
