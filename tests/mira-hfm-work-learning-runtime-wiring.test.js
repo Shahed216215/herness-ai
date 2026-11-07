@@ -701,7 +701,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     for (const toolName of [
       'memory_save', 'memory_restore', 'memory_count',
       'knowledge_count', 'knowledge_save',
-      'knowledge_restore', 'knowledge_backup', 'learning_save'
+      'knowledge_restore', 'knowledge_backup', 'learning_save', 'daily_activity_save'
     ]) {
       await assert.rejects(
         () => executeTool(toolName, {}),
@@ -776,6 +776,10 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   assert.equal(JSON.parse(await tools.learning_save.execute({
     content: 'x'
   })).code, 'HFM_TOOL_ROUTER_REQUIRED');
+  assert.equal(typeof tools.daily_activity_save?.execute, 'function');
+  assert.equal(JSON.parse(await tools.daily_activity_save.execute({
+    content: 'x'
+  })).code, 'HFM_TOOL_ROUTER_REQUIRED');
   await assert.rejects(
     () => applyAutonomousLearningControlled(),
     error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
@@ -800,7 +804,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     for (const [toolName, args] of [
       ['memory_save', { content: 'x' }],
       ['knowledge_save', { title: 'x', url: 'https://example.com', content: 'x' }],
-      ['learning_save', { content: 'x' }]
+      ['learning_save', { content: 'x' }], ['daily_activity_save', { content: 'x' }]
     ]) {
       assert.equal(JSON.parse(await tools[toolName].execute(args)).code, 'HFM_TOOL_ROUTER_REQUIRED');
     }
@@ -910,6 +914,8 @@ assert.match(execution, /toolContext: Object\.freeze/);
 assert.match(execution, /resolveHfmReadToolContext/);
 assert.match(execution, /resolveHfmWriteToolContext/);
 assert.match(execution, /call\.name === "learning_save"/);
+assert.match(execution, /call\.name === "daily_activity_save"/);
+assert.match(execution, /daily_activity_save/);
 assert.match(execution, /MIRA_HFM_MEMORY_WRITE_ENABLED/);
 assert.match(execution, /hfmWrite: Object\.freeze/);
 assert.match(execution, /requiresHfmMemoryWrite/);
