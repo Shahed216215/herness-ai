@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const { normalizeTrustedActorIdentity } = require('./mira-memory-host-identity-contract');
 const { buildTrustedProjectContext } = require('./mira-hfm-project-binding-context');
 const { signApprovalToken, createApprovalTokenVerifier } = require('./mira-hfm-approval-token');
-const { issueMemoryReadAuthority } = require('./mira-hfm-authority-issuer');
+const { issueMemoryOperationAuthority, validateOperationResource } = require('./mira-hfm-authority-issuer');
 
 const DEFAULT_TTL_MS = 60 * 1000;
 const MAX_TTL_MS = 5 * 60 * 1000;
@@ -71,12 +71,14 @@ async function issueApprovalToken(options = {}) {
   const approvalRef = crypto.randomUUID();
   const nonce = crypto.randomBytes(32).toString('base64url');
   const nonceHash = crypto.createHash('sha256').update(nonce, 'utf8').digest('hex');
-  const resource = 'memory:project:' + projectId;
+  const operation = bounded(options.operation || 'memory.read', 128);
+  const resource = bounded(options.resource || ('memory:project:' + projectId), 512);
+  validateOperationResource(operation, resource, projectId);
   const payload = Object.freeze({
     approvalRef, nonce, projectId,
     actorId: actor.actorId,
     approverActorId: actor.actorId,
-    operation: 'memory.read',
+    operation,
     resource,
     purpose,
     issuedAt: issuedAt.toISOString(),
@@ -113,22 +115,22 @@ async function issueApprovalToken(options = {}) {
     );
     const membership = membershipResult.rows?.[0];
     if (!membership || !Array.isArray(membership.permissions?.operations) ||
-        !membership.permissions.operations.includes('memory.read')) {
-      throw fail('HFM_APPROVAL_MEMORY_READ_NOT_GRANTED');
+        !membership.permissions.operations.includes(operation)) {
+      throw fail('HFM_APPROVAL_OPERATION_NOT_GRANTED');
     }
 
     await client.query(
       "INSERT INTO mira_hfm.authority_approval_nonces " +
       "(nonce_hash, approval_ref, project_id, actor_id, approver_actor_id, operation, resource, purpose, issued_at, expires_at) " +
-      "VALUES ($1,$2,$3,$4,$4,'memory.read',$5,$6,$7,$8)",
-      [nonceHash, approvalRef, projectId, actor.actorId, resource, purpose, issuedAt, expiresAt]
+      "VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9)",
+      [nonceHash, approvalRef, projectId, actor.actorId, operation, resource, purpose, issuedAt, expiresAt]
     );
     await client.query(
       "INSERT INTO mira_hfm.authority_audit_events " +
       "(event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details) " +
       "VALUES ($1,$2,$3,'APPROVAL_TOKEN_ISSUED',$4,clock_timestamp(),$5,$6::jsonb)",
       [crypto.randomUUID(), projectId, actor.actorId, crypto.randomUUID(), approvalRef,
-        JSON.stringify({ operation: 'memory.read', resource, purpose, expiresAt: expiresAt.toISOString(), singleUse: true })]
+        JSON.stringify({ operation, resource, purpose, expiresAt: expiresAt.toISOString(), singleUse: true })]
     );
     await client.query('COMMIT');
     transactionOpen = false;
@@ -137,7 +139,8 @@ async function issueApprovalToken(options = {}) {
       token,
       approvalRef,
       projectId,
-      operation: 'memory.read',
+      operation,
+      resource,
       expiresAt: expiresAt.toISOString(),
       singleUse: true
     });
@@ -207,10 +210,10 @@ function createDatabaseApprovalVerifier(options = {}) {
   });
 }
 
-async function approveAndIssueMemoryReadAuthority(options = {}) {
+async function approveAndIssueMemoryOperationAuthority(options = {}) {
   const approval = await issueApprovalToken(options);
   const verifyApprovalToken = createDatabaseApprovalVerifier(options);
-  return issueMemoryReadAuthority({
+  return issueMemoryOperationAuthority({
     ...options,
     approvalToken: approval.token,
     verifyApprovalToken
@@ -224,5 +227,6 @@ module.exports = Object.freeze({
   trustedAdmin,
   issueApprovalToken,
   createDatabaseApprovalVerifier,
-  approveAndIssueMemoryReadAuthority
+  approveAndIssueMemoryOperationAuthority,
+  approveAndIssueMemoryReadAuthority: approveAndIssueMemoryOperationAuthority
 });
