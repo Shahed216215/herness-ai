@@ -151,6 +151,7 @@ test('private idempotency digests are keyed and remain reconcilable across KEK r
   };
   const afterRotation = createVaultDigestCandidates(canonical, rotated);
   assert.notEqual(afterRotation.activeDigest, first.activeDigest);
+  assert.equal(afterRotation.candidates.length, 2);
   assert.ok(afterRotation.candidates.includes(first.activeDigest),
     'previous KEK digest remains available for in-flight idempotency reconciliation');
 });
