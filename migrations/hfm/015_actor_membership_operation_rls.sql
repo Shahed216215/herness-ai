@@ -547,7 +547,7 @@ DECLARE
   operation_name TEXT := NULLIF(current_setting('mira.operation', true), '');
   actor_name TEXT := NULLIF(current_setting('mira.actor_id', true), '');
 BEGIN
-  IF operation_name NOT IN ('memory.trash', 'memory.restore')
+  IF operation_name IS NULL OR operation_name NOT IN ('memory.trash', 'memory.restore')
      OR NEW.integrity_status IS DISTINCT FROM OLD.integrity_status
      OR NEW.trust_status IS DISTINCT FROM OLD.trust_status
      OR NEW.public_payload IS DISTINCT FROM OLD.public_payload
@@ -598,6 +598,7 @@ BEGIN
      OR NEW.purpose IS DISTINCT FROM OLD.purpose
      OR NEW.payload_digest IS DISTINCT FROM OLD.payload_digest
      OR NEW.created_at IS DISTINCT FROM OLD.created_at
+     OR OLD.result_code IS NOT NULL
      OR OLD.status <> 'REQUESTED'
      OR NEW.status <> 'COMPLETED'
      OR NEW.result_code IS NULL
