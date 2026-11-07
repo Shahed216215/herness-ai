@@ -105,6 +105,40 @@ try {
   autonomousGuard({}, {}, () => { continued = true; });
   assert.equal(continued, true);
   console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_AUTONOMOUS_LEARNING_ROUTER=PASS');
+
+const registerLearningHistoryRoutes = require('../routes/learning-history');
+let learningHistoryRouter;
+registerLearningHistoryRoutes({
+  use: (_path, router) => { learningHistoryRouter = router; }
+}, () => (_req, _res, next) => next && next(), {
+  SYSTEM_ADMIN: 'system-admin'
+});
+const lessonsLayer = learningHistoryRouter.stack.find(layer => layer.route && layer.route.path === '/lessons');
+assert.ok(lessonsLayer, 'local lessons route registered');
+const lessonsHandler = lessonsLayer.route.stack[lessonsLayer.route.stack.length - 1].handle;
+const oldLessonStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+const oldLessonWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+try {
+  process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+  delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  let lessonDenied = false;
+  lessonsHandler({ query: {} }, {
+    status(code) { assert.equal(code, 403); return this; },
+    json(payload) {
+      lessonDenied = true;
+      assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LOCAL_EXPERIENCE_LESSONS');
+      return this;
+    }
+  });
+  assert.equal(lessonDenied, true);
+} finally {
+  if (oldLessonStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldLessonStanding;
+  if (oldLessonWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldLessonWork;
+}
+console.log('HFM_AUTHORITY_MODE_BLOCKS_LOCAL_EXPERIENCE_LESSONS=PASS');
+
 } finally {
   if (oldStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
   else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldStanding;
