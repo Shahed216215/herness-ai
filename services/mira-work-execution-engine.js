@@ -1377,7 +1377,7 @@ async function executeWork(
 
   const requiresHfmMemoryWrite = normalizedCalls.calls.some(call =>
     call.name === "memory_save" || call.name === "knowledge_save" ||
-    call.name === "learning_save"
+    call.name === "learning_save" || call.name === "daily_activity_save"
   );
   const hfmWriteToolContext = requiresHfmMemoryWrite
     ? await resolveHfmWriteToolContext(options, process.env, input)
