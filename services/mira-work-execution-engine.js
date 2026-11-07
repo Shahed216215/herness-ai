@@ -1186,6 +1186,33 @@ async function resolveHfmReadToolContext(options = {}, env = process.env) {
   });
 }
 
+async function resolveHfmWriteToolContext(options = {}, env = process.env, userIntent = '') {
+  if (env.MIRA_HFM_MEMORY_WRITE_ENABLED !== "true") return null;
+  if (!options.hfmRequest ||
+      typeof options.getHfmMemoryWriterRuntime !== "function" ||
+      typeof options.getHfmAuthorityIssuerRuntime !== "function") {
+    throw new Error("HFM_MEMORY_WRITE_AUTHENTICATED_RUNTIMES_REQUIRED");
+  }
+  const [writer, issuer] = await Promise.all([
+    options.getHfmMemoryWriterRuntime(),
+    options.getHfmAuthorityIssuerRuntime()
+  ]);
+  if (!writer || writer.status !== "MEMORY_WRITER_READY" ||
+      !writer.pool || typeof writer.pool.connect !== "function") {
+    throw new Error("HFM_MEMORY_WRITER_NOT_READY");
+  }
+  if (!issuer || issuer.status !== "AUTHORITY_ISSUER_READY" ||
+      !issuer.pool || typeof issuer.pool.connect !== "function") {
+    throw new Error("HFM_AUTHORITY_ISSUER_NOT_READY");
+  }
+  return Object.freeze({
+    req: options.hfmRequest,
+    writerPool: writer.pool,
+    issuerPool: issuer.pool,
+    userIntent
+  });
+}
+
 async function executeWork(
   input,
   options = {}
@@ -1207,6 +1234,7 @@ async function executeWork(
   const hfmReadContext = await resolveHfmReadToolContext(options, process.env);
   hfmMemoryReadRuntime = hfmReadContext.runtime;
   hfmToolContext = hfmReadContext.toolContext;
+  const hfmWriteToolContext = await resolveHfmWriteToolContext(options, process.env, input);
 
   if (
     options.plan &&
@@ -1597,18 +1625,25 @@ async function executeWork(
     let toolResult;
 
     try {
+      const toolTrustedContext = {
+        ...(options.trustedContext && typeof options.trustedContext === "object"
+          ? options.trustedContext
+          : {}),
+        ...(hfmToolContext ? { hfmReadOnly: hfmToolContext } : {}),
+        ...(hfmWriteToolContext ? {
+          hfmWrite: Object.freeze({
+            ...hfmWriteToolContext,
+            taskId: plan.taskId,
+            toolCallId: call.id,
+            toolName: call.name
+          })
+        } : {})
+      };
       toolResult =
         await runTool(
           call.name,
           call.args,
-          hfmToolContext
-            ? {
-                ...(options.trustedContext && typeof options.trustedContext === "object"
-                  ? options.trustedContext
-                  : {}),
-                hfmReadOnly: hfmToolContext
-              }
-            : options.trustedContext || null
+          Object.keys(toolTrustedContext).length ? Object.freeze(toolTrustedContext) : null
         );
     } catch (error) {
       const failure =
@@ -1753,5 +1788,6 @@ module.exports = {
   inferToolCalls,
   verifyExecutionResult,
   resolveHfmReadToolContext,
+  resolveHfmWriteToolContext,
   executeWork
 };
