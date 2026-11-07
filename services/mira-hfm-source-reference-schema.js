@@ -29,9 +29,19 @@ function isPlainObject(value) {
 }
 
 function isRfc3339(value) {
-  return typeof value === 'string' &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
-    Number.isFinite(Date.parse(value));
+  if (typeof value !== 'string') return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, zone] = match;
+  const year = Number(yearText), month = Number(monthText), day = Number(dayText);
+  const hour = Number(hourText), minute = Number(minuteText), second = Number(secondText);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > days[month - 1] ||
+      hour > 23 || minute > 59 || second > 59) return false;
+  if (zone !== 'Z' &&
+      (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4, 6)) > 59)) return false;
+  return Number.isFinite(Date.parse(value));
 }
 
 function canonicalizeSourceReferenceUrl(value) {
@@ -44,7 +54,7 @@ function canonicalizeSourceReferenceUrl(value) {
   }
   if (parsed.protocol !== 'https:' || parsed.username || parsed.password ||
       !parsed.hostname || parsed.hostname.endsWith('.local') ||
-      parsed.hostname === 'localhost' ||
+      parsed.hostname === 'localhost' || parsed.hostname === 'localhost.' || parsed.hostname.endsWith('.localhost') ||
       /^(?:127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(parsed.hostname) ||
       /^172\.(?:1[6-9]|2\d|3[01])\./.test(parsed.hostname) ||
       parsed.hostname.includes(':')) {
