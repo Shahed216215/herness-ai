@@ -344,6 +344,7 @@ assert.match(server, /hfmRecallEnabled/);
 assert.match(server, /candidateScanMayBeIncomplete/);
 assert.match(server, /const cursor =\s*typeof req\.query\.cursor === "string" \? req\.query\.cursor : undefined/);
 assert.match(server, /nextCursor: hfmSearch \? hfmSearch\.nextCursor : null/);
+assert.match(server, /scannedPages: hfmSearch \? hfmSearch\.scannedPages : null/);
 assert.match(server, /nextCursor: hfmSearch \? hfmSearch\.nextCursor/);
 assert.match(server, /cursor,/);
 assert.match(server, /RETRIEVAL_COVERAGE_LIMITATION/);
@@ -799,7 +800,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
         status: 'AUTHORIZED_AND_COMMITTED', standingAuthority: true,
         count: 1, results: [{ id: 'hfm-knowledge-1' }],
         nextCursor: 'opaque-cursor-002', candidateScanCount: 100,
-        candidateScanLimit: 100, candidateScanMayBeIncomplete: true,
+        candidateScanLimit: 2000, scannedPages: 2, candidateScanMayBeIncomplete: true,
         localFallback: false, driveFallback: false
       };
     }
@@ -809,6 +810,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   assert.equal(searchInput.limit, 5);
   assert.equal(searchInput.cursor, 'opaque-cursor-001');
   assert.equal(JSON.parse(hfmToolResult).nextCursor, 'opaque-cursor-002');
+  assert.equal(JSON.parse(hfmToolResult).scannedPages, 2);
   assert.equal(JSON.parse(hfmToolResult).source, 'HFM_V02_STANDING_READ');
   assert.equal(JSON.parse(hfmToolResult).localFallback, false);
   await assert.rejects(
