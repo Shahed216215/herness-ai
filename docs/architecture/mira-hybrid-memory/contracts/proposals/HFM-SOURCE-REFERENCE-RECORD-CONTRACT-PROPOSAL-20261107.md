@@ -25,6 +25,8 @@ The implemented v1.1.0 validator therefore correctly rejects `recordType: source
 
 ## 2. Representation options and recommendation
 
+Implementation decision: although Option A is the original recommendation in this proposal, the HFM v0.2 implementation request selected Option B. The controlling decision record is HFM-SRC-DECISION-2026-11-07-01; the proposal below remains useful for unresolved link, retrieval, trust, and retention requirements.
+
 Do not silently add `source_reference` to v1.1.0. The approved amendment calls it a domain-level family and the v1.1.0 schema section deliberately enumerates only six `recordType` values.
 
 Two representations are possible:
