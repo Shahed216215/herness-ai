@@ -22,8 +22,8 @@ Both record types use the same project-scoped canonical repository and the stand
 ## Retrieval behavior
 
 - `knowledge_search` reads both `knowledge_item` and `learning_note` under standing read authority.
-- Search results label the record type as Knowledge or Learning. The current read adapter scans at most 100 most recently updated eligible candidates per page and returns `candidateScanCount`, `candidateScanLimit`, `candidateScanMayBeIncomplete`, and an opaque `nextCursor`. The standing-read repository uses a project/type/lifecycle-bound keyset cursor and a fixed scan-start timestamp; callers can continue page-by-page until `nextCursor` is null. Chat recall and the admin API expose the cursor so additional pages can be requested without treating a partial page as exhaustive.
-- The Work Learning transfer adapter remains narrower: it accepts only structured `legacy_import` records in the `work_learning` domain. A generic learning note is never converted into executable task instructions.
+- Search results label the record type as Knowledge or Learning. The search runtime now follows up to 20 repository keyset pages (maximum 2,000 eligible records) per invocation, validates the actor/project/authority and fixed scan-start timestamp across every page, rejects duplicate records/cursor replay, and aggregates relevance globally before selecting the top results. Each page is a separate committed standing `memory.read` transaction with its own audit event. It returns `candidateScanCount`, `candidateScanLimit`, `scannedPages`, `candidateScanMayBeIncomplete`, and an opaque `nextCursor`. If the 20-page bound is reached, the result is explicitly marked incomplete and the cursor can continue the same project/type/lifecycle-bound snapshot in a later search; it is never presented as exhaustive.
+- The Work Learning transfer adapter remains narrower: it accepts only structured `legacy_import` records in the `work_learning` domain. A generic learning note is never converted into executable task instructions. Work Learning aggregates every page under the same fixed scan timestamp (up to 20 pages / 2,000 records) before relevance ranking; if the bound is reached while a cursor remains, it fails closed instead of using a partial global ranking. Every page is separately authorized and audited, and actor, project, authority reference, expiry, and scan timestamp must remain consistent.
 - No local or Drive fallback is permitted when HFM mode is active.
 
 ## Explicit limitation / gate
@@ -35,3 +35,12 @@ A future verification transition requires a separately specified and approved au
 ## Verification boundary
 
 Automated tests use synthetic records and injected readers. They do not connect to production Neon, write production rows, alter credentials, or enable HFM write/read flags. Production readiness and deployment remain separate gates.
+
+
+## Multi-page retrieval completion — 2026-11-07
+
+- Added `services/mira-hfm-standing-read-pages.js` as a shared bounded page collector. It requires explicit standing-authority/consumption/audit result semantics, no write or fallback indicators, ACTIVE Knowledge/Learning record scope, exact per-page count, stable actor/project/authority/expiry, and an unchanged scan-start timestamp. Duplicate record IDs, cursor replay, scope drift, or snapshot drift fail closed.
+- `knowledge_search` now aggregates relevance across up to 20 pages (2,000 records) before returning the top results. A remaining cursor is exposed with an explicit incomplete marker; the caller may continue from that cursor.
+- Work Learning now follows the same audited keyset cursor through up to 20 pages and aggregates all eligible records before ranking. A still-open cursor at the bound blocks Work planning rather than using an incomplete ranking.
+- Work runtime reuses the already committed preflight page and requests later pages through the authenticated HFM reader. Each subsequent page is an independent standing-read transaction and audit; no local/Drive fallback or write path is introduced.
+- Regression coverage includes cross-page relevance ranking, multi-page Work Learning aggregation, page actor/project/snapshot consistency, no-fallback/no-write enforcement, duplicate cursor rejection, and bounded-scan fail-closed behavior.
