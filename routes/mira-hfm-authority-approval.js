@@ -23,7 +23,7 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
   app.post('/api/hfm/memory/authorize',
     requireAdmin,
     async (req, res) => {
-      if (!sameOriginRequest(req)) {
+      if (!req.get || !req.get('origin') || !sameOriginRequest(req)) {
         return res.status(403).json({ success: false, error: 'Same-origin request required.' });
       }
       if (!req.session || req.session.authenticated !== true ||
