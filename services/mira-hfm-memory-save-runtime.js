@@ -94,7 +94,7 @@ function buildCanonicalMemoryRecord(options = {}) {
   let sourceType = 'manual';
   let sourceId = 'user-confirmed-memory';
   let sourceUrl;
-  let recordType = 'fact';
+  let recordType = 'knowledge_item';
   let trustStatus = 'HUMAN_VERIFIED';
   let lifecycle = 'ACTIVE';
 
