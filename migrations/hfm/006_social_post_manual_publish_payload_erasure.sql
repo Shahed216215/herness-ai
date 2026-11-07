@@ -26,7 +26,7 @@ ALTER TABLE mira_hfm.memory_record_versions
   ADD COLUMN IF NOT EXISTS payload_erased_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS payload_erased_by_actor_id TEXT;
 
-DO $
+DO $$
 DECLARE
   constraint_row RECORD;
   definition TEXT;
@@ -43,7 +43,7 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$;
+$$;
 ALTER TABLE mira_hfm.memory_records
   ADD CONSTRAINT memory_records_payload_representation_check CHECK (
     (
@@ -70,7 +70,7 @@ ALTER TABLE mira_hfm.memory_records
     )
   );
 
-DO $
+DO $$
 DECLARE
   constraint_row RECORD;
   definition TEXT;
@@ -87,7 +87,7 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$;
+$$;
 ALTER TABLE mira_hfm.memory_record_versions
   ADD CONSTRAINT memory_versions_payload_representation_check CHECK (
     (
