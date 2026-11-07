@@ -28,6 +28,17 @@ test('restricted vault version insert independently binds authority purpose to v
   assert.doesNotMatch(migration, /authority_row\.purpose LIKE 'hfm-vault:%'/);
 });
 
+test('restricted vault authority can create only the initial version and must match parent revision', () => {
+  assert.match(
+    migration,
+    /classification = 'RESTRICTED'[\s\S]*?AND revision = 1[\s\S]*?memory\.vault\.write/
+  );
+  assert.match(
+    migration,
+    /parent_record\.revision = memory_record_versions\.revision/
+  );
+});
+
 test('restricted vault writes remain exact-resource, consumed, short-lived and review-pending', () => {
   assert.match(migration, /authority_row\.resource = 'memory:' \|\| memory_records\.memory_id/);
   assert.match(migration, /authority_row\.status = 'CONSUMED'/);
