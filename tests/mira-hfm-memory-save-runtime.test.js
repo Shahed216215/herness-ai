@@ -129,16 +129,29 @@ function baseOptions(overrides = {}) {
       }
     },
     pool: { connect: async () => ({}) },
+    issuerPool: { connect: async () => ({}) },
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
     userIntent: 'Show pending knowledge sources for review.',
+    issueAuthority: async input => ({
+      status: 'AUTHORITY_ISSUED',
+      projectId: 'project-001',
+      operation: 'memory.read',
+      resource: 'memory:project:project-001',
+      grant: {
+        authorityId: 'review-authority-001',
+        requestId: 'review-request-001',
+        purpose: input.purpose,
+        expiresAt: '2026-11-07T07:05:00.000Z'
+      }
+    }),
     readMemory: async input => {
       reviewReadRequest = input;
       return {
         status: 'AUTHORIZED_AND_COMMITTED',
-        standingAuthority: true,
-        approvalRequiredPerRead: false,
+        authorityConsumed: true,
+        standingAuthority: false,
+        approvalRequiredPerRead: true,
         projectId: 'project-001',
-        authorityExpiresAt: '2027-11-07T07:00:00.000Z',
         hostAuthorizationContext: { projectId: 'project-001', actorId: 'mira:admin-001' },
         records: [pendingRecord]
       };
