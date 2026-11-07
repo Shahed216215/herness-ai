@@ -170,6 +170,8 @@ const bridge = read('services/mira-hfm-work-learning-retrieval.js');
 const runtime = read('services/mira-hfm-work-learning-runtime.js');
 const knowledgeSearch = read('services/mira-hfm-knowledge-search-runtime.js');
 assert.match(server, /searchHfmKnowledge/);
+assert.match(server, /MIRA_HFM_WORK_LEARNING_ENABLED === "true"/);
+assert.match(server, /HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_DIAGNOSTIC/);
 assert.match(server, /HFM_READ_ONLY_LOCAL_MEMORY_DISABLED/);
 assert.match(server, /HFM_STANDING_READ_ONLY/);
 assert.match(server, /selectRecentMessages\(previousMemory\)/);
