@@ -446,6 +446,8 @@ const pool = { async connect() { return client; } };
   assert.match(failureAuditScript, /ci-standing-denied-no-flag/);
   assert.match(failureAuditScript, /ci-standing-denied-wrong-operation/);
   assert.match(failureAuditScript, /ci-standing-denied-wrong-resource/);
+  assert.match(failureAuditScript, /to_char\(\$\$2026-11-07T00:00:00[.]123456Z\$\$::timestamptz AT TIME ZONE/);
+  assert.match(failureAuditScript, /HFM_STANDING_READ_DB_TIMESTAMP_SERIALIZATION_MICROSECONDS=PASS/);
   console.log('HFM_STANDING_READ_FAILURE_AUDIT_SCRIPT_COVERS_RESTRICTIVE_CONTEXT=PASS');
   console.log('HFM_STANDING_READ_FAILURE_AUDIT_POLICY_SCOPED_TO_PROJECT_ACTOR_REQUEST=PASS');
   console.log('HFM_STANDING_READ_MIGRATION_RLS_IMMUTABLE_SCOPE_365D=PASS');
