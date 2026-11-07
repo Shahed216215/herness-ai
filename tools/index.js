@@ -142,9 +142,6 @@ async function executeTool(name, args, trustedContext = null) {
     }
     return executeHfmKnowledgeSearch(args, trustedContext);
   }
-  if (hfmReadOnlyMode && name === "knowledge_review_queue") {
-    return executeHfmKnowledgeReviewQueue(args, trustedContext);
-  }
   if (hfmWriteMode && name === "memory_save") {
     return executeHfmMemorySave("memory_save", args, trustedContext);
   }
