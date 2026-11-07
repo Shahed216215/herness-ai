@@ -6,6 +6,7 @@ const test = require('node:test');
 
 const html = fs.readFileSync('public/mira-hfm-knowledge.html', 'utf8');
 const nav = fs.readFileSync('public/index.html', 'utf8');
+const server = fs.readFileSync('server.js', 'utf8');
 
 test('Facebook Knowledge UI exposes import, public research, search, view, update, trash, restore and history controls', () => {
   for (const id of ['importBtn','researchBtn','searchBtn','viewBtn','updateBtn','deleteBtn','restoreBtn','historyBtn']) {
@@ -16,6 +17,9 @@ test('Facebook Knowledge UI exposes import, public research, search, view, updat
   }
   assert.match(html, /\/api\/hfm\/authorities\/issue/);
   assert.match(nav, /mira-hfm-knowledge\.html/);
+  assert.match(server, /registerFacebookKnowledgeRoutes\(app, requireAgentAuth/);
+  assert.match(server, /registerHfmProjectRoutes\(app, requireAgentAuth/);
+  assert.match(server, /registerDailyKnowledgeRoutes\(app, requireAgentAuth\)/);
 });
 
 test('UI uses same-origin authenticated requests and does not contain Facebook API or login automation', () => {
