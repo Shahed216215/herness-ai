@@ -133,7 +133,7 @@ function baseOptions(overrides = {}) {
   assert.equal(saved.allowPrivateWrite, true);
   assert.equal(saved.record.trust.status, 'HUMAN_VERIFIED');
   assert.equal(result.saved, true);
-  assert.equal(result.searchable, true);
+  assert.equal(result.searchEligible, true);
   assert.equal(result.localFallback, false);
   assert.equal(result.driveFallback, false);
 
