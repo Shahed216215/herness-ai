@@ -254,32 +254,54 @@ async function getStandingReadAuthorityStatus(options = {}) {
   const actor = actorFrom(options.req);
   if (admin.actor.actorId !== actor.actorId) fail('HFM_STANDING_READ_ACTOR_MISMATCH');
   const client = await options.pool.connect();
+  let transactionOpen = false;
   try {
-    await client.query('BEGIN READ ONLY');
+    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+    transactionOpen = true;
     await client.query("SET LOCAL statement_timeout = '5000ms'");
+    await client.query("SET LOCAL lock_timeout = '3000ms'");
     await client.query("SELECT set_config('mira.project_id', $1, true)", [admin.projectId]);
     await client.query("SELECT set_config('mira.actor_id', $1, true)", [actor.actorId]);
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+      ["hfm-standing-read:" + admin.projectId + ":" + actor.actorId]
+    );
     const result = await client.query(
       "SELECT standing_authority_id, status, purpose, valid_from, expires_at " +
       "FROM mira_hfm.standing_read_authorities WHERE project_id = $1 AND actor_id = $2 " +
-      "ORDER BY created_at DESC LIMIT 1",
+      "ORDER BY created_at DESC LIMIT 1 FOR UPDATE",
       [admin.projectId, actor.actorId]
     );
-    const row = result.rows?.[0];
+    let row = result.rows?.[0] || null;
+    if (row && ['ACTIVE', 'PAUSED'].includes(row.status)) {
+      const expired = await client.query(
+        "UPDATE mira_hfm.standing_read_authorities " +
+        "SET status = 'EXPIRED', updated_at = clock_timestamp(), paused_at = NULL " +
+        "WHERE standing_authority_id = $1 AND project_id = $2 AND actor_id = $3 " +
+        "AND status IN ('ACTIVE','PAUSED') AND expires_at <= clock_timestamp() " +
+        "RETURNING status, expires_at",
+        [row.standing_authority_id, admin.projectId, actor.actorId]
+      );
+      if (expired.rowCount === 1) {
+        row = { ...row, status: expired.rows[0].status, expires_at: expired.rows[0].expires_at };
+      }
+    }
     await client.query('COMMIT');
+    transactionOpen = false;
     return Object.freeze({
       status: row ? 'STANDING_READ_AUTHORITY_FOUND' : 'STANDING_READ_AUTHORITY_NOT_FOUND',
       authority: row ? Object.freeze({
         standingAuthorityId: row.standing_authority_id,
-        authorityStatus: row.status !== 'REVOKED' && Date.parse(row.expires_at) <= Date.now()
-          ? 'EXPIRED' : row.status,
+        authorityStatus: row.status,
         purpose: row.purpose,
         validFrom: new Date(row.valid_from).toISOString(),
         expiresAt: new Date(row.expires_at).toISOString()
       }) : null
     });
   } catch (error) {
-    try { await client.query('ROLLBACK'); } catch (_rollbackError) {}
+    if (transactionOpen) {
+      try { await client.query('ROLLBACK'); } catch (_rollbackError) {}
+    }
     throw error;
   } finally {
     try { client.release(); } catch (_error) {}
