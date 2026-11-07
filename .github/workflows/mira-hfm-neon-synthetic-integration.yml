@@ -1,4 +1,4 @@
-name: Mira HFM disposable Neon synthetic integration
+name: Mira HFM disposable Neon database smoke test
 
 on:
   push:
