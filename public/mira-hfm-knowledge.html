@@ -82,6 +82,7 @@ small{color:var(--muted)}
     <input id="memoryId" placeholder="Select a result or enter record ID">
     <label for="editContent">Knowledge content</label>
     <textarea id="editContent" placeholder="Select a search result to view or edit its content..."></textarea>
+    <div id="recordMeta" class="status">Source metadata appears when a record is loaded.</div>
     <div class="actions">
       <button id="viewBtn">View Record</button>
       <button class="primary" id="updateBtn">Save New Version</button>
@@ -134,7 +135,14 @@ small{color:var(--muted)}
       const content = document.createElement('p');
       content.textContent = item.content;
       const meta = document.createElement('small');
-      meta.textContent = 'Trust: ' + (item.trust?.status || 'unknown') + ' • Integrity: ' + (item.integrity?.status || 'unknown') + ' • Revision: ' + (item.revision || 1);
+      const sourceDate = item.provenance?.originalPublishedAt || item.source?.observedAt || 'date not supplied';
+      meta.textContent = 'Source: ' + (item.source?.sourceType || 'Facebook/manual') +
+        ' • Method: ' + (item.provenance?.collectionMethod || 'unknown') +
+        ' • Verification: ' + (item.provenance?.verificationStatus || 'unknown') +
+        ' • Date: ' + sourceDate +
+        ' • Trust: ' + (item.trust?.status || 'unknown') +
+        ' • Integrity: ' + (item.integrity?.status || 'unknown') +
+        ' • Revision: ' + (item.revision || 1);
       card.append(heading, content, meta);
       if (item.source?.sourceUrl) {
         const link = document.createElement('a');
@@ -149,6 +157,11 @@ small{color:var(--muted)}
       select.addEventListener('click', () => {
         $('memoryId').value = item.memoryId;
         $('editContent').value = item.content;
+        $('recordMeta').textContent = 'Source: ' + (item.source?.sourceType || 'Facebook/manual') +
+          ' • URL: ' + (item.source?.sourceUrl || 'not supplied') +
+          ' • Method: ' + (item.provenance?.collectionMethod || 'unknown') +
+          ' • Verification: ' + (item.provenance?.verificationStatus || 'unknown') +
+          ' • Original date: ' + (item.provenance?.originalPublishedAt || 'not supplied');
         state.selected = item;
         status('Selected ' + item.memoryId);
       });
@@ -202,7 +215,9 @@ small{color:var(--muted)}
         const line = document.createElement('p');
         const a = document.createElement('a');
         a.href = item.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = item.title || item.url;
-        line.append(a, document.createTextNode(' — ' + (item.content || item.snippet || '')));
+        line.append(a, document.createTextNode(' — ' + (item.content || item.snippet || '') +
+          ' • Verification: ' + (item.verificationStatus || 'unknown') +
+          ' • Published: ' + (item.publishedAt || 'not supplied')));
         root.append(line);
         const importSnippet = document.createElement('button');
         importSnippet.textContent = 'Import this evidence to Neon';
@@ -251,6 +266,11 @@ small{color:var(--muted)}
       const query = new URLSearchParams(withAuthority({}, grant));
       const result = await request('/api/hfm/facebook-knowledge/' + encodeURIComponent(id) + '?' + query.toString());
       $('editContent').value = result.record.content;
+      $('recordMeta').textContent = 'Source: ' + (result.record.source?.sourceType || 'Facebook/manual') +
+        ' • URL: ' + (result.record.source?.sourceUrl || 'not supplied') +
+        ' • Method: ' + (result.record.provenance?.collectionMethod || 'unknown') +
+        ' • Verification: ' + (result.record.provenance?.verificationStatus || 'unknown') +
+        ' • Original date: ' + (result.record.provenance?.originalPublishedAt || 'not supplied');
       state.selected = result.record;
       status('Loaded record ' + id + ' • ' + result.record.trust.status);
     } catch (error) { status(error.message, true); }
