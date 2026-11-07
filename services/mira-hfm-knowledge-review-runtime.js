@@ -35,8 +35,9 @@ function safeReviewSourceUrl(value) {
 }
 
 async function listPendingHfmKnowledgeForReview({
-  req, pool, limit = 20, env = process.env, userIntent,
-  now = new Date(), readMemory = retrieveProjectMemory
+  req, pool, issuerPool, limit = 20, env = process.env, userIntent,
+  now = new Date(), readMemory = retrieveProjectMemory,
+  issueAuthority = approveAndIssueMemoryOperationAuthority
 } = {}) {
   if (!hasExplicitReviewIntent(userIntent)) fail('HFM_KNOWLEDGE_REVIEW_EXPLICIT_USER_INTENT_REQUIRED');
   if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true') {
@@ -53,7 +54,6 @@ async function listPendingHfmKnowledgeForReview({
   if (!binding || binding.verified !== true || typeof binding.projectId !== 'string' || !binding.projectId.trim()) {
     fail('HFM_KNOWLEDGE_REVIEW_VERIFIED_PROJECT_REQUIRED');
   }
-  const issuerPool = arguments[0]?.issuerPool;
   if (!pool || typeof pool.connect !== 'function' ||
       !issuerPool || typeof issuerPool.connect !== 'function' ||
       typeof readMemory !== 'function') {
@@ -61,7 +61,6 @@ async function listPendingHfmKnowledgeForReview({
   }
 
   const projectId = binding.projectId;
-  const issueAuthority = arguments[0]?.issueAuthority || approveAndIssueMemoryOperationAuthority;
   const authority = await issueAuthority({
     req, pool: issuerPool, env,
     operation: 'memory.read',
