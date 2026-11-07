@@ -27,6 +27,10 @@ on:
       - "services/mira-hfm-runtime-identity-context.js"
       - "tests/mira-hfm-facebook-knowledge-agent-tools.test.js"
       - "tests/mira-hfm-runtime-identity-context.test.js"
+      - "routes/mira-hfm-projects.js"
+      - "migrations/hfm/008_project_bootstrap_issuer.sql"
+      - "tests/mira-hfm-project-bootstrap.test.js"
+      - "tests/mira-hfm-project-bootstrap-migration-contract.test.js"
       - "tests/mira-hfm-social-post-routes.test.js"
       - "migrations/hfm/006_social_post_manual_publish_payload_erasure.sql"
       - "tests/mira-hfm-social-post-workflow.test.js"
@@ -107,6 +111,7 @@ jobs:
           node --check services/mira-hfm-authority-issuer-runtime.js
           node --check services/mira-hfm-authority-issuer-pool.js
           node --check routes/mira-hfm-authorities.js
+          node --check routes/mira-hfm-projects.js
           node --check tools/facebook-knowledge-search.js
           node --check tools/facebook-knowledge-research.js
       - name: Run focused Memory repository tests
@@ -128,5 +133,7 @@ jobs:
           node tests/mira-hfm-facebook-knowledge-ui.test.js
           node tests/mira-hfm-facebook-knowledge-agent-tools.test.js
           node tests/mira-hfm-runtime-identity-context.test.js
+          node tests/mira-hfm-project-bootstrap.test.js
+          node tests/mira-hfm-project-bootstrap-migration-contract.test.js
       - name: Run full repository regression suite
         run: npm test
