@@ -500,7 +500,8 @@ function validatePlan(plan) {
 }
 
 function buildExperienceGuidance(
-  task
+  task,
+  options = {}
 ) {
   const strategies =
     futureStrategyEngine.getStrategiesForTask(
@@ -516,12 +517,19 @@ function buildExperienceGuidance(
       : [];
 
   const crossTaskLearning =
-    crossTaskLearningEngine.getCrossTaskLearning(
-      task,
-      {
-        limit: 5
-      }
-    );
+    options.useHfmWorkLearning === true
+      ? (options.hfmWorkLearning || {
+          engineVersion: "HFM_V02",
+          taskId: task?.id || "",
+          transfers: [],
+          count: 0
+        })
+      : crossTaskLearningEngine.getCrossTaskLearning(
+          task,
+          {
+            limit: 5
+          }
+        );
 
   const safeCrossTaskLearning =
     crossTaskLearning &&
@@ -688,7 +696,7 @@ function applyExperienceGuidance(
             : "Relevant prior cross-task experience";
 
         const sourceTaskId =
-          transfer.source?.taskId || "";
+          transfer.source?.taskId || transfer.sourceTaskId || "";
 
         return {
           checkId:
@@ -722,7 +730,8 @@ function applyExperienceGuidance(
 
 function buildPlanFromUnderstanding(
   understood,
-  originalText
+  originalText,
+  options = {}
 ) {
   const task = normalizeUnderstandingTask(
     understood,
@@ -882,10 +891,38 @@ async function createTaskPlan(
       }
     );
 
+  let planningOptions = options;
+  if (process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+    if (typeof options.retrieveWorkLearning !== "function") {
+      throw new Error("HFM_WORK_LEARNING_RUNTIME_REQUIRED");
+    }
+    const normalizedTask = normalizeUnderstandingTask(understood, originalText);
+    const impossible = detectImpossibleTask(originalText).length > 0;
+    const hfmWorkLearning = impossible
+      ? {
+          engineVersion: "HFM_V02",
+          taskId: normalizedTask.id,
+          transfers: [],
+          count: 0,
+          status: "SKIPPED_INFEASIBLE_TASK"
+        }
+      : await options.retrieveWorkLearning({ task: normalizedTask });
+    if (!hfmWorkLearning || !Array.isArray(hfmWorkLearning.transfers) ||
+        !Number.isInteger(hfmWorkLearning.count)) {
+      throw new Error("HFM_WORK_LEARNING_RETRIEVAL_INVALID");
+    }
+    planningOptions = {
+      ...options,
+      useHfmWorkLearning: true,
+      hfmWorkLearning
+    };
+  }
+
   const result =
     buildPlanFromUnderstanding(
       understood,
-      originalText
+      originalText,
+      planningOptions
     );
 
   return {
