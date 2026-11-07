@@ -1394,7 +1394,8 @@ app.get(
       const limit =
         Number(req.query.limit) || 5;
 
-      const results = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"
+      const results = (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true")
         ? (await searchHfmKnowledge({
             req,
             pool: (await getHfmMemoryReadRuntime()).pool,
@@ -1443,7 +1444,8 @@ app.get(
       }
 
       let entry;
-      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true") {
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
         const runtime = await getHfmMemoryReadRuntime();
         if (!runtime || runtime.status !== "MEMORY_READ_READY" || !runtime.pool) {
           return res.status(503).json({ success: false, error: "HFM Memory reader is not ready." });
@@ -1735,7 +1737,8 @@ app.post(
       const messages =
         selectRecentMessages(previousMemory);
 
-      const recalledKnowledge = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"
+      const recalledKnowledge = (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true")
         ? (await searchHfmKnowledge({
             req,
             pool: (await getHfmMemoryReadRuntime()).pool,
@@ -2371,6 +2374,15 @@ app.post(
 // This endpoint does not modify knowledge, proposals, snapshots, or Drive data.
 app.get("/api/admin/diagnostic/learning", requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN), (req, res) => {
   try {
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+      return res.status(403).json({
+        success: false,
+        blocked: true,
+        code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_DIAGNOSTIC",
+        error: "Legacy Learning diagnostic cannot inspect local Knowledge while HFM read-only authority mode is enabled."
+      });
+    }
     const {
       applyKnowledgeImprovementControlled
     } = require("./knowledge-controlled-apply");
