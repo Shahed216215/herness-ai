@@ -816,7 +816,12 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     async input => {
       searchInput = input;
       return {
-        status: 'AUTHORIZED_AND_COMMITTED', standingAuthority: true,
+        status: 'AUTHORIZED_AND_COMMITTED',
+        projectId: 'project-alpha',
+        standingAuthority: true,
+        authorityConsumed: false,
+        approvalRequiredPerRead: false,
+        memoryWrites: false,
         count: 1, results: [{ id: 'hfm-knowledge-1' }],
         nextCursor: 'opaque-cursor-002', candidateScanCount: 100,
         candidateScanLimit: 2000, scannedPages: 2, candidateScanMayBeIncomplete: true,
