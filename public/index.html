@@ -1443,6 +1443,7 @@
               </div>
             </div>
             <div class="button-row" style="margin-top:14px;">
+              <button id="hfmV02GenerateDraft" class="primary-button" type="button">Generate Today's Draft</button>
               <button id="hfmV02LoadActiveDrafts" class="primary-button" type="button">Load Active Drafts</button>
               <button id="hfmV02LoadTrash" class="secondary-button" type="button">View Trash</button>
             </div>
@@ -12935,7 +12936,7 @@ document.querySelectorAll(
   const listNode = byId("hfmV02SocialDraftList");
   const controls = [
     byId("hfmV02SelectProject"), byId("hfmV02BootstrapProject"),
-    byId("hfmV02LoadActiveDrafts"), byId("hfmV02LoadTrash")
+    byId("hfmV02GenerateDraft"), byId("hfmV02LoadActiveDrafts"), byId("hfmV02LoadTrash")
   ];
 
   function setStatus(message, kind = "muted") {
@@ -13150,6 +13151,28 @@ document.querySelectorAll(
       setBusy(false);
     }
   }
+  byId("hfmV02GenerateDraft").addEventListener("click", async () => {
+    if (!window.confirm("Generate one private daily post draft from today's eligible HFM activity and learning notes, then save it to Neon for manual review? Mira will not publish it.")) return;
+    setBusy(true);
+    setStatus("Reading today's eligible HFM activity and learning notes…");
+    try {
+      const data = await postJson("/api/hfm/social-drafts/generate-daily", {
+        confirm: true,
+        timeZone: "Asia/Dhaka"
+      });
+      if (data.draftSaved !== true) {
+        setStatus("No eligible daily activity or learning notes were available. No draft was written.", "muted");
+        return;
+      }
+      setStatus("Private daily draft saved to Neon: " + data.memoryId + ". Manual review and Facebook publication are still required.", "success");
+      setBusy(false);
+      await loadDrafts("ACTIVE");
+    } catch (error) {
+      setStatus("Daily draft generation not completed: " + error.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  });
   byId("hfmV02LoadActiveDrafts").addEventListener("click", () => loadDrafts("ACTIVE"));
   byId("hfmV02LoadTrash").addEventListener("click", () => loadDrafts("TRASHED"));
 })();
