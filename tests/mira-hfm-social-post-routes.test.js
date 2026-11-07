@@ -37,7 +37,7 @@ test('HTTP route source contains no Facebook login, API publishing or external F
   const fs = require('node:fs');
   const source = fs.readFileSync('routes/mira-hfm-social-posts.js', 'utf8');
   assert.doesNotMatch(source, /graph\.facebook\.com|facebook\.com\/.*\/feed|access_token|publish_to_facebook/i);
-  assert.match(source, /USER_CONFIRMED_PUBLISHED/);
+  assert.match(source, /workflow\.OPERATIONS\.PUBLISH/);
   assert.match(source, /userConfirmedDelete === true/);
   assert.match(source, /executeWithConsumedAuthority/);
 });
