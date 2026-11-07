@@ -728,6 +728,20 @@ test('standing-read keyset pagination is project-bound, stable and audited per p
     }),
     error => error.code === 'HFM_MEMORY_PAGE_CURSOR_INVALID'
   );
+  const legacyMillisecondCursor = Buffer.from(JSON.stringify({
+    ...cursorPayload,
+    scanStartedAt: scanStartedAt.slice(0, 23) + 'Z',
+    updatedAt: firstUpdatedAt.slice(0, 23) + 'Z'
+  }), 'utf8').toString('base64url');
+  await assert.rejects(
+    repository.listMemoryRecords({
+      client, context: standingContext,
+      recordTypes: ['learning_note', 'knowledge_item'],
+      lifecycle: 'ACTIVE', limit: 1, cursor: legacyMillisecondCursor,
+      allowPrivateRead: true, env
+    }),
+    error => error.code === 'HFM_MEMORY_PAGE_CURSOR_INVALID'
+  );
 });
 
 test('trash requires explicit private lifecycle grant and writes a recoverable revision', async () => {
