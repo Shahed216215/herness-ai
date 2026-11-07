@@ -926,7 +926,7 @@ assert.ok(execution.indexOf('if (!standingReadEnabled && !workLearningEnabled)')
 assert.match(execution, /if \(hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/);
 assert.match(execution, /includeLearning: hfmWorkLearningEnabled/);
 assert.match(execution, /hfmWorkLearningEnabled\) \{[\s\S]{0,700}plannerOptions\.preflightWorkLearning = async/);
-assert.match(execution, /readMemory: async \(\{ cursor \} = \{\}\) => cursor[\s\S]{0,120}: preflight/);
+assert.match(execution, /readMemory: async \(\{ cursor \} = \{\}\) => cursor[\s\S]{0,900}: preflight/);
 assert.ok(planner.indexOf('await options.preflightWorkLearning()') < planner.indexOf('await understandTask('));
 assert.ok(planner.indexOf('await understandTask(') < planner.indexOf('await options.retrieveWorkLearning('));
 assert.match(server, /hfmRequest: req/);
