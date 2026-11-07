@@ -85,3 +85,16 @@ The Render service's active database target still cannot be read through the ava
 Migration 016 and the canonical Memory repository revision path were hardened so `memory.update` cannot change `integrity_status` or `trust_status`. The writer's column-level UPDATE grant excludes `integrity_status`; the trigger rejects any integrity/trust metadata change; the repository validates the incoming integrity status against the stored row and no longer updates that column. Regression coverage rejects integrity-status tampering and confirms the revision UPDATE statement does not touch trust/integrity metadata.
 
 Exact branch HEAD `4a4fb954c31e7dd76c2bc55935a010224c0754ca` completed the eight existing PR workflow checks successfully: HFM runtime foundation, Memory repository contracts, session persistence, Render host binding, dependency remediation, Run Agent regression, Competitor Intelligence, and approval diagnostic. Render live HTTP smoke was skipped. The standalone `hfm-postgres-migrations.yml` push run still produced a failed run with zero jobs; no disposable PostgreSQL 001–018 execution evidence was obtained. Its migration-chain status remains **NOT_VERIFIED** (not PASS). This branch remains Draft and unmerged; Render and Neon were not changed.
+
+## 2026-11-07 superseding validation checkpoint — exact PR HEAD 0f750ce0
+
+The earlier **NOT_VERIFIED** statement above is historical and is superseded for disposable-CI validation by the following exact-head evidence:
+
+- Commit: `0f750ce0f733cd0972c634af6af98cec4053cc99`.
+- Pull-request migration workflow: run `42379284821`, job `128423294500` — **SUCCESS**.
+- Push migration workflow: run `42379282025`, job `128423285993` — **SUCCESS**.
+- PostgreSQL 16 disposable database applied migrations 001–018 in order. The log explicitly records migrations 016, 017, and 018 as applied and ends with `HFM_V02_DISPOSABLE_MIGRATION_CHAIN=PASS`.
+- The verification step confirmed all eight protected HFM tables had both RLS and FORCE RLS enabled.
+- The nine pull-request workflows on this exact HEAD (including the disposable PostgreSQL migration chain) completed successfully. The Render live HTTP smoke remains skipped by design.
+
+This evidence proves migration-chain compatibility only in a disposable PostgreSQL 16 CI database. It does **not** prove compatibility with the live Neon target and does not authorize live application. Render-to-Neon identity remains **INCONCLUSIVE**; migrations 010–018 remain **NOT_APPLIED** to live Neon; the PR remains Draft/unmerged; no Render deployment, Neon write, role change, or secret/configuration change occurred.
