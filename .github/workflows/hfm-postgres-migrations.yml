@@ -142,7 +142,7 @@ jobs:
                 'authority_audit_events','authority_approval_nonces','memory_records','bootstrap_registry'
               )
               AND c.relrowsecurity AND c.relforcerowsecurity;
-            IF protected_tables <> 7 THEN
+            IF protected_tables <> 8 THEN
               RAISE EXCEPTION 'HFM_CI_FORCED_RLS_TABLE_COUNT_MISMATCH: %', protected_tables;
             END IF;
 
@@ -150,7 +150,7 @@ jobs:
             FROM pg_policies
             WHERE schemaname = 'mira_hfm'
               AND 'mira_hfm_authority_issuer' = ANY(roles);
-            IF issuer_policies <> 7 THEN
+            IF issuer_policies <> 10 THEN
               RAISE EXCEPTION 'HFM_CI_ISSUER_POLICY_COUNT_MISMATCH: %', issuer_policies;
             END IF;
 
