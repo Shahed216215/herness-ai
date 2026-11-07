@@ -73,7 +73,7 @@ async function collectStandingReadPages({
   let cursor = readOptions.cursor || null;
   const records = [];
   const seenIds = new Set();
-  const seenCursors = new Set();
+  const seenCursors = new Set(readOptions.cursor ? [readOptions.cursor] : []);
   let expected = null;
   let firstContext = null;
   let pageCount = 0;
