@@ -1272,6 +1272,13 @@ app.delete(
   ),
   async (req, res, next) => {
     try {
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+        return res.status(403).json({
+          success: false,
+          error: "HFM standing authority grants memory.read only; Knowledge deletion is not authorized."
+        });
+      }
       const id =
         typeof req.params.id === "string"
           ? req.params.id.trim()
