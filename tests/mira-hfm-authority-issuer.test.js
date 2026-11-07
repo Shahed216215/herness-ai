@@ -73,8 +73,9 @@ const pool = { async connect() { return client; } };
   const result = await issueMemoryReadAuthority({
     req, pool, purpose: receipt.purpose, approvalToken: 'signed-approval-token',
     env: { MIRA_ADMIN_SUBJECT_ID: subject },
-    verifyApprovalToken: async (token, expected) => {
+    verifyApprovalToken: async (token, expected, options) => {
       assert.equal(token, 'signed-approval-token');
+      assert.deepEqual(options, { consume: true, singleUse: true });
       assert.deepEqual(expected, {
         projectId, actorId, approverActorId: actorId, operation: 'memory.read',
         resource: 'memory:project:' + projectId, purpose: receipt.purpose
