@@ -348,8 +348,8 @@ test('standing-read repository context is limited to active Learning/Knowledge a
       assert.match(sql, /classification <> 'RESTRICTED'/);
       assert.match(sql, /integrity_status = 'VERIFIED'/);
       assert.match(sql, /trust_status IN \\('CONTENT_VERIFIED', 'HUMAN_VERIFIED'\\)/);
-      assert.match(sql, /updated_at <= \\$5::timestamptz/);
-      assert.match(sql, /ORDER BY updated_at DESC, memory_id ASC LIMIT \\$4/);
+      assert.match(sql, /updated_at <= \$5::timestamptz/);
+      assert.match(sql, /ORDER BY updated_at DESC, memory_id ASC LIMIT \$4/);
       assert.deepEqual(params, [
         'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'], 26,
         scanStartedAt, null, null
@@ -441,8 +441,8 @@ test('standing-read keyset pagination is project-bound, stable and audited per p
       if (sql.includes('SELECT transaction_timestamp() AS scan_started_at')) {
         return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
       }
-      assert.match(sql, /updated_at <= \\$5::timestamptz/);
-      assert.match(sql, /updated_at < \\$6::timestamptz/);
+      assert.match(sql, /updated_at <= \$5::timestamptz/);
+      assert.match(sql, /updated_at < \$6::timestamptz/);
       if (params[5] === null) {
         assert.deepEqual(params, [
           'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'],
