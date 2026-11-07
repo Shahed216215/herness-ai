@@ -1,18 +1,18 @@
-# MIRA HFM v0.2 — Source Reference Record Contract Proposal
+# MIRA HFM v0.2 — Source Reference Domain Contract Proposal
 
 **Document ID:** HFM-SRC-2026-11-07-01  
 **Date:** 2026-11-07  
 **Status:** PROPOSED / NOT APPROVED / NOT IMPLEMENTED  
 **Architecture authority:** User-approved HFM Memory Topology & Daily Knowledge Amendment (2026-11-06)  
 **Current schema baseline:** Canonical record schema v1.1.0  
-**Proposed schema target:** v1.2.0 additive revision, subject to approval  
+**Representation:** unresolved; normalized domain entity recommended, canonical record type is an alternative  
 **Release boundary:** HFM v0.2 only
 
 > The approved topology amendment lists `source_reference` as the seventh domain record family, but its v1.1.0 schema-compatibility section and the implemented v1.1.0 validator omit a `source_reference` record type. This proposal resolves the gap for review only. It does not authorize schema changes, migrations, production writes, credentials, or deployment.
 
 ## 1. Purpose and contract mismatch
 
-The approved topology amendment defines `source_reference` as a distinct domain family containing public URL, source type, retrieval timestamp, access result, content hash, and provenance metadata. The implemented v1.1.0 canonical validator currently accepts six extended record types and models provenance only as the nested `source` object:
+The approved topology amendment defines `source_reference` as a distinct domain family containing public URL, source type, retrieval timestamp, access result, content hash, and provenance metadata. It also explicitly distinguishes domain-level families from permission to send unsupported values to the canonical `recordType` validator. Its v1.1.0 compatibility section adds six canonical record types and does not add `source_reference` as a seventh `recordType`:
 
 - `daily_activity`
 - `learning_note`
@@ -21,20 +21,26 @@ The approved topology amendment defines `source_reference` as a distinct domain 
 - `client_vault_record`
 - `financial_vault_record`
 
-The nested `source` object is not a complete implementation of the approved `source_reference` family. Conversely, adding a record type without defining the link between a source reference and the records that cite it would create disconnected provenance data.
+The implemented v1.1.0 validator therefore correctly rejects `recordType: source_reference`. The unresolved question is how the approved domain family is represented: a normalized relational entity/table linked to canonical records, or a separately versioned canonical record type. The current nested `source` object is provenance metadata, but it is not by itself a complete source-reference registry with independent identity, lifecycle, access result, and links.
 
-## 2. Proposed schema versioning
+## 2. Representation options and recommendation
 
-Do not silently add `source_reference` to v1.1.0 after that schema version has been consumed by current HFM v0.2 code and tests.
+Do not silently add `source_reference` to v1.1.0. The approved amendment calls it a domain-level family and the v1.1.0 schema section deliberately enumerates only six `recordType` values.
 
-This proposal recommends a separately versioned additive schema revision, target `1.2.0`, that:
-- preserves v1.0.0 and v1.1.0 validation and round-trip behavior unchanged;
-- adds `source_reference` as a supported record type;
-- defines an explicit, bounded link from Knowledge/Learning and other eligible records to one or more source-reference IDs;
-- rejects unsupported future schema versions and malformed links;
-- includes migration, retrieval, authorization, and compatibility tests.
+Two representations are possible:
 
-The final schema version must be selected by the contract owner. If v1.1.0 is formally declared unreleased and mutable, a different version decision may be considered, but it must be explicit and recorded.
+**Option A — normalized domain entity (recommended for approval):**
+- Add a dedicated project-scoped `source_references` relational entity/table with its own immutable ID, provenance, access result, integrity/trust/lifecycle, classification, and policy version.
+- Add a bounded same-project relation table such as `memory_source_references` to link a canonical Memory record to one or more source-reference IDs.
+- Keep v1.0.0 and v1.1.0 canonical record validation unchanged; the nested `source` object remains a compact origin hint.
+- Apply dedicated RLS, least-privilege reader/writer grants, append-only audit, retention, and exact-resource operation authorization to the new entity and link table.
+
+**Option B — canonical record type:**
+- Introduce `source_reference` only through a separately versioned additive canonical schema revision (likely v1.2.0 if v1.1.0 is frozen).
+- Define the complete canonical envelope, payload, link semantics, retrieval behavior, and backward-compatibility rules.
+- Do not use this option unless the contract owner explicitly chooses to represent the domain family as a canonical Memory record.
+
+The recommended normalized entity preserves the approved domain-family distinction without silently changing the v1.1.0 record-type vocabulary. The final choice and versioning must be explicit and recorded.
 
 ## 3. Proposed source-reference payload
 
@@ -62,20 +68,19 @@ Proposed payload:
 
 Unknown critical fields or enum values must fail validation. URLs must be normalized and secrets, credentials, query tokens, fragments, cookies, authorization headers, and session data must never be stored in this record.
 
-## 4. Linking source references to other records
+## 4. Linking source references to canonical records
 
-The current v1.1.0 nested `source` object contains `sourceType`, `sourceId`, `sourceUrl`, and `observedAt`. The proposed v1.2.0 contract adds an optional bounded `sourceReferenceIds` array to the nested source object.
-
-Rules:
-- Each referenced ID must resolve to an existing `source_reference` record in the same project.
-- Cross-project links are denied by default.
-- A Knowledge/Learning record may cite multiple references; duplicates are rejected and a bounded maximum is required.
-- A `source_reference` record may not recursively cite itself.
+Under the recommended normalized-entity option, use an explicit relation table rather than trusting a caller-supplied ID array:
+- Each link binds `project_id`, canonical `memory_id`, and `source_reference_id`.
+- Both parent records must belong to the same project; cross-project links are denied by database constraints and RLS.
+- A Knowledge/Learning record may cite multiple references; duplicate links are rejected and a bounded maximum is required.
+- A source reference may not link to itself or form invalid recursive provenance chains.
 - Updating or quarantining a source reference must not silently rewrite dependent Knowledge/Learning records.
 - Deleting or archiving a source reference must preserve lineage evidence or leave an explicit unresolved reference state.
-- The nested `sourceUrl` remains a compact display/cache hint, not the authority for provenance. The canonical source-reference record is the provenance object.
+- The nested v1.1.0 `source` object remains a compact origin hint; it is not treated as the authoritative registry.
+- If Option B is chosen, the contract must instead define the exact bounded link field and compatibility behavior in the new schema version.
 
-The exact array name, maximum cardinality, and dependency behavior require approval.
+The exact relation name, cardinality, and dependency behavior require approval.
 
 ## 5. Trust and lifecycle semantics
 
@@ -152,8 +157,8 @@ After approval, isolated tests must cover:
 
 This proposal remains NOT APPROVED until the contract owner explicitly decides:
 - whether `source_reference` is a distinct canonical record type (recommended to match the approved topology amendment);
-- the schema version and exact payload schema;
-- the nested source link field name/cardinality and dependency behavior;
+- the normalized entity-vs-canonical-record representation and exact payload schema;
+- the link-table or nested source link name/cardinality and dependency behavior;
 - source type and access-result enums;
 - trust/lifecycle behavior for unavailable, partial, blocked, and quarantined sources;
 - classification defaults and encryption/HMAC requirements;
@@ -165,7 +170,7 @@ Approval must identify this exact document ID and revision. Approval does not it
 ## 11. Current implementation disposition
 
 Until formal approval and implementation:
-- The v1.1.0 nested `source` object remains the only implemented provenance structure.
+- The v1.1.0 nested `source` object remains the only implemented provenance metadata; no independent source-reference registry or canonical record type exists.
 - No `source_reference` canonical record type is claimed.
 - No source-reference writer, list/read API, or lifecycle manager is claimed.
 - The approved seven-family architecture remains incompletely implemented at this boundary.
