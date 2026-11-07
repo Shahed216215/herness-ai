@@ -54,6 +54,22 @@ function writeAudit({
   }
 }
 
+function isHfmReadOnlyMode() {
+  return process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+}
+
+function denyLegacyKnowledgeImprovementAccess(req, res, operation) {
+  if (!isHfmReadOnlyMode()) return false;
+  res.status(403).json({
+    success: false,
+    blocked: true,
+    code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENTS",
+    reason: `HFM standing authority grants memory.read only; legacy Knowledge improvement ${operation} is unavailable.`
+  });
+  return true;
+}
+
 function registerKnowledgeImprovementRoutes(
   app,
   requireAdminPermission,
@@ -65,6 +81,7 @@ function registerKnowledgeImprovementRoutes(
       PERMISSIONS.SYSTEM_ADMIN
     ),
     (req, res) => {
+      if (denyLegacyKnowledgeImprovementAccess(req, res, "listing")) return;
       try {
         const proposals =
           listPendingProposals();
@@ -91,6 +108,7 @@ function registerKnowledgeImprovementRoutes(
       PERMISSIONS.SYSTEM_ADMIN
     ),
     (req, res) => {
+      if (denyLegacyKnowledgeImprovementAccess(req, res, "detail read")) return;
       try {
         const proposal =
           getProposal(req.params.id);
@@ -124,6 +142,7 @@ function registerKnowledgeImprovementRoutes(
       PERMISSIONS.SYSTEM_ADMIN
     ),
     (req, res) => {
+      if (denyLegacyKnowledgeImprovementAccess(req, res, "approval")) return;
       const id = req.params.id;
 
       try {
@@ -219,6 +238,7 @@ function registerKnowledgeImprovementRoutes(
       PERMISSIONS.SYSTEM_ADMIN
     ),
     (req, res) => {
+      if (denyLegacyKnowledgeImprovementAccess(req, res, "rejection")) return;
       const id = req.params.id;
 
       try {
@@ -323,6 +343,7 @@ function registerKnowledgeImprovementRoutes(
       PERMISSIONS.SYSTEM_ADMIN
     ),
     async (req, res) => {
+      if (denyLegacyKnowledgeImprovementAccess(req, res, "apply")) return;
       const id = req.params.id;
       const actor =
         req.role || "system-admin";
