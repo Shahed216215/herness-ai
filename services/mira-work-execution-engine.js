@@ -1184,19 +1184,21 @@ async function executeWork(
           typeof options.getHfmMemoryReadRuntime !== "function") {
         throw new Error("HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED");
       }
-      plannerOptions.retrieveWorkLearning = async ({ task }) => {
-        const runtime = await options.getHfmMemoryReadRuntime();
-        if (!runtime || runtime.status !== "MEMORY_READ_READY" ||
-            !runtime.pool || typeof runtime.pool.connect !== "function") {
-          throw new Error("HFM_WORK_LEARNING_MEMORY_READER_NOT_READY");
-        }
-        return retrieveHfmWorkLearning({
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== "true") {
+        throw new Error("HFM_WORK_LEARNING_STANDING_AUTHORITY_DISABLED");
+      }
+      const hfmRuntime = await options.getHfmMemoryReadRuntime();
+      if (!hfmRuntime || hfmRuntime.status !== "MEMORY_READ_READY" ||
+          !hfmRuntime.pool || typeof hfmRuntime.pool.connect !== "function") {
+        throw new Error("HFM_WORK_LEARNING_MEMORY_READER_NOT_READY");
+      }
+      plannerOptions.retrieveWorkLearning = async ({ task }) =>
+        retrieveHfmWorkLearning({
           req: options.hfmRequest,
-          pool: runtime.pool,
+          pool: hfmRuntime.pool,
           task,
           env: process.env
         });
-      };
     }
     planning =
       await createTaskPlan(
