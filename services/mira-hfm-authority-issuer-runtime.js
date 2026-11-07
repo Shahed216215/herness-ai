@@ -208,6 +208,16 @@ SELECT
     AND tablename = 'standing_read_authorities' AND $1::name = ANY(roles)
     AND policyname NOT IN ('hfm_standing_issuer_select','hfm_standing_issuer_insert','hfm_standing_issuer_update'))
     AS standing_authority_policy_set_exact,
+  has_function_privilege(current_user, 'mira_hfm.guard_standing_read_authority_scope()', 'EXECUTE')
+    AS standing_scope_trigger_function_execute,
+  has_function_privilege(current_user, 'mira_hfm.audit_standing_read_authority_change()', 'EXECUTE')
+    AS standing_audit_trigger_function_execute,
+  (SELECT count(*) = 2 FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'mira_hfm' AND c.relname = 'standing_read_authorities'
+      AND t.tgname IN ('standing_read_authority_scope_immutable','standing_read_authority_audit')
+      AND NOT t.tgisinternal) AS standing_authority_triggers_present,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
@@ -227,6 +237,8 @@ const REQUIRED_TRUE = Object.freeze([
   'standing_status_update', 'standing_updated_at_update', 'standing_paused_at_update',
   'standing_revoked_at_update', 'standing_only_status_metadata_update',
   'standing_authority_policies_present', 'standing_authority_policy_set_exact',
+  'standing_scope_trigger_function_execute', 'standing_audit_trigger_function_execute',
+  'standing_authority_triggers_present',
   'approval_nonce_consumed_update', 'approval_nonce_only_consumed_update', 'issuer_rls_forced', 'issuer_policies_present',
   'issuer_policy_set_exact', 'issuer_policy_semantics_exact', 'no_public_issuer_policies'
 ]);
