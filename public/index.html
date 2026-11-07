@@ -13071,9 +13071,12 @@ document.querySelectorAll(
       if (typeof data.featureEnabled !== "boolean") {
         throw new Error("Backend feature state is missing or invalid.");
       }
+      if (!Object.prototype.hasOwnProperty.call(data, "authority")) {
+        throw new Error("Backend authority state is missing.");
+      }
       const authority = data.authority;
       const featureEnabled = data.featureEnabled;
-      if (authority !== null && authority !== undefined &&
+      if (authority !== null &&
           (!authority || typeof authority !== "object" ||
            typeof authority.standingAuthorityId !== "string" ||
            !authority.standingAuthorityId.trim() ||
