@@ -70,12 +70,13 @@ async function executeWithConsumedAuthority(options = {}) {
       [request.projectId]
     );
 
-    // Deterministic lock order: project owner -> actor membership -> one-time authority.
-    // Revocation/owner revision updates must lock these same rows, so they cannot race
-    // between validation and the protected operation's commit.
+    // Project-scoped transaction advisory lock serializes owner/membership authority changes
+    // without granting the payload writer UPDATE privileges on identity registries.
+    // Every future owner/membership mutation path must acquire this same lock.
+    await client.query('SELECT pg_advisory_xact_lock(74291, hashtext($1))', [request.projectId]);
     const ownerResult = await client.query(
       "SELECT project_id, owner_actor_id, status, revision " +
-      "FROM mira_hfm.project_owners WHERE project_id = $1 FOR UPDATE",
+      "FROM mira_hfm.project_owners WHERE project_id = $1",
       [request.projectId]
     );
     const owner = ownerResult.rows && ownerResult.rows[0];
@@ -84,7 +85,7 @@ async function executeWithConsumedAuthority(options = {}) {
     const membershipResult = await client.query(
       "SELECT membership_id, project_id, actor_id, permissions, status, revision, " +
       "valid_from, expires_at FROM mira_hfm.project_memberships " +
-      "WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp()) FOR UPDATE",
+      "WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp())",
       [request.projectId, trustedActor.actorId]
     );
     const membership = membershipResult.rows && membershipResult.rows[0];
