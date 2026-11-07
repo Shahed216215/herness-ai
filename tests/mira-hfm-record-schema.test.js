@@ -108,12 +108,7 @@ test('v1.2.0 accepts source_reference only with a validated private source paylo
     access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
   });
   assert.equal(validateCanonicalRecord(candidate).valid, true);
-  const trashedCopy = {
-    ...candidate,
-    lifecycle: 'TRASHED',
-    timestamps: { ...candidate.timestamps, updatedAt: '2026-11-07T12:01:00.000Z' },
-    trashedAt: undefined
-  };
+  const trashedCopy = { ...candidate, lifecycle: 'TRASHED' };
   assert.equal(validateCanonicalRecord(trashedCopy).valid, true);
   const publicDailyActivity = record({
     schemaVersion: SCHEMA_V1_2,
