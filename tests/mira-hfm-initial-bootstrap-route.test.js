@@ -13,7 +13,7 @@ const fakeBootstrap = async options => {
     projectId: 'mira-core',
     ownerActorId: 'mira:mira.admins:admin-001',
     membershipRole: 'ADMIN',
-    permissions: ['memory.read'],
+    permissions: ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'],
     approvalRef: 'hfm-bootstrap-ref',
     oneTimeOnly: true,
     memoryRecordsImported: 0
