@@ -279,7 +279,7 @@ test('keyword retrieval returns source evidence and audits only non-content meta
     assert.equal(result.results[0].revision, 2);
     const searchSql = queries.find(item => item.sql.includes('FROM mira_hfm.memory_records'));
     assert.ok(searchSql);
-    assert.match(searchSql.sql, /integrity_status NOT IN \\('FAILED','QUARANTINED'\\)/);
+    assert.match(searchSql.sql, /integrity_status NOT IN \('FAILED','QUARANTINED'\)/);
     const lockIndex = queries.findIndex(item =>
       item.sql === 'SELECT pg_advisory_xact_lock(hashtext($1))' &&
       item.params[0] === 'project-001'
