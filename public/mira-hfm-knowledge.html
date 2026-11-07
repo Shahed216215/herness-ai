@@ -240,10 +240,26 @@ small{color:var(--muted)}
           await loadSocialPostArchive();
         } catch (error) {
           const unknown = /UNKNOWN|DATABASE|CONNECTION|TIMEOUT|WRITER|PREFLIGHT/.test(error.message);
-          socialPostStatus((unknown ? 'DELETE_STATUS_UNKNOWN' : 'DELETE_FAILED') + ' — ' + error.message, true);
-          if (unknown) {
-            try { await loadSocialPostArchive(); } catch (_refreshError) {}
+          const alreadyErased = /PAYLOAD_ALREADY_ERASED/.test(error.message);
+          if (unknown || alreadyErased) {
+            try {
+              const refreshed = await loadSocialPostArchive();
+              const exact = (refreshed.drafts || []).find(item => item.memoryId === draft.memoryId);
+              if (exact && exact.payloadErased && exact.status === 'DELETED') {
+                socialPostStatus('DELETED — Neon read-back confirms this exact record payload was erased.');
+              } else if (!exact) {
+                socialPostStatus('DELETE_STATUS_UNKNOWN — Neon did not return the exact record for recovery.', true);
+              } else if (unknown) {
+                socialPostStatus('DELETE_STATUS_UNKNOWN — the exact record is still present; check Neon status before retrying.', true);
+              } else {
+                socialPostStatus('DELETE_FAILED — Neon read-back shows the original payload is still retained.', true);
+              }
+            } catch (_refreshError) {
+              socialPostStatus('DELETE_STATUS_UNKNOWN — Neon could not confirm the exact record after the request.', true);
+            }
+            return;
           }
+          socialPostStatus('DELETE_FAILED — ' + error.message, true);
         }
       });
       actions.append(copy, published, remove);
