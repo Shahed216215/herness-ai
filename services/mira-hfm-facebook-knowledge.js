@@ -109,6 +109,47 @@ async function researchFacebookSource(options = {}) {
   }
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   if (typeof fetchImpl !== 'function') throw fail('HFM_WEB_SEARCH_TRANSPORT_UNAVAILABLE');
+
+  // Ask the public web extraction provider first. No Facebook credentials, cookies,
+  // login state, private-group access or redirect/access-control bypass is attempted.
+  try {
+    const extractResponse = await fetchImpl('https://api.tavily.com/extract', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        api_key: apiKey,
+        urls: [sourceUrl],
+        extract_depth: 'basic',
+        format: 'text'
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (extractResponse && extractResponse.ok) {
+      const extracted = await extractResponse.json();
+      const rows = Array.isArray(extracted && extracted.results) ? extracted.results : [];
+      const exact = rows.find(item => {
+        try { return normalizeFacebookUrl(String(item.url || '')) === sourceUrl; }
+        catch (_error) { return false; }
+      });
+      const rawContent = exact && (exact.raw_content || exact.content);
+      if (typeof rawContent === 'string' && rawContent.trim()) {
+        return Object.freeze({
+          status: 'PUBLIC_CONTENT_RETRIEVED',
+          sourceUrl,
+          fallback: null,
+          results: Object.freeze([Object.freeze({
+            title: String(exact.title || '').slice(0, 300),
+            url: sourceUrl,
+            content: rawContent.trim().slice(0, 5000),
+            verificationStatus: 'SOURCE_REACHABLE'
+          })])
+        });
+      }
+    }
+  } catch (_extractError) {
+    // Extraction failures intentionally fall through to public-index search.
+  }
+
   const pagePath = new URL(sourceUrl).pathname.replace(/\/$/, '');
   const response = await fetchImpl('https://api.tavily.com/search', {
     method: 'POST',
@@ -128,9 +169,8 @@ async function researchFacebookSource(options = {}) {
   const rows = Array.isArray(payload && payload.results) ? payload.results : [];
   const results = rows.slice(0, 5).map(item => {
     let url = null;
-    try {
-      url = normalizeFacebookUrl(String(item.url || ''));
-    } catch (_error) {}
+    try { url = normalizeFacebookUrl(String(item.url || '')); }
+    catch (_error) {}
     if (!url) return null;
     return Object.freeze({
       title: String(item.title || '').slice(0, 300),
