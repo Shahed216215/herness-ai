@@ -208,3 +208,12 @@ This is read-only topology evidence only. It does not authorize applying migrati
 
 - Focused HFM wiring regression now exercises the full four-flag matrix against both the generic legacy-storage guard and the legacy Learning service: standing-read, Work Learning, Memory reader, and Memory writer modes all reject local JSON/Drive storage paths. Outside HFM mode, the legacy behavior remains available as before.
 - Exact functional-code commit `6c8196eb2b97c8d190de1b57cc35b161ebe84d05`: **10/10 GitHub checks PASS, 0 failures, 0 pending**, including HFM foundation, repository contracts, offline regression, dependency remediation, and PostgreSQL 001–014 integration.
+
+
+## Admin search coverage and route-guard verification — 2026-11-07
+
+- Admin Knowledge search now returns `candidateScanCount`, `candidateScanLimit`, and `candidateScanMayBeIncomplete`. Chat recall receives an explicit system warning when the newest 100 eligible candidates may not cover older records; it must not claim that missing facts are absent from the full HFM project.
+- The search service validates scan counts against the actual returned bounded record array. When a reader omits the optional count, the array length is used; a full 100-record page is conservatively marked potentially incomplete.
+- The Learning History global-guard regression test now keeps the Express Router stub active through route registration, matching the route module's runtime behavior. The route-level guard blocks all four HFM Memory modes before any legacy local history route.
+- Exact functional-code commit `cd2c5481a59bd8aa21841ce9291ae6b382d51a07`: **10/10 GitHub checks PASS, 0 failures, 0 pending**, including HFM foundation, repository contracts, offline regression, dependency remediation, and PostgreSQL 001–014 integration.
+- Cursor-based exhaustive Knowledge/Learning pagination remains an identified v0.2 completion gap. The current API discloses the 100-record scan boundary rather than presenting partial coverage as exhaustive; do not enable HFM runtime flags on the assumption that exhaustive pagination is complete.
