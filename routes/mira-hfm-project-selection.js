@@ -10,7 +10,9 @@ const {
   findActiveProjectMembership
 } = require('../services/mira-hfm-project-selection-read-runtime');
 
-const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/;\n\nfunction registerMiraHfmProjectSelectionRoute(app, getRuntime) {
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/;
+
+function registerMiraHfmProjectSelectionRoute(app, getRuntime) {
   if (!app || typeof app.post !== 'function' ||
       !getRuntime || typeof getRuntime !== 'function') {
     throw new TypeError('HFM_PROJECT_SELECTION_ROUTE_DEPENDENCIES_REQUIRED');
