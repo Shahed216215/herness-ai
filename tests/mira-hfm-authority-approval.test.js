@@ -146,7 +146,9 @@ const env = {
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/009_authority_approval_nonce_registry.sql'), 'utf8');
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migration, /FORCE ROW LEVEL SECURITY/);
-  assert.match(migration, /GRANT UPDATE \\(consumed_at\\)/);
+  assert.ok(migration.includes('GRANT UPDATE (consumed_at)'));
+  assert.ok(migration.includes('authority_approval_nonces_actor_is_approver'));
+  assert.ok(migration.includes('resource = \'memory:project:\' || NULLIF(current_setting(\'mira.project_id\', true), \'\')'));
   assert.match(migration, /consumed_at IS NULL/);
   assert.match(migration, /consumed_at IS NOT NULL/);
   assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
