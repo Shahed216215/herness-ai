@@ -15,17 +15,19 @@ const bootstrapRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-initial-
 
 assert.match(server, /registerMiraHfmAuthorityApprovalRoute\s*\(/);
 assert.match(server, /registerMiraHfmMemoryReadRoute\s*\(/);
+assert.match(server, /registerMiraHfmInitialBootstrapRoute\s*\(/);
 assert.match(server, /requireAdminPermission\(PERMISSIONS\.SYSTEM_ADMIN\)/);
 assert.match(server, /createAuthorityIssuerPool/);
 assert.match(server, /createMemoryReadPool/);
-assert.match(server, /registerMiraHfmInitialBootstrapRoute\\s*\\(/);
 assert.match(server, /createHfmBootstrapPool/);
 assert.match(approvalRoute, /app\.post\('\/api\/hfm\/memory\/authorize'/);
 assert.match(memoryRoute, /app\.post\('\/api\/hfm\/memory\/read'/);
+assert.match(bootstrapRoute, /app\.post\('\/api\/hfm\/bootstrap\/initial-project'/);
 assert.match(approvalRoute, /hfmPendingMemoryAuthority/);
 assert.match(memoryRoute, /delete req\.session\.hfmPendingMemoryAuthority/);
 assert.match(issuerRuntime, /env\[ENABLED_ENV\] !== 'true'/);
 assert.match(memoryRuntime, /env\[ENABLED_ENV\] !== 'true'/);
+assert.match(bootstrapRuntime, /env\[ENABLED_ENV\] !== 'true'/);
 assert.match(server, /registerMiraHfmProjectSelectionRoute/);
 
 console.log('HFM_RUNTIME_AUTHORITY_AND_MEMORY_ROUTES_WIRED=PASS');
