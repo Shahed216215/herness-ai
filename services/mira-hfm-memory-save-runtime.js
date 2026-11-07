@@ -41,6 +41,20 @@ function hasVaultOnlyDailyActivityContent(value) {
   return /\b(?:private key|client email|client phone|client name|client address|client id|customer email|customer phone|customer name|customer address|bank account|account number|card number|invoice(?: number)?|transaction(?: id| reference)?|payment reference|contract(?: text| clause)?)\b/i.test(String(value || ''));
 }
 
+function hasExplicitDailyActivitySaveIntent(value) {
+  if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
+  const text = value.toLowerCase();
+  if (/\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,70}\b(?:daily activity|daily work summary|activity log)\b/i.test(text) ||
+      /(?:দৈনিক\s*কাজ|আজকের\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ\s*কর(?:ো|বেন)?|সেভ\s*কর(?:ো|বেন)?|রেকর্ড\s*কর(?:ো|বেন)?|লিখে\s*রাখ(?:ো|বে|বেন)?)/u.test(value)) {
+    return false;
+  }
+  const english = /\b(?:save|store|record|log)\b.{0,100}\b(?:daily activity|daily work summary|activity log)\b/i.test(value) ||
+    /\b(?:daily activity|daily work summary|activity log)\b.{0,100}\b(?:save|store|record|log)\b/i.test(value);
+  const bengali = /(?:দৈনিক\s*কাজ|আজকের\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ)/u.test(value) ||
+    /(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ).{0,80}(?:দৈনিক\s*কাজ|আজকের\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ)/u.test(value);
+  return english || bengali;
+}
+
 function hasExplicitSaveIntent(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
   const text = value.toLowerCase();
@@ -111,6 +125,10 @@ function buildCanonicalMemoryRecord(options = {}) {
   const kind = options.kind;
   if (!['memory_save', 'knowledge_save', 'learning_save', 'daily_activity_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
   const body = boundedText(options.content, MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
+  if (kind === 'daily_activity_save' &&
+      !hasExplicitDailyActivitySaveIntent(options.userIntent)) {
+    fail('HFM_DAILY_ACTIVITY_EXPLICIT_USER_INTENT_REQUIRED');
+  }
   if ((kind === 'memory_save' || kind === 'daily_activity_save') &&
       !isUserAuthoredMemoryContent(options.userIntent, body)) {
     fail(kind === 'daily_activity_save'
@@ -282,6 +300,7 @@ async function saveHfmMemoryRecord(options = {}) {
 
 module.exports = Object.freeze({
   hasExplicitSaveIntent,
+  hasExplicitDailyActivitySaveIntent,
   redactDailyActivityContent,
   hasVaultOnlyDailyActivityContent,
   normalizeIntentText,
