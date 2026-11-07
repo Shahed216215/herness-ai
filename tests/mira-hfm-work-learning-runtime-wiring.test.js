@@ -302,10 +302,11 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   const standingOnlyContext = await resolveHfmReadToolContext({
     hfmRequest: serverHeldReq,
     getHfmMemoryReadRuntime: async () => ({ status: 'MEMORY_READ_READY', pool: readerPool })
-  }, { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' });
+  }, { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }, 'Show pending knowledge for review.');
   assert.equal(standingOnlyContext.runtime.status, 'MEMORY_READ_READY');
   assert.equal(standingOnlyContext.toolContext.req, serverHeldReq);
   assert.equal(standingOnlyContext.toolContext.pool, readerPool);
+  assert.equal(standingOnlyContext.toolContext.userIntent, 'Show pending knowledge for review.');
   assert.equal(standingOnlyContext.toolContext.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED, 'true');
   assert.deepEqual(await resolveHfmReadToolContext({}, {}), { runtime: null, toolContext: null });
   await assert.rejects(
