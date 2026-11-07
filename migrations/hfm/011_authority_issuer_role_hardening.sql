@@ -16,9 +16,13 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mira_hfm_authority_issuer') THEN
-    CREATE ROLE mira_hfm_authority_issuer
-      NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+    RAISE EXCEPTION 'HFM_AUTHORITY_ISSUER_BASELINE_ROLE_REQUIRED';
   END IF;
+
+  -- The previously applied baseline created this NOLOGIN capability role with
+  -- PostgreSQL's default INHERIT attribute. Harden the group role in-place;
+  -- the dedicated LOGIN principal remains the sole inherited member.
+  ALTER ROLE mira_hfm_authority_issuer NOINHERIT;
 
   IF EXISTS (
     SELECT 1 FROM pg_roles
@@ -87,6 +91,15 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Remove the earlier project-only issuer policies. Permissive RLS policies
+-- combine with OR; retaining them would bypass the actor-bound membership policy.
+DROP POLICY IF EXISTS authority_issuer_owner_read ON mira_hfm.project_owners;
+DROP POLICY IF EXISTS authority_issuer_membership_read ON mira_hfm.project_memberships;
+DROP POLICY IF EXISTS authority_issuer_insert ON mira_hfm.operation_authorities;
+DROP POLICY IF EXISTS authority_issuer_audit_insert ON mira_hfm.authority_audit_events;
+DROP POLICY IF EXISTS authority_issuer_owner_insert ON mira_hfm.project_owners;
+DROP POLICY IF EXISTS authority_issuer_membership_insert ON mira_hfm.project_memberships;
 
 REVOKE ALL ON SCHEMA mira_hfm FROM mira_hfm_authority_issuer;
 REVOKE ALL ON ALL TABLES IN SCHEMA mira_hfm FROM mira_hfm_authority_issuer;
