@@ -36,4 +36,17 @@ function persistConversationMessage(message, options = {}) {
   });
 }
 
-module.exports = Object.freeze({ persistConversationMessage });
+
+function persistConversationPair(userMessage, assistantMessage, options = {}) {
+  const user = persistConversationMessage(userMessage, options);
+  const assistant = persistConversationMessage(assistantMessage, options);
+  const sameSource = user.source === assistant.source;
+  return Object.freeze({
+    persisted: user.persisted === true && assistant.persisted === true,
+    source: sameSource ? user.source : 'MIXED_CONVERSATION_PERSISTENCE',
+    localFallback: false,
+    driveFallback: false
+  });
+}
+
+module.exports = Object.freeze({ persistConversationMessage, persistConversationPair });
