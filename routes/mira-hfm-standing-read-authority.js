@@ -51,6 +51,9 @@ function registerMiraHfmStandingReadAuthorityRoutes(app, getRuntime, requireAdmi
 
   app.post('/api/hfm/memory/standing-authority/issue', requireAdmin, async (req, res) => {
     if (!guard(req, res)) return;
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true') {
+      return res.status(503).json({ success: false, error: 'HFM standing read authority is disabled until its database migration and role preflights are verified.' });
+    }
     const body = req.body || {};
     if (body.confirm !== true) {
       return res.status(400).json({ success: false, error: 'Explicit standing-authority confirmation is required.' });
