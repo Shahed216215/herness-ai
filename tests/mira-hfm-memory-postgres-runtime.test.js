@@ -75,7 +75,8 @@ function preflightRow(overrides = {}) {
     audit_sequence_usage: true,
     audit_sequence_select: false,
     audit_sequence_update: false,
-    memory_rls_forced: true
+    memory_rls_forced: true,
+    writer_actor_scope_policies_present: true
   };
   return { ...row, ...overrides };
 }
@@ -146,6 +147,10 @@ test('writer preflight requires the exact login role, limited privileges and for
   );
   assert.throws(
     () => runtime.verifyWriterPreflight(preflightRow({ can_login: false }), config),
+    error => error.code === 'MEMORY_WRITER_REQUIRED_PRIVILEGE_MISSING'
+  );
+  assert.throws(
+    () => runtime.verifyWriterPreflight(preflightRow({ writer_actor_scope_policies_present: false }), config),
     error => error.code === 'MEMORY_WRITER_REQUIRED_PRIVILEGE_MISSING'
   );
 });
