@@ -53,7 +53,7 @@ const client = {
     if (sql.includes('FROM mira_hfm.project_memberships')) {
       return { rows: [{
         revision: 7, status: 'ACTIVE',
-        permissions: { operations: ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'] },
+        permissions: { operations: ['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore'] },
         valid_from: new Date(now - 60000).toISOString(), expires_at: null
       }], rowCount: 1 };
     }
@@ -95,6 +95,34 @@ const pool = { async connect() { return client; } };
   console.log('HFM_AUTHORITY_ISSUER_VERIFIED_ADMIN_AND_APPROVAL=PASS');
   console.log('HFM_AUTHORITY_ISSUER_SINGLE_USE_SHORT_TTL=PASS');
   console.log('HFM_AUTHORITY_ISSUER_AND_AUDIT_ATOMIC=PASS');
+
+  const updateResource = 'memory:daily-activity-001';
+  const updateReceipt = {
+    ...receipt,
+    operation: 'memory.update',
+    resource: updateResource,
+    purpose: 'user-confirmed correction to daily activity record'
+  };
+  const updateResult = await issueMemoryOperationAuthority({
+    req, pool, purpose: updateReceipt.purpose, operation: updateReceipt.operation,
+    resource: updateReceipt.resource, approvalToken: 'signed-update-approval-token',
+    env: { MIRA_ADMIN_SUBJECT_ID: subject },
+    verifyApprovalToken: async (_token, expected, options) => {
+      assert.deepEqual(options, { consume: true, singleUse: true });
+      assert.deepEqual(expected, {
+        projectId, actorId, approverActorId: actorId,
+        operation: 'memory.update', resource: updateResource,
+        purpose: updateReceipt.purpose
+      });
+      return updateReceipt;
+    }
+  });
+  assert.equal(updateResult.operation, 'memory.update');
+  assert.equal(updateResult.resource, updateResource);
+  const updateInsert = calls.filter(c => c.sql.startsWith('INSERT INTO mira_hfm.operation_authorities')).at(-1);
+  assert.equal(updateInsert.params[3], 'memory.update');
+  assert.equal(updateInsert.params[4], updateResource);
+  console.log('HFM_AUTHORITY_ISSUER_ALLOWLISTED_EXACT_MEMORY_UPDATE=PASS');
 
   const writeResource = 'memory:social-draft-001';
   const writeReceipt = {
@@ -162,6 +190,11 @@ const pool = { async connect() { return client; } };
   console.log('HFM_AUTHORITY_ISSUER_MISSING_VERIFIER_BLOCK=PASS');
 
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/011_authority_issuer_role_hardening.sql'), 'utf8');
+  const revisionMigration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/016_memory_record_revision_authority.sql'), 'utf8');
+  assert.match(revisionMigration, /memory\.update/);
+  assert.match(revisionMigration, /NEW\.trust_status IS DISTINCT FROM OLD\.trust_status/);
+  assert.match(revisionMigration, /REVOKE UPDATE ON TABLE mira_hfm\.memory_records/);
+  assert.match(revisionMigration, /GRANT UPDATE \([\s\S]*public_payload[\s\S]*encrypted_envelope/);
   assert.match(migration, /ALTER ROLE mira_hfm_authority_issuer NOINHERIT/);
   assert.match(migration, /HFM_AUTHORITY_ISSUER_UNEXPECTED_POLICY_CONFLICT/);
   assert.match(migration, /policyname NOT IN/);
