@@ -1,6 +1,7 @@
 'use strict';
 
 const { retrieveProjectMemory, retrieveProjectMemoryRecord } = require('./mira-hfm-authorized-memory-reader');
+const { compareTimestampToNow } = require('./mira-hfm-timestamp');
 const { collectStandingReadPages, MAX_STANDING_READ_PAGES } = require('./mira-hfm-standing-read-pages');
 const { retrieveCanonicalRecordsWithReport } = require('./mira-memory-unified-facade');
 const { buildHfmAuthorizeRequest } = require('./mira-hfm-work-learning-runtime');
@@ -78,7 +79,10 @@ async function getHfmKnowledgeById({
     recordTypes: ['knowledge_item', 'learning_note'],
     env
   });
-  if (!result || result.status !== 'AUTHORIZED_AND_COMMITTED' ||
+  const nowMs = now instanceof Date && Number.isFinite(now.getTime()) ? now.getTime() : NaN;
+  const issuedAtComparison = compareTimestampToNow(result?.hostAuthorizationContext?.issuedAt, nowMs);
+  const expiresAtComparison = compareTimestampToNow(result?.hostAuthorizationContext?.expiresAt, nowMs);
+  if (!Number.isFinite(nowMs) || !result || result.status !== 'AUTHORIZED_AND_COMMITTED' ||
       result.standingAuthority !== true ||
       result.authorityConsumed !== false ||
       result.approvalRequiredPerRead !== false ||
@@ -96,11 +100,9 @@ async function getHfmKnowledgeById({
       typeof result.hostAuthorizationContext.requestId !== 'string' ||
       !result.hostAuthorizationContext.requestId ||
       typeof result.hostAuthorizationContext.issuedAt !== 'string' ||
-      !Number.isFinite(Date.parse(result.hostAuthorizationContext.issuedAt)) ||
-      Date.parse(result.hostAuthorizationContext.issuedAt) > now.getTime() ||
+      issuedAtComparison === null || issuedAtComparison > 0 ||
       typeof result.hostAuthorizationContext.expiresAt !== 'string' ||
-      !Number.isFinite(Date.parse(result.hostAuthorizationContext.expiresAt)) ||
-      Date.parse(result.hostAuthorizationContext.expiresAt) <= now.getTime() ||
+      expiresAtComparison === null || expiresAtComparison <= 0 ||
       typeof result.hostAuthorizationContext.authorityRef !== 'string' ||
       !result.hostAuthorizationContext.authorityRef ||
       result.hostAuthorizationContext.authorityRef !== result.standingAuthorityId ||
