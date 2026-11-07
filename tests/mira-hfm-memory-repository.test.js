@@ -125,6 +125,16 @@ test('private and restricted writes fail closed without explicit classification 
   });
   await assert.rejects(
     repository.createMemoryRecord({ client, context, record: restricted, idempotencyKey: 'idem-no-restricted', env }),
+    error => error.code === 'HFM_MEMORY_OPERATION_SCOPE_INVALID'
+  );
+  await assert.rejects(
+    repository.createMemoryRecord({
+      client,
+      context: { ...context, operation: 'memory.vault.write', purpose: 'hfm-vault:client_vault_record:explicit-user-request' },
+      record: restricted,
+      idempotencyKey: 'idem-no-restricted-flag',
+      env
+    }),
     error => error.code === 'HFM_MEMORY_RESTRICTED_WRITE_NOT_GRANTED'
   );
   assert.equal(client.calls.length, 0);
@@ -134,11 +144,15 @@ test('restricted client and financial vault records are encrypted before insert 
   for (const recordType of ['client_vault_record', 'financial_vault_record']) {
     const client = fakeClient();
     const memoryId = 'vault-' + recordType;
-    const content = JSON.stringify({
-      fixture: 'restricted-vault-contract',
-      recordType,
-      confidentialValue: 'must-not-be-stored-as-plaintext'
-    });
+    const content = JSON.stringify(recordType === 'client_vault_record'
+      ? { clientName: 'Example Client', notes: 'must-not-be-stored-as-plaintext' }
+      : {
+          transactionReference: 'TXN-1042',
+          counterparty: 'Example Client',
+          amount: 1200,
+          currency: 'BDT',
+          notes: 'must-not-be-stored-as-plaintext'
+        });
     const vaultRecord = record({
       memoryId,
       recordType,
@@ -146,7 +160,12 @@ test('restricted client and financial vault records are encrypted before insert 
       version: { revision: 1, contentHash: createContentHash(content) },
       access: { classification: 'RESTRICTED', allowedProjectIds: ['project-001'] }
     });
-    const vaultContext = { ...context, resource: 'memory:' + memoryId };
+    const vaultContext = {
+      ...context,
+      operation: 'memory.vault.write',
+      purpose: 'hfm-vault:' + recordType + ':explicit-user-request',
+      resource: 'memory:' + memoryId
+    };
     const result = await repository.createMemoryRecord({
       client,
       context: vaultContext,
