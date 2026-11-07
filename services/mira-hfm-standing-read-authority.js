@@ -124,13 +124,14 @@ async function issueStandingReadAuthority(options = {}) {
       fail('HFM_STANDING_READ_AUTHORITY_ALREADY_ACTIVE');
     }
     if (prior) {
-      await client.query(
+      const expiredPrior = await client.query(
         "UPDATE mira_hfm.standing_read_authorities SET status = 'EXPIRED', " +
         "updated_at = clock_timestamp(), paused_at = NULL " +
         "WHERE standing_authority_id = $1 AND project_id = $2 AND actor_id = $3 " +
         "AND status IN ('ACTIVE','PAUSED') AND expires_at <= clock_timestamp()",
         [prior.standing_authority_id, projectId, actor.actorId]
       );
+      if (expiredPrior.rowCount !== 1) fail('HFM_STANDING_READ_AUTHORITY_ALREADY_ACTIVE');
       await client.query(
         "INSERT INTO mira_hfm.authority_audit_events " +
         "(event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details) " +
