@@ -194,6 +194,8 @@ registerMiraEvolutionRoutes({
 const evolutionGuard = miraEvolutionRouter.stack[0].handle;
 const oldEvolutionStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
 const oldEvolutionWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+const oldEvolutionRead = process.env.MIRA_HFM_MEMORY_READ_ENABLED;
+const oldEvolutionWrite = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
 try {
   process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
   delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
@@ -207,11 +209,32 @@ try {
     }
   }, () => assert.fail('legacy Evolution router must be blocked'));
   assert.equal(evolutionDenied, true);
+  for (const flag of ['MIRA_HFM_MEMORY_READ_ENABLED', 'MIRA_HFM_MEMORY_WRITE_ENABLED']) {
+    delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    process.env[flag] = 'true';
+    let denied = false;
+    evolutionGuard({}, {
+      status(code) { assert.equal(code, 403); return this; },
+      json(payload) {
+        denied = true;
+        assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_EVOLUTION');
+        return this;
+      }
+    }, () => assert.fail(flag + ' must block legacy Evolution'));
+    assert.equal(denied, true);
+    delete process.env[flag];
+  }
+
 } finally {
   if (oldEvolutionStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
   else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldEvolutionStanding;
   if (oldEvolutionWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
   else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldEvolutionWork;
+  if (oldEvolutionRead === undefined) delete process.env.MIRA_HFM_MEMORY_READ_ENABLED;
+  else process.env.MIRA_HFM_MEMORY_READ_ENABLED = oldEvolutionRead;
+  if (oldEvolutionWrite === undefined) delete process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
+  else process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = oldEvolutionWrite;
 }
 console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_EVOLUTION_ROUTER=PASS');
 
