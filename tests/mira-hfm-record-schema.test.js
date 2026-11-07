@@ -179,7 +179,10 @@ test('daily activity and learning notes cannot be stored as PUBLIC records', () 
 
 test('v1.1.0 client and financial records require RESTRICTED classification and JSON payloads', () => {
   for (const recordType of ['client_vault_record', 'financial_vault_record']) {
-    const content = JSON.stringify({ synthetic: true, value: 'not-real-client-data' });
+    const payload = recordType === 'client_vault_record'
+      ? { clientName: 'Example Client', notes: 'synthetic test record' }
+      : { transactionReference: 'TXN-TEST-001', counterparty: 'Example Client', amount: 1, currency: 'BDT' };
+    const content = JSON.stringify(payload);
     const candidate = record({
       schemaVersion: SCHEMA_V1_1,
       recordType,
