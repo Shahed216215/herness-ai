@@ -1,5 +1,6 @@
 'use strict';
 
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const { getMemory } = require('../memory');
 
 module.exports = {
@@ -16,6 +17,7 @@ module.exports = {
   },
 
   execute: async () => {
+    assertLegacyStorageDisabled();
     try {
       const memory = getMemory();
       return JSON.stringify({
