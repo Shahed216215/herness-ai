@@ -24,8 +24,11 @@ function boundedText(value, max, code) {
 function hasExplicitSaveIntent(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
   const text = value.toLowerCase();
-  const negative = /\b(?:do not|don't|never)\s+(?:remember|save|store|keep)\b/i.test(text) ||
-    /(?:মনে\s*রাখ(?:ো|বে|বেন)?\s*না|মনে\s*রেখো\s*না|সংরক্ষণ\s*কর(?:ো|বেন)?\s*না|সেভ\s*কর(?:ো|বেন)?\s*না|রাখবে\s*না)/u.test(value);
+  const positiveNegationException = /\b(?:don't|do not)\s+forget\s+to\s+(?:remember|save|store|keep)\b/i.test(text);
+  const negative = !positiveNegationException && (
+    /\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,50}\b(?:remember|save|store|keep)\b/i.test(text) ||
+    /(?:মনে\s*রাখ(?:ো|বে|বেন)?\s*না|মনে\s*রেখো\s*না|সংরক্ষণ\s*কর(?:ো|বেন)?\s*না|সেভ\s*কর(?:ো|বেন)?\s*না|রাখবে\s*না)/u.test(value)
+  );
   if (negative) return false;
   const english = /\bremember\s+(?:this|that|it)\b/i.test(value) ||
     /\b(?:save|store|keep|add)\b.{0,80}\b(?:to|in)\s+(?:your|my|mira(?:'s)?\s+)?memory\b/i.test(value) ||
@@ -183,7 +186,8 @@ async function saveHfmMemoryRecord(options = {}) {
     })
   });
   if (!committed || committed.status !== 'AUTHORIZED_AND_COMMITTED' ||
-      !committed.value || !['CREATED', 'ALREADY_COMMITTED'].includes(committed.value.status)) {
+      !committed.value || !['CREATED', 'ALREADY_COMMITTED'].includes(committed.value.status) ||
+      committed.value.memoryId !== memoryId) {
     fail('HFM_MEMORY_SAVE_COMMIT_NOT_CONFIRMED');
   }
 
