@@ -5,7 +5,8 @@ const test = require('node:test');
 const crypto = require('node:crypto');
 const {
   createVaultEnvelope,
-  decryptVaultEnvelope
+  decryptVaultEnvelope,
+  createVaultDigestCandidates
 } = require('../services/mira-hfm-vault-crypto');
 
 const env = Object.freeze({
@@ -133,6 +134,25 @@ test('versioned KEKs allow old records to decrypt while new writes use the activ
   assert.equal(newEnvelope.keyVersion, 'v2');
   assert.deepEqual(decryptVaultEnvelope({ envelope: oldEnvelope, context, env: rotatedEnv }), record);
   assert.deepEqual(decryptVaultEnvelope({ envelope: newEnvelope, context, env: rotatedEnv }), record);
+});
+
+test('private idempotency digests are keyed and remain reconcilable across KEK rotation', () => {
+  const canonical = JSON.stringify({ content: 'low-entropy private phrase' });
+  const first = createVaultDigestCandidates(canonical, env);
+  const same = createVaultDigestCandidates(canonical, env);
+  assert.equal(first.activeDigest, same.activeDigest);
+  assert.equal(first.activeDigest.length, 64);
+  assert.notEqual(first.activeDigest, crypto.createHash('sha256').update(canonical).digest('hex'));
+
+  const rotated = {
+    MIRA_VAULT_ACTIVE_KEK_VERSION: 'v2',
+    MIRA_VAULT_KEK_V1: env.MIRA_VAULT_KEK_V1,
+    MIRA_VAULT_KEK_V2: crypto.randomBytes(32).toString('base64')
+  };
+  const afterRotation = createVaultDigestCandidates(canonical, rotated);
+  assert.notEqual(afterRotation.activeDigest, first.activeDigest);
+  assert.ok(afterRotation.candidates.includes(first.activeDigest),
+    'previous KEK digest remains available for in-flight idempotency reconciliation');
 });
 
 test('vault rejects PUBLIC contexts and non-object records', () => {
