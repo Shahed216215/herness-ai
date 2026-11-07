@@ -206,6 +206,20 @@ test('standing read authority returns transaction-bound host authorization conte
   assert.ok(calls.some(item => item.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(calls.some(item => item.sql.includes('FROM mira_hfm.memory_records')));
   assert.deepEqual(calls.find(item => item.sql.includes('FROM mira_hfm.memory_records')).params[2], ['knowledge_item']);
+  const callsBeforeInvalidScope = calls.length;
+  await assert.rejects(
+    retrieveProjectMemory({
+      pool: { async connect() { throw new Error('must not connect'); } },
+      req: standingReq,
+      standingReadAuthority: true,
+      recordTypes: ['knowledge_item', 'knowledge_item'],
+      lifecycle: 'ACTIVE',
+      env: {}
+    }),
+    error => error.code === 'HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID'
+  );
+  assert.equal(calls.length, callsBeforeInvalidScope);
+  console.log('HFM_AUTHORIZED_MEMORY_READ_RECORD_TYPE_SCOPE_IS_EXACT=PASS');
   console.log('HFM_AUTHORIZED_MEMORY_READ_STANDING_CONTEXT_PROPAGATED=PASS');
 });
 
