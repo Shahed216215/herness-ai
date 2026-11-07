@@ -13152,32 +13152,13 @@ document.querySelectorAll(
       setBusy(false);
     }
   }
+  let generatingDraft = false;
   byId("hfmV02GenerateDraft").addEventListener("click", async () => {
-    if (!window.confirm("Generate one private daily post draft from today's eligible HFM activity and learning notes, then save it to Neon for manual review? Mira will not publish it.")) return;
-    setBusy(true);
-    setStatus("Reading today's eligible HFM activity and learning notes…");
-    try {
-      const data = await postJson("/api/hfm/social-drafts/generate-daily", {
-        confirm: true,
-        timeZone: "Asia/Dhaka"
-      });
-      if (data.draftSaved !== true) {
-        setStatus("No eligible daily activity or learning notes were available. No draft was written.", "muted");
-        return;
-      }
-      setStatus("Private daily draft saved to Neon: " + data.memoryId + ". Manual review and Facebook publication are still required.", "success");
-      setBusy(false);
-      await loadDrafts("ACTIVE");
-    } catch (error) {
-      setStatus("Daily draft generation not completed: " + error.message, "error");
-    } finally {
-      setBusy(false);
-    }
-  });
-  byId("hfmV02GenerateDraft").addEventListener("click", async () => {
+    if (generatingDraft) return;
     try { requireProjectInput(); }
     catch (error) { setStatus(error.message, "error"); return; }
     if (!window.confirm("Generate today's private Facebook-ready draft from this project's approved daily activity and learning notes? Mira will save a draft only; it will not publish to Facebook.")) return;
+    generatingDraft = true;
     setBusy(true);
     setStatus("Generating today's Asia/Dhaka draft using approved HFM Memory…");
     try {
@@ -13194,6 +13175,7 @@ document.querySelectorAll(
     } catch (error) {
       setStatus("Daily draft generation not completed: " + error.message, "error");
     } finally {
+      generatingDraft = false;
       setBusy(false);
     }
   });
