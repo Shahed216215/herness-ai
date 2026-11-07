@@ -33,6 +33,7 @@ test('creates PUBLIC source-attributed v1.1 knowledge record with explicit unver
     sourceUrl: 'https://www.facebook.com/example.page',
     content: 'বাংলাদেশে প্রযুক্তি শিক্ষা ও AI নিয়ে আলোচনা',
     collectionMethod: 'manual_copy',
+    publicContentConfirmed: true,
     now: '2026-11-07T00:00:00.000Z'
   });
   assert.equal(validateCanonicalRecord(record).valid, true);
@@ -50,7 +51,7 @@ test('rejects unsupported source kinds and invalid content', () => {
     content: 'content'
   }), /HFM_KNOWLEDGE_SCOPE_OR_SOURCE_INVALID/);
   assert.throws(() => buildKnowledgeRecord({
-    projectId: 'project-001', sourceType: 'manual',
+    projectId: 'project-001', sourceType: 'manual', publicContentConfirmed: true,
     content: ''
   }), /HFM_KNOWLEDGE_CONTENT_INVALID/);
 });
