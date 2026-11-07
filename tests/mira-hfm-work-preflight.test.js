@@ -76,6 +76,8 @@ function authorizedResult(overrides = {}) {
     authorizedResult({ hostAuthorizationContext: { ...context, requestId: '' } }),
     authorizedResult({ hostAuthorizationContext: { ...context, actorType: 'SERVICE' } }),
     authorizedResult({ authorityExpiresAt: '2027-11-08T00:00:00.000Z' }),
+    authorizedResult({ hostAuthorizationContext: { ...context, expiresAt: new Date(Date.now() - 1000).toISOString() } }),
+    authorizedResult({ hostAuthorizationContext: { ...context, issuedAt: new Date(Date.now() + 3600000).toISOString() } }),
     authorizedResult({ records: [{ ...record, projectId: 'project-beta' }] }),
     authorizedResult({ localFallback: true }),
     authorizedResult({ memoryWrites: true })
@@ -91,6 +93,7 @@ function authorizedResult(overrides = {}) {
     );
   }
   console.log('HFM_WORK_PREFLIGHT_REJECTS_INVALID_AUDIT_AND_SCOPE_CONTEXT=PASS');
+  console.log('HFM_WORK_PREFLIGHT_REJECTS_EXPIRED_AND_FUTURE_AUTHORITY=PASS');
 
   await assert.rejects(
     () => preflightHfmStandingRead({ req: {}, readMemory: async () => authorizedResult() }),
