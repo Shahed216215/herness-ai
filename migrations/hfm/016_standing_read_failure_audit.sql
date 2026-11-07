@@ -21,11 +21,18 @@ CREATE POLICY hfm_memory_reader_authority_audit_insert
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND event_type IN (
-      'AUTHORITY_CONSUMED',
-      'STANDING_READ_AUTHORITY_USED',
-      'STANDING_READ_AUTHORITY_DENIED',
-      'STANDING_READ_AUTHORITY_FAILED'
+    AND (
+      event_type = 'AUTHORITY_CONSUMED'
+      OR (
+        event_type IN (
+          'STANDING_READ_AUTHORITY_USED',
+          'STANDING_READ_AUTHORITY_DENIED',
+          'STANDING_READ_AUTHORITY_FAILED'
+        )
+        AND current_setting('mira.operation', true) = 'memory.read'
+        AND current_setting('mira.standing_read_authority', true) = 'true'
+        AND details->>'resource' = NULLIF(current_setting('mira.resource', true), '')
+      )
     )
   );
 
@@ -39,11 +46,18 @@ CREATE POLICY hfm_reader_authority_audit_request_scope
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND request_id = NULLIF(current_setting('mira.request_id', true), '')
-    AND event_type IN (
-      'AUTHORITY_CONSUMED',
-      'STANDING_READ_AUTHORITY_USED',
-      'STANDING_READ_AUTHORITY_DENIED',
-      'STANDING_READ_AUTHORITY_FAILED'
+    AND (
+      event_type = 'AUTHORITY_CONSUMED'
+      OR (
+        event_type IN (
+          'STANDING_READ_AUTHORITY_USED',
+          'STANDING_READ_AUTHORITY_DENIED',
+          'STANDING_READ_AUTHORITY_FAILED'
+        )
+        AND current_setting('mira.operation', true) = 'memory.read'
+        AND current_setting('mira.standing_read_authority', true) = 'true'
+        AND details->>'resource' = NULLIF(current_setting('mira.resource', true), '')
+      )
     )
   );
 
