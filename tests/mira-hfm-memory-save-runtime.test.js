@@ -602,7 +602,7 @@ function baseOptions(overrides = {}) {
     /HFM_VAULT_EXPLICIT_USER_INTENT_REQUIRED/
   );
 
-  const { executeTool, executeHfmMemorySave, declarations } = require('../tools');  await assert.rejects(
+  await assert.rejects(
     () => saveHfmMemoryRecord(baseOptions({
       kind: 'source_reference_save',
       url: sourceUrl,
