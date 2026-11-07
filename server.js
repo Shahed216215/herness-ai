@@ -2022,7 +2022,9 @@ app.post(
                   permissionGranted: true,
                   trustedContext: buildTrustedActorContext(req),
                   hfmRequest: req,
-                  getHfmMemoryReadRuntime
+                  getHfmMemoryReadRuntime,
+                  getHfmMemoryWriterRuntime,
+                  getHfmAuthorityIssuerRuntime
                 }
               );
 
