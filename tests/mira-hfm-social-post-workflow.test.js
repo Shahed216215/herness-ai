@@ -134,7 +134,7 @@ test('delete transaction is exact-record scoped and writes sanitized audit only'
       calls.push({ sql, params });
       if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) return { rows: [row] };
       if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [{ operation_id: 'op-001' }] };
-      if (sql.startsWith('SELECT status, copied_at')) return { rows: initialStatus ? [{ status: initialStatus }] : [] };
+      if (sql.startsWith('SELECT status, copied_at')) return { rows: [] };
       if (sql.startsWith("SELECT set_config('mira.memory_payload_erasure_operation_id'")) return { rows: [{ set_config: 'op-001' }] };
       if (sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state')) return { rowCount: 1, rows: [] };
       if (sql.startsWith('UPDATE mira_hfm.memory_record_versions')) return { rowCount: 2, rows: [{ revision: 1 }, { revision: 2 }] };
@@ -240,7 +240,7 @@ function createStatusFlowClient(initialStatus = null) {
       calls.push({ sql, params });
       if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) return { rows: [{ ...draft, payload_erased_at: null }] };
       if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [{ operation_id: 'op-status-001' }] };
-      if (sql.startsWith('SELECT status, copied_at')) return { rows: [] };
+      if (sql.startsWith('SELECT status, copied_at')) return { rows: initialStatus ? [{ status: initialStatus }] : [] };
       if (sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state')) return { rowCount: 1, rows: [] };
       if (sql.startsWith('SELECT event_hash FROM mira_hfm.memory_audit_events')) return { rows: [] };
       if (sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')) return { rowCount: 1, rows: [] };
