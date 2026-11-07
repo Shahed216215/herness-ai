@@ -142,7 +142,7 @@ console.log('HFM_AUTHORITY_MODE_BLOCKS_LOCAL_EXPERIENCE_LESSONS=PASS');
 const registerMiraEvolutionRoutes = require('../routes/mira-evolution');
 let miraEvolutionRouter;
 registerMiraEvolutionRoutes({
-  use: (_path, router) => { miraEvolutionRouter = router; }
+  use: (...args) => { miraEvolutionRouter = args[args.length - 1]; }
 }, () => (_req, _res, next) => next && next(), {
   SYSTEM_ADMIN: 'system-admin'
 });
