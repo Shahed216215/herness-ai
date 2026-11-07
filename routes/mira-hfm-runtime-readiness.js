@@ -16,9 +16,9 @@ function registerHfmRuntimeReadinessRoute(app, requireAgentAuth, options = {}) {
     }
     try {
       const report = options.inspect();
-      const ready = report.status === 'CONFIGURED_NOT_CONNECTED';
-      return res.status(ready ? 200 : 503).json({
-        ok: ready,
+      return res.status(200).json({
+        ok: true,
+        runtimeReady: false,
         diagnostic: 'CONFIGURATION_ONLY',
         ...report
       });
