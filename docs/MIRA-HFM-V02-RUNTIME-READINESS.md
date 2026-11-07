@@ -157,3 +157,13 @@ These are synthetic/offline or disposable-CI results. They are not live Neon or 
 - Code commit `645af36db7a3150d2f53f8570228b93cebab7ba6` produced eight successful GitHub workflows, including HFM PostgreSQL migrations, HFM repository contracts, HFM runtime foundation, Render host binding, session persistence, tool-health diagnostics, Run Agent regression, and Competitor Intelligence. One unrelated dependency-remediation workflow was cancelled; no HFM workflow failed.
 - Canonical PostgreSQL integration job completed successfully for migrations 001–014 on disposable PostgreSQL 16 at code commit `645af36db7a3150d2f53f8570228b93cebab7ba6`. The subsequent commits were documentation-only; the revised migration SQL and workflow were unchanged.
 - This is code/CI evidence only. No live Neon migration, staging row mutation, credential provisioning, Render environment change, deployment, or PR merge was performed. PR #79 remains Open/Draft/Unmerged; all live activation flags remain disabled pending the separately approved release gates above.
+
+
+## Canonical Memory, Knowledge, and Learning save contract — 2026-11-07
+
+- `memory_save` is routed to the encrypted HFM repository only when the Memory writer and authority-issuer runtimes are ready and the write flag is explicitly enabled. It requires an authenticated admin session, a verified selected project, explicit save/remember intent, and saved text present in the user's request. The record is private, HUMAN_VERIFIED, and ACTIVE.
+- `knowledge_save` creates an encrypted `knowledge_item`; `learning_save` creates an encrypted `learning_note`. Both require explicit save intent and use SOURCE_RECORDED trust with PENDING_REVIEW lifecycle. Optional source URLs must be HTTPS and are persisted without query strings or fragments.
+- The review-queue tool accepts explicit requests for pending knowledge or learning notes. It issues a separate one-time `memory.read` authority for each request and returns only same-project private PENDING_REVIEW records. These records remain excluded from trusted retrieval; automatic trust promotion is not implemented.
+- Direct legacy save-tool entry points return a fail-closed router-required response in HFM mode. The central tool router is the only HFM write path; Local JSON and Google Drive are never used as fallback.
+- All changes remain branch-only. Feature flags are disabled by default. No live database write, migration application, Render environment change, or deployment is implied.
+
