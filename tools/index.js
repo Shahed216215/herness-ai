@@ -31,6 +31,7 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
     pool: context.pool,
     query,
     limit: 5,
+    cursor: typeof args?.cursor === "string" ? args.cursor : undefined,
     env: context.env || process.env
   });
   if (!result || result.status !== "AUTHORIZED_AND_COMMITTED" ||
@@ -48,6 +49,7 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
     candidateScanCount: result.candidateScanCount,
     candidateScanLimit: result.candidateScanLimit,
     candidateScanMayBeIncomplete: result.candidateScanMayBeIncomplete,
+    nextCursor: result.nextCursor,
     localFallback: false,
     driveFallback: false
   });
