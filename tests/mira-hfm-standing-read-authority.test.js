@@ -314,7 +314,7 @@ const pool = { async connect() { return client; } };
   console.log('HFM_STANDING_READ_AUDIT_FAILURE_ROLLS_BACK_AND_BLOCKS_READ=PASS');
 
   const migration = fs.readFileSync(
-    path.join(__dirname, '..', 'migrations/hfm/011_standing_read_authority_365_days.sql'), 'utf8'
+    path.join(__dirname, '..', 'migrations/hfm/014_standing_read_authority_365_days.sql'), 'utf8'
   );
   assert.match(migration, /expires_at <= valid_from \+ interval '365 days'/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
