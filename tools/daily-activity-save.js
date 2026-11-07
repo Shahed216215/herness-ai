@@ -6,7 +6,7 @@ module.exports = {
   declaration: {
     name: "daily_activity_save",
     description:
-      "Save an exact user-authored daily activity summary to canonical HFM Memory only when the user explicitly asks to save or record daily activity. The full content must appear in the user's current message; do not invent or paraphrase completed work. Credential, client-contact, contract, and financial identifiers are not accepted by this tool. Obvious emails, phone numbers, URLs, currency amounts, and credential values are redacted before storage.",
+      "Save an exact user-authored daily activity summary to canonical HFM Memory only when the user explicitly asks to save or record daily activity. The full content must appear in the user's current message; do not invent or paraphrase completed work. Credential, client-contact, contract, and financial identifiers are not accepted by this tool. Obvious emails, phone numbers, URLs, currency amounts, and common credential patterns are redacted before storage; unknown sensitive formats may not be detected.",
     parameters: {
       type: "object",
       properties: {
