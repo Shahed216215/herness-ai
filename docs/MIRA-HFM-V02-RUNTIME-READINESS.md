@@ -289,6 +289,15 @@ Target inspected: project steep-grass-38696226, branch br-crimson-sun-a13xzreh, 
 - The rollback plan remains DESIGN ONLY: no Neon snapshot or restore rehearsal has been created, and no down migration has been executed.
 
 
+
+## Re-run CI evidence after standing-read exact-record scope correction — 2026-11-07
+
+- Exact functional-code commit `9f540b4f73ad58ade342328958edbe0568dd87e9`: **3/3 HFM workflows PASS** — Memory repository contracts, PostgreSQL 001–014 migration integration on disposable PostgreSQL, and HFM runtime foundation/full repository regression.
+- Exact transcript/CI-wiring commit `7ef235b7361e00d8d93754da0abb0b314b879d52`: **Mira session persistence validation PASS**, including the full npm regression suite.
+- Exact migration/RLS test commit `0727b2339fbe1ff6b6d50c705c43abdf36b38329`: **PostgreSQL migration integration PASS**, with additional RLS assertions that standing-read mode exposes only eligible verified Knowledge/Learning records and excludes pending Knowledge and social drafts.
+- The earlier standing-read exact-record regression was traced to the negative-scope assertion expecting `HFM_STANDING_READ_RESOURCE_SCOPE_INVALID`; the implementation now returns that distinct error before issuing SQL, and separate tests cover transaction-context, standing-authority-context, and resource-scope rejection. The Memory repository contract workflow passed on the corrected code line.
+- These are CI/disposable-database tests only. They do not prove production Neon role hardening, live Render HFM variables, canonical transcript writes, source-reference/vault writers, or human trust-promotion authorization.
+
 ## Standing-read identity, preflight, Unicode search and final CI verification — 2026-11-07
 
 - Standing-read page validation now requires a verified HUMAN actor identity (`mira:`), project, standing authority reference, non-empty purpose, valid authority issuance/expiry timestamps, and a distinct request ID for every page. Actor/project/purpose/authority issuance/expiry and fixed scan-start timestamp remain stable across pages; duplicate audit request IDs, cursor replay, duplicate records, and scope drift fail closed.
