@@ -102,6 +102,12 @@ test('daily post contains only same-project active private activity and learning
       content: JSON.stringify({ client: 'Private Client' })
     })
   ];
+  assert.equal(validateCanonicalRecord(records[0]).valid, true,
+    JSON.stringify(validateCanonicalRecord(records[0]).errors));
+  assert.equal(validateCanonicalRecord(records[1]).valid, true,
+    JSON.stringify(validateCanonicalRecord(records[1]).errors));
+  assert.equal(dateInTimeZone(records[0].source.observedAt, 'Asia/Dhaka'), '2026-11-06');
+  assert.equal(dateInTimeZone(records[1].source.observedAt, 'Asia/Dhaka'), '2026-11-06');
   const result = buildDailyKnowledgePost({
     records,
     projectId: 'project-001',
