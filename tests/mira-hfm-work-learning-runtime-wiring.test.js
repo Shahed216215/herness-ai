@@ -627,6 +627,36 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldDirectWork;
   }
   console.log('HFM_AUTHORITY_MODE_BLOCKS_DIRECT_LEGACY_TOOL_AND_CONTROLLED_APPLY_CALLS=PASS');
+  const oldDirectReadMode = process.env.MIRA_HFM_MEMORY_READ_ENABLED;
+  const oldDirectWriteMode = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
+  try {
+    delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    process.env.MIRA_HFM_MEMORY_READ_ENABLED = 'true';
+    for (const [toolName, args] of [
+      ['memory_save', { content: 'x' }],
+      ['knowledge_save', { title: 'x', url: 'https://example.com', content: 'x' }],
+      ['learning_save', { content: 'x' }]
+    ]) {
+      assert.equal(JSON.parse(await tools[toolName].execute(args)).code, 'HFM_TOOL_ROUTER_REQUIRED');
+    }
+    delete process.env.MIRA_HFM_MEMORY_READ_ENABLED;
+    process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = 'true';
+    for (const [toolName, args] of [
+      ['memory_save', { content: 'x' }],
+      ['knowledge_save', { title: 'x', url: 'https://example.com', content: 'x' }],
+      ['learning_save', { content: 'x' }]
+    ]) {
+      assert.equal(JSON.parse(await tools[toolName].execute(args)).code, 'HFM_TOOL_ROUTER_REQUIRED');
+    }
+  } finally {
+    if (oldDirectReadMode === undefined) delete process.env.MIRA_HFM_MEMORY_READ_ENABLED;
+    else process.env.MIRA_HFM_MEMORY_READ_ENABLED = oldDirectReadMode;
+    if (oldDirectWriteMode === undefined) delete process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
+    else process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = oldDirectWriteMode;
+  }
+  console.log('HFM_READ_AND_WRITE_MODES_BLOCK_DIRECT_LEGACY_SAVE_TOOLS=PASS');
+
   const hfmToolContext = {
     hfmReadOnly: { req: { serverHeld: true }, pool: { connect: async () => ({}) }, env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' } }
   };
