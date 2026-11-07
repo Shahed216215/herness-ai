@@ -149,7 +149,7 @@ test('completed idempotency key returns the original result without a second wri
       if (sql.startsWith('SELECT operation_id')) return { rowCount: 1, rows: [{
         operation_id: 'operation-existing', actor_id: context.actorId, operation: 'memory.write',
         resource: 'memory:record-0001', purpose: context.purpose,
-        payload_digest: repository.digest(record()), status: 'COMPLETED', result_code: 'record-0001'
+        payload_digest: require('../services/mira-hfm-vault-crypto').createVaultDigestCandidates(repository.stableJson(record()), env).activeDigest, status: 'COMPLETED', result_code: 'record-0001'
       }] };
       throw new Error('unexpected SQL');
     }
@@ -160,6 +160,28 @@ test('completed idempotency key returns the original result without a second wri
   });
   assert.deepEqual(result, { status: 'ALREADY_COMMITTED', memoryId: 'record-0001', duplicate: true });
   assert.equal(client.calls.length, 2);
+});
+
+test('project audit hash-chain append is serialized before reading the previous hash', async () => {
+  const client = fakeClient();
+  const result = await repository.createMemoryRecord({
+    client, context, record: record(), idempotencyKey: 'idem-audit-chain-lock',
+    allowPrivateWrite: true, env
+  });
+  assert.equal(result.status, 'CREATED');
+  const lockIndex = client.calls.findIndex(call =>
+    call.sql === 'SELECT pg_advisory_xact_lock(hashtext($1))' &&
+    call.params[0] === context.projectId
+  );
+  const previousHashIndex = client.calls.findIndex(call =>
+    call.sql.startsWith('SELECT event_hash FROM mira_hfm.memory_audit_events')
+  );
+  const auditInsertIndex = client.calls.findIndex(call =>
+    call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')
+  );
+  assert.ok(lockIndex >= 0);
+  assert.ok(previousHashIndex > lockIndex);
+  assert.ok(auditInsertIndex > previousHashIndex);
 });
 
 test('revision writes append-only history and advances the current revision', async () => {
@@ -209,6 +231,11 @@ test('revision writes append-only history and advances the current revision', as
   assert.ok(update);
   assert.equal(update.params[2], 2);
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
+  const operationInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry'));
+  assert.notEqual(operationInsert.params[7], repository.digest(record()), 'private idempotency digest must be keyed');
+  const auditInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events'));
+  assert.equal(auditInsert.params[11].includes('contentHash'), false, 'private content hash must not enter audit metadata');
+  assert.equal(auditInsert.params[11].includes(record().content), false, 'private content must not enter audit metadata');
 });
 
 test('private read requires explicit authorization and verifies encrypted record context', async () => {
