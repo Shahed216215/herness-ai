@@ -38,6 +38,39 @@ function dateInTimeZone(value, timeZone) {
   return map.year + '-' + map.month + '-' + map.day;
 }
 
+function localDateStartTimestamp(localDate, timeZone) {
+  const [year, month, day] = localDate.split('-').map(Number);
+  const target = Date.UTC(year, month - 1, day, 0, 0, 0);
+  let candidate = target;
+  let formatter;
+  try {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23'
+    });
+  } catch (_error) {
+    throw fail('HFM_DAILY_POST_TIME_ZONE_INVALID');
+  }
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const parts = Object.fromEntries(formatter.formatToParts(new Date(candidate))
+      .map(part => [part.type, part.value]));
+    const represented = Date.UTC(
+      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+      Number(parts.hour), Number(parts.minute), Number(parts.second)
+    );
+    const adjustment = target - represented;
+    candidate += adjustment;
+    if (adjustment === 0) return new Date(candidate).toISOString();
+  }
+  throw fail('HFM_DAILY_POST_TIME_ZONE_INVALID');
+}
+
 function redactObviousSensitiveText(value) {
   return String(value || '')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email omitted]')
@@ -62,6 +95,8 @@ function collectDailySourceRecords(records, projectId, localDate, timeZone) {
     if (!validation.valid) continue;
     if (record.projectId !== projectId ||
         record.lifecycle !== 'ACTIVE' ||
+        record.integrity.status !== 'VERIFIED' ||
+        !['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(record.trust.status) ||
         record.access.classification !== 'PROJECT_PRIVATE' ||
         !['daily_activity', 'learning_note'].includes(record.recordType)) {
       continue;
@@ -85,8 +120,8 @@ function buildDailyKnowledgePost(options = {}) {
     throw fail('HFM_DAILY_POST_PROJECT_ID_INVALID');
   }
   if (!validDate(localDate)) throw fail('HFM_DAILY_POST_LOCAL_DATE_INVALID');
-  const now = options.now || new Date().toISOString();
-  if (typeof now !== 'string' || !Number.isFinite(Date.parse(now))) {
+  const requestTimestamp = options.now || new Date().toISOString();
+  if (typeof requestTimestamp !== 'string' || !Number.isFinite(Date.parse(requestTimestamp))) {
     throw fail('HFM_DAILY_POST_NOW_INVALID');
   }
   const collected = collectDailySourceRecords(options.records, projectId, localDate, timeZone);
@@ -99,6 +134,13 @@ function buildDailyKnowledgePost(options = {}) {
       autoPublish: false
     });
   }
+
+  // A fixed local-day boundary keeps the immutable draft digest stable across same-day retries.
+  const stableTimestamp = localDateStartTimestamp(localDate, timeZone);
+  const compareMemoryId = (left, right) => left.memoryId < right.memoryId ? -1 : left.memoryId > right.memoryId ? 1 : 0;
+  collected.activities.sort(compareMemoryId);
+  collected.learnings.sort(compareMemoryId);
+  collected.sourceRecordIds.sort();
 
   const lines = [
     'আজকের কাজ ও শেখার সংক্ষিপ্ত নোট — ' + localDate,
@@ -128,9 +170,9 @@ function buildDailyKnowledgePost(options = {}) {
     source: {
       sourceType: 'internal_system',
       sourceId: 'daily-post:' + projectId + ':' + localDate,
-      observedAt: now
+      observedAt: stableTimestamp
     },
-    timestamps: { createdAt: now, updatedAt: now },
+    timestamps: { createdAt: stableTimestamp, updatedAt: stableTimestamp },
     version: { revision: 1, contentHash: createContentHash(content) },
     integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
     trust: { status: 'SOURCE_RECORDED' },

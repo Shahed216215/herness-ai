@@ -22,7 +22,7 @@ function requiredText(value, label, max = 10000) {
 function terms(value) {
   return new Set(
     String(value || '').toLowerCase()
-      .match(/[a-z0-9][a-z0-9_-]{1,}/g) || []
+      .match(/[\p{L}\p{N}][\p{L}\p{M}\p{N}_-]{1,}/gu) || []
   );
 }
 function relevanceScore(queryTerms, record) {
@@ -65,7 +65,7 @@ function retrieveProjectScopedWorkLearning({
   let malformedLearningPayloads = 0;
 
   for (const canonical of report.records) {
-    if (canonical.recordType !== 'lesson' ||
+    if (canonical.recordType !== 'learning_note' ||
         canonical.source?.sourceType !== 'legacy_import') continue;
     let payload;
     try {

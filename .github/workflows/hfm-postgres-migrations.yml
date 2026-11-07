@@ -1,0 +1,17 @@
+name: HFM legacy PostgreSQL migration workflow (superseded)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  superseded-notice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Point to the validated disposable migration gate
+        run: |
+          echo "This legacy workflow is superseded."
+          echo "Use .github/workflows/hfm-v02-disposable-migrations.yml."
+          echo "No live Neon or Render database changes are performed."

@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const { getKnowledge } = require("../knowledge");
 
 module.exports = {
@@ -13,6 +14,7 @@ module.exports = {
   },
 
   execute: async () => {
+    assertLegacyStorageDisabled();
     const knowledge = getKnowledge();
 
     return JSON.stringify({

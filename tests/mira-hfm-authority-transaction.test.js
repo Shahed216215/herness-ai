@@ -90,11 +90,25 @@ test("authorized operation locks owner, membership, authority; consumes and audi
   const membershipLock = sql.findIndex(x => x.includes("FROM mira_hfm.project_memberships"));
   const authorityLock = sql.findIndex(x => x.includes("FROM mira_hfm.operation_authorities"));
   const consume = sql.findIndex(x => x.startsWith("UPDATE mira_hfm.operation_authorities"));
+  const consumeCall = f.calls.find(x => x.sql.startsWith("UPDATE mira_hfm.operation_authorities"));
+  assert.match(consumeCall.sql, /project_id = \$2 AND actor_id = \$3 AND request_id = \$4/);
+  assert.deepEqual(consumeCall.params, [request.authorityId, request.projectId, actorId, request.requestId]);
   const audit = sql.findIndex(x => x.startsWith("INSERT INTO mira_hfm.authority_audit_events"));
   const projectScope = sql.findIndex(x => x.includes("set_config('mira.project_id'"));
+  const actorScope = sql.findIndex(x => x.includes("set_config('mira.actor_id'"));
+  const operationScope = f.calls.find(x => x.sql.includes("set_config('mira.operation'"));
+  const resourceScope = f.calls.find(x => x.sql.includes("set_config('mira.resource'"));
+  const requestScope = f.calls.find(x => x.sql.includes("set_config('mira.request_id'"));
+  assert.deepEqual(operationScope.params, [request.operation]);
+  assert.deepEqual(resourceScope.params, [request.resource]);
+  assert.deepEqual(requestScope.params, [request.requestId]);
+  assert.ok(projectScope < actorScope && actorScope < ownerLock);
   const protectedWrite = sql.findIndex(x => x.startsWith("INSERT INTO protected_hfm_test_table"));
   assert.ok(sql[0].startsWith("BEGIN ISOLATION LEVEL SERIALIZABLE"));
   assert.ok(projectScope < ownerLock && ownerLock < membershipLock && membershipLock < authorityLock);
+  assert.equal(sql[ownerLock].includes("FOR UPDATE"), false);
+  assert.equal(sql[membershipLock].includes("FOR UPDATE"), false);
+  assert.equal(sql[authorityLock].includes("FOR UPDATE"), true);
   assert.ok(authorityLock < consume && consume < audit && audit < protectedWrite);
   assert.ok(sql.includes("COMMIT"));
   assert.ok(sql.some(x => x.includes("valid_from <= clock_timestamp()") &&

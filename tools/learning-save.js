@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const {
   learnFromContent
 } = require("../services/learning");
@@ -8,7 +9,7 @@ module.exports = {
   declaration: {
     name: "learning_save",
     description:
-      "Learn structured cybersecurity knowledge from provided source content and save it to Mira's knowledge base. Learning is restricted to safe, authorized, defensive, and educational content.",
+      "Save a user-requested learning source as a private HFM learning_note in PENDING_REVIEW. Use only when the user explicitly asks to save the learning to Mira's memory or knowledge base. The source is not trusted task context until human review; legacy automatic learning is not run in HFM mode.",
 
     parameters: {
       type: "object",
@@ -38,6 +39,20 @@ module.exports = {
     sourceUrl,
     content
   }) => {
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+      return JSON.stringify({
+        success: false,
+        learned: false,
+        saved: false,
+        code: "HFM_TOOL_ROUTER_REQUIRED",
+        localFallback: false,
+        driveFallback: false
+      });
+    }
+    assertLegacyStorageDisabled();
     const result = await learnFromContent({
       content,
       sourceTitle,

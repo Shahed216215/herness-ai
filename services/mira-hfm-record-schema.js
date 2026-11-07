@@ -1,9 +1,12 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { validateSourceReferencePayload } = require('./mira-hfm-source-reference-schema');
+const { validateClientVaultPayload, validateFinancialVaultPayload } = require('./mira-hfm-vault-record-schema');
 
 const SCHEMA_V1 = '1.0.0';
 const SCHEMA_V1_1 = '1.1.0';
+const SCHEMA_V1_2 = '1.2.0';
 const LEGACY_RECORD_TYPES = Object.freeze([
   'fact', 'decision', 'preference', 'procedure', 'lesson', 'experience',
   'strategy', 'project', 'conversation_reference', 'knowledge', 'research_reference'
@@ -12,6 +15,7 @@ const EXTENDED_RECORD_TYPES = Object.freeze([
   'daily_activity', 'learning_note', 'knowledge_item', 'social_post_draft',
   'client_vault_record', 'financial_vault_record'
 ]);
+const SOURCE_REFERENCE_RECORD_TYPES = Object.freeze(['source_reference']);
 const SOURCE_TYPES = Object.freeze([
   'facebook_page', 'facebook_group', 'web', 'manual', 'legacy_import',
   'internal_system', 'google_drive_backup'
@@ -98,16 +102,18 @@ function validateCanonicalRecord(record) {
   }
 
   const schemaVersion = record.schemaVersion;
-  if (![SCHEMA_V1, SCHEMA_V1_1].includes(schemaVersion)) {
+  if (![SCHEMA_V1, SCHEMA_V1_1, SCHEMA_V1_2].includes(schemaVersion)) {
     errors.push('record.schemaVersion.unsupported');
   }
 
   if (!stringLength(record.memoryId, 8, 128)) errors.push('record.memoryId.invalid');
   if (!stringLength(record.projectId, 1, 128)) errors.push('record.projectId.invalid');
 
-  const allowedRecordTypes = schemaVersion === SCHEMA_V1_1
-    ? LEGACY_RECORD_TYPES.concat(EXTENDED_RECORD_TYPES)
-    : LEGACY_RECORD_TYPES;
+  const allowedRecordTypes = schemaVersion === SCHEMA_V1_2
+    ? LEGACY_RECORD_TYPES.concat(EXTENDED_RECORD_TYPES, SOURCE_REFERENCE_RECORD_TYPES)
+    : schemaVersion === SCHEMA_V1_1
+      ? LEGACY_RECORD_TYPES.concat(EXTENDED_RECORD_TYPES)
+      : LEGACY_RECORD_TYPES;
   if (typeof record.recordType !== 'string' || !allowedRecordTypes.includes(record.recordType)) {
     errors.push('record.recordType.unsupported_for_schema_version');
   }
@@ -196,7 +202,39 @@ function validateCanonicalRecord(record) {
 
   if (!LIFECYCLE_STATES.includes(record.lifecycle)) errors.push('record.lifecycle.invalid');
 
-  if (schemaVersion === SCHEMA_V1_1) {
+  if (schemaVersion === SCHEMA_V1_2 && record.recordType === 'source_reference') {
+    if (record.access?.classification !== 'PROJECT_PRIVATE') {
+      errors.push('record.source_reference.must_be_PROJECT_PRIVATE');
+    }
+    const trustState = record.trust?.status;
+    if (!['SOURCE_RECORDED', 'SOURCE_REACHABLE', 'CONTENT_VERIFIED', 'HUMAN_VERIFIED', 'QUARANTINED'].includes(trustState)) {
+      errors.push('record.source_reference.trust_state_invalid');
+    }
+    if (!['ACTIVE', 'TRASHED', 'SUPERSEDED', 'ARCHIVED', 'QUARANTINED'].includes(record.lifecycle)) {
+      errors.push('record.source_reference.lifecycle_invalid');
+    }
+    if ((trustState === 'QUARANTINED') !== (record.lifecycle === 'QUARANTINED')) {
+      errors.push('record.source_reference.quarantine_state_mismatch');
+    }
+    try {
+      const payload = JSON.parse(record.content);
+      const validation = validateSourceReferencePayload(payload);
+      if (!validation.valid) errors.push(...validation.errors.map(error => 'record.source_reference.' + error));
+      if (trustState === 'SOURCE_REACHABLE' &&
+          !['AVAILABLE', 'PARTIAL'].includes(payload.accessResult)) {
+        errors.push('record.source_reference.reachable_requires_available_or_partial');
+      }
+      if (['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(trustState) &&
+          (!payload.contentHash || !['AVAILABLE', 'PARTIAL'].includes(payload.accessResult) ||
+           !['public_http_fetch', 'manual_import', 'internal_system'].includes(payload.retrievalMethod))) {
+        errors.push('record.source_reference.verified_requires_content_digest_and_capture');
+      }
+    } catch (_error) {
+      errors.push('record.source_reference.payload_json_required');
+    }
+  }
+
+  if ([SCHEMA_V1_1, SCHEMA_V1_2].includes(schemaVersion)) {
     if (['client_vault_record', 'financial_vault_record'].includes(record.recordType) &&
         record.access?.classification !== 'RESTRICTED') {
       errors.push('record.vault_record.must_be_RESTRICTED');
@@ -209,7 +247,16 @@ function validateCanonicalRecord(record) {
         typeof record.content === 'string') {
       try {
         const payload = JSON.parse(record.content);
-        if (!isPlainObject(payload)) errors.push('record.vault_payload.object_required');
+        if (!isPlainObject(payload)) {
+          errors.push('record.vault_payload.object_required');
+        } else {
+          const vaultValidation = record.recordType === 'client_vault_record'
+            ? validateClientVaultPayload(payload)
+            : validateFinancialVaultPayload(payload);
+          if (!vaultValidation.valid) {
+            errors.push(...vaultValidation.errors.map(error => 'record.vault_payload.' + error));
+          }
+        }
       } catch (_error) {
         errors.push('record.vault_payload.json_required');
       }
@@ -238,6 +285,7 @@ function createContentHash(content) {
 module.exports = Object.freeze({
   SCHEMA_V1,
   SCHEMA_V1_1,
+  SCHEMA_V1_2,
   LEGACY_RECORD_TYPES,
   EXTENDED_RECORD_TYPES,
   SOURCE_TYPES,

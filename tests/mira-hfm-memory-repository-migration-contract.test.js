@@ -5,6 +5,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
+const revisionSql = fs.readFileSync(
+  path.join(__dirname, '..', 'migrations', 'hfm', '016_memory_record_revision_authority.sql'),
+  'utf8'
+);
+
 const sql = fs.readFileSync(
   path.join(__dirname, '..', 'migrations', 'hfm', '004_memory_repository_schema.sql'),
   'utf8'
@@ -93,6 +98,17 @@ test('social draft deletion is recoverable through the TRASHED lifecycle', () =>
   assert.match(sql, /lifecycle = 'TRASHED'[\s\S]*?trashed_at IS NOT NULL[\s\S]*?trashed_by_actor_id IS NOT NULL/);
   assert.match(sql, /BEFORE DELETE ON mira_hfm\.memory_records/);
   assert.match(sql, /HFM_MEMORY_HISTORY_IS_APPEND_ONLY/);
+});
+
+test('memory.update cannot alter integrity or trust status and has no integrity-status UPDATE grant', () => {
+  assert.match(revisionSql, /SOURCE-ONLY DRAFT/);
+  assert.match(revisionSql, /NEW\.trust_status IS DISTINCT FROM OLD\.trust_status/);
+  assert.match(revisionSql, /NEW\.integrity_status IS DISTINCT FROM OLD\.integrity_status/);
+  const updateGrant = revisionSql.match(/GRANT UPDATE \(([\s\S]*?)\) ON TABLE mira_hfm\.memory_records/);
+  assert.ok(updateGrant, 'memory writer must have an explicit column-level UPDATE grant');
+  assert.doesNotMatch(updateGrant[1], /integrity_status/);
+  assert.match(revisionSql, /HFM_MEMORY_REVISION_TRANSITION_INVALID/);
+  assert.match(revisionSql, /HFM_MEMORY_RECORD_IDENTITY_IMMUTABLE/);
 });
 
 console.log('HFM_MEMORY_REPOSITORY_MIGRATION_SOURCE_CONTRACT=PASS');

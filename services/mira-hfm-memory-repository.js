@@ -2,10 +2,11 @@
 
 const crypto = require('node:crypto');
 const { validateCanonicalRecord } = require('./mira-hfm-record-schema');
-const { createVaultEnvelope, decryptVaultEnvelope } = require('./mira-hfm-vault-crypto');
+const { createVaultEnvelope, decryptVaultEnvelope, createVaultDigestCandidates } = require('./mira-hfm-vault-crypto');
 
 const MAX_PAGE_SIZE = 100;
 const OPERATION_CONTEXT = 'HFM_CONSUMED_ONE_TIME_AUTHORITY';
+const STANDING_READ_CONTEXT = 'HFM_ACTIVE_STANDING_READ_AUTHORITY';
 
 function fail(code) {
   const error = new Error(code);
@@ -25,6 +26,17 @@ function digest(value) {
   return crypto.createHash('sha256').update(stableJson(value), 'utf8').digest('hex');
 }
 
+function operationDigests(record, env) {
+  if (recordClassification(record) === 'PUBLIC') {
+    const value = digest(record);
+    return { activeDigest: value, candidates: [value] };
+  }
+  // Private/restricted canonical hashes must not enable offline dictionary attacks.
+  // Derive a purpose-specific HMAC key from each configured KEK version so a
+  // retry after rotation can reconcile while the prior KEK remains configured.
+  return createVaultDigestCandidates(stableJson(record), env);
+}
+
 function boundedText(value, max, code) {
   if (typeof value !== 'string' || !value.trim() || value.length > max || value.trim() !== value) {
     throw fail(code);
@@ -36,7 +48,11 @@ function requireTransaction(options) {
   const client = options && options.client;
   const context = options && options.context;
   if (!client || typeof client.query !== 'function') throw fail('HFM_MEMORY_TRANSACTION_CLIENT_REQUIRED');
-  if (!context || context.authorityContext !== OPERATION_CONTEXT ||
+  const validOneTimeContext = context && context.authorityContext === OPERATION_CONTEXT;
+  const validStandingReadContext = context &&
+    context.authorityContext === STANDING_READ_CONTEXT &&
+    context.operation === 'memory.read';
+  if (!context || (!validOneTimeContext && !validStandingReadContext) ||
       typeof context.actorId !== 'string' || !context.actorId.startsWith('mira:') ||
       typeof context.projectId !== 'string' || !context.projectId ||
       typeof context.operation !== 'string' || !context.operation ||
@@ -116,13 +132,15 @@ function decodeStoredRow(row, options = {}) {
       record.schemaVersion !== row.schema_version ||
       record.access.classification !== row.classification ||
       record.version.revision !== Number(row.revision) ||
+      record.integrity.status !== row.integrity_status ||
+      record.trust.status !== row.trust_status ||
       record.lifecycle !== row.lifecycle) {
     throw fail('HFM_MEMORY_STORED_RECORD_METADATA_MISMATCH');
   }
   return record;
 }
 
-async function beginIdempotentOperation(client, context, idempotencyKey, operation, resource, payloadDigest) {
+async function beginIdempotentOperation(client, context, idempotencyKey, operation, resource, payloadDigest, payloadDigestCandidates = [payloadDigest]) {
   const key = boundedText(idempotencyKey, 256, 'HFM_MEMORY_IDEMPOTENCY_KEY_INVALID');
   const operationId = crypto.randomUUID();
   const inserted = await client.query(
@@ -145,7 +163,7 @@ async function beginIdempotentOperation(client, context, idempotencyKey, operati
       existing.operation !== operation ||
       existing.resource !== resource ||
       existing.purpose !== (context.purpose || operation) ||
-      existing.payload_digest !== payloadDigest) {
+      !payloadDigestCandidates.includes(existing.payload_digest)) {
     throw fail('HFM_MEMORY_IDEMPOTENCY_CONFLICT');
   }
   if (existing.status === 'COMPLETED') {
@@ -164,6 +182,8 @@ async function completeOperation(client, operationId, resultCode) {
 }
 
 async function appendAudit(client, context, operationId, memoryId, eventType, resultStatus, details = {}) {
+  // Serialize the per-project hash-chain append inside the caller-owned transaction.
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [context.projectId]);
   const previousResult = await client.query(
     'SELECT event_hash FROM mira_hfm.memory_audit_events WHERE project_id = $1 ORDER BY event_sequence DESC LIMIT 1',
     [context.projectId]
@@ -218,7 +238,6 @@ async function insertVersion(client, record, ownerId, payload, trashedAt = null,
 
 async function createMemoryRecord(options = {}) {
   const { client, context } = requireTransaction(options);
-  if (context.operation !== 'memory.write') throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
   const record = options.record;
   const validation = validateCanonicalRecord(record);
   if (!validation.valid) throw fail('HFM_MEMORY_RECORD_INVALID');
@@ -226,6 +245,8 @@ async function createMemoryRecord(options = {}) {
   if (record.lifecycle === 'TRASHED') throw fail('HFM_MEMORY_INITIAL_TRASH_STATE_INVALID');
 
   const classification = recordClassification(record);
+  const expectedOperation = classification === 'RESTRICTED' ? 'memory.vault.write' : 'memory.write';
+  if (context.operation !== expectedOperation) throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
   if (classification === 'RESTRICTED' && options.allowRestrictedWrite !== true) {
     throw fail('HFM_MEMORY_RESTRICTED_WRITE_NOT_GRANTED');
   }
@@ -236,9 +257,10 @@ async function createMemoryRecord(options = {}) {
   const ownerId = context.actorId;
   const resource = 'memory:' + record.memoryId;
   if (context.resource !== resource) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
-  const payloadDigest = digest(record);
+  const payloadDigests = operationDigests(record, options.env || process.env);
   const operation = await beginIdempotentOperation(
-    client, context, options.idempotencyKey, 'memory.write', resource, payloadDigest
+    client, context, options.idempotencyKey, expectedOperation, resource,
+    payloadDigests.activeDigest, payloadDigests.candidates
   );
   if (operation.duplicate) {
     return { status: 'ALREADY_COMMITTED', memoryId: operation.resultCode, duplicate: true };
@@ -258,7 +280,6 @@ async function createMemoryRecord(options = {}) {
     recordType: record.recordType,
     classification,
     revision: record.version.revision,
-    contentHash: record.version.contentHash
   });
   await completeOperation(client, operation.operationId, record.memoryId);
   return { status: 'CREATED', memoryId: record.memoryId, revision: record.version.revision, duplicate: false };
@@ -277,8 +298,10 @@ async function reviseMemoryRecord(options = {}) {
   if (nextRecord.memoryId !== memoryId) throw fail('HFM_MEMORY_RECORD_IDENTITY_MISMATCH');
   assertProjectScope(nextRecord, context.projectId);
 
+  const payloadDigests = operationDigests(nextRecord, options.env || process.env);
   const operation = await beginIdempotentOperation(
-    client, context, options.idempotencyKey, 'memory.update', resource, digest(nextRecord)
+    client, context, options.idempotencyKey, 'memory.update', resource,
+    payloadDigests.activeDigest, payloadDigests.candidates
   );
   if (operation.duplicate) {
     return { status: 'ALREADY_COMMITTED', memoryId: operation.resultCode, duplicate: true };
@@ -303,6 +326,8 @@ async function reviseMemoryRecord(options = {}) {
       nextRecord.schemaVersion !== row.schema_version ||
       nextRecord.access.classification !== row.classification ||
       nextRecord.lifecycle !== row.lifecycle ||
+      nextRecord.trust.status !== row.trust_status ||
+      nextRecord.integrity.status !== row.integrity_status ||
       nextRecord.timestamps.createdAt !== new Date(row.created_at).toISOString() ||
       nextRecord.version.revision !== Number(row.revision) + 1 ||
       Date.parse(nextRecord.timestamps.updatedAt) <= Date.parse(row.updated_at)) {
@@ -312,11 +337,10 @@ async function reviseMemoryRecord(options = {}) {
   const payload = storedPayload(nextRecord, row.owner_actor_id, options.env || process.env);
   await insertVersion(client, nextRecord, row.owner_actor_id, payload);
   const update = await client.query(
-    'UPDATE mira_hfm.memory_records SET revision = $3, integrity_status = $4, trust_status = $5, ' +
-    'public_payload = $6::jsonb, encrypted_envelope = $7::jsonb, updated_at = $8 ' +
-    'WHERE project_id = $1 AND memory_id = $2 AND revision = $9 RETURNING memory_id',
+    'UPDATE mira_hfm.memory_records SET revision = $3, ' +
+    'public_payload = $4::jsonb, encrypted_envelope = $5::jsonb, updated_at = $6 ' +
+    'WHERE project_id = $1 AND memory_id = $2 AND revision = $7 RETURNING memory_id',
     [context.projectId, memoryId, nextRecord.version.revision,
-      nextRecord.integrity.status, nextRecord.trust.status,
       payload.publicPayload === null ? null : JSON.stringify(payload.publicPayload),
       payload.encryptedEnvelope === null ? null : JSON.stringify(payload.encryptedEnvelope),
       nextRecord.timestamps.updatedAt, row.revision]
@@ -326,7 +350,6 @@ async function reviseMemoryRecord(options = {}) {
     recordType: nextRecord.recordType,
     classification: row.classification,
     revision: nextRecord.version.revision,
-    contentHash: nextRecord.version.contentHash
   });
   await completeOperation(client, operation.operationId, memoryId);
   return { status: 'REVISED', memoryId, revision: nextRecord.version.revision };
@@ -348,6 +371,122 @@ async function getMemoryRecord(options = {}) {
   return { status: 'FOUND', record: decodeStoredRow(row, options) };
 }
 
+function getStandingReadMemoryRecord(options = {}) {
+  const { client, context } = requireTransaction(options);
+  const expectedResource = `memory:project:${context.projectId}`;
+  if (context.operation !== 'memory.read') {
+    throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+  }
+  if (context.authorityContext !== STANDING_READ_CONTEXT) {
+    throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+  }
+  if (context.resource !== expectedResource) {
+    throw fail('HFM_STANDING_READ_RESOURCE_SCOPE_INVALID');
+  }
+  const memoryId = boundedText(options.memoryId, 128, 'HFM_MEMORY_ID_INVALID');
+  const recordTypes = options.recordTypes === undefined
+    ? ['learning_note', 'knowledge_item']
+    : options.recordTypes;
+  const allowed = new Set(['learning_note', 'knowledge_item']);
+  if (!Array.isArray(recordTypes) || recordTypes.length < 1 ||
+      recordTypes.length > allowed.size ||
+      recordTypes.some(type => !allowed.has(type)) ||
+      new Set(recordTypes).size !== recordTypes.length ||
+      options.allowRestrictedRead === true) {
+    throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+  }
+  return client.query(
+    'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
+    'integrity_status, trust_status, public_payload, encrypted_envelope FROM mira_hfm.memory_records ' +
+    'WHERE project_id = $1 AND memory_id = $2 AND record_type = ANY($3::text[]) ' +
+    'AND lifecycle = \'ACTIVE\' AND classification <> \'RESTRICTED\' ' +
+    'AND integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\')',
+    [context.projectId, memoryId, recordTypes]
+  ).then(result => {
+    if (!result || !Array.isArray(result.rows) || result.rows.length > 1) {
+      throw fail('HFM_STANDING_READ_RECORD_QUERY_RESULT_INVALID');
+    }
+    const row = result.rows[0];
+    if (!row) return { status: 'NOT_FOUND', record: null };
+    if (row.memory_id !== memoryId ||
+        row.project_id !== context.projectId ||
+        !recordTypes.includes(row.record_type) ||
+        row.lifecycle !== 'ACTIVE' ||
+        !['PUBLIC', 'PROJECT_PRIVATE'].includes(row.classification) ||
+        row.integrity_status !== 'VERIFIED' ||
+        !['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(row.trust_status)) {
+      throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+    }
+    return {
+      status: 'FOUND',
+      record: decodeStoredRow(row, {
+        ...options,
+        allowPrivateRead: true,
+        allowRestrictedRead: false
+      })
+    };
+  });
+}
+
+function isStandingReadCursorTimestamp(value) {
+  return typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(value) &&
+    Number.isFinite(Date.parse(value.slice(0, 23) + 'Z'));
+}
+
+function decodeStandingReadPageCursor(cursor, context, recordTypes, lifecycle) {
+  if (cursor === undefined || cursor === null || cursor === '') return null;
+  if (typeof cursor !== 'string' || cursor.length > 2048) {
+    throw fail('HFM_MEMORY_PAGE_CURSOR_INVALID');
+  }
+  try {
+    const decoded = Buffer.from(cursor, 'base64url').toString('utf8');
+    if (!decoded || Buffer.from(decoded, 'utf8').toString('base64url') !== cursor) {
+      throw new Error('non-canonical cursor');
+    }
+    const value = JSON.parse(decoded);
+    const keys = Object.keys(value || {}).sort();
+    const expected = ['lifecycle', 'memoryId', 'projectId', 'recordTypes',
+      'scanStartedAt', 'updatedAt', 'v'].sort();
+    if (keys.length !== expected.length ||
+        keys.some((key, index) => key !== expected[index]) ||
+        value.v !== 1 || value.projectId !== context.projectId ||
+        value.lifecycle !== lifecycle ||
+        !Array.isArray(value.recordTypes) ||
+        value.recordTypes.length !== recordTypes.length ||
+        value.recordTypes.some((type, index) => type !== recordTypes[index]) ||
+        typeof value.memoryId !== 'string' || !value.memoryId.trim() ||
+        value.memoryId.length > 128 ||
+        !isStandingReadCursorTimestamp(value.scanStartedAt) ||
+        !isStandingReadCursorTimestamp(value.updatedAt) ||
+        value.updatedAt > value.scanStartedAt) {
+      throw new Error('invalid cursor scope');
+    }
+    return Object.freeze({
+      projectId: value.projectId,
+      recordTypes: Object.freeze([...value.recordTypes]),
+      lifecycle: value.lifecycle,
+      scanStartedAt: value.scanStartedAt,
+      updatedAt: value.updatedAt,
+      memoryId: value.memoryId
+    });
+  } catch (_error) {
+    throw fail('HFM_MEMORY_PAGE_CURSOR_INVALID');
+  }
+}
+
+function encodeStandingReadPageCursor(value) {
+  return Buffer.from(JSON.stringify({
+    v: 1,
+    projectId: value.projectId,
+    recordTypes: value.recordTypes,
+    lifecycle: value.lifecycle,
+    scanStartedAt: value.scanStartedAt,
+    updatedAt: value.updatedAt,
+    memoryId: value.memoryId
+  }), 'utf8').toString('base64url');
+}
+
 async function listMemoryRecords(options = {}) {
   const { client, context } = requireTransaction(options);
   if (context.operation !== 'memory.read') throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
@@ -357,11 +496,104 @@ async function listMemoryRecords(options = {}) {
   if (!['ACTIVE', 'SUPERSEDED', 'ARCHIVED', 'TRASHED', 'QUARANTINED', 'PENDING_REVIEW'].includes(lifecycle)) {
     throw fail('HFM_MEMORY_LIFECYCLE_FILTER_INVALID');
   }
+  const allowedRecordTypes = new Set([
+    'daily_activity', 'learning_note', 'knowledge_item', 'social_post_draft',
+    'client_vault_record', 'financial_vault_record'
+  ]);
+  let recordTypes = options.recordTypes === undefined
+    ? (options.recordType === undefined ? null : [options.recordType])
+    : options.recordTypes;
+  if (recordTypes !== null) {
+    if (!Array.isArray(recordTypes) || recordTypes.length < 1 ||
+        recordTypes.length > allowedRecordTypes.size ||
+        recordTypes.some(type => !allowedRecordTypes.has(type)) ||
+        new Set(recordTypes).size !== recordTypes.length) {
+      throw fail('HFM_MEMORY_RECORD_TYPE_FILTER_INVALID');
+    }
+    recordTypes = [...recordTypes];
+  }
+  const standingRead = context.authorityContext === STANDING_READ_CONTEXT;
+  if (standingRead) {
+    const standingTypes = new Set(['learning_note', 'knowledge_item']);
+    if (lifecycle !== 'ACTIVE') {
+      throw fail('HFM_STANDING_READ_LIFECYCLE_SCOPE_INVALID');
+    }
+    if (!recordTypes || recordTypes.some(type => !standingTypes.has(type))) {
+      throw fail('HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID');
+    }
+    if (options.allowRestrictedRead === true) {
+      throw fail('HFM_STANDING_READ_RESTRICTED_READ_NOT_ALLOWED');
+    }
+
+    const cursor = decodeStandingReadPageCursor(
+      options.cursor, context, recordTypes, lifecycle
+    );
+    let scanStartedAt = cursor && cursor.scanStartedAt;
+    if (!scanStartedAt) {
+      const started = await client.query(
+        `SELECT to_char(transaction_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS scan_started_at`
+      );
+      if (!started.rows?.[0]?.scan_started_at) {
+        throw fail('HFM_MEMORY_PAGE_SCAN_TIMESTAMP_REQUIRED');
+      }
+      scanStartedAt = started.rows[0].scan_started_at;
+      if (!isStandingReadCursorTimestamp(scanStartedAt)) {
+        throw fail('HFM_MEMORY_PAGE_SCAN_TIMESTAMP_INVALID');
+      }
+    }
+    const result = await client.query(
+      'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
+      'integrity_status, trust_status, public_payload, encrypted_envelope, updated_at, ' +
+      `to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at_cursor ` +
+      'FROM mira_hfm.memory_records ' +
+      'WHERE project_id = $1 AND lifecycle = $2 AND record_type = ANY($3::text[]) ' +
+      'AND classification <> \'RESTRICTED\' ' +
+      'AND integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\') ' +
+      'AND updated_at <= $5::timestamptz ' +
+      'AND ($6::timestamptz IS NULL OR updated_at < $6::timestamptz OR ' +
+      '(updated_at = $6::timestamptz AND memory_id > $7)) ' +
+      'ORDER BY updated_at DESC, memory_id ASC LIMIT $4',
+      [context.projectId, lifecycle, recordTypes, limit + 1,
+        scanStartedAt, cursor ? cursor.updatedAt : null, cursor ? cursor.memoryId : null]
+    );
+    const rows = result.rows || [];
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const records = pageRows.map(row => decodeStoredRow(row, options));
+    const lastRow = pageRows[pageRows.length - 1];
+    if (hasMore && lastRow && !isStandingReadCursorTimestamp(lastRow.updated_at_cursor)) {
+      throw fail('HFM_MEMORY_PAGE_CURSOR_TIMESTAMP_INVALID');
+    }
+    const nextCursor = hasMore && lastRow
+      ? encodeStandingReadPageCursor({
+          projectId: context.projectId,
+          recordTypes,
+          lifecycle,
+          scanStartedAt,
+          updatedAt: lastRow.updated_at_cursor,
+          memoryId: lastRow.memory_id
+        })
+      : null;
+    return {
+      status: 'FOUND',
+      records,
+      count: records.length,
+      scanStartedAt,
+      nextCursor
+    };
+  }
+
+  if (options.cursor !== undefined && options.cursor !== null && options.cursor !== '') {
+    throw fail('HFM_MEMORY_PAGE_CURSOR_STANDING_READ_REQUIRED');
+  }
   const result = await client.query(
     'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
     'integrity_status, trust_status, public_payload, encrypted_envelope FROM mira_hfm.memory_records ' +
-    'WHERE project_id = $1 AND lifecycle = $2 ORDER BY updated_at DESC, memory_id ASC LIMIT $3',
-    [context.projectId, lifecycle, limit]
+    'WHERE project_id = $1 AND lifecycle = $2 AND ($3::text[] IS NULL OR record_type = ANY($3::text[])) ' +
+    'AND ($5::boolean = false OR classification <> \'RESTRICTED\') ' +
+    'AND ($6::boolean = false OR (integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\'))) ' +
+    'ORDER BY updated_at DESC, memory_id ASC LIMIT $4',
+    [context.projectId, lifecycle, recordTypes, limit, standingRead, standingRead]
   );
   return {
     status: 'FOUND',
@@ -393,6 +625,9 @@ async function changeLifecycle(options, targetLifecycle) {
   );
   const row = currentResult.rows && currentResult.rows[0];
   if (!row) throw fail('HFM_MEMORY_RECORD_NOT_FOUND');
+  if (options.expectedRecordType && row.record_type !== options.expectedRecordType) {
+    throw fail('HFM_MEMORY_RECORD_TYPE_NOT_ALLOWED');
+  }
   if (targetLifecycle === 'TRASHED' && row.lifecycle === 'TRASHED') {
     throw fail('HFM_MEMORY_ALREADY_TRASHED');
   }
@@ -411,7 +646,11 @@ async function changeLifecycle(options, targetLifecycle) {
     allowPrivateRead: options.allowPrivateLifecycle === true,
     allowRestrictedRead: options.allowRestrictedLifecycle === true
   });
-  const now = new Date().toISOString();
+  const priorUpdatedAtMs = row.updated_at instanceof Date
+    ? row.updated_at.getTime()
+    : Date.parse(row.updated_at);
+  if (!Number.isFinite(priorUpdatedAtMs)) throw fail('HFM_MEMORY_TIMESTAMP_INVALID');
+  const now = new Date(Math.max(Date.now(), priorUpdatedAtMs + 1)).toISOString();
   const nextRecord = {
     ...record,
     timestamps: { ...record.timestamps, updatedAt: now },
@@ -425,14 +664,10 @@ async function changeLifecycle(options, targetLifecycle) {
   await insertVersion(client, nextRecord, row.owner_actor_id, payload, trashAt, trashedBy);
   const update = await client.query(
     'UPDATE mira_hfm.memory_records SET lifecycle = $3, trashed_at = $4, trashed_by_actor_id = $5, ' +
-    'revision = $6, integrity_status = $7, trust_status = $8, public_payload = $9::jsonb, ' +
-    'encrypted_envelope = $10::jsonb, updated_at = $11 ' +
-    'WHERE project_id = $1 AND memory_id = $2 AND revision = $12 RETURNING memory_id',
+    'revision = $6, updated_at = $7 ' +
+    'WHERE project_id = $1 AND memory_id = $2 AND revision = $8 RETURNING memory_id',
     [context.projectId, memoryId, targetLifecycle, trashAt, trashedBy,
-      nextRecord.version.revision, nextRecord.integrity.status, nextRecord.trust.status,
-      payload.publicPayload === null ? null : JSON.stringify(payload.publicPayload),
-      payload.encryptedEnvelope === null ? null : JSON.stringify(payload.encryptedEnvelope),
-      now, row.revision]
+      nextRecord.version.revision, now, row.revision]
   );
   if (update.rowCount !== 1) throw fail('HFM_MEMORY_REVISION_CONFLICT');
   await appendAudit(client, context, operation.operationId, memoryId,
@@ -454,6 +689,7 @@ module.exports = Object.freeze({
   createMemoryRecord,
   reviseMemoryRecord,
   getMemoryRecord,
+  getStandingReadMemoryRecord,
   listMemoryRecords,
   trashMemoryRecord,
   restoreMemoryRecord,

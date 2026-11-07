@@ -5,7 +5,9 @@ const test = require('node:test');
 const crypto = require('node:crypto');
 const {
   createVaultEnvelope,
-  decryptVaultEnvelope
+  decryptVaultEnvelope,
+  createVaultDigestCandidates,
+  MAX_PLAINTEXT_BYTES
 } = require('../services/mira-hfm-vault-crypto');
 
 const env = Object.freeze({
@@ -87,6 +89,33 @@ test('missing, malformed, or unversioned key configuration fails closed', () => 
   );
 });
 
+test('oversized ciphertext and wrapped DEK are rejected before decoding', () => {
+  const envelope = createVaultEnvelope({ record, context, env });
+  const oversizedPayload = {
+    ...envelope,
+    payload: {
+      ...envelope.payload,
+      ciphertext: 'A'.repeat(Math.ceil(MAX_PLAINTEXT_BYTES / 3) * 4 + 4)
+    }
+  };
+  assert.throws(
+    () => decryptVaultEnvelope({ envelope: oversizedPayload, context, env }),
+    error => error.code === 'MIRA_VAULT_ENVELOPE_INVALID'
+  );
+
+  const oversizedWrappedDek = {
+    ...envelope,
+    wrappedDek: {
+      ...envelope.wrappedDek,
+      ciphertext: 'A'.repeat(48)
+    }
+  };
+  assert.throws(
+    () => decryptVaultEnvelope({ envelope: oversizedWrappedDek, context, env }),
+    error => error.code === 'MIRA_VAULT_ENVELOPE_INVALID'
+  );
+});
+
 test('tampered ciphertext and malformed envelope fail closed', () => {
   const envelope = createVaultEnvelope({ record, context, env });
   const tampered = {
@@ -133,6 +162,25 @@ test('versioned KEKs allow old records to decrypt while new writes use the activ
   assert.equal(newEnvelope.keyVersion, 'v2');
   assert.deepEqual(decryptVaultEnvelope({ envelope: oldEnvelope, context, env: rotatedEnv }), record);
   assert.deepEqual(decryptVaultEnvelope({ envelope: newEnvelope, context, env: rotatedEnv }), record);
+});
+
+test('private idempotency digests are keyed and reconcilable across KEK rotation', () => {
+  const canonical = JSON.stringify({ content: 'low-entropy private phrase' });
+  const first = createVaultDigestCandidates(canonical, env);
+  const same = createVaultDigestCandidates(canonical, env);
+  assert.equal(first.activeDigest, same.activeDigest);
+  assert.equal(first.activeDigest.length, 64);
+  assert.notEqual(first.activeDigest, crypto.createHash('sha256').update(canonical).digest('hex'));
+  const rotated = {
+    MIRA_VAULT_ACTIVE_KEK_VERSION: 'v2',
+    MIRA_VAULT_KEK_V1: env.MIRA_VAULT_KEK_V1,
+    MIRA_VAULT_KEK_V2: crypto.randomBytes(32).toString('base64')
+  };
+  const afterRotation = createVaultDigestCandidates(canonical, rotated);
+  assert.notEqual(afterRotation.activeDigest, first.activeDigest);
+  assert.ok(afterRotation.candidates.includes(first.activeDigest));
+  assert.deepEqual(afterRotation.candidates.length, 2);
+  assert.equal(afterRotation.candidates[0], afterRotation.activeDigest);
 });
 
 test('vault rejects PUBLIC contexts and non-object records', () => {

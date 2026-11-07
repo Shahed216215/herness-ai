@@ -1,5 +1,6 @@
 "use strict";
 
+const { assertLegacyStorageDisabled } = require("./services/mira-hfm-legacy-storage-guard");
 const crypto = require("crypto");
 
 const {
@@ -188,6 +189,7 @@ async function rollback(
 async function applyKnowledgeImprovementControlled(
   options = {}
 ) {
+  assertLegacyStorageDisabled();
   const {
     changeId,
     actor = "system"

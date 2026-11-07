@@ -27,8 +27,8 @@ function sourceRecord(overrides = {}) {
     },
     timestamps: { createdAt: now, updatedAt: now },
     version: { revision: 1, contentHash: createContentHash(content) },
-    integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
-    trust: { status: 'SOURCE_RECORDED' },
+    integrity: { status: overrides.integrityStatus || 'VERIFIED', algorithm: 'SHA-256' },
+    trust: { status: overrides.trustStatus || 'CONTENT_VERIFIED' },
     access: {
       classification: overrides.classification || 'PROJECT_PRIVATE',
       allowedProjectIds: [overrides.projectId || 'project-001']
@@ -66,8 +66,19 @@ test('daily post contains only same-project active private activity and learning
     sourceRecord({
       memoryId: 'learning-0001',
       recordType: 'learning_note',
+      trustStatus: 'HUMAN_VERIFIED',
       content: 'Learned how JSON objects are structured.',
       observedAt: '2026-11-06T13:00:00.000Z'
+    }),
+    sourceRecord({
+      memoryId: 'unverified-activity-01',
+      trustStatus: 'SOURCE_RECORDED',
+      content: 'This unverified activity must not enter the public draft.'
+    }),
+    sourceRecord({
+      memoryId: 'integrity-failed-01',
+      integrityStatus: 'FAILED',
+      content: 'This integrity-failed activity must not enter the public draft.'
     }),
     sourceRecord({
       memoryId: 'other-project-01',
@@ -91,6 +102,12 @@ test('daily post contains only same-project active private activity and learning
       content: JSON.stringify({ client: 'Private Client' })
     })
   ];
+  assert.equal(validateCanonicalRecord(records[0]).valid, true,
+    JSON.stringify(validateCanonicalRecord(records[0]).errors));
+  assert.equal(validateCanonicalRecord(records[1]).valid, true,
+    JSON.stringify(validateCanonicalRecord(records[1]).errors));
+  assert.equal(dateInTimeZone(records[0].source.observedAt, 'Asia/Dhaka'), '2026-11-06');
+  assert.equal(dateInTimeZone(records[1].source.observedAt, 'Asia/Dhaka'), '2026-11-06');
   const result = buildDailyKnowledgePost({
     records,
     projectId: 'project-001',
@@ -101,6 +118,8 @@ test('daily post contains only same-project active private activity and learning
   assert.equal(result.status, 'DRAFT_READY');
   assert.deepEqual([...result.sourceRecordIds].sort(), ['activity-0001', 'learning-0001']);
   assert.deepEqual(result.sourceCounts, { activities: 1, learnings: 1 });
+  assert.equal(result.draft.content.includes('unverified activity'), false);
+  assert.equal(result.draft.content.includes('integrity-failed activity'), false);
   assert.match(result.draft.content, /আজ যা করেছি:/);
   assert.match(result.draft.content, /আজ যা শিখেছি:/);
   assert.equal(result.draft.content.includes('another project'), false);
@@ -125,6 +144,30 @@ test('daily post ID and idempotency key are stable for the same project and loca
   const second = buildDailyKnowledgePost(input);
   assert.equal(first.draft.memoryId, second.draft.memoryId);
   assert.equal(first.idempotencyKey, second.idempotencyKey);
+});
+
+test('same-day retries produce an identical canonical draft despite different request times or source ordering', () => {
+  const records = [
+    sourceRecord({ memoryId: 'retry-source-b', content: 'Practised Python lists.' }),
+    sourceRecord({ memoryId: 'retry-source-a', recordType: 'learning_note', content: 'Reviewed JSON objects.' })
+  ];
+  const first = buildDailyKnowledgePost({
+    records,
+    projectId: 'project-001',
+    localDate: '2026-11-06',
+    timeZone: 'Asia/Dhaka',
+    now: '2026-11-06T12:00:00.000Z'
+  });
+  const retry = buildDailyKnowledgePost({
+    records: [...records].reverse(),
+    projectId: 'project-001',
+    localDate: '2026-11-06',
+    timeZone: 'Asia/Dhaka',
+    now: '2026-11-06T20:30:00.000Z'
+  });
+  assert.deepEqual(retry.draft, first.draft);
+  assert.equal(first.draft.timestamps.createdAt, '2026-11-05T18:00:00.000Z');
+  assert.equal(retry.idempotencyKey, first.idempotencyKey);
 });
 
 test('saving a daily draft requires an explicit private-write grant', async () => {
@@ -210,6 +253,10 @@ test('invalid date, project and timezone fail closed', () => {
   assert.throws(
     () => buildDailyKnowledgePost({ records: [], projectId: '', localDate: '2026-11-06', now }),
     error => error.code === 'HFM_DAILY_POST_PROJECT_ID_INVALID'
+  );
+  assert.throws(
+    () => buildDailyKnowledgePost({ records: [], projectId: 'project-001', localDate: '2026-11-06', now: 'invalid' }),
+    error => error.code === 'HFM_DAILY_POST_NOW_INVALID'
   );
   assert.throws(
     () => buildDailyKnowledgePost({

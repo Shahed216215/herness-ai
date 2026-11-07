@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const fs = require("fs");
 const path = require("path");
 
@@ -225,6 +226,7 @@ module.exports = {
   },
 
   execute: async () => {
+    assertLegacyStorageDisabled();
     const result = await createBackup();
 
     return JSON.stringify(

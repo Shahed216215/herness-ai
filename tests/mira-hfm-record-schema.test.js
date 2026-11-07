@@ -2,9 +2,11 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { buildUserSuppliedSourceReferencePayload } = require('../services/mira-hfm-source-reference-schema');
 const {
   SCHEMA_V1,
   SCHEMA_V1_1,
+  SCHEMA_V1_2,
   validateCanonicalRecord,
   createContentHash
 } = require('../services/mira-hfm-record-schema');
@@ -62,6 +64,94 @@ test('v1.0.0 rejects new v1.1.0 record types rather than silently coercing them'
   assert.equal(validateCanonicalRecord(candidate).valid, false);
 });
 
+test('v1.1.0 rejects unapproved source_reference and preserves research_reference as a distinct legacy type', () => {
+  const unapproved = record({
+    schemaVersion: SCHEMA_V1_1,
+    recordType: 'source_reference',
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
+  });
+  const rejected = validateCanonicalRecord(unapproved);
+  assert.equal(rejected.valid, false);
+  assert.ok(rejected.errors.includes('record.recordType.unsupported_for_schema_version'));
+
+  const legacy = record({
+    schemaVersion: SCHEMA_V1_1,
+    recordType: 'research_reference',
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
+  });
+  assert.equal(validateCanonicalRecord(legacy).valid, true);
+  assert.equal(legacy.recordType, 'research_reference');
+});
+
+test('v1.2.0 accepts source_reference only with a validated private source payload', () => {
+  const payload = buildUserSuppliedSourceReferencePayload({
+    url: 'https://example.com/article?token=secret',
+    sourceType: 'web',
+    provenanceActor: 'mira:mira.admins:admin-001',
+    provenanceEventId: 'evt-' + 'c'.repeat(64),
+    retrievedAt: '2026-11-07T12:00:00.000Z'
+  });
+  const content = JSON.stringify(payload);
+  const candidate = record({
+    schemaVersion: SCHEMA_V1_2,
+    recordType: 'source_reference',
+    content,
+    source: {
+      sourceType: 'web',
+      sourceId: payload.sourceId,
+      sourceUrl: payload.canonicalUrl,
+      observedAt: payload.retrievedAt
+    },
+    version: { revision: 1, contentHash: createContentHash(content) },
+    trust: { status: 'SOURCE_RECORDED' },
+    lifecycle: 'ACTIVE',
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
+  });
+  assert.equal(validateCanonicalRecord(candidate).valid, true);
+  const falseReachable = {
+    ...candidate,
+    trust: { status: 'SOURCE_REACHABLE' }
+  };
+  assert.ok(validateCanonicalRecord(falseReachable).errors.includes(
+    'record.source_reference.reachable_requires_available_or_partial'
+  ));
+  const falseVerified = {
+    ...candidate,
+    trust: { status: 'CONTENT_VERIFIED' }
+  };
+  assert.ok(validateCanonicalRecord(falseVerified).errors.includes(
+    'record.source_reference.verified_requires_content_digest_and_capture'
+  ));
+  const quarantineMismatch = {
+    ...candidate,
+    trust: { status: 'QUARANTINED' }
+  };
+  assert.ok(validateCanonicalRecord(quarantineMismatch).errors.includes(
+    'record.source_reference.quarantine_state_mismatch'
+  ));
+  const trashedCopy = { ...candidate, lifecycle: 'TRASHED' };
+  assert.equal(validateCanonicalRecord(trashedCopy).valid, true);
+  const publicDailyActivity = record({
+    schemaVersion: SCHEMA_V1_2,
+    recordType: 'daily_activity',
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+  });
+  assert.ok(validateCanonicalRecord(publicDailyActivity).errors.includes(
+    'record.private_activity_learning_draft.must_be_PROJECT_PRIVATE'
+  ));
+  const publicCopy = {
+    ...candidate,
+    access: { classification: 'PUBLIC', allowedProjectIds: ['project-001'] }
+  };
+  assert.ok(validateCanonicalRecord(publicCopy).errors.includes('record.source_reference.must_be_PROJECT_PRIVATE'));
+  const invalidPayload = {
+    ...candidate,
+    content: JSON.stringify({ ...payload, unexpected: true }),
+    version: { revision: 1, contentHash: createContentHash(JSON.stringify({ ...payload, unexpected: true })) }
+  };
+  assert.equal(validateCanonicalRecord(invalidPayload).valid, false);
+});
+
 test('v1.1.0 accepts daily activity, learning, knowledge, and social draft record families', () => {
   for (const recordType of ['daily_activity', 'learning_note', 'knowledge_item', 'social_post_draft']) {
     const candidate = record({
@@ -89,7 +179,10 @@ test('daily activity and learning notes cannot be stored as PUBLIC records', () 
 
 test('v1.1.0 client and financial records require RESTRICTED classification and JSON payloads', () => {
   for (const recordType of ['client_vault_record', 'financial_vault_record']) {
-    const content = JSON.stringify({ synthetic: true, value: 'not-real-client-data' });
+    const payload = recordType === 'client_vault_record'
+      ? { clientName: 'Example Client', notes: 'synthetic test record' }
+      : { transactionReference: 'TXN-TEST-001', counterparty: 'Example Client', amount: 1, currency: 'BDT' };
+    const content = JSON.stringify(payload);
     const candidate = record({
       schemaVersion: SCHEMA_V1_1,
       recordType,

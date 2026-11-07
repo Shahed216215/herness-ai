@@ -5,12 +5,15 @@ on:
     branches:
       - main
       - work/mira-session-postgres-staging-20261107
+      - work/mira-hfm-v02-clean-integration-20261107
     paths:
       - "server.js"
       - "package.json"
       - "services/mira-supabase-session-store.js"
       - "tests/mira-supabase-session-store.test.js"
       - "tests/mira-session-http-integration.test.js"
+      - "services/mira-conversation-memory-persistence.js"
+      - "tests/mira-conversation-memory-persistence.test.js"
       - "supabase/migrations/**"
       - ".github/workflows/mira-session-persistence.yml"
   pull_request:
@@ -21,6 +24,8 @@ on:
       - "services/mira-supabase-session-store.js"
       - "tests/mira-supabase-session-store.test.js"
       - "tests/mira-session-http-integration.test.js"
+      - "services/mira-conversation-memory-persistence.js"
+      - "tests/mira-conversation-memory-persistence.test.js"
       - "supabase/migrations/**"
       - ".github/workflows/mira-session-persistence.yml"
 

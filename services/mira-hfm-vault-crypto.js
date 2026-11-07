@@ -77,6 +77,38 @@ function activeKeyVersion(env) {
   return version;
 }
 
+function createVaultDigestCandidates(canonicalText, env = process.env) {
+  if (typeof canonicalText !== 'string' || !canonicalText) {
+    throw fail('MIRA_VAULT_DIGEST_INPUT_INVALID');
+  }
+  const activeVersion = activeKeyVersion(env);
+  const versions = Object.keys(env || {})
+    .filter(name => /^MIRA_VAULT_KEK_V[1-9][0-9]*$/.test(name))
+    .map(name => name.slice('MIRA_VAULT_KEK_'.length).toLowerCase());
+  if (!versions.includes(activeVersion)) versions.push(activeVersion);
+  versions.sort((a, b) => Number(b.slice(1)) - Number(a.slice(1)));
+  const ordered = [activeVersion, ...versions.filter(version => version !== activeVersion)];
+  const digests = [];
+  for (const version of ordered) {
+    const kek = resolveKey(version, env);
+    let derived;
+    try {
+      derived = Buffer.from(crypto.hkdfSync(
+        'sha256', kek,
+        Buffer.from('mira-hfm-idempotency-digest-salt-v1', 'utf8'),
+        Buffer.from('mira-hfm-idempotency-digest-v1', 'utf8'),
+        32
+      ));
+      digests.push(crypto.createHmac('sha256', derived)
+        .update(canonicalText, 'utf8').digest('hex'));
+    } finally {
+      kek.fill(0);
+      if (derived) derived.fill(0);
+    }
+  }
+  return Object.freeze({ activeDigest: digests[0], candidates: Object.freeze(digests) });
+}
+
 function payloadAad(context) {
   return Buffer.from(JSON.stringify([
     'mira-hfm-vault-payload',
@@ -121,24 +153,30 @@ function encryptBytes(key, plaintext, aad) {
   };
 }
 
-function decodePart(value, expectedLength) {
+function decodePart(value, expectedLength, maxLength) {
   if (typeof value !== 'string' || !value) {
+    throw fail('MIRA_VAULT_ENVELOPE_INVALID');
+  }
+  // Reject oversized base64 before Buffer.from allocates/decodes attacker-controlled input.
+  const byteLimit = maxLength === undefined ? expectedLength : maxLength;
+  if (byteLimit !== undefined && value.length > Math.ceil(byteLimit / 3) * 4) {
     throw fail('MIRA_VAULT_ENVELOPE_INVALID');
   }
   const decoded = Buffer.from(value, 'base64');
   if (!decoded.length ||
       decoded.toString('base64') !== value ||
-      (expectedLength !== undefined && decoded.length !== expectedLength)) {
+      (expectedLength !== undefined && decoded.length !== expectedLength) ||
+      (maxLength !== undefined && decoded.length > maxLength)) {
     decoded.fill(0);
     throw fail('MIRA_VAULT_ENVELOPE_INVALID');
   }
   return decoded;
 }
 
-function decryptBytes(key, encrypted, aad) {
-  const nonce = decodePart(encrypted.nonce, 12);
-  const ciphertext = decodePart(encrypted.ciphertext);
-  const tag = decodePart(encrypted.tag, 16);
+function decryptBytes(key, encrypted, aad, maxCiphertextBytes = MAX_PLAINTEXT_BYTES) {
+  const nonce = decodePart(encrypted.nonce, 12, 12);
+  const ciphertext = decodePart(encrypted.ciphertext, undefined, maxCiphertextBytes);
+  const tag = decodePart(encrypted.tag, 16, 16);
   let partial;
   let finalPart;
   try {
@@ -214,7 +252,7 @@ function decryptVaultEnvelope({ envelope, context, env = process.env } = {}) {
   let dek;
   let plaintext;
   try {
-    dek = decryptBytes(kek, envelope.wrappedDek, dekAad(safeContext, envelope.keyVersion));
+    dek = decryptBytes(kek, envelope.wrappedDek, dekAad(safeContext, envelope.keyVersion), 32);
     if (dek.length !== 32) {
       throw fail('MIRA_VAULT_ENVELOPE_INVALID');
     }
@@ -245,5 +283,6 @@ module.exports = Object.freeze({
   MAX_PLAINTEXT_BYTES,
   validateContext,
   createVaultEnvelope,
-  decryptVaultEnvelope
+  decryptVaultEnvelope,
+  createVaultDigestCandidates
 });

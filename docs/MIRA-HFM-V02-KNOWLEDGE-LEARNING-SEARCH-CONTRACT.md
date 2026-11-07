@@ -1,0 +1,50 @@
+# Mira HFM v0.2 — Knowledge and Learning Search Contract
+
+Status: IMPLEMENTED WITH REVIEW-LIFECYCLE LIMITATION
+Scope: HFM v0.2 only
+Date: 2026-11-07
+
+## Canonical record types
+
+- `knowledge_item`: user-authored facts and saved knowledge records.
+- `learning_note`: user-requested learning material. The save path records it as a canonical HFM item.
+
+Both record types use the same project-scoped canonical repository and the standing-read authorization boundary. Phone-local JSON and Google Drive are not read fallbacks in HFM mode. The legacy conversation transcript writer is also disabled when any of `MIRA_HFM_MEMORY_READ_ENABLED`, `MIRA_HFM_MEMORY_WRITE_ENABLED`, `MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED`, or `MIRA_HFM_WORK_LEARNING_ENABLED` is active; canonical daily-activity/transcript persistence remains unimplemented rather than silently writing to the phone. The same boundary blocks legacy local admin status statistics, Learning History, autonomous-learning proposal routes, and Knowledge-improvement routes while an HFM mode is active.
+
+## Save and trust lifecycle
+
+- A personal memory save is `HUMAN_VERIFIED / ACTIVE` only when the current user message explicitly asks Mira to remember the user-authored content.
+- A knowledge source or learning note is saved as `SOURCE_RECORDED / PENDING_REVIEW`.
+- Pending records are returned only by the explicit one-time review queue. They are not eligible for ordinary trusted search or Work Learning transfer.
+- Search accepts only records that pass canonical schema validation, project/access checks, active lifecycle, verified integrity, trusted-state checks, and per-record host authorization.
+- An active `learning_note` becomes searchable only after its trust and lifecycle state have been legitimately verified through an approved human-review process.
+
+## Retrieval behavior
+
+- `knowledge_search` reads both `knowledge_item` and `learning_note` under standing read authority. The exact admin Knowledge detail endpoint uses a separate project-scoped exact-ID reader under the same standing `memory.read` transaction, so an older record beyond the bounded search window is not incorrectly reported as missing.
+- Search results label the record type as Knowledge or Learning. The search runtime now follows up to 20 repository keyset pages (maximum 2,000 eligible records) per invocation, validates the actor/project/authority and fixed scan-start timestamp across every page, rejects duplicate records/cursor replay, and aggregates relevance globally before selecting the top results. Each page is a separate committed standing `memory.read` transaction with its own audit event. It returns `candidateScanCount`, `candidateScanLimit`, `scannedPages`, `candidateScanMayBeIncomplete`, and an opaque `nextCursor`; the admin API and Work tool expose the same coverage metadata. If the 20-page bound is reached, the result is explicitly marked incomplete and the cursor can continue the same project/type/lifecycle-bound snapshot in a later search; it is never presented as exhaustive.
+- The Work Learning transfer adapter remains narrower: it accepts only structured `legacy_import` records in the `work_learning` domain. A generic learning note is never converted into executable task instructions. Work Learning aggregates every page under the same fixed scan timestamp (up to 20 pages / 2,000 records) before relevance ranking; if the bound is reached while a cursor remains, it fails closed instead of using a partial global ranking. Every page is separately authorized and audited, and actor, project, authority reference, expiry, and scan timestamp must remain consistent.
+- No local or Drive fallback is permitted when HFM mode is active.
+
+## Explicit limitation / gate
+
+The current review queue is read-only and reports that promotion is unsupported. The repository's ordinary `memory.update` revision path preserves lifecycle and does not itself establish a human verification decision. Therefore this implementation does not promote `PENDING_REVIEW` records, change their trust status, or activate them.
+
+A future verification transition requires a separately specified and approved authorization contract, including an explicit per-record human decision, audit event, allowed trust transition, lifecycle transition, idempotency, and database role/RLS enforcement. Until that contract exists, pending knowledge and learning records remain excluded from trusted search.
+
+## Verification boundary
+
+Automated tests use synthetic records and injected readers. They do not connect to production Neon, write production rows, alter credentials, or enable HFM write/read flags. Production readiness and deployment remain separate gates.
+
+
+## Multi-page retrieval completion — 2026-11-07
+
+- Added `services/mira-hfm-standing-read-pages.js` as a shared bounded page collector. It requires explicit standing-authority/consumption/audit result semantics, no write or fallback indicators, ACTIVE Knowledge/Learning record scope, exact per-page count, stable actor/project/authority/expiry, and an unchanged scan-start timestamp. Duplicate record IDs, cursor replay, scope drift, or snapshot drift fail closed.
+- `knowledge_search` now aggregates relevance across up to 20 pages (2,000 records) before returning the top results. A remaining cursor is exposed with an explicit incomplete marker; the caller may continue from that cursor.
+- Work Learning now follows the same audited keyset cursor through up to 20 pages and aggregates all eligible records before ranking. A still-open cursor at the bound blocks Work planning rather than using an incomplete ranking.
+- Work runtime reuses the already committed preflight page and requests later pages through the authenticated HFM reader. Each subsequent page is an independent standing-read transaction and audit; no local/Drive fallback or write path is introduced.
+- Regression coverage includes cross-page relevance ranking, multi-page Work Learning aggregation, page actor/project/snapshot consistency, no-fallback/no-write enforcement, duplicate cursor rejection, and bounded-scan fail-closed behavior.
+
+- Every page's standing authority ID and expiry are cross-checked against its host authorization context. Each page must carry a distinct audit request ID; actor, project, purpose, authority issuance/expiry, and scan-start timestamp remain stable across the cursor chain.
+
+- Exact detail reads use a project-bound SQL lookup with ACTIVE lifecycle, Knowledge/Learning type, non-RESTRICTED classification, VERIFIED integrity, and CONTENT_VERIFIED/HUMAN_VERIFIED trust filters. The host facade still applies per-record authorization and canonical validation before the entry is returned.

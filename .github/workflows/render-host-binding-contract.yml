@@ -36,6 +36,8 @@ jobs:
         run: node tests/render-host-binding-contract.test.js
 
   render-live-http-smoke:
+    # Live network probes are opt-in only; pull-request validation stays offline.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:

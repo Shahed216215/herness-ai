@@ -1,4 +1,5 @@
 const { addKnowledge } = require("../knowledge");
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 
 module.exports = {
   name: "knowledge_save",
@@ -6,7 +7,7 @@ module.exports = {
   declaration: {
     name: "knowledge_save",
     description:
-      "Save useful information to Mira's knowledge memory. Duplicate entries are skipped safely.",
+      "Save a user-requested knowledge source. In HFM mode it is stored privately as SOURCE_RECORDED/PENDING_REVIEW and is excluded from trusted search until verified; never use legacy local or Google Drive storage when HFM mode is active.",
     parameters: {
       type: "object",
       properties: {
@@ -28,11 +29,20 @@ module.exports = {
     }
   },
 
-  execute: async ({
-    title,
-    url,
-    content
-  }) => {
+  execute: async ({ title, url, content }) => {
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+      return JSON.stringify({
+        success: false,
+        saved: false,
+        code: "HFM_TOOL_ROUTER_REQUIRED",
+        localFallback: false,
+        driveFallback: false
+      });
+    }
+    assertLegacyStorageDisabled();
     const result = await addKnowledge(
       title,
       url,

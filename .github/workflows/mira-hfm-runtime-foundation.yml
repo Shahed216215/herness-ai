@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - integration/hfm-v02-mainline-20261107
+      - work/mira-hfm-v02-runtime-integration
+      - work/mira-hfm-v02-clean-integration-20261107
     paths:
       - "server.js"
       - "package.json"
@@ -13,6 +15,7 @@ on:
       - "services/mira-work-execution-engine.js"
       - "services/tool-runner.js"
       - "tools/index.js"
+      - "tools/daily-activity-save.js"
       - "tools/hfm-database-status.js"
       - "migrations/hfm/**"
       - "tests/mira-hfm-*.test.js"
@@ -31,6 +34,7 @@ on:
       - "services/mira-work-execution-engine.js"
       - "services/tool-runner.js"
       - "tools/index.js"
+      - "tools/daily-activity-save.js"
       - "tools/hfm-database-status.js"
       - "migrations/hfm/**"
       - "tests/mira-hfm-*.test.js"
@@ -67,10 +71,19 @@ jobs:
           node --check services/mira-memory-host-identity-contract.js
           node --check services/mira-hfm-runtime-identity-context.js
           node --check services/mira-hfm-authority-transaction.js
+          node --check services/mira-hfm-standing-read-authority.js
+          node --check routes/mira-hfm-standing-read-authority.js
           node --check services/mira-hfm-postgres.js
+          node --check services/mira-hfm-memory-save-runtime.js
+          node --check services/mira-hfm-knowledge-search-runtime.js
+          node --check services/mira-hfm-knowledge-review-runtime.js
           node --check services/mira-work-execution-engine.js
           node --check services/tool-runner.js
           node --check tools/index.js
+          node --check tools/memory-save.js
+          node --check tools/knowledge-save.js
+          node --check tools/daily-activity-save.js
+          node --check tools/knowledge-review-queue.js
           node --check tools/hfm-database-status.js
       - name: Run focused canonical identity contracts
         run: |
