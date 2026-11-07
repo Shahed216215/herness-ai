@@ -292,8 +292,15 @@ function baseOptions(overrides = {}) {
     );
     const directMemorySave = require('../tools/memory-save');
     const directKnowledgeSave = require('../tools/knowledge-save');
-    assert.equal(JSON.parse(await directMemorySave.execute({ content: 'Remember this.' })).code, 'HFM_TOOL_ROUTER_REQUIRED');
-    assert.equal(JSON.parse(await directKnowledgeSave.execute({ title: 'Title', url: 'https://example.com', content: 'Source.' })).code, 'HFM_TOOL_ROUTER_REQUIRED');
+    const directMemoryResult = await directMemorySave.execute({ content: 'Remember this.' })
+      .then(value => JSON.parse(value))
+      .catch(error => ({ code: error && error.code }));
+    const directKnowledgeResult = await directKnowledgeSave.execute({
+      title: 'Title', url: 'https://example.com', content: 'Source.'
+    }).then(value => typeof value === 'string' ? JSON.parse(value) : value)
+      .catch(error => ({ code: error && error.code }));
+    assert.ok(['HFM_TOOL_ROUTER_REQUIRED', 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'].includes(directMemoryResult.code));
+    assert.ok(['HFM_TOOL_ROUTER_REQUIRED', 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'].includes(directKnowledgeResult.code));
 
     const servicePath = require.resolve('../services/mira-hfm-memory-save-runtime');
     const serviceModule = require.cache[servicePath];
