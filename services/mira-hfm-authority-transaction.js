@@ -330,7 +330,7 @@ async function executeWithStandingReadAuthority(options = {}) {
       requestId,
       authorityId: authority.standing_authority_id,
       approvalRef: authority.approval_ref,
-      expiresAt: new Date(authority.expires_at).toISOString(),
+      expiresAt: authority.expires_at_rfc3339,
       authorityContext: "HFM_ACTIVE_STANDING_READ_AUTHORITY"
     }));
 
@@ -359,7 +359,7 @@ async function executeWithStandingReadAuthority(options = {}) {
         requestId,
         authorityRef: authority.standing_authority_id,
         issuedAt: authority.valid_from_rfc3339,
-        expiresAt: new Date(authority.expires_at).toISOString()
+        expiresAt: authority.expires_at_rfc3339
       })
     };
   } catch (error) {
