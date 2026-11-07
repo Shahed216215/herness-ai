@@ -52,7 +52,7 @@ function validateApproval(receipt, expected) {
   return Object.freeze({ approvalRef, issuedAt: new Date(issuedAt), expiresAt: new Date(expiresAt) });
 }
 
-const ALLOWED_MEMORY_OPERATIONS = Object.freeze(new Set(['memory.read', 'memory.write', 'memory.trash', 'memory.restore']));
+const ALLOWED_MEMORY_OPERATIONS = Object.freeze(new Set(['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore']));
 
 function validateOperationResource(operation, resource, projectId) {
   if (!ALLOWED_MEMORY_OPERATIONS.has(operation)) throw fail('HFM_AUTHORITY_OPERATION_NOT_ALLOWED');
