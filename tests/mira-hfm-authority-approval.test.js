@@ -180,7 +180,7 @@ const env = {
   assert.match(migration, /consumed_at IS NULL/);
   assert.match(migration, /consumed_at IS NOT NULL/);
   assert.ok(migration.includes("operation IN ('memory.read','memory.write','memory.trash','memory.restore')"));
-  assert.ok(migration.includes('WITH CHECK (consumed_at IS NOT NULL);'));
+  assert.ok(migration.includes('WITH CHECK (consumed_at IS NOT NULL AND consumed_at <= clock_timestamp());'));
   assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
   assert.doesNotMatch(migration, /GRANT[^;]+TRUNCATE/i);
   console.log('HFM_APPROVAL_NONCE_MIGRATION_LEAST_PRIVILEGE=PASS');
