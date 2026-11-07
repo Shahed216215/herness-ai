@@ -50,6 +50,11 @@ BEGIN
           AND jsonb_typeof(provenance_metadata->'capturedAt') = 'string'
           AND jsonb_typeof(provenance_metadata->'verificationStatus') = 'string'
           AND jsonb_typeof(provenance_metadata->'redactionApplied') = 'boolean'
+          AND (
+            NOT (provenance_metadata ? 'originalPublishedAt')
+            OR provenance_metadata->'originalPublishedAt' = 'null'::jsonb
+            OR jsonb_typeof(provenance_metadata->'originalPublishedAt') = 'string'
+          )
         )
       );
   END IF;
