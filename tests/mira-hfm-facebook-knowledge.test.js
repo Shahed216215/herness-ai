@@ -168,3 +168,120 @@ test('redacts credential fields and blocks restricted client or financial record
   assert.throws(() => redactSensitiveText('bank_account: 123456789'), /HFM_KNOWLEDGE_RESTRICTED_CONTENT_BLOCKED/);
   assert.throws(() => redactSensitiveText('-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----'), /HFM_KNOWLEDGE_RESTRICTED_CONTENT_BLOCKED/);
 });
+
+test('knowledge ingestion rejects missing or mismatched consumed authority before database writes', async () => {
+  const { ingestFacebookKnowledge } = require('../services/mira-hfm-facebook-knowledge');
+  await assert.rejects(() => ingestFacebookKnowledge({
+    client: { query: async () => { throw new Error('SHOULD_NOT_QUERY'); } },
+    context: { projectId: 'project-001', operation: 'memory.write', resource: 'memory:fbk_test_00000001' },
+    memoryId: 'fbk_test_00000001', content: 'public post',
+    sourceType: 'manual', publicContentConfirmed: true
+  }), /HFM_KNOWLEDGE_CONSUMED_AUTHORITY_REQUIRED/);
+});
+
+test('knowledge ingestion detects content-hash duplicates before creating a record', async () => {
+  const { ingestFacebookKnowledge } = require('../services/mira-hfm-facebook-knowledge');
+  const calls = [];
+  const result = await ingestFacebookKnowledge({
+    client: { query: async (sql, params) => {
+      calls.push({ sql, params });
+      return { rows: [{ memory_id: 'fbk_existing_0001' }] };
+    } },
+    context: {
+      authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY', operation: 'memory.write',
+      projectId: 'project-001', resource: 'memory:fbk_test_00000001', requestId: 'req-duplicate-001'
+    },
+    memoryId: 'fbk_test_00000001', content: 'same public post',
+    sourceType: 'manual', sourceId: 'Example', collectionMethod: 'manual_copy',
+    publicContentConfirmed: true, idempotencyKey: 'import-duplicate-001'
+  });
+  assert.equal(result.status, 'DUPLICATE');
+  assert.equal(result.memoryId, 'fbk_existing_0001');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /contentHash/);
+});
+
+test('knowledge ingestion persists new source-attributed records only through the repository writer', async () => {
+  const { ingestFacebookKnowledge } = require('../services/mira-hfm-facebook-knowledge');
+  const modulePath = require.resolve('../services/mira-hfm-memory-repository');
+  const original = require.cache[modulePath];
+  let saved = null;
+  require.cache[modulePath] = {
+    id: modulePath, filename: modulePath, loaded: true,
+    exports: {
+      createMemoryRecord: async options => {
+        saved = options;
+        return { status: 'CREATED', memoryId: options.record.memoryId };
+      }
+    }
+  };
+  try {
+    const result = await ingestFacebookKnowledge({
+      client: { query: async () => ({ rows: [] }) },
+      context: {
+        authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY', operation: 'memory.write',
+        projectId: 'project-001', resource: 'memory:fbk_test_00000002', requestId: 'req-import-002'
+      },
+      memoryId: 'fbk_test_00000002', content: 'বাংলা প্রযুক্তি পোস্ট',
+      sourceType: 'facebook_page', sourceId: 'Example Page',
+      sourceUrl: 'https://www.facebook.com/example.page/posts/2',
+      collectionMethod: 'manual_copy', publicContentConfirmed: true,
+      idempotencyKey: 'import-idempotency-002', now: '2026-11-07T00:00:00.000Z'
+    });
+    assert.equal(result.status, 'CREATED');
+    assert.equal(saved.record.source.sourceUrl, 'https://www.facebook.com/example.page/posts/2');
+    assert.equal(saved.record.provenance.collectionMethod, 'manual_copy');
+    assert.equal(saved.record.access.classification, 'PUBLIC');
+    assert.equal(saved.context.authorityContext, 'HFM_CONSUMED_ONE_TIME_AUTHORITY');
+  } finally {
+    if (original) require.cache[modulePath] = original;
+    else delete require.cache[modulePath];
+  }
+});
+
+test('keyword retrieval returns source evidence and audits only non-content metadata', async () => {
+  const { searchFacebookKnowledge } = require('../services/mira-hfm-facebook-knowledge');
+  const modulePath = require.resolve('../services/mira-hfm-memory-repository');
+  const original = require.cache[modulePath];
+  require.cache[modulePath] = {
+    id: modulePath, filename: modulePath, loaded: true,
+    exports: {
+      decodeStoredRow: () => ({
+        memoryId: 'fbk_search_0001', content: 'বাংলাদেশে AI প্রযুক্তি শিক্ষা',
+        source: { sourceUrl: 'https://www.facebook.com/example.page/posts/1' },
+        provenance: { collectionMethod: 'manual_copy', verificationStatus: 'SOURCE_RECORDED' },
+        trust: { status: 'SOURCE_RECORDED' }, integrity: { status: 'UNVERIFIED' },
+        version: { revision: 2 }
+      }),
+      digest: value => JSON.stringify(value)
+    }
+  };
+  const queries = [];
+  const client = { query: async (sql, params) => {
+    queries.push({ sql, params });
+    if (sql.includes('FROM mira_hfm.memory_records')) return { rows: [{ memory_id: 'fbk_search_0001' }] };
+    if (sql.includes('SELECT event_hash')) return { rows: [] };
+    return { rows: [], rowCount: 1 };
+  } };
+  try {
+    const result = await searchFacebookKnowledge({
+      client,
+      context: {
+        authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY', operation: 'memory.read',
+        projectId: 'project-001', resource: 'memory:project:project-001',
+        actorId: 'mira:mira.users:11111111-1111-4111-8111-111111111111',
+        requestId: 'search-request-001'
+      },
+      query: 'বাংলাদেশ AI', limit: 5
+    });
+    assert.equal(result.status, 'FOUND');
+    assert.equal(result.results[0].source.sourceUrl, 'https://www.facebook.com/example.page/posts/1');
+    assert.equal(result.results[0].revision, 2);
+    const auditInsert = queries.find(item => item.sql.includes('INSERT INTO mira_hfm.memory_audit_events'));
+    assert.ok(auditInsert);
+    assert.equal(JSON.stringify(auditInsert.params).includes('বাংলাদেশ AI'), false);
+  } finally {
+    if (original) require.cache[modulePath] = original;
+    else delete require.cache[modulePath];
+  }
+});
