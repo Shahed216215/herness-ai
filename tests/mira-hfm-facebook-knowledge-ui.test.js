@@ -33,6 +33,9 @@ test('UI uses same-origin authenticated requests and does not contain Facebook A
   assert.match(html, /importFileName:/);
   assert.match(html, /originalPublishedAt: item\.publishedAt/);
   assert.match(html, /id="publishedAt"/);
+  assert.match(html, /id="recordMeta"/);
+  assert.match(html, /Verification:/);
+  assert.match(html, /originalPublishedAt/);
   assert.match(html, /id="publicConfirm"/);
   assert.match(html, /publicContentConfirmed: \$\('publicConfirm'\)\.checked/);
 });
