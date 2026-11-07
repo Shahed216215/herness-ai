@@ -476,7 +476,7 @@ Draft generation remains manually reviewed; automatic Facebook publishing remain
 
 The user-approved 2026-11-06 Memory Topology Amendment lists seven domain families, including `source_reference`. The implemented canonical v1.1.0 validator supports six extended record types and represents provenance only through the nested `source` object. It does not implement the approved `source_reference` record family.
 
-A source-only proposal now defines the missing contract and recommends a separately versioned additive schema target v1.2.0. This remains NOT APPROVED / NOT IMPLEMENTED; no schema or migration change was made for it.
+A source-only proposal now defines the missing contract and recommends a normalized project-scoped `source_references` entity plus a same-project link table; a separately versioned canonical `recordType` (for example v1.2.0) remains an alternative. The representation is unresolved and NOT APPROVED / NOT IMPLEMENTED; no schema or migration change was made for it.
 
 The current tool surface exposes `memory_save`, `knowledge_save`, and `learning_save`; the dedicated daily activity, source-reference, client-vault, and financial-vault writer workflows are not yet complete end-to-end. Existing social draft persistence is a separate reviewed writer path.
 
