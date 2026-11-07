@@ -14,10 +14,10 @@ module.exports = {
     parameters: {
       type: 'object',
       properties: {
-        projectId: { type: 'string', description: 'HFM project ID authorized for the current user.' },
+        projectId: { type: 'string', description: 'Optional HFM project ID; defaults to the authenticated session active project.' },
         sourceUrl: { type: 'string', description: 'HTTPS public Facebook Page, Group or Post URL.' }
       },
-      required: ['projectId', 'sourceUrl']
+      required: ['sourceUrl']
     }
   },
   execute: async ({ projectId, sourceUrl }, trustedContext = null) => {
@@ -31,9 +31,9 @@ module.exports = {
     }
     try {
       const request = {
-        projectId: projectId.trim(),
+        projectId: selectedProjectId,
         operation: 'memory.read',
-        resource: 'memory:project:' + projectId.trim(),
+        resource: 'memory:project:' + selectedProjectId,
         purpose: 'facebook-public-web-search'
       };
       const normalizedUrl = normalizeFacebookUrl(sourceUrl.trim());
