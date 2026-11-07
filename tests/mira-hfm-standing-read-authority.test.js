@@ -125,7 +125,7 @@ const pool = { async connect() { return client; } };
   assert.equal(issued.writesAllowed, false);
   assert.equal(issued.requiresApprovalPerRead, false);
   assert.ok(calls.some(c => c.sql.startsWith('INSERT INTO mira_hfm.standing_read_authorities')));
-  assert.ok(calls.some(c => c.sql.includes('STANDING_READ_AUTHORITY_ISSUED')));
+  assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.includes('STANDING_READ_AUTHORITY_ISSUED')));
   console.log('HFM_STANDING_READ_365_DAY_PROJECT_SCOPED_ISSUE=PASS');
 
   const paused = await setStandingReadAuthorityStatus({
