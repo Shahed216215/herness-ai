@@ -238,7 +238,6 @@ async function insertVersion(client, record, ownerId, payload, trashedAt = null,
 
 async function createMemoryRecord(options = {}) {
   const { client, context } = requireTransaction(options);
-  if (context.operation !== 'memory.write') throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
   const record = options.record;
   const validation = validateCanonicalRecord(record);
   if (!validation.valid) throw fail('HFM_MEMORY_RECORD_INVALID');
@@ -246,6 +245,8 @@ async function createMemoryRecord(options = {}) {
   if (record.lifecycle === 'TRASHED') throw fail('HFM_MEMORY_INITIAL_TRASH_STATE_INVALID');
 
   const classification = recordClassification(record);
+  const expectedOperation = classification === 'RESTRICTED' ? 'memory.vault.write' : 'memory.write';
+  if (context.operation !== expectedOperation) throw fail('HFM_MEMORY_OPERATION_SCOPE_INVALID');
   if (classification === 'RESTRICTED' && options.allowRestrictedWrite !== true) {
     throw fail('HFM_MEMORY_RESTRICTED_WRITE_NOT_GRANTED');
   }
@@ -258,7 +259,7 @@ async function createMemoryRecord(options = {}) {
   if (context.resource !== resource) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
   const payloadDigests = operationDigests(record, options.env || process.env);
   const operation = await beginIdempotentOperation(
-    client, context, options.idempotencyKey, 'memory.write', resource,
+    client, context, options.idempotencyKey, expectedOperation, resource,
     payloadDigests.activeDigest, payloadDigests.candidates
   );
   if (operation.duplicate) {
