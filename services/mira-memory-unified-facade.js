@@ -6,6 +6,7 @@
 // JSON / Drive. Persistence and authority consumption remain separate layers.
 
 const { validateCanonicalRecord } = require('./mira-hfm-record-schema');
+const { compareTimestampToNow, compareTimestamps } = require('./mira-hfm-timestamp');
 
 const MAX_RECORDS = 5000;
 const TRUSTED_STATES = new Set(['CONTENT_VERIFIED', 'HUMAN_VERIFIED']);
@@ -25,10 +26,10 @@ function requiredText(value, label, max = 512) {
 }
 
 function validTime(value, label) {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
-    fail(label + ' must be a valid timestamp.');
+  if (compareTimestampToNow(value, 0) === null) {
+    fail(label + ' must be a valid RFC3339 timestamp.');
   }
-  return Date.parse(value);
+  return value;
 }
 
 function validateRequestContext(projectId, context, now) {
@@ -44,11 +45,16 @@ function validateRequestContext(projectId, context, now) {
   const issuedAt = validTime(context.issuedAt, 'requestContext.issuedAt');
   const expiresAt = validTime(context.expiresAt, 'requestContext.expiresAt');
   const current = now instanceof Date ? now.getTime() : Date.parse(now);
+  const issuedComparison = compareTimestampToNow(issuedAt, current);
+  const expiryComparison = compareTimestampToNow(expiresAt, current);
+  const lifetimeComparison = compareTimestamps(expiresAt, issuedAt);
   if (!Number.isFinite(current) || actorType !== 'HUMAN' ||
       contextProjectId !== projectId) {
     fail('Request context project scope or actor type is invalid.', 'HFM_MEMORY_PROJECT_SCOPE_MISMATCH');
   }
-  if (issuedAt > current || expiresAt <= current || expiresAt <= issuedAt) {
+  if (issuedComparison === null || expiryComparison === null ||
+      lifetimeComparison === null || issuedComparison > 0 ||
+      expiryComparison <= 0 || lifetimeComparison <= 0) {
     fail('Trusted host authority is expired or not yet valid.', 'HFM_MEMORY_HOST_AUTHORITY_INVALID');
   }
   return Object.freeze({
@@ -68,14 +74,16 @@ function verifyAuthorization(decision, expected, operation, resourceScope, now) 
       decision.operation !== operation ||
       decision.resourceScope !== resourceScope ||
       decision.authorityRef !== expected.authorityRef) return false;
-  const issued = Date.parse(decision.issuedAt);
-  const expires = Date.parse(decision.expiresAt);
   const current = now instanceof Date ? now.getTime() : Date.parse(now);
-  const hostIssued = Date.parse(expected.issuedAt);
-  const hostExpires = Date.parse(expected.expiresAt);
-  return Number.isFinite(issued) && Number.isFinite(expires) &&
-    issued <= current && expires > current && expires > issued &&
-    issued >= hostIssued && expires <= hostExpires;
+  const issuedComparison = compareTimestampToNow(decision.issuedAt, current);
+  const expiryComparison = compareTimestampToNow(decision.expiresAt, current);
+  const decisionLifetime = compareTimestamps(decision.expiresAt, decision.issuedAt);
+  const issuedWithinHost = compareTimestamps(decision.issuedAt, expected.issuedAt);
+  const expiryWithinHost = compareTimestamps(decision.expiresAt, expected.expiresAt);
+  return Number.isFinite(current) && issuedComparison !== null && expiryComparison !== null &&
+    decisionLifetime !== null && issuedWithinHost !== null && expiryWithinHost !== null &&
+    issuedComparison <= 0 && expiryComparison > 0 && decisionLifetime > 0 &&
+    issuedWithinHost >= 0 && expiryWithinHost <= 0;
 }
 
 function conflictIds(pendingConflicts, projectId) {
