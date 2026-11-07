@@ -54,6 +54,7 @@ const verifiedLearning = {
         status: 'AUTHORIZED_AND_COMMITTED',
         projectId,
         records: [knowledge, verifiedLearning, pendingLearning],
+        count: 3,
         standingAuthority: true,
         approvalRequiredPerRead: false,
         authorityExpiresAt: hostAuthorizationContext.expiresAt,
