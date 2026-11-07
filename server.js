@@ -21,6 +21,7 @@ const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtim
 const { createMemoryWriterPool } = require("./services/mira-hfm-memory-postgres-runtime");
 const { registerMiraHfmSocialDraftTrashRoute } = require("./routes/mira-hfm-social-draft-trash");
 const { registerMiraHfmSocialDraftRestoreRoute } = require("./routes/mira-hfm-social-draft-restore");
+const { registerMiraHfmDailySocialDraftRoute } = require("./routes/mira-hfm-daily-social-draft");
 const { registerMiraHfmMemoryReadRoute } = require("./routes/mira-hfm-memory-read");
 const { createHfmBootstrapPool } = require("./services/mira-hfm-bootstrap-runtime");
 const { registerMiraHfmInitialBootstrapRoute } = require("./routes/mira-hfm-initial-bootstrap");
@@ -295,6 +296,13 @@ registerMiraHfmSocialDraftTrashRoute(
 );
 registerMiraHfmSocialDraftRestoreRoute(
   app,
+  getHfmMemoryWriterRuntime,
+  getHfmAuthorityIssuerRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+registerMiraHfmDailySocialDraftRoute(
+  app,
+  getHfmMemoryReadRuntime,
   getHfmMemoryWriterRuntime,
   getHfmAuthorityIssuerRuntime,
   requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
