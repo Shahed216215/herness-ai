@@ -92,7 +92,7 @@ async function invoke(req, runtime = async () => ({
     async options => {
       standingPageCalls.push(options);
       assert.equal(options.standingReadAuthority, true);
-      assert.deepEqual(options.recordTypes, ['learning_note', 'knowledge_item']);
+      assert.equal(options.recordTypes, undefined);
       assert.equal(options.recordType, 'learning_note');
       assert.equal(options.lifecycle, 'ACTIVE');
       assert.equal(options.authorityGrant, undefined);
@@ -140,6 +140,32 @@ async function invoke(req, runtime = async () => ({
   );
   assert.equal(nextStandingPage.statusCode, 200);
   assert.equal(nextStandingPage.payload.nextCursor, null);
+
+  const allStandingTypes = await invoke(
+    makeReq({
+      body: { limit: 20 },
+      session: {
+        authenticated: true, role: 'admin',
+        hfmProjectBinding: { verified: true, projectId: 'project-alpha' }
+      }
+    }),
+    async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+    async options => {
+      assert.deepEqual(options.recordTypes, ['learning_note', 'knowledge_item']);
+      assert.equal(options.recordType, undefined);
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha', count: 0,
+        records: [], authorityConsumed: false, standingAuthority: true,
+        standingAuthorityId: 'standing-001',
+        authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+        approvalRequiredPerRead: false, nextCursor: null,
+        scanStartedAt: new Date(Date.now() - 1000).toISOString()
+      };
+    },
+    { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }
+  );
+  assert.equal(allStandingTypes.statusCode, 200);
+  console.log('HFM_MEMORY_READ_STANDING_RECORD_TYPE_FILTERS_ARE_MUTUALLY_EXCLUSIVE=PASS');
   console.log('HFM_MEMORY_READ_STANDING_PAGINATION_CURSOR_ROUNDTRIP=PASS');
   console.log('HFM_MEMORY_READ_STANDING_AUTHORITY_NO_PER_READ_GRANT=PASS');
 
