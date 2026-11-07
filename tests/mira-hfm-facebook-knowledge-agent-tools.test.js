@@ -7,9 +7,9 @@ const researchTool = require('../tools/facebook-knowledge-research');
 
 test('agent-facing tools are registered with bounded project and query inputs', () => {
   assert.equal(searchTool.name, 'facebook_knowledge_search');
-  assert.deepEqual(searchTool.declaration.parameters.required, ['projectId', 'query']);
+  assert.deepEqual(searchTool.declaration.parameters.required, ['query']);
   assert.equal(researchTool.name, 'facebook_knowledge_research');
-  assert.deepEqual(researchTool.declaration.parameters.required, ['projectId', 'sourceUrl']);
+  assert.deepEqual(researchTool.declaration.parameters.required, ['sourceUrl']);
 });
 
 test('agent-facing tools fail closed without server-verified actor context', async () => {
