@@ -283,7 +283,9 @@ async function executeWithStandingReadAuthority(options = {}) {
     );
     const authorityResult = await client.query(
       "SELECT standing_authority_id, project_id, actor_id, operation, resource, purpose, " +
-      "owner_revision, membership_revision, status, approval_ref, valid_from, expires_at " +
+      "owner_revision, membership_revision, status, approval_ref, " +
+      "to_char(valid_from AT TIME ZONE 'UTC', 'YYYY-MM-DD\\\"T\\\"HH24:MI:SS.US\\\"Z\\\"') AS valid_from_rfc3339, " +
+      "to_char(expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\\\"T\\\"HH24:MI:SS.US\\\"Z\\\"') AS expires_at_rfc3339 " +
       "FROM mira_hfm.standing_read_authorities WHERE project_id = $1 AND actor_id = $2 " +
       "AND operation = 'memory.read' AND resource = $3 AND status = 'ACTIVE' " +
       "AND valid_from <= clock_timestamp() AND expires_at > clock_timestamp()",
@@ -314,7 +316,7 @@ async function executeWithStandingReadAuthority(options = {}) {
           operation: "memory.read",
           resource,
           purpose: authority.purpose,
-          expiresAt: new Date(authority.expires_at).toISOString(),
+          expiresAt: authority.expires_at_rfc3339,
           approvalPerRead: false
         })]
     );
@@ -347,7 +349,7 @@ async function executeWithStandingReadAuthority(options = {}) {
       status: "AUTHORIZED_AND_COMMITTED",
       value,
       standingAuthorityId: authority.standing_authority_id,
-      authorityExpiresAt: new Date(authority.expires_at).toISOString(),
+      authorityExpiresAt: authority.expires_at_rfc3339,
       authorityConsumed: false,
       hostAuthorizationContext: Object.freeze({
         actorId: trustedActor.actorId,
@@ -356,7 +358,7 @@ async function executeWithStandingReadAuthority(options = {}) {
         purpose: authority.purpose,
         requestId,
         authorityRef: authority.standing_authority_id,
-        issuedAt: new Date(authority.valid_from).toISOString(),
+        issuedAt: authority.valid_from_rfc3339,
         expiresAt: new Date(authority.expires_at).toISOString()
       })
     };
