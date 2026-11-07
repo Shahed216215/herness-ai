@@ -56,6 +56,14 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'INSERT') AS authorities_insert,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'INSERT') AS audit_insert,",
   "has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'USAGE') AS audit_sequence_usage,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'SELECT') AS approval_nonce_select,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'INSERT') AS approval_nonce_insert,",
+  "has_column_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'consumed_at', 'UPDATE') AS approval_nonce_consumed_update,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'UPDATE') AS approval_nonce_table_update,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'DELETE') AS approval_nonce_delete,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'TRUNCATE') AS approval_nonce_truncate,",
+  "has_column_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'nonce_hash', 'UPDATE') AS approval_nonce_hash_update,",
+  "has_column_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'approval_ref', 'UPDATE') AS approval_nonce_ref_update,"
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'INSERT') AS owners_insert,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'UPDATE') AS owners_update,",
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'DELETE') AS owners_delete,",
@@ -85,16 +93,17 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'TRUNCATE') AS authorities_truncate,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS audit_truncate,",
   "(SELECT count(*) = 4 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " +
-    "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +
+    "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships','operation_authorities','authority_audit_events','authority_approval_nonces') " +
     "AND c.relrowsecurity AND c.relforcerowsecurity) AS issuer_rls_forced,",
   "(SELECT count(*) = 4 FROM pg_policies WHERE schemaname = 'mira_hfm' AND policyname IN " +
     "('hfm_authority_issuer_owner_select','hfm_authority_issuer_membership_select'," +
     "'hfm_authority_issuer_authority_insert','hfm_authority_issuer_audit_insert') AND $1 = ANY(roles)) AS issuer_policies_present,",
   "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
-    "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +
+    "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events','authority_approval_nonces') " +
     "AND $1 = ANY(roles) AND policyname NOT IN ('hfm_authority_issuer_owner_select'," +
     "'hfm_authority_issuer_membership_select','hfm_authority_issuer_authority_insert'," +
-    "'hfm_authority_issuer_audit_insert')) AS issuer_policy_set_exact,",
+    "'hfm_authority_issuer_audit_insert','hfm_authority_issuer_approval_nonce_select',",
+    "'hfm_authority_issuer_approval_nonce_insert','hfm_authority_issuer_approval_nonce_consume')) AS issuer_policy_set_exact,"
   "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
     "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +
     "AND 'public' = ANY(roles)) AS no_public_issuer_policies",
@@ -105,7 +114,7 @@ const REQUIRED_TRUE = Object.freeze([
   'has_issuer_group', 'role_membership_isolated', 'issuer_group_has_no_parent_roles',
   'issuer_group_least_privilege', 'issuer_group_owns_no_objects', 'inherits_roles', 'can_login',
   'schema_usage', 'owners_select', 'memberships_select', 'authorities_insert',
-  'audit_insert', 'audit_sequence_usage', 'issuer_rls_forced',
+  'audit_insert', 'audit_sequence_usage', 'approval_nonce_select', 'approval_nonce_insert',\n  'approval_nonce_consumed_update', 'issuer_rls_forced',
   'issuer_policies_present', 'issuer_policy_set_exact', 'no_public_issuer_policies'
 ]);
 const REQUIRED_FALSE = Object.freeze([
@@ -117,7 +126,7 @@ const REQUIRED_FALSE = Object.freeze([
   'owners_column_insert', 'owners_column_update', 'owners_column_references',
   'memberships_column_insert', 'memberships_column_update', 'memberships_column_references',
   'authorities_column_update', 'authorities_column_references',
-  'audit_column_update', 'audit_column_references',
+  'audit_column_update', 'audit_column_references',\n  'approval_nonce_table_update', 'approval_nonce_delete', 'approval_nonce_truncate',\n  'approval_nonce_hash_update', 'approval_nonce_ref_update',
   'audit_sequence_select', 'audit_sequence_update',
   'owners_truncate', 'memberships_truncate', 'authorities_truncate', 'audit_truncate'
 ]);
