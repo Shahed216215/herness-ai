@@ -11,6 +11,7 @@ const {
 } = require('../services/mira-hfm-memory-save-runtime');
 const { validateCanonicalRecord } = require('../services/mira-hfm-record-schema');
 const { extractKnowledgeTitle } = require('../services/mira-hfm-knowledge-search-runtime');
+const { hasExplicitReviewIntent, listPendingHfmKnowledgeForReview } = require('../services/mira-hfm-knowledge-review-runtime');
 
 function baseOptions(overrides = {}) {
   return {
@@ -101,6 +102,63 @@ function baseOptions(overrides = {}) {
     content: '   ',
     source: { sourceId: 'fallback-source-id' }
   }), 'fallback-source-id');
+
+  assert.equal(hasExplicitReviewIntent('Show pending knowledge sources for review.'), true);
+  assert.equal(hasExplicitReviewIntent('Do not show pending knowledge.'), false);
+  assert.equal(hasExplicitReviewIntent('অযাচাইকৃত জ্ঞান রিভিউ করে দেখাও।'), true);
+  assert.equal(hasExplicitReviewIntent('Remember this preference.'), false);
+
+  const pendingRecord = buildCanonicalMemoryRecord({
+    projectId: 'project-001', memoryId: 'mem-pending-review-001',
+    kind: 'knowledge_save', title: 'Pending source title',
+    url: 'https://example.com/pending',
+    content: 'Pending source content.',
+    now: '2026-11-07T07:00:00.000Z'
+  });
+  let reviewReadRequest = null;
+  const reviewQueue = await listPendingHfmKnowledgeForReview({
+    req: {
+      session: {
+        authenticated: true,
+        role: 'admin',
+        hfmPrincipal: { subject: 'admin-001' },
+        hfmProjectBinding: { verified: true, projectId: 'project-001' }
+      }
+    },
+    pool: { connect: async () => ({}) },
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    userIntent: 'Show pending knowledge sources for review.',
+    readMemory: async input => {
+      reviewReadRequest = input;
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED',
+        standingAuthority: true,
+        approvalRequiredPerRead: false,
+        projectId: 'project-001',
+        authorityExpiresAt: '2027-11-07T07:00:00.000Z',
+        hostAuthorizationContext: { projectId: 'project-001', actorId: 'mira:admin-001' },
+        records: [pendingRecord]
+      };
+    }
+  });
+  assert.equal(reviewReadRequest.lifecycle, 'PENDING_REVIEW');
+  assert.deepEqual(reviewReadRequest.recordTypes, ['knowledge_item']);
+  assert.equal(reviewQueue.status, 'REVIEW_REQUIRED');
+  assert.equal(reviewQueue.count, 1);
+  assert.equal(reviewQueue.items[0].title, 'Pending source title');
+  assert.equal(reviewQueue.items[0].trust, 'SOURCE_RECORDED');
+  assert.equal(reviewQueue.items[0].eligibleForTrustedSearch, false);
+  assert.equal(reviewQueue.items[0].requiresHumanReview, true);
+  assert.equal(reviewQueue.promotionSupported, false);
+  await assert.rejects(
+    () => listPendingHfmKnowledgeForReview({
+      req: { session: { authenticated: true, role: 'admin', hfmPrincipal: {}, hfmProjectBinding: { verified: true, projectId: 'project-001' } } },
+      pool: { connect: async () => ({}) },
+      env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+      userIntent: 'Show me my knowledge.'
+    }),
+    /HFM_KNOWLEDGE_REVIEW_EXPLICIT_USER_INTENT_REQUIRED/
+  );
 
   const memoryRecord = buildCanonicalMemoryRecord({
     projectId: 'project-001', memoryId: 'mem-1234567890abcdef',
