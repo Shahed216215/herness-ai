@@ -83,7 +83,7 @@ const client = {
         rows: [{
           ...standingRow,
           ...(sql.includes('(expires_at > clock_timestamp()) AS is_live')
-            ? { is_live: standingRow.status !== 'EXPIRED' }
+            ? { is_live: Date.parse(standingRow.expires_at) > Date.now() }
             : {})
         }],
         rowCount: 1
@@ -164,8 +164,10 @@ const pool = { async connect() { return client; } };
   await assert.rejects(() => setStandingReadAuthorityStatus({
     req, pool, env, standingAuthorityId: standingRow.standing_authority_id, status: 'ACTIVE'
   }), error => error.code === 'HFM_STANDING_READ_AUTHORITY_EXPIRED');
-  standingRow.expires_at = originalExpiry;
+  standingRow.expires_at = new Date(now + STANDING_READ_TTL_MS).toISOString();
   standingRow.status = 'ACTIVE';
+  assert.ok(Date.parse(standingRow.expires_at) > Date.now(),
+    'lifecycle transition fixture must restore a future expiry after the expired-grant rejection');
   console.log('HFM_STANDING_READ_EXPIRED_GRANT_STATUS=PASS');
 
   const paused = await setStandingReadAuthorityStatus({
