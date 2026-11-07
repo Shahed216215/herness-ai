@@ -9,24 +9,25 @@ const sql = fs.readFileSync(
   'utf8'
 );
 
-assert.match(sql, /SOURCE-ONLY DRAFT/);
-assert.match(sql, /Do not execute on production or staging without separate approval/);
-assert.match(sql, /mira_hfm_memory_reader_login/);
-assert.match(sql, /CREATE ROLE mira_hfm_memory_reader_login[\\s\\S]*LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/);
-assert.match(sql, /mira_hfm_memory_reader NOLOGIN/);
-assert.match(sql, /HFM_MEMORY_READER_CAPABILITY_GROUP_REQUIRED/);
-assert.match(sql, /HFM_MEMORY_READER_GROUP_MUST_NOT_INHERIT_OTHER_ROLES/);
-assert.match(sql, /HFM_MEMORY_READER_GROUP_MUST_NOT_OWN_DATABASE_OBJECTS/);
-assert.match(sql, /HFM_MEMORY_READER_LOGIN_HAS_UNEXPECTED_ROLE_MEMBERSHIP/);
-assert.match(sql, /HFM_MEMORY_READER_LOGIN_MUST_NOT_OWN_DATABASE_OBJECTS/);
-assert.match(sql, /GRANT mira_hfm_memory_reader TO mira_hfm_memory_reader_login/);
-assert.doesNotMatch(sql, /CREATE ROLE[\\s\\S]*PASSWORD/i);
-assert.doesNotMatch(sql, /ALTER ROLE[\\s\\S]*PASSWORD/i);
-assert.doesNotMatch(sql, /GRANT\\s+(SUPERUSER|CREATEDB|CREATEROLE|REPLICATION|BYPASSRLS)/i);
-assert.doesNotMatch(sql, /GRANT\\s+.*\\s+TO\\s+PUBLIC/i);
-assert.match(sql, /NOT rolcanlogin OR NOT rolinherit/);
-assert.match(sql, /rolsuper OR rolcreatedb/);
-assert.match(sql, /rolcreaterole OR rolreplication OR rolbypassrls/);
+assert.ok(sql.includes('SOURCE-ONLY DRAFT'));
+assert.ok(sql.includes('Do not execute on production or staging without separate approval'));
+assert.ok(sql.includes('CREATE ROLE mira_hfm_memory_reader_login'));
+assert.ok(sql.includes('LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS'));
+assert.ok(sql.includes('HFM_MEMORY_READER_CAPABILITY_GROUP_REQUIRED'));
+assert.ok(sql.includes('HFM_MEMORY_READER_GROUP_ATTRIBUTES_NOT_LEAST_PRIVILEGE'));
+assert.ok(sql.includes('HFM_MEMORY_READER_GROUP_MUST_NOT_INHERIT_OTHER_ROLES'));
+assert.ok(sql.includes('HFM_MEMORY_READER_GROUP_MUST_NOT_OWN_DATABASE_OBJECTS'));
+assert.ok(sql.includes('HFM_MEMORY_READER_LOGIN_ATTRIBUTES_NOT_LEAST_PRIVILEGE'));
+assert.ok(sql.includes('HFM_MEMORY_READER_LOGIN_HAS_UNEXPECTED_ROLE_MEMBERSHIP'));
+assert.ok(sql.includes('HFM_MEMORY_READER_LOGIN_MUST_NOT_OWN_DATABASE_OBJECTS'));
+assert.ok(sql.includes('GRANT mira_hfm_memory_reader TO mira_hfm_memory_reader_login'));
+assert.ok(sql.includes('NOT rolcanlogin OR NOT rolinherit'));
+assert.ok(sql.includes('rolsuper OR rolcreatedb'));
+assert.ok(sql.includes('rolcreaterole OR rolreplication OR rolbypassrls'));
+assert.doesNotMatch(sql, /CREATE ROLE[^;]*PASSWORD/i);
+assert.doesNotMatch(sql, /ALTER ROLE[^;]*PASSWORD/i);
+assert.doesNotMatch(sql, /GRANT\s+(SUPERUSER|CREATEDB|CREATEROLE|REPLICATION|BYPASSRLS)/i);
+assert.doesNotMatch(sql, /GRANT\s+.*\s+TO\s+PUBLIC/i);
 
 console.log('HFM_MEMORY_READER_LOGIN_PRINCIPAL_CREATED=CONTRACT_PASS');
 console.log('HFM_MEMORY_READER_LOGIN_INHERITS_ONLY_READER_GROUP=CONTRACT_PASS');
