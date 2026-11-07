@@ -156,7 +156,7 @@ const pool = { async connect() { return client; } };
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'PAUSED'
   });
   assert.equal(paused.authorityStatus, 'PAUSED');
-  assert.equal(calls.filter(c => typeof c.sql === 'string' && c.sql.startsWith('UPDATE mira_hfm.standing_read_authorities')).length, 1);
+  assert.equal(calls.filter(c => typeof c.sql === 'string' && c.sql.startsWith('UPDATE mira_hfm.standing_read_authorities') && c.sql.includes('SET status = $1')).length, 1);
   const resumed = await setStandingReadAuthorityStatus({
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'ACTIVE'
   });
@@ -165,7 +165,7 @@ const pool = { async connect() { return client; } };
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'REVOKED'
   });
   assert.equal(revoked.authorityStatus, 'REVOKED');
-  assert.equal(calls.filter(c => typeof c.sql === 'string' && c.sql.startsWith('UPDATE mira_hfm.standing_read_authorities')).length, 3);
+  assert.equal(calls.filter(c => typeof c.sql === 'string' && c.sql.startsWith('UPDATE mira_hfm.standing_read_authorities') && c.sql.includes('SET status = $1')).length, 3);
   console.log('HFM_STANDING_READ_PAUSE_RESUME_REVOKE_AUDITED=PASS');
 
   standingRow.status = 'ACTIVE';
