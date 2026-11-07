@@ -83,7 +83,7 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.project_owners', 'TRUNCATE') AS owners_truncate,",
   "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'TRUNCATE') AS memberships_truncate,",
   "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'TRUNCATE') AS authorities_truncate,",
-  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS audit_truncate,"
+  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS audit_truncate,",
   "(SELECT count(*) = 4 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " +
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +
     "AND c.relrowsecurity AND c.relforcerowsecurity) AS issuer_rls_forced,",
@@ -108,7 +108,13 @@ const REQUIRED_FALSE = Object.freeze([
   'can_replicate', 'schema_create', 'owners_insert', 'owners_update', 'owners_delete',
   'memberships_insert', 'memberships_update', 'memberships_delete',
   'authorities_select', 'authorities_update', 'authorities_delete',
-  'audit_select', 'audit_update', 'audit_delete'
+  'audit_select', 'audit_update', 'audit_delete',
+  'owners_column_insert', 'owners_column_update', 'owners_column_references',
+  'memberships_column_insert', 'memberships_column_update', 'memberships_column_references',
+  'authorities_column_update', 'authorities_column_references',
+  'audit_column_update', 'audit_column_references',
+  'audit_sequence_select', 'audit_sequence_update',
+  'owners_truncate', 'memberships_truncate', 'authorities_truncate', 'audit_truncate'
 ]);
 
 function verifyAuthorityIssuerPreflight(row, config) {
