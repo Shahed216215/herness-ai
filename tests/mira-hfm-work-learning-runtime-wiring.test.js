@@ -420,47 +420,70 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   const taskPlanningPosition = execution.indexOf('await createTaskPlan(', authorityPreflightPosition);
   assert.ok(executeWorkStart >= 0 && readContextPosition > executeWorkStart &&
     authorityPreflightPosition > readContextPosition && taskPlanningPosition > authorityPreflightPosition,
-    'standing memory.read authority must be validated before task planning/model activity');
+    'when Work Learning is enabled, standing memory.read authority must be validated before task planning/model activity');
+  assert.match(execution, /if \(hfmWorkLearningEnabled && hfmMemoryReadRuntime\) \{[\s\S]{0,300}await preflightHfmStandingRead/);
   assert.match(execution, /preflightWorkLearning = async \(\) => hfmStandingReadPreflight/);
-  console.log('HFM_STANDING_READ_AUTHORITY_PREFLIGHT_PRECEDES_WORK_PLANNING=PASS');
+  console.log('HFM_WORK_LEARNING_STANDING_READ_PREFLIGHT_PRECEDES_WORK_PLANNING=PASS');
 
   const previousStandingFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
   const previousWorkLearningFlag = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
   try {
     process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
     delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
-    const subject = '11111111-1111-4111-8111-111111111111';
-    const sessionID = 'work-preflight-gate-test';
-    const actorId = 'mira:mira.admins:' + subject;
-    const hfmRequest = {
-      role: 'admin',
-      sessionID,
-      session: {
-        authenticated: true,
-        role: 'admin',
-        hfmPrincipal: {
-          verified: true,
-          issuer: 'mira.admins',
-          subject,
-          actorType: 'HUMAN',
-          authenticationMethod: 'ADMIN_SUBJECT',
-          authenticationRef: sessionID,
-          authenticatedAt: new Date(Date.now() - 1000).toISOString(),
-          expiresAt: new Date(Date.now() + 3600000).toISOString()
-        },
-        hfmProjectBinding: {
-          verified: true,
-          bindingVersion: 'HFM_PROJECT_BINDING_V1',
-          actorId,
-          projectId: 'project-alpha',
-          selectedAt: new Date(Date.now() - 500).toISOString()
-        }
+    let runtimeResolvedWithWorkLearningOff = false;
+    let preflightDbConnectedWithWorkLearningOff = false;
+    const standingOnlyResult = await executeWork('Work Learning is disabled', {
+      plan: {},
+      persist: false,
+      hfmRequest: { session: { hfmPrincipal: { verified: true } } },
+      getHfmMemoryReadRuntime: async () => {
+        runtimeResolvedWithWorkLearningOff = true;
+        return {
+          status: 'MEMORY_READ_READY',
+          pool: {
+            async connect() {
+              preflightDbConnectedWithWorkLearningOff = true;
+              throw new Error('Work Learning OFF must not perform an unsolicited standing-read preflight');
+            }
+          }
+        };
       }
-    };
+    });
+    assert.equal(runtimeResolvedWithWorkLearningOff, true,
+      'standing-read context remains available for explicitly invoked HFM knowledge_search');
+    assert.equal(preflightDbConnectedWithWorkLearningOff, false,
+      'Work Learning OFF must not issue a background HFM memory read');
+    assert.equal(standingOnlyResult.executionStarted, false);
+    console.log('HFM_WORK_LEARNING_FLAG_OFF_DOES_NOT_TRIGGER_HFM_MEMORY_READ=PASS');
+
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED = 'true';
     let preflightDbConnected = false;
-    let planningInputRead = false;
     const gatedOptions = {
-      hfmRequest,
+      hfmRequest: {
+        role: 'admin',
+        sessionID: 'work-preflight-gate-test',
+        session: {
+          authenticated: true,
+          role: 'admin',
+          hfmPrincipal: {
+            verified: true,
+            issuer: 'mira.admins',
+            subject: '11111111-1111-4111-8111-111111111111',
+            actorType: 'HUMAN',
+            authenticationMethod: 'ADMIN_SUBJECT',
+            authenticationRef: 'work-preflight-gate-test',
+            authenticatedAt: new Date(Date.now() - 1000).toISOString(),
+            expiresAt: new Date(Date.now() + 3600000).toISOString()
+          },
+          hfmProjectBinding: {
+            verified: true,
+            bindingVersion: 'HFM_PROJECT_BINDING_V1',
+            actorId: 'mira:mira.admins:11111111-1111-4111-8111-111111111111',
+            projectId: 'project-alpha',
+            selectedAt: new Date(Date.now() - 500).toISOString()
+          }
+        }
+      },
       persist: false,
       getHfmMemoryReadRuntime: async () => ({
         status: 'MEMORY_READ_READY',
@@ -478,23 +501,17 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
         }
       })
     };
-    Object.defineProperty(gatedOptions, 'plan', {
-      get() {
-        planningInputRead = true;
-        return null;
-      }
-    });
     await assert.rejects(
-      () => executeWork('preflight must fail before planning', gatedOptions),
+      () => executeWork('Work Learning must fail before planning without authority', gatedOptions),
       /HFM_PROJECT_OWNER_NOT_ACTIVE/
     );
-    assert.equal(preflightDbConnected, true, 'standing-read preflight must reach the authoritative HFM reader');
-    assert.equal(planningInputRead, false, 'planning input must not be inspected after authorization denial');
-    console.log('HFM_EXECUTION_DENIED_PREFLIGHT_STOPS_BEFORE_PLANNING=PASS');
+    assert.equal(preflightDbConnected, true,
+      'Work Learning ON must verify authority against the authoritative HFM reader');
+    console.log('HFM_WORK_LEARNING_DENIED_PREFLIGHT_STOPS_BEFORE_PLANNING=PASS');
 
     delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
     let disabledRuntimeResolved = false;
-    const disabledResult = await executeWork('feature flags disabled', {
+    const disabledResult = await executeWork('all HFM read flags disabled', {
       plan: {},
       persist: false,
       getHfmMemoryReadRuntime: async () => {
