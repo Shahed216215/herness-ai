@@ -136,6 +136,7 @@ test('standing read authority returns transaction-bound host authorization conte
   };
   const adminActorId = 'mira:mira.admins:' + adminPrincipal.subject;
   const standingAuthorityId = 'standing-reader-authority-001';
+  const scanStartedAt = new Date(now).toISOString().replace(/\.(\d{3})Z$/, (_, ms) => '.' + ms + '000Z');
   const standingAuthority = {
     standing_authority_id: standingAuthorityId,
     project_id: projectId,
@@ -166,7 +167,7 @@ test('standing read authority returns transaction-bound host authorization conte
       }] };
       if (sql.includes('FROM mira_hfm.standing_read_authorities')) return { rows: [standingAuthority] };
       if (sql.includes('AS scan_started_at')) {
-        return { rows: [{ scan_started_at: new Date(now).toISOString() }] };
+        return { rows: [{ scan_started_at: scanStartedAt }] };
       }
       if (sql.startsWith('INSERT INTO mira_hfm.authority_audit_events')) return { rowCount: 1, rows: [] };
       if (sql.includes('FROM mira_hfm.memory_records')) return { rows: [] };
@@ -201,7 +202,7 @@ test('standing read authority returns transaction-bound host authorization conte
   assert.equal(result.approvalRequiredPerRead, false);
   assert.equal(result.hostAuthorizationContext.actorId, adminActorId);
   assert.equal(result.hostAuthorizationContext.projectId, projectId);
-  assert.equal(result.scanStartedAt, new Date(now).toISOString());
+  assert.equal(result.scanStartedAt, scanStartedAt);
   assert.equal(result.hostAuthorizationContext.authorityRef, standingAuthorityId);
   const exactRead = await retrieveProjectMemoryRecord({
     pool: { async connect() { return client; } },
