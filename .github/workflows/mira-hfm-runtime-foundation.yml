@@ -67,6 +67,8 @@ jobs:
           node --check services/mira-memory-host-identity-contract.js
           node --check services/mira-hfm-runtime-identity-context.js
           node --check services/mira-hfm-authority-transaction.js
+          node --check services/mira-hfm-standing-read-authority.js
+          node --check routes/mira-hfm-standing-read-authority.js
           node --check services/mira-hfm-postgres.js
           node --check services/mira-work-execution-engine.js
           node --check services/tool-runner.js
