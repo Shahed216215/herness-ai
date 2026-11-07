@@ -10,12 +10,15 @@ const router = {
 };
 express.Router = () => router;
 const registerLearningHistoryRoutes = require('../routes/learning-history');
-express.Router = originalRouter;
 
 const app = { use() {} };
-registerLearningHistoryRoutes(app, () => (_req, _res, next) => next(), {
-  SYSTEM_ADMIN: 'SYSTEM_ADMIN'
-});
+try {
+  registerLearningHistoryRoutes(app, () => (_req, _res, next) => next(), {
+    SYSTEM_ADMIN: 'SYSTEM_ADMIN'
+  });
+} finally {
+  express.Router = originalRouter;
+}
 const guardRegistration = registrations.find(item =>
   item.type === 'use' && typeof item.handlers[0] === 'function'
 );
