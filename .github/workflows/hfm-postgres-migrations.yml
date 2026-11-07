@@ -51,7 +51,7 @@ jobs:
           docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE DATABASE neondb"
           docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE ROLE mira_hfm_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
 
-      - name: Apply canonical HFM migrations 001 through 015 in order
+      - name: Apply canonical HFM migrations 001 through 016 in order
         run: |
           set -euo pipefail
           for migration in \
@@ -205,7 +205,7 @@ jobs:
           echo "HFM_STANDING_READ_CONCURRENT_DUPLICATE_RETRIEVALS_AUDITED=PASS"
 
           # A denied/failed standing read is recorded in a separate transaction after the protected read rolls back.
-          docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SET LOCAL ROLE mira_hfm_memory_reader_login; SELECT set_config('mira.project_id', 'project-ci', true); SELECT set_config('mira.actor_id', '$ACTOR', true); SELECT set_config('mira.operation', 'memory.read', true); SELECT set_config('mira.resource', 'memory:project:project-ci', true); SELECT set_config('mira.request_id', 'ci-standing-denied-request', true); SELECT set_config('mira.standing_read_authority', 'true', true); INSERT INTO mira_hfm.authority_audit_events (event_id, project_id, actor_id, event_type, request_id, occurred_at, details) VALUES ('ci-standing-denied-read', 'project-ci', '$ACTOR', 'STANDING_READ_AUTHORITY_DENIED', 'ci-standing-denied-request', clock_timestamp(), '{\\"operation\\":\\"memory.read\\",\\"decision\\":\\"DENY\\"}'::jsonb); COMMIT"
+          docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SET LOCAL ROLE mira_hfm_memory_reader_login; SELECT set_config('mira.project_id', 'project-ci', true); SELECT set_config('mira.actor_id', '$ACTOR', true); SELECT set_config('mira.operation', 'memory.read', true); SELECT set_config('mira.resource', 'memory:project:project-ci', true); SELECT set_config('mira.request_id', 'ci-standing-denied-request', true); SELECT set_config('mira.standing_read_authority', 'true', true); INSERT INTO mira_hfm.authority_audit_events (event_id, project_id, actor_id, event_type, request_id, occurred_at, details) VALUES ('ci-standing-denied-read', 'project-ci', '$ACTOR', 'STANDING_READ_AUTHORITY_DENIED', 'ci-standing-denied-request', clock_timestamp(), '{}'::jsonb); COMMIT"
           docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "SELECT 1 / CASE WHEN (SELECT count(*) FROM mira_hfm.authority_audit_events WHERE event_id = 'ci-standing-denied-read' AND event_type = 'STANDING_READ_AUTHORITY_DENIED' AND request_id = 'ci-standing-denied-request') = 1 THEN 1 ELSE 0 END"
           if docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SET LOCAL ROLE mira_hfm_memory_reader_login; SELECT set_config('mira.project_id', 'project-ci', true); SELECT set_config('mira.actor_id', '$ACTOR', true); SELECT set_config('mira.request_id', 'ci-standing-denied-other-request', true); INSERT INTO mira_hfm.authority_audit_events (event_id, project_id, actor_id, event_type, request_id, occurred_at, details) VALUES ('ci-standing-denied-wrong-request', 'project-ci', '$ACTOR', 'STANDING_READ_AUTHORITY_DENIED', 'ci-standing-denied-request', clock_timestamp(), '{}'::jsonb); COMMIT" >/tmp/hfm-standing-denied-audit-scope.log 2>&1; then
             echo "HFM_CI_STANDING_READ_DENIAL_AUDIT_REQUEST_SCOPE_BYPASSED"
