@@ -61,11 +61,14 @@ jobs:
             migrations/hfm/004_memory_repository_schema.sql \
             migrations/hfm/005_memory_writer_role_and_project_rls.sql \
             migrations/hfm/006_project_selection_read_policy.sql \
-            migrations/hfm/007_memory_retrieval_runtime_role.sql \
-            migrations/hfm/008_authority_issuer_role.sql \
-            migrations/hfm/009_authority_approval_nonce_registry.sql \
-            migrations/hfm/010_one_time_initial_project_bootstrap.sql \
-            migrations/hfm/011_standing_read_authority_365_days.sql
+            migrations/hfm/007_authority_issuer_role.sql \
+            migrations/hfm/008_project_bootstrap_issuer.sql \
+            migrations/hfm/009_dedicated_login_principals.sql \
+            migrations/hfm/010_memory_retrieval_runtime_role.sql \
+            migrations/hfm/011_authority_issuer_role_hardening.sql \
+            migrations/hfm/012_authority_approval_nonce_registry.sql \
+            migrations/hfm/013_one_time_initial_project_bootstrap.sql \
+            migrations/hfm/014_standing_read_authority_365_days.sql
           do
             echo "APPLYING=$migration"
             docker exec -i "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d neondb < "$migration"
@@ -93,8 +96,6 @@ jobs:
             exit 1
           fi
 
-          docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "CREATE ROLE mira_hfm_authority_issuer_login LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
-          docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "GRANT mira_hfm_authority_issuer TO mira_hfm_authority_issuer_login"
           docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SET LOCAL ROLE mira_hfm_authority_issuer_login; SELECT current_user, pg_has_role(current_user, 'mira_hfm_authority_issuer', 'MEMBER') AS issuer_membership, pg_has_role(current_user, 'mira_hfm_authority_issuer', 'USAGE') AS issuer_inherited, has_table_privilege(current_user, 'mira_hfm.authority_approval_nonces', 'INSERT') AS nonce_insert_privilege, current_setting('mira.project_id', true) AS project_before_scope; SELECT set_config('mira.project_id', 'project-ci', true); SELECT set_config('mira.actor_id', 'mira:mira.admins:11111111-1111-4111-8111-111111111111', true); SELECT (project_id = NULLIF(current_setting('mira.project_id', true), '')) AS project_match, (actor_id = NULLIF(current_setting('mira.actor_id', true), '')) AS actor_match, (approver_actor_id = NULLIF(current_setting('mira.actor_id', true), '')) AS approver_match, (resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), '')) AS resource_match, (consumed_at IS NULL) AS unused, (issued_at <= clock_timestamp()) AS issued_time_valid, (expires_at > clock_timestamp()) AS expiry_future, (expires_at <= clock_timestamp() + interval '5 minutes') AS expiry_window_valid FROM (SELECT 'project-ci'::text AS project_id, 'mira:mira.admins:11111111-1111-4111-8111-111111111111'::text AS actor_id, 'mira:mira.admins:11111111-1111-4111-8111-111111111111'::text AS approver_actor_id, 'memory:project:project-ci'::text AS resource, NULL::timestamptz AS consumed_at, clock_timestamp() AS issued_at, clock_timestamp() + interval '60 seconds' AS expires_at) checks; ROLLBACK"
           docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "SELECT policyname, permissive, roles, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'mira_hfm' AND tablename = 'authority_approval_nonces' ORDER BY policyname"
           docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SET LOCAL ROLE mira_hfm_authority_issuer_login; SELECT set_config('mira.project_id', 'project-ci', true); SELECT set_config('mira.actor_id', 'mira:mira.admins:11111111-1111-4111-8111-111111111111', true); INSERT INTO mira_hfm.authority_approval_nonces (nonce_hash, approval_ref, project_id, actor_id, approver_actor_id, operation, resource, purpose, issued_at, expires_at) VALUES (repeat('a', 64), 'ci-approval-001', 'project-ci', 'mira:mira.admins:11111111-1111-4111-8111-111111111111', 'mira:mira.admins:11111111-1111-4111-8111-111111111111', 'memory.read', 'memory:project:project-ci', 'postgres ci', clock_timestamp(), clock_timestamp() + interval '60 seconds'); INSERT INTO mira_hfm.authority_audit_events (event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details) VALUES ('ci-approval-issued', 'project-ci', 'mira:mira.admins:11111111-1111-4111-8111-111111111111', 'APPROVAL_TOKEN_ISSUED', 'ci-request-issued', clock_timestamp(), 'ci-approval-001', '{\"singleUse\":true}'::jsonb); UPDATE mira_hfm.authority_approval_nonces SET consumed_at = clock_timestamp() WHERE nonce_hash = repeat('a', 64) AND project_id = 'project-ci' AND actor_id = 'mira:mira.admins:11111111-1111-4111-8111-111111111111' AND consumed_at IS NULL AND expires_at > clock_timestamp(); INSERT INTO mira_hfm.authority_audit_events (event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details) VALUES ('ci-approval-consumed', 'project-ci', 'mira:mira.admins:11111111-1111-4111-8111-111111111111', 'APPROVAL_TOKEN_CONSUMED', 'ci-request-consumed', clock_timestamp(), 'ci-approval-001', '{\"singleUse\":true}'::jsonb); COMMIT"
