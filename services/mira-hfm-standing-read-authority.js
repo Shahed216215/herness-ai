@@ -120,13 +120,14 @@ async function issueStandingReadAuthority(options = {}) {
       fail('HFM_STANDING_READ_MEMBERSHIP_PERMISSION_REQUIRED');
     }
     const priorResult = await client.query(
-      "SELECT standing_authority_id, status, expires_at, approval_ref " +
+      "SELECT standing_authority_id, status, expires_at, approval_ref, " +
+      "(expires_at > clock_timestamp()) AS is_live " +
       "FROM mira_hfm.standing_read_authorities WHERE project_id = $1 AND actor_id = $2 " +
       "AND status IN ('ACTIVE','PAUSED') FOR UPDATE",
       [projectId, actor.actorId]
     );
     const prior = priorResult.rows?.[0];
-    if (prior && Date.parse(prior.expires_at) > Date.now()) {
+    if (prior && prior.is_live === true) {
       fail('HFM_STANDING_READ_AUTHORITY_ALREADY_ACTIVE');
     }
     if (prior) {
@@ -208,7 +209,8 @@ async function setStandingReadAuthorityStatus(options = {}) {
       ["hfm-standing-read:" + admin.projectId + ":" + actor.actorId]
     );
     const currentResult = await client.query(
-      "SELECT standing_authority_id, status, expires_at, approval_ref " +
+      "SELECT standing_authority_id, status, expires_at, approval_ref, " +
+      "(expires_at > clock_timestamp()) AS is_live " +
       "FROM mira_hfm.standing_read_authorities " +
       "WHERE standing_authority_id = $1 AND project_id = $2 AND actor_id = $3 FOR UPDATE",
       [authorityId, admin.projectId, actor.actorId]
@@ -216,7 +218,7 @@ async function setStandingReadAuthorityStatus(options = {}) {
     const current = currentResult.rows?.[0];
     if (!current) fail('HFM_STANDING_READ_AUTHORITY_NOT_FOUND');
     if (current.status === 'REVOKED') fail('HFM_STANDING_READ_AUTHORITY_ALREADY_REVOKED');
-    if (Date.parse(current.expires_at) <= Date.now()) fail('HFM_STANDING_READ_AUTHORITY_EXPIRED');
+    if (current.is_live !== true) fail('HFM_STANDING_READ_AUTHORITY_EXPIRED');
     if (current.status === nextStatus) {
       await client.query('COMMIT');
       transactionOpen = false;
