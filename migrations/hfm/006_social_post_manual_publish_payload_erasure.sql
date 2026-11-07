@@ -26,7 +26,24 @@ ALTER TABLE mira_hfm.memory_record_versions
   ADD COLUMN IF NOT EXISTS payload_erased_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS payload_erased_by_actor_id TEXT;
 
-ALTER TABLE mira_hfm.memory_records DROP CONSTRAINT IF EXISTS memory_records_check2;
+DO $
+DECLARE
+  constraint_row RECORD;
+  definition TEXT;
+BEGIN
+  FOR constraint_row IN
+    SELECT conname, pg_get_constraintdef(oid) AS definition
+    FROM pg_constraint
+    WHERE conrelid = 'mira_hfm.memory_records'::regclass AND contype = 'c'
+  LOOP
+    definition := constraint_row.definition;
+    IF definition LIKE '%public_payload%' AND definition LIKE '%encrypted_envelope%'
+       AND definition LIKE '%classification%' THEN
+      EXECUTE format('ALTER TABLE mira_hfm.memory_records DROP CONSTRAINT %I', constraint_row.conname);
+    END IF;
+  END LOOP;
+END;
+$;
 ALTER TABLE mira_hfm.memory_records
   ADD CONSTRAINT memory_records_payload_representation_check CHECK (
     (
@@ -53,7 +70,24 @@ ALTER TABLE mira_hfm.memory_records
     )
   );
 
-ALTER TABLE mira_hfm.memory_record_versions DROP CONSTRAINT IF EXISTS memory_record_versions_check1;
+DO $
+DECLARE
+  constraint_row RECORD;
+  definition TEXT;
+BEGIN
+  FOR constraint_row IN
+    SELECT conname, pg_get_constraintdef(oid) AS definition
+    FROM pg_constraint
+    WHERE conrelid = 'mira_hfm.memory_record_versions'::regclass AND contype = 'c'
+  LOOP
+    definition := constraint_row.definition;
+    IF definition LIKE '%public_payload%' AND definition LIKE '%encrypted_envelope%'
+       AND definition LIKE '%classification%' THEN
+      EXECUTE format('ALTER TABLE mira_hfm.memory_record_versions DROP CONSTRAINT %I', constraint_row.conname);
+    END IF;
+  END LOOP;
+END;
+$;
 ALTER TABLE mira_hfm.memory_record_versions
   ADD CONSTRAINT memory_versions_payload_representation_check CHECK (
     (

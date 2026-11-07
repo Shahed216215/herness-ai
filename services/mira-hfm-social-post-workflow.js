@@ -285,11 +285,13 @@ function sanitizedSourceMetadata(source = {}) {
 }
 
 function sanitizedProvenanceMetadata(provenance = {}) {
-  const methods = new Set(['manual_copy','user_file_import','public_url_preview','internal_generation','unknown']);
-  const verification = new Set(['SOURCE_RECORDED','USER_CONFIRMED','UNVERIFIED','UNKNOWN']);
+  const methods = new Set(['manual_copy','user_file_import','public_url_preview','web_search']);
+  const verification = new Set(['SOURCE_RECORDED','SOURCE_REACHABLE','CONTENT_VERIFIED','HUMAN_VERIFIED']);
   return Object.freeze({
-    collectionMethod: methods.has(provenance.collectionMethod) ? provenance.collectionMethod : 'unknown',
-    verificationStatus: verification.has(provenance.verificationStatus) ? provenance.verificationStatus : 'UNKNOWN',
+    collectionMethod: methods.has(provenance.collectionMethod) ? provenance.collectionMethod : null,
+    capturedAt: typeof provenance.capturedAt === 'string' && Number.isFinite(Date.parse(provenance.capturedAt))
+      ? new Date(provenance.capturedAt).toISOString() : null,
+    verificationStatus: verification.has(provenance.verificationStatus) ? provenance.verificationStatus : null,
     originalPublishedAt: typeof provenance.originalPublishedAt === 'string' && Number.isFinite(Date.parse(provenance.originalPublishedAt))
       ? new Date(provenance.originalPublishedAt).toISOString() : null,
     redactionApplied: provenance.redactionApplied === true
