@@ -98,6 +98,7 @@ const { registerSpecialistRoutes } = require('./routes/specialists');
 const registerLearningHistoryRoutes = require("./routes/learning-history");
 const { registerOpportunityRoutes } = require("./routes/opportunities");
 const registerMiraHfmSocialPostRoutes = require("./routes/mira-hfm-social-posts");
+const registerFacebookKnowledgeRoutes = require("./routes/mira-hfm-facebook-knowledge");
 const { getMemoryWriterPool } = require("./services/mira-hfm-memory-writer-pool");
 const registerClientCommunicationRoutes =
   require("./routes/client-communication");
@@ -2233,6 +2234,10 @@ registerConversationRoutes(
 );
 
 registerMiraHfmSocialPostRoutes(app, requireAgentAuth, {
+  getPool: getMemoryWriterPool
+});
+
+registerFacebookKnowledgeRoutes(app, requireAgentAuth, {
   getPool: getMemoryWriterPool
 });
 
