@@ -1,0 +1,103 @@
+'use strict';
+
+const { retrieveProjectMemory } = require('./mira-hfm-authorized-memory-reader');
+const { extractKnowledgeTitle } = require('./mira-hfm-knowledge-search-runtime');
+
+function fail(code) {
+  const error = new Error(code);
+  error.code = code;
+  throw error;
+}
+
+function hasExplicitReviewIntent(value) {
+  if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
+  const negative = /\b(?:do not|don't|never)\s+(?:show|list|review|inspect)\b/i.test(value) ||
+    /(?:দেখিও\s*না|দেখাবেন\s*না|রিভিউ\s*করো\s*না|পর্যালোচনা\s*করো\s*না)/u.test(value);
+  if (negative) return false;
+  const english = /\b(?:show|list|review|inspect)\b.{0,80}\b(?:pending|unverified|review)\b.{0,80}\b(?:knowledge|source|item|record)s?\b/i.test(value) ||
+    /\b(?:pending knowledge|knowledge review queue|unverified sources)\b/i.test(value);
+  const bengali = /(?:অযাচাইকৃত|যাচাইয়ের\s*জন্য|রিভিউ|পর্যালোচনা).{0,60}(?:জ্ঞান|তথ্য|সোর্স|রেকর্ড)|(?:জ্ঞান|তথ্য|সোর্স).{0,60}(?:রিভিউ|পর্যালোচনা|যাচাইয়ের\s*জন্য)/u.test(value);
+  return english || bengali;
+}
+
+async function listPendingHfmKnowledgeForReview({
+  req, pool, limit = 20, env = process.env, userIntent,
+  now = new Date(), readMemory = retrieveProjectMemory
+} = {}) {
+  if (!hasExplicitReviewIntent(userIntent)) fail('HFM_KNOWLEDGE_REVIEW_EXPLICIT_USER_INTENT_REQUIRED');
+  if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true') {
+    fail('HFM_KNOWLEDGE_REVIEW_STANDING_READ_AUTHORITY_DISABLED');
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+    fail('HFM_KNOWLEDGE_REVIEW_LIMIT_INVALID');
+  }
+  if (!req || !req.session || req.session.authenticated !== true ||
+      req.session.role !== 'admin' || !req.session.hfmPrincipal) {
+    fail('HFM_KNOWLEDGE_REVIEW_VERIFIED_ADMIN_REQUIRED');
+  }
+  const binding = req.session.hfmProjectBinding;
+  if (!binding || binding.verified !== true || typeof binding.projectId !== 'string' || !binding.projectId.trim()) {
+    fail('HFM_KNOWLEDGE_REVIEW_VERIFIED_PROJECT_REQUIRED');
+  }
+  if (!pool || typeof pool.connect !== 'function' || typeof readMemory !== 'function') {
+    fail('HFM_KNOWLEDGE_REVIEW_READ_RUNTIME_REQUIRED');
+  }
+
+  const memory = await readMemory({
+    pool, req, standingReadAuthority: true,
+    recordTypes: ['knowledge_item'], lifecycle: 'PENDING_REVIEW',
+    limit, env, now
+  });
+  if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
+      memory.standingAuthority !== true || memory.approvalRequiredPerRead !== false ||
+      !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
+    fail('HFM_KNOWLEDGE_REVIEW_AUTHORIZED_READ_REQUIRED');
+  }
+  const host = memory.hostAuthorizationContext;
+  if (memory.projectId !== binding.projectId || host.projectId !== binding.projectId ||
+      typeof host.actorId !== 'string' || !host.actorId.startsWith('mira:')) {
+    fail('HFM_KNOWLEDGE_REVIEW_HOST_CONTEXT_INVALID');
+  }
+
+  const items = memory.records
+    .filter(record => record && record.projectId === binding.projectId &&
+      record.recordType === 'knowledge_item' &&
+      record.lifecycle === 'PENDING_REVIEW' &&
+      record.trust?.status === 'SOURCE_RECORDED' &&
+      record.integrity?.status === 'VERIFIED' &&
+      record.access?.classification === 'PROJECT_PRIVATE')
+    .slice(0, limit)
+    .map(record => Object.freeze({
+      id: record.memoryId,
+      title: extractKnowledgeTitle(record),
+      content: record.content.slice(0, 10000),
+      sourceUrl: typeof record.source?.sourceUrl === 'string' ? record.source.sourceUrl : null,
+      createdAt: record.timestamps.createdAt,
+      revision: record.version.revision,
+      trust: record.trust.status,
+      integrity: record.integrity.status,
+      lifecycle: record.lifecycle,
+      eligibleForTrustedSearch: false,
+      requiresHumanReview: true
+    }));
+
+  return Object.freeze({
+    success: true,
+    status: 'REVIEW_REQUIRED',
+    projectId: binding.projectId,
+    count: items.length,
+    items: Object.freeze(items),
+    standingAuthority: true,
+    authorityExpiresAt: memory.authorityExpiresAt || null,
+    approvalRequiredPerRead: false,
+    promotionSupported: false,
+    writeAllowed: false,
+    localFallback: false,
+    driveFallback: false
+  });
+}
+
+module.exports = Object.freeze({
+  hasExplicitReviewIntent,
+  listPendingHfmKnowledgeForReview
+});
