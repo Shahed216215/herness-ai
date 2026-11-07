@@ -35,8 +35,16 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
     env: context.env || process.env
   });
   if (!result || result.status !== "AUTHORIZED_AND_COMMITTED" ||
-      result.standingAuthority !== true || result.localFallback !== false ||
-      result.driveFallback !== false || !Array.isArray(result.results)) {
+      result.standingAuthority !== true ||
+      result.authorityConsumed !== false ||
+      result.approvalRequiredPerRead !== false ||
+      result.memoryWrites !== false ||
+      result.localFallback !== false ||
+      result.driveFallback !== false ||
+      typeof result.projectId !== "string" || !result.projectId ||
+      !Number.isInteger(result.scannedPages) || result.scannedPages < 1 ||
+      typeof result.candidateScanMayBeIncomplete !== "boolean" ||
+      !Array.isArray(result.results)) {
     const error = new Error("HFM Knowledge search did not return an authorized read-only result.");
     error.code = "HFM_KNOWLEDGE_TOOL_AUTHORIZED_READ_REQUIRED";
     throw error;
