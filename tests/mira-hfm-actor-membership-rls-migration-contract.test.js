@@ -63,6 +63,8 @@ test('reader RLS requires memory.read membership and a live standing or consumed
   assert.match(migration, /standing_row\.expires_at > clock_timestamp\(\)/);
   assert.match(migration, /authority_row\.status = 'CONSUMED'/);
   assert.match(migration, /request_id = NULLIF\(current_setting\('mira\.request_id', true\), ''\)/);
+  assert.match(migration, /CREATE POLICY hfm_memory_reader_trashed_social_draft_select[\s\S]*?lifecycle = 'TRASHED'[\s\S]*?record_type = 'social_post_draft'/);
+  assert.match(migration, /lifecycle = 'TRASHED'[\s\S]*?record_type = 'social_post_draft'[\s\S]*?mira\.standing_read_authority/);
 });
 
 test('authority transactions bind project, actor, operation, resource and request ID locally', () => {
