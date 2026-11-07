@@ -86,12 +86,23 @@ async function getHfmKnowledgeById({
       result.localFallback !== false ||
       result.driveFallback !== false ||
       !result.hostAuthorizationContext ||
+      typeof result.projectId !== 'string' || !result.projectId ||
       result.hostAuthorizationContext.projectId !== result.projectId ||
+      result.hostAuthorizationContext.actorType !== 'HUMAN' ||
+      typeof result.hostAuthorizationContext.actorId !== 'string' ||
+      !result.hostAuthorizationContext.actorId.startsWith('mira:') ||
+      typeof result.hostAuthorizationContext.purpose !== 'string' ||
+      !result.hostAuthorizationContext.purpose ||
+      typeof result.hostAuthorizationContext.requestId !== 'string' ||
+      !result.hostAuthorizationContext.requestId ||
       result.hostAuthorizationContext.authorityRef !== result.standingAuthorityId ||
-      result.hostAuthorizationContext.expiresAt !== result.authorityExpiresAt) {
+      result.hostAuthorizationContext.expiresAt !== result.authorityExpiresAt ||
+      !['FOUND', 'NOT_FOUND'].includes(result.recordStatus) ||
+      (result.recordStatus === 'FOUND' && !result.record) ||
+      (result.recordStatus === 'NOT_FOUND' && result.record)) {
     fail('HFM_KNOWLEDGE_AUTHORIZED_EXACT_READ_REQUIRED');
   }
-  if (result.recordStatus !== 'FOUND' || !result.record) {
+  if (result.recordStatus === 'NOT_FOUND') {
     return Object.freeze({
       status: 'AUTHORIZED_AND_COMMITTED',
       projectId: result.projectId,
