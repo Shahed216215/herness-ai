@@ -55,11 +55,15 @@ async function createOwnedProject(options = {}) {
         throw fail('HFM_PROJECT_ID_ALREADY_OWNED');
       }
       const membership = await client.query(
-        "SELECT membership_id, status FROM mira_hfm.project_memberships WHERE project_id = $1 AND actor_id = $2",
+        "SELECT membership_id, status, permissions FROM mira_hfm.project_memberships WHERE project_id = $1 AND actor_id = $2",
         [projectId, actor.actorId]
       );
       if (!membership.rows?.[0] || membership.rows[0].status !== 'ACTIVE') {
         throw fail('HFM_PROJECT_MEMBERSHIP_REPAIR_REQUIRED');
+      }
+      const requiredOperations = ['memory.read','memory.write','memory.update','memory.trash','memory.restore'];
+      if (!requiredOperations.every(operation => Array.isArray(membership.rows[0].permissions?.operations) && membership.rows[0].permissions.operations.includes(operation))) {
+        throw fail('HFM_PROJECT_PERMISSION_REPAIR_REQUIRED');
       }
       await client.query('COMMIT');
       open = false;
