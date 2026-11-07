@@ -2,6 +2,8 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   validateClientVaultPayload,
   validateFinancialVaultPayload,
@@ -93,4 +95,21 @@ test('financial vault payload values must be present in the current user message
   const intent = 'Save this financial transaction to the vault: TXN-1042, invoice INV-1042, Example Client, 1200 BDT, 2026-11-07, mobile_money, account ending 1234, paid.';
   assert.equal(isVaultPayloadPresentInUserIntent(intent, canonical), true);
   assert.equal(isVaultPayloadPresentInUserIntent(intent, { ...canonical, amount: 1400 }), false);
+});
+
+test('migration 018 requires separate one-time memory.vault.write authority for RESTRICTED vault rows', () => {
+  const migration = fs.readFileSync(
+    path.join(__dirname, '..', 'migrations/hfm/018_restricted_vault_write_authority.sql'),
+    'utf8'
+  );
+  assert.match(migration, /memory\.vault\.write/);
+  assert.match(migration, /classification = 'RESTRICTED'/);
+  assert.match(migration, /record_type IN \('client_vault_record', 'financial_vault_record'\)/);
+  assert.match(migration, /lifecycle = 'PENDING_REVIEW'/);
+  assert.match(migration, /trust_status = 'SOURCE_RECORDED'/);
+  assert.match(migration, /integrity_status = 'VERIFIED'/);
+  assert.match(migration, /authority_row\.status = 'CONSUMED'/);
+  assert.match(migration, /authority_row\.purpose LIKE 'hfm-vault:%'/);
+  assert.match(migration, /memory_record_versions/);
+  assert.match(migration, /SOURCE-ONLY DRAFT/);
 });
