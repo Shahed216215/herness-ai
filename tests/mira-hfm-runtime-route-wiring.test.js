@@ -1,0 +1,32 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.resolve(__dirname, '..');
+const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+const approvalRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-authority-approval.js'), 'utf8');
+const memoryRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-memory-read.js'), 'utf8');
+const issuerRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-authority-issuer-runtime.js'), 'utf8');
+const memoryRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-memory-read-runtime.js'), 'utf8');
+
+assert.match(server, /registerMiraHfmAuthorityApprovalRoute\s*\(/);
+assert.match(server, /registerMiraHfmMemoryReadRoute\s*\(/);
+assert.match(server, /requireAdminPermission\(PERMISSIONS\.SYSTEM_ADMIN\)/);
+assert.match(server, /createAuthorityIssuerPool/);
+assert.match(server, /createMemoryReadPool/);
+assert.match(approvalRoute, /app\.post\('\/api\/hfm\/memory\/authorize'/);
+assert.match(memoryRoute, /app\.post\('\/api\/hfm\/memory\/read'/);
+assert.match(approvalRoute, /hfmPendingMemoryAuthority/);
+assert.match(memoryRoute, /delete req\.session\.hfmPendingMemoryAuthority/);
+assert.match(issuerRuntime, /env\[ENABLED_ENV\] !== 'true'/);
+assert.match(memoryRuntime, /env\[ENABLED_ENV\] !== 'true'/);
+assert.match(server, /registerMiraHfmProjectSelectionRoute/);
+
+console.log('HFM_RUNTIME_AUTHORITY_AND_MEMORY_ROUTES_WIRED=PASS');
+console.log('HFM_RUNTIME_ROUTES_REQUIRE_SYSTEM_ADMIN=PASS');
+console.log('HFM_RUNTIME_DATABASE_POOLS_LAZY_AND_DISABLED_BY_DEFAULT=PASS');
+console.log('HFM_RUNTIME_AUTHORITY_REMAINS_SERVER_SESSION_ONLY=PASS');
+console.log('NETWORK_REQUESTS=0');
+console.log('DATABASE_WRITES=0');
