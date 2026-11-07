@@ -163,7 +163,7 @@ function baseOptions(overrides = {}) {
   }));
   assert.equal(pendingResult.trust, 'SOURCE_RECORDED');
   assert.equal(pendingResult.lifecycle, 'PENDING_REVIEW');
-  assert.equal(pendingResult.searchable, false);
+  assert.equal(pendingResult.searchEligible, false);
 
   const { executeTool } = require('../tools');
   const previousWriteFlag = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
