@@ -257,7 +257,7 @@ jobs:
           psql -h localhost -U postgres -d neondb -v ON_ERROR_STOP=1 <<'SQL'
           BEGIN;
           SET LOCAL ROLE mira_hfm_memory_reader_login;
-          DO $
+          DO $hfm$
           DECLARE
             denied boolean;
           BEGIN
@@ -300,14 +300,14 @@ jobs:
               denied := true;
             END;
             IF NOT denied THEN RAISE EXCEPTION 'HFM_READER_AUDIT_INSERT_WAS_NOT_DENIED'; END IF;
-          END $;
+          END $hfm$;
           ROLLBACK;
           SQL
 
           psql -h localhost -U postgres -d neondb -v ON_ERROR_STOP=1 <<'SQL'
           BEGIN;
           SET LOCAL ROLE mira_hfm_memory_writer;
-          DO $
+          DO $hfm$
           DECLARE
             denied boolean;
             statement text;
@@ -337,9 +337,8 @@ jobs:
                 RAISE EXCEPTION 'HFM_WRITER_FORBIDDEN_OPERATION_SUCCEEDED: %', statement;
               END IF;
             END LOOP;
-          END $;
+          END $hfm$;
           ROLLBACK;
           SQL
           echo "HFM_V02_READER_WRITER_FORBIDDEN_OPERATION_PROBES=PASS"
           echo "HFM_V02_PROBE_SCOPE=DISPOSABLE_POSTGRESQL_ONLY"
-          SQL
