@@ -182,7 +182,7 @@ async function executeTool(name, args, trustedContext = null) {
     return executeHfmMemorySave("daily_activity_save", args, trustedContext);
   }
   if (hfmMemoryMode && /^(memory|knowledge|learning|daily_activity)_/.test(String(name || ""))) {
-    const error = new Error("Legacy Memory, Knowledge, and Learning storage is disabled in HFM mode; unsupported operations fail closed without local or Drive fallback.");
+    const error = new Error("Legacy Memory, Knowledge, Learning, and daily activity storage is disabled in HFM mode unless routed through the canonical HFM writer; unsupported operations fail closed without local or Drive fallback.");
     error.code = "HFM_LEGACY_STORAGE_DISABLED";
     throw error;
   }
