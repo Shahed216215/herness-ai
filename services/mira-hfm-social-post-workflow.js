@@ -270,7 +270,8 @@ async function deleteSocialPostPayload(options = {}) {
   const operation = await beginOperation(client, context, memoryId, OPERATIONS.DELETE, options.idempotencyKey);
   if (operation.duplicate) return { status: 'DELETED', duplicate: true, memoryId };
   const current = await getStateRow(client, context.projectId, memoryId);
-  nextSocialPostStatus(current && current.status, 'DELETE');
+  const pendingStatus = nextSocialPostStatus(current && current.status, 'DELETE');
+  await updateStatus(client, context, memoryId, pendingStatus);
 
   await client.query("SELECT set_config('mira.memory_payload_erasure_operation_id', $1, true)", [operation.operationId]);
   const versions = await client.query(
