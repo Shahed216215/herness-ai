@@ -47,6 +47,8 @@ const runtime = read('services/mira-hfm-work-learning-runtime.js');
 assert.match(planner, /process\.env\.MIRA_HFM_WORK_LEARNING_ENABLED === "true"/);
 assert.match(planner, /HFM_WORK_LEARNING_RUNTIME_REQUIRED/);
 assert.match(planner, /HFM_WORK_LEARNING_PREFLIGHT_REQUIRED/);
+assert.match(planner, /HFM_WORK_LEARNING_PREFLIGHT_INVALID/);
+assert.ok(planner.indexOf("HFM_WORK_LEARNING_PREFLIGHT_INVALID") < planner.indexOf("await understandTask("));
 assert.ok(planner.indexOf("await options.preflightWorkLearning()") < planner.indexOf("await understandTask("));
 assert.match(planner, /options\.useHfmWorkLearning === true\s*\? \[\]/);
 assert.match(planner, /options\.useHfmWorkLearning === true\s*\?/);
