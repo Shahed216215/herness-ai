@@ -516,3 +516,25 @@ The workflow was changed so `render-live-http-smoke` runs only on explicit `work
 - PR #79: open; not merged.
 - Facebook API actions: none.
 - HFM release: v0.2 only. No v0.3 work started.
+
+
+## 2026-11-07 live deployment and database identity checkpoint
+
+Read-only inspection of Render service `mira-ai-agent` (`srv-daqcbs8jo6nc73duiqag`) confirms: repository `Shahed216215/herness-ai`, deploy branch `main`, auto-deploy on commit, Free plan, URL `https://mira-ai-agent-2pfh.onrender.com`. Latest live deploy remains commit `881a1deebf5d97a7590aa2b14242a8f32aadf627`. The HFM clean-integration branch is not configured as this service's deploy branch.
+
+The Render service inspection response does not expose environment variable values or a secret-safe resolved Neon project/branch identity. Therefore the service-to-Neon mapping remains **INCONCLUSIVE**; no database URL or secret was retrieved or printed, and no Render environment value was changed.
+
+Read-only Neon inspection confirms the default branch of project `steep-grass-38696226` has the eight-table HFM baseline with RLS and FORCE RLS enabled on every table and zero rows in the owner, membership, Memory, operation-authority, and audit/registry tables. The dedicated migration-candidate branch `br-sparkling-dew-a19hib3f` has the same baseline and zero rows. The separate staging branch `br-lingering-dawn-a18x6pxx` is non-empty (3 owners, 3 memberships, 1 Memory record, 1 operation authority, 3 authority audit events, 1 operation-registry row, and 1 Memory version); it must not be used for one-time bootstrap migration 013.
+
+Migration source review also found migrations 016–018, while the lineage document's canonical list stops at 015 and the disposable PostgreSQL workflow currently attempts 001–018. This is an unresolved release-contract mismatch. The current clean-integration HEAD `c23995c54928f7d6e318c9ea7656713542cc27d3` has seven observed CI workflows PASS, but the PostgreSQL migration-chain workflow was not present in the current commit's workflow-run listing. Latest-head migration-chain evidence is therefore **NOT_VERIFIED**.
+
+### Release disposition
+
+- Existing main deployment: LIVE; unchanged.
+- HFM clean-integration branch: not deployed.
+- Render-to-Neon identity: INCONCLUSIVE.
+- Migrations 010–018 on live Neon: NOT_APPLIED / NOT_APPROVED.
+- Migration 013 on staging branch: NOT_APPLICABLE; preserve existing rows.
+- Latest-head disposable migration-chain CI: NOT_VERIFIED.
+- HFM runtime flags/secrets: unchanged and not verified as configured.
+- HFM v0.2 production deployment: BLOCKED pending exact database identity, migration-lineage reconciliation, migration-chain CI on current HEAD, role/privilege compatibility review, and explicit approval for live database/configuration changes.
