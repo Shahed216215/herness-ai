@@ -10,7 +10,7 @@ function fail(code) {
   throw error;
 }
 function queryTerms(value) {
-  return new Set(String(value || '').toLowerCase().match(/[\\p{L}\\p{N}][\\p{L}\\p{N}_-]{1,}/gu) || []);
+  return new Set(String(value || '').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}_-]{1,}/gu) || []);
 }
 function scoreRecord(query, record) {
   const tokens = queryTerms(query);
