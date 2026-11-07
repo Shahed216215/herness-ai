@@ -168,3 +168,14 @@ These are synthetic/offline or disposable-CI results. They are not live Neon or 
 - Direct legacy save-tool entry points return a fail-closed router-required response in HFM mode. The central tool router is the only HFM write path; Local JSON and Google Drive are never used as fallback.
 - All changes remain branch-only. Feature flags are disabled by default. No live database write, migration application, Render environment change, or deployment is implied.
 
+
+## Latest read-only live topology snapshot — 2026-11-07
+
+- Neon project `steep-grass-38696226`, production branch `br-crimson-sun-a13xzreh`: 8 baseline `mira_hfm` tables, 4 baseline issuer/writer roles, and zero owner, membership, authority, or Memory rows. The 010–014 reader/issuer-hardening/nonce/bootstrap/standing-authority migrations are not applied.
+- Neon branch `mira-hfm-prod-migration-candidate` (`br-sparkling-dew-a19hib3f`): 8 tables, 4 roles, and empty owner/membership/authority/Memory registries. This is an isolated candidate only; no migration or bootstrap write has been performed.
+- Neon branch `mira-hfm-test` (`br-lingering-dawn-a18x6pxx`): 9 tables including `memory_social_post_state`, 7 HFM roles, 3 owner rows, 3 membership rows, 1 authority row, and 1 Memory row. Preserve this branch's data; Migration 013's empty-registry precondition is not met. The Memory payload was not read; provenance remains uncertified.
+- A second Neon project with the same project name exists (`fancy-wave-81945737`), so the Render-to-Neon production target must be explicitly resolved before any runtime credential or environment change.
+- Render service `mira-ai-agent` remains on `main` with Auto Deploy enabled. Its last observed live deployment is commit `881a1deebf5d97a7590aa2b14242a8f32aadf627`. No HFM environment variables, secrets, feature flags, service settings, or deployments were changed during this work.
+
+This is read-only topology evidence only. It does not authorize applying migrations, creating owner/membership data, provisioning login credentials, enabling HFM flags, merging PR #79, or deploying.
+
