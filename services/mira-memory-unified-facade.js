@@ -119,18 +119,15 @@ function retrieveCanonicalRecordsWithReport({
 
   const quarantined = conflictIds(pendingConflicts, projectId);
   const eligible = [];
-  let excludedCount = 0;
   for (const record of records) {
     if (!record || typeof record !== 'object' || Array.isArray(record) ||
         !validateCanonicalRecord(record).valid) {
-      excludedCount += 1;
       continue;
     }
     if (record.lifecycle !== 'ACTIVE' ||
         !ELIGIBLE_INTEGRITY.has(record.integrity?.status) ||
         !TRUSTED_STATES.has(record.trust?.status) ||
         quarantined.has(record.memoryId)) {
-      excludedCount += 1;
       continue;
     }
     eligible.push(record);
@@ -173,8 +170,8 @@ function retrieveCanonicalRecordsWithReport({
     provenance: Object.freeze(provenance),
     excludedSummary: Object.freeze({
       totalCandidates: records.length,
-      eligibleCount: eligible.length,
-      excludedCount,
+      eligibleCount: scoped.length,
+      excludedCount: records.length - scoped.length,
       requestDenied: false
     })
   });
