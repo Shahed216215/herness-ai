@@ -13,11 +13,17 @@ const runtime = read('services/mira-hfm-work-learning-runtime.js');
 
 assert.match(planner, /process\.env\.MIRA_HFM_WORK_LEARNING_ENABLED === "true"/);
 assert.match(planner, /HFM_WORK_LEARNING_RUNTIME_REQUIRED/);
+assert.match(planner, /HFM_WORK_LEARNING_PREFLIGHT_REQUIRED/);
+assert.ok(planner.indexOf("await options.preflightWorkLearning()") < planner.indexOf("await understandTask("));
 assert.match(planner, /options\.useHfmWorkLearning === true\s*\? \[\]/);
 assert.match(planner, /options\.useHfmWorkLearning === true\s*\?/);
 assert.match(planner, /buildExperienceGuidance\(task, options\)/);
 assert.match(planner, /options\.hfmWorkLearning/);
 assert.match(execution, /retrieveHfmWorkLearning/);
+assert.match(execution, /retrieveProjectMemory/);
+assert.match(execution, /preflightWorkLearning = async/);
+assert.match(execution, /HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED/);
+assert.match(execution, /readMemory: async \(\) => preflight/);
 assert.match(execution, /HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED/);
 assert.match(execution, /options\.hfmRequest/);
 assert.match(execution, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== "true"/);
