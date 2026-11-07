@@ -1,7 +1,7 @@
 'use strict';
 
 // Internal server-side adapter for HFM v0.2 project Memory retrieval.
-// The caller must supply a server-held, previously issued one-time authority grant.
+// Retrieval requires either a server-held one-time grant or an active database-backed standing read grant.
 // HTTP/model arguments are never accepted as actor or project identity.
 
 const { buildTrustedProjectContext } = require('./mira-hfm-project-binding-context');
