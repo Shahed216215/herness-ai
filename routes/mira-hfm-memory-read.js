@@ -114,7 +114,8 @@ function registerMiraHfmMemoryReadRoute(
           });
         } catch (error) {
           const code = typeof error?.code === 'string' ? error.code : 'HFM_MEMORY_READ_FAILED';
-          const status = /TRUSTED_PROJECT|AUTHORITY_GRANT|STANDING_READ_SCOPE|RECORD_TYPE/.test(code) ? 403 : 503;
+          const status = code === 'HFM_MEMORY_PAGE_CURSOR_INVALID' ? 400 :
+            (/TRUSTED_PROJECT|AUTHORITY_GRANT|STANDING_READ_SCOPE|RECORD_TYPE/.test(code) ? 403 : 503);
           return res.status(status).json({ success: false, error: code });
         }
       };
