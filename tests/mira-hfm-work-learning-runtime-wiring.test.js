@@ -254,6 +254,10 @@ console.log('HFM_GENERIC_KNOWLEDGE_SEARCH_AND_CHAT_USE_STANDING_READ=PASS');
 
 const { createContentHash } = require('../services/mira-hfm-record-schema');
 const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-runtime');
+const { verifyEvolutionState } = require('../knowledge-memory-evolution');
+const legacyEvolution = read('knowledge-memory-evolution.js');
+assert.match(legacyEvolution, /function readJsonFile\(filePath\) \{\s*assertLegacyStorageDisabled\(\);/);
+assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*assertLegacyStorageDisabled\(\);/);
 (async () => {
   const now = new Date().toISOString();
   const content = 'Verified Python automation research and reproducible testing notes.';
@@ -323,6 +327,18 @@ const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-ru
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'false' }
   }), error => error.code === 'HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED');
   console.log('HFM_KNOWLEDGE_SEARCH_RETRIEVES_ONLY_AUTHORIZED_ELIGIBLE_RECORDS=PASS');
+  const oldEvolutionFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+  try {
+    const blockedEvolutionRead = await verifyEvolutionState('knowledge');
+    assert.equal(blockedEvolutionRead.ok, false);
+    assert.equal(blockedEvolutionRead.status, 'integrity_check_failed');
+    assert.match(blockedEvolutionRead.error, /HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE/);
+  } finally {
+    if (oldEvolutionFlag === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldEvolutionFlag;
+  }
+  console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_EVOLUTION_LOCAL_AND_DRIVE_STATE=PASS');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
