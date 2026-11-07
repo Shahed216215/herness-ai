@@ -62,8 +62,15 @@ BEGIN
     RAISE EXCEPTION 'HFM_AUTHORITY_ISSUER_POLICY_NAME_COLLISION';
   END IF;
 
-  IF EXISTS (
-    SELECT 1 FROM pg_policies
+  DECLARE
+    unexpected_policies text;
+  BEGIN
+    SELECT string_agg(
+      tablename || '/' || policyname || ':' || array_to_string(roles, ','),
+      ';' ORDER BY tablename, policyname
+    )
+    INTO unexpected_policies
+    FROM pg_policies
     WHERE schemaname = 'mira_hfm'
       AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events')
       AND 'mira_hfm_authority_issuer' = ANY(roles)
@@ -74,10 +81,11 @@ BEGIN
         'authority_issuer_audit_insert',
         'authority_issuer_owner_insert',
         'authority_issuer_membership_insert'
-      )
-  ) THEN
-    RAISE EXCEPTION 'HFM_AUTHORITY_ISSUER_UNEXPECTED_POLICY_CONFLICT';
-  END IF;
+      );
+    IF unexpected_policies IS NOT NULL THEN
+      RAISE EXCEPTION 'HFM_AUTHORITY_ISSUER_UNEXPECTED_POLICY_CONFLICT: %', unexpected_policies;
+    END IF;
+  END;
 
   IF EXISTS (
     SELECT 1 FROM pg_class c
