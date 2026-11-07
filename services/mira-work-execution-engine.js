@@ -39,7 +39,6 @@ const {
 
 const { retrieveHfmWorkLearning } = require("./mira-hfm-work-learning-runtime");
 const { preflightHfmStandingRead } = require("./mira-hfm-work-preflight");
-const { retrieveProjectMemory } = require("./mira-hfm-authorized-memory-reader");
 
 /*
  * Stage 5.4
@@ -1278,7 +1277,6 @@ async function executeWork(
       persist: options.persist !== false
     };
     if (hfmWorkLearningEnabled) {
-      const hfmRuntime = hfmMemoryReadRuntime;
       plannerOptions.preflightWorkLearning = async () => hfmStandingReadPreflight;
       plannerOptions.retrieveWorkLearning = async ({ task, preflight }) =>
         retrieveHfmWorkLearning({
