@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const { getKnowledge } = require("../knowledge");
 const { loadKnowledgeFromDrive } = require("../google-drive");
 
@@ -36,6 +37,7 @@ module.exports = {
   },
 
   execute: async ({ query }) => {
+    assertLegacyStorageDisabled();
     const searchQuery = normalize(query);
 
     if (!searchQuery) {
