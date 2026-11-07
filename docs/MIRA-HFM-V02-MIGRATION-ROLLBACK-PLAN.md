@@ -2,7 +2,7 @@
 
 **Status:** DESIGN ONLY — NOT EXECUTED  
 **Target:** HFM v0.2  
-**Scope:** migrations 002, 006, 010–014; Render runtime integration  
+**Scope:** migrations 002, 006, 010–015; Render runtime integration  
 **Safety boundary:** no production migration, database write, role change, environment mutation, deployment, or restore is authorized by this document.
 
 ## 1. Current rollback baseline
@@ -10,7 +10,7 @@
 - The inspected HFM production-candidate branch in Neon project `steep-grass-38696226` has the eight-table HFM baseline with RLS and FORCE RLS enabled. Its owner, membership, operation-authority, and Memory registries were empty at the last read-only inspection.
 - The separate staging branch `br-lingering-dawn-a18x6pxx` is **not empty**: it has one owner, one membership, one Memory record, and two authority audit events. Preserve those rows. Migration 013 must not be run against that branch.
 - The second same-name Neon project `fancy-wave-81945737` has no `mira_hfm` schema on its inspected production branch. Render's active `DATABASE_URL` target is not observable through the available service-inspection surface. The exact deployment database must be identified before any migration.
-- Migrations 010–014 remain source-only. Migration 002 and the project-selection Migration 006 remain separate approval gates. No HFM runtime flags have been enabled on Render.
+- Migrations 010–015 remain source-only. Migration 015 adds restrictive actor/membership/operation/authority scope to the writer and reader roles; it requires exact-target policy/role compatibility review before any separately approved application. Migration 002 and the project-selection Migration 006 remain separate approval gates. No HFM runtime flags have been enabled on Render.
 - There are no approved in-place down migrations. This plan deliberately does not provide executable DROP/DELETE/role-reset SQL.
 
 ## 2. Mandatory pre-migration recovery point
@@ -38,6 +38,7 @@ Before any separately approved production or staging migration:
 | 012 — approval nonce registry | New nonce table, indexes, RLS/policies, grants | Preserve all nonce rows, including consumed/replayed/expired evidence. Disable approval issuance/consumption before any rollback. Do not drop the table or truncate nonce history if tokens have ever been issued. Prefer retaining the table with runtime access revoked. |
 | 013 — one-time bootstrap latch | New latch table, bootstrap role/policies, initial owner/membership/audit inserts | Irreversible after bootstrap. Never delete the latch, owner, membership, or audit event to simulate rollback. The migration is not applicable to the inspected non-empty staging branch. If bootstrap has occurred, recover by forward repair or isolated snapshot restore with explicit approval; never re-run bootstrap. |
 | 014 — 365-day standing read authority | New authority table, indexes, RLS, lifecycle/audit triggers, audit policy changes | Disable standing-read and Work Learning flags first. Preserve all standing-authority rows and append-only audit events. Do not delete grants or audit history. If the runtime must be withdrawn, revoke the runtime's exact privileges after stopping sessions; retain the table and audit evidence. |
+| 015 — actor/membership/operation RLS | Replaces named reader/writer policies with RESTRICTIVE actor-bound policies; no tables or grants added | Source-only. If approved and later retired, stop reader/writer traffic first. Do not restore broad project-only policies. Any policy replacement must be reviewed against the exact pre-migration snapshot and least-privilege matrix; preserve all records and audit history. |
 
 ## 4. Runtime rollback sequence
 
@@ -80,7 +81,7 @@ This plan does not authorize execution. Separate explicit approval is required f
 
 - exact Neon project/branch selection;
 - applying 002 or 006;
-- applying 010–014;
+- applying 010–015;
 - any role/grant/policy change;
 - bootstrap or production data write;
 - Render environment/secret changes or flag enablement;
@@ -91,7 +92,7 @@ This plan does not authorize execution. Separate explicit approval is required f
 - Rollback design: **PREPARED — DESIGN ONLY**
 - Pre-migration snapshot: **NOT_CREATED / NOT_VERIFIED**
 - Restore rehearsal: **NOT_RUN**
-- Production migrations 010–014: **NOT_APPLIED**
+- Production migrations 010–015: **NOT_APPLIED**
 - Render HFM runtime: **NOT_CONFIGURED / NOT_VERIFIED**
 - Production deployment: **NOT_APPROVED**
 
