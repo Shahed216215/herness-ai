@@ -1162,6 +1162,7 @@ async function executeWork(
   const startedAt = now();
 
   let planning;
+  let hfmToolContext = null;
   const hfmWorkLearningEnabled = process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
 
   if (hfmWorkLearningEnabled && options.plan && typeof options.plan === "object") {
@@ -1198,6 +1199,11 @@ async function executeWork(
           !hfmRuntime.pool || typeof hfmRuntime.pool.connect !== "function") {
         throw new Error("HFM_WORK_LEARNING_MEMORY_READER_NOT_READY");
       }
+      hfmToolContext = Object.freeze({
+        req: options.hfmRequest,
+        pool: hfmRuntime.pool,
+        env: process.env
+      });
       plannerOptions.preflightWorkLearning = async () => {
         const memory = await retrieveProjectMemory({
           pool: hfmRuntime.pool,
@@ -1572,7 +1578,14 @@ async function executeWork(
         await runTool(
           call.name,
           call.args,
-          options.trustedContext || null
+          hfmToolContext
+            ? {
+                ...(options.trustedContext && typeof options.trustedContext === "object"
+                  ? options.trustedContext
+                  : {}),
+                hfmReadOnly: hfmToolContext
+              }
+            : options.trustedContext || null
         );
     } catch (error) {
       const failure =
