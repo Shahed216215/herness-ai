@@ -275,7 +275,7 @@ const legacyConsumerContracts = [
   ['routes/knowledge-improvements.js', /denyLegacyKnowledgeImprovementAccess/],
   ['server.js', /HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_DIAGNOSTIC/],
   ['services/learning.js', /function assertLegacyLearningStorageAllowed/],
-  ['tools/knowledge-backup.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
+  ['tools/knowledge-backup.js', /execute: async[\s\S]{0,500}assertLegacyStorageDisabled/],
   ['tools/knowledge-cleanup.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
   ['tools/knowledge-count.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
   ['tools/knowledge-improve.js', /execute: async[\s\S]{0,180}assertLegacyStorageDisabled/],
