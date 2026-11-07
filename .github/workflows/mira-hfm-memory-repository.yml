@@ -6,6 +6,14 @@ on:
       - work/hfm-memory-core-implementation-20261106
     paths:
       - "services/mira-hfm-memory-repository.js"
+      - "services/mira-hfm-social-post-workflow.js"
+      - "migrations/hfm/006_social_post_manual_publish_payload_erasure.sql"
+      - "tests/mira-hfm-social-post-workflow.test.js"
+      - "tests/mira-hfm-social-post-erasure-migration-contract.test.js"
+      - "services/mira-hfm-social-post-workflow.js"
+      - "migrations/hfm/006_social_post_manual_publish_payload_erasure.sql"
+      - "tests/mira-hfm-social-post-workflow.test.js"
+      - "tests/mira-hfm-social-post-erasure-migration-contract.test.js"
       - "services/mira-hfm-memory-postgres-runtime.js"
       - "migrations/hfm/005_memory_writer_role_and_project_rls.sql"
       - "services/mira-hfm-daily-knowledge-post.js"
@@ -70,6 +78,7 @@ jobs:
           node --check services/mira-hfm-memory-postgres-runtime.js
           node --check services/mira-hfm-daily-knowledge-post.js
           node --check services/mira-hfm-authority-transaction.js
+          node --check services/mira-hfm-social-post-workflow.js
       - name: Run focused Memory repository tests
         run: |
           node tests/mira-hfm-authority-transaction.test.js
@@ -80,5 +89,7 @@ jobs:
           node tests/mira-hfm-daily-knowledge-post.test.js
           node tests/mira-hfm-memory-postgres-runtime.test.js
           node tests/mira-hfm-memory-writer-rls-migration-contract.test.js
+          node tests/mira-hfm-social-post-workflow.test.js
+          node tests/mira-hfm-social-post-erasure-migration-contract.test.js
       - name: Run full repository regression suite
         run: npm test
