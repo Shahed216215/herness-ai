@@ -56,7 +56,9 @@ function writeAudit({
 
 function isHfmReadOnlyMode() {
   return process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-    process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+    process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+    process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+    process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
 }
 
 function denyLegacyKnowledgeImprovementAccess(req, res, operation) {
@@ -65,7 +67,7 @@ function denyLegacyKnowledgeImprovementAccess(req, res, operation) {
     success: false,
     blocked: true,
     code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENTS",
-    reason: `HFM standing authority grants memory.read only; legacy Knowledge improvement ${operation} is unavailable.`
+    reason: `Legacy Knowledge improvement ${operation} is unavailable while HFM Memory mode is active.`
   });
   return true;
 }
