@@ -248,6 +248,31 @@ const pool = { async connect() { return client; } };
   console.log('HFM_STANDING_READ_PAUSED_GRANT_BLOCKS_FUTURE_READS=PASS');
   console.log('HFM_STANDING_READ_DENIAL_IS_AUDITED_OUTSIDE_ROLLED_BACK_READ=PASS');
 
+  standingRow.status = 'ACTIVE';
+  const expiredMembershipStart = readCalls.length;
+  const expiredMembershipClient = {
+    async query(sql, params) {
+      if (sql.startsWith("SELECT (status = 'ACTIVE'")) {
+        readCalls.push({ sql, params });
+        return { rows: [{ membership_valid: false }] };
+      }
+      return readClient.query(sql, params);
+    },
+    release() {}
+  };
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return expiredMembershipClient; } },
+    verifiedPrincipal: req.session.hfmPrincipal,
+    projectId,
+    perform: async () => ({ records: [] })
+  }), error => error.code === 'HFM_MEMBERSHIP_EXPIRED_DURING_OPERATION' &&
+    error.auditStatus === 'RECORDED');
+  assert.ok(readCalls.slice(expiredMembershipStart).some(c =>
+    c.sql.startsWith('INSERT INTO mira_hfm.authority_audit_events') &&
+    c.params?.[3] === 'STANDING_READ_AUTHORITY_DENIED'
+  ), 'membership expiry before commit is classified and audited as a denial');
+  console.log('HFM_STANDING_READ_MEMBERSHIP_EXPIRY_DENIED_AND_AUDITED=PASS');
+
   standingRow.status = 'REVOKED';
   let revokedReadCallbackCalled = false;
   await assert.rejects(() => executeWithStandingReadAuthority({
