@@ -1155,7 +1155,7 @@ function auditExecutionFailure({
   });
 }
 
-async function resolveHfmReadToolContext(options = {}, env = process.env) {
+async function resolveHfmReadToolContext(options = {}, env = process.env, userIntent = '') {
   const workLearningEnabled = env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
   const standingReadEnabled = env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true";
   if (workLearningEnabled && !standingReadEnabled) {
@@ -1181,7 +1181,8 @@ async function resolveHfmReadToolContext(options = {}, env = process.env) {
     toolContext: Object.freeze({
       req: options.hfmRequest,
       pool: runtime.pool,
-      env
+      env,
+      userIntent
     })
   });
 }
@@ -1231,7 +1232,7 @@ async function executeWork(
   // Resolve the read-only tool context for standing-read mode independently
   // of Work Learning. knowledge_search is routed to HFM whenever either
   // read-only flag is enabled and must never lose its server-held context.
-  const hfmReadContext = await resolveHfmReadToolContext(options, process.env);
+  const hfmReadContext = await resolveHfmReadToolContext(options, process.env, input);
   hfmMemoryReadRuntime = hfmReadContext.runtime;
   hfmToolContext = hfmReadContext.toolContext;
 
