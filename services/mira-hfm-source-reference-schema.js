@@ -162,7 +162,7 @@ function buildUserSuppliedSourceReferencePayload(options = {}) {
   const eventId = options.provenanceEventId;
   const retrievedAt = options.retrievedAt || new Date().toISOString();
   const sourceId = 'src-' + crypto.createHash('sha256')
-    .update(canonicalUrl, 'utf8').digest('hex');
+    .update(sourceType + '\u0000' + canonicalUrl, 'utf8').digest('hex');
   const payload = Object.freeze({
     referenceVersion: SOURCE_REFERENCE_VERSION,
     sourceType,
