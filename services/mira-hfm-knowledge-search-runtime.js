@@ -97,8 +97,12 @@ async function getHfmKnowledgeById({
       !result.hostAuthorizationContext.requestId ||
       typeof result.hostAuthorizationContext.issuedAt !== 'string' ||
       !Number.isFinite(Date.parse(result.hostAuthorizationContext.issuedAt)) ||
+      Date.parse(result.hostAuthorizationContext.issuedAt) > now.getTime() ||
       typeof result.hostAuthorizationContext.expiresAt !== 'string' ||
       !Number.isFinite(Date.parse(result.hostAuthorizationContext.expiresAt)) ||
+      Date.parse(result.hostAuthorizationContext.expiresAt) <= now.getTime() ||
+      typeof result.hostAuthorizationContext.authorityRef !== 'string' ||
+      !result.hostAuthorizationContext.authorityRef ||
       result.hostAuthorizationContext.authorityRef !== result.standingAuthorityId ||
       result.hostAuthorizationContext.expiresAt !== result.authorityExpiresAt ||
       !['FOUND', 'NOT_FOUND'].includes(result.recordStatus) ||
