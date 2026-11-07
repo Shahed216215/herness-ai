@@ -179,6 +179,7 @@ function baseOptions(overrides = {}) {
   const memoryRecord = buildCanonicalMemoryRecord({
     projectId: 'project-001', memoryId: 'mem-1234567890abcdef',
     kind: 'memory_save', content: 'Remembered preference.',
+    userIntent: 'Remember this: Remembered preference.',
     now: '2026-11-07T07:00:00.000Z'
   });
   assert.equal(validateCanonicalRecord(memoryRecord).valid, true);
