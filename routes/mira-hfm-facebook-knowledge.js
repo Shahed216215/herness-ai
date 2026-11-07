@@ -122,6 +122,31 @@ function registerFacebookKnowledgeRoutes(app, requireAgentAuth, options = {}) {
     } catch (error) { return sendError(res, error); }
   });
 
+  app.get('/api/hfm/facebook-knowledge/history', requireAgentAuth, async (req, res) => {
+    try {
+      const projectId = text(req.query.projectId);
+      const value = await perform(req, req.query, 'memory.read',
+        'memory:project:' + projectId, PURPOSE.READ,
+        async (client, context) => {
+          const result = await client.query(
+            "SELECT event_type, memory_id, result_status, occurred_at, details FROM mira_hfm.memory_audit_events WHERE project_id = $1 AND actor_id = $2 AND details ->> 'recordType' = 'knowledge_item' ORDER BY event_sequence DESC LIMIT 50",
+            [context.projectId, context.actorId]
+          );
+          return {
+            status: 'FOUND',
+            events: (result.rows || []).map(row => ({
+              eventType: row.event_type,
+              memoryId: row.memory_id,
+              resultStatus: row.result_status,
+              occurredAt: row.occurred_at,
+              revision: row.details && row.details.revision ? row.details.revision : null
+            }))
+          };
+        });
+      return res.json({ ok: true, ...value });
+    } catch (error) { return sendError(res, error); }
+  });
+
   app.get('/api/hfm/facebook-knowledge/:memoryId', requireAgentAuth, async (req, res) => {
     try {
       const memoryId = text(req.params.memoryId, 128);
