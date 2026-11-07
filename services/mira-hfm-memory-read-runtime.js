@@ -115,7 +115,17 @@ const PREFLIGHT_SQL = [
     "AND $1 = ANY(roles)) AS retrieval_policies_present,",
   "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
     "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events','memory_records','standing_read_authorities') " +
-    "AND 'public' = ANY(roles)) AS no_public_retrieval_policies",
+    "AND 'public' = ANY(roles)) AS no_public_retrieval_policies,",
+  "(SELECT count(*) = 5 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
+    "AND policyname IN ('hfm_reader_membership_permission','hfm_reader_consumed_authority_scope'," +
+    "'hfm_reader_consume_exact_authority','hfm_reader_authority_audit_request_scope'," +
+    "'hfm_reader_memory_membership_authority_scope') AND permissive = 'RESTRICTIVE' " +
+    "AND $1 = ANY(roles)) AS reader_actor_scope_policies_present,",
+  "EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
+    "AND tablename = 'memory_records' AND policyname = 'hfm_standing_reader_memory_scope' " +
+    "AND permissive = 'RESTRICTIVE' AND $1 = ANY(roles) " +
+    "AND qual LIKE '%record_type IN%' AND qual LIKE '%integrity_status%' AND qual LIKE '%trust_status%') " +
+    "AS standing_read_scope_policy_present,",
   'FROM pg_roles r WHERE r.rolname = current_user'
 ].join(' ');
 
@@ -127,7 +137,8 @@ const REQUIRED_TRUE = Object.freeze([
   'authorities_select', 'authorities_status_update', 'authorities_consumed_at_update', 'authority_audit_insert',
   'records_select', 'standing_authorities_select', 'audit_sequence_usage',
   'retrieval_rls_forced', 'retrieval_policies_present',
-  'no_public_retrieval_policies'
+  'no_public_retrieval_policies', 'reader_actor_scope_policies_present',
+  'standing_read_scope_policy_present'
 ]);
 
 const REQUIRED_FALSE = Object.freeze([
