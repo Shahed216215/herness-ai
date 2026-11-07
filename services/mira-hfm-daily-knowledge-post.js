@@ -95,6 +95,8 @@ function collectDailySourceRecords(records, projectId, localDate, timeZone) {
     if (!validation.valid) continue;
     if (record.projectId !== projectId ||
         record.lifecycle !== 'ACTIVE' ||
+        record.integrity.status !== 'VERIFIED' ||
+        !['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(record.trust.status) ||
         record.access.classification !== 'PROJECT_PRIVATE' ||
         !['daily_activity', 'learning_note'].includes(record.recordType)) {
       continue;
