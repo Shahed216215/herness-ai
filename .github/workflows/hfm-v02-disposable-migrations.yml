@@ -204,7 +204,8 @@ jobs:
               OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_record_versions', 'DELETE')
               OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_audit_events', 'UPDATE')
               OR has_table_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_audit_events', 'DELETE')
-              OR has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'payload', 'UPDATE')
+              OR has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'public_payload', 'UPDATE')
+              OR has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'encrypted_envelope', 'UPDATE')
               OR has_column_privilege('mira_hfm_memory_writer', 'mira_hfm.memory_records', 'integrity_status', 'UPDATE')
             THEN
               RAISE EXCEPTION 'HFM_WRITER_NEGATIVE_PRIVILEGE_CONTRACT_FAILED';
