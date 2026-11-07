@@ -3,6 +3,7 @@ name: Mira session persistence validation
 on:
   push:
     branches:
+      - main
       - work/mira-session-postgres-staging-20261107
     paths:
       - "server.js"
@@ -21,6 +22,7 @@ on:
       - "tests/mira-supabase-session-store.test.js"
       - "tests/mira-session-http-integration.test.js"
       - "supabase/migrations/**"
+      - ".github/workflows/mira-session-persistence.yml"
 
 permissions:
   contents: read
