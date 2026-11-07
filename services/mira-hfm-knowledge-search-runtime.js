@@ -111,8 +111,6 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
       trust: record.trust.status,
       integrity: record.integrity.status
     }));
-  const candidateScanCount = Number.isInteger(memory.count)
-    ? memory.count : memory.records.length;
   return Object.freeze({
     success: true,
     status: 'AUTHORIZED_AND_COMMITTED',
