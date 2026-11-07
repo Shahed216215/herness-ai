@@ -6,7 +6,7 @@
 
 const { buildTrustedProjectContext } = require('./mira-hfm-project-binding-context');
 const { executeWithConsumedAuthority, executeWithStandingReadAuthority } = require('./mira-hfm-authority-transaction');
-const { listMemoryRecords } = require('./mira-hfm-memory-repository');
+const { listMemoryRecords, getStandingReadMemoryRecord } = require('./mira-hfm-memory-repository');
 
 function fail(code) {
   const error = new Error(code);
@@ -31,6 +31,49 @@ function validateAuthorityGrant(grant) {
     authorityId: grant.authorityId,
     purpose: grant.purpose,
     requestId: grant.requestId
+  });
+}
+
+async function retrieveProjectMemoryRecord(options = {}) {
+  const pool = options.pool;
+  if (!pool || typeof pool.connect !== 'function') {
+    fail('HFM_MEMORY_READ_POOL_REQUIRED');
+  }
+  if (options.standingReadAuthority !== true) {
+    fail('HFM_STANDING_READ_AUTHORITY_REQUIRED');
+  }
+  const projectContext = buildTrustedProjectContext(options.req);
+  if (projectContext.status !== 'PROJECT_CONTEXT_RESOLVED') {
+    fail('HFM_MEMORY_READ_TRUSTED_PROJECT_CONTEXT_REQUIRED');
+  }
+  const projectId = projectContext.project.projectId;
+  const result = await executeWithStandingReadAuthority({
+    pool,
+    verifiedPrincipal: options.req.session.hfmPrincipal,
+    projectId,
+    resource: 'memory:project:' + projectId,
+    perform: (client, context) => getStandingReadMemoryRecord({
+      client,
+      context,
+      memoryId: options.memoryId,
+      recordTypes: options.recordTypes,
+      env: options.env || process.env
+    })
+  });
+  return Object.freeze({
+    status: 'AUTHORIZED_AND_COMMITTED',
+    projectId,
+    recordStatus: result.value.status,
+    record: result.value.record,
+    standingAuthority: true,
+    standingAuthorityId: result.standingAuthorityId,
+    authorityExpiresAt: result.authorityExpiresAt,
+    authorityConsumed: false,
+    hostAuthorizationContext: result.hostAuthorizationContext,
+    approvalRequiredPerRead: false,
+    memoryWrites: false,
+    localFallback: false,
+    driveFallback: false
   });
 }
 
@@ -145,4 +188,4 @@ async function retrieveProjectMemory(options = {}) {
   });
 }
 
-module.exports = Object.freeze({ retrieveProjectMemory, validateAuthorityGrant });
+module.exports = Object.freeze({ retrieveProjectMemory, retrieveProjectMemoryRecord, validateAuthorityGrant });
