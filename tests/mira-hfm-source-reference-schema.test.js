@@ -37,6 +37,7 @@ test('source reference URL canonicalization strips query and fragment and preser
   assert.throws(() => canonicalizeSourceReferenceUrl('https://user:pass@example.com/article'), /HFM_SOURCE_REFERENCE_URL_NOT_ALLOWED/);
   assert.throws(() => canonicalizeSourceReferenceUrl('https://localhost/private'), /HFM_SOURCE_REFERENCE_URL_NOT_ALLOWED/);
   assert.throws(() => canonicalizeSourceReferenceUrl('https://192.168.1.10/private'), /HFM_SOURCE_REFERENCE_URL_NOT_ALLOWED/);
+  assert.throws(() => canonicalizeSourceReferenceUrl('https://example.com/access_token/secret'), /HFM_SOURCE_REFERENCE_URL_CONTAINS_SECRET_PATH/);
 });
 
 test('source reference payload requires explicit not-fetched semantics and server provenance', () => {
@@ -44,6 +45,9 @@ test('source reference payload requires explicit not-fetched semantics and serve
   const mismatch = validateSourceReferencePayload(validPayload({ accessResult: 'AVAILABLE' }));
   assert.equal(mismatch.valid, false);
   assert.ok(mismatch.errors.includes('payload.user_supplied_url_must_not_claim_fetch_result'));
+  const badDate = validateSourceReferencePayload(validPayload({ retrievedAt: '2026-02-30T12:00:00Z' }));
+  assert.equal(badDate.valid, false);
+  assert.ok(badDate.errors.includes('payload.retrievedAt.invalid'));
   const badActor = validateSourceReferencePayload(validPayload({ provenanceActor: 'admin-001' }));
   assert.equal(badActor.valid, false);
   assert.ok(badActor.errors.includes('payload.provenanceActor.invalid'));
