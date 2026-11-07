@@ -28,6 +28,8 @@ function validatePage(page, expected = null) {
   const context = page.hostAuthorizationContext;
   if (typeof page.projectId !== 'string' || !page.projectId ||
       context.projectId !== page.projectId ||
+      page.standingAuthorityId !== context.authorityRef ||
+      page.authorityExpiresAt !== context.expiresAt ||
       typeof context.actorId !== 'string' || !context.actorId.startsWith('mira:') ||
       context.actorType !== 'HUMAN' ||
       typeof context.authorityRef !== 'string' || !context.authorityRef ||
