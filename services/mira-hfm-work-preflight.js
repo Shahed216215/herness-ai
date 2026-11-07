@@ -4,6 +4,7 @@
 // Work planning/model activity. This helper deliberately has no fallback.
 const { retrieveProjectMemory } = require('./mira-hfm-authorized-memory-reader');
 const { compareTimestampToNow } = require('./mira-hfm-timestamp');
+const { collectStandingReadPages, MAX_STANDING_READ_PAGES } = require('./mira-hfm-standing-read-pages');
 
 function fail(code) {
   const error = new Error(code);
@@ -77,7 +78,44 @@ async function preflightHfmStandingRead(options = {}) {
     fail('HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED');
   }
 
-  return result;
+  if (!includeLearning) return result;
+
+  // Work Learning must finish every bounded page authorization before the
+  // planner invokes task understanding/model work. No cursor continuation is
+  // deferred until after model activity.
+  const pages = await collectStandingReadPages({
+    readMemory,
+    firstPage: result,
+    readOptions: {
+      pool,
+      req,
+      standingReadAuthority: true,
+      recordTypes: ['learning_note', 'knowledge_item'],
+      lifecycle: 'ACTIVE',
+      env: options.env || process.env
+    },
+    maxPages: options.maxPages === undefined
+      ? MAX_STANDING_READ_PAGES
+      : options.maxPages,
+    now
+  });
+  if (pages.candidateScanMayBeIncomplete) {
+    fail('HFM_STANDING_READ_PREFLIGHT_SCAN_INCOMPLETE');
+  }
+
+  return Object.freeze({
+    ...result,
+    projectId: pages.projectId,
+    records: pages.records,
+    count: pages.records.length,
+    nextCursor: null,
+    scanStartedAt: pages.scanStartedAt,
+    hostAuthorizationContext: pages.hostAuthorizationContext,
+    pageCount: pages.pageCount,
+    candidateScanCount: pages.candidateScanCount,
+    candidateScanLimit: pages.candidateScanLimit,
+    candidateScanMayBeIncomplete: false
+  });
 }
 
 module.exports = Object.freeze({ preflightHfmStandingRead });
