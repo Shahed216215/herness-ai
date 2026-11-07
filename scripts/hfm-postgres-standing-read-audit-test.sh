@@ -45,3 +45,8 @@ if docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SE
   exit 1
 fi
 echo "HFM_READER_ONE_TIME_AUTHORITY_AUDIT_IS_MEMORY_READ_ONLY=PASS"
+
+# The Node reader must receive exact PostgreSQL microsecond timestamps, not
+# JavaScript Date values truncated to milliseconds.
+docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c 'SELECT 1 / CASE WHEN to_char($2026-11-07T00:00:00.123456Z$::timestamptz AT TIME ZONE $UTC$, $YYYY-MM-DD"T"HH24:MI:SS.US"Z"$) = $2026-11-07T00:00:00.123456Z$ THEN 1 ELSE 0 END'
+echo "HFM_STANDING_READ_DB_TIMESTAMP_SERIALIZATION_MICROSECONDS=PASS"
