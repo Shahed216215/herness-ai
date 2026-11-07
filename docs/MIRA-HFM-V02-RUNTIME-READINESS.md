@@ -445,11 +445,12 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - These are source and CI changes only. No live authority was issued, no feature flag was enabled, and no live database or deployment was changed.
 
 
-## Standing-read preflight coverage across Work flags — 2026-11-07
+## Work Learning preflight and explicit Knowledge Search boundary — 2026-11-07
 
-- Work execution now completes the authenticated standing-read preflight whenever an HFM standing-read runtime is enabled, before task planning, task understanding/model activity, tool-call normalization, or execution. The Work Learning flag controls whether the preflight collects the broader Knowledge/Learning page (`includeLearning=true`) or only the bounded authorization preflight page (`includeLearning=false`).
-- If both HFM standing-read and Work Learning flags are OFF, the read-context resolver returns without opening the HFM runtime, so no unsolicited HFM read occurs. If Work Learning is ON while standing-read is OFF, execution fails closed before planning.
-- The wiring regression was updated to distinguish the two cases: authorization preflight is mandatory for every enabled standing-read work context, while the broader Work Learning retrieval remains feature-flagged.
+- Automatic HFM retrieval for Work planning is controlled by `MIRA_HFM_WORK_LEARNING_ENABLED`. When this flag is ON, the authenticated HFM reader and standing-read authority preflight must complete before task understanding, model/planning activity, tool-call normalization, or execution. The preflight page is reused as the first Work Learning page; every subsequent cursor page is separately authorized and audited.
+- When Work Learning is OFF, resolving the standing-read runtime only prepares server-held context for an explicitly requested `knowledge_search` tool call. It must not issue an unsolicited background Memory read during Work execution. The explicit tool call still performs its own database-backed standing-authority, project/actor, expiry, cursor and RLS checks.
+- If Work Learning is ON while standing-read authority is OFF, execution fails closed before planning. If both read flags are OFF, the resolver does not open the HFM reader runtime.
+- Regression coverage verifies the Work Learning-specific preflight gate, no background read when Work Learning is OFF, fail-closed behavior when required authority is missing, and reuse of the audited first page.
 
 
 ## Standing-read denial-audit RLS scope refinement — 2026-11-07
