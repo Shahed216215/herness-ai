@@ -17,6 +17,7 @@ const projectBinding = read("services/mira-hfm-project-binding-context.js");
 const projectSelectionRoute = read("routes/mira-hfm-project-selection.js");
 const memoryReadRuntime = read("services/mira-hfm-memory-read-runtime.js");
 const authoritySchema = read("migrations/hfm/001_project_authority_registry.sql");
+const projectReaderMigration = read("migrations/hfm/006_project_selection_read_policy.sql");
 
 // The endpoint is additive and uses lazy, disabled-by-default runtime initialization.
 assert.match(projectBinding, /SERVER_VERIFIED_PROJECT_SELECTION_REQUIRED/);
@@ -57,6 +58,11 @@ assert.match(authoritySchema, /actor_id TEXT NOT NULL/);
 assert.match(authoritySchema, /status TEXT NOT NULL CHECK \(status IN \('ACTIVE', 'REVOKED', 'EXPIRED'\)\)/);
 assert.match(authoritySchema, /valid_from TIMESTAMPTZ NOT NULL/);
 assert.match(authoritySchema, /expires_at TIMESTAMPTZ/);
+assert.match(projectReaderMigration, /REVOKE ALL ON SCHEMA mira_hfm FROM mira_hfm_project_reader/);
+assert.match(projectReaderMigration, /REVOKE ALL ON ALL TABLES IN SCHEMA mira_hfm FROM mira_hfm_project_reader/);
+assert.match(projectReaderMigration, /REVOKE ALL ON ALL SEQUENCES IN SCHEMA mira_hfm FROM mira_hfm_project_reader/);
+assert.match(projectReaderMigration, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA mira_hfm FROM mira_hfm_project_reader/);
+assert.match(projectReaderMigration, /GRANT SELECT ON TABLE mira_hfm\.project_owners, mira_hfm\.project_memberships/);
 console.log("MEMBERSHIP_STATUS_AND_VALIDITY_FIELDS_CONFIRMED=PASS");
 
 console.log("HFM_PROJECT_SELECTION_READINESS_CONTRACT=PASS");
