@@ -4,7 +4,7 @@ module.exports = {
   name: 'knowledge_review_queue',
   declaration: {
     name: 'knowledge_review_queue',
-    description: 'Show private HFM knowledge sources awaiting human review. Use only when the user explicitly asks to show, list, or review pending/unverified knowledge. This queue is not trusted task context and must never be treated as verified facts.',
+    description: 'Show private HFM knowledge sources and learning notes awaiting human review. Use only when the user explicitly asks to show, list, or review pending/unverified knowledge or learning. This queue is not trusted task context and must never be treated as verified facts.',
     parameters: {
       type: 'object',
       properties: {
