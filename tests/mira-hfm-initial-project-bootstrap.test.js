@@ -114,9 +114,9 @@ const pool = { async connect() { return client; } };
   assert.match(migration, /GRANT INSERT ON TABLE/);
   assert.ok(migration.includes('GRANT SELECT, INSERT ON TABLE mira_hfm.bootstrap_registry TO mira_hfm_bootstrap_operator;'));
   assert.doesNotMatch(migration, /GRANT SELECT[^;]+(?:project_owners|project_memberships|authority_audit_events)/i);
-  const grantStatements = migration.match(/\\bGRANT\\b[^;]*;/gi) || [];
+  const grantStatements = migration.match(/\bGRANT\b[^;]*;/gi) || [];
   assert.ok(grantStatements.length >= 4);
-  assert.ok(grantStatements.every(statement => !/\\b(?:UPDATE|DELETE)\\b/i.test(statement)),
+  assert.ok(grantStatements.every(statement => !/\b(?:UPDATE|DELETE)\b/i.test(statement)),
     'bootstrap role must receive no UPDATE or DELETE grant');
   assert.ok(migration.includes("event_type = 'PROJECT_BOOTSTRAPPED'"));
   assert.match(
