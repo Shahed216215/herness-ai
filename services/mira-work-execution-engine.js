@@ -154,6 +154,13 @@ const TOOL_POLICIES = Object.freeze({
     explicitConfirmation: false
   },
 
+  knowledge_review_queue: {
+    operation: "read",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
   learning_save: {
     operation: "file_modify",
     autonomous: true,
