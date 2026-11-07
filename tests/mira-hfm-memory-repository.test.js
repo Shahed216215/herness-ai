@@ -130,6 +130,48 @@ test('private and restricted writes fail closed without explicit classification 
   assert.equal(client.calls.length, 0);
 });
 
+test('restricted client and financial vault records are encrypted before insert with explicit restricted-write capability', async () => {
+  for (const recordType of ['client_vault_record', 'financial_vault_record']) {
+    const client = fakeClient();
+    const memoryId = 'vault-' + recordType;
+    const content = JSON.stringify({
+      fixture: 'restricted-vault-contract',
+      recordType,
+      confidentialValue: 'must-not-be-stored-as-plaintext'
+    });
+    const vaultRecord = record({
+      memoryId,
+      recordType,
+      content,
+      version: { revision: 1, contentHash: createContentHash(content) },
+      access: { classification: 'RESTRICTED', allowedProjectIds: ['project-001'] }
+    });
+    const vaultContext = { ...context, resource: 'memory:' + memoryId };
+    const result = await repository.createMemoryRecord({
+      client,
+      context: vaultContext,
+      record: vaultRecord,
+      idempotencyKey: 'idem-' + recordType,
+      allowRestrictedWrite: true,
+      env
+    });
+    assert.equal(result.status, 'CREATED', recordType);
+    const insert = client.calls.find(call =>
+      call.sql.startsWith('INSERT INTO mira_hfm.memory_records')
+    );
+    assert.ok(insert, recordType + ' insert missing');
+    assert.equal(insert.params[10], null, recordType + ' public payload must be null');
+    assert.equal(typeof insert.params[11], 'string', recordType + ' encrypted envelope missing');
+    assert.equal(insert.params[11].includes('must-not-be-stored-as-plaintext'), false);
+    assert.ok(client.calls.some(call =>
+      call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions')
+    ), recordType + ' immutable version missing');
+    assert.ok(client.calls.some(call =>
+      call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')
+    ), recordType + ' audit event missing');
+  }
+});
+
 test('public memory remains plaintext and searchable without writing an encrypted envelope', async () => {
   const client = fakeClient();
   const publicRecord = record({
