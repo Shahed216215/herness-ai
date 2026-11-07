@@ -138,13 +138,15 @@ async function executeHfmMemorySave(kind, args, trustedContext, save = require("
     source: "HFM_V02_CANONICAL",
     localFallback: false,
     driveFallback: false,
-    message: result.lifecycle === "PENDING_REVIEW"
-      ? "Knowledge or learning source saved privately as pending review; it is excluded from trusted retrieval until verified."
-      : result.recordType === "daily_activity"
-        ? (result.contentRedacted
-          ? "Daily activity saved privately to canonical HFM Memory; obvious sensitive values were redacted."
-          : "Daily activity saved privately to canonical HFM Memory from the exact user-authored summary.")
-        : "Memory saved privately to the canonical HFM repository; eligible for trusted search when standing-read mode is enabled."
+    message: result.recordType === "source_reference"
+      ? "Source reference saved privately as NOT_FETCHED provenance metadata; source content was not fetched or verified and is not trusted search content."
+      : result.lifecycle === "PENDING_REVIEW"
+        ? "Knowledge or learning source saved privately as pending review; it is excluded from trusted retrieval until verified."
+        : result.recordType === "daily_activity"
+          ? (result.contentRedacted
+            ? "Daily activity saved privately to canonical HFM Memory; obvious sensitive values were redacted."
+            : "Daily activity saved privately to canonical HFM Memory from the exact user-authored summary.")
+          : "Memory saved privately to the canonical HFM repository; eligible for trusted search when standing-read mode is enabled."
   });
 }
 
