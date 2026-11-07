@@ -1245,15 +1245,16 @@ async function executeWork(
   hfmMemoryReadRuntime = hfmReadContext.runtime;
   hfmToolContext = hfmReadContext.toolContext;
 
-  // A standing-read flag is a hard pre-planning gate even when Work Learning
-  // is disabled. Reuse the audited snapshot below when Work Learning is on.
+  // Standing-read preflight is required only when Work Learning is enabled.
+  // With that feature OFF, merely configuring the read-only context must not
+  // trigger an unsolicited HFM memory read before task planning.
   let hfmStandingReadPreflight = null;
-  if (hfmMemoryReadRuntime) {
+  if (hfmWorkLearningEnabled && hfmMemoryReadRuntime) {
     hfmStandingReadPreflight = await preflightHfmStandingRead({
       pool: hfmMemoryReadRuntime.pool,
       req: options.hfmRequest,
       env: process.env,
-      includeLearning: hfmWorkLearningEnabled
+      includeLearning: true
     });
   }
 
