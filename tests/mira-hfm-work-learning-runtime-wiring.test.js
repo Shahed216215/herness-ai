@@ -432,6 +432,11 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldToolWork;
   }
   console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_LEARNING_TOOLS=PASS');
+  const oldDirectStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  const oldDirectWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  try {
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
   for (const [toolName, args] of [
     ['knowledge_backup', {}], ['knowledge_cleanup', { action: 'inspect' }],
     ['knowledge_count', {}], ['knowledge_improve', {}],
@@ -454,6 +459,12 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     () => applyKnowledgeImprovementControlled(),
     error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
   );
+  } finally {
+    if (oldDirectStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldDirectStanding;
+    if (oldDirectWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldDirectWork;
+  }
   console.log('HFM_AUTHORITY_MODE_BLOCKS_DIRECT_LEGACY_TOOL_AND_CONTROLLED_APPLY_CALLS=PASS');
   const hfmToolContext = {
     hfmReadOnly: { req: { serverHeld: true }, pool: { connect: async () => ({}) }, env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' } }
