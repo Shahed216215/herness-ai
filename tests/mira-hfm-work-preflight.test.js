@@ -75,6 +75,7 @@ function authorizedResult(overrides = {}) {
   const invalidResults = [
     authorizedResult({ hostAuthorizationContext: { ...context, requestId: '' } }),
     authorizedResult({ hostAuthorizationContext: { ...context, actorType: 'SERVICE' } }),
+    authorizedResult({ hostAuthorizationContext: { ...context, expiresAt: '2026-02-30T12:00:00.000000Z' } }),
     authorizedResult({ authorityExpiresAt: '2027-11-08T00:00:00.000Z' }),
     authorizedResult({ hostAuthorizationContext: { ...context, expiresAt: new Date(Date.now() - 1000).toISOString() } }),
     authorizedResult({ hostAuthorizationContext: { ...context, issuedAt: new Date(Date.now() + 3600000).toISOString() } }),
