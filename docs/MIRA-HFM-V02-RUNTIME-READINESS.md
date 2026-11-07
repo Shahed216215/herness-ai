@@ -64,7 +64,7 @@ Feature flags must remain disabled until database readiness, target mapping, rol
 - Private content hashes are not copied into audit event metadata or retrieval provenance. They remain inside the encrypted canonical record.
 - Project audit hash-chain appends acquire a transaction-scoped advisory lock before reading the previous event hash, serializing concurrent appends within a project.
 
-These controls are covered by focused regression tests. Their exact-head result is pending the current GitHub Actions run.
+These controls passed focused regression tests in the HFM Memory repository contract workflow on code commit `645af36db7a3150d2f53f8570228b93cebab7ba6`: keyed digest determinism/KEK-rotation reconciliation, private digest opacity, audit metadata redaction, and serialized project audit appends. Later branch commits changed documentation only.
 
 ## Required database roles and migration order
 
