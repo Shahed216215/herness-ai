@@ -19,6 +19,11 @@ async function main() {
     return;
   }
 
+  console.log("HFM_NEON_TEST_SCOPE=DATABASE_CONNECTION_AND_TRANSACTION_SMOKE_ONLY");
+  if (!/^[a-z0-9.-]+$/i.test(productionHost) || !productionHost.includes(".")) {
+    throw new Error("PRODUCTION_DATABASE_HOST_INVALID");
+  }
+
   let testEndpoint;
   try {
     testEndpoint = new URL(url);
@@ -90,7 +95,14 @@ async function main() {
     console.log("HFM_NEON_SYNTHETIC_STATE_RECOVERY=PASS");
   } finally {
     if (client && schemaCreated) {
-      try { await client.query("DROP SCHEMA " + quotedSchema + " CASCADE"); } catch (_error) {}
+      try {
+        await client.query("DROP SCHEMA " + quotedSchema + " CASCADE");
+        console.log("HFM_NEON_SYNTHETIC_CLEANUP=PASS");
+      } catch (error) {
+        console.error("HFM_NEON_SYNTHETIC_CLEANUP=FAIL");
+        console.error("CLEANUP_ERROR_CODE=" + String(error.code || "UNKNOWN").slice(0, 32));
+        process.exitCode = 1;
+      }
     }
     if (client) client.release();
     await pool.end();
