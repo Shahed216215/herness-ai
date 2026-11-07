@@ -1,6 +1,6 @@
 # Mira HFM v0.2 — Runtime Integration Readiness
 
-Status: **implementation branch / runtime routes wired / not activated / not production-ready**
+Status: **implementation branch / manual social-draft workflow wired / runtime disabled / not production-ready**
 
 This document records the HFM v0.2 runtime boundary and exact release gates. It does not authorize database migrations, owner or membership provisioning, production environment changes, merge, or Render deployment.
 
@@ -11,16 +11,23 @@ This document records the HFM v0.2 runtime boundary and exact release gates. It 
 - Dedicated project-selection reader and session-bound project-selection route. Actor identity is derived from the authenticated session principal; a project binding is persisted only after active membership is verified.
 - Dedicated Memory retrieval reader. It verifies database identity, login role, role isolation, effective privileges, forced RLS, and required policies before returning a pool.
 - Authorized Memory reader. It derives actor/project from server-held session state, validates a server-held one-time authority, consumes that authority, appends an audit event, and reads eligible Memory in the same transaction.
-- Server-only authority issuer. It can issue only a short-lived, single-use `memory.read` authority after checking active owner/membership and a consumed signed approval.
+- Server-only authority issuer. It supports only short-lived, single-use `memory.read`, `memory.write`, `memory.trash`, and `memory.restore` authorities after checking active owner/membership and a consumed signed approval. Permanent purge is not an allowed operation.
 - HMAC approval-token signer/verifier. It binds project, actor, approver, operation, resource, purpose and expiry; verifies signatures in constant time; and requires atomic nonce redemption.
 - Recent-admin approval service. It requires a stable configured admin subject, fresh authenticated admin session, verified project binding, active owner/membership, explicit confirmation, and a purpose.
 - Persistent approval nonce ledger. Raw HMAC tokens are not stored. Nonces are hashed, scoped, short-lived, single-use and audited on issuance/consumption.
+- One-time initial-project bootstrap route and source-only Migration 010. It creates only the initial owner, matching ADMIN membership, one-time bootstrap latch and audit row in one transaction; it imports no legacy Memory.
+- Daily social-draft generation route. It reads eligible active daily activity/learning notes using a one-time `memory.read` authority, builds a Bangladesh-time-zone daily post, and writes a private `social_post_draft` through a separate one-time `memory.write` authority and dedicated writer transaction.
+- Manual Facebook workflow in the existing Knowledge & Memory section: generate a private draft, copy it with the browser clipboard, manually publish it in Facebook, explicitly confirm publication, and move only that `social_post_draft` to recoverable Neon Trash. No Facebook API publishing or auto-publish path exists. Trash can be listed and restored; it is not a hard delete.
 - Authenticated same-origin HTTP routes:
   - `POST /api/hfm/projects/select`
   - `POST /api/hfm/memory/authorize`
   - `POST /api/hfm/memory/read`
+  - `POST /api/hfm/bootstrap/initial-project`
+  - `POST /api/hfm/social-drafts/generate-daily`
+  - `POST /api/hfm/social-drafts/trash`
+  - `POST /api/hfm/social-drafts/restore`
 - The authorize route stores the resulting grant in the server-side session and never returns the grant or approval token to the browser. The read route removes the session grant before starting retrieval; database authority consumption is independently atomic.
-- Migrations 007, 008 and 009 are source-only drafts for the Memory reader, authority issuer and persistent approval nonce ledger.
+- Migrations 007–010 are source-only drafts for the Memory reader, allowlisted authority issuer, persistent approval nonce ledger and one-time bootstrap role.
 - Synthetic tests cover project selection → authorized Memory retrieval, approval signing/replay protection, admin approval issuance, route authentication/origin checks, server-side grant storage, grant removal, and retrieval flow.
 
 ## Runtime environment variable names
@@ -32,6 +39,7 @@ Values must be supplied only after the target database and role credentials are 
 | Project-selection reader | `MIRA_HFM_PROJECT_READ_ENABLED`, `MIRA_HFM_PROJECT_READ_DATABASE_URL`, `MIRA_HFM_PROJECT_READ_ROLE` |
 | Memory retrieval reader | `MIRA_HFM_MEMORY_READ_ENABLED`, `MIRA_HFM_MEMORY_READ_DATABASE_URL`, `MIRA_HFM_MEMORY_READ_ROLE` |
 | One-time authority issuer | `MIRA_HFM_AUTHORITY_ISSUER_ENABLED`, `MIRA_HFM_AUTHORITY_ISSUER_DATABASE_URL`, `MIRA_HFM_AUTHORITY_ISSUER_ROLE` |
+| One-time bootstrap | `MIRA_HFM_BOOTSTRAP_ENABLED`, `MIRA_HFM_BOOTSTRAP_DATABASE_URL`, `MIRA_HFM_BOOTSTRAP_ROLE` |
 | Signed approval flow | `MIRA_HFM_APPROVAL_TOKEN_SECRET` (minimum 32 bytes) |
 | Memory writer (separate existing path) | `MIRA_HFM_MEMORY_WRITE_ENABLED`, `MIRA_HFM_MEMORY_DATABASE_URL`, `MIRA_HFM_MEMORY_WRITER_ROLE` |
 | Stable admin principal | `MIRA_ADMIN_SUBJECT_ID` |
@@ -43,20 +51,23 @@ Feature flags must remain disabled until database readiness, target mapping, rol
 1. Verify the existing HFM schema and forced-RLS tables on the exact approved target database.
 2. Migration 006 defines the project-selection NOLOGIN group role and its two read-only RLS policies.
 3. Migration 007 defines the separate Memory retrieval NOLOGIN role and its narrowly scoped SELECT / authority-consumption / audit-insert privileges.
-4. Migration 008 defines the separate NOLOGIN authority-issuer role, active owner/membership reads, narrowly scoped Memory-read authority insertion, and append-only issuance/approval audit events.
+4. Migration 008 defines the separate NOLOGIN authority-issuer role, active owner/membership reads, and narrowly scoped insertion for the four allowlisted Memory operations.
+
+6. Migration 010 defines the one-time initial-project bootstrap latch and insert-only owner/membership/audit path. It does not seed or import Memory.
 5. Migration 009 defines the forced-RLS hashed nonce registry. The issuer can SELECT/INSERT scoped nonce rows and update only `consumed_at`; it cannot update nonce identity/scope fields, DELETE, or TRUNCATE.
 6. Separately provision a dedicated LOGIN role for each runtime group role. Each login must inherit only its matching NOLOGIN group role, must not own database objects, and must have no elevated privileges.
 7. Configure the application with the matching dedicated credentials and exact target database. Runtime preflights must verify database identity, role identity, effective privileges, RLS and exact policies before the routes can operate.
 
-Migrations 007, 008 and 009 are source-only drafts. Do not execute them until the target database is unambiguously mapped, a backup/recovery point is confirmed, and explicit staging approval is obtained.
+Migrations 007–010 are source-only drafts. Do not execute them until the target database is unambiguously mapped, a backup/recovery point is confirmed, and explicit staging approval is obtained.
 
 ## Outstanding blockers
 
 - The inspected staging database has no project owner, active membership, or Memory records. Project selection and approval issuance therefore correctly fail closed.
 - The admin HFM subject must be provisioned and match `MIRA_ADMIN_SUBJECT_ID`.
-- Migration 009 is not applied; the persistent nonce table does not yet exist in staging.
-- Dedicated LOGIN credentials for the reader and issuer group roles have not been provisioned.
-- The new HTTP routes are wired but remain disabled because their runtime feature flags are not enabled.
+- Migrations 007–010 are not applied in the inspected staging database; the nonce registry, bootstrap latch and new runtime role grants are not present there.
+- Dedicated LOGIN credentials for the project reader, Memory reader, authority issuer, bootstrap operator and Memory writer have not been provisioned or verified.
+- HFM runtime feature flags and database credentials remain disabled/unconfigured in Render; no live HFM read/write/trash/restore has been verified.
+- The manual social-draft UI is implemented but cannot function against the live service until the database and runtime gates above are completed.
 - The staging-to-Render production Neon target cannot be conclusively mapped while duplicate Neon projects exist. Do not guess which project is production.
 - Legacy Memory and Knowledge consumers remain in service. The retrieval callsite inventory reports REVIEW_REQUIRED; they must be migrated in bounded groups with explicit behavior tests before HFM becomes the source of truth.
 - A successful synthetic test does not prove a live Neon policy, credential, session-store, or Render environment is correct.
@@ -76,7 +87,7 @@ This is structural preflight evidence only. No migration, role creation, grant, 
 
 ## Validation evidence
 
-At the last fully completed workflow head before the current route integration, all 8 applicable workflows passed. The new route and server wiring changes are now being validated by a fresh CI run. Do not treat earlier green checks as evidence for later commits.
+The newest route, UI, writer-preflight and PostgreSQL integration changes are being validated by fresh GitHub Actions workflows. Only checks attached to the exact current PR head may be treated as current evidence. Synthetic/offline tests and disposable PostgreSQL integration tests are not live Neon or Render evidence.
 
 HFM-specific tests are synthetic/offline. No live HFM database write or migration has been performed.
 
