@@ -56,7 +56,12 @@ const verifiedLearning = {
         records: [knowledge, verifiedLearning, pendingLearning],
         count: 3,
         standingAuthority: true,
+        authorityConsumed: false,
         approvalRequiredPerRead: false,
+        memoryWrites: false,
+        localFallback: false,
+        driveFallback: false,
+        scanStartedAt: '2026-11-07T07:59:00.000Z',
         authorityExpiresAt: hostAuthorizationContext.expiresAt,
         hostAuthorizationContext
       };
@@ -85,34 +90,46 @@ const verifiedLearning = {
     ...knowledge,
     memoryId: 'mem-scan-bound-' + String(index).padStart(3, '0')
   }));
-  let requestedCursor = null;
+  const crossPageBestMatch = {
+    ...verifiedLearning,
+    memoryId: 'mem-000-cross-page'
+  };
+  const requestedCursors = [];
   const boundedScan = await searchHfmKnowledge({
     req: { session: { hfmPrincipal: { verified: true } } },
     pool: { connect: async () => ({}) },
     query: 'Python automation',
-    limit: 5,
+    limit: 1,
     cursor: 'opaque-page-cursor',
     now,
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
     readMemory: async options => {
-      requestedCursor = options.cursor;
+      requestedCursors.push(options.cursor || null);
+      const first = options.cursor === 'opaque-page-cursor';
       return {
         status: 'AUTHORIZED_AND_COMMITTED',
         projectId,
-        records: manyRecords,
-        count: 100,
-        nextCursor: 'opaque-next-page',
+        records: first ? manyRecords : [crossPageBestMatch],
+        count: first ? 100 : 1,
+        nextCursor: first ? 'opaque-next-page' : null,
         standingAuthority: true,
+        authorityConsumed: false,
         approvalRequiredPerRead: false,
+        memoryWrites: false,
+        localFallback: false,
+        driveFallback: false,
+        scanStartedAt: '2026-11-07T07:59:00.000Z',
         hostAuthorizationContext
       };
     }
   });
-  assert.equal(requestedCursor, 'opaque-page-cursor');
-  assert.equal(boundedScan.candidateScanCount, 100);
-  assert.equal(boundedScan.candidateScanLimit, 100);
-  assert.equal(boundedScan.nextCursor, 'opaque-next-page');
-  assert.equal(boundedScan.candidateScanMayBeIncomplete, true);
+  assert.deepEqual(requestedCursors, ['opaque-page-cursor', 'opaque-next-page']);
+  assert.equal(boundedScan.candidateScanCount, 101);
+  assert.equal(boundedScan.candidateScanLimit, 2000);
+  assert.equal(boundedScan.scannedPages, 2);
+  assert.equal(boundedScan.results[0].id, 'mem-000-cross-page');
+  assert.equal(boundedScan.nextCursor, null);
+  assert.equal(boundedScan.candidateScanMayBeIncomplete, false);
   console.log('HFM_KNOWLEDGE_SEARCH_DISCLOSES_FULL_PAGE_SCAN_LIMIT=PASS');
 
   await assert.rejects(() => searchHfmKnowledge({
