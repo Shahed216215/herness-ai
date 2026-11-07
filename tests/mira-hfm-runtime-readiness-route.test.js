@@ -61,6 +61,7 @@ test('runtime readiness endpoint labels configuration-only result and does not c
   routes[0].handlers[1]({ role: 'admin' }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.diagnostic, 'CONFIGURATION_ONLY');
+  assert.equal(res.body.runtimeReady, false);
   assert.equal(res.body.databaseConnectivity, 'NOT_TESTED');
   assert.equal(res.body.productionReadiness, 'NOT_CERTIFIED');
 });
