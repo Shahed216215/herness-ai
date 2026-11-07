@@ -75,7 +75,9 @@ assert.ok(serverSource.includes("trustedContext: buildTrustedActorContext(req)")
 assert.ok(serverSource.includes("MIRA_ADMIN_SUBJECT_ID"));
 assert.ok(serverSource.includes("req.session.hfmPrincipal"));
 assert.ok(read("services/mira-memory-host-identity-contract.js").includes("normalizeTrustedActorIdentity"));
-assert.ok(read("services/mira-work-execution-engine.js").includes("options.trustedContext || null"));
+const executionSource = read("services/mira-work-execution-engine.js");
+assert.ok(executionSource.includes("hfmReadOnly: hfmToolContext"));
+assert.ok(executionSource.includes("options.trustedContext || null"));
 assert.ok(read("services/tool-runner.js").includes("executeTool(name, args, trustedContext)"));
 assert.ok(read("tools/index.js").includes("tools[name].execute(args, trustedContext)"));
 console.log("AUTH_BOUNDARY_TO_CANONICAL_IDENTITY_AND_TOOL_DISPATCH=PASS");
