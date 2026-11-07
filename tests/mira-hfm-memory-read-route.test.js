@@ -57,11 +57,11 @@ function response() {
 }
 async function invoke(req, runtime = async () => ({
   status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) }
-})) {
+}), readMemory = fakeReadMemory, env = process.env) {
   let captured;
   const res = response();
   const app = { post(_path, middleware, handler) { captured = { middleware, handler }; } };
-  registerMiraHfmMemoryReadRoute(app, runtime, (_req, _res, next) => next(), fakeReadMemory);
+  registerMiraHfmMemoryReadRoute(app, runtime, (_req, _res, next) => next(), readMemory, env);
   await captured.middleware(req, res, () => {});
   if (res.payload) return res;
   await captured.handler(req, res);
@@ -77,6 +77,47 @@ async function invoke(req, runtime = async () => ({
   assert.equal(retrievalCalls, 1);
   console.log('HFM_MEMORY_READ_SERVER_SESSION_GRANT_CONSUMED_BEFORE_READ=PASS');
   console.log('HFM_MEMORY_READ_AUTHORIZED_RESULT=PASS');
+
+  const standingReq = makeReq({
+    body: { limit: 20, recordType: 'learning_note' },
+    session: {
+      authenticated: true, role: 'admin',
+      hfmProjectBinding: { verified: true, projectId: 'project-alpha' }
+    }
+  });
+  const standingRead = await invoke(
+    standingReq,
+    async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+    async options => {
+      assert.equal(options.standingReadAuthority, true);
+      assert.deepEqual(options.recordTypes, ['learning_note', 'knowledge_item']);
+      assert.equal(options.recordType, 'learning_note');
+      assert.equal(options.lifecycle, 'ACTIVE');
+      assert.equal(options.authorityGrant, undefined);
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha', count: 1,
+        records: [{ memoryId: 'learning-001' }], authorityConsumed: false,
+        standingAuthority: true, standingAuthorityId: 'standing-001',
+        authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
+        approvalRequiredPerRead: false
+      };
+    },
+    { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }
+  );
+  assert.equal(standingRead.statusCode, 200);
+  assert.equal(standingRead.payload.standingAuthority, true);
+  assert.equal(standingRead.payload.authorityConsumed, false);
+  assert.equal(standingRead.payload.approvalRequiredPerRead, false);
+  console.log('HFM_MEMORY_READ_STANDING_AUTHORITY_NO_PER_READ_GRANT=PASS');
+
+  const standingTrashBlocked = await invoke(
+    makeReq({ body: { limit: 20, recordType: 'social_post_draft', lifecycle: 'TRASHED' } }),
+    async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+    async () => { throw new Error('standing scope must reject before retrieval'); },
+    { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }
+  );
+  assert.equal(standingTrashBlocked.statusCode, 400);
+  console.log('HFM_MEMORY_READ_STANDING_SCOPE_BLOCKS_SOCIAL_DRAFT_AND_TRASH=PASS');
 
   const noGrant = await invoke(makeReq({
     session: { authenticated: true, role: 'admin', hfmProjectBinding: { verified: true, projectId: 'project-alpha' } }
