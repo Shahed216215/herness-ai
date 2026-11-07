@@ -197,6 +197,7 @@ async function executeWithStandingReadAuthority(options = {}) {
     await client.query("SET LOCAL lock_timeout = '3000ms'");
     await client.query("SELECT set_config('mira.project_id', $1, true)", [projectId]);
     await client.query("SELECT set_config('mira.actor_id', $1, true)", [trustedActor.actorId]);
+    await client.query("SELECT set_config('mira.standing_read_authority', 'true', true)");
 
     const ownerResult = await client.query(
       "SELECT project_id, status, revision FROM mira_hfm.project_owners WHERE project_id = $1",
