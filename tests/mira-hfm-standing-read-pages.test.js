@@ -110,6 +110,23 @@ function record(memoryId) {
   }), /HFM_STANDING_READ_PAGE_CONTEXT_CHANGED/);
   console.log('HFM_STANDING_READ_PAGES_SNAPSHOT_CONSISTENCY=PASS');
 
+  const preciseTimestampResult = await collectStandingReadPages({
+    readMemory: async () => page([], null, {
+      scanStartedAt: '2026-11-07T00:00:00.123456Z'
+    }),
+    readOptions: {},
+    now: new Date('2026-11-07T12:00:00.000Z')
+  });
+  assert.equal(preciseTimestampResult.scanStartedAt, '2026-11-07T00:00:00.123456Z');
+  await assert.rejects(() => collectStandingReadPages({
+    readMemory: async () => page([], null, {
+      scanStartedAt: '2026-11-07T12:00:00.000001Z'
+    }),
+    readOptions: {},
+    now: new Date('2026-11-07T12:00:00.000Z')
+  }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
+  console.log('HFM_STANDING_READ_PAGES_MICROSECOND_TIMESTAMP_VALIDATION=PASS');
+
   await assert.rejects(() => collectStandingReadPages({
     readMemory: async () => page([record('memory-expired')], null, {
       hostAuthorizationContext: {
