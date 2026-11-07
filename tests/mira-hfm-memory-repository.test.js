@@ -264,6 +264,14 @@ test('trash requires explicit private lifecycle grant and writes a recoverable r
   });
   const trashContext = { ...context, operation: 'memory.trash' };
   await assert.rejects(
+    repository.trashMemoryRecord({
+      client, context: trashContext, memoryId: row.memory_id,
+      idempotencyKey: 'trash-wrong-type', expectedRecordType: 'social_post_draft',
+      allowPrivateLifecycle: true, env
+    }),
+    error => error.code === 'HFM_MEMORY_RECORD_TYPE_NOT_ALLOWED'
+  );
+  await assert.rejects(
     repository.trashMemoryRecord({ client, context: trashContext, memoryId: row.memory_id, idempotencyKey: 'trash-1', env }),
     error => error.code === 'HFM_MEMORY_PRIVATE_LIFECYCLE_NOT_GRANTED'
   );
