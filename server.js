@@ -13,6 +13,8 @@ const { generate } = require("./services/ai");
 const { selectRecentMessages } = require("./services/mira-request-context");
 const { executeWork } = require("./services/mira-work-execution-engine");
 const { buildTrustedActorContext } = require("./services/mira-hfm-runtime-identity-context");
+const { createProjectSelectionReadRuntime } = require("./services/mira-hfm-project-selection-read-runtime");
+const { registerMiraHfmProjectSelectionRoute } = require("./routes/mira-hfm-project-selection");
 const { startAutonomousWorker } = require("./services/mira-autonomous-worker");
 const { declarations, tools } = require("./tools");
 const firewallDefense = require("./firewall-defense");
@@ -188,6 +190,23 @@ app.use(
     }
   })
 );
+
+let hfmProjectReadRuntimePromise = null;
+function getHfmProjectReadRuntime() {
+  if (!hfmProjectReadRuntimePromise) {
+    hfmProjectReadRuntimePromise = createProjectSelectionReadRuntime().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 64)
+        : "PROJECT_READ_RUNTIME_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmProjectReadRuntimePromise;
+}
+
+// Runtime remains disabled unless the dedicated HFM project-reader feature flag is enabled.
+registerMiraHfmProjectSelectionRoute(app, getHfmProjectReadRuntime);
 
 app.use(express.static("public"));
 
