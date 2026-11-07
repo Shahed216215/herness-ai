@@ -11,7 +11,7 @@ const { preflightHfmStandingRead } = require('../services/mira-hfm-work-prefligh
 const localWorkLearning = read('services/mira-work-learning-engine.js');
 assert.match(localWorkLearning, /function loadStore\(\) \{\s*assertLegacyStorageDisabled\(\);/);
 assert.match(localWorkLearning, /function saveStore\(store\) \{\s*assertLegacyStorageDisabled\(\);/);
-const { resolveHfmReadToolContext, resolveHfmWriteToolContext } = require('../services/mira-work-execution-engine');
+const { resolveHfmReadToolContext, resolveHfmWriteToolContext, executeWork } = require('../services/mira-work-execution-engine');
 
 const { assertLegacyLearningStorageAllowed } = require('../services/learning');
 const { assertLegacyStorageDisabled } = require('../services/mira-hfm-legacy-storage-guard');
@@ -423,6 +423,94 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     'standing memory.read authority must be validated before task planning/model activity');
   assert.match(execution, /preflightWorkLearning = async \(\) => hfmStandingReadPreflight/);
   console.log('HFM_STANDING_READ_AUTHORITY_PREFLIGHT_PRECEDES_WORK_PLANNING=PASS');
+
+  const previousStandingFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  const previousWorkLearningFlag = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  try {
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    const subject = '11111111-1111-4111-8111-111111111111';
+    const sessionID = 'work-preflight-gate-test';
+    const actorId = 'mira:mira.admins:' + subject;
+    const hfmRequest = {
+      role: 'admin',
+      sessionID,
+      session: {
+        authenticated: true,
+        role: 'admin',
+        hfmPrincipal: {
+          verified: true,
+          issuer: 'mira.admins',
+          subject,
+          actorType: 'HUMAN',
+          authenticationMethod: 'ADMIN_SUBJECT',
+          authenticationRef: sessionID,
+          authenticatedAt: new Date(Date.now() - 1000).toISOString(),
+          expiresAt: new Date(Date.now() + 3600000).toISOString()
+        },
+        hfmProjectBinding: {
+          verified: true,
+          bindingVersion: 'HFM_PROJECT_BINDING_V1',
+          actorId,
+          projectId: 'project-alpha',
+          selectedAt: new Date(Date.now() - 500).toISOString()
+        }
+      }
+    };
+    let preflightDbConnected = false;
+    let planningInputRead = false;
+    const gatedOptions = {
+      hfmRequest,
+      persist: false,
+      getHfmMemoryReadRuntime: async () => ({
+        status: 'MEMORY_READ_READY',
+        pool: {
+          async connect() {
+            preflightDbConnected = true;
+            return {
+              async query(sql) {
+                if (sql.includes('FROM mira_hfm.project_owners')) return { rows: [] };
+                return { rows: [], rowCount: 1 };
+              },
+              release() {}
+            };
+          }
+        }
+      })
+    };
+    Object.defineProperty(gatedOptions, 'plan', {
+      get() {
+        planningInputRead = true;
+        return null;
+      }
+    });
+    await assert.rejects(
+      () => executeWork('preflight must fail before planning', gatedOptions),
+      /HFM_PROJECT_OWNER_NOT_ACTIVE/
+    );
+    assert.equal(preflightDbConnected, true, 'standing-read preflight must reach the authoritative HFM reader');
+    assert.equal(planningInputRead, false, 'planning input must not be inspected after authorization denial');
+    console.log('HFM_EXECUTION_DENIED_PREFLIGHT_STOPS_BEFORE_PLANNING=PASS');
+
+    delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    let disabledRuntimeResolved = false;
+    const disabledResult = await executeWork('feature flags disabled', {
+      plan: {},
+      persist: false,
+      getHfmMemoryReadRuntime: async () => {
+        disabledRuntimeResolved = true;
+        throw new Error('HFM runtime must not be opened when read flags are off');
+      }
+    });
+    assert.equal(disabledRuntimeResolved, false);
+    assert.equal(disabledResult.executionStarted, false);
+    console.log('HFM_EXECUTION_FLAGS_OFF_DO_NOT_OPEN_HFM_MEMORY_RUNTIME=PASS');
+  } finally {
+    if (previousStandingFlag === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = previousStandingFlag;
+    if (previousWorkLearningFlag === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = previousWorkLearningFlag;
+  }
 
   const authorizedPreflight = {
     status: 'AUTHORIZED_AND_COMMITTED',
