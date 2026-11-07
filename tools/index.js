@@ -106,6 +106,9 @@ async function executeHfmMemorySave(kind, args, trustedContext, save = require("
     ...(kind === "knowledge_save" ? {
       title: args?.title,
       url: args?.url
+    } : kind === "learning_save" ? {
+      title: args?.sourceTitle,
+      url: args?.sourceUrl
     } : {})
   });
   return JSON.stringify({
@@ -114,7 +117,7 @@ async function executeHfmMemorySave(kind, args, trustedContext, save = require("
     localFallback: false,
     driveFallback: false,
     message: result.lifecycle === "PENDING_REVIEW"
-      ? "Knowledge source saved privately as pending review; it is excluded from trusted search until verified."
+      ? "Knowledge or learning source saved privately as pending review; it is excluded from trusted retrieval until verified."
       : "Memory saved privately to the canonical HFM repository; eligible for trusted search when standing-read mode is enabled."
   });
 }
@@ -147,6 +150,9 @@ async function executeTool(name, args, trustedContext = null) {
   }
   if (hfmWriteMode && name === "knowledge_save") {
     return executeHfmMemorySave("knowledge_save", args, trustedContext);
+  }
+  if (hfmWriteMode && name === "learning_save") {
+    return executeHfmMemorySave("learning_save", args, trustedContext);
   }
   if (hfmMemoryMode && /^(memory|knowledge|learning)_/.test(String(name || ""))) {
     const error = new Error("Legacy Memory, Knowledge, and Learning storage is disabled in HFM mode; unsupported operations fail closed without local or Drive fallback.");
