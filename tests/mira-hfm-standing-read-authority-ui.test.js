@@ -34,7 +34,7 @@ assert.match(html, /updateStandingAuthority\("resume"\)/);
 assert.match(html, /updateStandingAuthority\("revoke"\)/);
 assert.match(route, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true'/);
 assert.match(route, /featureEnabled: process\.env\.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === 'true'/);
-assert.match(html, /const featureEnabled = data\.featureEnabled === true/);
+assert.match(html, /const featureEnabled = data\.featureEnabled;/);
 assert.match(html, /typeof data\.featureEnabled !== "boolean"/);
 assert.match(html, /hasOwnProperty\.call\(data, "authority"\)/);
 assert.match(html, /!\["ACTIVE", "PAUSED", "REVOKED", "EXPIRED"\]\.includes\(authority\.authorityStatus\)/);
