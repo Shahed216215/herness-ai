@@ -40,6 +40,9 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
       if (typeof body.purpose !== 'string' || !body.purpose.trim() || body.purpose.length > 512) {
         return res.status(400).json({ success: false, error: 'A bounded approval purpose is required.' });
       }
+      if (req.session.hfmPendingMemoryAuthority) {
+        return res.status(409).json({ success: false, error: 'An unconsumed HFM Memory authority is already pending.' });
+      }
       try {
         const runtime = await getRuntime();
         if (!runtime || runtime.status !== 'AUTHORITY_ISSUER_READY' ||
@@ -53,9 +56,6 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
           purpose: body.purpose.trim(),
           approvalConfirmed: true
         });
-        if (req.session.hfmPendingMemoryAuthority) {
-          return res.status(409).json({ success: false, error: 'An unconsumed HFM Memory authority is already pending.' });
-        }
         const previousPending = req.session.hfmPendingMemoryAuthority;
         req.session.hfmPendingMemoryAuthority = {
           projectId: result.projectId,
