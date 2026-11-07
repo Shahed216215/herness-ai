@@ -584,7 +584,14 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
       return authorizedPreflight;
     }
   });
-  assert.equal(learningPreflight, authorizedPreflight);
+  assert.notStrictEqual(learningPreflight, authorizedPreflight);
+  assert.deepEqual(learningPreflight.records, authorizedPreflight.records);
+  assert.equal(learningPreflight.status, 'AUTHORIZED_AND_COMMITTED');
+  assert.equal(learningPreflight.pageCount, 1);
+  assert.equal(learningPreflight.candidateScanCount, authorizedPreflight.records.length);
+  assert.equal(learningPreflight.candidateScanLimit, 2000);
+  assert.equal(learningPreflight.candidateScanMayBeIncomplete, false);
+  assert.equal(learningPreflight.nextCursor, null);
   await assert.rejects(
     () => preflightHfmStandingRead({
       ...preflightOptions,
