@@ -94,7 +94,9 @@ function validateCanonicalRecord(record) {
   ];
   hasOnlyKeys(record, topKeys, 'record', errors);
   for (const key of topKeys) {
-    if (!Object.prototype.hasOwnProperty.call(record, key)) errors.push('record.' + key + '.required');
+    if (key !== 'provenance' && !Object.prototype.hasOwnProperty.call(record, key)) {
+      errors.push('record.' + key + '.required');
+    }
   }
 
   const schemaVersion = record.schemaVersion;
