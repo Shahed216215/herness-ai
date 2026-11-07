@@ -126,7 +126,7 @@ const pool = { async connect() { return client; } };
   assert.equal(issued.writesAllowed, false);
   assert.equal(issued.requiresApprovalPerRead, false);
   assert.ok(calls.some(c => c.sql.startsWith('INSERT INTO mira_hfm.standing_read_authorities')));
-  assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.includes('STANDING_READ_AUTHORITY_ISSUED')));
+  assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.startsWith('INSERT INTO mira_hfm.standing_read_authorities')));
   console.log('HFM_STANDING_READ_365_DAY_PROJECT_SCOPED_ISSUE=PASS');
   const statusResult = await getStandingReadAuthorityStatus({ req, pool, env });
   assert.equal(statusResult.status, 'STANDING_READ_AUTHORITY_FOUND');
@@ -147,7 +147,7 @@ const pool = { async connect() { return client; } };
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'PAUSED'
   });
   assert.equal(paused.authorityStatus, 'PAUSED');
-  assert.ok(calls.some(c => Array.isArray(c.params) && c.params.includes('STANDING_READ_AUTHORITY_PAUSED')));
+  assert.ok(calls.filter(c => typeof c.sql === 'string' && c.sql.startsWith('UPDATE mira_hfm.standing_read_authorities')).length >= 3);
   const resumed = await setStandingReadAuthorityStatus({
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'ACTIVE'
   });
@@ -156,7 +156,7 @@ const pool = { async connect() { return client; } };
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'REVOKED'
   });
   assert.equal(revoked.authorityStatus, 'REVOKED');
-  assert.ok(calls.some(c => Array.isArray(c.params) && c.params.includes('STANDING_READ_AUTHORITY_REVOKED')));
+  assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.startsWith('UPDATE mira_hfm.standing_read_authorities')));
   console.log('HFM_STANDING_READ_PAUSE_RESUME_REVOKE_AUDITED=PASS');
 
   standingRow.status = 'ACTIVE';
@@ -236,6 +236,13 @@ const pool = { async connect() { return client; } };
   assert.match(migration, /HFM_STANDING_READ_AUTHORITY_SCOPE_IMMUTABLE/);
   assert.match(migration, /HFM_STANDING_READ_AUTHORITY_TRANSITION_INVALID/);
   assert.match(migration, /STANDING_READ_AUTHORITY_USED/);
+  assert.match(migration, /CREATE TRIGGER standing_read_authority_audit/);
+  assert.match(migration, /STANDING_READ_AUTHORITY_ISSUED/);
+  assert.match(migration, /STANDING_READ_AUTHORITY_PAUSED/);
+  assert.match(migration, /STANDING_READ_AUTHORITY_RESUMED/);
+  assert.match(migration, /STANDING_READ_AUTHORITY_REVOKED/);
+  assert.match(migration, /STANDING_READ_AUTHORITY_EXPIRED/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION mira_hfm\.audit_standing_read_authority_change\(\) FROM PUBLIC/);
   assert.match(migration, /REVOKE ALL ON TABLE mira_hfm\.standing_read_authorities FROM PUBLIC/);
   console.log('HFM_STANDING_READ_MIGRATION_RLS_IMMUTABLE_SCOPE_365D=PASS');
 
