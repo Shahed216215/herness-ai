@@ -207,7 +207,7 @@ DECLARE
   audit_event_type TEXT;
   prior_status TEXT;
 BEGIN
-  audit_event_id := gen_random_uuid()::text;
+  audit_event_id := pg_catalog.gen_random_uuid()::text;
   IF TG_OP = 'INSERT' THEN
     audit_event_type := 'STANDING_READ_AUTHORITY_ISSUED';
   ELSE
