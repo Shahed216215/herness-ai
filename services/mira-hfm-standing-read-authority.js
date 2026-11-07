@@ -247,9 +247,49 @@ async function setStandingReadAuthorityStatus(options = {}) {
   }
 }
 
+
+async function getStandingReadAuthorityStatus(options = {}) {
+  requirePool(options.pool);
+  const env = options.env || process.env;
+  const admin = trustedAdmin(options.req, env);
+  const actor = actorFrom(options.req);
+  if (admin.actor.actorId !== actor.actorId) fail('HFM_STANDING_READ_ACTOR_MISMATCH');
+  const client = await options.pool.connect();
+  try {
+    await client.query('BEGIN READ ONLY');
+    await client.query("SET LOCAL statement_timeout = '5000ms'");
+    await client.query("SELECT set_config('mira.project_id', $1, true)", [admin.projectId]);
+    await client.query("SELECT set_config('mira.actor_id', $1, true)", [actor.actorId]);
+    const result = await client.query(
+      "SELECT standing_authority_id, status, purpose, valid_from, expires_at " +
+      "FROM mira_hfm.standing_read_authorities WHERE project_id = $1 AND actor_id = $2 " +
+      "ORDER BY created_at DESC LIMIT 1",
+      [admin.projectId, actor.actorId]
+    );
+    const row = result.rows?.[0];
+    await client.query('COMMIT');
+    return Object.freeze({
+      status: row ? 'STANDING_READ_AUTHORITY_FOUND' : 'STANDING_READ_AUTHORITY_NOT_FOUND',
+      authority: row ? Object.freeze({
+        standingAuthorityId: row.standing_authority_id,
+        authorityStatus: row.status,
+        purpose: row.purpose,
+        validFrom: new Date(row.valid_from).toISOString(),
+        expiresAt: new Date(row.expires_at).toISOString()
+      }) : null
+    });
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (_rollbackError) {}
+    throw error;
+  } finally {
+    try { client.release(); } catch (_error) {}
+  }
+}
+
 module.exports = Object.freeze({
   STANDING_READ_TTL_MS,
   validateStandingReceipt,
   issueStandingReadAuthority,
-  setStandingReadAuthorityStatus
+  setStandingReadAuthorityStatus,
+  getStandingReadAuthorityStatus
 });
