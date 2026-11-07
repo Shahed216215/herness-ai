@@ -102,16 +102,19 @@ SELECT
    WHERE n.nspname = 'mira_hfm'
      AND c.relname IN ('bootstrap_registry','project_owners','project_memberships','authority_audit_events')
      AND c.relrowsecurity AND c.relforcerowsecurity) AS bootstrap_rls_forced,
-  (SELECT count(*) = 4
+  (SELECT count(*) = 5
    FROM pg_policies
    WHERE schemaname = 'mira_hfm'
-     AND policyname IN ('hfm_bootstrap_registry_insert','hfm_bootstrap_owner_insert',
-       'hfm_bootstrap_membership_insert','hfm_bootstrap_audit_insert')
+     AND policyname IN ('hfm_bootstrap_registry_insert','hfm_bootstrap_registry_select',
+       'hfm_bootstrap_owner_insert','hfm_bootstrap_membership_insert','hfm_bootstrap_audit_insert')
      AND $1::name = ANY(roles)) AS bootstrap_policies_present,
-  (SELECT count(*) = 4 AND bool_and(
+  (SELECT count(*) = 5 AND bool_and(
      CASE policyname
        WHEN 'hfm_bootstrap_registry_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%bootstrap_key%' AND with_check LIKE '%bootstrap_approval_ref%'
+       WHEN 'hfm_bootstrap_registry_select' THEN
+         cmd = 'SELECT' AND qual LIKE '%bootstrap_key%' AND qual LIKE '%bootstrap_approval_ref%'
+         AND with_check IS NULL
        WHEN 'hfm_bootstrap_owner_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%owner_actor_id%' AND with_check LIKE '%assigned_by_actor_id%'
          AND with_check LIKE '%revision%' AND with_check LIKE '%bootstrap_approval_ref%'
@@ -143,13 +146,13 @@ const REQUIRED_TRUE = Object.freeze([
   'bootstrap_group_has_no_parent_roles', 'bootstrap_group_least_privilege',
   'bootstrap_group_owns_no_objects', 'login_role_owns_no_objects', 'inherits_roles', 'can_login',
   'schema_usage', 'latch_insert', 'owners_insert', 'memberships_insert',
-  'audit_insert', 'audit_sequence_usage', 'bootstrap_rls_forced',
+  'audit_insert', 'audit_sequence_usage', 'latch_select', 'bootstrap_rls_forced',
   'bootstrap_policies_present', 'bootstrap_policy_semantics_exact',
   'no_public_bootstrap_policies'
 ]);
 const REQUIRED_FALSE = Object.freeze([
   'is_superuser', 'bypasses_rls', 'can_create_databases', 'can_create_roles',
-  'can_replicate', 'schema_create', 'latch_select', 'latch_update',
+  'can_replicate', 'schema_create', 'latch_update',
   'latch_delete', 'latch_truncate', 'owners_select', 'owners_update',
   'owners_delete', 'memberships_select', 'memberships_update',
   'memberships_delete', 'audit_select', 'audit_update', 'audit_delete',
