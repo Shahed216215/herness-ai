@@ -8,6 +8,7 @@ const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), '
 const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
 const { preflightHfmStandingRead } = require('../services/mira-hfm-work-preflight');
 
+const preflight = read('services/mira-hfm-work-preflight.js');
 const localWorkLearning = read('services/mira-work-learning-engine.js');
 assert.match(localWorkLearning, /function loadStore\(\) \{\s*assertLegacyStorageDisabled\(\);/);
 assert.match(localWorkLearning, /function saveStore\(store\) \{\s*assertLegacyStorageDisabled\(\);/);
