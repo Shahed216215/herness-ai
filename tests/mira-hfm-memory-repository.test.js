@@ -119,9 +119,8 @@ test('social post source and provenance metadata are stored separately from the 
   assert.equal(result.status, 'CREATED');
   const retained = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state'));
   assert.ok(retained);
-  assert.equal(retained.params[3], 'SAVED');
-  const sourceMetadata = JSON.parse(retained.params[4]);
-  const provenanceMetadata = JSON.parse(retained.params[5]);
+  const sourceMetadata = JSON.parse(retained.params[3]);
+  const provenanceMetadata = JSON.parse(retained.params[4]);
   assert.deepEqual(sourceMetadata, {
     sourceType: 'facebook_page', sourceId: 'Synthetic public page', observedAt: now
   });
