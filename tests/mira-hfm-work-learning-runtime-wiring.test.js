@@ -490,7 +490,22 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     }),
     error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
   );
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      ...preflightOptions,
+      readMemory: async () => ({ ...authorizedPreflight, nextCursor: { forged: true } })
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      ...preflightOptions,
+      readMemory: async () => ({ ...authorizedPreflight, count: 1 })
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
   console.log('HFM_STANDING_READ_PREFLIGHT_FAILS_CLOSED_NO_FALLBACK_NO_WRITE=PASS');
+  console.log('HFM_STANDING_READ_PREFLIGHT_VALIDATES_PAGE_COUNT_AND_CURSOR=PASS');
 
   const serverHeldReq = { serverHeld: true };
   const readerPool = { connect: async () => ({ release() {} }) };
