@@ -38,9 +38,10 @@ function redactDailyActivityContent(value) {
 }
 
 function hasVaultOnlyDailyActivityContent(value) {
-  return /\b(?:private key|client email|client phone|client name|client address|client id|customer email|customer phone|customer name|customer address|bank account|account number|card number|invoice(?: number)?|transaction(?: id| reference)?|payment reference|contract(?: text| clause)?)\b/i.test(String(value || ''));
+  const text = String(value || '');
+  return /\b(?:private key|client email|client phone|client name|client address|client id|customer email|customer phone|customer name|customer address|bank account|account number|card number|invoice(?: number)?|transaction(?: id| reference)?|payment reference|contract(?: text| clause)?|national id|passport number|tax id|taxpayer id|tin|vat number|swift code|iban|routing number|sort code)\b/i.test(text) ||
+    /\b(?:client|customer|account|contract|invoice|transaction|payment|bank|card|vendor|supplier)\s*(?:id|identifier|no\.?|number|#|code|reference|ref)\s*[:=#-]?\s*[A-Z0-9][A-Z0-9/_-]{2,}\b/i.test(text);
 }
-
 function hasExplicitDailyActivitySaveIntent(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
   const text = value.toLowerCase();
