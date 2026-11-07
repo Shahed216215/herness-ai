@@ -148,7 +148,48 @@ function baseOptions(overrides = {}) {
   assert.equal(pendingResult.lifecycle, 'PENDING_REVIEW');
   assert.equal(pendingResult.searchable, false);
 
+  const { executeTool } = require('../tools');
+  const previousWriteFlag = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
+  const previousReadFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  const previousWorkFlag = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  try {
+    process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = 'true';
+    delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    await assert.rejects(
+      () => executeTool('memory_save', { content: 'Remember this.' }, null),
+      /HFM_MEMORY_WRITE_CONTEXT_REQUIRED/
+    );
+    await assert.rejects(
+      () => executeTool('knowledge_save', { title: 'Title', url: 'https://example.com', content: 'Source.' }, null),
+      /HFM_MEMORY_WRITE_CONTEXT_REQUIRED/
+    );
+    await assert.rejects(
+      () => executeTool('knowledge_search', { query: 'test' }, null),
+      /HFM_MEMORY_READ_MODE_REQUIRED/
+    );
+    process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = 'false';
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+    await assert.rejects(
+      () => executeTool('memory_save', { content: 'Remember this.' }, null),
+      /HFM_LEGACY_STORAGE_DISABLED/
+    );
+    const directMemorySave = require('../tools/memory-save');
+    const directKnowledgeSave = require('../tools/knowledge-save');
+    assert.equal(JSON.parse(await directMemorySave.execute({ content: 'Remember this.' })).code, 'HFM_TOOL_ROUTER_REQUIRED');
+    assert.equal(JSON.parse(await directKnowledgeSave.execute({ title: 'Title', url: 'https://example.com', content: 'Source.' })).code, 'HFM_TOOL_ROUTER_REQUIRED');
+  } finally {
+    if (previousWriteFlag === undefined) delete process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
+    else process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = previousWriteFlag;
+    if (previousReadFlag === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = previousReadFlag;
+    if (previousWorkFlag === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = previousWorkFlag;
+  }
+
   console.log('HFM_MEMORY_SAVE_RUNTIME_TESTS=PASS');
+  console.log('HFM_MEMORY_TOOLS_FAIL_CLOSED_WITHOUT_SERVER_CONTEXT=PASS');
+  console.log('HFM_LEGACY_MEMORY_AND_KNOWLEDGE_TOOLS_HAVE_NO_HFM_FALLBACK=PASS');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
