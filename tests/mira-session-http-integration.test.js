@@ -47,13 +47,13 @@ function createTransport(rows) {
   };
 }
 
-function createApp(rows, production = false) {
+function createApp(rows, production = false, requestImplOverride) {
   const app = express();
   if (production) app.set("trust proxy", 1);
   const store = new SupabaseRestSessionStore({
     supabaseUrl: "https://integration-test.supabase.co",
     serviceRoleKey: "integration-test-only-key",
-    requestImpl: createTransport(rows)
+    requestImpl: requestImplOverride || createTransport(rows)
   });
 
   app.use(session({
@@ -73,7 +73,10 @@ function createApp(rows, production = false) {
     req.session.regenerate(error => {
       if (error) return res.status(500).json({ success: false });
       req.session.user = { id: "user-1", role: "admin" };
-      return res.status(200).json({ success: true });
+      return req.session.save(saveError => {
+        if (saveError) return res.status(500).json({ success: false });
+        return res.status(200).json({ success: true });
+      });
     });
   });
 
@@ -90,11 +93,8 @@ function createApp(rows, production = false) {
   app.post("/logout", (req, res) => {
     req.session.destroy(error => {
       if (error) return res.status(500).json({ success: false });
-      res.clearCookie("connect.sid", {
-        httpOnly: true,
-        sameSite: "strict",
-        secure: production
-      });
+      // Keep this harness aligned with server.js /api/logout.
+      res.clearCookie("connect.sid");
       return res.status(200).json({ success: true });
     });
   });
@@ -157,7 +157,26 @@ async function main() {
     assert.match(setCookie, /SameSite=Strict/i);
     assert.match(setCookie, /Secure/i,
       "production session cookie must be Secure behind the trusted TLS proxy");
-    cookie = setCookie.split(";")[0];
+    const firstCookie = setCookie.split(";")[0];
+
+    const secondLogin = await fetch(first.baseUrl + "/login", {
+      method: "POST",
+      headers: { ...proxyHeaders, Cookie: firstCookie }
+    });
+    assert.equal(secondLogin.status, 200, "re-authentication must regenerate the session");
+    const secondSetCookie = secondLogin.headers.getSetCookie
+      ? secondLogin.headers.getSetCookie()[0]
+      : secondLogin.headers.get("set-cookie");
+    assert.ok(secondSetCookie, "session regeneration must issue a replacement cookie");
+    cookie = secondSetCookie.split(";")[0];
+    assert.notEqual(cookie, firstCookie,
+      "session regeneration must rotate the session identifier");
+
+    const oldSession = await fetch(first.baseUrl + "/me", {
+      headers: { ...proxyHeaders, Cookie: firstCookie }
+    });
+    assert.equal(oldSession.status, 401,
+      "the pre-regeneration session identifier must no longer authenticate");
 
     const whoami = await fetch(first.baseUrl + "/me", {
       headers: { ...proxyHeaders, Cookie: cookie }
@@ -171,6 +190,41 @@ async function main() {
     assert.equal(rows.size, 1, "session data must be persisted outside the app instance");
   } finally {
     await close(first.server);
+  }
+
+  // A database outage during session lookup must fail closed, not authenticate.
+  const unavailable = await listen(createApp(
+    new Map(),
+    true,
+    async () => ({ status: 503, data: {} })
+  ));
+  try {
+    const unavailableLookup = await fetch(unavailable.baseUrl + "/me", {
+      headers: { ...proxyHeaders, Cookie: cookie }
+    });
+    assert.equal(unavailableLookup.status, 500,
+      "session-store read failures must not fall back to an in-memory session");
+  } finally {
+    await close(unavailable.server);
+  }
+
+  // A failed durable write during login must not be reported as successful.
+  const failedWrite = await listen(createApp(
+    new Map(),
+    true,
+    async (_url, options) => options.method === "DELETE"
+      ? ({ status: 204, data: {} })
+      : ({ status: 503, data: {} })
+  ));
+  try {
+    const failedLogin = await fetch(failedWrite.baseUrl + "/login", {
+      method: "POST",
+      headers: proxyHeaders
+    });
+    assert.equal(failedLogin.status, 500,
+      "session-store write failures must fail login closed");
+  } finally {
+    await close(failedWrite.server);
   }
 
   // A new app/store instance sharing only the durable backing rows models a Render restart.
@@ -190,6 +244,12 @@ async function main() {
       headers: { ...proxyHeaders, Cookie: cookie }
     });
     assert.equal(logout.status, 200, "logout must destroy the stored session");
+    const clearedCookie = logout.headers.getSetCookie
+      ? logout.headers.getSetCookie().find(value => /^connect\.sid=/i.test(value))
+      : logout.headers.get("set-cookie");
+    assert.ok(clearedCookie, "logout must emit a cleared session cookie");
+    assert.match(clearedCookie, /Expires=/i, "logout cookie must be expired");
+    assert.match(clearedCookie, /Path=\//i, "logout cookie path must match the session cookie path");
 
     const afterLogout = await fetch(restarted.baseUrl + "/me", {
       headers: { ...proxyHeaders, Cookie: cookie }
