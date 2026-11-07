@@ -106,7 +106,7 @@ test('archive returns sanitized metadata for erased drafts without decrypting pa
   assert.equal(result.drafts[0].payloadErased, true);
   assert.equal(result.drafts[0].content, null);
   assert.equal(result.drafts[0].source, null);
-  assert.match(calls[0].sql, /project_id = \\$1 AND owner_actor_id = \\$2 AND record_type = 'social_post_draft'/);
+  assert.match(calls[0].sql, /project_id = \$1 AND owner_actor_id = \$2 AND record_type = 'social_post_draft'/);
   assert.match(calls[0].sql, /owner_actor_id = \$2/);
   assert.deepEqual(calls[0].params, ['project-001', 'mira:creator-001', 25]);
 });
