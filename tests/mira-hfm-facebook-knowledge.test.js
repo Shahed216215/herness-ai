@@ -161,6 +161,9 @@ test('redacts credential fields and blocks restricted client or financial record
   const clean = redactSensitiveText('Public post mentions api_key=abcd1234 and password:hello123.');
   assert.match(clean.content, /REDACTED_CREDENTIAL/);
   assert.doesNotMatch(clean.content, /abcd1234|hello123/);
+  const jsonCredential = redactSensitiveText('{"api_key":"json-secret-value"}');
+  assert.match(jsonCredential.content, /REDACTED_CREDENTIAL/);
+  assert.doesNotMatch(jsonCredential.content, /json-secret-value/);
   assert.throws(() => redactSensitiveText('{"client_record": {"name":"Private Client"}}'), /HFM_KNOWLEDGE_RESTRICTED_CONTENT_BLOCKED/);
   assert.throws(() => redactSensitiveText('bank_account: 123456789'), /HFM_KNOWLEDGE_RESTRICTED_CONTENT_BLOCKED/);
   assert.throws(() => redactSensitiveText('-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----'), /HFM_KNOWLEDGE_RESTRICTED_CONTENT_BLOCKED/);
