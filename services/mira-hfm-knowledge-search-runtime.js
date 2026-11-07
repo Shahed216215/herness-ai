@@ -175,7 +175,8 @@ async function searchHfmKnowledge({
       recordTypes: ['knowledge_item', 'learning_note'],
       lifecycle: 'ACTIVE', cursor, env
     },
-    maxPages
+    maxPages,
+    now
   });
   const hostContext = pages.hostAuthorizationContext;
   const report = retrieveCanonicalRecordsWithReport({
