@@ -23,6 +23,8 @@ test('UI uses same-origin authenticated requests and does not contain Facebook A
   assert.doesNotMatch(html, /graph\.facebook\.com|access_token|facebook\.com\/login|document\.cookie/i);
   assert.match(html, /single-use authority|single-use/i);
   assert.match(html, /id="createProjectBtn"/);
+  assert.match(html, /id="dailyGenerateBtn"/);
+  assert.match(html, /\/api\/hfm\/daily-knowledge\/generate/);
   assert.match(html, /\/api\/hfm\/projects\/create/);
   assert.match(html, /\/api\/hfm\/projects\/active/);
   assert.match(html, /id="sourceFile"/);
