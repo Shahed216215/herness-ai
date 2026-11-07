@@ -64,6 +64,7 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSaveIntent('Remember this: keep my learning plan.'), true);
   assert.equal(hasExplicitSaveIntent('এটা মনে রাখবে: আমার শেখার পরিকল্পনা।'), true);
   assert.equal(hasExplicitSaveIntent('Please save this to your memory.'), true);
+  assert.equal(hasExplicitSaveIntent('Save this learning note to my knowledge base.'), true);
   assert.equal(hasExplicitSaveIntent('Store this in my memory.'), true);
   assert.equal(hasExplicitSaveIntent('Add this to Mira memory.'), true);
   assert.equal(hasExplicitSaveIntent('Do not remember this.'), false);
@@ -200,6 +201,19 @@ function baseOptions(overrides = {}) {
   assert.equal(pendingKnowledge.source.sourceUrl, 'https://example.com/article');
   assert.equal(pendingKnowledge.content.includes('token=secret'), false);
 
+  const pendingLearning = buildCanonicalMemoryRecord({
+    projectId: 'project-001', memoryId: 'mem-learning-abcdef1234',
+    kind: 'learning_save', title: 'Python automation lesson',
+    url: 'https://example.com/python-lesson',
+    content: 'A repeatable Python automation lesson.',
+    userIntent: 'Save this learning note to my knowledge base.',
+    now: '2026-11-07T07:00:00.000Z'
+  });
+  assert.equal(validateCanonicalRecord(pendingLearning).valid, true);
+  assert.equal(pendingLearning.recordType, 'learning_note');
+  assert.equal(pendingLearning.trust.status, 'SOURCE_RECORDED');
+  assert.equal(pendingLearning.lifecycle, 'PENDING_REVIEW');
+
   let issued = null;
   let saved = null;
   const result = await saveHfmMemoryRecord(baseOptions({
@@ -256,6 +270,17 @@ function baseOptions(overrides = {}) {
   assert.equal(pendingResult.trust, 'SOURCE_RECORDED');
   assert.equal(pendingResult.lifecycle, 'PENDING_REVIEW');
   assert.equal(pendingResult.searchEligible, false);
+  const learningResult = await saveHfmMemoryRecord(baseOptions({
+    kind: 'learning_save',
+    title: 'Python automation lesson',
+    url: 'https://example.com/python-lesson',
+    content: 'A repeatable Python automation lesson.',
+    userIntent: 'Save this learning note to my knowledge base.'
+  }));
+  assert.equal(learningResult.recordType, 'learning_note');
+  assert.equal(learningResult.trust, 'SOURCE_RECORDED');
+  assert.equal(learningResult.lifecycle, 'PENDING_REVIEW');
+  assert.equal(learningResult.searchEligible, false);
 
   const { executeTool, executeHfmMemorySave } = require('../tools');
   const previousWriteFlag = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
