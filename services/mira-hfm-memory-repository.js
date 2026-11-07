@@ -295,10 +295,10 @@ async function reviseMemoryRecord(options = {}) {
   if (nextRecord.memoryId !== memoryId) throw fail('HFM_MEMORY_RECORD_IDENTITY_MISMATCH');
   assertProjectScope(nextRecord, context.projectId);
 
+  const payloadDigests = operationDigests(nextRecord, options.env || process.env);
   const operation = await beginIdempotentOperation(
     client, context, options.idempotencyKey, 'memory.update', resource,
-    operationDigests(nextRecord, options.env || process.env).activeDigest,
-    operationDigests(nextRecord, options.env || process.env).candidates
+    payloadDigests.activeDigest, payloadDigests.candidates
   );
   if (operation.duplicate) {
     return { status: 'ALREADY_COMMITTED', memoryId: operation.resultCode, duplicate: true };
