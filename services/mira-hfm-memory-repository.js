@@ -426,6 +426,12 @@ function getStandingReadMemoryRecord(options = {}) {
   });
 }
 
+function isStandingReadCursorTimestamp(value) {
+  return typeof value === 'string' &&
+    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$/.test(value) &&
+    Number.isFinite(Date.parse(value));
+}
+
 function decodeStandingReadPageCursor(cursor, context, recordTypes, lifecycle) {
   if (cursor === undefined || cursor === null || cursor === '') return null;
   if (typeof cursor !== 'string' || cursor.length > 2048) {
@@ -449,17 +455,17 @@ function decodeStandingReadPageCursor(cursor, context, recordTypes, lifecycle) {
         value.recordTypes.some((type, index) => type !== recordTypes[index]) ||
         typeof value.memoryId !== 'string' || !value.memoryId.trim() ||
         value.memoryId.length > 128 ||
-        !Number.isFinite(Date.parse(value.scanStartedAt)) ||
-        !Number.isFinite(Date.parse(value.updatedAt)) ||
-        Date.parse(value.updatedAt) > Date.parse(value.scanStartedAt)) {
+        !isStandingReadCursorTimestamp(value.scanStartedAt) ||
+        !isStandingReadCursorTimestamp(value.updatedAt) ||
+        value.updatedAt > value.scanStartedAt) {
       throw new Error('invalid cursor scope');
     }
     return Object.freeze({
       projectId: value.projectId,
       recordTypes: Object.freeze([...value.recordTypes]),
       lifecycle: value.lifecycle,
-      scanStartedAt: new Date(value.scanStartedAt).toISOString(),
-      updatedAt: new Date(value.updatedAt).toISOString(),
+      scanStartedAt: value.scanStartedAt,
+      updatedAt: value.updatedAt,
       memoryId: value.memoryId
     });
   } catch (_error) {
@@ -523,17 +529,21 @@ async function listMemoryRecords(options = {}) {
     let scanStartedAt = cursor && cursor.scanStartedAt;
     if (!scanStartedAt) {
       const started = await client.query(
-        'SELECT transaction_timestamp() AS scan_started_at'
+        "SELECT to_char(transaction_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS scan_started_at'
       );
       if (!started.rows?.[0]?.scan_started_at) {
         throw fail('HFM_MEMORY_PAGE_SCAN_TIMESTAMP_REQUIRED');
       }
-      scanStartedAt = new Date(started.rows[0].scan_started_at).toISOString();
+      scanStartedAt = started.rows[0].scan_started_at;
+      if (!isStandingReadCursorTimestamp(scanStartedAt)) {
+        throw fail('HFM_MEMORY_PAGE_SCAN_TIMESTAMP_INVALID');
+      }
     }
     const result = await client.query(
       'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
       'integrity_status, trust_status, public_payload, encrypted_envelope, updated_at, ' +
-      'transaction_timestamp() AS scan_started_at FROM mira_hfm.memory_records ' +
+      `to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at_cursor ` +
+      'FROM mira_hfm.memory_records ' +
       'WHERE project_id = $1 AND lifecycle = $2 AND record_type = ANY($3::text[]) ' +
       'AND classification <> \'RESTRICTED\' ' +
       'AND integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\') ' +
@@ -549,13 +559,16 @@ async function listMemoryRecords(options = {}) {
     const pageRows = hasMore ? rows.slice(0, limit) : rows;
     const records = pageRows.map(row => decodeStoredRow(row, options));
     const lastRow = pageRows[pageRows.length - 1];
+    if (hasMore && lastRow && !isStandingReadCursorTimestamp(lastRow.updated_at_cursor)) {
+      throw fail('HFM_MEMORY_PAGE_CURSOR_TIMESTAMP_INVALID');
+    }
     const nextCursor = hasMore && lastRow
       ? encodeStandingReadPageCursor({
           projectId: context.projectId,
           recordTypes,
           lifecycle,
           scanStartedAt,
-          updatedAt: new Date(lastRow.updated_at).toISOString(),
+          updatedAt: lastRow.updated_at_cursor,
           memoryId: lastRow.memory_id
         })
       : null;
