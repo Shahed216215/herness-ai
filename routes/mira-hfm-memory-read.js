@@ -74,6 +74,10 @@ function registerMiraHfmMemoryReadRoute(
         !['ACTIVE', 'TRASHED'].includes(body.lifecycle)) {
       return res.status(400).json({ success: false, error: 'Unsupported Memory lifecycle filter.' });
     }
+    if (!standingMode && body.lifecycle === 'TRASHED' &&
+        body.recordType !== 'social_post_draft') {
+      return res.status(400).json({ success: false, error: 'Recoverable Trash listing is limited to social_post_draft records.' });
+    }
 
     try {
       const runtime = await getRuntime();
