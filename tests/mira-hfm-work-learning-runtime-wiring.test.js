@@ -671,13 +671,15 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   };
   let searchInput;
   const hfmToolResult = await executeHfmKnowledgeSearch(
-    { query: 'Python automation' },
+    { query: 'Python automation', cursor: 'opaque-cursor-001' },
     hfmToolContext,
     async input => {
       searchInput = input;
       return {
         status: 'AUTHORIZED_AND_COMMITTED', standingAuthority: true,
         count: 1, results: [{ id: 'hfm-knowledge-1' }],
+        nextCursor: 'opaque-cursor-002', candidateScanCount: 100,
+        candidateScanLimit: 100, candidateScanMayBeIncomplete: true,
         localFallback: false, driveFallback: false
       };
     }
@@ -685,6 +687,8 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
   assert.equal(searchInput.req.serverHeld, true);
   assert.equal(searchInput.query, 'Python automation');
   assert.equal(searchInput.limit, 5);
+  assert.equal(searchInput.cursor, 'opaque-cursor-001');
+  assert.equal(JSON.parse(hfmToolResult).nextCursor, 'opaque-cursor-002');
   assert.equal(JSON.parse(hfmToolResult).source, 'HFM_V02_STANDING_READ');
   assert.equal(JSON.parse(hfmToolResult).localFallback, false);
   await assert.rejects(
