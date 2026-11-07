@@ -165,6 +165,48 @@ async function invoke(req, runtime = async () => ({
     { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }
   );
   assert.equal(allStandingTypes.statusCode, 200);
+
+  const auditedDenial = await invoke(
+    makeReq({
+      body: { limit: 20, recordType: 'learning_note' },
+      session: {
+        authenticated: true, role: 'admin',
+        hfmProjectBinding: { verified: true, projectId: 'project-alpha' }
+      }
+    }),
+    async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+    async () => {
+      const error = new Error('standing authority denied');
+      error.code = 'HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED';
+      error.auditStatus = 'RECORDED';
+      throw error;
+    },
+    { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }
+  );
+  assert.equal(auditedDenial.statusCode, 503);
+  assert.equal(auditedDenial.payload.auditStatus, 'RECORDED');
+
+  const failedAudit = await invoke(
+    makeReq({
+      body: { limit: 20, recordType: 'learning_note' },
+      session: {
+        authenticated: true, role: 'admin',
+        hfmProjectBinding: { verified: true, projectId: 'project-alpha' }
+      }
+    }),
+    async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+    async () => {
+      const error = new Error('standing authority denied');
+      error.code = 'HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED';
+      error.auditStatus = 'FAILED';
+      throw error;
+    },
+    { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }
+  );
+  assert.equal(failedAudit.statusCode, 503);
+  assert.equal(failedAudit.payload.auditStatus, 'FAILED');
+  console.log('HFM_MEMORY_READ_DENIED_AND_FAILED_AUDIT_STATUS_EXPOSED=PASS');
+
   console.log('HFM_MEMORY_READ_STANDING_RECORD_TYPE_FILTERS_ARE_MUTUALLY_EXCLUSIVE=PASS');
   console.log('HFM_MEMORY_READ_STANDING_PAGINATION_CURSOR_ROUNDTRIP=PASS');
   console.log('HFM_MEMORY_READ_STANDING_AUTHORITY_NO_PER_READ_GRANT=PASS');
