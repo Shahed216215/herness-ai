@@ -56,6 +56,16 @@ Values must be supplied only after the target database and role credentials are 
 
 Feature flags must remain disabled until database readiness, target mapping, role provisioning and owner/membership bootstrap are verified. No secret values are recorded in this document.
 
+## Private payload digest and audit-chain hardening
+
+- PUBLIC records retain canonical SHA-256 idempotency digests because their payloads are intentionally public.
+- PROJECT_PRIVATE and RESTRICTED records use a domain-separated HMAC-SHA-256 digest key derived from the configured versioned KEK. Plaintext canonical hashes are not stored in the operation registry.
+- During KEK rotation, idempotency reconciliation checks digests derived from every configured KEK version, with the active version used for new writes. Keep prior KEK versions configured while operations created under those keys may still be retried. The operation registry currently has no automatic expiry; removing an old KEK before controlled reconciliation can make an old idempotency key return a conflict rather than a replay result.
+- Private content hashes are not copied into audit event metadata or retrieval provenance. They remain inside the encrypted canonical record.
+- Project audit hash-chain appends acquire a transaction-scoped advisory lock before reading the previous event hash, serializing concurrent appends within a project.
+
+These controls are covered by focused regression tests. Their exact-head result is pending the current GitHub Actions run.
+
 ## Required database roles and migration order
 
 1. Verify the existing HFM schema and forced-RLS tables on the exact approved target database.
