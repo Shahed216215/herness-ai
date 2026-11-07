@@ -44,3 +44,10 @@ test('migration does not grant delete or truncate permissions', () => {
   assert.doesNotMatch(sql, /GRANT\s+[^;]*(DELETE|TRUNCATE)/i);
   assert.doesNotMatch(sql, /DROP\s+TABLE/i);
 });
+
+
+test('payload erasure trigger uses an unambiguous operation id variable', () => {
+  assert.match(sql, /v_operation_id := NULLIF\(current_setting\('mira\.memory_payload_erasure_operation_id'/);
+  assert.match(sql, /op\.operation_id = v_operation_id/);
+  assert.doesNotMatch(sql, /op\.operation_id = operation_id/);
+});

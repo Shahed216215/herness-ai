@@ -122,12 +122,12 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  operation_id TEXT;
+  v_operation_id TEXT;
 BEGIN
-  operation_id := NULLIF(current_setting('mira.memory_payload_erasure_operation_id', true), '');
+  v_operation_id := NULLIF(current_setting('mira.memory_payload_erasure_operation_id', true), '');
   IF TG_OP = 'UPDATE' AND TG_TABLE_SCHEMA = 'mira_hfm'
      AND TG_TABLE_NAME = 'memory_record_versions'
-     AND operation_id IS NOT NULL
+     AND v_operation_id IS NOT NULL
      AND OLD.record_type = 'social_post_draft'
      AND OLD.classification = 'PROJECT_PRIVATE'
      AND OLD.payload_erased_at IS NULL
@@ -138,7 +138,7 @@ BEGIN
      AND OLD.project_id = NULLIF(current_setting('mira.project_id', true), '')
      AND EXISTS (
        SELECT 1 FROM mira_hfm.memory_operation_registry op
-       WHERE op.operation_id = operation_id
+       WHERE op.operation_id = v_operation_id
          AND op.project_id = OLD.project_id
          AND op.actor_id = OLD.owner_actor_id
          AND op.operation = 'memory.social_post.delete_payload'
@@ -158,9 +158,9 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  operation_id TEXT;
+  v_operation_id TEXT;
 BEGIN
-  operation_id := NULLIF(current_setting('mira.memory_payload_erasure_operation_id', true), '');
+  v_operation_id := NULLIF(current_setting('mira.memory_payload_erasure_operation_id', true), '');
   IF operation_id IS NOT NULL
      AND OLD.record_type = 'social_post_draft'
      AND OLD.classification = 'PROJECT_PRIVATE'
@@ -172,7 +172,7 @@ BEGIN
      AND OLD.project_id = NULLIF(current_setting('mira.project_id', true), '')
      AND EXISTS (
        SELECT 1 FROM mira_hfm.memory_operation_registry op
-       WHERE op.operation_id = operation_id
+       WHERE op.operation_id = v_operation_id
          AND op.project_id = OLD.project_id
          AND op.actor_id = OLD.owner_actor_id
          AND op.operation = 'memory.social_post.delete_payload'
