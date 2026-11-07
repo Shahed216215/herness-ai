@@ -88,6 +88,7 @@ async function retrieveProjectMemory(options = {}) {
       standingAuthority: true,
       standingAuthorityId: result.standingAuthorityId,
       authorityExpiresAt: result.authorityExpiresAt,
+      hostAuthorizationContext: result.hostAuthorizationContext,
       approvalRequiredPerRead: false,
       memoryWrites: false,
       localFallback: false,
