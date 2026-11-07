@@ -19,6 +19,7 @@ const { createAuthorityIssuerPool } = require("./services/mira-hfm-authority-iss
 const { registerMiraHfmAuthorityApprovalRoute } = require("./routes/mira-hfm-authority-approval");
 const { registerMiraHfmStandingReadAuthorityRoutes } = require("./routes/mira-hfm-standing-read-authority");
 const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
+const { searchHfmKnowledge } = require("./services/mira-hfm-knowledge-search-runtime");
 const { createMemoryWriterPool } = require("./services/mira-hfm-memory-postgres-runtime");
 const { registerMiraHfmSocialDraftTrashRoute } = require("./routes/mira-hfm-social-draft-trash");
 const { registerMiraHfmSocialDraftRestoreRoute } = require("./routes/mira-hfm-social-draft-restore");
@@ -1372,11 +1373,15 @@ app.get(
       const limit =
         Number(req.query.limit) || 5;
 
-      const results =
-        searchKnowledge(
-          query,
-          limit
-        );
+      const results = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"
+        ? (await searchHfmKnowledge({
+            req,
+            pool: (await getHfmMemoryReadRuntime()).pool,
+            query,
+            limit,
+            env: process.env
+          })).results
+        : searchKnowledge(query, limit);
 
       return res.json({
         success: true,
@@ -1690,11 +1695,15 @@ app.post(
       const messages =
         selectRecentMessages(previousMemory);
 
-      const recalledKnowledge =
-        searchKnowledge(
-          cleanCommand,
-          2
-        );
+      const recalledKnowledge = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"
+        ? (await searchHfmKnowledge({
+            req,
+            pool: (await getHfmMemoryReadRuntime()).pool,
+            query: cleanCommand,
+            limit: 2,
+            env: process.env
+          })).results
+        : searchKnowledge(cleanCommand, 2);
 
       if (
         Array.isArray(recalledKnowledge) &&
