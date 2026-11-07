@@ -1,6 +1,6 @@
 'use strict';
 
-const { retrieveProjectMemory } = require('./mira-hfm-authorized-memory-reader');
+const { retrieveProjectMemory, retrieveProjectMemoryRecord } = require('./mira-hfm-authorized-memory-reader');
 const { collectStandingReadPages, MAX_STANDING_READ_PAGES } = require('./mira-hfm-standing-read-pages');
 const { retrieveCanonicalRecordsWithReport } = require('./mira-memory-unified-facade');
 const { buildHfmAuthorizeRequest } = require('./mira-hfm-work-learning-runtime');
@@ -39,6 +39,99 @@ function scoreRecord(query, record) {
     if (searchable.includes(token)) score += 1;
   }
   return score / tokens.size;
+}
+
+function mapKnowledgeRecord(record, score) {
+  return {
+    id: record.memoryId,
+    title: extractKnowledgeTitle(record),
+    topic: '',
+    category: record.recordType === 'learning_note' ? 'Learning' : 'Knowledge',
+    type: record.recordType === 'learning_note' ? 'learning' : 'knowledge',
+    url: typeof record.source.sourceUrl === 'string' ? record.source.sourceUrl.slice(0, 1000) : '',
+    source: (record.source.sourceUrl || record.source.sourceId).slice(0, 1000),
+    content: record.content.slice(0, 20000),
+    savedAt: record.timestamps.createdAt,
+    score,
+    projectId: record.projectId,
+    revision: record.version.revision,
+    trust: record.trust.status,
+    integrity: record.integrity.status
+  };
+}
+
+async function getHfmKnowledgeById({
+  req, pool, memoryId, env = process.env, now = new Date(),
+  readRecord = retrieveProjectMemoryRecord
+} = {}) {
+  if (typeof memoryId !== 'string' || !memoryId.trim() || memoryId.length > 128) {
+    fail('HFM_KNOWLEDGE_ID_INVALID');
+  }
+  if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== 'true') {
+    fail('HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED');
+  }
+  if (typeof readRecord !== 'function') fail('HFM_KNOWLEDGE_READ_RUNTIME_INVALID');
+
+  const result = await readRecord({
+    req, pool, memoryId: memoryId.trim(),
+    standingReadAuthority: true,
+    recordTypes: ['knowledge_item', 'learning_note'],
+    env
+  });
+  if (!result || result.status !== 'AUTHORIZED_AND_COMMITTED' ||
+      result.standingAuthority !== true ||
+      result.authorityConsumed !== false ||
+      result.approvalRequiredPerRead !== false ||
+      result.memoryWrites !== false ||
+      result.localFallback !== false ||
+      result.driveFallback !== false ||
+      !result.hostAuthorizationContext ||
+      result.hostAuthorizationContext.projectId !== result.projectId ||
+      result.hostAuthorizationContext.authorityRef !== result.standingAuthorityId ||
+      result.hostAuthorizationContext.expiresAt !== result.authorityExpiresAt) {
+    fail('HFM_KNOWLEDGE_AUTHORIZED_EXACT_READ_REQUIRED');
+  }
+  if (result.recordStatus !== 'FOUND' || !result.record) {
+    return Object.freeze({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId: result.projectId,
+      entry: null,
+      standingAuthority: true,
+      authorityExpiresAt: result.authorityExpiresAt,
+      approvalRequiredPerRead: false,
+      localFallback: false,
+      driveFallback: false,
+      memoryWrites: false
+    });
+  }
+
+  const report = retrieveCanonicalRecordsWithReport({
+    records: [result.record],
+    projectId: result.projectId,
+    requestContext: result.hostAuthorizationContext,
+    authorizeRequest: buildHfmAuthorizeRequest(
+      result.hostAuthorizationContext, [memoryId.trim()]
+    ),
+    now
+  });
+  const record = report.records.find(item =>
+    item.memoryId === memoryId.trim() &&
+    item.lifecycle === 'ACTIVE' &&
+    item.integrity?.status === 'VERIFIED' &&
+    ['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(item.trust?.status) &&
+    ['knowledge_item', 'learning_note'].includes(item.recordType)
+  );
+  return Object.freeze({
+    status: 'AUTHORIZED_AND_COMMITTED',
+    projectId: result.projectId,
+    entry: record ? mapKnowledgeRecord(record, 1) : null,
+    standingAuthority: true,
+    authorityExpiresAt: result.authorityExpiresAt,
+    approvalRequiredPerRead: false,
+    localFallback: false,
+    driveFallback: false,
+    memoryWrites: false
+  });
 }
 
 async function searchHfmKnowledge({
@@ -85,22 +178,7 @@ async function searchHfmKnowledge({
     .sort((a, b) => b.score - a.score ||
       a.record.memoryId.localeCompare(b.record.memoryId))
     .slice(0, limit)
-    .map(({ record, score }) => ({
-      id: record.memoryId,
-      title: extractKnowledgeTitle(record),
-      topic: '',
-      category: record.recordType === 'learning_note' ? 'Learning' : 'Knowledge',
-      type: record.recordType === 'learning_note' ? 'learning' : 'knowledge',
-      url: typeof record.source.sourceUrl === 'string' ? record.source.sourceUrl.slice(0, 1000) : '',
-      source: (record.source.sourceUrl || record.source.sourceId).slice(0, 1000),
-      content: record.content.slice(0, 20000),
-      savedAt: record.timestamps.createdAt,
-      score,
-      projectId: record.projectId,
-      revision: record.version.revision,
-      trust: record.trust.status,
-      integrity: record.integrity.status
-    }));
+    .map(({ record, score }) => mapKnowledgeRecord(record, score));
 
   return Object.freeze({
     success: true,
@@ -122,4 +200,4 @@ async function searchHfmKnowledge({
   });
 }
 
-module.exports = Object.freeze({ searchHfmKnowledge, extractKnowledgeTitle });
+module.exports = Object.freeze({ searchHfmKnowledge, getHfmKnowledgeById, extractKnowledgeTitle });
