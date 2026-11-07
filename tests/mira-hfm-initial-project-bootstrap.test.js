@@ -61,7 +61,7 @@ const pool = { async connect() { return client; } };
   assert.equal(result.projectId, 'mira-core');
   assert.equal(result.ownerActorId, actorId);
   assert.equal(result.membershipRole, 'ADMIN');
-  assert.deepEqual(result.permissions, ['memory.read']);
+  assert.deepEqual(result.permissions, ['memory.read', 'memory.write', 'memory.trash', 'memory.restore']);
   assert.equal(result.oneTimeOnly, true);
   assert.equal(result.memoryRecordsImported, 0);
   assert.ok(calls.some(c => c.sql.startsWith('INSERT INTO mira_hfm.bootstrap_registry')));
