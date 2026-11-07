@@ -475,5 +475,6 @@ module.exports = Object.freeze({
   trashMemoryRecord,
   restoreMemoryRecord,
   digest,
+  operationDigests,
   stableJson
 });
