@@ -52,7 +52,20 @@ function validateApproval(receipt, expected) {
   return Object.freeze({ approvalRef, issuedAt: new Date(issuedAt), expiresAt: new Date(expiresAt) });
 }
 
-async function issueMemoryReadAuthority(options = {}) {
+const ALLOWED_MEMORY_OPERATIONS = Object.freeze(new Set(['memory.read', 'memory.write', 'memory.trash', 'memory.restore']));
+
+function validateOperationResource(operation, resource, projectId) {
+  if (!ALLOWED_MEMORY_OPERATIONS.has(operation)) throw fail('HFM_AUTHORITY_OPERATION_NOT_ALLOWED');
+  if (operation === 'memory.read') {
+    if (resource !== 'memory:project:' + projectId) throw fail('HFM_AUTHORITY_RESOURCE_SCOPE_INVALID');
+    return;
+  }
+  if (typeof resource !== 'string' || !/^memory:[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(resource) || resource === 'memory:project:' + projectId) {
+    throw fail('HFM_AUTHORITY_RESOURCE_SCOPE_INVALID');
+  }
+}
+
+async function issueMemoryOperationAuthority(options = {}) {
   if (!options.req || typeof options.req !== 'object') throw fail('HFM_AUTHORITY_SESSION_REQUIRED');
   if (typeof options.verifyApprovalToken !== 'function') {
     throw fail('HFM_AUTHORITY_APPROVAL_VERIFIER_REQUIRED');
@@ -83,12 +96,15 @@ async function issueMemoryReadAuthority(options = {}) {
   }
 
   const projectId = projectContext.project.projectId;
+  const operation = bounded(options.operation || 'memory.read', 128);
+  const resource = bounded(options.resource || ('memory:project:' + projectId), 512);
+  validateOperationResource(operation, resource, projectId);
   const expected = Object.freeze({
     projectId,
     actorId: actor.actorId,
     approverActorId: actor.actorId,
-    operation: 'memory.read',
-    resource: 'memory:project:' + projectId,
+    operation,
+    resource,
     purpose: bounded(options.purpose, 512)
   });
 
@@ -137,16 +153,16 @@ async function issueMemoryReadAuthority(options = {}) {
     );
     const membership = membershipResult.rows?.[0];
     if (!membership || !Array.isArray(membership.permissions?.operations) ||
-        !membership.permissions.operations.includes('memory.read')) {
-      throw fail('HFM_AUTHORITY_MEMORY_READ_NOT_GRANTED');
+        !membership.permissions.operations.includes(operation)) {
+      throw fail('HFM_AUTHORITY_OPERATION_NOT_GRANTED');
     }
 
     await client.query(
       "INSERT INTO mira_hfm.operation_authorities " +
       "(authority_id, project_id, actor_id, operation, resource, purpose, request_id, " +
       "membership_revision, owner_revision, status, issued_by_actor_id, approval_ref, valid_from, expires_at) " +
-      "VALUES ($1,$2,$3,'memory.read',$4,$5,$6,$7,$8,'ISSUED',$3,$9,$10,$11)",
-      [authorityId, projectId, actor.actorId, expected.resource, expected.purpose, requestId,
+      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'ISSUED',$3,$10,$11,$12)",
+      [authorityId, projectId, actor.actorId, expected.operation, expected.resource, expected.purpose, requestId,
         membership.revision, owner.revision, approval.approvalRef, validFrom, expiresAt]
     );
 
@@ -156,7 +172,7 @@ async function issueMemoryReadAuthority(options = {}) {
       "prior_revision, new_revision, approval_ref, details) " +
       "VALUES ($1,$2,$3,'AUTHORITY_ISSUED',$4,clock_timestamp(),$5,$6,$7,$8::jsonb)",
       [randomUUID(), projectId, actor.actorId, requestId, owner.revision, membership.revision,
-        approval.approvalRef, JSON.stringify({ authorityId, operation: 'memory.read', resource: expected.resource,
+        approval.approvalRef, JSON.stringify({ authorityId, operation: expected.operation, resource: expected.resource,
           purpose: expected.purpose, expiresAt: expiresAt.toISOString(), singleUse: true })]
     );
 
@@ -176,7 +192,8 @@ async function issueMemoryReadAuthority(options = {}) {
       status: 'AUTHORITY_ISSUED',
       grant: Object.freeze({ authorityId, purpose: expected.purpose, requestId }),
       projectId,
-      operation: 'memory.read',
+      operation: expected.operation,
+      resource: expected.resource,
       singleUse: true,
       expiresAt: expiresAt.toISOString()
     });
@@ -190,4 +207,4 @@ async function issueMemoryReadAuthority(options = {}) {
   }
 }
 
-module.exports = Object.freeze({ issueMemoryReadAuthority, validateApproval, MAX_TTL_MS });
+module.exports = Object.freeze({ issueMemoryOperationAuthority, issueMemoryReadAuthority: issueMemoryOperationAuthority, validateApproval, validateOperationResource, ALLOWED_MEMORY_OPERATIONS, MAX_TTL_MS });
