@@ -7,6 +7,7 @@ const message = { role: 'user', content: 'A conversation turn.' };
 for (const flag of [
   'MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED',
   'MIRA_HFM_WORK_LEARNING_ENABLED',
+  'MIRA_HFM_MEMORY_READ_ENABLED',
   'MIRA_HFM_MEMORY_WRITE_ENABLED'
 ]) {
   let calls = 0;
