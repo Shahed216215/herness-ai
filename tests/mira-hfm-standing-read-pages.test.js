@@ -5,8 +5,12 @@ const { collectStandingReadPages } = require('../services/mira-hfm-standing-read
 
 const context = {
   actorId: 'mira:actor-001',
+  actorType: 'HUMAN',
   projectId: 'project-alpha',
+  purpose: 'approved read',
+  requestId: 'request-page-001',
   authorityRef: 'standing-authority-001',
+  issuedAt: '2026-11-07T00:00:00.000Z',
   expiresAt: '2027-11-07T00:00:00.000Z'
 };
 const scanStartedAt = '2026-11-07T00:00:00.000Z';
@@ -38,7 +42,9 @@ function record(memoryId) {
     readMemory: async options => {
       cursors.push(options.cursor || null);
       return options.cursor
-        ? page([record('memory-002')])
+        ? page([record('memory-002')], null, {
+            hostAuthorizationContext: { ...context, requestId: 'request-page-002' }
+          })
         : page([record('memory-001')], 'cursor-page-2');
     },
     readOptions: { pool: {}, req: {}, standingReadAuthority: true }
@@ -83,7 +89,10 @@ function record(memoryId) {
 
   await assert.rejects(() => collectStandingReadPages({
     readMemory: async options => options.cursor
-      ? page([record('memory-002')], null, { scanStartedAt: '2026-11-07T00:01:00.000Z' })
+      ? page([record('memory-002')], null, {
+          scanStartedAt: '2026-11-07T00:01:00.000Z',
+          hostAuthorizationContext: { ...context, requestId: 'request-page-002' }
+        })
       : page([record('memory-001')], 'cursor-page-2'),
     readOptions: {}
   }), /HFM_STANDING_READ_PAGE_CONTEXT_CHANGED/);
@@ -92,7 +101,7 @@ function record(memoryId) {
   await assert.rejects(() => collectStandingReadPages({
     readMemory: async options => options.cursor
       ? page([record('memory-002')], null, {
-          hostAuthorizationContext: { ...context, actorId: 'mira:actor-other' }
+          hostAuthorizationContext: { ...context, actorId: 'mira:actor-other', requestId: 'request-page-002' }
         })
       : page([record('memory-001')], 'actor-drift-cursor'),
     readOptions: {}
@@ -108,7 +117,11 @@ function record(memoryId) {
   console.log('HFM_STANDING_READ_PAGES_DUPLICATE_RECORD_BLOCKED=PASS');
 
   const bounded = await collectStandingReadPages({
-    readMemory: async options => page([record(options.cursor ? 'memory-next' : 'memory-first')], 'more-' + (options.cursor || 'start')),
+    readMemory: async options => page(
+      [record(options.cursor ? 'memory-next' : 'memory-first')],
+      'more-' + (options.cursor || 'start'),
+      { hostAuthorizationContext: { ...context, requestId: options.cursor ? 'request-page-002' : 'request-page-001' } }
+    ),
     readOptions: {},
     maxPages: 2
   });
