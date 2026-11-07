@@ -334,7 +334,10 @@ for (const flag of [
 for (const source of [centralLegacyMemorySource, centralLegacyKnowledgeSource, centralLegacyDriveSource, centralLegacyEvolutionSource]) {
   assert.match(source, /assertLegacyStorageDisabled\(\)/);
 }
-assert.match(server, /HFM_STANDING_READ_ONLY/);
+const standingReadAuthoritySource = read("services/mira-hfm-standing-read-authority.js");
+const authorizedMemoryReaderSource = read("services/mira-hfm-authorized-memory-reader.js");
+assert.match(standingReadAuthoritySource, /writesAllowed:\s*false/);
+assert.match(authorizedMemoryReaderSource, /memoryWrites:\s*false/);
 assert.match(server, /selectRecentMessages\(previousMemory\)/);
 assert.match(server, /hfmRecallEnabled/);
 assert.match(server, /candidateScanMayBeIncomplete/);
