@@ -412,3 +412,101 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - This corrects pagination consistency only; authorization remains re-evaluated and audited on every page. No live DB, Render, deployment, merge, or external publishing action occurred.
 - The cursor decoder now rejects legacy millisecond-precision cursor payloads rather than silently accepting a lossy boundary. The exact regression suite passed in foundation workflow `42367284712` and focused Memory repository workflow `42367284707` on commit `7c067f2936a6bdd6385468f556ce9f40dfe36f3a`; both workflows completed SUCCESS.
 - The route now maps a malformed standing-read page cursor to HTTP 400 rather than a generic runtime-unavailable 503. The exact full-suite run `42367284712` includes `HFM_MEMORY_READ_MALFORMED_CURSOR_CLIENT_ERROR=PASS` and `TESTS_FAILED=0`.
+
+
+---
+
+# HFM v0.2 — Clean integration and security hardening addendum
+
+**Audit date:** 2026-11-07  
+**Clean integration branch:** `work/mira-hfm-v02-clean-integration-20261107`  
+**Current clean branch head:** `580f56e091cee28e5612d077ee29d8fbf66b4f15`  
+**Draft integration PR:** #80  
+**Legacy divergent PR:** #79 (left open and unmerged)  
+**Disposition:** HFM v0.2 remains NOT COMPLETE / NOT DEPLOYABLE
+
+## 1. Clean mainline integration path
+
+- The clean branch was created directly from current `main` commit `881a1deebf5d97a7590aa2b14242a8f32aadf627`.
+- HFM v0.2 files were applied as a bounded file-tree overlay; files and commits already on current `main` were preserved.
+- The session-persistence workflow was reconciled with current-main triggers and HFM transcript-gate paths.
+- Current comparison is mainline-based with zero commits behind. PR #80 remains Draft; no merge occurred.
+- PR #79 was not modified or merged.
+
+## 2. Current CI evidence
+
+<escape>**9/9 PASS**</escape> on clean branch head `580f56e091cee28e5612d077ee29d8fbf66b4f15`.
+
+- HFM runtime foundation contract
+- HFM Memory repository contracts
+- HFM PostgreSQL migration integration (migrations 001–015 in disposable PostgreSQL)
+- Session persistence
+- Render host-binding contract
+- Run Agent regression
+- Dependency remediation
+- Tool health approval diagnostic
+- Competitor Intelligence regression
+
+These results prove CI/synthetic/disposable-environment behavior only. They do not establish live Neon, Render environment, or production authorization readiness.
+
+## 3. Writer database privilege hardening
+
+Migration 015 now narrows writer UPDATE privileges:
+- `operation_authorities`: only `status` and `consumed_at`.
+- `memory_records`: only lifecycle, trash metadata, revision, and update timestamp.
+- `memory_operation_registry`: only status, result code, and update timestamp.
+
+Additional guards:
+- Lifecycle transitions cannot rewrite payload, encryption envelope, trust, or integrity fields.
+- Operation-registry identity and payload digest are immutable; only `REQUESTED → COMPLETED` is accepted.
+- RLS requires an active membership/owner and a live, time-valid consumed authority.
+- Disposable PostgreSQL regression tests reject payload/idempotency tampering, expired membership, and non-member writer attempts.
+
+The lifecycle repository update now changes only lifecycle metadata. Its timestamp is advanced beyond the stored revision even when the stored PostgreSQL timestamp has a sub-second component not represented by JavaScript `Date.toString()`.
+
+Migration 015 is source-only. It has not been applied to any staging or production Neon branch.
+
+## 4. Daily social-draft trust gate
+
+Daily social-draft generation now accepts only same-project, active, `PROJECT_PRIVATE` activity/learning records with `integrity=VERIFIED` and trust state `CONTENT_VERIFIED` or `HUMAN_VERIFIED`. `SOURCE_RECORDED`, failed-integrity, pending, archived, restricted, other-project, and wrong-day records are excluded. Regression coverage confirms that unverified and integrity-failed text does not enter the generated public draft.
+
+Draft generation remains manually reviewed; automatic Facebook publishing remains disabled.
+
+## 5. Canonical family and schema reconciliation
+
+The user-approved 2026-11-06 Memory Topology Amendment lists seven domain families, including `source_reference`. The implemented canonical v1.1.0 validator supports six extended record types and represents provenance only through the nested `source` object. It does not implement the approved `source_reference` record family.
+
+A source-only proposal now defines the missing contract and recommends a separately versioned additive schema target v1.2.0. This remains NOT APPROVED / NOT IMPLEMENTED; no schema or migration change was made for it.
+
+The current tool surface exposes `memory_save`, `knowledge_save`, and `learning_save`; the dedicated daily activity, source-reference, client-vault, and financial-vault writer workflows are not yet complete end-to-end. Existing social draft persistence is a separate reviewed writer path.
+
+## 6. Remaining v0.2 contract gates
+
+Three source-only proposals are present and explicitly NOT APPROVED / NOT IMPLEMENTED:
+- `HFM-KNOWLEDGE-REVIEW-AND-TRUST-PROMOTION-CONTRACT-PROPOSAL-20261107.md`
+- `HFM-CANONICAL-CONVERSATION-TRANSCRIPT-PERSISTENCE-PROPOSAL-20261107.md`
+- `HFM-SOURCE-REFERENCE-RECORD-CONTRACT-PROPOSAL-20261107.md`
+
+Until the corresponding contracts are approved and implemented:
+- Knowledge/Learning review remains read-only; `promotionSupported: false`, `writeAllowed: false`.
+- Canonical transcript persistence remains disabled/non-persistent in HFM mode; local and Drive fallback remain blocked.
+- `source_reference` has no canonical v1.1.0 record type or writer.
+- Daily activity and restricted vault writer workflows remain incomplete.
+
+## 7. CI live-network guard
+
+The first draft-PR validation run executed the pre-existing Render live HTTP smoke job: an unauthenticated health GET and an unauthenticated POST with an empty JSON body to verify that the protected agent endpoint denied access. The workflow completed successfully; no authenticated agent action, configuration/secret change, database write, or deployment was performed.
+
+The workflow was changed so `render-live-http-smoke` runs only on explicit `workflow_dispatch`. The latest PR validation skipped that live smoke job; ordinary pull-request validation now remains offline for this workflow.
+
+## 8. Production and release boundary
+
+- Production Neon migrations 010–015: NOT APPLIED.
+- Production role hardening/owner bootstrap: NOT APPROVED.
+- Render environment/Neon project mapping: INCONCLUSIVE.
+- Render secrets or runtime flags: unchanged.
+- Deployment: BLOCKED.
+- PR #80: Draft; not merged.
+- PR #79: open; not merged.
+- Facebook API actions: none.
+- HFM release: v0.2 only. No v0.3 work started.
