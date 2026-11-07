@@ -437,7 +437,7 @@ async function changeLifecycle(options, targetLifecycle) {
   if (update.rowCount !== 1) throw fail('HFM_MEMORY_REVISION_CONFLICT');
   await appendAudit(client, context, operation.operationId, memoryId,
     targetLifecycle === 'TRASHED' ? 'MEMORY_TRASHED' : 'MEMORY_RESTORED',
-    'COMPLETED', { classification: row.classification, revision: nextRecord.version.revision });
+    'COMPLETED', { recordType: row.record_type, classification: row.classification, revision: nextRecord.version.revision });
   await completeOperation(client, operation.operationId, memoryId);
   return { status: targetLifecycle === 'TRASHED' ? 'TRASHED' : 'RESTORED', memoryId, revision: nextRecord.version.revision };
 }
