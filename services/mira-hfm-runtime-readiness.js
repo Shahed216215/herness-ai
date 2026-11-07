@@ -9,8 +9,11 @@ function vaultStatus(env) {
     return Object.freeze({ status: 'NOT_CONFIGURED', reason: 'VAULT_ACTIVE_KEY_VERSION_MISSING' });
   }
   const encoded = env['MIRA_VAULT_KEK_' + version.toUpperCase()];
-  if (typeof encoded !== 'string' || encoded.length !== 44) {
+  if (typeof encoded !== 'string' || !encoded) {
     return Object.freeze({ status: 'NOT_CONFIGURED', reason: 'VAULT_KEY_MISSING' });
+  }
+  if (encoded.length !== 44) {
+    return Object.freeze({ status: 'INVALID', reason: 'VAULT_KEY_INVALID', activeKeyVersion: version });
   }
   const key = Buffer.from(encoded, 'base64');
   const valid = key.length === 32 && key.toString('base64') === encoded;
