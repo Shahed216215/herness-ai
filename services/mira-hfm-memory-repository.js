@@ -453,6 +453,7 @@ function restoreMemoryRecord(options = {}) {
 module.exports = Object.freeze({
   createMemoryRecord,
   reviseMemoryRecord,
+  decodeStoredRow,
   getMemoryRecord,
   listMemoryRecords,
   trashMemoryRecord,

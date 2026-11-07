@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { decodeStoredRow } = require('./mira-hfm-memory-repository');
 
 const AUTHORITY_CONTEXT = 'HFM_CONSUMED_ONE_TIME_AUTHORITY';
 const OPERATIONS = Object.freeze({
@@ -171,6 +172,54 @@ async function updateStatus(client, context, memoryId, status, extra = {}) {
   );
 }
 
+
+async function listSocialPostDrafts(options = {}) {
+  const { client, context } = options;
+  if (!client || typeof client.query !== 'function' ||
+      !context || context.authorityContext !== AUTHORITY_CONTEXT ||
+      typeof context.actorId !== 'string' || !context.actorId.startsWith('mira:') ||
+      typeof context.projectOwnerActorId !== 'string' || !context.projectOwnerActorId.startsWith('mira:') ||
+      typeof context.projectId !== 'string' || !context.projectId ||
+      context.operation !== 'memory.read' ||
+      context.resource !== 'memory:project:' + context.projectId ||
+      typeof context.requestId !== 'string' || !context.requestId) {
+    throw fail('HFM_SOCIAL_POST_AUTHORITY_INVALID');
+  }
+  const limit = Number.isInteger(options.limit) ? Math.min(Math.max(options.limit, 1), 100) : 25;
+  const result = await client.query(
+    'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
+    'integrity_status, trust_status, public_payload, encrypted_envelope, created_at, updated_at, payload_erased_at ' +
+    'FROM mira_hfm.memory_records WHERE project_id = $1 AND record_type = \'social_post_draft\' ' +
+    'AND classification = \'PROJECT_PRIVATE\' ORDER BY created_at DESC, memory_id ASC LIMIT $2',
+    [context.projectId, limit]
+  );
+  const drafts = [];
+  for (const row of result.rows || []) {
+    const state = await getStateRow(client, context.projectId, row.memory_id);
+    const erased = Boolean(row.payload_erased_at);
+    let record = null;
+    if (!erased) {
+      record = decodeStoredRow(row, {
+        allowPrivateRead: options.allowPrivateRead === true,
+        env: options.env || process.env
+      });
+    }
+    drafts.push(Object.freeze({
+      memoryId: row.memory_id,
+      projectId: row.project_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      revision: Number(row.revision),
+      lifecycle: row.lifecycle,
+      status: state ? state.status : 'SAVED',
+      payloadErased: erased,
+      content: record ? record.content : null,
+      source: record ? record.source : null
+    }));
+  }
+  return Object.freeze({ status: 'FOUND', drafts: Object.freeze(drafts), count: drafts.length });
+}
+
 async function markSocialPostCopied(options = {}) {
   const { client, context, memoryId } = options;
   validateWorkflowContext(context, OPERATIONS.COPY, memoryId);
@@ -277,6 +326,7 @@ async function getSocialPostStatus(options = {}) {
 
 module.exports = Object.freeze({
   AUTHORITY_CONTEXT, OPERATIONS, STATES,
+  listSocialPostDrafts,
   validateWorkflowContext, assertSocialPostRecord, nextSocialPostStatus,
   markSocialPostCopied, confirmSocialPostPublished, deleteSocialPostPayload,
   getSocialPostStatus
