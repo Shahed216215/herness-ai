@@ -145,6 +145,9 @@ CREATE POLICY hfm_writer_memory_record_select_scope
         AND authority_row.resource = 'memory:' || memory_records.memory_id
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   );
 
@@ -182,6 +185,9 @@ CREATE POLICY hfm_writer_memory_record_insert_scope
         AND authority_row.resource = 'memory:' || memory_records.memory_id
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   );
 
@@ -218,6 +224,9 @@ CREATE POLICY hfm_writer_memory_record_update_scope
         AND authority_row.resource = 'memory:' || memory_records.memory_id
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   )
   WITH CHECK (
@@ -247,6 +256,9 @@ CREATE POLICY hfm_writer_memory_record_update_scope
         AND authority_row.resource = 'memory:' || memory_records.memory_id
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   );
 
@@ -273,6 +285,9 @@ CREATE POLICY hfm_writer_memory_version_insert_scope
         AND authority_row.resource = 'memory:' || memory_record_versions.memory_id
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   );
 
@@ -294,6 +309,9 @@ CREATE POLICY hfm_writer_operation_registry_scope
         AND authority_row.resource = NULLIF(current_setting('mira.resource', true), '')
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   )
   WITH CHECK (
@@ -309,6 +327,9 @@ CREATE POLICY hfm_writer_operation_registry_scope
         AND authority_row.resource = NULLIF(current_setting('mira.resource', true), '')
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   );
 
@@ -336,6 +357,9 @@ CREATE POLICY hfm_writer_memory_audit_select_scope
         AND authority_row.resource = NULLIF(current_setting('mira.resource', true), '')
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   );
 
@@ -363,6 +387,9 @@ CREATE POLICY hfm_writer_memory_audit_insert_scope
         AND authority_row.resource = NULLIF(current_setting('mira.resource', true), '')
         AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
         AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
     )
   );
 
@@ -488,6 +515,9 @@ CREATE POLICY hfm_reader_memory_membership_authority_scope
             AND authority_row.resource = NULLIF(current_setting('mira.resource', true), '')
             AND authority_row.request_id = NULLIF(current_setting('mira.request_id', true), '')
             AND authority_row.status = 'CONSUMED'
+        AND authority_row.consumed_at IS NOT NULL
+        AND authority_row.valid_from <= clock_timestamp()
+        AND authority_row.expires_at > clock_timestamp()
         )
       )
     )
