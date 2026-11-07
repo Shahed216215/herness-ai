@@ -18,6 +18,8 @@ const { registerMiraHfmProjectSelectionRoute } = require("./routes/mira-hfm-proj
 const { createAuthorityIssuerPool } = require("./services/mira-hfm-authority-issuer-runtime");
 const { registerMiraHfmAuthorityApprovalRoute } = require("./routes/mira-hfm-authority-approval");
 const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
+const { createMemoryWriterPool } = require("./services/mira-hfm-memory-postgres-runtime");
+const { registerMiraHfmSocialDraftTrashRoute } = require("./routes/mira-hfm-social-draft-trash");
 const { registerMiraHfmMemoryReadRoute } = require("./routes/mira-hfm-memory-read");
 const { createHfmBootstrapPool } = require("./services/mira-hfm-bootstrap-runtime");
 const { registerMiraHfmInitialBootstrapRoute } = require("./routes/mira-hfm-initial-bootstrap");
@@ -268,6 +270,26 @@ function getHfmInitialBootstrapRuntime() {
 registerMiraHfmInitialBootstrapRoute(
   app,
   getHfmInitialBootstrapRuntime,
+  requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
+);
+
+let hfmMemoryWriterRuntimePromise = null;
+function getHfmMemoryWriterRuntime() {
+  if (!hfmMemoryWriterRuntimePromise) {
+    hfmMemoryWriterRuntimePromise = createMemoryWriterPool().catch(error => ({
+      status: "FAILED",
+      reason: typeof error?.code === "string"
+        ? error.code.slice(0, 80)
+        : "MEMORY_WRITER_RUNTIME_UNAVAILABLE",
+      pool: null
+    }));
+  }
+  return hfmMemoryWriterRuntimePromise;
+}
+registerMiraHfmSocialDraftTrashRoute(
+  app,
+  getHfmMemoryWriterRuntime,
+  getHfmAuthorityIssuerRuntime,
   requireAdminPermission(PERMISSIONS.SYSTEM_ADMIN)
 );
 
