@@ -18,6 +18,9 @@ on:
       - "migrations/hfm/007_authority_issuer_role.sql"
       - "tests/mira-hfm-authority-issuer-routes.test.js"
       - "tests/mira-hfm-authority-issuer-migration-contract.test.js"
+      - "public/mira-hfm-knowledge.html"
+      - "public/index.html"
+      - "tests/mira-hfm-facebook-knowledge-ui.test.js"
       - "tests/mira-hfm-social-post-routes.test.js"
       - "migrations/hfm/006_social_post_manual_publish_payload_erasure.sql"
       - "tests/mira-hfm-social-post-workflow.test.js"
@@ -114,5 +117,6 @@ jobs:
           node tests/mira-hfm-facebook-knowledge.test.js
           node tests/mira-hfm-authority-issuer-routes.test.js
           node tests/mira-hfm-authority-issuer-migration-contract.test.js
+          node tests/mira-hfm-facebook-knowledge-ui.test.js
       - name: Run full repository regression suite
         run: npm test
