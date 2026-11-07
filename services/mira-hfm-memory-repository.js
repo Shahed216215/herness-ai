@@ -2,7 +2,7 @@
 
 const crypto = require('node:crypto');
 const { validateCanonicalRecord } = require('./mira-hfm-record-schema');
-const { createVaultEnvelope, decryptVaultEnvelope } = require('./mira-hfm-vault-crypto');
+const { createVaultEnvelope, decryptVaultEnvelope, createVaultDigestCandidates } = require('./mira-hfm-vault-crypto');
 
 const MAX_PAGE_SIZE = 100;
 const OPERATION_CONTEXT = 'HFM_CONSUMED_ONE_TIME_AUTHORITY';
@@ -23,6 +23,17 @@ function stableJson(value) {
 
 function digest(value) {
   return crypto.createHash('sha256').update(stableJson(value), 'utf8').digest('hex');
+}
+
+function operationDigests(record, env) {
+  if (recordClassification(record) === 'PUBLIC') {
+    const value = digest(record);
+    return { activeDigest: value, candidates: [value] };
+  }
+  // Private/restricted payload hashes must not enable offline dictionary attacks.
+  // Derive a purpose-specific HMAC key from each configured KEK version so a
+  // retry after rotation can still reconcile while the prior KEK remains available.
+  return createVaultDigestCandidates(stableJson(record), env);
 }
 
 function boundedText(value, max, code) {
@@ -122,7 +133,7 @@ function decodeStoredRow(row, options = {}) {
   return record;
 }
 
-async function beginIdempotentOperation(client, context, idempotencyKey, operation, resource, payloadDigest) {
+async function beginIdempotentOperation(client, context, idempotencyKey, operation, resource, payloadDigest, payloadDigestCandidates = [payloadDigest]) {
   const key = boundedText(idempotencyKey, 256, 'HFM_MEMORY_IDEMPOTENCY_KEY_INVALID');
   const operationId = crypto.randomUUID();
   const inserted = await client.query(
@@ -145,7 +156,7 @@ async function beginIdempotentOperation(client, context, idempotencyKey, operati
       existing.operation !== operation ||
       existing.resource !== resource ||
       existing.purpose !== (context.purpose || operation) ||
-      existing.payload_digest !== payloadDigest) {
+      !payloadDigestCandidates.includes(existing.payload_digest)) {
     throw fail('HFM_MEMORY_IDEMPOTENCY_CONFLICT');
   }
   if (existing.status === 'COMPLETED') {
@@ -240,9 +251,10 @@ async function createMemoryRecord(options = {}) {
   const ownerId = context.actorId;
   const resource = 'memory:' + record.memoryId;
   if (context.resource !== resource) throw fail('HFM_MEMORY_AUTHORITY_RESOURCE_MISMATCH');
-  const payloadDigest = digest(record);
+  const payloadDigests = operationDigests(record, options.env || process.env);
   const operation = await beginIdempotentOperation(
-    client, context, options.idempotencyKey, 'memory.write', resource, payloadDigest
+    client, context, options.idempotencyKey, 'memory.write', resource,
+    payloadDigests.activeDigest, payloadDigests.candidates
   );
   if (operation.duplicate) {
     return { status: 'ALREADY_COMMITTED', memoryId: operation.resultCode, duplicate: true };
@@ -262,7 +274,6 @@ async function createMemoryRecord(options = {}) {
     recordType: record.recordType,
     classification,
     revision: record.version.revision,
-    contentHash: record.version.contentHash
   });
   await completeOperation(client, operation.operationId, record.memoryId);
   return { status: 'CREATED', memoryId: record.memoryId, revision: record.version.revision, duplicate: false };
@@ -281,8 +292,10 @@ async function reviseMemoryRecord(options = {}) {
   if (nextRecord.memoryId !== memoryId) throw fail('HFM_MEMORY_RECORD_IDENTITY_MISMATCH');
   assertProjectScope(nextRecord, context.projectId);
 
+  const payloadDigests = operationDigests(nextRecord, options.env || process.env);
   const operation = await beginIdempotentOperation(
-    client, context, options.idempotencyKey, 'memory.update', resource, digest(nextRecord)
+    client, context, options.idempotencyKey, 'memory.update', resource,
+    payloadDigests.activeDigest, payloadDigests.candidates
   );
   if (operation.duplicate) {
     return { status: 'ALREADY_COMMITTED', memoryId: operation.resultCode, duplicate: true };
@@ -330,7 +343,6 @@ async function reviseMemoryRecord(options = {}) {
     recordType: nextRecord.recordType,
     classification: row.classification,
     revision: nextRecord.version.revision,
-    contentHash: nextRecord.version.contentHash
   });
   await completeOperation(client, operation.operationId, memoryId);
   return { status: 'REVISED', memoryId, revision: nextRecord.version.revision };
