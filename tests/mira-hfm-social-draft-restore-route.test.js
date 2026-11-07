@@ -40,7 +40,11 @@ function req(overrides = {}) {
 function res() {
   return { statusCode: 200, payload: null, status(code) { this.statusCode = code; return this; }, json(value) { this.payload = value; return this; } };
 }
-async function invoke(input, writer = async () => ({ status: 'MEMORY_WRITER_READY', pool: { connect: async () => ({}) }), issuer = async () => ({ status: 'AUTHORITY_ISSUER_READY', pool: { connect: async () => ({}) } })) {
+async function invoke(
+  input,
+  writer = async () => ({ status: 'MEMORY_WRITER_READY', pool: { connect: async () => ({}) } }),
+  issuer = async () => ({ status: 'AUTHORITY_ISSUER_READY', pool: { connect: async () => ({}) } })
+) {
   let handler;
   const response = res();
   const app = { post(path, middleware, callback) { assert.equal(path, '/api/hfm/social-drafts/restore'); handler = { middleware, callback }; } };
