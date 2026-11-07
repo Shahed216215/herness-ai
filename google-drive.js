@@ -1,6 +1,6 @@
+const fs = require("fs");
 const path = require("path");
 const { assertLegacyStorageDisabled } = require('./services/mira-hfm-legacy-storage-guard');
-t path = require("path");
 
 const BASE_DIR = __dirname;
 
