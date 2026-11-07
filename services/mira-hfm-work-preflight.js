@@ -10,15 +10,16 @@ function fail(code) {
   throw error;
 }
 
-function timestampAtOrBeforeNow(value, nowMs) {
-  if (typeof value !== 'string') return false;
+function compareTimestampToNow(value, nowMs) {
+  if (typeof value !== 'string' || !Number.isFinite(nowMs)) return null;
   if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{6}Z$/.test(value)) {
-    if (!Number.isFinite(Date.parse(value.slice(0, 23) + 'Z'))) return false;
+    if (!Number.isFinite(Date.parse(value.slice(0, 23) + 'Z'))) return null;
     const nowIso = new Date(nowMs).toISOString().slice(0, 23) + '000Z';
-    return value <= nowIso;
+    return value < nowIso ? -1 : value > nowIso ? 1 : 0;
   }
   const parsed = Date.parse(value);
-  return Number.isFinite(parsed) && parsed <= nowMs;
+  if (!Number.isFinite(parsed)) return null;
+  return parsed < nowMs ? -1 : parsed > nowMs ? 1 : 0;
 }
 
 async function preflightHfmStandingRead(options = {}) {
@@ -62,14 +63,14 @@ async function preflightHfmStandingRead(options = {}) {
     typeof context.authorityRef === 'string' && context.authorityRef &&
     typeof context.requestId === 'string' && context.requestId &&
     typeof context.purpose === 'string' && context.purpose &&
-    typeof context.issuedAt === 'string' && Number.isFinite(Date.parse(context.issuedAt)) &&
-    Date.parse(context.issuedAt) <= now.getTime() &&
-    typeof context.expiresAt === 'string' && Number.isFinite(Date.parse(context.expiresAt)) &&
-    Date.parse(context.expiresAt) > now.getTime() &&
+    compareTimestampToNow(context.issuedAt, now.getTime()) !== null &&
+    compareTimestampToNow(context.issuedAt, now.getTime()) <= 0 &&
+    compareTimestampToNow(context.expiresAt, now.getTime()) === 1 &&
     typeof result.projectId === 'string' && result.projectId.length > 0 &&
     result.standingAuthorityId === context.authorityRef &&
     result.authorityExpiresAt === context.expiresAt &&
-    timestampAtOrBeforeNow(result.scanStartedAt, now.getTime()) &&
+    compareTimestampToNow(result.scanStartedAt, now.getTime()) !== null &&
+    compareTimestampToNow(result.scanStartedAt, now.getTime()) <= 0 &&
     Number.isInteger(result.count) && result.count === result.records.length &&
     result.records.length <= (includeLearning ? 100 : 1) &&
     (result.nextCursor === undefined || result.nextCursor === null ||
