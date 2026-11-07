@@ -428,7 +428,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
     readMemory: async options => {
       assert.equal(options.standingReadAuthority, true);
-      assert.deepEqual(options.recordTypes, ['knowledge_item']);
+      assert.deepEqual(options.recordTypes, ['knowledge_item', 'learning_note']);
       assert.equal(options.lifecycle, 'ACTIVE');
       return {
         status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha',
