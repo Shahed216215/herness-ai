@@ -434,3 +434,11 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - Work execution ordering was rechecked: when either standing-read or Work Learning is enabled, the authenticated HFM read runtime is resolved and a committed standing-read preflight completes before task planning, task understanding, tool-call normalization, or execution. If both flags are off, the read-context resolver returns without opening the HFM read runtime. Work Learning reuses the audited preflight page for its first page and re-authorizes every subsequent cursor page; it does not trust a caller-supplied precomputed plan.
 - The wiring regression contract now explicitly checks preflight-before-planning and preflight-before-tool-normalization ordering, the flags-off early return, and reuse of the preflight snapshot.
 - These changes remain within HFM v0.2. No live Neon/Render configuration, migration, deployment, merge, credential, or Facebook operation was performed.
+
+
+## Backend-confirmed standing-authority UI state — 2026-11-07
+
+- The standing-authority status UI now treats the backend response as untrusted state: `featureEnabled` must be a boolean, the `authority` field must be explicitly present, and any authority must contain a recognized lifecycle state, non-empty authority ID, and parseable expiry. Missing, malformed, or unknown states hide every lifecycle action and the issue control.
+- Authority issuance is no longer shown as successful merely because the issue endpoint returned HTTP success. The UI requires the expected issuance status and authority ID, then refreshes backend status and verifies that the same authority is actually `ACTIVE` before displaying success. If that readback cannot be confirmed, the UI says the result is unverified and instructs the operator to refresh status before retrying.
+- Regression coverage asserts fail-closed behavior for missing/malformed backend state and prevents an unverified issuance response from producing a false ACTIVE success message.
+- These are source and CI changes only. No live authority was issued, no feature flag was enabled, and no live database or deployment was changed.
