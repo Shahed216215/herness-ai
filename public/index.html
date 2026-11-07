@@ -13069,13 +13069,16 @@ document.querySelectorAll(
     try {
       const data = await postJson("/api/hfm/memory/standing-authority/status", {});
       const authority = data.authority;
+      const featureEnabled = data.featureEnabled === true;
       standingAuthorityId = authority ? authority.standingAuthorityId : null;
       if (!authority) {
-        standingStatusNode.textContent = "No standing read authority exists for this project.";
+        standingStatusNode.textContent = featureEnabled
+          ? "No standing read authority exists for this project."
+          : "No standing read authority exists. The HFM standing-read feature is disabled.";
         byId("hfmV02StandingPause").hidden = true;
         byId("hfmV02StandingResume").hidden = true;
         byId("hfmV02StandingRevoke").hidden = true;
-        byId("hfmV02StandingIssue").hidden = false;
+        byId("hfmV02StandingIssue").hidden = !featureEnabled;
         return;
       }
       const expiry = new Date(authority.expiresAt).toLocaleString();
@@ -13088,7 +13091,7 @@ document.querySelectorAll(
       byId("hfmV02StandingPause").hidden = !active;
       byId("hfmV02StandingResume").hidden = !paused;
       byId("hfmV02StandingRevoke").hidden = !(active || paused);
-      byId("hfmV02StandingIssue").hidden = !terminal;
+      byId("hfmV02StandingIssue").hidden = !(terminal && featureEnabled);
     } catch (error) {
       standingAuthorityId = null;
       standingStatusNode.textContent = "Standing authority status unavailable: " + error.message;
