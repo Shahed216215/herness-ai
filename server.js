@@ -104,6 +104,8 @@ const registerHfmProjectRoutes = require("./routes/mira-hfm-projects");
 const registerDailyKnowledgeRoutes = require("./routes/mira-hfm-daily-knowledge");
 const { getAuthorityIssuerPool } = require("./services/mira-hfm-authority-issuer-pool");
 const { getMemoryWriterPool } = require("./services/mira-hfm-memory-writer-pool");
+const registerHfmRuntimeReadinessRoute = require("./routes/mira-hfm-runtime-readiness");
+const { inspectHfmRuntimeConfiguration } = require("./services/mira-hfm-runtime-readiness");
 const registerClientCommunicationRoutes =
   require("./routes/client-communication");
 
@@ -2254,6 +2256,10 @@ registerHfmProjectRoutes(app, requireAgentAuth, {
 });
 
 registerDailyKnowledgeRoutes(app, requireAgentAuth);
+
+registerHfmRuntimeReadinessRoute(app, requireAgentAuth, {
+  inspect: inspectHfmRuntimeConfiguration
+});
 
 registerWorkAcceptanceRoutes(
   app,
