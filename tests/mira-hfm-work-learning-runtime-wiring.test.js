@@ -296,6 +296,9 @@ assert.match(server, /HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_DIAGNOSTIC/
 assert.match(server, /HFM_READ_ONLY_LOCAL_MEMORY_DISABLED/);
 assert.match(server, /HFM_STANDING_READ_ONLY/);
 assert.match(server, /selectRecentMessages\(previousMemory\)/);
+assert.match(server, /hfmRecallEnabled/);
+assert.match(server, /candidateScanMayBeIncomplete/);
+assert.match(server, /RETRIEVAL_COVERAGE_LIMITATION/);
 assert.match(server, /app\.get\(\s*"\/api\/admin\/knowledge\/:id"/);
 assert.match(server, /HFM standing authority grants memory\.read only; Knowledge edits are not authorized/);
 assert.match(server, /HFM standing authority grants memory\.read only; Knowledge deletion is not authorized/);
