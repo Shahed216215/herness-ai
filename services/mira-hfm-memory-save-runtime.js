@@ -81,8 +81,9 @@ function hasExplicitVaultSaveIntent(kind, value) {
   const negative = /\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,100}\b(?:client|customer|financial|finance|transaction|invoice|payment)\b/i.test(value);
   const bengaliNegative = /(?:ক্লায়েন্ট|ক্লায়েন্ট|গ্রাহক|আর্থিক|লেনদেন|ইনভয়েস|ইনভয়েস|পেমেন্ট).{0,100}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,10}না/u.test(value);
   if (negative || bengaliNegative) return false;
-  const english = /\b(?:save|store|record|keep)\b.{0,100}/i.test(value) && terms.test(value) ||
-    terms.test(value) && /\b(?:save|store|record|keep)\b/i.test(value);
+  // Require an explicit save action before the client/financial subject. A noun phrase such as
+  // “remember this client record” must not be mistaken for authorization to write a vault record.
+  const english = /\b(?:save|store|record|keep)\b.{0,100}/i.test(value) && terms.test(value);
   const bengali = client
     ? /(?:ক্লায়েন্ট|ক্লায়েন্ট|গ্রাহক).{0,100}(?:ভল্ট|রেকর্ড|তথ্য).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ)/u.test(value) ||
       /(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,100}(?:ক্লায়েন্ট|ক্লায়েন্ট|গ্রাহক)/u.test(value)
