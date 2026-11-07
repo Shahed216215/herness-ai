@@ -59,6 +59,7 @@ async function preflightHfmStandingRead(options = {}) {
     result.standingAuthorityId === context.authorityRef &&
     result.authorityExpiresAt === context.expiresAt &&
     typeof result.scanStartedAt === 'string' && Number.isFinite(Date.parse(result.scanStartedAt)) &&
+    Date.parse(result.scanStartedAt) <= now.getTime() &&
     Number.isInteger(result.count) && result.count === result.records.length &&
     result.records.length <= (includeLearning ? 100 : 1) &&
     (result.nextCursor === undefined || result.nextCursor === null ||
