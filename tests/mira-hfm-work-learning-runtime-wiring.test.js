@@ -611,6 +611,7 @@ assert.match(execution, /HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED/);
 assert.match(execution, /toolContext: Object\.freeze/);
 assert.match(execution, /resolveHfmReadToolContext/);
 assert.match(execution, /resolveHfmWriteToolContext/);
+assert.match(execution, /call\.name === "learning_save"/);
 assert.match(execution, /MIRA_HFM_MEMORY_WRITE_ENABLED/);
 assert.match(execution, /hfmWrite: Object\.freeze/);
 assert.match(execution, /requiresHfmMemoryWrite/);
