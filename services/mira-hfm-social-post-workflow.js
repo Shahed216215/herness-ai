@@ -35,7 +35,7 @@ function validateWorkflowContext(context, operation, memoryId) {
 function assertSocialPostRecord(row, context) {
   if (!row) throw fail('HFM_SOCIAL_POST_NOT_FOUND');
   if (row.project_id !== context.projectId) throw fail('HFM_SOCIAL_POST_PROJECT_SCOPE_MISMATCH');
-  if (row.owner_actor_id !== context.projectOwnerActorId) throw fail('HFM_SOCIAL_POST_OWNER_MISMATCH');
+  if (row.owner_actor_id !== context.actorId) throw fail('HFM_SOCIAL_POST_OWNER_MISMATCH');
   if (row.record_type !== 'social_post_draft') throw fail('HFM_SOCIAL_POST_TYPE_INVALID');
   if (row.classification !== 'PROJECT_PRIVATE') throw fail('HFM_SOCIAL_POST_CLASSIFICATION_INVALID');
   if (row.payload_erased_at) throw fail('HFM_SOCIAL_POST_PAYLOAD_ALREADY_ERASED');
@@ -166,7 +166,7 @@ async function updateStatus(client, context, memoryId, status, extra = {}) {
     'published_confirmed_at = COALESCE(EXCLUDED.published_confirmed_at, mira_hfm.memory_social_post_state.published_confirmed_at), ' +
     'payload_erased_at = COALESCE(EXCLUDED.payload_erased_at, mira_hfm.memory_social_post_state.payload_erased_at), ' +
     'updated_at = clock_timestamp()',
-    [memoryId, context.projectId, context.projectOwnerActorId, status,
+    [memoryId, context.projectId, context.actorId, status,
       extra.copiedAt || null, extra.publishedAt || null, extra.erasedAt || null]
   );
 }
