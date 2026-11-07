@@ -36,9 +36,24 @@ async function preflightHfmStandingRead(options = {}) {
   const context = result && result.hostAuthorizationContext;
   const eligibleRecords = result && Array.isArray(result.records) &&
     result.records.every(record =>
-      record && ['learning_note', 'knowledge_item'].includes(record.recordType) &&
+      record && typeof record.memoryId === 'string' && record.memoryId &&
+      record.projectId === result.projectId &&
+      ['learning_note', 'knowledge_item'].includes(record.recordType) &&
       record.lifecycle === 'ACTIVE'
     );
+  const validContext = context &&
+    context.projectId === result.projectId &&
+    context.actorType === 'HUMAN' &&
+    typeof context.actorId === 'string' && context.actorId.startsWith('mira:') &&
+    typeof context.authorityRef === 'string' && context.authorityRef &&
+    typeof context.requestId === 'string' && context.requestId &&
+    typeof context.purpose === 'string' && context.purpose &&
+    typeof context.issuedAt === 'string' && Number.isFinite(Date.parse(context.issuedAt)) &&
+    typeof context.expiresAt === 'string' && Number.isFinite(Date.parse(context.expiresAt)) &&
+    result.standingAuthorityId === context.authorityRef &&
+    result.authorityExpiresAt === context.expiresAt &&
+    typeof result.scanStartedAt === 'string' && Number.isFinite(Date.parse(result.scanStartedAt)) &&
+    Number.isInteger(result.count) && result.count === result.records.length;
 
   if (!result || result.status !== 'AUTHORIZED_AND_COMMITTED' ||
       result.standingAuthority !== true ||
@@ -48,11 +63,7 @@ async function preflightHfmStandingRead(options = {}) {
       result.localFallback !== false ||
       result.driveFallback !== false ||
       !eligibleRecords ||
-      !context ||
-      context.projectId !== result.projectId ||
-      typeof context.actorId !== 'string' || !context.actorId ||
-      typeof context.authorityRef !== 'string' || !context.authorityRef ||
-      typeof context.expiresAt !== 'string' || !context.expiresAt) {
+      !validContext) {
     fail('HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED');
   }
 
