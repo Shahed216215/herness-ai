@@ -53,44 +53,6 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
 async function executeHfmKnowledgeReviewQueue(args, trustedContext, review = require("../services/mira-hfm-knowledge-review-runtime").listPendingHfmKnowledgeForReview) {
   const context = trustedContext && trustedContext.hfmReadOnly;
   if (!context || !context.req || !context.pool ||
-      typeof context.pool.connect !== "function") {
-    const error = new Error("A server-held HFM request and Memory reader pool are required.");
-    error.code = "HFM_KNOWLEDGE_REVIEW_HFM_CONTEXT_REQUIRED";
-    throw error;
-  }
-  const listPending = require("../services/mira-hfm-knowledge-review-runtime")
-    .listPendingHfmKnowledgeForReview;
-  const result = await listPending({
-    req: context.req,
-    pool: context.pool,
-    limit: Number.isInteger(args?.limit) ? args.limit : 20,
-    env: context.env || process.env,
-    userIntent: context.userIntent
-  });
-  if (!result || result.status !== "REVIEW_REQUIRED" ||
-      result.standingAuthority !== true || result.promotionSupported !== false ||
-      result.localFallback !== false || result.driveFallback !== false ||
-      !Array.isArray(result.items)) {
-    const error = new Error("HFM pending review queue did not return an authorized read-only result.");
-    error.code = "HFM_KNOWLEDGE_REVIEW_AUTHORIZED_READ_REQUIRED";
-    throw error;
-  }
-  return JSON.stringify({
-    success: true,
-    source: "HFM_V02_PENDING_REVIEW",
-    count: result.count,
-    items: result.items,
-    requiresHumanReview: true,
-    eligibleForTrustedSearch: false,
-    promotionSupported: false,
-    localFallback: false,
-    driveFallback: false
-  });
-}
-
-async function executeHfmKnowledgeReviewQueue(args, trustedContext) {
-  const context = trustedContext && trustedContext.hfmReadOnly;
-  if (!context || !context.req || !context.pool ||
       typeof context.pool.connect !== "function" ||
       typeof context.getAuthorityIssuerRuntime !== "function") {
     const error = new Error("Server-held HFM reader, issuer resolver, and verified request context are required.");
