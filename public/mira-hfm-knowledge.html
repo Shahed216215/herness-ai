@@ -50,7 +50,9 @@ small{color:var(--muted)}
     </div>
     <label for="sourceUrl">Facebook Page / Group / Post URL</label>
     <input id="sourceUrl" type="url" placeholder="https://www.facebook.com/...">
-    <label for="sourceFile">Facebook export / text file (optional)</label>\n    <input id="sourceFile" type="file" accept=".txt,.csv,.json,.html,text/plain,text/csv,application/json,text/html">\n    <label for="content">Copied post text / exported text</label>
+    <label for="sourceFile">Facebook export / text file (optional)</label>
+    <input id="sourceFile" type="file" accept=".txt,.csv,.json,.html,text/plain,text/csv,application/json,text/html">
+    <label for="content">Copied post text / exported text</label>
     <textarea id="content" placeholder="Paste the content you are authorized to provide..."></textarea>
     <div class="actions">
       <button class="primary" id="importBtn">Import Knowledge to Neon</button>
@@ -147,9 +149,17 @@ small{color:var(--muted)}
       root.append(card);
     }
   }
-  $('sourceFile').addEventListener('change', async () => {\n    const file = $('sourceFile').files[0];\n    if (!file) return;\n    if (file.size > 45000) { status('File too large. Use a text export under 45 KB.', true); $('sourceFile').value = ''; return; }\n    try { $('content').value = await file.text(); status('File loaded locally. Review the text and confirm it is public before import.'); }\n    catch (_error) { status('Unable to read this file as text.', true); }\n  });\n  $('importBtn').addEventListener('click', async () => {
+  $('sourceFile').addEventListener('change', async () => {
+    const file = $('sourceFile').files[0];
+    if (!file) return;
+    if (file.size > 45000) { status('File too large. Use a text export under 45 KB.', true); $('sourceFile').value = ''; return; }
+    try { $('content').value = await file.text(); status('File loaded locally. Review the text and confirm it is public before import.'); }
+    catch (_error) { status('Unable to read this file as text.', true); }
+  });
+  $('importBtn').addEventListener('click', async () => {
     try {
-      if (!$('publicConfirm').checked) throw new Error('Confirm public, authorized, non-restricted content before import.');\n      const id = 'fbk_' + crypto.randomUUID().replace(/-/g, '');
+      if (!$('publicConfirm').checked) throw new Error('Confirm public, authorized, non-restricted content before import.');
+      const id = 'fbk_' + crypto.randomUUID().replace(/-/g, '');
       const grant = await authority('memory.write', 'memory:' + id, 'facebook-knowledge-import');
       const result = await request('/api/hfm/facebook-knowledge/import', {
         method: 'POST',
@@ -160,7 +170,8 @@ small{color:var(--muted)}
           sourceId: $('sourceId').value.trim() || 'User supplied Facebook source',
           sourceUrl: $('sourceUrl').value.trim() || null,
           content: $('content').value,
-          collectionMethod: $('sourceFile').files.length ? 'user_file_import' : 'manual_copy',\n          publicContentConfirmed: $('publicConfirm').checked
+          collectionMethod: $('sourceFile').files.length ? 'user_file_import' : 'manual_copy',
+          publicContentConfirmed: $('publicConfirm').checked
         }, grant))
       });
       status(result.status === 'DUPLICATE' ? 'Duplicate detected: ' + result.memoryId : 'Knowledge saved to Neon: ' + result.memoryId);
