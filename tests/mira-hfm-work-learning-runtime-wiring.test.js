@@ -446,7 +446,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
       assert.equal(options.lifecycle, 'ACTIVE');
       return {
         status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha',
-        records: [record], standingAuthority: true,
+        records: [record], count: 1, standingAuthority: true,
         approvalRequiredPerRead: false,
         authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
         hostAuthorizationContext: {
@@ -470,7 +470,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
     readMemory: async () => ({
       status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha',
-      records: [record], standingAuthority: true,
+      records: [record], count: 1, standingAuthority: true,
       approvalRequiredPerRead: false,
       hostAuthorizationContext: {
         actorId: 'mira:actor-001', actorType: 'HUMAN',
