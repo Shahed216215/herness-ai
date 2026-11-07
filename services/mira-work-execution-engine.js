@@ -1245,16 +1245,18 @@ async function executeWork(
   hfmMemoryReadRuntime = hfmReadContext.runtime;
   hfmToolContext = hfmReadContext.toolContext;
 
-  // Standing-read preflight is required only when Work Learning is enabled.
-  // With that feature OFF, merely configuring the read-only context must not
-  // trigger an unsolicited HFM memory read before task planning.
+  // Any enabled HFM standing-read context is authorized before planning or
+  // model activity. Work Learning controls whether the full eligible
+  // Knowledge/Learning page is collected and passed into the planner.
+  // With both HFM read flags OFF, the resolver returns without opening the
+  // runtime, so no unsolicited Memory read can occur.
   let hfmStandingReadPreflight = null;
-  if (hfmWorkLearningEnabled && hfmMemoryReadRuntime) {
+  if (hfmMemoryReadRuntime) {
     hfmStandingReadPreflight = await preflightHfmStandingRead({
       pool: hfmMemoryReadRuntime.pool,
       req: options.hfmRequest,
       env: process.env,
-      includeLearning: true
+      includeLearning: hfmWorkLearningEnabled
     });
   }
 
