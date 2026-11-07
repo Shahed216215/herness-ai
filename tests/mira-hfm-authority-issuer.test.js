@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { issueMemoryReadAuthority } = require('../services/mira-hfm-authority-issuer');
+const { issueMemoryReadAuthority, issueMemoryOperationAuthority } = require('../services/mira-hfm-authority-issuer');
 const {
   REQUIRED_TRUE, REQUIRED_FALSE, PREFLIGHT_SQL, verifyAuthorityIssuerPreflight,
   getAuthorityIssuerConfig
@@ -53,7 +53,7 @@ const client = {
     if (sql.includes('FROM mira_hfm.project_memberships')) {
       return { rows: [{
         revision: 7, status: 'ACTIVE',
-        permissions: { operations: ['memory.read'] },
+        permissions: { operations: ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'] },
         valid_from: new Date(now - 60000).toISOString(), expires_at: null
       }], rowCount: 1 };
     }
@@ -95,6 +95,42 @@ const pool = { async connect() { return client; } };
   console.log('HFM_AUTHORITY_ISSUER_VERIFIED_ADMIN_AND_APPROVAL=PASS');
   console.log('HFM_AUTHORITY_ISSUER_SINGLE_USE_SHORT_TTL=PASS');
   console.log('HFM_AUTHORITY_ISSUER_AND_AUDIT_ATOMIC=PASS');
+
+  const writeResource = 'memory:social-draft-001';
+  const writeReceipt = {
+    ...receipt,
+    operation: 'memory.trash',
+    resource: writeResource,
+    purpose: 'user confirmed Facebook-published draft trash'
+  };
+  const writeResult = await issueMemoryOperationAuthority({
+    req, pool, purpose: writeReceipt.purpose, operation: writeReceipt.operation,
+    resource: writeReceipt.resource, approvalToken: 'signed-write-approval-token',
+    env: { MIRA_ADMIN_SUBJECT_ID: subject },
+    verifyApprovalToken: async (_token, expected, options) => {
+      assert.deepEqual(options, { consume: true, singleUse: true });
+      assert.deepEqual(expected, {
+        projectId, actorId, approverActorId: actorId,
+        operation: 'memory.trash', resource: writeResource,
+        purpose: writeReceipt.purpose
+      });
+      return writeReceipt;
+    }
+  });
+  assert.equal(writeResult.operation, 'memory.trash');
+  assert.equal(writeResult.resource, writeResource);
+  const writeInsert = calls.filter(c => c.sql.startsWith('INSERT INTO mira_hfm.operation_authorities')).at(-1);
+  assert.equal(writeInsert.params[3], 'memory.trash');
+  assert.equal(writeInsert.params[4], writeResource);
+  console.log('HFM_AUTHORITY_ISSUER_ALLOWLISTED_TRASH_SCOPE=PASS');
+
+  await assert.rejects(() => issueMemoryOperationAuthority({
+    req, pool, purpose: 'unsafe', operation: 'memory.purge',
+    resource: writeResource, approvalToken: 'token',
+    env: { MIRA_ADMIN_SUBJECT_ID: subject },
+    verifyApprovalToken: async () => writeReceipt
+  }), error => error.code === 'HFM_AUTHORITY_OPERATION_NOT_ALLOWED');
+  console.log('HFM_AUTHORITY_ISSUER_PERMANENT_PURGE_BLOCK=PASS');
 
   await assert.rejects(() => issueMemoryReadAuthority({
     req, pool, purpose: receipt.purpose, approvalToken: 'bad',
