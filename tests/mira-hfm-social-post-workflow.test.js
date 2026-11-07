@@ -86,7 +86,9 @@ test('archive returns sanitized metadata for erased drafts without decrypting pa
       };
       if (sql.includes('FROM mira_hfm.memory_social_post_state')) return {
         rows: [{ status: 'DELETED', copied_at: null, published_confirmed_at: null,
-          payload_erased_at: '2026-11-07T00:02:00Z', updated_at: '2026-11-07T00:02:00Z' }]
+          payload_erased_at: '2026-11-07T00:02:00Z', updated_at: '2026-11-07T00:02:00Z',
+          source_metadata: { sourceType: 'facebook_page', sourceId: 'Synthetic page', observedAt: '2026-11-07T00:00:00Z' },
+          provenance_metadata: { collectionMethod: 'manual_copy', verificationStatus: 'SOURCE_RECORDED', originalPublishedAt: null, redactionApplied: false } }]
       };
       throw new Error('unexpected SQL');
     }
@@ -105,7 +107,11 @@ test('archive returns sanitized metadata for erased drafts without decrypting pa
   assert.equal(result.drafts[0].status, 'DELETED');
   assert.equal(result.drafts[0].payloadErased, true);
   assert.equal(result.drafts[0].content, null);
-  assert.equal(result.drafts[0].source, null);
+  assert.deepEqual(result.drafts[0].source, {
+    sourceType: 'facebook_page', sourceId: 'Synthetic page', observedAt: '2026-11-07T00:00:00Z'
+  });
+  assert.equal(result.drafts[0].provenance.collectionMethod, 'manual_copy');
+  assert.equal(result.drafts[0].provenance.verificationStatus, 'SOURCE_RECORDED');
   assert.match(calls[0].sql, /project_id = \$1 AND owner_actor_id = \$2 AND record_type = 'social_post_draft'/);
   assert.match(calls[0].sql, /owner_actor_id = \$2/);
   assert.deepEqual(calls[0].params, ['project-001', 'mira:creator-001', 25]);

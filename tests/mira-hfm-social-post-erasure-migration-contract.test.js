@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const sql = fs.readFileSync('migrations/hfm/006_social_post_manual_publish_payload_erasure.sql', 'utf8');
+const provenanceSql = fs.readFileSync('migrations/hfm/010_social_post_provenance_retention.sql', 'utf8');
 
 test('migration is explicitly source-only and transaction-wrapped', () => {
   assert.match(sql, /SOURCE-ONLY/i);
@@ -62,4 +63,14 @@ test('payload erasure guards permit only payload fields to change', () => {
   assert.match(sql, /NEW\.updated_at = OLD\.updated_at/);
   assert.match(sql, /NEW\.trashed_at IS NOT DISTINCT FROM OLD\.trashed_at/);
   assert.doesNotMatch(sql, /to_jsonb\(NEW\)\s*-\s*ARRAY/);
+});
+
+test('provenance retention migration is source-only and retains only allowlisted metadata', () => {
+  assert.match(provenanceSql, /SOURCE-ONLY/i);
+  assert.match(provenanceSql, /memory_social_post_state/);
+  assert.match(provenanceSql, /source_metadata/);
+  assert.match(provenanceSql, /provenance_metadata/);
+  assert.match(provenanceSql, /sourceType/);
+  assert.match(provenanceSql, /collectionMethod/);
+  assert.doesNotMatch(provenanceSql, /content|encrypted_envelope|access_token|private_payload/i);
 });

@@ -37,6 +37,9 @@ test('manual Facebook draft workflow is wired to Neon with text-only clipboard a
   assert.match(html, /Delete Draft Payload/);
   assert.match(html, /draft\.memoryId/);
   assert.match(html, /draft\.source/);
+  assert.match(html, /draft\.provenance/);
+  assert.match(html, /Verification:/);
+  assert.match(html, /Original published:/);
   assert.match(html, /draft\.createdAt/);
   assert.match(html, /payloadErased/);
   assert.match(html, /not Facebook-verified/);

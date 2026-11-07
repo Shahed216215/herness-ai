@@ -210,6 +210,26 @@ async function appendAudit(client, context, operationId, memoryId, eventType, re
   );
 }
 
+function socialPostRetentionMetadata(record) {
+  if (!record || record.recordType !== 'social_post_draft' ||
+      record.access?.classification !== 'PROJECT_PRIVATE') return null;
+  const source = record.source || {};
+  const provenance = record.provenance || null;
+  const sourceMetadata = {
+    sourceType: source.sourceType,
+    sourceId: source.sourceId,
+    observedAt: source.observedAt
+  };
+  const provenanceMetadata = provenance ? {
+    collectionMethod: provenance.collectionMethod,
+    capturedAt: provenance.capturedAt,
+    originalPublishedAt: provenance.originalPublishedAt ?? null,
+    verificationStatus: provenance.verificationStatus,
+    redactionApplied: provenance.redactionApplied
+  } : null;
+  return { sourceMetadata, provenanceMetadata };
+}
+
 function insertValues(record, ownerId, payload) {
   return [
     record.memoryId, record.projectId, ownerId, record.recordType, record.schemaVersion,
@@ -270,6 +290,17 @@ async function createMemoryRecord(options = {}) {
     values
   );
   await insertVersion(client, record, ownerId, payload);
+  if (record.recordType === 'social_post_draft' && classification === 'PROJECT_PRIVATE') {
+    const retained = socialPostRetentionMetadata(record);
+    await client.query(
+      'INSERT INTO mira_hfm.memory_social_post_state ' +
+      '(memory_id, project_id, owner_actor_id, status, source_metadata, provenance_metadata) ' +
+      "VALUES ($1,$2,$3,'SAVED',$4::jsonb,$5::jsonb)",
+      [record.memoryId, record.projectId, ownerId,
+        JSON.stringify(retained.sourceMetadata),
+        retained.provenanceMetadata === null ? null : JSON.stringify(retained.provenanceMetadata)]
+    );
+  }
   await appendAudit(client, context, operation.operationId, record.memoryId, 'MEMORY_CREATED', 'COMPLETED', {
     recordType: record.recordType,
     classification,

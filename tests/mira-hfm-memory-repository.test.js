@@ -99,6 +99,42 @@ test('private memory is encrypted before any database insert', async () => {
   assert.ok(client.calls.some(call => call.sql.startsWith('UPDATE mira_hfm.memory_operation_registry')));
 });
 
+test('social post source and provenance metadata are stored separately from the encrypted post payload', async () => {
+  const client = fakeClient();
+  const content = 'Synthetic Facebook draft body must never enter retained metadata.';
+  const social = record({
+    recordType: 'social_post_draft',
+    content,
+    source: { sourceType: 'facebook_page', sourceId: 'Synthetic public page', sourceUrl: 'https://www.facebook.com/synthetic?secret=omit', observedAt: now },
+    provenance: {
+      collectionMethod: 'manual_copy', capturedAt: now, originalPublishedAt: now,
+      verificationStatus: 'SOURCE_RECORDED', redactionApplied: false
+    },
+    version: { revision: 1, contentHash: createContentHash(content) }
+  });
+  const result = await repository.createMemoryRecord({
+    client, context, record: social, idempotencyKey: 'idem-social-metadata',
+    allowPrivateWrite: true, env
+  });
+  assert.equal(result.status, 'CREATED');
+  const retained = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state'));
+  assert.ok(retained);
+  assert.equal(retained.params[3], 'SAVED');
+  const sourceMetadata = JSON.parse(retained.params[4]);
+  const provenanceMetadata = JSON.parse(retained.params[5]);
+  assert.deepEqual(sourceMetadata, {
+    sourceType: 'facebook_page', sourceId: 'Synthetic public page', observedAt: now
+  });
+  assert.deepEqual(provenanceMetadata, {
+    collectionMethod: 'manual_copy', capturedAt: now, originalPublishedAt: now,
+    verificationStatus: 'SOURCE_RECORDED', redactionApplied: false
+  });
+  const metadataText = JSON.stringify({ sourceMetadata, provenanceMetadata });
+  assert.equal(metadataText.includes(content), false);
+  assert.equal(metadataText.includes('sourceUrl'), false);
+  assert.equal(metadataText.includes('secret'), false);
+});
+
 test('private and restricted writes fail closed without explicit classification grants', async () => {
   const client = fakeClient();
   await assert.rejects(

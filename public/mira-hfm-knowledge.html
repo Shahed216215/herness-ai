@@ -149,11 +149,16 @@ small{color:var(--muted)}
       heading.textContent = draft.memoryId;
       const meta = document.createElement('small');
       const source = draft.source || {};
+      const provenance = draft.provenance || {};
       meta.textContent = 'Created: ' + (draft.createdAt || 'unknown') +
         ' • Revision: ' + (draft.revision || 'unknown') +
-        ' • Source / Provenance: ' + (source.sourceType || 'unknown') +
-        ' • Source ID: ' + (source.sourceId || 'not supplied') +
-        ' • Observed: ' + (source.observedAt || 'not supplied');
+        ' • Source: ' + (source.sourceType || 'not retained') +
+        ' • Source ID: ' + (source.sourceId || 'not retained') +
+        ' • Observed: ' + (source.observedAt || 'not retained') +
+        ' • Provenance: ' + (provenance.collectionMethod || 'not retained') +
+        ' • Verification: ' + (provenance.verificationStatus || 'not retained') +
+        ' • Original published: ' + (provenance.originalPublishedAt || 'not supplied') +
+        ' • Redaction: ' + (typeof provenance.redactionApplied === 'boolean' ? provenance.redactionApplied : 'not recorded');
       const recordStatus = document.createElement('p');
       recordStatus.textContent = 'Neon Status: ' + (draft.status || 'SAVED') +
         ' • Payload: ' + (draft.payloadErased ? 'ERASED' : 'RETAINED');

@@ -81,7 +81,7 @@ async function loadRecord(client, context, memoryId, options = {}) {
 
 async function getStateRow(client, projectId, memoryId) {
   const result = await client.query(
-    'SELECT status, copied_at, published_confirmed_at, payload_erased_at, updated_at ' +
+    'SELECT status, copied_at, published_confirmed_at, payload_erased_at, updated_at, source_metadata, provenance_metadata ' +
     'FROM mira_hfm.memory_social_post_state WHERE project_id = $1 AND memory_id = $2',
     [projectId, memoryId]
   );
@@ -216,7 +216,8 @@ async function listSocialPostDrafts(options = {}) {
       status: state ? state.status : 'SAVED',
       payloadErased: erased,
       content: record ? record.content : null,
-      source: record ? record.source : null
+      source: state && state.source_metadata ? state.source_metadata : (record ? record.source : null),
+      provenance: state && state.provenance_metadata ? state.provenance_metadata : (record ? record.provenance || null : null)
     }));
   }
   return Object.freeze({ status: 'FOUND', drafts: Object.freeze(drafts), count: drafts.length });
