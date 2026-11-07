@@ -10,7 +10,7 @@ const {
   findActiveProjectMembership
 } = require('../services/mira-hfm-project-selection-read-runtime');
 
-function registerMiraHfmProjectSelectionRoute(app, getRuntime) {
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/;\n\nfunction registerMiraHfmProjectSelectionRoute(app, getRuntime) {
   if (!app || typeof app.post !== 'function' ||
       !getRuntime || typeof getRuntime !== 'function') {
     throw new TypeError('HFM_PROJECT_SELECTION_ROUTE_DEPENDENCIES_REQUIRED');
@@ -35,7 +35,7 @@ function registerMiraHfmProjectSelectionRoute(app, getRuntime) {
     }
 
     const projectId = req.body && req.body.projectId;
-    if (typeof projectId !== 'string' || !projectId.trim() || projectId.length > 128) {
+    if (typeof projectId !== 'string' || !PROJECT_ID_PATTERN.test(projectId.trim())) {
       return res.status(400).json({
         success: false,
         error: 'A valid projectId is required.'
