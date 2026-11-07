@@ -42,7 +42,11 @@ function registerMiraHfmStandingReadAuthorityRoutes(app, getRuntime, requireAdmi
         return res.status(503).json({ success: false, error: 'HFM authority issuer is not ready.' });
       }
       const result = await getStandingReadAuthorityStatus({ req, pool: runtime.pool, env: process.env });
-      return res.json({ success: true, ...result });
+      return res.json({
+        success: true,
+        featureEnabled: process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === 'true',
+        ...result
+      });
     } catch (error) {
       const code = typeof error?.code === 'string' ? error.code : 'HFM_STANDING_READ_STATUS_LOOKUP_FAILED';
       return res.status(503).json({ success: false, error: code });
