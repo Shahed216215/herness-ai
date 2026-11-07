@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { inspectHfmRuntimeConfiguration } = require('../services/mira-hfm-runtime-readiness');
 
-const url = 'postgresql://hfm_runtime:placeholder-password@db.example.invalid/neondb?sslmode=require';
+const url = 'postgresql://hfm_runtime:placeholder-password@ep-test.neon.tech/neondb?sslmode=require';
 const key = Buffer.alloc(32, 7).toString('base64');
 
 test('configuration diagnostic reports missing services without connecting or exposing secrets', () => {
