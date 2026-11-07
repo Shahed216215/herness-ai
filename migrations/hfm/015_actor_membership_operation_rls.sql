@@ -1,9 +1,11 @@
 -- SOURCE-ONLY DRAFT: HFM v0.2 migration 015.
 -- Do not execute on production without separate explicit approval.
 -- Adds database-enforced active owner/member, operation, resource, and authority
--- scope to the existing least-privilege writer and reader roles. No data or grants
--- are changed. This migration depends on 010 and 014 and is additive/reversible
--- only by a separately reviewed policy replacement.
+-- scope to the existing least-privilege writer and reader roles. No application
+-- data is changed. Writer table-wide UPDATE grants are narrowed to exact columns
+-- required for one-time authority consumption, lifecycle transitions, and completion.
+-- This migration depends on 010 and 014; reversal requires separately reviewed
+-- policy and privilege replacement.
 
 BEGIN;
 
