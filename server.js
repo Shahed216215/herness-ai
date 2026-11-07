@@ -17,7 +17,7 @@ const { createProjectSelectionReadRuntime } = require("./services/mira-hfm-proje
 const { registerMiraHfmProjectSelectionRoute } = require("./routes/mira-hfm-project-selection");
 const { createAuthorityIssuerPool } = require("./services/mira-hfm-authority-issuer-runtime");
 const { registerMiraHfmAuthorityApprovalRoute } = require("./routes/mira-hfm-authority-approval");
-const { createMemoryReadRuntime } = require("./services/mira-hfm-memory-read-runtime");
+const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
 const { registerMiraHfmMemoryReadRoute } = require("./routes/mira-hfm-memory-read");
 const { startAutonomousWorker } = require("./services/mira-autonomous-worker");
 const { declarations, tools } = require("./tools");
@@ -234,7 +234,7 @@ registerMiraHfmAuthorityApprovalRoute(
 let hfmMemoryReadRuntimePromise = null;
 function getHfmMemoryReadRuntime() {
   if (!hfmMemoryReadRuntimePromise) {
-    hfmMemoryReadRuntimePromise = createMemoryReadRuntime().catch(error => ({
+    hfmMemoryReadRuntimePromise = createMemoryReadPool().catch(error => ({
       status: "FAILED",
       reason: typeof error?.code === "string"
         ? error.code.slice(0, 80)
