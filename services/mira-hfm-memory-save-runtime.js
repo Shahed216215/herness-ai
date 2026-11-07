@@ -85,7 +85,7 @@ function buildCanonicalMemoryRecord(options = {}) {
   if (!Number.isFinite(Date.parse(now))) fail('HFM_MEMORY_SAVE_TIMESTAMP_INVALID');
 
   const kind = options.kind;
-  if (!['memory_save', 'knowledge_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
+  if (!['memory_save', 'knowledge_save', 'learning_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
   const body = boundedText(options.content, MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
   if (kind === 'memory_save' && !isUserAuthoredMemoryContent(options.userIntent, body)) {
     fail('HFM_MEMORY_SAVE_CONTENT_NOT_PRESENT_IN_USER_INTENT');
@@ -94,17 +94,26 @@ function buildCanonicalMemoryRecord(options = {}) {
   let sourceType = 'manual';
   let sourceId = 'user-confirmed-memory';
   let sourceUrl;
+  let recordType = 'fact';
   let trustStatus = 'HUMAN_VERIFIED';
   let lifecycle = 'ACTIVE';
 
-  if (kind === 'knowledge_save') {
-    const title = boundedText(options.title, MAX_TITLE_CHARS, 'HFM_KNOWLEDGE_TITLE_REQUIRED');
-    sourceUrl = normalizeSourceUrl(options.url);
+  if (kind === 'knowledge_save' || kind === 'learning_save') {
+    const isLearning = kind === 'learning_save';
+    const title = boundedText(options.title || (isLearning ? 'Learning note' : ''),
+      MAX_TITLE_CHARS, isLearning ? 'HFM_LEARNING_TITLE_REQUIRED' : 'HFM_KNOWLEDGE_TITLE_REQUIRED');
+    if (options.url !== undefined && options.url !== null && options.url !== '') {
+      sourceUrl = normalizeSourceUrl(options.url);
+      const parsed = new URL(sourceUrl);
+      sourceType = 'web';
+      sourceId = 'web-source:' + parsed.hostname + parsed.pathname.slice(0, 256);
+    } else {
+      sourceType = 'manual';
+      sourceId = isLearning ? 'user-provided-learning-note' : 'user-provided-knowledge';
+    }
     content = title + '\n\n' + body;
     if (content.length > MAX_CONTENT_CHARS) fail('HFM_MEMORY_SAVE_CONTENT_TOO_LARGE');
-    const parsed = new URL(sourceUrl);
-    sourceType = 'web';
-    sourceId = 'web-source:' + parsed.hostname + parsed.pathname.slice(0, 256);
+    recordType = isLearning ? 'learning_note' : 'knowledge_item';
     trustStatus = 'SOURCE_RECORDED';
     lifecycle = 'PENDING_REVIEW';
   }
@@ -113,7 +122,7 @@ function buildCanonicalMemoryRecord(options = {}) {
     schemaVersion: '1.1.0',
     memoryId,
     projectId,
-    recordType: 'knowledge_item',
+    recordType,
     content,
     source: {
       sourceType,
@@ -167,8 +176,10 @@ async function saveHfmMemoryRecord(options = {}) {
   });
   const resource = 'memory:' + memoryId;
   const purpose = kind === 'knowledge_save'
-    ? 'User explicitly requested to save a web knowledge source as an unverified item for review.'
-    : 'User explicitly requested to save this private memory item.';
+    ? 'User explicitly requested to save a knowledge source privately as an unverified item for review.'
+    : kind === 'learning_save'
+      ? 'User explicitly requested to save a learning note privately as an unverified item for review.'
+      : 'User explicitly requested to save this private memory item.';
   const env = options.env || process.env;
   if (env.MIRA_HFM_MEMORY_WRITE_ENABLED !== 'true') fail('HFM_MEMORY_WRITE_DISABLED');
   if (env.MIRA_HFM_AUTHORITY_ISSUER_ENABLED !== 'true') fail('HFM_AUTHORITY_ISSUER_DISABLED');
