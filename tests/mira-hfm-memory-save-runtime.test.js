@@ -310,6 +310,10 @@ function baseOptions(overrides = {}) {
       error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
     );
     await assert.rejects(
+      () => executeTool('learning_save', { content: 'Learning source.' }, null),
+      error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
+    );
+    await assert.rejects(
       () => executeTool('knowledge_search', { query: 'test' }, null),
       error => error && error.code === 'HFM_MEMORY_READ_MODE_REQUIRED'
     );
@@ -328,6 +332,11 @@ function baseOptions(overrides = {}) {
     );
     const directMemorySave = require('../tools/memory-save');
     const directKnowledgeSave = require('../tools/knowledge-save');
+    const directLearningSave = require('../tools/learning-save');
+    const directLearningResult = await directLearningSave.execute({ content: 'Learning source.' })
+      .then(value => JSON.parse(value))
+      .catch(error => ({ code: error && error.code }));
+    assert.equal(directLearningResult.code, 'HFM_TOOL_ROUTER_REQUIRED');
     const directMemoryResult = await directMemorySave.execute({ content: 'Remember this.' })
       .then(value => JSON.parse(value))
       .catch(error => ({ code: error && error.code }));
@@ -367,6 +376,40 @@ function baseOptions(overrides = {}) {
     assert.equal(routedOptions.kind, 'memory_save');
     assert.equal(routedOptions.content, 'I prefer concise Bengali explanations.');
     assert.match(routedOptions.userIntent, /Remember this/);
+    const learningRoutedOptions = {};
+    const learningRouted = JSON.parse(await executeHfmMemorySave(
+      'learning_save',
+      {
+        content: 'A repeatable Python automation lesson.',
+        sourceTitle: 'Python automation lesson',
+        sourceUrl: 'https://example.com/python-lesson'
+      },
+      {
+        hfmWrite: {
+          req: { session: { authenticated: true, role: 'admin' } },
+          writerPool: { connect: async () => ({}) },
+          issuerPool: { connect: async () => ({}) },
+          userIntent: 'Save this learning note to my knowledge base.',
+          taskId: 'task-002', toolCallId: 'call-002', toolName: 'learning_save'
+        }
+      },
+      async options => {
+        Object.assign(learningRoutedOptions, options);
+        return {
+          success: true, saved: true, status: 'CREATED',
+          memoryId: 'mem-learning-tool-0001', recordType: 'learning_note',
+          lifecycle: 'PENDING_REVIEW', classification: 'PROJECT_PRIVATE',
+          trust: 'SOURCE_RECORDED', searchEligible: false,
+          localFallback: false, driveFallback: false
+        };
+      }
+    ));
+    assert.equal(learningRouted.source, 'HFM_V02_CANONICAL');
+    assert.equal(learningRouted.lifecycle, 'PENDING_REVIEW');
+    assert.equal(learningRoutedOptions.kind, 'learning_save');
+    assert.equal(learningRoutedOptions.title, 'Python automation lesson');
+    assert.equal(learningRoutedOptions.url, 'https://example.com/python-lesson');
+
   } finally {
     if (previousWriteFlag === undefined) delete process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
     else process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = previousWriteFlag;
