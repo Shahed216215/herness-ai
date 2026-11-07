@@ -76,6 +76,10 @@ test("authorized operation locks owner, membership, authority; consumes and audi
     async perform(client, context) {
       callbackClient = client;
       assert.equal(context.actorId, actorId);
+      assert.equal(context.projectOwnerActorId, "mira:mira.users:owner");
+      assert.equal(context.authorityContext, 'HFM_CONSUMED_ONE_TIME_AUTHORITY');
+      assert.equal(context.resource, request.resource);
+      assert.equal(context.purpose, request.purpose);
       await client.query("INSERT INTO protected_hfm_test_table (project_id) VALUES ($1)", [context.projectId]);
       return "stored";
     }
@@ -88,9 +92,14 @@ test("authorized operation locks owner, membership, authority; consumes and audi
   const authorityLock = sql.findIndex(x => x.includes("FROM mira_hfm.operation_authorities"));
   const consume = sql.findIndex(x => x.startsWith("UPDATE mira_hfm.operation_authorities"));
   const audit = sql.findIndex(x => x.startsWith("INSERT INTO mira_hfm.authority_audit_events"));
+  const projectScope = sql.findIndex(x => x.includes("set_config('mira.project_id'"));
+  const projectLock = sql.findIndex(x => x.includes("pg_advisory_xact_lock(74291"));
   const protectedWrite = sql.findIndex(x => x.startsWith("INSERT INTO protected_hfm_test_table"));
   assert.ok(sql[0].startsWith("BEGIN ISOLATION LEVEL SERIALIZABLE"));
-  assert.ok(ownerLock < membershipLock && membershipLock < authorityLock);
+  assert.ok(projectScope < projectLock && projectLock < ownerLock && ownerLock < membershipLock && membershipLock < authorityLock);
+  assert.equal(sql[ownerLock].includes("FOR UPDATE"), false);
+  assert.equal(sql[membershipLock].includes("FOR UPDATE"), false);
+  assert.equal(sql[authorityLock].includes("FOR UPDATE"), true);
   assert.ok(authorityLock < consume && consume < audit && audit < protectedWrite);
   assert.ok(sql.includes("COMMIT"));
   assert.ok(sql.some(x => x.includes("valid_from <= clock_timestamp()") &&

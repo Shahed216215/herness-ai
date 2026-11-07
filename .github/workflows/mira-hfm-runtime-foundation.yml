@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - work/render-main-host-binding-compat-20261106
+      - work/hfm-authority-relational-integrity-20261106
     paths:
       - "server.js"
       - "package.json"
@@ -49,6 +50,8 @@ jobs:
           node --check server.js
           node --check services/mira-memory-host-identity-contract.js
           node --check services/mira-hfm-runtime-identity-context.js
+          node --check services/mira-hfm-runtime-readiness.js
+          node --check routes/mira-hfm-runtime-readiness.js
           node --check services/mira-hfm-authority-transaction.js
           node --check services/mira-hfm-postgres.js
           node --check services/mira-work-execution-engine.js

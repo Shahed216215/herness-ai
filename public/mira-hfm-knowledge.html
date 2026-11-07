@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mira — Facebook Knowledge</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#121a2d;--line:#263452;--text:#edf2ff;--muted:#91a0bd;--blue:#6ea8fe;--warn:#facc15;--bad:#fb7185}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
+header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+main{max-width:1050px;margin:24px auto;padding:0 16px;display:grid;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+h1{font-size:20px;margin:0}h2{font-size:17px;margin:0 0 12px}p{color:var(--muted);margin:6px 0 12px}
+label{display:block;color:var(--muted);font-size:13px;margin:10px 0 5px}
+input,select,textarea{width:100%;background:#0d1528;border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--text);font:inherit}
+textarea{min-height:150px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{border:1px solid var(--line);border-radius:9px;padding:10px 14px;background:#1b2a45;color:var(--text);font-weight:650;cursor:pointer}
+button.primary{background:var(--blue);color:#07101f;border-color:var(--blue)}
+button.danger{color:#fecdd3;border-color:#7f3546;background:#351d2a}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.status{white-space:pre-wrap;padding:10px;border-radius:9px;background:#0d1528;color:var(--muted);min-height:42px}
+.result{border-top:1px solid var(--line);padding:12px 0}
+.result p{white-space:pre-wrap;color:var(--text)}
+a{color:var(--blue);overflow-wrap:anywhere}
+small{color:var(--muted)}
+@media(max-width:650px){.grid{grid-template-columns:1fr}header{align-items:flex-start;gap:8px;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Mira — Facebook Knowledge</h1><small>API-free • public sources and user-provided content • Neon-backed</small></div>
+  <a href="/">Back to Mira</a>
+</header>
+<main>
+  <section class="card">
+    <h2>Project authorization</h2>
+    <p>Enter the HFM project ID assigned to your authenticated account. Each action requests a short-lived, single-use authority; project ownership and membership are checked on the server.</p>
+    <label for="projectId">Project ID</label>
+    <input id="projectId" autocomplete="off" placeholder="Create a new HFM project or enter an existing ID">
+    <div class="actions"><button class="primary" id="createProjectBtn">Create / Activate My HFM Project</button></div>
+    <div class="actions"><button class="primary" id="dailyGenerateBtn">Generate Daily Knowledge</button></div>
+    <label for="dailyDraft">Daily draft preview (manual review required)</label>
+    <textarea id="dailyDraft" readonly placeholder="Generate today's knowledge draft from committed activity and learning records..."></textarea>
+    <div id="status" class="status" role="status">Not connected yet. Sign in to Mira first.</div>
+  </section>
+
+  <section class="card">
+    <h2>Facebook Post Drafts — Neon Archive</h2>
+    <p>Copy only the post text, publish it yourself on Facebook, then optionally confirm publication. Mira never publishes automatically. No Facebook publishing occurs through this interface. Delete removes only the selected draft payload and its retained version payloads; metadata and sanitized audit remain.</p>
+    <div class="actions"><button class="primary" id="loadSocialPostsBtn">Load / Refresh Draft Archive</button></div>
+    <div id="socialPostStatus" class="status" role="status">Archive not loaded.</div>
+    <div id="socialPostArchive"></div>
+  </section>
+
+  <section class="card">
+    <h2>Add Facebook source / Import post</h2>
+    <p>Public Page/Group links can be searched in public web indexes. If content is unavailable, paste the post text or import it manually. Nothing is scraped behind login or access controls.</p>
+    <div class="grid">
+      <div><label for="sourceType">Source type</label><select id="sourceType"><option value="facebook_page">Public Facebook Page</option><option value="facebook_group">Public Facebook Group</option><option value="manual">Manual import</option></select></div>
+      <div><label for="sourceId">Page / Group name</label><input id="sourceId" placeholder="Source name or label"></div>
+    </div>
+    <label for="sourceUrl">Facebook Page / Group / Post URL</label>
+    <input id="sourceUrl" type="url" placeholder="https://www.facebook.com/...">
+    <label for="publishedAt">Original post date/time (optional)</label>
+    <input id="publishedAt" type="datetime-local">
+    <label for="sourceFile">Facebook export / text file (optional)</label>
+    <input id="sourceFile" type="file" accept=".txt,.csv,.json,.html,text/plain,text/csv,application/json,text/html">
+    <label for="content">Copied post text / exported text</label>
+    <textarea id="content" placeholder="Paste the content you are authorized to provide..."></textarea>
+    <label style="display:flex;gap:8px;align-items:flex-start;color:var(--text);"><input id="publicConfirm" type="checkbox" style="width:auto;margin-top:4px;"> I confirm this is public content I am authorized to use and it contains no restricted client, financial, credential or private-group data.</label>
+    <div class="actions">
+      <button class="primary" id="importBtn">Import Knowledge to Neon</button>
+      <button id="researchBtn">Research Public Source</button>
+    </div>
+    <div id="researchResults"></div>
+  </section>
+
+  <section class="card">
+    <h2>Search Knowledge</h2>
+    <label for="query">Question or search terms (Bengali / English)</label>
+    <input id="query" placeholder="যে তথ্য খুঁজতে চাও লিখো...">
+    <div class="actions"><button class="primary" id="searchBtn">Search Neon Knowledge</button><button id="historyBtn">Retrieval / Change History</button></div>
+    <div id="results"></div>
+  </section>
+
+  <section class="card">
+    <h2>View / Update / Delete</h2>
+    <label for="memoryId">Knowledge record ID</label>
+    <input id="memoryId" placeholder="Select a result or enter record ID">
+    <label for="editContent">Knowledge content</label>
+    <textarea id="editContent" placeholder="Select a search result to view or edit its content..."></textarea>
+    <div id="recordMeta" class="status">Source metadata appears when a record is loaded.</div>
+    <div class="actions">
+      <button id="viewBtn">View Record</button>
+      <button class="primary" id="updateBtn">Save New Version</button>
+      <button class="danger" id="deleteBtn">Move to Trash</button>
+      <button id="restoreBtn">Restore Record</button>
+    </div>
+  </section>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const state = { selected: null, socialPostCopyStatus: Object.create(null) };
+  function status(message, bad = false) {
+    $('status').textContent = message;
+    $('status').style.color = bad ? '#fb7185' : '#91a0bd';
+  }
+  function projectId() {
+    const value = $('projectId').value.trim();
+    if (!value) throw new Error('Project ID is required.');
+    return value;
+  }
+  async function request(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: 'same-origin',
+      ...options,
+      headers: { 'content-type': 'application/json', ...(options.headers || {}) }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.code || 'REQUEST_FAILED');
+    return data;
+  }
+  async function authority(operation, resource, purpose) {
+    return request('/api/hfm/authorities/issue', {
+      method: 'POST',
+      body: JSON.stringify({ projectId: projectId(), operation, resource, purpose })
+    });
+  }
+  function withAuthority(data, grant) {
+    return { ...data, authorityId: grant.authorityId, requestId: grant.requestId, projectId: grant.projectId };
+  }
+  function socialPostStatus(message, bad = false) {
+    $('socialPostStatus').textContent = message;
+    $('socialPostStatus').style.color = bad ? '#fb7185' : '#91a0bd';
+  }
+  function renderSocialPostDrafts(drafts) {
+    const root = $('socialPostArchive');
+    root.replaceChildren();
+    if (!drafts.length) {
+      root.textContent = 'No Facebook Post Drafts found in this project.';
+      return;
+    }
+    for (const draft of drafts) {
+      const card = document.createElement('article');
+      card.className = 'result';
+      const heading = document.createElement('strong');
+      heading.textContent = draft.memoryId;
+      const meta = document.createElement('small');
+      const source = draft.source || {};
+      const provenance = draft.provenance || {};
+      meta.textContent = 'Created: ' + (draft.createdAt || 'unknown') +
+        ' • Revision: ' + (draft.revision || 'unknown') +
+        ' • Source: ' + (source.sourceType || 'not retained') +
+        ' • Source ID: ' + (source.sourceId || 'not retained') +
+        ' • Observed: ' + (source.observedAt || 'not retained') +
+        ' • Provenance: ' + (provenance.collectionMethod || 'not retained') +
+        ' • Verification: ' + (provenance.verificationStatus || 'not retained') +
+        ' • Original published: ' + (provenance.originalPublishedAt || 'not supplied') +
+        ' • Redaction: ' + (typeof provenance.redactionApplied === 'boolean' ? provenance.redactionApplied : 'not recorded');
+      const recordStatus = document.createElement('p');
+      recordStatus.textContent = 'Neon Status: ' + (draft.status || 'SAVED') +
+        ' • Payload: ' + (draft.payloadErased ? 'ERASED' : 'RETAINED');
+      const copyStatus = document.createElement('small');
+      copyStatus.textContent = 'Copy Status: ' + (state.socialPostCopyStatus[draft.memoryId] || (['COPIED','USER_CONFIRMED_PUBLISHED'].includes(draft.status) ? 'COPIED' : 'NOT_COPIED'));
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      const copy = document.createElement('button');
+      copy.textContent = 'Copy Post';
+      copy.disabled = draft.payloadErased || typeof draft.content !== 'string' || !draft.content;
+      copy.addEventListener('click', async () => {
+        try {
+          if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+            throw new Error('CLIPBOARD_UNAVAILABLE');
+          }
+          await navigator.clipboard.writeText(draft.content);
+          state.socialPostCopyStatus[draft.memoryId] = 'COPIED';
+          copyStatus.textContent = 'Copy Status: COPIED';
+          socialPostStatus('Post text copied. Updating Neon copy acknowledgement...');
+          try {
+            const grant = await authority('memory.social_post.copy', 'memory:' + draft.memoryId, 'social-post-copy');
+            const saved = await request('/api/hfm/social-posts/' + encodeURIComponent(draft.memoryId) + '/copy', {
+              method: 'POST',
+              body: JSON.stringify(withAuthority({
+                idempotencyKey: crypto.randomUUID(),
+                clipboardCopySucceeded: true
+              }, grant))
+            });
+            draft.status = saved.status;
+            recordStatus.textContent = 'Neon Status: ' + saved.status + ' • Payload: RETAINED';
+            published.disabled = saved.status !== 'COPIED';
+            socialPostStatus('COPIED — Neon acknowledgement saved.');
+          } catch (syncError) {
+            socialPostStatus('COPIED — clipboard succeeded, but Neon acknowledgement needs retry: ' + syncError.message, true);
+          }
+        } catch (_copyError) {
+          state.socialPostCopyStatus[draft.memoryId] = 'COPY_FAILED';
+          copyStatus.textContent = 'Copy Status: COPY_FAILED';
+          socialPostStatus('COPY_FAILED — clipboard was not updated.', true);
+        }
+      });
+      const published = document.createElement('button');
+      published.textContent = 'Mark as Published';
+      published.disabled = draft.payloadErased || draft.status !== 'COPIED';
+      published.addEventListener('click', async () => {
+        if (!confirm('তুমি কি নিজে Facebook-এ এই পোস্ট প্রকাশ করেছ? Mira Facebook থেকে এটি যাচাই করবে না।')) return;
+        try {
+          const grant = await authority('memory.social_post.confirm_published', 'memory:' + draft.memoryId, 'social-post-user-confirmed-published');
+          const result = await request('/api/hfm/social-posts/' + encodeURIComponent(draft.memoryId) + '/published', {
+            method: 'POST',
+            body: JSON.stringify(withAuthority({
+              idempotencyKey: crypto.randomUUID(),
+              userConfirmedPublished: true
+            }, grant))
+          });
+          recordStatus.textContent = 'Neon Status: ' + result.status + ' • Confirmation: USER ACTION (not Facebook-verified)';
+          published.disabled = true;
+          socialPostStatus('USER_CONFIRMED_PUBLISHED — তোমার confirmation Neon-এ সংরক্ষিত হয়েছে।');
+        } catch (error) {
+          socialPostStatus('Published confirmation failed: ' + error.message, true);
+        }
+      });
+      const remove = document.createElement('button');
+      remove.className = 'danger';
+      remove.textContent = 'Delete Draft Payload';
+      remove.disabled = draft.payloadErased;
+      remove.addEventListener('click', async () => {
+        if (!confirm('তুমি কি এই Facebook Post Draft-এর মূল Memory record Neon থেকে Delete করতে চাও? শুধু এই record ও এর version payload মুছবে; metadata ও sanitized audit থাকবে।')) return;
+        socialPostStatus('DELETE_PENDING — waiting for Neon confirmation.');
+        try {
+          const grant = await authority('memory.social_post.delete_payload', 'memory:' + draft.memoryId, 'social-post-payload-erasure');
+          const result = await request('/api/hfm/social-posts/' + encodeURIComponent(draft.memoryId), {
+            method: 'DELETE',
+            body: JSON.stringify(withAuthority({
+              idempotencyKey: crypto.randomUUID(),
+              userConfirmedDelete: true
+            }, grant))
+          });
+          if (result.status !== 'DELETED') {
+            socialPostStatus('DELETE_STATUS_UNKNOWN — Neon did not confirm payload erasure.', true);
+            return;
+          }
+          socialPostStatus('DELETED — Neon confirmed deletion of this record payload and its version payloads.');
+          await loadSocialPostArchive();
+        } catch (error) {
+          const unknown = /UNKNOWN|DATABASE|CONNECTION|TIMEOUT|WRITER|PREFLIGHT/.test(error.message);
+          const alreadyErased = /PAYLOAD_ALREADY_ERASED/.test(error.message);
+          if (unknown || alreadyErased) {
+            try {
+              const refreshed = await loadSocialPostArchive();
+              const exact = (refreshed.drafts || []).find(item => item.memoryId === draft.memoryId);
+              if (exact && exact.payloadErased && exact.status === 'DELETED') {
+                socialPostStatus('DELETED — Neon read-back confirms this exact record payload was erased.');
+              } else if (!exact) {
+                socialPostStatus('DELETE_STATUS_UNKNOWN — Neon did not return the exact record for recovery.', true);
+              } else if (unknown) {
+                socialPostStatus('DELETE_STATUS_UNKNOWN — the exact record is still present; check Neon status before retrying.', true);
+              } else {
+                socialPostStatus('DELETE_FAILED — Neon read-back shows the original payload is still retained.', true);
+              }
+            } catch (_refreshError) {
+              socialPostStatus('DELETE_STATUS_UNKNOWN — Neon could not confirm the exact record after the request.', true);
+            }
+            return;
+          }
+          socialPostStatus('DELETE_FAILED — ' + error.message, true);
+        }
+      });
+      actions.append(copy, published, remove);
+      card.append(heading, meta, recordStatus, copyStatus, actions);
+      if (typeof draft.content === 'string' && draft.content) {
+        const preview = document.createElement('p');
+        preview.textContent = draft.content;
+        card.append(preview);
+      } else if (draft.payloadErased) {
+        const erased = document.createElement('small');
+        erased.textContent = 'Original post payload has been erased. Record metadata is retained.';
+        card.append(erased);
+      }
+      root.append(card);
+    }
+  }
+  async function loadSocialPostArchive() {
+    try {
+      const grant = await authority('memory.read', 'memory:project:' + projectId(), 'social-post-archive-read');
+      const query = new URLSearchParams(withAuthority({}, grant));
+      const result = await request('/api/hfm/social-posts?' + query.toString());
+      renderSocialPostDrafts(result.drafts || []);
+      socialPostStatus('Archive loaded from Neon: ' + (result.count || 0) + ' record(s).');
+      return result;
+    } catch (error) {
+      socialPostStatus('Archive load failed: ' + error.message, true);
+      throw error;
+    }
+  }
+  $('loadSocialPostsBtn').addEventListener('click', () => {
+    loadSocialPostArchive().catch(() => {});
+  });
+  function renderResults(items) {
+    const root = $('results');
+    root.replaceChildren();
+    if (!items.length) { root.textContent = 'No matching knowledge found.'; return; }
+    for (const item of items) {
+      const card = document.createElement('article');
+      card.className = 'result';
+      const heading = document.createElement('strong');
+      heading.textContent = item.memoryId;
+      const content = document.createElement('p');
+      content.textContent = item.content;
+      const meta = document.createElement('small');
+      const sourceDate = item.provenance?.originalPublishedAt || item.source?.observedAt || 'date not supplied';
+      meta.textContent = 'Source: ' + (item.source?.sourceType || 'Facebook/manual') +
+        ' • Method: ' + (item.provenance?.collectionMethod || 'unknown') +
+        ' • Verification: ' + (item.provenance?.verificationStatus || 'unknown') +
+        ' • Date: ' + sourceDate +
+        ' • Trust: ' + (item.trust?.status || 'unknown') +
+        ' • Integrity: ' + (item.integrity?.status || 'unknown') +
+        ' • Revision: ' + (item.revision || 1);
+      card.append(heading, content, meta);
+      if (item.source?.sourceUrl) {
+        const link = document.createElement('a');
+        link.href = item.source.sourceUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Open source';
+        card.append(document.createElement('br'), link);
+      }
+      const select = document.createElement('button');
+      select.textContent = 'Select record';
+      select.addEventListener('click', () => {
+        $('memoryId').value = item.memoryId;
+        $('editContent').value = item.content;
+        $('recordMeta').textContent = 'Source: ' + (item.source?.sourceType || 'Facebook/manual') +
+          ' • URL: ' + (item.source?.sourceUrl || 'not supplied') +
+          ' • Method: ' + (item.provenance?.collectionMethod || 'unknown') +
+          ' • Verification: ' + (item.provenance?.verificationStatus || 'unknown') +
+          ' • Original date: ' + (item.provenance?.originalPublishedAt || 'not supplied');
+        state.selected = item;
+        status('Selected ' + item.memoryId);
+      });
+      card.append(document.createElement('br'), select);
+      root.append(card);
+    }
+  }
+  $('sourceFile').addEventListener('change', async () => {
+    const file = $('sourceFile').files[0];
+    if (!file) return;
+    if (file.size > 30000) { status('File too large. Use a text export under 30 KB.', true); $('sourceFile').value = ''; return; }
+    try { $('content').value = await file.text(); status('File loaded locally. Review the text and confirm it is public before import.'); }
+    catch (_error) { status('Unable to read this file as text.', true); }
+  });
+  $('importBtn').addEventListener('click', async () => {
+    try {
+      if (!$('publicConfirm').checked) throw new Error('Confirm public, authorized, non-restricted content before import.');
+      const id = 'fbk_' + crypto.randomUUID().replace(/-/g, '');
+      const grant = await authority('memory.write', 'memory:' + id, 'facebook-knowledge-import');
+      const result = await request('/api/hfm/facebook-knowledge/import', {
+        method: 'POST',
+        body: JSON.stringify(withAuthority({
+          memoryId: id,
+          idempotencyKey: crypto.randomUUID(),
+          sourceType: $('sourceType').value,
+          sourceId: $('sourceId').value.trim() || 'User supplied Facebook source',
+          sourceUrl: $('sourceUrl').value.trim() || null,
+          originalPublishedAt: $('publishedAt').value || null,
+          content: $('content').value,
+          importFileName: $('sourceFile').files[0]?.name || '',
+          importMimeType: $('sourceFile').files[0]?.type || '',
+          collectionMethod: $('sourceFile').files.length ? 'user_file_import' : 'manual_copy',
+          publicContentConfirmed: $('publicConfirm').checked
+        }, grant))
+      });
+      status(result.status === 'DUPLICATE' ? 'Duplicate detected: ' + result.memoryId : 'Knowledge saved to Neon: ' + result.memoryId);
+      $('memoryId').value = result.memoryId;
+    } catch (error) { status(error.message, true); }
+  });
+  $('researchBtn').addEventListener('click', async () => {
+    try {
+      const grant = await authority('memory.read', 'memory:project:' + projectId(), 'facebook-public-web-search');
+      const query = new URLSearchParams(withAuthority({ sourceUrl: $('sourceUrl').value.trim() }, grant));
+      const result = await request('/api/hfm/facebook-knowledge/research?' + query.toString());
+      const root = $('researchResults');
+      root.replaceChildren();
+      const note = document.createElement('p');
+      note.textContent = result.status + ' — Search results are unverified evidence, not complete Facebook reads.';
+      root.append(note);
+      for (const item of result.results || []) {
+        const line = document.createElement('p');
+        const a = document.createElement('a');
+        a.href = item.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = item.title || item.url;
+        line.append(a, document.createTextNode(' — ' + (item.content || item.snippet || '') +
+          ' • Verification: ' + (item.verificationStatus || 'unknown') +
+          ' • Published: ' + (item.publishedAt || 'not supplied')));
+        root.append(line);
+        const importSnippet = document.createElement('button');
+        importSnippet.textContent = 'Import this evidence to Neon';
+        importSnippet.addEventListener('click', async () => {
+          try {
+            if (!$('publicConfirm').checked) throw new Error('Confirm public, authorized, non-restricted content before import.');
+            const snippet = item.content || item.snippet || '';
+            if (!snippet.trim()) throw new Error('This result has no text snippet to import.');
+            const id = 'fbk_' + crypto.randomUUID().replace(/-/g, '');
+            const grant = await authority('memory.write', 'memory:' + id, 'facebook-knowledge-import');
+            const saved = await request('/api/hfm/facebook-knowledge/import', {
+              method: 'POST',
+              body: JSON.stringify(withAuthority({
+                memoryId: id,
+                idempotencyKey: crypto.randomUUID(),
+                sourceType: $('sourceType').value,
+                sourceId: $('sourceId').value.trim() || item.title || 'Public Facebook search result',
+                sourceUrl: item.url,
+                originalPublishedAt: item.publishedAt || null,
+                content: snippet,
+                collectionMethod: 'public_url_preview',
+                publicContentConfirmed: true
+              }, grant))
+            });
+            $('memoryId').value = saved.memoryId;
+            status(saved.status === 'DUPLICATE' ? 'Duplicate evidence already stored: ' + saved.memoryId : 'Public search evidence saved to Neon: ' + saved.memoryId);
+          } catch (error) { status(error.message, true); }
+        });
+        root.append(importSnippet);
+      }
+    } catch (error) { status(error.message, true); }
+  });
+  $('searchBtn').addEventListener('click', async () => {
+    try {
+      const grant = await authority('memory.read', 'memory:project:' + projectId(), 'facebook-knowledge-search');
+      const query = new URLSearchParams(withAuthority({ q: $('query').value.trim(), limit: 10 }, grant));
+      const result = await request('/api/hfm/facebook-knowledge/search?' + query.toString());
+      renderResults(result.results || []);
+      status(result.status + ' • ' + result.count + ' source-backed result(s).');
+    } catch (error) { status(error.message, true); }
+  });
+  $('viewBtn').addEventListener('click', async () => {
+    try {
+      const id = $('memoryId').value.trim();
+      const grant = await authority('memory.read', 'memory:' + id, 'facebook-knowledge-read');
+      const query = new URLSearchParams(withAuthority({}, grant));
+      const result = await request('/api/hfm/facebook-knowledge/' + encodeURIComponent(id) + '?' + query.toString());
+      $('editContent').value = result.record.content;
+      $('recordMeta').textContent = 'Source: ' + (result.record.source?.sourceType || 'Facebook/manual') +
+        ' • URL: ' + (result.record.source?.sourceUrl || 'not supplied') +
+        ' • Method: ' + (result.record.provenance?.collectionMethod || 'unknown') +
+        ' • Verification: ' + (result.record.provenance?.verificationStatus || 'unknown') +
+        ' • Original date: ' + (result.record.provenance?.originalPublishedAt || 'not supplied');
+      state.selected = result.record;
+      status('Loaded record ' + id + ' • ' + result.record.trust.status);
+    } catch (error) { status(error.message, true); }
+  });
+  $('updateBtn').addEventListener('click', async () => {
+    try {
+      const id = $('memoryId').value.trim();
+      const grant = await authority('memory.update', 'memory:' + id, 'facebook-knowledge-update');
+      const result = await request('/api/hfm/facebook-knowledge/' + encodeURIComponent(id) + '/update', {
+        method: 'POST',
+        body: JSON.stringify(withAuthority({ idempotencyKey: crypto.randomUUID(), content: $('editContent').value }, grant))
+      });
+      status('New version saved: ' + result.memoryId + ' • revision ' + result.revision);
+    } catch (error) { status(error.message, true); }
+  });
+  $('deleteBtn').addEventListener('click', async () => {
+    if (!confirm('Move this knowledge record to recoverable Trash?')) return;
+    try {
+      const id = $('memoryId').value.trim();
+      const grant = await authority('memory.trash', 'memory:' + id, 'facebook-knowledge-trash');
+      const result = await request('/api/hfm/facebook-knowledge/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        body: JSON.stringify(withAuthority({ idempotencyKey: crypto.randomUUID() }, grant))
+      });
+      status('Moved to Trash: ' + result.memoryId);
+    } catch (error) { status(error.message, true); }
+  });
+  $('restoreBtn').addEventListener('click', async () => {
+    try {
+      const id = $('memoryId').value.trim();
+      const grant = await authority('memory.restore', 'memory:' + id, 'facebook-knowledge-restore');
+      const result = await request('/api/hfm/facebook-knowledge/' + encodeURIComponent(id) + '/restore', {
+        method: 'POST',
+        body: JSON.stringify(withAuthority({ idempotencyKey: crypto.randomUUID() }, grant))
+      });
+      status('Restored: ' + result.memoryId);
+    } catch (error) { status(error.message, true); }
+  });
+  $('historyBtn').addEventListener('click', async () => {
+    try {
+      const grant = await authority('memory.read', 'memory:project:' + projectId(), 'facebook-knowledge-read');
+      const query = new URLSearchParams(withAuthority({}, grant));
+      const result = await request('/api/hfm/facebook-knowledge/history?' + query.toString());
+      const root = $('results');
+      root.replaceChildren();
+      for (const item of result.events || []) {
+        const line = document.createElement('p');
+        line.textContent = item.occurredAt + ' • ' + item.eventType + ' • ' + item.memoryId + ' • ' + item.resultStatus;
+        root.append(line);
+      }
+      status('History loaded: ' + (result.events || []).length + ' sanitized event(s).');
+    } catch (error) { status(error.message, true); }
+  });
+  request('/api/hfm/projects/active').then(async data => {
+    if (data.projectId) $('projectId').value = data.projectId;
+    status(data.projectId ? 'Authenticated session active. Project: ' + data.projectId : 'Authenticated. Create your HFM project to begin.');
+    if (data.projectId) await loadSocialPostArchive().catch(() => {});
+  }).catch(() => status('Sign in to Mira before using Facebook Knowledge.', true));
+  $('dailyGenerateBtn').addEventListener('click', async () => {
+    try {
+      const result = await request('/api/hfm/daily-knowledge/generate', { method: 'POST', body: JSON.stringify({}) });
+      $('dailyDraft').value = result.draft?.content || '';
+      status(result.status + (result.memoryId ? ' • ' + result.memoryId : '') + ' • Manual review required; no Facebook publishing occurs.');
+      await loadSocialPostArchive().catch(() => {});
+    } catch (error) { status(error.message, true); }
+  });
+  $('createProjectBtn').addEventListener('click', async () => {
+    try {
+      let id = $('projectId').value.trim();
+      if (!/^hfm_[0-9a-f]{32}$/.test(id)) id = 'hfm_' + crypto.randomUUID().replace(/-/g, '');
+      $('projectId').value = id;
+      const result = await request('/api/hfm/projects/create', { method: 'POST', body: JSON.stringify({ projectId: id }) });
+      status((result.status === 'CREATED' ? 'Project created and activated: ' : 'Project activated: ') + result.projectId);
+    } catch (error) { status(error.message, true); }
+  });
+})();
+</script>
+</body>
+</html>

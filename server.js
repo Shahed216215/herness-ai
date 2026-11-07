@@ -97,6 +97,15 @@ const { registerTaskExecutionRoutes } = require("./routes/task-execution");
 const { registerSpecialistRoutes } = require('./routes/specialists');
 const registerLearningHistoryRoutes = require("./routes/learning-history");
 const { registerOpportunityRoutes } = require("./routes/opportunities");
+const registerMiraHfmSocialPostRoutes = require("./routes/mira-hfm-social-posts");
+const registerFacebookKnowledgeRoutes = require("./routes/mira-hfm-facebook-knowledge");
+const registerHfmAuthorityRoutes = require("./routes/mira-hfm-authorities");
+const registerHfmProjectRoutes = require("./routes/mira-hfm-projects");
+const registerDailyKnowledgeRoutes = require("./routes/mira-hfm-daily-knowledge");
+const { getAuthorityIssuerPool } = require("./services/mira-hfm-authority-issuer-pool");
+const { getMemoryWriterPool } = require("./services/mira-hfm-memory-writer-pool");
+const registerHfmRuntimeReadinessRoute = require("./routes/mira-hfm-runtime-readiness");
+const { inspectHfmRuntimeConfiguration } = require("./services/mira-hfm-runtime-readiness");
 const registerClientCommunicationRoutes =
   require("./routes/client-communication");
 
@@ -2229,6 +2238,28 @@ registerConversationRoutes(
   requireAgentPermission,
   PERMISSIONS
 );
+
+registerMiraHfmSocialPostRoutes(app, requireAgentAuth, {
+  getPool: getMemoryWriterPool
+});
+
+registerFacebookKnowledgeRoutes(app, requireAgentAuth, {
+  getPool: getMemoryWriterPool
+});
+
+registerHfmAuthorityRoutes(app, requireAgentAuth, {
+  getPool: getAuthorityIssuerPool
+});
+
+registerHfmProjectRoutes(app, requireAgentAuth, {
+  getPool: getAuthorityIssuerPool
+});
+
+registerDailyKnowledgeRoutes(app, requireAgentAuth);
+
+registerHfmRuntimeReadinessRoute(app, requireAgentAuth, {
+  inspect: inspectHfmRuntimeConfiguration
+});
 
 registerWorkAcceptanceRoutes(
   app,

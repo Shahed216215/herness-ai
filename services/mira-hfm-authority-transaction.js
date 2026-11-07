@@ -63,12 +63,20 @@ async function executeWithConsumedAuthority(options = {}) {
     await client.query("SET LOCAL statement_timeout = '5000ms'");
     await client.query("SET LOCAL lock_timeout = '3000ms'");
 
-    // Deterministic lock order: project owner -> actor membership -> one-time authority.
-    // Revocation/owner revision updates must lock these same rows, so they cannot race
-    // between validation and the protected operation's commit.
+    // The requested project id is only a row filter here, not an authorization grant.
+    // RLS scopes every project table before the owner/membership/authority checks.
+    await client.query(
+      "SELECT set_config('mira.project_id', $1, true)",
+      [request.projectId]
+    );
+
+    // Project-scoped transaction advisory lock serializes owner/membership authority changes
+    // without granting the payload writer UPDATE privileges on identity registries.
+    // Every future owner/membership mutation path must acquire this same lock.
+    await client.query('SELECT pg_advisory_xact_lock(74291, hashtext($1))', [request.projectId]);
     const ownerResult = await client.query(
       "SELECT project_id, owner_actor_id, status, revision " +
-      "FROM mira_hfm.project_owners WHERE project_id = $1 FOR UPDATE",
+      "FROM mira_hfm.project_owners WHERE project_id = $1",
       [request.projectId]
     );
     const owner = ownerResult.rows && ownerResult.rows[0];
@@ -77,7 +85,7 @@ async function executeWithConsumedAuthority(options = {}) {
     const membershipResult = await client.query(
       "SELECT membership_id, project_id, actor_id, permissions, status, revision, " +
       "valid_from, expires_at FROM mira_hfm.project_memberships " +
-      "WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp()) FOR UPDATE",
+      "WHERE project_id = $1 AND actor_id = $2 AND status = 'ACTIVE' AND valid_from <= clock_timestamp() AND (expires_at IS NULL OR expires_at > clock_timestamp())",
       [request.projectId, trustedActor.actorId]
     );
     const membership = membershipResult.rows && membershipResult.rows[0];
@@ -129,11 +137,13 @@ async function executeWithConsumedAuthority(options = {}) {
     // All protected database reads/writes must use this same client/transaction.
     const value = await options.perform(client, Object.freeze({
       actorId: trustedActor.actorId,
+      projectOwnerActorId: owner.owner_actor_id,
       projectId: request.projectId,
       operation: request.operation,
       resource: request.resource,
       purpose: request.purpose,
-      requestId: request.requestId
+      requestId: request.requestId,
+      authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY'
     }));
 
     // Recheck time-bounded membership after the protected work and before commit.
