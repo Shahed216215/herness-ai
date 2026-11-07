@@ -137,7 +137,7 @@ const req = { session: { hfmPrincipal: { verified: true } } };
         localFallback: false,
         driveFallback: false,
         scanStartedAt: '2026-11-07T04:00:00.000Z',
-        hostAuthorizationContext,
+        hostAuthorizationContext: { ...hostAuthorizationContext, requestId: first ? 'hfm-read-page-001' : 'hfm-read-page-002' },
         records: first ? [makeRecord()] : [secondPageRecord],
         count: 1,
         nextCursor: first ? 'work-learning-next-page' : null
