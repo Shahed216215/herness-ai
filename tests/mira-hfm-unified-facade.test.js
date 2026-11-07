@@ -56,6 +56,7 @@ const report = retrieveCanonicalRecordsWithReport({
 });
 assert.deepEqual(report.records.map(item => item.memoryId), ['memory-valid-001']);
 assert.equal(report.provenance[0].memoryId, 'memory-valid-001');
+assert.equal(report.provenance[0].recordDigest, null, 'private content hashes must not escape retrieval provenance');
 assert.equal(report.excludedSummary.totalCandidates, 4);
 assert.equal(report.excludedSummary.eligibleCount, 1);
 assert.equal(report.excludedSummary.excludedCount, 3);
