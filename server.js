@@ -97,6 +97,8 @@ const { registerTaskExecutionRoutes } = require("./routes/task-execution");
 const { registerSpecialistRoutes } = require('./routes/specialists');
 const registerLearningHistoryRoutes = require("./routes/learning-history");
 const { registerOpportunityRoutes } = require("./routes/opportunities");
+const registerMiraHfmSocialPostRoutes = require("./routes/mira-hfm-social-posts");
+const { getMemoryWriterPool } = require("./services/mira-hfm-memory-writer-pool");
 const registerClientCommunicationRoutes =
   require("./routes/client-communication");
 
@@ -2229,6 +2231,10 @@ registerConversationRoutes(
   requireAgentPermission,
   PERMISSIONS
 );
+
+registerMiraHfmSocialPostRoutes(app, requireAgentAuth, {
+  getPool: getMemoryWriterPool
+});
 
 registerWorkAcceptanceRoutes(
   app,
