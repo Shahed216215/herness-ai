@@ -362,7 +362,8 @@ function baseOptions(overrides = {}) {
   assert.equal(learningResult.lifecycle, 'PENDING_REVIEW');
   assert.equal(learningResult.searchEligible, false);
 
-  const { executeTool, executeHfmMemorySave } = require('../tools');
+  const { executeTool, executeHfmMemorySave, declarations } = require('../tools');
+  assert.equal(declarations.some(tool => tool.name === 'daily_activity_save'), true);
   const previousWriteFlag = process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
   const previousReadFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
   const previousWorkFlag = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
