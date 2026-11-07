@@ -80,6 +80,11 @@ const client = {
     if (sql.includes('FROM mira_hfm.standing_read_authorities')) {
       return { rows: [standingRow], rowCount: 1 };
     }
+    if (sql.includes("SET status = 'EXPIRED'")) {
+      standingRow.status = 'EXPIRED';
+      standingRow.paused_at = null;
+      return { rows: [{ status: 'EXPIRED', expires_at: standingRow.expires_at }], rowCount: 1 };
+    }
     if (sql.startsWith('UPDATE mira_hfm.standing_read_authorities')) {
       const status = params[0];
       standingRow.status = status;
@@ -136,10 +141,12 @@ const pool = { async connect() { return client; } };
   standingRow.expires_at = new Date(now - 1000).toISOString();
   const expiredStatus = await getStandingReadAuthorityStatus({ req, pool, env });
   assert.equal(expiredStatus.authority.authorityStatus, 'EXPIRED');
+  assert.equal(standingRow.status, 'EXPIRED', 'natural expiry is persisted for lifecycle audit trigger');
   await assert.rejects(() => setStandingReadAuthorityStatus({
     req, pool, env, standingAuthorityId: standingRow.standing_authority_id, status: 'ACTIVE'
   }), error => error.code === 'HFM_STANDING_READ_AUTHORITY_EXPIRED');
   standingRow.expires_at = originalExpiry;
+  standingRow.status = 'ACTIVE';
   console.log('HFM_STANDING_READ_EXPIRED_GRANT_STATUS=PASS');
 
   const paused = await setStandingReadAuthorityStatus({
