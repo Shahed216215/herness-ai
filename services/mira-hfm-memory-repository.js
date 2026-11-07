@@ -367,6 +367,46 @@ async function getMemoryRecord(options = {}) {
   return { status: 'FOUND', record: decodeStoredRow(row, options) };
 }
 
+function getStandingReadMemoryRecord(options = {}) {
+  const { client, context } = requireTransaction(options);
+  if (context.operation !== 'memory.read' ||
+      context.authorityContext !== STANDING_READ_CONTEXT ||
+      context.resource !== 'memory:project:' + context.projectId) {
+    throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+  }
+  const memoryId = boundedText(options.memoryId, 128, 'HFM_MEMORY_ID_INVALID');
+  const recordTypes = options.recordTypes === undefined
+    ? ['learning_note', 'knowledge_item']
+    : options.recordTypes;
+  const allowed = new Set(['learning_note', 'knowledge_item']);
+  if (!Array.isArray(recordTypes) || recordTypes.length < 1 ||
+      recordTypes.length > allowed.size ||
+      recordTypes.some(type => !allowed.has(type)) ||
+      new Set(recordTypes).size !== recordTypes.length ||
+      options.allowRestrictedRead === true) {
+    throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+  }
+  return client.query(
+    'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
+    'integrity_status, trust_status, public_payload, encrypted_envelope FROM mira_hfm.memory_records ' +
+    'WHERE project_id = $1 AND memory_id = $2 AND record_type = ANY($3::text[]) ' +
+    'AND lifecycle = \'ACTIVE\' AND classification <> \'RESTRICTED\' ' +
+    'AND integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\')',
+    [context.projectId, memoryId, recordTypes]
+  ).then(result => {
+    const row = result.rows && result.rows[0];
+    if (!row) return { status: 'NOT_FOUND', record: null };
+    return {
+      status: 'FOUND',
+      record: decodeStoredRow(row, {
+        ...options,
+        allowPrivateRead: true,
+        allowRestrictedRead: false
+      })
+    };
+  });
+}
+
 function decodeStandingReadPageCursor(cursor, context, recordTypes, lifecycle) {
   if (cursor === undefined || cursor === null || cursor === '') return null;
   if (typeof cursor !== 'string' || cursor.length > 2048) {
@@ -615,6 +655,7 @@ module.exports = Object.freeze({
   createMemoryRecord,
   reviseMemoryRecord,
   getMemoryRecord,
+  getStandingReadMemoryRecord,
   listMemoryRecords,
   trashMemoryRecord,
   restoreMemoryRecord,
