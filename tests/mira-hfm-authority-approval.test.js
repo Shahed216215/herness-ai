@@ -171,7 +171,7 @@ const env = {
   assert.doesNotMatch(approvalService, /UPDATE mira_hfm\.authority_approval_nonces[\s\S]{0,900}RETURNING/i);
   console.log('HFM_APPROVAL_NONCE_CONSUMPTION_DOES_NOT_BYPASS_POST_UPDATE_RLS=PASS');
 
-  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/009_authority_approval_nonce_registry.sql'), 'utf8');
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/012_authority_approval_nonce_registry.sql'), 'utf8');
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migration, /FORCE ROW LEVEL SECURITY/);
   assert.ok(migration.includes('GRANT UPDATE (consumed_at)'));
