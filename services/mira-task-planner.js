@@ -504,12 +504,14 @@ function buildExperienceGuidance(
   options = {}
 ) {
   const strategies =
-    futureStrategyEngine.getStrategiesForTask(
-      task,
-      {
-        limit: 5
-      }
-    );
+    options.useHfmWorkLearning === true
+      ? []
+      : futureStrategyEngine.getStrategiesForTask(
+          task,
+          {
+            limit: 5
+          }
+        );
 
   const safeStrategies =
     Array.isArray(strategies)
