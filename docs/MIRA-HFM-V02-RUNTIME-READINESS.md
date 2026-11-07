@@ -86,9 +86,9 @@ This is structural preflight evidence only. No migration, role creation, grant, 
 
 ## Validation evidence
 
-The newest route, UI, writer-preflight and PostgreSQL integration changes are being validated by fresh GitHub Actions workflows. Only checks attached to the exact current PR head may be treated as current evidence. Synthetic/offline tests and disposable PostgreSQL integration tests are not live Neon or Render evidence.
+The HFM runtime, repository, session, dependency, route, UI, and PostgreSQL migration-chain checks all passed on code commit `8f377e784a2750e1f3cb9b5eee5f800a122fba2c` (10/10 GitHub Actions checks). The PostgreSQL migration workflow applied migrations 001–010 only to its disposable PostgreSQL 16 CI database and exercised bootstrap, issuer nonce, trash-authority RLS, and hard-delete denial. The embedded social-draft UI script also has parser-level syntax validation.
 
-HFM-specific tests are synthetic/offline. No live HFM database write or migration has been performed.
+These are synthetic/offline or disposable-CI results. They are not live Neon or Render evidence. No live HFM database write or migration has been performed.
 
 ## Release and deployment gates
 
