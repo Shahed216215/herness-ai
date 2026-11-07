@@ -143,6 +143,9 @@ function validateClientVaultPayload(payload) {
   if (!payload.clientName && !payload.clientId && !payload.organization) {
     errors.push('client.identity_required');
   }
+  if (payload.clientId !== undefined && /^\d{10}(?:\d{3}|\d{7})?$/.test(payload.clientId)) {
+    errors.push('client.government_identifier_like_client_id_rejected');
+  }
   if (payload.email !== undefined &&
       (typeof payload.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email))) {
     errors.push('client.email_invalid');
