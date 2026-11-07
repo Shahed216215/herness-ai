@@ -195,7 +195,7 @@ function baseOptions(overrides = {}) {
     /HFM_KNOWLEDGE_REVIEW_EXPLICIT_USER_INTENT_REQUIRED/
   );
 
-  const dailyActivityContent = 'Completed Python practice on 2026-11-07. Contact user@example.com or +8801712345678; budget BDT 5,000; source https://example.com/private.';
+  const dailyActivityContent = 'Completed Python practice on 2026-11-07. Contact user@example.com or +8801712345678; budget BDT 5,000; source https://example.com/private. Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456; token ghp_abcdefghijklmnopqrstuvwxyz1234567890.';
   const dailyActivityRecord = buildCanonicalMemoryRecord({
     projectId: 'project-001',
     memoryId: 'mem-daily-activity-001',
@@ -216,6 +216,8 @@ function baseOptions(overrides = {}) {
   assert.equal(dailyActivityRecord.content.includes('5,000'), false);
   assert.equal(dailyActivityRecord.content.includes('https://'), false);
   assert.equal(dailyActivityRecord.content.includes('2026-11-07'), true);
+  assert.equal(dailyActivityRecord.content.includes('Authorization:'), false);
+  assert.equal(dailyActivityRecord.content.includes('ghp_'), false);
   assert.throws(() => buildCanonicalMemoryRecord({
     projectId: 'project-001',
     memoryId: 'mem-daily-activity-sensitive',
