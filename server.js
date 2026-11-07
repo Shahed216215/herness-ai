@@ -33,7 +33,6 @@ const { declarations, tools } = require("./tools");
 const firewallDefense = require("./firewall-defense");
 
 const {
-  addMemory,
   getMemory
 } = require("./memory");
 
