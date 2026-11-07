@@ -357,6 +357,18 @@ CREATE POLICY hfm_writer_memory_audit_insert_scope
     )
   );
 
+-- One-time, consumed memory.read may list only recoverable social drafts in Trash.
+-- The restrictive actor/membership/authority policy below still applies; standing
+-- reads are separately forced to ACTIVE Knowledge/Learning by Migration 014.
+CREATE POLICY hfm_memory_reader_trashed_social_draft_select
+  ON mira_hfm.memory_records
+  FOR SELECT TO mira_hfm_memory_reader
+  USING (
+    lifecycle = 'TRASHED'
+    AND record_type = 'social_post_draft'
+    AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
+  );
+
 -- Memory reader: an active membership with memory.read and a live authority
 -- are required even if a caller manually sets the transaction-local project ID.
 DROP POLICY IF EXISTS hfm_reader_membership_permission ON mira_hfm.project_memberships;
@@ -428,7 +440,14 @@ CREATE POLICY hfm_reader_memory_membership_authority_scope
   FOR SELECT TO mira_hfm_memory_reader
   USING (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND lifecycle = 'ACTIVE'
+    AND (
+      lifecycle = 'ACTIVE'
+      OR (
+        lifecycle = 'TRASHED'
+        AND record_type = 'social_post_draft'
+        AND current_setting('mira.standing_read_authority', true) IS DISTINCT FROM 'true'
+      )
+    )
     AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
     AND EXISTS (
       SELECT 1 FROM mira_hfm.project_owners owner_row
