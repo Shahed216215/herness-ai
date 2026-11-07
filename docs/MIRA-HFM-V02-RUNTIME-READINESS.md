@@ -335,6 +335,7 @@ Target inspected: project steep-grass-38696226, branch br-crimson-sun-a13xzreh, 
 
 - Conversation transcript gap: the central HFM-aware adapter currently blocks legacy local transcript persistence in HFM modes and reports explicit non-persistence. There is no approved transcript record family/schema and no canonical Neon transcript writer/read-after-write implementation in this branch. User, assistant, and tool transcript persistence therefore remains unavailable rather than silently falling back.
 - Human review lifecycle gap: the current Knowledge review runtime is a read-only pending queue and explicitly returns `promotionSupported: false`. No authorized human approve/reject decision route, trust-promotion contract, lifecycle-transition transaction, or immutable decision-audit writer is implemented. Because the approved transition contract and authorization grants are not established, `PENDING_REVIEW` remains unchanged and no automatic or inferred promotion is allowed.
+- Authority-boundary evidence: the current one-time issuer operation allowlist contains only `memory.read`, `memory.write`, `memory.trash`, and `memory.restore`; the exposed HTTP approval route currently permits only `memory.read`. There is no `memory.verify`/`memory.review` capability or approved per-record trust-transition authority. Reusing `memory.write` to promote trust would conflate content mutation with verification and is not permitted.
 
 
 
