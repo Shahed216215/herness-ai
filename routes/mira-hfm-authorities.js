@@ -6,7 +6,7 @@ const { normalizeTrustedActorIdentity } = require('../services/mira-memory-host-
 
 const PURPOSES = Object.freeze({
   'memory.read': new Set(['facebook-knowledge-search','facebook-public-web-search','facebook-knowledge-read']),
-  'memory.write': new Set(['facebook-knowledge-import']),
+  'memory.write': new Set(['facebook-knowledge-import','daily-knowledge-generate']),
   'memory.update': new Set(['facebook-knowledge-update']),
   'memory.trash': new Set(['facebook-knowledge-trash']),
   'memory.restore': new Set(['facebook-knowledge-restore'])
