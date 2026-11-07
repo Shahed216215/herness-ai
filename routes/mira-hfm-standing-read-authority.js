@@ -2,7 +2,8 @@
 
 const {
   issueStandingReadAuthority,
-  setStandingReadAuthorityStatus
+  setStandingReadAuthorityStatus,
+  getStandingReadAuthorityStatus
 } = require('../services/mira-hfm-standing-read-authority');
 const { sameOriginRequest } = require('./mira-hfm-authority-approval');
 
@@ -31,6 +32,22 @@ function registerMiraHfmStandingReadAuthorityRoutes(app, getRuntime, requireAdmi
     }
     return true;
   };
+
+  app.get('/api/hfm/memory/standing-authority/status', requireAdmin, async (req, res) => {
+    if (!guard(req, res)) return;
+    try {
+      const runtime = await getRuntime();
+      if (!runtime || runtime.status !== 'AUTHORITY_ISSUER_READY' ||
+          !runtime.pool || typeof runtime.pool.connect !== 'function') {
+        return res.status(503).json({ success: false, error: 'HFM authority issuer is not ready.' });
+      }
+      const result = await getStandingReadAuthorityStatus({ req, pool: runtime.pool, env: process.env });
+      return res.json({ success: true, ...result });
+    } catch (error) {
+      const code = typeof error?.code === 'string' ? error.code : 'HFM_STANDING_READ_STATUS_LOOKUP_FAILED';
+      return res.status(503).json({ success: false, error: code });
+    }
+  });
 
   app.post('/api/hfm/memory/standing-authority/issue', requireAdmin, async (req, res) => {
     if (!guard(req, res)) return;
