@@ -32,6 +32,7 @@ function validateApproval(receipt, expected) {
   const fields = {
     projectId: bounded(receipt.projectId, 256),
     actorId: bounded(receipt.actorId, 512),
+    approverActorId: bounded(receipt.approverActorId, 512),
     operation: bounded(receipt.operation, 128),
     resource: bounded(receipt.resource, 512),
     purpose: bounded(receipt.purpose, 512)
@@ -47,7 +48,7 @@ function validateApproval(receipt, expected) {
       expiresAt - issuedAt > MAX_TTL_MS) {
     throw fail('HFM_AUTHORITY_APPROVAL_TIME_INVALID');
   }
-  if (receipt.maxUses !== 1) throw fail('HFM_AUTHORITY_APPROVAL_MUST_BE_SINGLE_USE');
+  if (receipt.maxUses !== 1 || receipt.consumed !== true) throw fail('HFM_AUTHORITY_APPROVAL_MUST_BE_CONSUMED_SINGLE_USE');
   return Object.freeze({ approvalRef, issuedAt: new Date(issuedAt), expiresAt: new Date(expiresAt) });
 }
 
@@ -85,6 +86,7 @@ async function issueMemoryReadAuthority(options = {}) {
   const expected = Object.freeze({
     projectId,
     actorId: actor.actorId,
+    approverActorId: actor.actorId,
     operation: 'memory.read',
     resource: 'memory:project:' + projectId,
     purpose: bounded(options.purpose, 512)
@@ -92,7 +94,7 @@ async function issueMemoryReadAuthority(options = {}) {
 
   let verifiedReceipt;
   try {
-    verifiedReceipt = await options.verifyApprovalToken(bounded(options.approvalToken, 8192), expected);
+    verifiedReceipt = await options.verifyApprovalToken(bounded(options.approvalToken, 8192), expected, { consume: true, singleUse: true });
   } catch (_error) {
     throw fail('HFM_AUTHORITY_APPROVAL_VERIFICATION_FAILED');
   }
