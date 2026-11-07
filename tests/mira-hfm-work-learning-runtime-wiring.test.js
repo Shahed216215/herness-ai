@@ -437,13 +437,15 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
       expiresAt: new Date(Date.now() + 86400000).toISOString()
     }
   };
+  const preflightReq = { serverHeld: true };
+  const preflightPool = { connect: async () => ({ release() {} }) };
   const preflightOptions = {
-    req: serverHeldReq,
-    pool: readerPool,
+    req: preflightReq,
+    pool: preflightPool,
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
     readMemory: async input => {
-      assert.equal(input.req, serverHeldReq);
-      assert.equal(input.pool, readerPool);
+      assert.equal(input.req, preflightReq);
+      assert.equal(input.pool, preflightPool);
       assert.equal(input.standingReadAuthority, true);
       assert.deepEqual(input.recordTypes, ['learning_note', 'knowledge_item']);
       assert.equal(input.lifecycle, 'ACTIVE');
