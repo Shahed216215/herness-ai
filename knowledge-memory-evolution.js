@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const storagePath = require('./mira-storage');
+const { assertLegacyStorageDisabled } = require('./services/mira-hfm-legacy-storage-guard');
 const crypto = require("crypto");
 
 const {
@@ -52,6 +53,7 @@ function deepClone(value) {
 }
 
 function readJsonFile(filePath) {
+  assertLegacyStorageDisabled();
   if (!fs.existsSync(filePath)) {
     throw new Error(
       `File not found: ${path.basename(filePath)}`
@@ -70,6 +72,7 @@ function readJsonFile(filePath) {
 }
 
 function atomicWriteJson(filePath, value) {
+  assertLegacyStorageDisabled();
   const tempPath =
     `${filePath}.${process.pid}.${Date.now()}.tmp`;
 
