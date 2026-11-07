@@ -14,6 +14,9 @@ assert.match(sql, /Do not execute on production or staging without separate appr
 assert.match(sql, /CREATE ROLE mira_hfm_memory_reader[\s\S]*NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/);
 assert.match(sql, /HFM_MEMORY_READER_GROUP_MUST_NOT_INHERIT_OTHER_ROLES/);
 assert.match(sql, /HFM_MEMORY_READER_GROUP_MUST_NOT_OWN_DATABASE_OBJECTS/);
+assert.match(sql, /HFM_MEMORY_READER_PUBLIC_POLICY_CONFLICT/);
+assert.match(sql, /HFM_MEMORY_READER_PREEXISTING_POLICY_CONFLICT/);
+assert.match(sql, /'public' = ANY\(roles\)/);
 assert.match(sql, /GRANT SELECT ON TABLE mira_hfm\.operation_authorities/);
 assert.ok(sql.includes('GRANT UPDATE (status, consumed_at) ON TABLE mira_hfm.operation_authorities'));
 assert.match(sql, /GRANT INSERT ON TABLE mira_hfm\.authority_audit_events/);
