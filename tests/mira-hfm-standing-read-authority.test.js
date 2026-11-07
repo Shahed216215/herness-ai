@@ -72,7 +72,8 @@ const client = {
       return { rowCount: 1, rows: [] };
     }
     if (sql.includes('FROM mira_hfm.standing_read_authorities') &&
-        sql.includes('SELECT standing_authority_id, status, expires_at, approval_ref')) {
+        sql.includes('SELECT standing_authority_id, status, expires_at, approval_ref') &&
+        sql.includes('WHERE project_id = $1 AND actor_id = $2')) {
       return { rows: [], rowCount: 0 };
     }
     if (sql.includes('FROM mira_hfm.standing_read_authorities')) {
