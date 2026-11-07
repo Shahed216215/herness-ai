@@ -95,10 +95,7 @@ CREATE POLICY hfm_authority_issuer_approval_nonce_consume
   )
   -- The column-level GRANT permits changing only consumed_at. The USING
   -- clause scopes the existing row; this CHECK validates the sole mutable field.
-  WITH CHECK (
-    consumed_at IS NOT NULL
-    AND consumed_at <= clock_timestamp()
-  );
+  WITH CHECK (consumed_at IS NOT NULL);
 
 COMMENT ON TABLE mira_hfm.authority_approval_nonces IS
   'HFM v0.2 hashed nonce ledger for signed, single-use, short-lived human approval tokens.';
