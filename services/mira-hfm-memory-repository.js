@@ -357,11 +357,20 @@ async function listMemoryRecords(options = {}) {
   if (!['ACTIVE', 'SUPERSEDED', 'ARCHIVED', 'TRASHED', 'QUARANTINED', 'PENDING_REVIEW'].includes(lifecycle)) {
     throw fail('HFM_MEMORY_LIFECYCLE_FILTER_INVALID');
   }
+  const recordType = options.recordType === undefined ? null : options.recordType;
+  const allowedRecordTypes = new Set([
+    'daily_activity', 'learning_note', 'knowledge_item', 'social_post_draft',
+    'client_vault_record', 'financial_vault_record'
+  ]);
+  if (recordType !== null && !allowedRecordTypes.has(recordType)) {
+    throw fail('HFM_MEMORY_RECORD_TYPE_FILTER_INVALID');
+  }
   const result = await client.query(
     'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
     'integrity_status, trust_status, public_payload, encrypted_envelope FROM mira_hfm.memory_records ' +
-    'WHERE project_id = $1 AND lifecycle = $2 ORDER BY updated_at DESC, memory_id ASC LIMIT $3',
-    [context.projectId, lifecycle, limit]
+    'WHERE project_id = $1 AND lifecycle = $2 AND ($3::text IS NULL OR record_type = $3) ' +
+    'ORDER BY updated_at DESC, memory_id ASC LIMIT $4',
+    [context.projectId, lifecycle, recordType, limit]
   );
   return {
     status: 'FOUND',
