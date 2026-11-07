@@ -16,10 +16,10 @@ function compareTimestampToNow(value, nowMs) {
   if (match) {
     const wholeSecondMs = Date.parse(match[1] + match[3]);
     if (!Number.isFinite(wholeSecondMs)) return null;
-    const fractionalMicros = Number(((match[2] || '') + '000000').slice(0, 6));
-    const valueMicros = wholeSecondMs * 1000 + fractionalMicros;
-    const nowMicros = Math.trunc(nowMs) * 1000;
-    return valueMicros < nowMicros ? -1 : valueMicros > nowMicros ? 1 : 0;
+    const fractionalNanos = BigInt(((match[2] || '') + '000000000').slice(0, 9));
+    const valueNanos = BigInt(wholeSecondMs) * 1000000n + fractionalNanos;
+    const nowNanos = BigInt(Math.trunc(nowMs)) * 1000000n;
+    return valueNanos < nowNanos ? -1 : valueNanos > nowNanos ? 1 : 0;
   }
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) return null;
