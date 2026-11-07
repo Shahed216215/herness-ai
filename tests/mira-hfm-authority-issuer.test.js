@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { issueMemoryReadAuthority } = require('../services/mira-hfm-authority-issuer');
 const {
-  REQUIRED_TRUE, REQUIRED_FALSE, verifyAuthorityIssuerPreflight,
+  REQUIRED_TRUE, REQUIRED_FALSE, PREFLIGHT_SQL, verifyAuthorityIssuerPreflight,
   getAuthorityIssuerConfig
 } = require('../services/mira-hfm-authority-issuer-runtime');
 
@@ -136,6 +136,10 @@ const pool = { async connect() { return client; } };
   assert.doesNotMatch(migration, /GRANT[^;]+UPDATE/i);
   assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
   console.log('HFM_AUTHORITY_ISSUER_ROLE_MIGRATION_LEAST_PRIVILEGE=PASS');
+
+  assert.match(PREFLIGHT_SQL, /issuer_policy_semantics_exact/);
+  assert.match(PREFLIGHT_SQL, /hfm_authority_issuer_approval_nonce_consume/);
+  console.log('HFM_AUTHORITY_ISSUER_PREFLIGHT_POLICY_SEMANTICS_REQUIRED=PASS');
 
   const config = getAuthorityIssuerConfig({});
   assert.equal(config.enabled, false);
