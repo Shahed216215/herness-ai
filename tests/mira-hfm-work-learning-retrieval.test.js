@@ -36,7 +36,7 @@ function authorize(input) {
 }
 function record({ id, projectId = 'project-alpha', taskId, title, lessons,
   lifecycle = 'ACTIVE', integrity = 'VERIFIED', trust = 'CONTENT_VERIFIED',
-  recordType = 'lesson', sourceId = id }) {
+  recordType = 'learning_note', sourceId = id }) {
   const content = JSON.stringify({
     domain: 'work_learning',
     record: {
@@ -47,7 +47,7 @@ function record({ id, projectId = 'project-alpha', taskId, title, lessons,
     }
   });
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: '1.1.0',
     memoryId: id,
     projectId,
     recordType,
