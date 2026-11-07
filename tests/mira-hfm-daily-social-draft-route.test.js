@@ -82,7 +82,11 @@ function makeReq(overrides = {}) {
 function makeRes() {
   return { statusCode: 200, payload: null, status(code) { this.statusCode = code; return this; }, json(value) { this.payload = value; return this; } };
 }
-async function invoke(req, reader = async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) }), builder = fakeBuild) {
+async function invoke(
+  req,
+  reader = async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+  builder = fakeBuild
+) {
   let handler;
   const res = makeRes();
   const app = { post(path, middleware, callback) { assert.equal(path, '/api/hfm/social-drafts/generate-daily'); handler = { middleware, callback }; } };
