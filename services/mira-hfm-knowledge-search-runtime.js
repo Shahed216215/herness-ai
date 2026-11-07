@@ -60,7 +60,12 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
       !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
     fail('HFM_KNOWLEDGE_AUTHORIZED_MEMORY_READ_REQUIRED');
   }
-  if (!Number.isInteger(memory.count) || memory.count < 0 || memory.count > 100) {
+  // Older injected readers may omit count; the returned bounded array is
+  // still an exact count of scanned candidates. A full 100-row page remains
+  // conservatively marked as potentially incomplete.
+  const candidateScanCount = memory.count === undefined ? memory.records.length : memory.count;
+  if (!Number.isInteger(candidateScanCount) || candidateScanCount < 0 ||
+      candidateScanCount > 100 || candidateScanCount !== memory.records.length) {
     fail('HFM_KNOWLEDGE_SCAN_COUNT_INVALID');
   }
   const hostContext = memory.hostAuthorizationContext;
