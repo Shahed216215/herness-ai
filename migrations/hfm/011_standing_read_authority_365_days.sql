@@ -130,7 +130,7 @@ CREATE POLICY hfm_standing_issuer_update
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND status IN ('ACTIVE','PAUSED','REVOKED')
+    AND status IN ('ACTIVE','PAUSED','REVOKED','EXPIRED')
   );
 
 DROP POLICY IF EXISTS hfm_memory_reader_authority_audit_insert ON mira_hfm.authority_audit_events;
@@ -154,7 +154,7 @@ CREATE POLICY hfm_authority_issuer_audit_insert
       'AUTHORITY_ISSUED','APPROVAL_TOKEN_ISSUED','APPROVAL_TOKEN_CONSUMED',
       'STANDING_READ_AUTHORITY_ISSUED','STANDING_READ_AUTHORITY_PAUSED',
       'STANDING_READ_AUTHORITY_RESUMED','STANDING_READ_AUTHORITY_REVOKED',
-      'STANDING_READ_AUTHORITY_USED'
+      'STANDING_READ_AUTHORITY_USED','STANDING_READ_AUTHORITY_EXPIRED'
     )
   );
 
@@ -179,11 +179,12 @@ BEGIN
     RAISE EXCEPTION 'HFM_STANDING_READ_AUTHORITY_SCOPE_IMMUTABLE';
   END IF;
   IF OLD.status = 'REVOKED' OR
-     (OLD.status = 'PAUSED' AND NEW.status NOT IN ('PAUSED','ACTIVE','REVOKED')) OR
-     (OLD.status = 'ACTIVE' AND NEW.status NOT IN ('ACTIVE','PAUSED','REVOKED')) OR
+     (OLD.status = 'PAUSED' AND NEW.status NOT IN ('PAUSED','ACTIVE','REVOKED','EXPIRED')) OR
+     (OLD.status = 'ACTIVE' AND NEW.status NOT IN ('ACTIVE','PAUSED','REVOKED','EXPIRED')) OR
+     (NEW.status = 'EXPIRED' AND OLD.expires_at > clock_timestamp()) OR
      (NEW.status = 'REVOKED' AND NEW.revoked_at IS NULL) OR
      (NEW.status = 'PAUSED' AND NEW.paused_at IS NULL) OR
-     (NEW.status = 'ACTIVE' AND (NEW.paused_at IS NOT NULL OR NEW.revoked_at IS NOT NULL)) THEN
+     (NEW.status IN ('ACTIVE','EXPIRED') AND (NEW.paused_at IS NOT NULL OR NEW.revoked_at IS NOT NULL)) THEN
     RAISE EXCEPTION 'HFM_STANDING_READ_AUTHORITY_TRANSITION_INVALID';
   END IF;
   RETURN NEW;
