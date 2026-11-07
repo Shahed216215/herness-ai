@@ -1,4 +1,3 @@
-const { assertLegacyStorageDisabled } = require("../services/mira-hfm-legacy-storage-guard");
 const { addMemory } = require("../memory");
 
 module.exports = {
@@ -22,7 +21,6 @@ module.exports = {
   },
 
   execute: async ({ content }) => {
-    assertLegacyStorageDisabled();
     if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
         process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
         process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
@@ -34,6 +32,7 @@ module.exports = {
         driveFallback: false
       });
     }
+    require("../services/mira-hfm-legacy-storage-guard").assertLegacyStorageDisabled();
     if (
       !content ||
       typeof content !== "string" ||
