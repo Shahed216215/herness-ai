@@ -367,14 +367,18 @@ test('standing-read exact record lookup is project, type, lifecycle, trust and i
       };
     }
   });
+  const standingContext = {
+    ...context,
+    operation: 'memory.read',
+    resource: 'memory:project:' + context.projectId,
+    authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
+  };
+  assert.equal(standingContext.operation, 'memory.read');
+  assert.equal(standingContext.authorityContext, 'HFM_ACTIVE_STANDING_READ_AUTHORITY');
+  assert.equal(standingContext.resource, 'memory:project:' + standingContext.projectId);
   const result = await repository.getStandingReadMemoryRecord({
     client,
-    context: {
-      ...context,
-      operation: 'memory.read',
-      resource: 'memory:project:project-001',
-      authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
-    },
+    context: standingContext,
     memoryId: expected.memoryId,
     recordTypes: ['knowledge_item', 'learning_note'],
     env
