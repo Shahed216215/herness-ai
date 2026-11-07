@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const { validateSourceReferencePayload } = require('./mira-hfm-source-reference-schema');
+const { validateClientVaultPayload, validateFinancialVaultPayload } = require('./mira-hfm-vault-record-schema');
 
 const SCHEMA_V1 = '1.0.0';
 const SCHEMA_V1_1 = '1.1.0';
@@ -246,7 +247,16 @@ function validateCanonicalRecord(record) {
         typeof record.content === 'string') {
       try {
         const payload = JSON.parse(record.content);
-        if (!isPlainObject(payload)) errors.push('record.vault_payload.object_required');
+        if (!isPlainObject(payload)) {
+          errors.push('record.vault_payload.object_required');
+        } else {
+          const vaultValidation = record.recordType === 'client_vault_record'
+            ? validateClientVaultPayload(payload)
+            : validateFinancialVaultPayload(payload);
+          if (!vaultValidation.valid) {
+            errors.push(...vaultValidation.errors.map(error => 'record.vault_payload.' + error));
+          }
+        }
       } catch (_error) {
         errors.push('record.vault_payload.json_required');
       }
