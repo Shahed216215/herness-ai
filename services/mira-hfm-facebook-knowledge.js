@@ -50,7 +50,7 @@ function redactSensitiveText(input) {
   }
   content = content
     .replace(/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/gi, '[REDACTED_PRIVATE_KEY]')
-    .replace(/\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)\s*[:=]\s*["']?[^\s,"']+/gi, '[REDACTED_CREDENTIAL]')
+    .replace(/["']?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passwd|secret)["']?\s*[:=]\s*["']?[^\s,"']+/gi, '[REDACTED_CREDENTIAL]')
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[REDACTED_EMAIL]')
     .replace(/(?:\+?\d[\d\s().-]{7,}\d)/g, '[REDACTED_PHONE_OR_NUMBER]')
     .replace(/(?:\b\d{1,3}[,.]\d{2,}\b|৳\s?\d[\d,.]*|BDT\s?\d[\d,.]*)/gi, '[REDACTED_AMOUNT]');
