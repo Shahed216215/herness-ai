@@ -55,6 +55,43 @@ test('rejects unsupported source kinds and invalid content', () => {
   }), /HFM_KNOWLEDGE_CONTENT_INVALID/);
 });
 
-test('tokenizer handles Bengali and English Unicode terms', () => {
+
+test('public search fallback uses a fixed web-search endpoint and filters non-Facebook results', async () => {
+  let calledUrl = null;
+  let requestBody = null;
+  const result = await require('../services/mira-hfm-facebook-knowledge').researchFacebookSource({
+    sourceUrl: 'https://facebook.com/example.page',
+    apiKey: 'synthetic-test-key',
+    fetchImpl: async (url, options) => {
+      calledUrl = url;
+      requestBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          results: [
+            { title: 'Public post', url: 'https://www.facebook.com/example.page/posts/123', content: 'Indexed public snippet' },
+            { title: 'Outside domain', url: 'https://evil.example/post', content: 'Must be excluded' }
+          ]
+        })
+      };
+    }
+  });
+  assert.equal(calledUrl, 'https://api.tavily.com/search');
+  assert.equal(requestBody.include_domains[0], 'facebook.com');
+  assert.equal(result.status, 'SEARCH_RESULTS_FOUND');
+  assert.equal(result.results.length, 1);
+  assert.equal(result.results[0].verificationStatus, 'SOURCE_RECORDED');
+});
+
+test('missing web-search provider returns manual-import fallback without making a request', async () => {
+  const result = await require('../services/mira-hfm-facebook-knowledge').researchFacebookSource({
+    sourceUrl: 'https://www.facebook.com/example.page',
+    apiKey: ''
+  });
+  assert.equal(result.status, 'SEARCH_PROVIDER_NOT_CONFIGURED');
+  assert.equal(result.fallback, 'MANUAL_IMPORT_REQUIRED');
+  assert.deepEqual(result.results, []);
+});
+\ntest('tokenizer handles Bengali and English Unicode terms', () => {
   assert.deepEqual(tokenize('AI প্রযুক্তি এবং Python'), ['ai', 'প্রযুক্তি', 'এবং', 'python']);
 });
