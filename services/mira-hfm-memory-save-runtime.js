@@ -50,8 +50,9 @@ function hasExplicitDailyActivitySaveIntent(value) {
   }
   const english = /\b(?:save|store|record|log)\b.{0,100}\b(?:daily activity|daily work summary|activity log)\b/i.test(value) ||
     /\b(?:daily activity|daily work summary|activity log)\b.{0,100}\b(?:save|store|record|log)\b/i.test(value);
-  const bengali = /(?:দৈনিক\s*কাজ|আজকের\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ)/u.test(value) ||
-    /(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ).{0,80}(?:দৈনিক\s*কাজ|আজকের\s*কাজ|কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ)/u.test(value);
+  const bengali = /(?:দৈনিক|আজকের).{0,100}(?:কাজ|কার্যক্রম|অ্যাক্টিভিটি).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ)/u.test(value) ||
+    /(?:কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ)/u.test(value) ||
+    /(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ).{0,100}(?:দৈনিক|আজকের).{0,80}(?:কাজ|কার্যক্রম|অ্যাক্টিভিটি)/u.test(value);
   return english || bengali;
 }
 
