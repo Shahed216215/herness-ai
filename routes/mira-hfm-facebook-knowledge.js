@@ -89,6 +89,7 @@ function registerFacebookKnowledgeRoutes(app, requireAgentAuth, options = {}) {
           sourceId: body.sourceId,
           sourceUrl: body.sourceUrl,
           collectionMethod: body.collectionMethod || 'manual_copy',
+          publicContentConfirmed: body.publicContentConfirmed === true,
           originalPublishedAt: body.originalPublishedAt || null,
           idempotencyKey: text(body.idempotencyKey),
           now: new Date().toISOString()
