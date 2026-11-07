@@ -194,6 +194,17 @@ const pool = { async connect() { return client; } };
   assert.ok(readCalls.some(c => c.sql.includes('STANDING_READ_AUTHORITY_USED')));
   assert.ok(readCalls.some(c => c.sql === 'COMMIT'));
   console.log('HFM_STANDING_READ_EACH_READ_AUDITED_WITHOUT_REAPPROVAL=PASS');
+  standingRow.status = 'PAUSED';
+  let pausedReadCallbackCalled = false;
+  await assert.rejects(() => executeWithStandingReadAuthority({
+    pool: { async connect() { return readClient; } },
+    verifiedPrincipal: req.session.hfmPrincipal,
+    projectId,
+    perform: async () => { pausedReadCallbackCalled = true; return {}; }
+  }), /HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED/);
+  assert.equal(pausedReadCallbackCalled, false);
+  console.log('HFM_STANDING_READ_PAUSED_GRANT_BLOCKS_FUTURE_READS=PASS');
+
   standingRow.status = 'REVOKED';
   let revokedReadCallbackCalled = false;
   await assert.rejects(() => executeWithStandingReadAuthority({
