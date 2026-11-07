@@ -11,6 +11,7 @@ function persistConversationMessage(message, options = {}) {
   }
   const hfmMode = env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === 'true' ||
     env.MIRA_HFM_WORK_LEARNING_ENABLED === 'true' ||
+    env.MIRA_HFM_MEMORY_READ_ENABLED === 'true' ||
     env.MIRA_HFM_MEMORY_WRITE_ENABLED === 'true';
   if (hfmMode) {
     return Object.freeze({
