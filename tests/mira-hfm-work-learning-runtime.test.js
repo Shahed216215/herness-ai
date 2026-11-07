@@ -125,6 +125,19 @@ function makePreflight(records = [makeRecord()], overrides = {}) {
   assert.equal(result.scannedRecords, 1);
   console.log('HFM_WORK_LEARNING_STANDING_GRANT_GOVERNED_RETRIEVAL=PASS');
 
+  const completedBeforeExpiry = await retrieveHfmWorkLearning({
+    req, pool: {}, task,
+    now: new Date('2027-11-07T04:00:00.001Z'),
+    env: {
+      MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
+      MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
+    },
+    preflight: makePreflight([makeRecord()])
+  });
+  assert.equal(completedBeforeExpiry.count, 1,
+    'an already-authorized snapshot remains processable after the grant expires; no new HFM read occurs');
+  console.log('HFM_WORK_LEARNING_SNAPSHOT_USES_AUTHORIZATION_READ_TIME_NOT_POST_MODEL_CLOCK=PASS');
+
   const secondPageRecord = { ...makeRecord(), memoryId: 'memory-learning-002' };
   let postPreflightReadCalls = 0;
   const paginated = await retrieveHfmWorkLearning({
