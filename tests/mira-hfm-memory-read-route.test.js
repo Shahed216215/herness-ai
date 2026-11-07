@@ -197,6 +197,23 @@ async function invoke(req, runtime = async () => ({
   assert.equal(standingTrashBlocked.statusCode, 400);
   console.log('HFM_MEMORY_READ_STANDING_SCOPE_BLOCKS_SOCIAL_DRAFT_AND_TRASH=PASS');
 
+  const trashedKnowledgeBlocked = await invoke(makeReq({
+    body: { limit: 25, recordType: 'knowledge_item', lifecycle: 'TRASHED' }
+  }));
+  assert.equal(trashedKnowledgeBlocked.statusCode, 400);
+  const trashedSocialDraftAllowed = await invoke(makeReq({
+    body: { limit: 25, recordType: 'social_post_draft', lifecycle: 'TRASHED' }
+  }), async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
+  async options => {
+    assert.equal(options.authorityGrant.authorityId, 'authority-001');
+    assert.equal(options.lifecycle, 'TRASHED');
+    assert.equal(options.recordType, 'social_post_draft');
+    return { status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha', count: 0,
+      records: [], authorityConsumed: true, localFallback: false, driveFallback: false };
+  });
+  assert.equal(trashedSocialDraftAllowed.statusCode, 200);
+  console.log('HFM_MEMORY_READ_TRASH_SCOPE_LIMITED_TO_SOCIAL_DRAFTS=PASS');
+
   const oneTimeCursor = await invoke(makeReq({
     body: { limit: 25, cursor: 'forged-cursor' }
   }));
