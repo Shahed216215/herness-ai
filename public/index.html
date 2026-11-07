@@ -13173,6 +13173,29 @@ document.querySelectorAll(
       setBusy(false);
     }
   });
+  byId("hfmV02GenerateDraft").addEventListener("click", async () => {
+    try { requireProjectInput(); }
+    catch (error) { setStatus(error.message, "error"); return; }
+    if (!window.confirm("Generate today's private Facebook-ready draft from this project's approved daily activity and learning notes? Mira will save a draft only; it will not publish to Facebook.")) return;
+    setBusy(true);
+    setStatus("Generating today's Asia/Dhaka draft using approved HFM Memory…");
+    try {
+      const data = await postJson("/api/hfm/social-drafts/generate-daily", {
+        confirm: true,
+        timeZone: "Asia/Dhaka"
+      });
+      if (data.draftSaved === true) {
+        setStatus("Today's private draft was saved. Review it, copy it, then publish manually in Facebook.", "success");
+        await loadDrafts("ACTIVE");
+      } else {
+        setStatus("No eligible daily activity or learning notes were found. No draft was saved.", "muted");
+      }
+    } catch (error) {
+      setStatus("Daily draft generation not completed: " + error.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  });
   byId("hfmV02LoadActiveDrafts").addEventListener("click", () => loadDrafts("ACTIVE"));
   byId("hfmV02LoadTrash").addEventListener("click", () => loadDrafts("TRASHED"));
 })();
