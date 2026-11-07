@@ -171,7 +171,7 @@ SELECT
        WHEN 'hfm_authority_issuer_authority_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%project_id%' AND with_check LIKE '%actor_id%'
          AND with_check LIKE '%issued_by_actor_id%' AND with_check LIKE '%memory.read%'
-         AND with_check LIKE '%memory.write%' AND with_check LIKE '%memory.vault.write%' AND with_check LIKE '%memory.trash%' AND with_check LIKE '%memory.restore%'
+         AND with_check LIKE '%memory.write%' AND with_check LIKE '%memory.vault.write%' AND with_check LIKE '%memory.update%' AND with_check LIKE '%memory.trash%' AND with_check LIKE '%memory.restore%'
          AND with_check LIKE '%resource%' AND with_check LIKE '%expires_at%'
        WHEN 'hfm_authority_issuer_audit_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%project_id%' AND with_check LIKE '%actor_id%'
@@ -183,7 +183,7 @@ SELECT
        WHEN 'hfm_authority_issuer_approval_nonce_insert' THEN
          cmd = 'INSERT' AND with_check LIKE '%project_id%' AND with_check LIKE '%actor_id%'
          AND with_check LIKE '%approver_actor_id%' AND with_check LIKE '%memory.read%'
-         AND with_check LIKE '%memory.write%' AND with_check LIKE '%memory.vault.write%' AND with_check LIKE '%memory.trash%' AND with_check LIKE '%memory.restore%'
+         AND with_check LIKE '%memory.write%' AND with_check LIKE '%memory.vault.write%' AND with_check LIKE '%memory.update%' AND with_check LIKE '%memory.trash%' AND with_check LIKE '%memory.restore%'
          AND with_check LIKE '%resource%' AND with_check LIKE '%expires_at%'
        WHEN 'hfm_authority_issuer_approval_nonce_consume' THEN
          cmd = 'UPDATE' AND qual LIKE '%consumed_at%' AND qual LIKE '%expires_at%'
@@ -273,7 +273,7 @@ function verifyAuthorityIssuerPreflight(row, config) {
     databaseName: config.databaseName,
     role: config.expectedRole,
     issuesAllowlistedMemoryOperationAuthorities: true,
-    allowedOperations: Object.freeze(['memory.read', 'memory.write', 'memory.vault.write', 'memory.trash', 'memory.restore']),
+    allowedOperations: Object.freeze(['memory.read', 'memory.write', 'memory.vault.write', 'memory.update', 'memory.trash', 'memory.restore']),
     consumesAuthority: false,
     changesMembership: false,
     writesMemory: false,
