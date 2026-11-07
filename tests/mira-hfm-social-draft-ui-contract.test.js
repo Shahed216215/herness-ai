@@ -15,7 +15,7 @@ assert.match(html, /\/api\/hfm\/memory\/read/);
 assert.match(html, /\/api\/hfm\/social-drafts\/trash/);
 assert.match(html, /\/api\/hfm\/social-drafts\/restore/);
 assert.match(html, /recoverable Neon Trash/);
-assert.match(html, /hardDelete: false/);
+assert.match(html, /No permanent deletion will occur/);
 assert.match(html, /content\.textContent = typeof record\.content === "string" \? record\.content : ""/);
 assert.doesNotMatch(html, /graph\.facebook\.com|facebook\.com\/v\d+|\/feed\?/i);
 assert.match(html, /Copy failed:/);
