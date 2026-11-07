@@ -45,9 +45,18 @@ test('creates PUBLIC source-attributed v1.1 knowledge record with explicit unver
   assert.deepEqual(record.access.allowedProjectIds, ['project-001']);
 });
 
+
+test('rejects knowledge import until user confirms the source is public and authorized', () => {
+  assert.throws(() => buildKnowledgeRecord({
+    projectId: 'project-001',
+    sourceType: 'facebook_page',
+    content: 'Public post text'
+  }), /HFM_KNOWLEDGE_PUBLIC_CONTENT_CONFIRMATION_REQUIRED/);
+});
+
 test('rejects unsupported source kinds and invalid content', () => {
   assert.throws(() => buildKnowledgeRecord({
-    projectId: 'project-001', sourceType: 'facebook_group_private',
+    projectId: 'project-001', sourceType: 'facebook_group_private', publicContentConfirmed: true,
     content: 'content'
   }), /HFM_KNOWLEDGE_SCOPE_OR_SOURCE_INVALID/);
   assert.throws(() => buildKnowledgeRecord({
