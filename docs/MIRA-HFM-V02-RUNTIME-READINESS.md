@@ -86,7 +86,7 @@ This is structural preflight evidence only. No migration, role creation, grant, 
 
 ## Validation evidence
 
-The HFM runtime, repository, session, dependency, route, UI, and PostgreSQL migration-chain checks all passed on code commit `8f377e784a2750e1f3cb9b5eee5f800a122fba2c` (10/10 GitHub Actions checks). The PostgreSQL migration workflow applied migrations 001–010 only to its disposable PostgreSQL 16 CI database and exercised bootstrap, issuer nonce, trash-authority RLS, and hard-delete denial. The embedded social-draft UI script also has parser-level syntax validation.
+The HFM runtime, repository, session, dependency, route, UI, and PostgreSQL migration-chain checks all passed on code commit `62456d2bc2e0e8c8e3f8fd3968b3e17ae83b7753` (10/10 GitHub Actions checks). The PostgreSQL migration workflow applied migrations 001–010 only to its disposable PostgreSQL 16 CI database and exercised bootstrap, issuer nonce, trash-authority RLS, and hard-delete denial. The embedded social-draft UI script also has parser-level syntax validation.
 
 These are synthetic/offline or disposable-CI results. They are not live Neon or Render evidence. No live HFM database write or migration has been performed.
 
