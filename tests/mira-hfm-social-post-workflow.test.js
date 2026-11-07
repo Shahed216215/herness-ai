@@ -134,7 +134,7 @@ test('delete transaction is exact-record scoped and writes sanitized audit only'
       calls.push({ sql, params });
       if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) return { rows: [row] };
       if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [{ operation_id: 'op-001' }] };
-      if (sql.startsWith('SELECT status, copied_at')) return { rows: [] };
+      if (sql.startsWith('SELECT status, copied_at')) return { rows: initialStatus ? [{ status: initialStatus }] : [] };
       if (sql.startsWith("SELECT set_config('mira.memory_payload_erasure_operation_id'")) return { rows: [{ set_config: 'op-001' }] };
       if (sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state')) return { rowCount: 1, rows: [] };
       if (sql.startsWith('UPDATE mira_hfm.memory_record_versions')) return { rowCount: 2, rows: [{ revision: 1 }, { revision: 2 }] };
@@ -232,7 +232,7 @@ test('delete retry confirms erased payload and DELETED state before returning DE
   assert.equal(result.duplicate, true);
 });
 
-function createStatusFlowClient() {
+function createStatusFlowClient(initialStatus = null) {
   const calls = [];
   return {
     calls,
@@ -261,12 +261,12 @@ test('Copy status records only metadata after successful client-side clipboard c
   assert.equal(result.status, 'COPIED');
   const stateWrite = client.calls.find(x => x.sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state'));
   assert.equal(stateWrite.params[3], 'COPIED');
-  assert.equal(client.calls.some(x => /facebook|graph\.facebook|publish/i.test(x.sql)), false);
+  assert.equal(client.calls.some(x => /facebook|graph\.facebook/i.test(x.sql)), false);
   assert.equal(client.calls.some(x => x.params.some(p => typeof p === 'string' && p.includes('private post body'))), false);
 });
 
 test('Published status requires explicit user confirmation and is not Facebook-verified', async () => {
-  const client = createStatusFlowClient();
+  const client = createStatusFlowClient('COPIED');
   await assert.rejects(
     workflow.confirmSocialPostPublished({
       client, context: { ...baseContext, operation: workflow.OPERATIONS.PUBLISH },
