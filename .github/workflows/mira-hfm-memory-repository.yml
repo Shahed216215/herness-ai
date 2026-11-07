@@ -9,6 +9,9 @@ on:
       - "services/mira-hfm-social-post-workflow.js"
       - "routes/mira-hfm-social-posts.js"
       - "services/mira-hfm-memory-writer-pool.js"
+      - "services/mira-hfm-facebook-knowledge.js"
+      - "routes/mira-hfm-facebook-knowledge.js"
+      - "tests/mira-hfm-facebook-knowledge.test.js"
       - "tests/mira-hfm-social-post-routes.test.js"
       - "migrations/hfm/006_social_post_manual_publish_payload_erasure.sql"
       - "tests/mira-hfm-social-post-workflow.test.js"
@@ -84,6 +87,8 @@ jobs:
           node --check services/mira-hfm-social-post-workflow.js
           node --check routes/mira-hfm-social-posts.js
           node --check services/mira-hfm-memory-writer-pool.js
+          node --check services/mira-hfm-facebook-knowledge.js
+          node --check routes/mira-hfm-facebook-knowledge.js
       - name: Run focused Memory repository tests
         run: |
           node tests/mira-hfm-authority-transaction.test.js
@@ -97,5 +102,6 @@ jobs:
           node tests/mira-hfm-social-post-workflow.test.js
           node tests/mira-hfm-social-post-routes.test.js
           node tests/mira-hfm-social-post-erasure-migration-contract.test.js
+          node tests/mira-hfm-facebook-knowledge.test.js
       - name: Run full repository regression suite
         run: npm test
