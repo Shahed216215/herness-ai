@@ -65,3 +65,62 @@ test('workflow exposes only the explicit user-controlled operations', () => {
   ].sort());
   assert.equal('publishToFacebook' in workflow, false);
 });
+
+test('archive returns sanitized metadata for erased drafts without decrypting payload', async () => {
+  const calls = [];
+  const client = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (sql.includes('FROM mira_hfm.memory_records')) return {
+        rows: [{
+          memory_id: 'post-0001', project_id: 'project-001',
+          owner_actor_id: 'mira:creator-001', record_type: 'social_post_draft',
+          schema_version: '1.1.0', classification: 'PROJECT_PRIVATE',
+          lifecycle: 'ACTIVE', revision: '2', integrity_status: 'VERIFIED',
+          trust_status: 'SOURCE_RECORDED', public_payload: null,
+          encrypted_envelope: null, created_at: '2026-11-07T00:00:00Z',
+          updated_at: '2026-11-07T00:01:00Z',
+          payload_erased_at: '2026-11-07T00:02:00Z'
+        }]
+      };
+      if (sql.includes('FROM mira_hfm.memory_social_post_state')) return {
+        rows: [{ status: 'DELETED', copied_at: null, published_confirmed_at: null,
+          payload_erased_at: '2026-11-07T00:02:00Z', updated_at: '2026-11-07T00:02:00Z' }]
+      };
+      throw new Error('unexpected SQL');
+    }
+  };
+  const context = {
+    authorityContext: workflow.AUTHORITY_CONTEXT,
+    actorId: 'mira:creator-001',
+    projectOwnerActorId: 'mira:project-owner-001',
+    projectId: 'project-001',
+    operation: 'memory.read',
+    resource: 'memory:project:project-001',
+    requestId: 'request-list-001'
+  };
+  const result = await workflow.listSocialPostDrafts({ client, context });
+  assert.equal(result.count, 1);
+  assert.equal(result.drafts[0].status, 'DELETED');
+  assert.equal(result.drafts[0].payloadErased, true);
+  assert.equal(result.drafts[0].content, null);
+  assert.equal(result.drafts[0].source, null);
+  assert.match(calls[0].sql, /project_id = \$1 AND record_type = 'social_post_draft'/);
+  assert.deepEqual(calls[0].params, ['project-001', 25]);
+});
+
+test('archive rejects wrong project scope and does not return restricted records', async () => {
+  const context = {
+    authorityContext: workflow.AUTHORITY_CONTEXT,
+    actorId: 'mira:creator-001',
+    projectOwnerActorId: 'mira:project-owner-001',
+    projectId: 'project-001',
+    operation: 'memory.read',
+    resource: 'memory:project:other-project',
+    requestId: 'request-list-002'
+  };
+  await assert.rejects(
+    workflow.listSocialPostDrafts({ client: { query: async () => ({ rows: [] }) }, context }),
+    /HFM_SOCIAL_POST_AUTHORITY_INVALID/
+  );
+});
