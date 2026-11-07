@@ -91,6 +91,11 @@ test('private memory is encrypted before any database insert', async () => {
   assert.equal(insert.params[11].includes('Completed the approved project review.'), false);
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions')));
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
+  const operationInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry'));
+  assert.notEqual(operationInsert.params[7], repository.digest(record()), 'private idempotency digest must be keyed');
+  const auditInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events'));
+  assert.equal(auditInsert.params[11].includes('contentHash'), false, 'private content hash must not enter audit metadata');
+  assert.equal(auditInsert.params[11].includes(record().content), false, 'private content must not enter audit metadata');
   assert.ok(client.calls.some(call => call.sql.startsWith('UPDATE mira_hfm.memory_operation_registry')));
 });
 
@@ -137,7 +142,7 @@ test('completed idempotency key returns the original result without a second wri
       if (sql.startsWith('SELECT operation_id')) return { rowCount: 1, rows: [{
         operation_id: 'operation-existing', actor_id: context.actorId, operation: 'memory.write',
         resource: 'memory:record-0001', purpose: context.purpose,
-        payload_digest: repository.digest(record()), status: 'COMPLETED', result_code: 'record-0001'
+        payload_digest: repository.operationDigests(record(), env).activeDigest, status: 'COMPLETED', result_code: 'record-0001'
       }] };
       throw new Error('unexpected SQL');
     }
