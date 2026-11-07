@@ -111,8 +111,7 @@ const PREFLIGHT_SQL = [
     "('hfm_memory_reader_owner_select','hfm_memory_reader_membership_select'," +
     "'hfm_memory_reader_authority_consume','hfm_memory_reader_authority_consume_update'," +
     "'hfm_memory_reader_authority_audit_insert','hfm_memory_reader_memory_select'," +
-    "'hfm_memory_reader_trashed_social_draft_select') " +
-    "'hfm_standing_reader_select') " +
+    "'hfm_memory_reader_trashed_social_draft_select','hfm_standing_reader_select') " +
     "AND $1 = ANY(roles)) AS retrieval_policies_present,",
   "NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
     "AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events','memory_records','standing_read_authorities') " +
