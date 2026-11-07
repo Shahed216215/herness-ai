@@ -133,6 +133,16 @@ CREATE POLICY hfm_standing_issuer_update
     AND status IN ('ACTIVE','PAUSED','REVOKED')
   );
 
+DROP POLICY IF EXISTS hfm_memory_reader_authority_audit_insert ON mira_hfm.authority_audit_events;
+CREATE POLICY hfm_memory_reader_authority_audit_insert
+  ON mira_hfm.authority_audit_events
+  FOR INSERT TO mira_hfm_memory_reader
+  WITH CHECK (
+    project_id = NULLIF(current_setting('mira.project_id', true), '')
+    AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND event_type IN ('AUTHORITY_CONSUMED','STANDING_READ_AUTHORITY_USED')
+  );
+
 DROP POLICY IF EXISTS hfm_authority_issuer_audit_insert ON mira_hfm.authority_audit_events;
 CREATE POLICY hfm_authority_issuer_audit_insert
   ON mira_hfm.authority_audit_events
