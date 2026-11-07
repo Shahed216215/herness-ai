@@ -7,7 +7,7 @@ module.exports = {
   declaration: {
     name: "memory_save",
     description:
-      "Save an important user-provided fact or instruction to Mira's conversation memory when the user explicitly asks Mira to remember it.",
+      "Save an important user-provided fact or instruction only when the user explicitly asks Mira to remember it. Store the exact user-authored text from the current message; do not paraphrase, infer, or add details. If the user refers to earlier context that is not repeated in the current message, ask them to restate the exact text.",
     parameters: {
       type: "object",
       properties: {
