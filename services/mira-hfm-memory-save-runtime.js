@@ -219,7 +219,7 @@ async function saveHfmMemoryRecord(options = {}) {
     classification: 'PROJECT_PRIVATE',
     trust: record.trust.status,
     lifecycle: record.lifecycle,
-    searchable: record.lifecycle === 'ACTIVE' && record.trust.status === 'HUMAN_VERIFIED',
+    searchEligible: record.lifecycle === 'ACTIVE' && record.trust.status === 'HUMAN_VERIFIED',
     sourceUrl: record.source.sourceUrl || null,
     idempotencyKey,
     localFallback: false,
