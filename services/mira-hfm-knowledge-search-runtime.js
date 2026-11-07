@@ -11,7 +11,7 @@ function fail(code) {
   throw error;
 }
 function queryTerms(value) {
-  return new Set(String(value || '').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}_-]{1,}/gu) || []);
+  return new Set(String(value || '').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{M}\p{N}_-]{1,}/gu) || []);
 }
 function extractKnowledgeTitle(record) {
   const content = typeof record?.content === 'string' ? record.content.trim() : '';
