@@ -93,6 +93,34 @@ assert.throws(() => retrieveCanonicalRecordsWithReport({
 }), /expired or not yet valid/);
 console.log('HFM_FACADE_EXPIRED_HOST_AUTHORITY_BLOCK=PASS');
 
+const microsecondBoundary = retrieveCanonicalRecordsWithReport({
+  records: [valid], pendingConflicts: [], projectId: 'project-alpha',
+  requestContext: {
+    ...context,
+    issuedAt: '2026-11-05T11:59:59.999999Z',
+    expiresAt: '2026-11-05T12:00:00.000001Z'
+  },
+  authorizeRequest: input => ({
+    ...input, decision: 'ALLOW', replayStatus: 'FRESH',
+    issuedAt: '2026-11-05T11:59:59.999999Z',
+    expiresAt: '2026-11-05T12:00:00.000001Z'
+  }),
+  now
+});
+assert.equal(microsecondBoundary.records.length, 1,
+  'one-microsecond future expiry must remain valid beyond Date millisecond precision');
+assert.throws(() => retrieveCanonicalRecordsWithReport({
+  records: [valid], pendingConflicts: [], projectId: 'project-alpha',
+  requestContext: { ...context, issuedAt: '2026-11-05T12:00:00.000001Z' },
+  authorizeRequest: authorize, now
+}), /expired or not yet valid/);
+assert.throws(() => retrieveCanonicalRecordsWithReport({
+  records: [valid], pendingConflicts: [], projectId: 'project-alpha',
+  requestContext: { ...context, expiresAt: '2026-02-30T12:00:00.000000Z' },
+  authorizeRequest: authorize, now
+}), /valid RFC3339 timestamp/);
+console.log('HFM_FACADE_MICROSECOND_AUTHORITY_BOUNDARIES_AND_STRICT_RFC3339=PASS');
+
 const extendedAuthority = retrieveCanonicalRecordsWithReport({
   records: [valid], pendingConflicts: [], projectId: 'project-alpha',
   requestContext: context,
