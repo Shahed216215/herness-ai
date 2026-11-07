@@ -145,8 +145,19 @@ BEGIN
          AND op.resource = 'memory:' || OLD.memory_id
          AND op.status = 'REQUESTED'
      )
-     AND (to_jsonb(NEW) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id'])
-         = (to_jsonb(OLD) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id']) THEN
+     AND NEW.memory_id = OLD.memory_id
+     AND NEW.project_id = OLD.project_id
+     AND NEW.owner_actor_id = OLD.owner_actor_id
+     AND NEW.record_type = OLD.record_type
+     AND NEW.schema_version = OLD.schema_version
+     AND NEW.classification = OLD.classification
+     AND NEW.lifecycle = OLD.lifecycle
+     AND NEW.trashed_at IS NOT DISTINCT FROM OLD.trashed_at
+     AND NEW.trashed_by_actor_id IS NOT DISTINCT FROM OLD.trashed_by_actor_id
+     AND NEW.revision = OLD.revision
+     AND NEW.integrity_status = OLD.integrity_status
+     AND NEW.trust_status = OLD.trust_status
+     AND NEW.recorded_at = OLD.recorded_at THEN
     RETURN NEW;
   END IF;
   RAISE EXCEPTION 'HFM_MEMORY_HISTORY_IS_APPEND_ONLY';
@@ -179,8 +190,20 @@ BEGIN
          AND op.resource = 'memory:' || OLD.memory_id
          AND op.status = 'REQUESTED'
      )
-     AND (to_jsonb(NEW) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id'])
-         = (to_jsonb(OLD) - ARRAY['public_payload','encrypted_envelope','payload_erased_at','payload_erased_by_actor_id']) THEN
+     AND NEW.memory_id = OLD.memory_id
+     AND NEW.project_id = OLD.project_id
+     AND NEW.owner_actor_id = OLD.owner_actor_id
+     AND NEW.record_type = OLD.record_type
+     AND NEW.schema_version = OLD.schema_version
+     AND NEW.classification = OLD.classification
+     AND NEW.lifecycle = OLD.lifecycle
+     AND NEW.trashed_at IS NOT DISTINCT FROM OLD.trashed_at
+     AND NEW.trashed_by_actor_id IS NOT DISTINCT FROM OLD.trashed_by_actor_id
+     AND NEW.revision = OLD.revision
+     AND NEW.integrity_status = OLD.integrity_status
+     AND NEW.trust_status = OLD.trust_status
+     AND NEW.created_at = OLD.created_at
+     AND NEW.updated_at = OLD.updated_at THEN
     RETURN NEW;
   END IF;
 

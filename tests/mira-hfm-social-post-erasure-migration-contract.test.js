@@ -53,3 +53,12 @@ test('payload erasure trigger uses an unambiguous operation id variable', () => 
   assert.doesNotMatch(sql, /IF operation_id IS NOT NULL/);
   assert.equal((sql.match(/v_operation_id IS NOT NULL/g) || []).length, 2);
 });
+
+
+test('payload erasure guards permit only payload fields to change', () => {
+  assert.match(sql, /NEW\.revision = OLD\.revision/);
+  assert.match(sql, /NEW\.recorded_at = OLD\.recorded_at/);
+  assert.match(sql, /NEW\.updated_at = OLD\.updated_at/);
+  assert.match(sql, /NEW\.trashed_at IS NOT DISTINCT FROM OLD\.trashed_at/);
+  assert.doesNotMatch(sql, /to_jsonb\(NEW\)\s*-\s*ARRAY/);
+});
