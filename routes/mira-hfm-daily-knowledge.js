@@ -25,6 +25,10 @@ function projectFor(req, body, identity) {
   return projectId;
 }
 
+function dailyRecordId(projectId, localDate) {
+  return 'daily-post-' + crypto.createHash('sha256').update(projectId + ':' + localDate, 'utf8').digest('hex').slice(0, 32);
+}
+
 function statusForError(error) {
   const code = String(error && error.code || '');
   if (/TRUSTED_ACTOR|OWNER|MEMBERSHIP|NOT_GRANTED|PERMISSION/.test(code)) return 403;
@@ -50,8 +54,7 @@ function registerDailyKnowledgeRoutes(app, requireAgentAuth) {
       const localDate = typeof body.localDate === 'string' && body.localDate.trim()
         ? body.localDate.trim() : dateInTimeZone(now, timeZone);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) throw fail('HFM_DAILY_POST_LOCAL_DATE_INVALID');
-      const stableId = crypto.createHash('sha256').update(projectId + ':' + localDate, 'utf8').digest('hex').slice(0, 32);
-      const memoryId = 'daily-post-' + stableId;
+      const memoryId = dailyRecordId(projectId, localDate);
       const request = {
         projectId,
         operation: 'memory.write',
@@ -120,4 +123,4 @@ function registerDailyKnowledgeRoutes(app, requireAgentAuth) {
   });
 }
 
-module.exports = registerDailyKnowledgeRoutes;
+module.exports = Object.assign(registerDailyKnowledgeRoutes, { dailyRecordId, projectFor });
