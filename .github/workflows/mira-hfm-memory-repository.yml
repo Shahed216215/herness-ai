@@ -12,6 +12,7 @@ on:
       - "services/mira-hfm-facebook-knowledge.js"
       - "routes/mira-hfm-facebook-knowledge.js"
       - "tests/mira-hfm-facebook-knowledge.test.js"
+      - "tests/mira-hfm-facebook-knowledge-routes.test.js"
       - "services/mira-hfm-authority-issuer-runtime.js"
       - "services/mira-hfm-authority-issuer-pool.js"
       - "routes/mira-hfm-authorities.js"
@@ -134,6 +135,7 @@ jobs:
           node tests/mira-hfm-social-post-routes.test.js
           node tests/mira-hfm-social-post-erasure-migration-contract.test.js
           node tests/mira-hfm-facebook-knowledge.test.js
+          node tests/mira-hfm-facebook-knowledge-routes.test.js
           node tests/mira-hfm-authority-issuer-routes.test.js
           node tests/mira-hfm-authority-issuer-migration-contract.test.js
           node tests/mira-hfm-facebook-knowledge-ui.test.js
