@@ -235,6 +235,61 @@ test('private read requires explicit authorization and verifies encrypted record
   assert.equal(result.record.content, privateRecord.content);
 });
 
+test('project-scoped list supports an allowlisted social-draft filter', async () => {
+  const draft = record({
+    recordType: 'social_post_draft',
+    content: 'A user-approved Facebook-ready draft.',
+    version: { revision: 1, contentHash: createContentHash('A user-approved Facebook-ready draft.') },
+    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
+  });
+  const { createVaultEnvelope } = require('../services/mira-hfm-vault-crypto');
+  const envelope = createVaultEnvelope({
+    record: draft,
+    context: {
+      recordId: draft.memoryId, ownerId: context.actorId,
+      projectId: draft.projectId, recordType: draft.recordType,
+      classification: 'PROJECT_PRIVATE', schemaVersion: draft.schemaVersion
+    },
+    env
+  });
+  const row = {
+    memory_id: draft.memoryId, project_id: draft.projectId,
+    owner_actor_id: context.actorId, record_type: draft.recordType,
+    schema_version: draft.schemaVersion, classification: 'PROJECT_PRIVATE',
+    lifecycle: 'ACTIVE', revision: 1, integrity_status: 'VERIFIED',
+    trust_status: 'SOURCE_RECORDED', public_payload: null, encrypted_envelope: envelope
+  };
+  const client = fakeClient({
+    query: async (sql, params) => {
+      if (sql.startsWith('SELECT memory_id') && sql.includes('ORDER BY updated_at')) {
+        assert.deepEqual(params, ['project-001', 'ACTIVE', 'social_post_draft', 25]);
+        return { rowCount: 1, rows: [row] };
+      }
+      return { rowCount: 0, rows: [] };
+    }
+  });
+  const result = await repository.listMemoryRecords({
+    client,
+    context: { ...context, operation: 'memory.read', resource: 'memory:project:project-001' },
+    recordType: 'social_post_draft',
+    allowPrivateRead: true,
+    env
+  });
+  assert.equal(result.count, 1);
+  assert.equal(result.records[0].recordType, 'social_post_draft');
+  assert.equal(result.records[0].content, draft.content);
+  await assert.rejects(
+    repository.listMemoryRecords({
+      client,
+      context: { ...context, operation: 'memory.read', resource: 'memory:project:project-001' },
+      recordType: 'unknown_record_type',
+      allowPrivateRead: true,
+      env
+    }),
+    error => error.code === 'HFM_MEMORY_RECORD_TYPE_FILTER_INVALID'
+  );
+});
+
 test('trash requires explicit private lifecycle grant and writes a recoverable revision', async () => {
   const privateRecord = record();
   const { createVaultEnvelope } = require('../services/mira-hfm-vault-crypto');
