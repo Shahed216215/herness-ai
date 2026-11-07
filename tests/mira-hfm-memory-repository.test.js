@@ -446,6 +446,18 @@ test('standing-read exact record lookup is project, type, lifecycle, trust and i
     }),
     error => error.code === 'HFM_STANDING_READ_RESOURCE_SCOPE_INVALID'
   );
+  for (const invalidContext of [
+    { ...standingContext, operation: 'memory.write' },
+    { ...standingContext, authorityContext: 'HFM_CONSUMED_ONE_TIME_AUTHORITY' }
+  ]) {
+    assert.throws(
+      () => repository.getStandingReadMemoryRecord({
+        client, context: invalidContext, memoryId: expected.memoryId,
+        recordTypes: ['knowledge_item'], env
+      }),
+      error => error.code === 'HFM_STANDING_READ_RECORD_SCOPE_INVALID'
+    );
+  }
   const unexpectedRowClient = fakeClient({
     query: async () => ({
       rowCount: 1,
