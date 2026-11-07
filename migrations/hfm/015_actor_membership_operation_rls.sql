@@ -385,6 +385,23 @@ CREATE POLICY hfm_reader_membership_permission
     AND permissions -> 'operations' ? 'memory.read'
   );
 
+-- A permissive SELECT policy is also required: PostgreSQL combines permissive
+-- policies with OR before applying restrictive policies. Migration 010's
+-- ISSUED-only policy cannot expose a successfully consumed row to the exact
+-- one-time retrieval callback after the atomic status transition.
+DROP POLICY IF EXISTS hfm_reader_consumed_authority_select ON mira_hfm.operation_authorities;
+CREATE POLICY hfm_reader_consumed_authority_select
+  ON mira_hfm.operation_authorities
+  FOR SELECT TO mira_hfm_memory_reader
+  USING (
+    project_id = NULLIF(current_setting('mira.project_id', true), '')
+    AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND operation = 'memory.read'
+    AND resource = NULLIF(current_setting('mira.resource', true), '')
+    AND request_id = NULLIF(current_setting('mira.request_id', true), '')
+    AND status = 'CONSUMED'
+  );
+
 DROP POLICY IF EXISTS hfm_reader_consumed_authority_scope ON mira_hfm.operation_authorities;
 CREATE POLICY hfm_reader_consumed_authority_scope
   ON mira_hfm.operation_authorities
