@@ -29,12 +29,15 @@ test('restricted vault version insert independently binds authority purpose to v
 });
 
 test('restricted vault authority can create only the initial version and must match parent revision', () => {
+  const versionPolicy = migration
+    .split('CREATE POLICY hfm_writer_memory_version_insert_scope')[1]
+    ?.split('COMMENT ON POLICY')[0] || '';
   assert.match(
-    migration,
+    versionPolicy,
     /classification = 'RESTRICTED'[\s\S]*?AND revision = 1[\s\S]*?memory\.vault\.write/
   );
   assert.match(
-    migration,
+    versionPolicy,
     /parent_record\.revision = memory_record_versions\.revision/
   );
 });
