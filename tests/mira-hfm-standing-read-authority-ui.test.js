@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const route = fs.readFileSync(path.join(__dirname, '..', 'routes', 'mira-hfm-standing-read-authority.js'), 'utf8');
+const memoryReadRoute = fs.readFileSync(path.join(__dirname, '..', 'routes', 'mira-hfm-memory-read.js'), 'utf8');
 
 for (const id of [
   'hfmV02StandingReadAuthority',
@@ -20,8 +21,8 @@ for (const id of [
 }
 assert.match(html, /365-Day Standing Read Authority/);
 assert.match(html, /memory\.read/);
-assert.match(html, /learning_note/);
-assert.match(html, /knowledge_item/);
+assert.match(html, /Learning and Knowledge records only/);
+assert.match(memoryReadRoute, /\['learning_note', 'knowledge_item'\]/);
 assert.match(html, /window\.confirm\([\s\S]*Approve 365 days/);
 assert.match(html, /Every read is audited/);
 assert.match(html, /No writes, edits, Trash, Restore/);
