@@ -34,6 +34,9 @@ async function preflightHfmStandingRead(options = {}) {
   });
 
   const context = result && result.hostAuthorizationContext;
+  const now = options.now instanceof Date && Number.isFinite(options.now.getTime())
+    ? options.now
+    : new Date();
   const eligibleRecords = result && Array.isArray(result.records) &&
     result.records.every(record =>
       record && typeof record.memoryId === 'string' && record.memoryId &&
@@ -49,7 +52,10 @@ async function preflightHfmStandingRead(options = {}) {
     typeof context.requestId === 'string' && context.requestId &&
     typeof context.purpose === 'string' && context.purpose &&
     typeof context.issuedAt === 'string' && Number.isFinite(Date.parse(context.issuedAt)) &&
+    Date.parse(context.issuedAt) <= now.getTime() &&
     typeof context.expiresAt === 'string' && Number.isFinite(Date.parse(context.expiresAt)) &&
+    Date.parse(context.expiresAt) > now.getTime() &&
+    typeof result.projectId === 'string' && result.projectId.length > 0 &&
     result.standingAuthorityId === context.authorityRef &&
     result.authorityExpiresAt === context.expiresAt &&
     typeof result.scanStartedAt === 'string' && Number.isFinite(Date.parse(result.scanStartedAt)) &&
