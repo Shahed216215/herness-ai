@@ -3,9 +3,9 @@
 const { retrieveProjectMemory } = require('../services/mira-hfm-authorized-memory-reader');
 const { sameOriginRequest } = require('./mira-hfm-authority-approval');
 
-function registerMiraHfmMemoryReadRoute(app, getRuntime, requireAdmin) {
+function registerMiraHfmMemoryReadRoute(app, getRuntime, requireAdmin, readMemory = retrieveProjectMemory) {
   if (!app || typeof app.post !== 'function' ||
-      typeof getRuntime !== 'function' || typeof requireAdmin !== 'function') {
+      typeof getRuntime !== 'function' || typeof requireAdmin !== 'function' || typeof readMemory !== 'function') {
     throw new TypeError('HFM_MEMORY_READ_ROUTE_DEPENDENCIES_REQUIRED');
   }
 
@@ -56,7 +56,7 @@ function registerMiraHfmMemoryReadRoute(app, getRuntime, requireAdmin) {
             return res.status(503).json({ success: false, error: 'Unable to consume server-side session authority.' });
           }
           try {
-            const result = await retrieveProjectMemory({
+            const result = await readMemory({
               pool: runtime.pool,
               req,
               authorityGrant: grant,
