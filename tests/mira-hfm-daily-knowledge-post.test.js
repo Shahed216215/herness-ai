@@ -27,8 +27,8 @@ function sourceRecord(overrides = {}) {
     },
     timestamps: { createdAt: now, updatedAt: now },
     version: { revision: 1, contentHash: createContentHash(content) },
-    integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
-    trust: { status: 'SOURCE_RECORDED' },
+    integrity: { status: overrides.integrityStatus || 'VERIFIED', algorithm: 'SHA-256' },
+    trust: { status: overrides.trustStatus || 'CONTENT_VERIFIED' },
     access: {
       classification: overrides.classification || 'PROJECT_PRIVATE',
       allowedProjectIds: [overrides.projectId || 'project-001']
@@ -66,8 +66,19 @@ test('daily post contains only same-project active private activity and learning
     sourceRecord({
       memoryId: 'learning-0001',
       recordType: 'learning_note',
+      trustStatus: 'HUMAN_VERIFIED',
       content: 'Learned how JSON objects are structured.',
       observedAt: '2026-11-06T13:00:00.000Z'
+    }),
+    sourceRecord({
+      memoryId: 'unverified-activity-01',
+      trustStatus: 'SOURCE_RECORDED',
+      content: 'This unverified activity must not enter the public draft.'
+    }),
+    sourceRecord({
+      memoryId: 'integrity-failed-01',
+      integrityStatus: 'FAILED',
+      content: 'This integrity-failed activity must not enter the public draft.'
     }),
     sourceRecord({
       memoryId: 'other-project-01',
@@ -101,6 +112,8 @@ test('daily post contains only same-project active private activity and learning
   assert.equal(result.status, 'DRAFT_READY');
   assert.deepEqual([...result.sourceRecordIds].sort(), ['activity-0001', 'learning-0001']);
   assert.deepEqual(result.sourceCounts, { activities: 1, learnings: 1 });
+  assert.equal(result.draft.content.includes('unverified activity'), false);
+  assert.equal(result.draft.content.includes('integrity-failed activity'), false);
   assert.match(result.draft.content, /আজ যা করেছি:/);
   assert.match(result.draft.content, /আজ যা শিখেছি:/);
   assert.equal(result.draft.content.includes('another project'), false);
