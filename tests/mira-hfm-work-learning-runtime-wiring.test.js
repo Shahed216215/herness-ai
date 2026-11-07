@@ -31,6 +31,48 @@ for (const method of ['saveKnowledgeToDrive', 'loadKnowledgeFromDrive', 'saveMem
 }
 console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_JSON_AND_DRIVE_READ_WRITE=PASS');
 
+const registerKnowledgeImprovementRoutes = require('../routes/knowledge-improvements');
+const registeredKnowledgeRoutes = new Map();
+const fakeApp = {
+  get: (route, ...handlers) => registeredKnowledgeRoutes.set('GET ' + route, handlers[handlers.length - 1]),
+  post: (route, ...handlers) => registeredKnowledgeRoutes.set('POST ' + route, handlers[handlers.length - 1])
+};
+registerKnowledgeImprovementRoutes(fakeApp, () => (_req, _res, next) => next && next(), {
+  SYSTEM_ADMIN: 'system-admin', AUDIT_LOG: 'audit-log'
+});
+const previousStandingFlag = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+const previousWorkFlag = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+try {
+  for (const [method, route] of [
+    ['GET', '/api/admin/knowledge-improvements'],
+    ['GET', '/api/admin/knowledge-improvements/:id'],
+    ['POST', '/api/admin/knowledge-improvements/:id/approve'],
+    ['POST', '/api/admin/knowledge-improvements/:id/reject'],
+    ['POST', '/api/admin/knowledge-improvements/:id/apply']
+  ]) {
+    const handler = registeredKnowledgeRoutes.get(method + ' ' + route);
+    assert.equal(typeof handler, 'function', method + ' ' + route + ' registered');
+    let statusCode = 200;
+    let payload;
+    const response = {
+      status(code) { statusCode = code; return this; },
+      json(value) { payload = value; return this; }
+    };
+    handler({ params: { id: 'legacy-proposal' }, role: 'admin' }, response);
+    assert.equal(statusCode, 403, method + ' ' + route + ' blocked in HFM mode');
+    assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENTS');
+  }
+  console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_KNOWLEDGE_IMPROVEMENT_ROUTES=PASS');
+} finally {
+  if (previousStandingFlag === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = previousStandingFlag;
+  if (previousWorkFlag === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = previousWorkFlag;
+}
+
+
 assert.doesNotThrow(() => assertLegacyLearningStorageAllowed({}));
 assert.throws(
   () => assertLegacyLearningStorageAllowed({ MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }),
