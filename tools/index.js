@@ -45,6 +45,9 @@ async function executeHfmKnowledgeSearch(args, trustedContext, search = require(
     source: "HFM_V02_STANDING_READ",
     count: result.count,
     results: result.results,
+    candidateScanCount: result.candidateScanCount,
+    candidateScanLimit: result.candidateScanLimit,
+    candidateScanMayBeIncomplete: result.candidateScanMayBeIncomplete,
     localFallback: false,
     driveFallback: false
   });
