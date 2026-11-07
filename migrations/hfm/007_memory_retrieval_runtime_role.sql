@@ -86,7 +86,9 @@ GRANT SELECT ON TABLE
   mira_hfm.project_owners,
   mira_hfm.project_memberships
 TO mira_hfm_memory_reader;
-GRANT SELECT, UPDATE ON TABLE mira_hfm.operation_authorities
+GRANT SELECT ON TABLE mira_hfm.operation_authorities
+TO mira_hfm_memory_reader;
+GRANT UPDATE (status, consumed_at) ON TABLE mira_hfm.operation_authorities
 TO mira_hfm_memory_reader;
 GRANT INSERT ON TABLE mira_hfm.authority_audit_events
 TO mira_hfm_memory_reader;
@@ -120,6 +122,7 @@ CREATE POLICY hfm_memory_reader_authority_consume
   USING (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND status = 'ISSUED'
   );
 
 CREATE POLICY hfm_memory_reader_authority_consume_update
@@ -142,6 +145,7 @@ CREATE POLICY hfm_memory_reader_authority_audit_insert
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND event_type = 'AUTHORITY_CONSUMED'
   );
 
 CREATE POLICY hfm_memory_reader_memory_select
