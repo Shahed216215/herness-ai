@@ -57,6 +57,14 @@ function record(memoryId) {
   console.log('HFM_STANDING_READ_PAGES_AUDITED_KEYSET_AGGREGATION=PASS');
 
   await assert.rejects(() => collectStandingReadPages({
+    readMemory: async options => options.cursor
+      ? page([record('memory-002')])
+      : page([record('memory-001')], 'reused-audit-request'),
+    readOptions: {}
+  }), /HFM_STANDING_READ_PAGE_AUDIT_REQUEST_REPLAY/);
+  console.log('HFM_STANDING_READ_PAGES_REQUIRE_DISTINCT_AUDIT_REQUESTS=PASS');
+
+  await assert.rejects(() => collectStandingReadPages({
     readMemory: async () => page([record('memory-001')], null, {
       hostAuthorizationContext: { ...context, projectId: 'project-other' }
     }),
