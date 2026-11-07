@@ -342,7 +342,7 @@ test('standing-read repository context is limited to active Learning/Knowledge a
     async query(sql, params) {
       queryCount += 1;
       if (sql.includes('SELECT transaction_timestamp() AS scan_started_at')) {
-        assert.deepEqual(params, []);
+        assert.equal(params, undefined);
         return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
       }
       assert.match(sql, /classification <> 'RESTRICTED'/);
