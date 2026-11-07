@@ -47,6 +47,17 @@ Migrations 007 and 008 are source-only drafts. Do not execute it until the datab
 - The legacy Memory and Knowledge callsites remain in service. The inventory reports them as REVIEW_REQUIRED; they must be migrated in bounded groups with explicit behavior tests before HFM becomes the source of truth.
 - A successful synthetic test does not prove a live Neon policy, credential, or Render environment is correct.
 
+## Staging database read-only inspection
+
+Read-only inspection of Neon staging project `steep-grass-38696226`, branch `br-lingering-dawn-a18x6pxx` (`mira-hfm-test`), database `neondb`:
+- The five HFM owner, membership, authority, authority-audit, and Memory tables all have RLS enabled and FORCE RLS enabled.
+- Existing project-reader and Memory-writer roles have the expected NOLOGIN / NOINHERIT / no-superuser / no-BYPASSRLS attributes.
+- No existing `mira_hfm_memory_reader` or `mira_hfm_authority_issuer` role was present at inspection time.
+- No existing policy-name collision was found for the new issuer policy set; the authority audit identity sequence resolves to `mira_hfm.authority_audit_events_event_sequence_seq`.
+- Current row counts: owners 0, memberships 0, authorities 0, Memory records 0, authority audit events 2.
+
+This is structural preflight evidence only. No migration, role creation, grant, seed, or application-data write was executed. The empty owner and membership tables still prevent project selection and authority issuance from succeeding. Production Neon target mapping remains unresolved.
+
 ## Validation evidence
 
 The GitHub Actions run for the branch head that includes the project-selection-to-memory integration fixture completed:
