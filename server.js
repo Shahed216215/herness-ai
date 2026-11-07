@@ -833,16 +833,16 @@ app.get(
       permissions,
       authentication
     ) => {
-      const hfmReadOnlyMode =
+      const hfmMemoryMode =
         process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
         process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
         process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
         process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
-      const memory = hfmReadOnlyMode
-        ? { total: null, maximum: getMemoryLimit(), source: "HFM_READ_ONLY_LOCAL_MEMORY_DISABLED" }
+      const memory = hfmMemoryMode
+        ? { total: null, maximum: getMemoryLimit(), source: "HFM_MEMORY_MODE_LOCAL_MEMORY_DISABLED" }
         : buildMemoryStats();
 
-      const knowledge = hfmReadOnlyMode
+      const knowledge = hfmMemoryMode
         ? {
             total: null,
             maximum: getCapacity("knowledge"),
@@ -851,7 +851,7 @@ app.get(
             learningTotal: null,
             todaySummary: [],
             latest: [],
-            source: "HFM_STANDING_READ_ONLY"
+            source: "HFM_MEMORY_MODE_LOCAL_KNOWLEDGE_DISABLED"
           }
         : getKnowledgeStats();
 
