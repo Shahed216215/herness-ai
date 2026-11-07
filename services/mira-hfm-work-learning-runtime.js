@@ -83,10 +83,10 @@ async function retrieveHfmWorkLearning(options = {}) {
   const memory = options.preflight;
   const hostContext = memory && memory.hostAuthorizationContext;
   const nowMs = now.getTime();
-  const issuedAtOrder = hostContext
-    ? compareTimestampToNow(hostContext.issuedAt, nowMs) : null;
-  const expiresAtOrder = hostContext
-    ? compareTimestampToNow(hostContext.expiresAt, nowMs) : null;
+  const issuedAtBeforeScan = hostContext && memory
+    ? compareTimestamps(hostContext.issuedAt, memory.scanStartedAt) : null;
+  const expiresAfterScan = hostContext && memory
+    ? compareTimestamps(hostContext.expiresAt, memory.scanStartedAt) : null;
   const expiresAfterIssue = hostContext
     ? compareTimestamps(hostContext.expiresAt, hostContext.issuedAt) : null;
   const scanStartedOrder = memory
@@ -120,8 +120,9 @@ async function retrieveHfmWorkLearning(options = {}) {
       typeof hostContext.authorityRef !== 'string' || !hostContext.authorityRef ||
       typeof hostContext.requestId !== 'string' || !hostContext.requestId ||
       typeof hostContext.purpose !== 'string' || !hostContext.purpose ||
-      issuedAtOrder === null || issuedAtOrder > 0 ||
-      expiresAtOrder !== 1 || expiresAfterIssue === null || expiresAfterIssue <= 0 ||
+      issuedAtBeforeScan === null || issuedAtBeforeScan > 0 ||
+      expiresAfterScan === null || expiresAfterScan <= 0 ||
+      expiresAfterIssue === null || expiresAfterIssue <= 0 ||
       scanStartedOrder === null || scanStartedOrder > 0) {
     fail('HFM_WORK_LEARNING_PREFLIGHT_SNAPSHOT_REQUIRED');
   }
@@ -146,7 +147,10 @@ async function retrieveHfmWorkLearning(options = {}) {
     taskText,
     currentTaskId,
     limit: options.limit === undefined ? 5 : options.limit,
-    now
+    // Re-validate the already-authorized immutable snapshot at its database
+    // scan time. A grant expiring while the model is processing does not
+    // retroactively invalidate reads completed before expiry.
+    now: memory.scanStartedAt
   });
   return Object.freeze({
     ...result,
