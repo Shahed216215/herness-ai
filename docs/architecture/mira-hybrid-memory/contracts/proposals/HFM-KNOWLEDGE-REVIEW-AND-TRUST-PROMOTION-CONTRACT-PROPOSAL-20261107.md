@@ -15,7 +15,9 @@ The current HFM review queue can list same-project `PENDING_REVIEW` records whos
 
 The v0.2.4 contract already defines trust as evidence rather than authorization and requires every trust transition to record the actor/process, timestamp, evidence reference, policy version, and reason. It prohibits skipped evidence stages, automatic promotion from reachability or integrity, and trust elevation as a source of access or operation capability.
 
-This proposal defines the missing decision and persistence boundary without adding a new canonical record family or changing the v0.2.4 record envelope.
+The user-approved 2026-11-06 Memory Topology Amendment lists `source_reference` as a seventh domain record family. Its schema-compatibility section, however, lists six v1.1.0 record types and omits `source_reference`; the implemented v1.1.0 validator currently models provenance as the nested `source` object and has no `source_reference` record type. This is a separate canonical-contract reconciliation gap. This review proposal does not cancel or redefine the approved `source_reference` family, and must not be used to implement it by inference.
+
+This proposal defines only the missing human-decision and persistence boundary. Review-decision evidence remains an append-only audit/lifecycle concern; it is not a substitute for the separately approved `source_reference` domain family.
 
 ## 2. Scope and non-goals
 
@@ -36,7 +38,7 @@ Out of scope:
 
 ## 3. Canonical invariants
 
-1. The canonical record remains the existing v0.2.4 envelope. Review decision evidence is an audit/lifecycle concern, not a new record family.
+1. The canonical record remains the existing v0.2.4 envelope. Review decision evidence is an audit/lifecycle concern and must not be conflated with the approved `source_reference` domain family. The `source_reference` entity-vs-nested-source schema mismatch remains a separate approval gate.
 2. `memoryId`, `projectId`, record type, revision, content hash, source identity, and source-observed timestamp are bound to the review request.
 3. `PENDING_REVIEW` records remain excluded from trusted search, Work Learning, chat recall, counts, and derived trusted context.
 4. A trust state is not an authorization grant. `HUMAN_VERIFIED` does not authorize read, write, export, restore, or cross-project access.
@@ -118,7 +120,7 @@ The authorization must bind:
 
 The operation must execute through a narrow trusted database API or separately isolated least-privilege reviewer service. It must not grant the runtime reader UPDATE privileges or broad table DML. Direct SQL, caller-controlled session variables, owner-role access, and cross-project attempts must be tested as adversarial cases.
 
-The exact role, stored procedure, RLS policy, audit table/append-only enforcement, and transaction topology are intentionally unresolved. They require separate database security review and approval before migration or credential provisioning.
+The exact role, stored procedure, RLS policy, audit table/append-only enforcement, and transaction topology are intentionally unresolved. They require separate database security review and approval before migration or credential provisioning. The target/source evidence identifier must be reconciled with the approved `source_reference` family contract; do not invent a separate record mapping or treat a nested `source` object as a completed `source_reference` implementation.
 
 ## 8. Audit evidence
 
