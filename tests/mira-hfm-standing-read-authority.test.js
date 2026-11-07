@@ -133,6 +133,12 @@ const pool = { async connect() { return client; } };
   assert.equal(statusResult.authority.authorityStatus, 'ACTIVE');
   assert.equal(statusResult.authority.expiresAt, standingRow.expires_at);
   console.log('HFM_STANDING_READ_STATUS_LOOKUP_AND_EXPIRY=PASS');
+  const originalExpiry = standingRow.expires_at;
+  standingRow.expires_at = new Date(now - 1000).toISOString();
+  const expiredStatus = await getStandingReadAuthorityStatus({ req, pool, env });
+  assert.equal(expiredStatus.authority.authorityStatus, 'EXPIRED');
+  standingRow.expires_at = originalExpiry;
+  console.log('HFM_STANDING_READ_EXPIRED_GRANT_STATUS=PASS');
 
   const paused = await setStandingReadAuthorityStatus({
     req, pool, env, standingAuthorityId: 'standing-authority-test-001', status: 'PAUSED'
