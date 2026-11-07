@@ -61,7 +61,7 @@ Migrations 007–010 are source-only drafts. Do not execute them until the targe
 
 ## Outstanding blockers
 
-- The latest read-only staging count shows existing rows: `project_owners=1`, `project_memberships=1`, `memory_records=1`, `operation_authorities=0`, and `authority_audit_events=2`. These rows are preserved; their provenance and validity have not been independently certified. Do not treat staging as empty or run the one-time bootstrap migration against it.
+- Latest read-only staging inspection shows `project_owners=1`, `project_memberships=1`, `memory_records=1`, `operation_authorities=0`, and `authority_audit_events=2`; one active owner row matches one active ADMIN membership. The membership currently grants `memory.read` but not `memory.write`, `memory.trash`, or `memory.restore`. Row provenance has not been independently certified. Preserve all existing rows; do not treat staging as empty or run the one-time bootstrap migration against it.
 - The admin HFM subject must be provisioned and match `MIRA_ADMIN_SUBJECT_ID`.
 - Migrations 007–010 are not applied in the inspected staging database; the nonce registry, bootstrap latch and new runtime role grants are not present there.
 - Dedicated LOGIN credentials for the project reader, Memory reader, authority issuer, bootstrap operator and Memory writer have not been provisioned or verified.
@@ -79,7 +79,7 @@ Read-only inspection of Neon staging project `steep-grass-38696226`, branch `br-
 - Existing project-reader and Memory-writer roles have the expected NOLOGIN / NOINHERIT / no-superuser / no-BYPASSRLS attributes.
 - No existing `mira_hfm_memory_reader` or `mira_hfm_authority_issuer` role was present at inspection time.
 - No existing issuer policy-name collision was found at inspection time; the authority audit identity sequence resolves to `mira_hfm.authority_audit_events_event_sequence_seq`.
-- Latest read-only row counts (2026-11-07): owners 1, memberships 1, authorities 0, Memory records 1, authority audit events 2. The previously recorded zero-count snapshot is stale and must not be used for migration planning. Existing rows were not modified.
+- Latest read-only row counts (2026-11-07): owners 1, memberships 1, authorities 0, Memory records 1, authority audit events 2. A read-only join found one active owner-to-ADMIN-membership pair. Its membership permissions include `memory.read` only among the four HFM Memory operations; `memory.write`, `memory.trash`, and `memory.restore` are absent. The previously recorded zero-count snapshot is stale and must not be used for migration planning. Existing rows were not modified.
 - The nonce registry table does not exist yet because Migration 009 has not been applied.
 
 This is structural preflight evidence only. No migration, role creation, grant, seed, or application-data write was executed. Migration 010 explicitly rejects any existing owner, membership, authority, or Memory rows (`HFM_BOOTSTRAP_REQUIRES_EMPTY_PROJECT_AND_MEMORY_REGISTRIES`); its preflight is therefore expected to fail on the currently inspected staging branch. Do not delete, truncate, rewrite, or import around these rows. Project selection and authority issuance still require separate validation of the existing owner/membership records and the missing runtime roles/policies. Production Neon target mapping remains unresolved.
