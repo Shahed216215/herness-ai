@@ -195,6 +195,36 @@ function baseOptions(overrides = {}) {
     const directKnowledgeSave = require('../tools/knowledge-save');
     assert.equal(JSON.parse(await directMemorySave.execute({ content: 'Remember this.' })).code, 'HFM_TOOL_ROUTER_REQUIRED');
     assert.equal(JSON.parse(await directKnowledgeSave.execute({ title: 'Title', url: 'https://example.com', content: 'Source.' })).code, 'HFM_TOOL_ROUTER_REQUIRED');
+
+    const servicePath = require.resolve('../services/mira-hfm-memory-save-runtime');
+    const serviceModule = require.cache[servicePath];
+    const originalSave = serviceModule.exports.saveHfmMemoryRecord;
+    let routedOptions = null;
+    serviceModule.exports.saveHfmMemoryRecord = async options => {
+      routedOptions = options;
+      return {
+        success: true, saved: true, status: 'CREATED',
+        memoryId: 'mem-tool-route-0001', lifecycle: 'ACTIVE',
+        classification: 'PROJECT_PRIVATE', trust: 'HUMAN_VERIFIED',
+        searchable: true, localFallback: false, driveFallback: false
+      };
+    };
+    const routed = JSON.parse(await executeTool('memory_save', { content: 'I prefer concise Bengali explanations.' }, {
+      hfmWrite: {
+        req: { session: { authenticated: true, role: 'admin' } },
+        writerPool: { connect: async () => ({}) },
+        issuerPool: { connect: async () => ({}) },
+        userIntent: 'Remember this: I prefer concise Bengali explanations.',
+        taskId: 'task-001', toolCallId: 'call-001', toolName: 'memory_save'
+      }
+    }));
+    assert.equal(routed.source, 'HFM_V02_CANONICAL');
+    assert.equal(routed.localFallback, false);
+    assert.equal(routed.driveFallback, false);
+    assert.equal(routedOptions.kind, 'memory_save');
+    assert.equal(routedOptions.content, 'I prefer concise Bengali explanations.');
+    assert.match(routedOptions.userIntent, /Remember this/);
+    serviceModule.exports.saveHfmMemoryRecord = originalSave;
   } finally {
     if (previousWriteFlag === undefined) delete process.env.MIRA_HFM_MEMORY_WRITE_ENABLED;
     else process.env.MIRA_HFM_MEMORY_WRITE_ENABLED = previousWriteFlag;
