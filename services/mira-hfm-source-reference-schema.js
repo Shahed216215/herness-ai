@@ -132,6 +132,10 @@ function validateSourceReferencePayload(payload) {
       payload.retrievalMethod !== 'user_supplied_url') {
     errors.push('payload.not_fetched_method_mismatch');
   }
+  if (payload.retrievalMethod === 'user_supplied_url' &&
+      !['NOT_FETCHED', 'USER_SUPPLIED'].includes(payload.accessResult)) {
+    errors.push('payload.user_supplied_url_must_not_claim_fetch_result');
+  }
   if (payload.accessResult === 'USER_SUPPLIED' &&
       payload.retrievalMethod !== 'user_supplied_url' &&
       payload.retrievalMethod !== 'manual_import') {
