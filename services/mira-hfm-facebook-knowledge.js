@@ -95,6 +95,58 @@ function buildKnowledgeRecord(options = {}) {
   return Object.freeze(record);
 }
 
+async function researchFacebookSource(options = {}) {
+  const sourceUrl = normalizeFacebookUrl(options.sourceUrl);
+  const apiKey = options.apiKey || process.env.TAVILY_API_KEY;
+  if (typeof apiKey !== 'string' || !apiKey.trim()) {
+    return Object.freeze({
+      status: 'SEARCH_PROVIDER_NOT_CONFIGURED',
+      sourceUrl,
+      fallback: 'MANUAL_IMPORT_REQUIRED',
+      results: []
+    });
+  }
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  if (typeof fetchImpl !== 'function') throw fail('HFM_WEB_SEARCH_TRANSPORT_UNAVAILABLE');
+  const pagePath = new URL(sourceUrl).pathname.replace(/\/$/, '');
+  const response = await fetchImpl('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query: 'site:facebook.com' + pagePath + ' public posts',
+      search_depth: 'basic',
+      include_domains: ['facebook.com'],
+      max_results: 5,
+      include_answer: false
+    }),
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!response || !response.ok) throw fail('HFM_WEB_SEARCH_PROVIDER_UNAVAILABLE');
+  const payload = await response.json();
+  const rows = Array.isArray(payload && payload.results) ? payload.results : [];
+  const results = rows.slice(0, 5).map(item => {
+    let url = null;
+    try {
+      url = normalizeFacebookUrl(String(item.url || ''));
+    } catch (_error) {}
+    if (!url) return null;
+    return Object.freeze({
+      title: String(item.title || '').slice(0, 300),
+      url,
+      snippet: String(item.content || '').slice(0, 2000),
+      publishedAt: typeof item.published_date === 'string' ? item.published_date : null,
+      verificationStatus: 'SOURCE_RECORDED'
+    });
+  }).filter(Boolean);
+  return Object.freeze({
+    status: results.length ? 'SEARCH_RESULTS_FOUND' : 'NO_PUBLIC_INDEXED_RESULTS',
+    sourceUrl,
+    fallback: 'SEARCH_ENGINE_INDEX',
+    results: Object.freeze(results)
+  });
+}
+
 async function findDuplicate(client, projectId, contentHash) {
   const result = await client.query(
     "SELECT memory_id FROM mira_hfm.memory_records WHERE project_id = $1 AND record_type = 'knowledge_item' AND classification = 'PUBLIC' AND lifecycle = 'ACTIVE' AND public_payload -> 'version' ->> 'contentHash' = $2 ORDER BY created_at ASC LIMIT 1",
