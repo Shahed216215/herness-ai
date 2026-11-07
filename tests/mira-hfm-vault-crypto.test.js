@@ -6,7 +6,8 @@ const crypto = require('node:crypto');
 const {
   createVaultEnvelope,
   decryptVaultEnvelope,
-  createVaultDigestCandidates
+  createVaultDigestCandidates,
+  MAX_PLAINTEXT_BYTES
 } = require('../services/mira-hfm-vault-crypto');
 
 const env = Object.freeze({
@@ -85,6 +86,33 @@ test('missing, malformed, or unversioned key configuration fails closed', () => 
       env: { MIRA_VAULT_ACTIVE_KEK_VERSION: 'v1', MIRA_VAULT_KEK_V1: 'not-a-valid-key' }
     }),
     error => error.code === 'MIRA_VAULT_KEY_INVALID'
+  );
+});
+
+test('oversized ciphertext and wrapped DEK are rejected before decoding', () => {
+  const envelope = createVaultEnvelope({ record, context, env });
+  const oversizedPayload = {
+    ...envelope,
+    payload: {
+      ...envelope.payload,
+      ciphertext: 'A'.repeat(Math.ceil(MAX_PLAINTEXT_BYTES / 3) * 4 + 4)
+    }
+  };
+  assert.throws(
+    () => decryptVaultEnvelope({ envelope: oversizedPayload, context, env }),
+    error => error.code === 'MIRA_VAULT_ENVELOPE_INVALID'
+  );
+
+  const oversizedWrappedDek = {
+    ...envelope,
+    wrappedDek: {
+      ...envelope.wrappedDek,
+      ciphertext: 'A'.repeat(48)
+    }
+  };
+  assert.throws(
+    () => decryptVaultEnvelope({ envelope: oversizedWrappedDek, context, env }),
+    error => error.code === 'MIRA_VAULT_ENVELOPE_INVALID'
   );
 });
 
