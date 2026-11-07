@@ -223,7 +223,7 @@ async function executeWithStandingReadAuthority(options = {}) {
       "owner_revision, membership_revision, status, approval_ref, valid_from, expires_at " +
       "FROM mira_hfm.standing_read_authorities WHERE project_id = $1 AND actor_id = $2 " +
       "AND operation = 'memory.read' AND resource = $3 AND status = 'ACTIVE' " +
-      "AND valid_from <= clock_timestamp() AND expires_at > clock_timestamp()",
+      "AND valid_from <= clock_timestamp() AND expires_at > clock_timestamp() FOR SHARE",
       [projectId, trustedActor.actorId, resource]
     );
     const authority = authorityResult.rows && authorityResult.rows[0];
