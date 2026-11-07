@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { buildCanonicalMemoryRecord } = require('../services/mira-hfm-memory-save-runtime');
-const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-runtime');
+const { searchHfmKnowledge, getHfmKnowledgeById } = require('../services/mira-hfm-knowledge-search-runtime');
 
 const now = new Date('2026-11-07T08:00:00.000Z');
 const projectId = 'project-search-001';
@@ -207,6 +207,65 @@ const verifiedLearning = {
   assert.equal(boundedKnowledge.candidateScanMayBeIncomplete, true);
   assert.equal(boundedKnowledge.nextCursor, 'bounded-knowledge-continuation');
   console.log('HFM_KNOWLEDGE_SEARCH_EXPOSES_BOUNDED_CONTINUATION=PASS');
+
+  let exactReadInput;
+  const exactKnowledge = await getHfmKnowledgeById({
+    req: { session: { hfmPrincipal: { verified: true } } },
+    pool: { connect: async () => ({}) },
+    memoryId: knowledge.memoryId,
+    now,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readRecord: async input => {
+      exactReadInput = input;
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED',
+        projectId,
+        recordStatus: 'FOUND',
+        record: knowledge,
+        standingAuthority: true,
+        standingAuthorityId: hostAuthorizationContext.authorityRef,
+        authorityExpiresAt: hostAuthorizationContext.expiresAt,
+        authorityConsumed: false,
+        approvalRequiredPerRead: false,
+        memoryWrites: false,
+        localFallback: false,
+        driveFallback: false,
+        hostAuthorizationContext
+      };
+    }
+  });
+  assert.equal(exactReadInput.memoryId, knowledge.memoryId);
+  assert.deepEqual(exactReadInput.recordTypes, ['knowledge_item', 'learning_note']);
+  assert.equal(exactKnowledge.entry.id, knowledge.memoryId);
+  assert.equal(exactKnowledge.entry.content, knowledge.content);
+  assert.equal(exactKnowledge.localFallback, false);
+  assert.equal(exactKnowledge.memoryWrites, false);
+  console.log('HFM_KNOWLEDGE_EXACT_DETAIL_READ_USES_STANDING_AUTHORITY=PASS');
+
+  const exactMissing = await getHfmKnowledgeById({
+    req: { session: { hfmPrincipal: { verified: true } } },
+    pool: { connect: async () => ({}) },
+    memoryId: 'knowledge-not-found',
+    now,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readRecord: async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId,
+      recordStatus: 'NOT_FOUND',
+      record: null,
+      standingAuthority: true,
+      standingAuthorityId: hostAuthorizationContext.authorityRef,
+      authorityExpiresAt: hostAuthorizationContext.expiresAt,
+      authorityConsumed: false,
+      approvalRequiredPerRead: false,
+      memoryWrites: false,
+      localFallback: false,
+      driveFallback: false,
+      hostAuthorizationContext
+    })
+  });
+  assert.equal(exactMissing.entry, null);
+  console.log('HFM_KNOWLEDGE_EXACT_DETAIL_NOT_FOUND_IS_AUTHORIZED=PASS');
 
   await assert.rejects(() => searchHfmKnowledge({
     req: {}, pool: {}, query: 'Python',
