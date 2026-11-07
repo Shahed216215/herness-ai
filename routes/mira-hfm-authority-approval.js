@@ -1,6 +1,6 @@
 'use strict';
 
-const { approveAndIssueMemoryReadAuthority } = require('../services/mira-hfm-authority-approval');
+const { approveAndIssueMemoryOperationAuthority } = require('../services/mira-hfm-authority-approval');
 
 function sameOriginRequest(req) {
   const origin = req.get && req.get('origin');
@@ -14,7 +14,7 @@ function sameOriginRequest(req) {
   }
 }
 
-function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, issueAuthority = approveAndIssueMemoryReadAuthority) {
+function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, issueAuthority = approveAndIssueMemoryOperationAuthority) {
   if (!app || typeof app.post !== 'function' ||
       typeof getRuntime !== 'function' || typeof requireAdmin !== 'function' || typeof issueAuthority !== 'function') {
     throw new TypeError('HFM_AUTHORITY_APPROVAL_ROUTE_DEPENDENCIES_REQUIRED');
@@ -40,6 +40,20 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
       if (typeof body.purpose !== 'string' || !body.purpose.trim() || body.purpose.length > 512) {
         return res.status(400).json({ success: false, error: 'A bounded approval purpose is required.' });
       }
+      const operation = typeof body.operation === 'string' ? body.operation : 'memory.read';
+      const allowedOperations = ['memory.read', 'memory.write', 'memory.trash', 'memory.restore'];
+      if (!allowedOperations.includes(operation)) {
+        return res.status(400).json({ success: false, error: 'Unsupported Memory operation.' });
+      }
+      const projectId = req.session.hfmProjectBinding.projectId;
+      const resource = typeof body.resource === 'string'
+        ? body.resource
+        : (operation === 'memory.read' ? 'memory:project:' + projectId : '');
+      if (operation === 'memory.read'
+          ? resource !== 'memory:project:' + projectId
+          : !/^memory:[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(resource)) {
+        return res.status(400).json({ success: false, error: 'Memory resource does not match the selected project operation.' });
+      }
       if (req.session.hfmPendingMemoryAuthority) {
         return res.status(409).json({ success: false, error: 'An unconsumed HFM Memory authority is already pending.' });
       }
@@ -54,11 +68,15 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
           pool: runtime.pool,
           env: process.env,
           purpose: body.purpose.trim(),
+          operation,
+          resource,
           approvalConfirmed: true
         });
         const previousPending = req.session.hfmPendingMemoryAuthority;
         req.session.hfmPendingMemoryAuthority = {
           projectId: result.projectId,
+          operation: result.operation,
+          resource: result.resource,
           grant: result.grant,
           expiresAt: result.expiresAt
         };
@@ -73,6 +91,7 @@ function registerMiraHfmAuthorityApprovalRoute(app, getRuntime, requireAdmin, is
             status: result.status,
             projectId: result.projectId,
             operation: result.operation,
+            resource: result.resource,
             singleUse: result.singleUse,
             expiresAt: result.expiresAt,
             authorityHeldServerSide: true
