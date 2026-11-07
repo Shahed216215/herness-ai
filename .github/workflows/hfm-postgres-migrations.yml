@@ -51,7 +51,7 @@ jobs:
           docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE DATABASE neondb"
           docker exec "${{ job.services.postgres.id }}" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "CREATE ROLE mira_hfm_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
 
-      - name: Apply HFM migrations 001 through 011 in order
+      - name: Apply canonical HFM migrations 001 through 014 in order
         run: |
           set -euo pipefail
           for migration in \
@@ -122,8 +122,6 @@ jobs:
           echo "HFM_MEMORY_TRASH_AUTHORITY_RLS_SCOPE=PASS"
           echo "HFM_MEMORY_PURGE_OPERATION_BLOCK=PASS"
 
-          docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "CREATE ROLE mira_hfm_memory_writer_login LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
-          docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "GRANT mira_hfm_memory_writer TO mira_hfm_memory_writer_login"
           docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SET LOCAL ROLE mira_hfm_memory_writer_login; SELECT 1 / CASE WHEN current_user = 'mira_hfm_memory_writer_login' AND pg_has_role(current_user, 'mira_hfm_memory_writer', 'USAGE') AND has_table_privilege(current_user, 'mira_hfm.memory_records', 'INSERT') AND has_table_privilege(current_user, 'mira_hfm.memory_records', 'UPDATE') AND has_table_privilege(current_user, 'mira_hfm.memory_audit_events', 'INSERT') AND NOT has_table_privilege(current_user, 'mira_hfm.memory_records', 'DELETE') AND NOT has_table_privilege(current_user, 'mira_hfm.memory_records', 'TRUNCATE') AND NOT has_table_privilege(current_user, 'mira_hfm.project_owners', 'UPDATE') THEN 1 ELSE 0 END; ROLLBACK"
           if docker exec "$PG" psql -v ON_ERROR_STOP=1 -U postgres -d neondb -c "BEGIN; SET LOCAL ROLE mira_hfm_memory_writer_login; DELETE FROM mira_hfm.memory_records WHERE project_id = 'project-ci'; COMMIT" >/tmp/hfm-writer-delete.log 2>&1; then
             echo "HFM_CI_MEMORY_WRITER_HARD_DELETE_WAS_ALLOWED"
