@@ -6,7 +6,7 @@ const workflow = require('../services/mira-hfm-social-post-workflow');
 
 const baseContext = {
   authorityContext: workflow.AUTHORITY_CONTEXT,
-  actorId: 'mira:owner-001',
+  actorId: 'mira:creator-001',
   projectOwnerActorId: 'mira:project-owner-001',
   projectId: 'project-001',
   operation: workflow.OPERATIONS.DELETE,
@@ -17,7 +17,7 @@ const baseContext = {
 const draft = {
   memory_id: 'post-0001',
   project_id: 'project-001',
-  owner_actor_id: 'mira:project-owner-001',
+  owner_actor_id: 'mira:creator-001',
   record_type: 'social_post_draft',
   classification: 'PROJECT_PRIVATE',
   lifecycle: 'ACTIVE',
