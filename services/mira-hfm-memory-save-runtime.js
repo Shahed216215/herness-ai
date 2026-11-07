@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const { createContentHash, validateCanonicalRecord, SCHEMA_V1_2 } = require('./mira-hfm-record-schema');
 const { normalizeTrustedActorIdentity } = require('./mira-memory-host-identity-contract');
 const { buildUserSuppliedSourceReferencePayload } = require('./mira-hfm-source-reference-schema');
+const { canonicalVaultPayload, isVaultPayloadPresentInUserIntent } = require('./mira-hfm-vault-record-schema');
 const { createMemoryRecord } = require('./mira-hfm-memory-repository');
 const { approveAndIssueMemoryOperationAuthority } = require('./mira-hfm-authority-approval');
 const { executeWithConsumedAuthority } = require('./mira-hfm-authority-transaction');
@@ -68,6 +69,25 @@ function hasExplicitSourceReferenceSaveIntent(value) {
     /\b(?:source|reference|link|url)\b.{0,100}\b(?:save|store|record|keep|add)\b/i.test(value) ||
     /(?:সোর্স|উৎস|রেফারেন্স|লিংক|ইউআরএল).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ)/u.test(value) ||
     /(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,80}(?:সোর্স|উৎস|রেফারেন্স|লিংক|ইউআরএল)/u.test(value);
+}
+
+function hasExplicitVaultSaveIntent(kind, value) {
+  if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
+  const client = kind === 'client_vault_save';
+  if (!client && kind !== 'financial_vault_save') return false;
+  const terms = client
+    ? /\b(?:client|customer)\b.{0,100}\b(?:vault|record|details)\b/i
+    : /\b(?:financial|finance|transaction|invoice|payment)\b.{0,100}\b(?:vault|record|details)\b/i;
+  const negative = /\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,100}\b(?:client|customer|financial|finance|transaction|invoice|payment)\b/i.test(value);
+  if (negative) return false;
+  const english = /\b(?:save|store|record|keep)\b.{0,100}/i.test(value) && terms.test(value) ||
+    terms.test(value) && /\b(?:save|store|record|keep)\b/i.test(value);
+  const bengali = client
+    ? /(?:ক্লায়েন্ট|ক্লায়েন্ট|গ্রাহক).{0,100}(?:ভল্ট|রেকর্ড|তথ্য).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ)/u.test(value) ||
+      /(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,100}(?:ক্লায়েন্ট|ক্লায়েন্ট|গ্রাহক)/u.test(value)
+    : /(?:আর্থিক|লেনদেন|ইনভয়েস|ইনভয়েস|পেমেন্ট).{0,100}(?:ভল্ট|রেকর্ড|তথ্য).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ)/u.test(value) ||
+      /(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,100}(?:আর্থিক|লেনদেন|ইনভয়েস|ইনভয়েস|পেমেন্ট)/u.test(value);
+  return english || bengali;
 }
 
 function hasExplicitSaveIntent(value) {
@@ -138,7 +158,7 @@ function buildCanonicalMemoryRecord(options = {}) {
   if (!Number.isFinite(Date.parse(now))) fail('HFM_MEMORY_SAVE_TIMESTAMP_INVALID');
 
   const kind = options.kind;
-  if (!['memory_save', 'knowledge_save', 'learning_save', 'daily_activity_save', 'source_reference_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
+  if (!['memory_save', 'knowledge_save', 'learning_save', 'daily_activity_save', 'source_reference_save', 'client_vault_save', 'financial_vault_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
   const body = boundedText(kind === 'source_reference_save' ? options.url : options.content,
     MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
   if (kind === 'daily_activity_save' &&
@@ -159,6 +179,7 @@ function buildCanonicalMemoryRecord(options = {}) {
   let trustStatus = 'HUMAN_VERIFIED';
   let lifecycle = 'ACTIVE';
   let schemaVersion = '1.1.0';
+  let classification = 'PROJECT_PRIVATE';
 
   if (kind === 'daily_activity_save') {
     if (hasVaultOnlyDailyActivityContent(body)) {
@@ -205,6 +226,28 @@ function buildCanonicalMemoryRecord(options = {}) {
     schemaVersion = SCHEMA_V1_2;
   }
 
+  if (kind === 'client_vault_save' || kind === 'financial_vault_save') {
+    if (!hasExplicitVaultSaveIntent(kind, options.userIntent)) {
+      fail('HFM_VAULT_EXPLICIT_USER_INTENT_REQUIRED');
+    }
+    let payload;
+    try { payload = JSON.parse(body); } catch (_error) {
+      fail('HFM_VAULT_PAYLOAD_JSON_REQUIRED');
+    }
+    const canonicalPayload = canonicalVaultPayload(kind, payload);
+    if (!isVaultPayloadPresentInUserIntent(options.userIntent, canonicalPayload)) {
+      fail('HFM_VAULT_PAYLOAD_NOT_PRESENT_IN_USER_INTENT');
+    }
+    content = JSON.stringify(canonicalPayload);
+    recordType = kind === 'client_vault_save' ? 'client_vault_record' : 'financial_vault_record';
+    sourceId = kind === 'client_vault_save'
+      ? 'user-provided-client-vault-record'
+      : 'user-provided-financial-vault-record';
+    trustStatus = 'SOURCE_RECORDED';
+    lifecycle = 'PENDING_REVIEW';
+    classification = 'RESTRICTED';
+  }
+
   if (kind === 'knowledge_save' || kind === 'learning_save') {
     const isLearning = kind === 'learning_save';
     const title = boundedText(options.title || (isLearning ? 'Learning note' : ''),
@@ -241,7 +284,7 @@ function buildCanonicalMemoryRecord(options = {}) {
     version: { revision: 1, contentHash: createContentHash(content) },
     integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
     trust: { status: trustStatus },
-    access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: [projectId] },
+    access: { classification, allowedProjectIds: [projectId] },
     lifecycle
   };
   const validation = validateCanonicalRecord(record);
@@ -250,9 +293,11 @@ function buildCanonicalMemoryRecord(options = {}) {
 }
 
 async function saveHfmMemoryRecord(options = {}) {
+  const kind = options.kind;
   if (!hasExplicitSaveIntent(options.userIntent) &&
       !hasExplicitDailyActivitySaveIntent(options.userIntent) &&
-      !hasExplicitSourceReferenceSaveIntent(options.userIntent)) {
+      !hasExplicitSourceReferenceSaveIntent(options.userIntent) &&
+      !hasExplicitVaultSaveIntent(kind, options.userIntent)) {
     fail('HFM_MEMORY_SAVE_EXPLICIT_USER_INTENT_REQUIRED');
   }
   const req = options.req;
@@ -269,7 +314,6 @@ async function saveHfmMemoryRecord(options = {}) {
   if (!writerPool || typeof writerPool.connect !== 'function') fail('HFM_MEMORY_WRITER_POOL_REQUIRED');
   if (!issuerPool || typeof issuerPool.connect !== 'function') fail('HFM_AUTHORITY_ISSUER_POOL_REQUIRED');
 
-  const kind = options.kind;
   const idempotencyKey = options.idempotencyKey ||
     deriveIdempotencyKey(options.taskId, options.toolCallId, options.toolName || kind);
   if (typeof idempotencyKey !== 'string' || !IDEMPOTENCY_KEY.test(idempotencyKey)) {
@@ -291,15 +335,19 @@ async function saveHfmMemoryRecord(options = {}) {
     now: options.now
   });
   const resource = 'memory:' + memoryId;
-  const purpose = kind === 'knowledge_save'
-    ? 'User explicitly requested to save a knowledge source privately as an unverified item for review.'
-    : kind === 'learning_save'
-      ? 'User explicitly requested to save a learning note privately as an unverified item for review.'
-      : kind === 'daily_activity_save'
-        ? 'User explicitly requested to save an exact user-authored daily activity summary privately.'
-        : kind === 'source_reference_save'
-          ? 'User explicitly requested to save this exact user-supplied public source URL as a private, not-yet-fetched source reference.'
-          : 'User explicitly requested to save this private memory item.';
+  const isVaultWrite = kind === 'client_vault_save' || kind === 'financial_vault_save';
+  const operation = isVaultWrite ? 'memory.vault.write' : 'memory.write';
+  const purpose = isVaultWrite
+    ? 'hfm-vault:' + record.recordType + ':explicit-user-request'
+    : kind === 'knowledge_save'
+      ? 'User explicitly requested to save a knowledge source privately as an unverified item for review.'
+      : kind === 'learning_save'
+        ? 'User explicitly requested to save a learning note privately as an unverified item for review.'
+        : kind === 'daily_activity_save'
+          ? 'User explicitly requested to save an exact user-authored daily activity summary privately.'
+          : kind === 'source_reference_save'
+            ? 'User explicitly requested to save this exact user-supplied public source URL as a private, not-yet-fetched source reference.'
+            : 'User explicitly requested to save this private memory item.';
   const env = options.env || process.env;
   if (env.MIRA_HFM_MEMORY_WRITE_ENABLED !== 'true') fail('HFM_MEMORY_WRITE_DISABLED');
   if (env.MIRA_HFM_AUTHORITY_ISSUER_ENABLED !== 'true') fail('HFM_AUTHORITY_ISSUER_DISABLED');
@@ -309,13 +357,13 @@ async function saveHfmMemoryRecord(options = {}) {
   const createRecord = options.createRecord || createMemoryRecord;
   const authority = await issueAuthority({
     req, pool: issuerPool, env,
-    operation: 'memory.write',
+    operation,
     resource,
     purpose,
     approvalConfirmed: true
   });
   if (!authority || authority.status !== 'AUTHORITY_ISSUED' ||
-      authority.projectId !== projectId || authority.operation !== 'memory.write' ||
+      authority.projectId !== projectId || authority.operation !== operation ||
       authority.resource !== resource || !authority.grant) {
     fail('HFM_MEMORY_SAVE_AUTHORITY_NOT_VERIFIED');
   }
@@ -326,14 +374,15 @@ async function saveHfmMemoryRecord(options = {}) {
     request: {
       authorityId: authority.grant.authorityId,
       projectId,
-      operation: 'memory.write',
+      operation,
       resource,
       purpose: authority.grant.purpose,
       requestId: authority.grant.requestId
     },
     perform: (client, context) => createRecord({
       client, context, record, idempotencyKey,
-      allowPrivateWrite: true, env
+      allowPrivateWrite: classification !== 'RESTRICTED',
+      allowRestrictedWrite: isVaultWrite, env
     })
   });
   if (!committed || committed.status !== 'AUTHORIZED_AND_COMMITTED' ||
@@ -350,7 +399,7 @@ async function saveHfmMemoryRecord(options = {}) {
     projectId,
     recordType: record.recordType,
     contentRedacted: kind === 'daily_activity_save' && record.content !== String(options.content).trim(),
-    classification: 'PROJECT_PRIVATE',
+    classification: record.access.classification,
     trust: record.trust.status,
     lifecycle: record.lifecycle,
     searchEligible: record.lifecycle === 'ACTIVE' && record.trust.status === 'HUMAN_VERIFIED',
@@ -365,6 +414,7 @@ module.exports = Object.freeze({
   hasExplicitSaveIntent,
   hasExplicitDailyActivitySaveIntent,
   hasExplicitSourceReferenceSaveIntent,
+  hasExplicitVaultSaveIntent,
   redactDailyActivityContent,
   hasVaultOnlyDailyActivityContent,
   normalizeIntentText,
