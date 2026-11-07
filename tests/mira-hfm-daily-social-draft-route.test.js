@@ -85,7 +85,8 @@ function makeRes() {
 async function invoke(
   req,
   reader = async () => ({ status: 'MEMORY_READ_READY', pool: { connect: async () => ({}) } }),
-  builder = fakeBuild
+  builder = fakeBuild,
+  readMemory = fakeRead
 ) {
   let handler;
   const res = makeRes();
@@ -96,7 +97,7 @@ async function invoke(
     async () => ({ status: 'MEMORY_WRITER_READY', pool: { connect: async () => ({}) } }),
     async () => ({ status: 'AUTHORITY_ISSUER_READY', pool: { connect: async () => ({}) } }),
     (_req, _res, next) => next(),
-    fakeIssue, fakeRead, fakeExecute, builder, fakeSave
+    fakeIssue, readMemory, fakeExecute, builder, fakeSave
   );
   await handler.middleware(req, res, () => {});
   if (res.payload) return res;
@@ -135,10 +136,12 @@ async function invoke(
   readCalls = 0;
   executeCalls = 0;
   saveCalls = 0;
-  const noSources = await invoke(makeReq(), async options => {
-    readCalls += 1;
-    return { status: 'AUTHORIZED_AND_COMMITTED', records: [] };
-  }, () => ({ status: 'NO_DAILY_SOURCE_RECORDS', draft: null, sourceCounts: { activities: 0, learnings: 0 } }));
+  const noSources = await invoke(
+    makeReq(),
+    undefined,
+    () => ({ status: 'NO_DAILY_SOURCE_RECORDS', draft: null, sourceCounts: { activities: 0, learnings: 0 } }),
+    async () => { readCalls += 1; return { status: 'AUTHORIZED_AND_COMMITTED', records: [] }; }
+  );
   assert.equal(noSources.statusCode, 200);
   assert.equal(noSources.payload.draftSaved, false);
   assert.equal(issueCalls.length, 1);
