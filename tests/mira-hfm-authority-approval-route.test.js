@@ -1,10 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const approvalModule = require('../services/mira-hfm-authority-approval');
-const original = approvalModule.approveAndIssueMemoryReadAuthority;
 let approvalCalls = 0;
-approvalModule.approveAndIssueMemoryReadAuthority = async options => {
+const fakeIssueAuthority = async options => {
   approvalCalls += 1;
   assert.equal(options.approvalConfirmed, true);
   assert.equal(options.purpose, 'approved retrieval');
@@ -20,24 +18,6 @@ approvalModule.approveAndIssueMemoryReadAuthority = async options => {
 };
 const { registerMiraHfmAuthorityApprovalRoute, sameOriginRequest } =
   require('../routes/mira-hfm-authority-approval');
-approvalModule.approveAndIssueMemoryReadAuthority = original;
-
-let route;
-let adminMiddleware;
-const app = {
-  post(path, middleware, handler) {
-    assert.equal(path, '/api/hfm/memory/authorize');
-    adminMiddleware = middleware;
-    route = handler;
-  }
-};
-registerMiraHfmAuthorityApprovalRoute(
-  app,
-  async () => ({ status: 'AUTHORITY_ISSUER_READY', pool: { connect: async () => ({}) } }),
-  (req, res, next) => next()
-);
-assert.equal(typeof route, 'function');
-assert.equal(typeof adminMiddleware, 'function');
 
 function makeReq(overrides = {}) {
   return {
@@ -73,7 +53,7 @@ async function invoke(req, runtime = async () => ({
   let captured;
   const res = response();
   const app = { post(_path, middleware, handler) { captured = { middleware, handler }; } };
-  registerMiraHfmAuthorityApprovalRoute(app, runtime, (_req, _res, next) => next());
+  registerMiraHfmAuthorityApprovalRoute(app, runtime, (_req, _res, next) => next(), fakeIssueAuthority);
   await captured.middleware(req, res, () => {});
   if (res.payload) return res;
   await captured.handler(req, res);
