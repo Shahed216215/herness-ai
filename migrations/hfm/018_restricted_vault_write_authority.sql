@@ -141,6 +141,7 @@ CREATE POLICY hfm_writer_memory_version_insert_scope
         AND lifecycle = 'PENDING_REVIEW'
         AND trust_status = 'SOURCE_RECORDED'
         AND integrity_status = 'VERIFIED'
+        AND revision = 1
         AND current_setting('mira.operation', true) = 'memory.vault.write'
       )
     )
@@ -152,6 +153,7 @@ CREATE POLICY hfm_writer_memory_version_insert_scope
         AND parent_record.record_type = memory_record_versions.record_type
         AND parent_record.schema_version = memory_record_versions.schema_version
         AND parent_record.classification = memory_record_versions.classification
+        AND parent_record.revision = memory_record_versions.revision
     )
     AND EXISTS (
       SELECT 1 FROM mira_hfm.operation_authorities authority_row
