@@ -891,6 +891,17 @@ async function createTaskPlan(
       typeof options.retrieveWorkLearning !== "function") {
     throw new Error("HFM_WORK_LEARNING_RUNTIME_REQUIRED");
   }
+  if (hfmWorkLearningEnabled &&
+      typeof options.preflightWorkLearning !== "function") {
+    throw new Error("HFM_WORK_LEARNING_PREFLIGHT_REQUIRED");
+  }
+
+  // Verify the live standing grant and commit its audited HFM read before
+  // task understanding/model work begins. The verified snapshot is reused
+  // below so the planner does not perform a second retrieval.
+  const hfmPreflight = hfmWorkLearningEnabled
+    ? await options.preflightWorkLearning()
+    : null;
 
   const understood =
     await understandTask(
@@ -912,7 +923,7 @@ async function createTaskPlan(
           count: 0,
           status: "SKIPPED_INFEASIBLE_TASK"
         }
-      : await options.retrieveWorkLearning({ task: normalizedTask });
+      : await options.retrieveWorkLearning({ task: normalizedTask, preflight: hfmPreflight });
     if (!hfmWorkLearning || !Array.isArray(hfmWorkLearning.transfers) ||
         !Number.isInteger(hfmWorkLearning.count)) {
       throw new Error("HFM_WORK_LEARNING_RETRIEVAL_INVALID");
