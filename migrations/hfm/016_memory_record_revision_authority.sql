@@ -130,7 +130,7 @@ GRANT UPDATE (
 
 -- Allow memory.update to append a new immutable version without changing trust state,
 -- identity, classification, lifecycle, ownership, or creation time.
-CREATE OR REPLACE FUNCTION mira_hfm.guard_memory_lifecycle_only_update()
+CREATE OR REPLACE FUNCTION mira_hfm.guard_memory_record_update()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
@@ -138,6 +138,17 @@ DECLARE
   operation_name TEXT := NULLIF(current_setting('mira.operation', true), '');
   actor_name TEXT := NULLIF(current_setting('mira.actor_id', true), '');
 BEGIN
+  -- Preserve the identity invariants enforced by migration 004's existing trigger.
+  IF NEW.memory_id IS DISTINCT FROM OLD.memory_id
+     OR NEW.project_id IS DISTINCT FROM OLD.project_id
+     OR NEW.owner_actor_id IS DISTINCT FROM OLD.owner_actor_id
+     OR NEW.record_type IS DISTINCT FROM OLD.record_type
+     OR NEW.schema_version IS DISTINCT FROM OLD.schema_version
+     OR NEW.classification IS DISTINCT FROM OLD.classification
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+    RAISE EXCEPTION 'HFM_MEMORY_RECORD_IDENTITY_IMMUTABLE';
+  END IF;
+
   IF operation_name = 'memory.update' THEN
     IF OLD.lifecycle <> 'ACTIVE'
        OR NEW.lifecycle IS DISTINCT FROM OLD.lifecycle
@@ -182,7 +193,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION mira_hfm.guard_memory_lifecycle_only_update() FROM PUBLIC;
+REVOKE ALL ON FUNCTION mira_hfm.guard_memory_record_update() FROM PUBLIC;
 
 COMMENT ON POLICY hfm_writer_memory_record_update_scope ON mira_hfm.memory_records IS
   'Requires active owner, active actor membership with exact memory.update/trash/restore permission, consumed one-time authority, exact record resource, and non-RESTRICTED classification. memory.update preserves trust and lifecycle identity.';
