@@ -46,6 +46,21 @@ function deriveIdempotencyKey(taskId, toolCallId, toolName) {
     .digest('hex');
 }
 
+function normalizeIntentText(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^\\p{L}\\p{N}\\s]/gu, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+function isUserAuthoredMemoryContent(userIntent, content) {
+  const normalizedIntent = normalizeIntentText(userIntent);
+  const normalizedContent = normalizeIntentText(content);
+  return Boolean(normalizedContent && normalizedIntent.includes(normalizedContent));
+}
+
 function normalizeSourceUrl(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 2048) {
     fail('HFM_KNOWLEDGE_SOURCE_URL_INVALID');
@@ -72,6 +87,9 @@ function buildCanonicalMemoryRecord(options = {}) {
   const kind = options.kind;
   if (!['memory_save', 'knowledge_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
   const body = boundedText(options.content, MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
+  if (kind === 'memory_save' && !isUserAuthoredMemoryContent(options.userIntent, body)) {
+    fail('HFM_MEMORY_SAVE_CONTENT_NOT_PRESENT_IN_USER_INTENT');
+  }
   let content = body;
   let sourceType = 'manual';
   let sourceId = 'user-confirmed-memory';
@@ -211,6 +229,8 @@ async function saveHfmMemoryRecord(options = {}) {
 
 module.exports = Object.freeze({
   hasExplicitSaveIntent,
+  normalizeIntentText,
+  isUserAuthoredMemoryContent,
   deriveIdempotencyKey,
   normalizeSourceUrl,
   buildCanonicalMemoryRecord,
