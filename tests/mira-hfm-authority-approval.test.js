@@ -143,6 +143,10 @@ const env = {
   );
   console.log('HFM_APPROVAL_ADMIN_SUBJECT_MISMATCH_BLOCK=PASS');
 
+  const approvalService = fs.readFileSync(path.join(__dirname, '..', 'services/mira-hfm-authority-approval.js'), 'utf8');
+  assert.doesNotMatch(approvalService, /UPDATE mira_hfm\.authority_approval_nonces[\s\S]{0,900}RETURNING/i);
+  console.log('HFM_APPROVAL_NONCE_CONSUMPTION_DOES_NOT_BYPASS_POST_UPDATE_RLS=PASS');
+
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/009_authority_approval_nonce_registry.sql'), 'utf8');
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migration, /FORCE ROW LEVEL SECURITY/);
