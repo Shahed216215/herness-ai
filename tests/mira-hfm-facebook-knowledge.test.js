@@ -92,6 +92,6 @@ test('missing web-search provider returns manual-import fallback without making 
   assert.equal(result.fallback, 'MANUAL_IMPORT_REQUIRED');
   assert.deepEqual(result.results, []);
 });
-\ntest('tokenizer handles Bengali and English Unicode terms', () => {
+test('tokenizer handles Bengali and English Unicode terms', () => {
   assert.deepEqual(tokenize('AI প্রযুক্তি এবং Python'), ['ai', 'প্রযুক্তি', 'এবং', 'python']);
 });
