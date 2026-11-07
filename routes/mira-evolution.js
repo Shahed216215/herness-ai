@@ -612,6 +612,22 @@ function registerMiraEvolutionRoutes(
 ) {
   const router = express.Router();
 
+  // Evolution can stage/apply repository resources and must not reach legacy
+  // Memory/Knowledge stores while HFM read-only authority is active.
+  router.use((req, res, next) => {
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+      return res.status(403).json({
+        success: false,
+        blocked: true,
+        code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_EVOLUTION",
+        reason: "Legacy Evolution is unavailable while HFM grants memory.read only."
+      });
+    }
+    return next();
+  });
+
+
   router.get(
     "/status",
     (req, res) => {
