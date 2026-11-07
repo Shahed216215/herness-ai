@@ -37,6 +37,8 @@ const {
   getSkillTools
 } = require("../capability-profile");
 
+const { retrieveHfmWorkLearning } = require("./mira-hfm-work-learning-runtime");
+
 /*
  * Stage 5.4
  *
@@ -1174,13 +1176,32 @@ async function executeWork(
       planningOnly: true
     };
   } else {
+    const plannerOptions = {
+      persist: options.persist !== false
+    };
+    if (process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+      if (!options.hfmRequest ||
+          typeof options.getHfmMemoryReadRuntime !== "function") {
+        throw new Error("HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED");
+      }
+      plannerOptions.retrieveWorkLearning = async ({ task }) => {
+        const runtime = await options.getHfmMemoryReadRuntime();
+        if (!runtime || runtime.status !== "MEMORY_READ_READY" ||
+            !runtime.pool || typeof runtime.pool.connect !== "function") {
+          throw new Error("HFM_WORK_LEARNING_MEMORY_READER_NOT_READY");
+        }
+        return retrieveHfmWorkLearning({
+          req: options.hfmRequest,
+          pool: runtime.pool,
+          task,
+          env: process.env
+        });
+      };
+    }
     planning =
       await createTaskPlan(
         input,
-        {
-          persist:
-            options.persist !== false
-        }
+        plannerOptions
       );
   }
 
