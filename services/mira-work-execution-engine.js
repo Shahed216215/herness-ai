@@ -39,6 +39,7 @@ const {
 
 const { retrieveHfmWorkLearning } = require("./mira-hfm-work-learning-runtime");
 const { preflightHfmStandingRead } = require("./mira-hfm-work-preflight");
+const { retrieveProjectMemory } = require("./mira-hfm-authorized-memory-reader");
 
 /*
  * Stage 5.4
@@ -1283,7 +1284,18 @@ async function executeWork(
           pool: hfmRuntime.pool,
           task,
           env: process.env,
-          readMemory: async () => preflight
+          readMemory: async ({ cursor } = {}) => cursor
+            ? retrieveProjectMemory({
+                pool: hfmRuntime.pool,
+                req: options.hfmRequest,
+                standingReadAuthority: true,
+                recordTypes: ["learning_note", "knowledge_item"],
+                lifecycle: "ACTIVE",
+                limit: 100,
+                cursor,
+                env: process.env
+              })
+            : preflight
         });
     }
     planning =
