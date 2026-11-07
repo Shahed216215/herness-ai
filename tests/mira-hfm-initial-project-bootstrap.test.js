@@ -115,6 +115,19 @@ const pool = { async connect() { return client; } };
   assert.doesNotMatch(migration, /GRANT[^;]+UPDATE/i);
   assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
   assert.ok(migration.includes("event_type = 'PROJECT_BOOTSTRAPPED'"));
+  assert.match(
+    migration,
+    /IF EXISTS\s*\(\s*SELECT 1 FROM mira_hfm\.project_owners\s*\)\s*OR EXISTS \(SELECT 1 FROM mira_hfm\.project_memberships\)\s*OR EXISTS \(SELECT 1 FROM mira_hfm\.operation_authorities\)\s*OR EXISTS \(SELECT 1 FROM mira_hfm\.memory_records\)\s*THEN\s*RAISE EXCEPTION 'HFM_BOOTSTRAP_REQUIRES_EMPTY_PROJECT_AND_MEMORY_REGISTRIES'/s
+  );
+  assert.ok(
+    migration.indexOf("HFM_BOOTSTRAP_REQUIRES_EMPTY_PROJECT_AND_MEMORY_REGISTRIES") <
+    migration.indexOf("CREATE ROLE mira_hfm_bootstrap_operator")
+  );
+  assert.ok(
+    migration.indexOf("HFM_BOOTSTRAP_REQUIRES_EMPTY_PROJECT_AND_MEMORY_REGISTRIES") <
+    migration.indexOf("CREATE TABLE mira_hfm.bootstrap_registry")
+  );
+  console.log('HFM_BOOTSTRAP_MIGRATION_REFUSES_NONEMPTY_STAGING_REGISTRIES=PASS');
   console.log('HFM_BOOTSTRAP_MIGRATION_SINGLE_USE_RLS_INSERT_ONLY=PASS');
 
   assert.equal(getHfmBootstrapConfig({}).enabled, false);
