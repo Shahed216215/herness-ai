@@ -26,6 +26,7 @@ function validatePage(page, expected = null) {
     fail('HFM_STANDING_READ_PAGE_AUTHORIZATION_REQUIRED');
   }
   const context = page.hostAuthorizationContext;
+  const now = Date.now();
   if (typeof page.projectId !== 'string' || !page.projectId ||
       context.projectId !== page.projectId ||
       page.standingAuthorityId !== context.authorityRef ||
@@ -36,8 +37,11 @@ function validatePage(page, expected = null) {
       typeof context.requestId !== 'string' || !context.requestId ||
       typeof context.purpose !== 'string' || !context.purpose ||
       typeof context.issuedAt !== 'string' || !Number.isFinite(Date.parse(context.issuedAt)) ||
+      Date.parse(context.issuedAt) > now ||
       typeof context.expiresAt !== 'string' || !Number.isFinite(Date.parse(context.expiresAt)) ||
-      typeof page.scanStartedAt !== 'string' || !Number.isFinite(Date.parse(page.scanStartedAt))) {
+      Date.parse(context.expiresAt) <= now ||
+      typeof page.scanStartedAt !== 'string' || !Number.isFinite(Date.parse(page.scanStartedAt)) ||
+      Date.parse(page.scanStartedAt) > now) {
     fail('HFM_STANDING_READ_PAGE_CONTEXT_INVALID');
   }
   const count = page.count === undefined ? page.records.length : page.count;
