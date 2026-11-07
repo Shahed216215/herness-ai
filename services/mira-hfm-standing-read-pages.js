@@ -13,6 +13,16 @@ function fail(code) {
   throw error;
 }
 
+function timestampCompareToNow(value, nowMs) {
+  if (typeof value !== 'string') return null;
+  const microsecond = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{6}Z$/.test(value);
+  const nowIso = new Date(nowMs).toISOString().slice(0, 23) + '000Z';
+  if (microsecond) return value < nowIso ? -1 : value > nowIso ? 1 : 0;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed < nowMs ? -1 : parsed > nowMs ? 1 : 0;
+}
+
 function validatePage(page, expected = null, now = new Date()) {
   if (!page || page.status !== 'AUTHORIZED_AND_COMMITTED' ||
       page.standingAuthority !== true ||
@@ -37,12 +47,12 @@ function validatePage(page, expected = null, now = new Date()) {
       typeof context.authorityRef !== 'string' || !context.authorityRef ||
       typeof context.requestId !== 'string' || !context.requestId ||
       typeof context.purpose !== 'string' || !context.purpose ||
-      typeof context.issuedAt !== 'string' || !Number.isFinite(Date.parse(context.issuedAt)) ||
-      Date.parse(context.issuedAt) > nowMs ||
-      typeof context.expiresAt !== 'string' || !Number.isFinite(Date.parse(context.expiresAt)) ||
-      Date.parse(context.expiresAt) <= nowMs ||
-      typeof page.scanStartedAt !== 'string' || !Number.isFinite(Date.parse(page.scanStartedAt)) ||
-      Date.parse(page.scanStartedAt) > nowMs) {
+      timestampCompareToNow(context.issuedAt, nowMs) === null ||
+      timestampCompareToNow(context.issuedAt, nowMs) > 0 ||
+      timestampCompareToNow(context.expiresAt, nowMs) === null ||
+      timestampCompareToNow(context.expiresAt, nowMs) <= 0 ||
+      timestampCompareToNow(page.scanStartedAt, nowMs) === null ||
+      timestampCompareToNow(page.scanStartedAt, nowMs) > 0) {
     fail('HFM_STANDING_READ_PAGE_CONTEXT_INVALID');
   }
   const count = page.count === undefined ? page.records.length : page.count;
