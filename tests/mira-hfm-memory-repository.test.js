@@ -274,7 +274,7 @@ test('project-scoped list supports an allowlisted social-draft filter', async ()
   const client = fakeClient({
     query: async (sql, params) => {
       if (sql.startsWith('SELECT memory_id') && sql.includes('ORDER BY updated_at')) {
-        assert.deepEqual(params, ['project-001', 'ACTIVE', ['social_post_draft'], 25]);
+        assert.deepEqual(params, ['project-001', 'ACTIVE', ['social_post_draft'], 25, false]);
         return { rowCount: 1, rows: [row] };
       }
       return { rowCount: 0, rows: [] };
@@ -300,6 +300,64 @@ test('project-scoped list supports an allowlisted social-draft filter', async ()
     }),
     error => error.code === 'HFM_MEMORY_RECORD_TYPE_FILTER_INVALID'
   );
+});
+
+test('standing-read repository context is limited to active Learning/Knowledge and excludes restricted records', async () => {
+  const standingContext = {
+    ...context,
+    operation: 'memory.read',
+    resource: 'memory:project:project-001',
+    authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
+  };
+  let queryCount = 0;
+  const client = {
+    async query(sql, params) {
+      queryCount += 1;
+      assert.match(sql, /classification <> 'RESTRICTED'/);
+      assert.deepEqual(params, [
+        'project-001', 'ACTIVE', ['learning_note', 'knowledge_item'], 25, true
+      ]);
+      return { rowCount: 0, rows: [] };
+    }
+  };
+
+  await assert.rejects(
+    repository.listMemoryRecords({
+      client, context: standingContext, allowPrivateRead: true, env
+    }),
+    error => error.code === 'HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID'
+  );
+  await assert.rejects(
+    repository.listMemoryRecords({
+      client, context: standingContext, recordType: 'social_post_draft',
+      allowPrivateRead: true, env
+    }),
+    error => error.code === 'HFM_STANDING_READ_RECORD_TYPE_SCOPE_INVALID'
+  );
+  await assert.rejects(
+    repository.listMemoryRecords({
+      client, context: standingContext, recordTypes: ['learning_note'],
+      lifecycle: 'TRASHED', allowPrivateRead: true, env
+    }),
+    error => error.code === 'HFM_STANDING_READ_LIFECYCLE_SCOPE_INVALID'
+  );
+  await assert.rejects(
+    repository.listMemoryRecords({
+      client, context: standingContext,
+      recordTypes: ['learning_note', 'knowledge_item'],
+      allowPrivateRead: true, allowRestrictedRead: true, env
+    }),
+    error => error.code === 'HFM_STANDING_READ_RESTRICTED_READ_NOT_ALLOWED'
+  );
+  assert.equal(queryCount, 0);
+
+  const result = await repository.listMemoryRecords({
+    client, context: standingContext,
+    recordTypes: ['learning_note', 'knowledge_item'],
+    lifecycle: 'ACTIVE', allowPrivateRead: true, env
+  });
+  assert.equal(result.count, 0);
+  assert.equal(queryCount, 1);
 });
 
 test('trash requires explicit private lifecycle grant and writes a recoverable revision', async () => {
