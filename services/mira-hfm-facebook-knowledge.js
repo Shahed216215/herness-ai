@@ -3,7 +3,7 @@
 const crypto = require('node:crypto');
 const { validateCanonicalRecord, createContentHash } = require('./mira-hfm-record-schema');
 
-const MAX_CONTENT = 50000;
+const MAX_CONTENT_BYTES = 38000;
 const MAX_SOURCE_URL = 2048;
 const SOURCE_HOSTS = new Set(['facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com']);
 
@@ -30,7 +30,7 @@ function normalizeFacebookUrl(value) {
 }
 
 function redactSensitiveText(input) {
-  if (typeof input !== 'string' || !input.trim() || input.length > MAX_CONTENT) {
+  if (typeof input !== 'string' || !input.trim() || Buffer.byteLength(input, 'utf8') > MAX_CONTENT_BYTES) {
     throw fail('HFM_KNOWLEDGE_CONTENT_INVALID');
   }
   let content = input.normalize('NFC').replace(/\r\n?/g, '\n').trim();
@@ -38,7 +38,7 @@ function redactSensitiveText(input) {
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[REDACTED_EMAIL]')
     .replace(/(?:\+?\d[\d\s().-]{7,}\d)/g, '[REDACTED_PHONE_OR_NUMBER]')
     .replace(/(?:\b\d{1,3}[,.]\d{2,}\b|৳\s?\d[\d,.]*|BDT\s?\d[\d,.]*)/gi, '[REDACTED_AMOUNT]');
-  if (!content.trim() || content.length > MAX_CONTENT) throw fail('HFM_KNOWLEDGE_CONTENT_INVALID');
+  if (!content.trim() || Buffer.byteLength(content, 'utf8') > MAX_CONTENT_BYTES) throw fail('HFM_KNOWLEDGE_CONTENT_INVALID');
   return Object.freeze({ content, redacted: content !== input.normalize('NFC').replace(/\r\n?/g, '\n').trim() });
 }
 
@@ -175,6 +175,33 @@ async function ingestFacebookKnowledge(options = {}) {
   return Object.freeze({ ...result, provenance: record.provenance, source: record.source });
 }
 
+async function appendKnowledgeSearchAudit(client, context, resultCount, queryLength) {
+  const previous = await client.query(
+    'SELECT event_hash FROM mira_hfm.memory_audit_events WHERE project_id = $1 ORDER BY event_sequence DESC LIMIT 1',
+    [context.projectId]
+  );
+  const event = {
+    eventId: crypto.randomUUID(),
+    projectId: context.projectId,
+    actorId: context.actorId,
+    operationId: context.requestId,
+    memoryId: null,
+    eventType: 'KNOWLEDGE_SEARCHED',
+    resultStatus: 'COMPLETED',
+    policyVersion: 'HFM-KNOWLEDGE-1.0.0',
+    occurredAt: new Date().toISOString(),
+    previousEventHash: previous.rows && previous.rows[0] ? previous.rows[0].event_hash : null,
+    details: { recordType: 'knowledge_item', resultCount, queryLength }
+  };
+  const eventHash = require('./mira-hfm-memory-repository').digest(event);
+  await client.query(
+    'INSERT INTO mira_hfm.memory_audit_events (event_id, project_id, actor_id, operation_id, memory_id, event_type, result_status, policy_version, occurred_at, previous_event_hash, event_hash, details) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)',
+    [event.eventId, event.projectId, event.actorId, event.operationId, null,
+      event.eventType, event.resultStatus, event.policyVersion, event.occurredAt,
+      event.previousEventHash, eventHash, JSON.stringify(event.details)]
+  );
+}
+
 async function searchFacebookKnowledge(options = {}) {
   const { client, context } = options;
   if (!client || typeof client.query !== 'function' || !context ||
@@ -212,6 +239,7 @@ async function searchFacebookKnowledge(options = {}) {
   }
   scored.sort((a, b) => b.score - a.score || a.memoryId.localeCompare(b.memoryId));
   const results = scored.slice(0, limit).map(({ score, ...item }) => Object.freeze(item));
+  await appendKnowledgeSearchAudit(client, context, results.length, query.length);
   return Object.freeze({ status: results.length ? 'FOUND' : 'NO_MATCHES', results, count: results.length });
 }
 
