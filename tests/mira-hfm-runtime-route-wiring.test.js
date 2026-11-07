@@ -16,6 +16,8 @@ const trashRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-social-draft
 const restoreRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-social-draft-restore.js'), 'utf8');
 const dailyDraftRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-daily-social-draft.js'), 'utf8');
 const writerRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-memory-postgres-runtime.js'), 'utf8');
+const writerRuntimeModulePath = require.resolve('../services/mira-hfm-memory-postgres-runtime');
+const writerRuntimeModule = require(writerRuntimeModulePath);
 
 assert.match(server, /registerMiraHfmAuthorityApprovalRoute\s*\(/);
 assert.match(server, /registerMiraHfmMemoryReadRoute\s*\(/);
@@ -28,6 +30,9 @@ assert.match(server, /createAuthorityIssuerPool/);
 assert.match(server, /createMemoryReadPool/);
 assert.match(server, /createHfmBootstrapPool/);
 assert.match(server, /createMemoryWriterPool/);
+assert.match(server, /require\(["']\.\/services\/mira-hfm-memory-postgres-runtime["']\)/);
+assert.equal(path.basename(writerRuntimeModulePath), 'mira-hfm-memory-postgres-runtime.js');
+assert.equal(typeof writerRuntimeModule.createMemoryWriterPool, 'function');
 assert.match(approvalRoute, /app\.post\('\/api\/hfm\/memory\/authorize'/);
 assert.match(memoryRoute, /app\.post\('\/api\/hfm\/memory\/read'/);
 assert.match(bootstrapRoute, /app\.post\('\/api\/hfm\/bootstrap\/initial-project'/);
