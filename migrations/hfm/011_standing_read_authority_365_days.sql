@@ -205,6 +205,7 @@ AS $
 DECLARE
   audit_event_id TEXT;
   audit_event_type TEXT;
+  prior_status TEXT;
 BEGIN
   audit_event_id := gen_random_uuid()::text;
   IF TG_OP = 'INSERT' THEN
@@ -213,6 +214,7 @@ BEGIN
     IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
       RETURN NEW;
     END IF;
+    prior_status := OLD.status;
     CASE NEW.status
       WHEN 'PAUSED' THEN audit_event_type := 'STANDING_READ_AUTHORITY_PAUSED';
       WHEN 'ACTIVE' THEN audit_event_type := 'STANDING_READ_AUTHORITY_RESUMED';
@@ -233,7 +235,7 @@ BEGIN
       'resource', NEW.resource,
       'purpose', NEW.purpose,
       'status', NEW.status,
-      'priorStatus', CASE WHEN TG_OP = 'UPDATE' THEN OLD.status ELSE NULL END,
+      'priorStatus', prior_status,
       'expiresAt', NEW.expires_at,
       'durationDays', floor(extract(epoch FROM (NEW.expires_at - NEW.valid_from)) / 86400)
     )
