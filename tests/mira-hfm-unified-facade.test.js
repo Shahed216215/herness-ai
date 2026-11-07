@@ -57,8 +57,9 @@ const report = retrieveCanonicalRecordsWithReport({
 assert.deepEqual(report.records.map(item => item.memoryId), ['memory-valid-001']);
 assert.equal(report.provenance[0].memoryId, 'memory-valid-001');
 assert.equal(report.excludedSummary.totalCandidates, 4);
-assert.equal(report.excludedSummary.eligibleCount, 2);
-assert.equal(report.excludedSummary.excludedCount, 2);
+assert.equal(report.excludedSummary.eligibleCount, 1);
+assert.equal(report.excludedSummary.excludedCount, 3);
+assert.equal(report.excludedSummary.eligibleCount + report.excludedSummary.excludedCount, report.excludedSummary.totalCandidates);
 assert.ok(calls.some(item => item.operation === 'LIST'));
 assert.ok(calls.some(item => item.operation === 'READ'));
 console.log('HFM_FACADE_LIST_READ_AUTHORIZATION_AND_FILTERING=PASS');
