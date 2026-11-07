@@ -797,7 +797,10 @@ test('trash requires explicit private lifecycle grant and writes a recoverable r
   assert.equal(update.params[2], 'TRASHED');
   assert.equal(update.params[3] !== null, true);
   assert.equal(update.params[4], context.actorId);
-  assert.ok(Date.parse(update.params[6]) > priorUpdatedAt, 'lifecycle update timestamp must advance beyond stored revision');
+  const lifecycleUpdateTimestampMs = Date.parse(update.params[6]);
+  assert.ok(lifecycleUpdateTimestampMs > priorUpdatedAt,
+    'lifecycle update timestamp must advance beyond stored revision: ' +
+    JSON.stringify({ value: update.params[6], parsed: lifecycleUpdateTimestampMs, priorUpdatedAt }));
   const versionInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions'));
   assert.ok(versionInsert);
   assert.equal(versionInsert.params[12] !== null, true);
