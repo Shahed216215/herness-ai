@@ -302,6 +302,13 @@ assert.match(server, /HFM standing authority grants memory\.read only; Knowledge
 assert.match(server, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"/);
 assert.match(server, /MIRA_HFM_MEMORY_READ_ENABLED === "true"/);
 assert.match(server, /MIRA_HFM_MEMORY_WRITE_ENABLED === "true"/);
+const adminStatusStart = server.indexOf('const sendAdminStatus');
+const adminStatusSource = server.slice(adminStatusStart, adminStatusStart + 1200);
+assert.match(adminStatusSource, /MIRA_HFM_MEMORY_READ_ENABLED === "true"/);
+assert.match(adminStatusSource, /MIRA_HFM_MEMORY_WRITE_ENABLED === "true"/);
+assert.match(adminStatusSource, /const memory = hfmReadOnlyMode/);
+assert.match(adminStatusSource, /const knowledge = hfmReadOnlyMode/);
+
 assert.match(knowledgeSearch, /recordTypes: \['knowledge_item', 'learning_note'\]/);
 assert.match(knowledgeSearch, /retrieveCanonicalRecordsWithReport/);
 assert.match(knowledgeSearch, /localFallback: false/);
