@@ -393,6 +393,9 @@ async function changeLifecycle(options, targetLifecycle) {
   );
   const row = currentResult.rows && currentResult.rows[0];
   if (!row) throw fail('HFM_MEMORY_RECORD_NOT_FOUND');
+  if (options.expectedRecordType && row.record_type !== options.expectedRecordType) {
+    throw fail('HFM_MEMORY_RECORD_TYPE_NOT_ALLOWED');
+  }
   if (targetLifecycle === 'TRASHED' && row.lifecycle === 'TRASHED') {
     throw fail('HFM_MEMORY_ALREADY_TRASHED');
   }
