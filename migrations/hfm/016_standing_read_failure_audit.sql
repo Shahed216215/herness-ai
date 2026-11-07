@@ -61,6 +61,10 @@ CREATE POLICY hfm_reader_authority_audit_request_scope
     )
   );
 
+COMMENT ON POLICY hfm_memory_reader_authority_audit_insert
+  ON mira_hfm.authority_audit_events IS
+  'Allows only one-time authority consumption or standing memory.read outcome events whose transaction-local operation, standing-read marker, and details.resource match the trusted read context.';
+
 COMMENT ON POLICY hfm_reader_authority_audit_request_scope
   ON mira_hfm.authority_audit_events IS
   'Restricts reader audit inserts to the exact project, actor, request and enumerated read outcome events.';
