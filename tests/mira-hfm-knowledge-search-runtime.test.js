@@ -63,6 +63,8 @@ const verifiedLearning = {
         driveFallback: false,
         scanStartedAt: '2026-11-07T07:59:00.000Z',
         authorityExpiresAt: hostAuthorizationContext.expiresAt,
+        standingAuthorityId: hostAuthorizationContext.authorityRef,
+        authorityExpiresAt: hostAuthorizationContext.expiresAt,
         hostAuthorizationContext
       };
     }
@@ -154,6 +156,8 @@ const verifiedLearning = {
         localFallback: false,
         driveFallback: false,
         scanStartedAt: '2026-11-07T07:59:00.000Z',
+        standingAuthorityId: hostAuthorizationContext.authorityRef,
+        authorityExpiresAt: hostAuthorizationContext.expiresAt,
         hostAuthorizationContext: { ...hostAuthorizationContext, requestId: first ? 'hfm-search-page-001' : 'hfm-search-page-002' }
       };
     }
