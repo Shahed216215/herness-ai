@@ -10,6 +10,7 @@ const { createContentHash } = require('../services/mira-hfm-record-schema');
 const PURPOSE = Object.freeze({
   IMPORT: 'facebook-knowledge-import',
   SEARCH: 'facebook-knowledge-search',
+  RESEARCH: 'facebook-public-web-search',
   READ: 'facebook-knowledge-read',
   UPDATE: 'facebook-knowledge-update',
   DELETE: 'facebook-knowledge-trash',
@@ -93,6 +94,18 @@ function registerFacebookKnowledgeRoutes(app, requireAgentAuth, options = {}) {
           now: new Date().toISOString()
         }));
       return res.status(value.status === 'DUPLICATE' ? 200 : 201).json({ ok: true, ...value });
+    } catch (error) { return sendError(res, error); }
+  });
+
+  app.get('/api/hfm/facebook-knowledge/research', requireAgentAuth, async (req, res) => {
+    try {
+      const projectId = text(req.query.projectId);
+      const value = await perform(req, req.query, 'memory.read',
+        'memory:project:' + projectId, PURPOSE.RESEARCH,
+        async () => knowledge.researchFacebookSource({
+          sourceUrl: req.query.sourceUrl
+        }));
+      return res.json({ ok: true, ...value });
     } catch (error) { return sendError(res, error); }
   });
 
