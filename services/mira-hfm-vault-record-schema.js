@@ -54,6 +54,17 @@ function validateScalar(value, path, errors, depth = 0) {
     if (/(?:-----BEGIN [A-Z ]*PRIVATE KEY-----|bearer\s+[A-Za-z0-9._~+/-]{12,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|(?:sk|pk)-[A-Za-z0-9_-]{24,}|sk_(?:live|test)_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|ya29\.[A-Za-z0-9._-]{16,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})/i.test(value)) {
       errors.push(path + '.credential_value_rejected');
     }
+    const digitsOnly = value.replace(/\D/g, '');
+    if (!path.endsWith('.phone') && !path.endsWith('.accountLast4') &&
+        /^\d{13,19}$/.test(digitsOnly)) {
+      errors.push(path + '.full_card_or_account_number_rejected');
+    }
+    if (/\b(?:bank\s+account|account\s+number|card\s+number|routing\s+number)\b.{0,12}\d{8,}/i.test(value)) {
+      errors.push(path + '.full_card_or_account_number_rejected');
+    }
+    if (/https?:\/\/[^\s]*(?:access[_-]?token|api[_-]?key|password|secret|session)=/i.test(value)) {
+      errors.push(path + '.credential_url_rejected');
+    }
     return;
   }
   if (Array.isArray(value)) {
