@@ -381,6 +381,38 @@ test('standing-read exact record lookup is project, type, lifecycle, trust and i
     }),
     error => error.code === 'HFM_STANDING_READ_RECORD_SCOPE_INVALID'
   );
+  const unexpectedRowClient = fakeClient({
+    query: async () => ({
+      rowCount: 1,
+      rows: [{
+        memory_id: expected.memoryId,
+        project_id: expected.projectId,
+        owner_actor_id: context.actorId,
+        record_type: expected.recordType,
+        schema_version: expected.schemaVersion,
+        classification: 'RESTRICTED',
+        lifecycle: 'ACTIVE',
+        revision: 1,
+        integrity_status: 'VERIFIED',
+        trust_status: 'HUMAN_VERIFIED',
+        public_payload: expected,
+        encrypted_envelope: null
+      }]
+    })
+  });
+  await assert.rejects(() => repository.getStandingReadMemoryRecord({
+    client: unexpectedRowClient,
+    context: {
+      ...context,
+      operation: 'memory.read',
+      resource: 'memory:project:project-001',
+      authorityContext: 'HFM_ACTIVE_STANDING_READ_AUTHORITY'
+    },
+    memoryId: expected.memoryId,
+    recordTypes: ['knowledge_item'],
+    env
+  }), error => error.code === 'HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+  console.log('HFM_REPOSITORY_STANDING_READ_REJECTS_UNEXPECTED_RESTRICTED_ROW=PASS');
   console.log('HFM_REPOSITORY_STANDING_READ_EXACT_RECORD_SCOPE=PASS');
 });
 
