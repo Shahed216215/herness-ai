@@ -1,17 +1,6 @@
 name: Mira HFM PostgreSQL migration integration
 
 on:
-  push:
-    branches:
-      - work/mira-hfm-v02-runtime-integration
-    paths:
-      - "migrations/hfm/**"
-      - "services/mira-hfm-authority-issuer-runtime.js"
-      - "services/mira-hfm-authority-approval.js"
-      - "services/mira-hfm-authority-transaction.js"
-      - "services/mira-hfm-standing-read-authority.js"
-      - "tests/mira-hfm-standing-read-authority*.test.js"
-      - ".github/workflows/hfm-postgres-migrations.yml"
   pull_request:
     paths:
       - "migrations/hfm/**"
