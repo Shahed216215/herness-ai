@@ -282,7 +282,7 @@ function sanitizedSourceMetadata(source = {}) {
   ]);
   const sourceId = cleanMetadataText(source.sourceId, 128);
   const unsafeSourceId = !sourceId ||
-    /^https?:\\/\\//i.test(sourceId) ||
+    /^https?:\/\//i.test(sourceId) ||
     /@|access[_-]?token|bearer/i.test(sourceId) ||
     /^(?=.*[A-Za-z])[A-Za-z0-9_-]{32,}$/.test(sourceId);
   return Object.freeze({
