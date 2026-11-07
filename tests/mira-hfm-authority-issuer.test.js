@@ -130,6 +130,8 @@ const pool = { async connect() { return client; } };
   assert.match(migration, /GRANT INSERT ON TABLE mira_hfm\.operation_authorities/);
   assert.match(migration, /event_type = 'AUTHORITY_ISSUED'/);
   assert.match(migration, /operation = 'memory\.read'/);
+  assert.match(migration, /issued_by_actor_id = NULLIF\\(current_setting\\('mira\\.actor_id'/);
+  assert.match(migration, /resource = 'memory:project:' \\|\\| NULLIF/);
   assert.match(migration, /expires_at <= clock_timestamp\(\) \+ interval '5 minutes'/);
   assert.doesNotMatch(migration, /GRANT[^;]+UPDATE/i);
   assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
