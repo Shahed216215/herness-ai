@@ -126,6 +126,8 @@ CREATE POLICY hfm_authority_issuer_authority_insert
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND issued_by_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), '')
     AND status = 'ISSUED'
     AND operation = 'memory.read'
     AND valid_from <= clock_timestamp()
