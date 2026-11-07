@@ -89,7 +89,7 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
-      AND (SELECT oid FROM pg_roles WHERE rolname = 'mira_hfm_memory_reader') = ANY(roles)
+      AND 'mira_hfm_memory_reader' = ANY(roles)
   ) THEN
     RAISE EXCEPTION 'HFM_MEMORY_READER_PREEXISTING_POLICY_CONFLICT';
   END IF;
