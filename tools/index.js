@@ -76,7 +76,7 @@ async function executeHfmMemorySave(kind, args, trustedContext) {
     driveFallback: false,
     message: result.lifecycle === "PENDING_REVIEW"
       ? "Knowledge source saved privately as pending review; it is excluded from trusted search until verified."
-      : "Memory saved privately to the canonical HFM repository."
+      : "Memory saved privately to the canonical HFM repository; eligible for trusted search when standing-read mode is enabled."
   });
 }
 
