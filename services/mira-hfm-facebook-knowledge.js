@@ -107,7 +107,7 @@ async function ingestFacebookKnowledge(options = {}) {
   const { client, context } = options;
   if (!client || typeof client.query !== 'function' || !context ||
       context.authorityContext !== 'HFM_CONSUMED_ONE_TIME_AUTHORITY' ||
-      context.operation !== 'memory.write' || context.resource !== 'memory:project:' + context.projectId) {
+      context.operation !== 'memory.write' || typeof options.memoryId !== 'string' || context.resource !== 'memory:' + options.memoryId) {
     throw fail('HFM_KNOWLEDGE_CONSUMED_AUTHORITY_REQUIRED');
   }
   const record = buildKnowledgeRecord({ ...options, projectId: context.projectId });
@@ -115,7 +115,7 @@ async function ingestFacebookKnowledge(options = {}) {
   if (duplicateId) return Object.freeze({ status: 'DUPLICATE', memoryId: duplicateId });
   const repository = require('./mira-hfm-memory-repository');
   const result = await repository.createMemoryRecord({
-    client, context: { ...context, operation: 'memory.write', resource: 'memory:' + record.memoryId },
+    client, context,
     record, idempotencyKey: options.idempotencyKey,
     env: options.env
   });
