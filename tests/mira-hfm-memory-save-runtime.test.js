@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const {
   hasExplicitSaveIntent,
+  hasExplicitDailyActivitySaveIntent,
   isUserAuthoredMemoryContent,
   deriveIdempotencyKey,
   normalizeSourceUrl,
@@ -68,6 +69,10 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSaveIntent('Save this daily activity summary to Mira Memory.'), true);
   assert.equal(hasExplicitSaveIntent('Do not record daily activity.'), false);
   assert.equal(hasExplicitSaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো।'), true);
+  assert.equal(hasExplicitDailyActivitySaveIntent('Save this daily activity summary to Mira Memory.'), true);
+  assert.equal(hasExplicitDailyActivitySaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো।'), true);
+  assert.equal(hasExplicitDailyActivitySaveIntent('Remember this: I completed Python practice.'), false);
+  assert.equal(hasExplicitDailyActivitySaveIntent('Do not save daily activity.'), false);
   assert.equal(hasExplicitSaveIntent('Store this in my memory.'), true);
   assert.equal(hasExplicitSaveIntent('Add this to Mira memory.'), true);
   assert.equal(hasExplicitSaveIntent('Do not remember this.'), false);
@@ -225,6 +230,13 @@ function baseOptions(overrides = {}) {
     content: 'Client email and bank account details were shared.',
     userIntent: 'Save this daily activity summary: Client email and bank account details were shared.'
   }), /HFM_DAILY_ACTIVITY_SENSITIVE_CONTENT_REQUIRES_VAULT/);
+  assert.throws(() => buildCanonicalMemoryRecord({
+    projectId: 'project-001',
+    memoryId: 'mem-daily-activity-no-specific-intent',
+    kind: 'daily_activity_save',
+    content: 'Completed a Python practice task.',
+    userIntent: 'Remember this: Completed a Python practice task.'
+  }), /HFM_DAILY_ACTIVITY_EXPLICIT_USER_INTENT_REQUIRED/);
   assert.throws(() => buildCanonicalMemoryRecord({
     projectId: 'project-001',
     memoryId: 'mem-daily-activity-not-user-authored',
