@@ -8,6 +8,29 @@ const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), '
 const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
 
 const { assertLegacyLearningStorageAllowed } = require('../services/learning');
+const { assertLegacyStorageDisabled } = require('../services/mira-hfm-legacy-storage-guard');
+assert.doesNotThrow(() => assertLegacyStorageDisabled({}));
+assert.throws(
+  () => assertLegacyStorageDisabled({ MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }),
+  error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
+);
+assert.throws(
+  () => assertLegacyStorageDisabled({ MIRA_HFM_WORK_LEARNING_ENABLED: 'true' }),
+  error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
+);
+const knowledgeStore = read('knowledge.js');
+const memoryStore = read('memory.js');
+const driveStore = read('google-drive.js');
+assert.match(knowledgeStore, /function loadKnowledge\(\) \{\s*assertLegacyStorageDisabled\(\);/);
+assert.match(knowledgeStore, /function saveLocalKnowledge\(data\) \{\s*assertLegacyStorageDisabled\(\);/);
+assert.match(memoryStore, /function loadMemory\(\) \{\s*assertLegacyStorageDisabled\(\);/);
+assert.match(memoryStore, /function saveMemory\(memory\) \{\s*assertLegacyStorageDisabled\(\);/);
+for (const method of ['saveKnowledgeToDrive', 'loadKnowledgeFromDrive', 'saveMemoryToDrive', 'loadMemoryFromDrive']) {
+  const start = driveStore.indexOf('async function ' + method);
+  assert.ok(start >= 0 && driveStore.slice(start, start + 140).includes('assertLegacyStorageDisabled();'));
+}
+console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_JSON_AND_DRIVE_READ_WRITE=PASS');
+
 assert.doesNotThrow(() => assertLegacyLearningStorageAllowed({}));
 assert.throws(
   () => assertLegacyLearningStorageAllowed({ MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }),
