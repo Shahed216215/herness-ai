@@ -19,7 +19,7 @@ const { createAuthorityIssuerPool } = require("./services/mira-hfm-authority-iss
 const { registerMiraHfmAuthorityApprovalRoute } = require("./routes/mira-hfm-authority-approval");
 const { registerMiraHfmStandingReadAuthorityRoutes } = require("./routes/mira-hfm-standing-read-authority");
 const { createMemoryReadPool } = require("./services/mira-hfm-memory-read-runtime");
-const { searchHfmKnowledge } = require("./services/mira-hfm-knowledge-search-runtime");
+const { searchHfmKnowledge, getHfmKnowledgeById } = require("./services/mira-hfm-knowledge-search-runtime");
 const { createMemoryWriterPool } = require("./services/mira-hfm-memory-postgres-runtime");
 const { persistConversationPair } = require("./services/mira-conversation-memory-persistence");
 const { registerMiraHfmSocialDraftTrashRoute } = require("./routes/mira-hfm-social-draft-trash");
@@ -1475,14 +1475,13 @@ app.get(
         if (!runtime || runtime.status !== "MEMORY_READ_READY" || !runtime.pool) {
           return res.status(503).json({ success: false, error: "HFM Memory reader is not ready." });
         }
-        const result = await searchHfmKnowledge({
+        const result = await getHfmKnowledgeById({
           req,
           pool: runtime.pool,
-          query: id,
-          limit: 100,
+          memoryId: id,
           env: process.env
         });
-        entry = result.results.find(item => item.id === id || item.title === id);
+        entry = result.entry;
       } else {
         const knowledge = getKnowledge();
         entry = knowledge.find(item => item && String(item.id || "") === id);
