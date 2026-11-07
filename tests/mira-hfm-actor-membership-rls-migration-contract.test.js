@@ -20,7 +20,8 @@ test('015 is a source-only RLS hardening migration with no application data muta
   assert.match(migration, /BEGIN;/);
   assert.match(migration, /COMMIT;/);
   assert.doesNotMatch(migration, /\b(?:INSERT\s+INTO|UPDATE\s+mira_hfm\.|DELETE\s+FROM\s+mira_hfm\.|TRUNCATE)\b/i);
-  assert.doesNotMatch(migration, /\b(?:GRANT|REVOKE|CREATE\s+ROLE|ALTER\s+ROLE)\b/i);
+  assert.doesNotMatch(migration, /\b(?:CREATE\s+ROLE|ALTER\s+ROLE)\b/i);
+  assert.doesNotMatch(migration, /\bGRANT\s+UPDATE\s+ON\s+TABLE\b/i);
 });
 
 test('writer RLS requires active owner, actor membership permission, exact resource and consumed authority', () => {
@@ -49,22 +50,22 @@ test('writer RLS requires active owner, actor membership permission, exact resou
 });
 
 test('writer UPDATE privileges are column-scoped and lifecycle/idempotency mutations are guarded', () => {
-  assert.match(migration, /REVOKE UPDATE ON TABLE mira_hfm\\.operation_authorities FROM mira_hfm_memory_writer/);
-  assert.match(migration, /GRANT UPDATE \\(status, consumed_at\\)[\\s\\S]*?mira_hfm_memory_writer/);
-  assert.match(migration, /REVOKE UPDATE ON TABLE mira_hfm\\.memory_records FROM mira_hfm_memory_writer/);
-  assert.match(migration, /GRANT UPDATE \\(lifecycle, trashed_at, trashed_by_actor_id, revision, updated_at\\)[\\s\\S]*?mira_hfm_memory_writer/);
-  assert.match(migration, /REVOKE UPDATE ON TABLE mira_hfm\\.memory_operation_registry FROM mira_hfm_memory_writer/);
-  assert.match(migration, /GRANT UPDATE \\(status, result_code, updated_at\\)[\\s\\S]*?mira_hfm_memory_writer/);
+  assert.match(migration, /REVOKE UPDATE ON TABLE mira_hfm\.operation_authorities FROM mira_hfm_memory_writer/);
+  assert.match(migration, /GRANT UPDATE \(status, consumed_at\)[\s\S]*?mira_hfm_memory_writer/);
+  assert.match(migration, /REVOKE UPDATE ON TABLE mira_hfm\.memory_records FROM mira_hfm_memory_writer/);
+  assert.match(migration, /GRANT UPDATE \(lifecycle, trashed_at, trashed_by_actor_id, revision, updated_at\)[\s\S]*?mira_hfm_memory_writer/);
+  assert.match(migration, /REVOKE UPDATE ON TABLE mira_hfm\.memory_operation_registry FROM mira_hfm_memory_writer/);
+  assert.match(migration, /GRANT UPDATE \(status, result_code, updated_at\)[\s\S]*?mira_hfm_memory_writer/);
   assert.match(migration, /memory_records_lifecycle_update_guard/);
-  assert.match(migration, /NEW\\.public_payload IS DISTINCT FROM OLD\\.public_payload/);
-  assert.match(migration, /NEW\\.encrypted_envelope IS DISTINCT FROM OLD\\.encrypted_envelope/);
-  assert.match(migration, /NEW\\.trust_status IS DISTINCT FROM OLD\\.trust_status/);
+  assert.match(migration, /NEW\.public_payload IS DISTINCT FROM OLD\.public_payload/);
+  assert.match(migration, /NEW\.encrypted_envelope IS DISTINCT FROM OLD\.encrypted_envelope/);
+  assert.match(migration, /NEW\.trust_status IS DISTINCT FROM OLD\.trust_status/);
   assert.match(migration, /memory_operation_registry_update_guard/);
-  assert.match(migration, /NEW\\.payload_digest IS DISTINCT FROM OLD\\.payload_digest/);
-  assert.match(migration, /OLD\\.status <> 'REQUESTED'/);
-  assert.match(migration, /NEW\\.status <> 'COMPLETED'/);
-  assert.match(migration, /authority_row\\.consumed_at IS NOT NULL/);
-  assert.match(migration, /authority_row\\.expires_at > clock_timestamp\\(\\)/);
+  assert.match(migration, /NEW\.payload_digest IS DISTINCT FROM OLD\.payload_digest/);
+  assert.match(migration, /OLD\.status <> 'REQUESTED'/);
+  assert.match(migration, /NEW\.status <> 'COMPLETED'/);
+  assert.match(migration, /authority_row\.consumed_at IS NOT NULL/);
+  assert.match(migration, /authority_row\.expires_at > clock_timestamp\(\)/);
 });
 
 test('reader RLS requires memory.read membership and a live standing or consumed authority', () => {
