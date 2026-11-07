@@ -322,3 +322,10 @@ HFM v0.2 is NOT complete. No production migration, data write, credential change
 - New tests cover cross-page ranking, Work Learning aggregation, cursor replay, duplicate records, project/actor/authority/snapshot drift, write/fallback rejection, and incomplete-scan behavior.
 
 - The shared page collector additionally requires the returned standing authority ID and expiry to match the transaction-bound host authorization context, and rejects repeated per-page audit request IDs. The Work preflight independently verifies the same authority metadata and scan-start timestamp before planning.
+
+
+## Exact Knowledge detail and current CI checkpoint — 2026-11-07
+
+- The admin exact Knowledge detail route now uses a project-scoped exact-ID lookup under a fresh standing memory.read transaction and per-read audit, rather than searching only the bounded newest 2,000-record window. The query and adapter both enforce Knowledge/Learning type, ACTIVE lifecycle, non-RESTRICTED classification, VERIFIED integrity, and CONTENT_VERIFIED/HUMAN_VERIFIED trust; the canonical host facade still applies per-record authorization before returning the entry.
+- Exact PR-head commit d1f2c12193ad037a61af2b598cd4761e0f1f3d86 completed 9/9 GitHub Actions workflows successfully after the exact-ID reader, returned-row defense-in-depth checks, and route wiring tests. The repository contract suite, offline/full regression, HFM foundation, dependency remediation, PostgreSQL migration integration, Render host binding/HTTP smoke, session persistence, Run Agent regression, approval diagnostic, and Competitor Intelligence all completed successfully.
+- No live Neon migration, database write, Render configuration change, deployment, PR merge, credential change, Facebook API operation, or publishing action was performed.
