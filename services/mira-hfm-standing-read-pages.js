@@ -13,7 +13,7 @@ function fail(code) {
   throw error;
 }
 
-function validatePage(page, expected = null) {
+function validatePage(page, expected = null, now = new Date()) {
   if (!page || page.status !== 'AUTHORIZED_AND_COMMITTED' ||
       page.standingAuthority !== true ||
       page.authorityConsumed !== false ||
@@ -26,7 +26,8 @@ function validatePage(page, expected = null) {
     fail('HFM_STANDING_READ_PAGE_AUTHORIZATION_REQUIRED');
   }
   const context = page.hostAuthorizationContext;
-  const now = Date.now();
+  const nowMs = now instanceof Date && Number.isFinite(now.getTime()) ? now.getTime() : NaN;
+  if (!Number.isFinite(nowMs)) fail('HFM_STANDING_READ_PAGE_CONTEXT_INVALID');
   if (typeof page.projectId !== 'string' || !page.projectId ||
       context.projectId !== page.projectId ||
       page.standingAuthorityId !== context.authorityRef ||
@@ -37,11 +38,11 @@ function validatePage(page, expected = null) {
       typeof context.requestId !== 'string' || !context.requestId ||
       typeof context.purpose !== 'string' || !context.purpose ||
       typeof context.issuedAt !== 'string' || !Number.isFinite(Date.parse(context.issuedAt)) ||
-      Date.parse(context.issuedAt) > now ||
+      Date.parse(context.issuedAt) > nowMs ||
       typeof context.expiresAt !== 'string' || !Number.isFinite(Date.parse(context.expiresAt)) ||
-      Date.parse(context.expiresAt) <= now ||
+      Date.parse(context.expiresAt) <= nowMs ||
       typeof page.scanStartedAt !== 'string' || !Number.isFinite(Date.parse(page.scanStartedAt)) ||
-      Date.parse(page.scanStartedAt) > now) {
+      Date.parse(page.scanStartedAt) > nowMs) {
     fail('HFM_STANDING_READ_PAGE_CONTEXT_INVALID');
   }
   const count = page.count === undefined ? page.records.length : page.count;
@@ -75,7 +76,7 @@ function validatePage(page, expected = null) {
 }
 
 async function collectStandingReadPages({
-  readMemory, readOptions = {}, firstPage, maxPages = MAX_STANDING_READ_PAGES
+  readMemory, readOptions = {}, firstPage, maxPages = MAX_STANDING_READ_PAGES, now = new Date()
 } = {}) {
   if (typeof readMemory !== 'function') fail('HFM_STANDING_READ_PAGE_READER_REQUIRED');
   if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > MAX_STANDING_READ_PAGES) {
@@ -93,7 +94,7 @@ async function collectStandingReadPages({
   let candidateScanCount = 0;
 
   while (page) {
-    const validated = validatePage(page, expected);
+    const validated = validatePage(page, expected, now);
     if (seenRequestIds.has(validated.context.requestId)) {
       fail('HFM_STANDING_READ_PAGE_AUDIT_REQUEST_REPLAY');
     }
