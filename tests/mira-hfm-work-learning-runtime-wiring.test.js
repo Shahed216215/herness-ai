@@ -250,7 +250,7 @@ assert.match(server, /app\.get\(\s*"\/api\/admin\/knowledge\/:id"/);
 assert.match(server, /HFM standing authority grants memory\.read only; Knowledge edits are not authorized/);
 assert.match(server, /HFM standing authority grants memory\.read only; Knowledge deletion is not authorized/);
 assert.match(server, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true"/);
-assert.match(knowledgeSearch, /recordTypes: \['knowledge_item'\]/);
+assert.match(knowledgeSearch, /recordTypes: \['knowledge_item', 'learning_note'\]/);
 assert.match(knowledgeSearch, /retrieveCanonicalRecordsWithReport/);
 assert.match(knowledgeSearch, /localFallback: false/);
 assert.match(knowledgeSearch, /driveFallback: false/);
