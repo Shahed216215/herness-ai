@@ -34,6 +34,7 @@ const pendingLearning = buildCanonicalMemoryRecord({
 
 const verifiedLearning = {
   ...pendingLearning,
+  memoryId: 'mem-learning-search-verified-001',
   trust: { status: 'HUMAN_VERIFIED' },
   lifecycle: 'ACTIVE'
 };
