@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '..');
 const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const approvalRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-authority-approval.js'), 'utf8');
 const memoryRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-memory-read.js'), 'utf8');
+const standingRoute = fs.readFileSync(path.join(root, 'routes/mira-hfm-standing-read-authority.js'), 'utf8');
 const issuerRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-authority-issuer-runtime.js'), 'utf8');
 const memoryRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-memory-read-runtime.js'), 'utf8');
 const bootstrapRuntime = fs.readFileSync(path.join(root, 'services/mira-hfm-bootstrap-runtime.js'), 'utf8');
@@ -21,6 +22,7 @@ const writerRuntimeModule = require(writerRuntimeModulePath);
 
 assert.match(server, /registerMiraHfmAuthorityApprovalRoute\s*\(/);
 assert.match(server, /registerMiraHfmMemoryReadRoute\s*\(/);
+assert.match(server, /registerMiraHfmStandingReadAuthorityRoutes\s*\(/);
 assert.match(server, /registerMiraHfmInitialBootstrapRoute\s*\(/);
 assert.match(server, /registerMiraHfmSocialDraftTrashRoute\s*\(/);
 assert.match(server, /registerMiraHfmSocialDraftRestoreRoute\s*\(/);
