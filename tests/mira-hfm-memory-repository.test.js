@@ -577,7 +577,7 @@ test('standing-read repository context is limited to active Learning/Knowledge a
   const client = {
     async query(sql, params) {
       queryCount += 1;
-      if (sql.includes('AS scan_started_at')) {
+      if (sql.includes('transaction_timestamp() AT TIME ZONE')) {
         assert.equal(params, undefined);
         return { rowCount: 1, rows: [{ scan_started_at: scanStartedAt }] };
       }
