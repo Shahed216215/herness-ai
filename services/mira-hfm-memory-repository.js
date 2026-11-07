@@ -429,7 +429,7 @@ function getStandingReadMemoryRecord(options = {}) {
 function isStandingReadCursorTimestamp(value) {
   return typeof value === 'string' &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(value) &&
-    Number.isFinite(Date.parse(value.replace(/\\.(\\d{3})\\d{3}Z$/, '.$1Z')));
+    Number.isFinite(Date.parse(value.slice(0, 23) + 'Z'));
 }
 
 function decodeStandingReadPageCursor(cursor, context, recordTypes, lifecycle) {
