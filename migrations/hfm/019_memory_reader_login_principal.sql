@@ -67,7 +67,7 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_auth_members
     WHERE member = login_oid
-      AND (roleid <> reader_oid OR admin_option)
+      AND (roleid <> reader_oid OR admin_option OR NOT inherit_option)
   ) THEN
     RAISE EXCEPTION 'HFM_MEMORY_READER_LOGIN_HAS_UNEXPECTED_ROLE_MEMBERSHIP';
   END IF;
