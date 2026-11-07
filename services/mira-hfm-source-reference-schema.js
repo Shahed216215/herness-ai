@@ -60,6 +60,13 @@ function canonicalizeSourceReferenceUrl(value) {
       parsed.hostname.includes(':')) {
     fail('HFM_SOURCE_REFERENCE_URL_NOT_ALLOWED');
   }
+  let decodedPath = parsed.pathname;
+  try { decodedPath = decodeURIComponent(parsed.pathname); } catch (_error) {
+    fail('HFM_SOURCE_REFERENCE_URL_INVALID');
+  }
+  if (/(?:^|[\\/._-])(?:access[_-]?token|auth(?:orization)?|session(?:id)?|api[_-]?key|client[_-]?secret|password|signature|credential|private[_-]?key)(?:[\\/._=-]|$)/i.test(decodedPath)) {
+    fail('HFM_SOURCE_REFERENCE_URL_CONTAINS_SECRET_PATH');
+  }
   parsed.hostname = parsed.hostname.toLowerCase();
   parsed.search = '';
   parsed.hash = '';
