@@ -1163,10 +1163,36 @@ async function executeWork(
 
   let planning;
   let hfmToolContext = null;
+  let hfmMemoryReadRuntime = null;
   const hfmWorkLearningEnabled = process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+  const hfmStandingReadEnabled = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true";
 
   if (hfmWorkLearningEnabled && options.plan && typeof options.plan === "object") {
     throw new Error("HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED");
+  }
+  if (hfmWorkLearningEnabled && !hfmStandingReadEnabled) {
+    throw new Error("HFM_WORK_LEARNING_STANDING_AUTHORITY_DISABLED");
+  }
+
+  // The read-only Knowledge tool is routed to HFM whenever standing-read mode
+  // is enabled, even when Work Learning is disabled. Build the server-held
+  // reader context for either HFM read-only mode; never fall back to legacy
+  // JSON/Drive stores when the HFM flag is active.
+  if (hfmStandingReadEnabled || hfmWorkLearningEnabled) {
+    if (!options.hfmRequest ||
+        typeof options.getHfmMemoryReadRuntime !== "function") {
+      throw new Error("HFM_STANDING_READ_AUTHENTICATED_RUNTIME_REQUIRED");
+    }
+    hfmMemoryReadRuntime = await options.getHfmMemoryReadRuntime();
+    if (!hfmMemoryReadRuntime || hfmMemoryReadRuntime.status !== "MEMORY_READ_READY" ||
+        !hfmMemoryReadRuntime.pool || typeof hfmMemoryReadRuntime.pool.connect !== "function") {
+      throw new Error("HFM_STANDING_READ_MEMORY_READER_NOT_READY");
+    }
+    hfmToolContext = Object.freeze({
+      req: options.hfmRequest,
+      pool: hfmMemoryReadRuntime.pool,
+      env: process.env
+    });
   }
 
   if (
@@ -1186,24 +1212,8 @@ async function executeWork(
     const plannerOptions = {
       persist: options.persist !== false
     };
-    if (process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
-      if (!options.hfmRequest ||
-          typeof options.getHfmMemoryReadRuntime !== "function") {
-        throw new Error("HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED");
-      }
-      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== "true") {
-        throw new Error("HFM_WORK_LEARNING_STANDING_AUTHORITY_DISABLED");
-      }
-      const hfmRuntime = await options.getHfmMemoryReadRuntime();
-      if (!hfmRuntime || hfmRuntime.status !== "MEMORY_READ_READY" ||
-          !hfmRuntime.pool || typeof hfmRuntime.pool.connect !== "function") {
-        throw new Error("HFM_WORK_LEARNING_MEMORY_READER_NOT_READY");
-      }
-      hfmToolContext = Object.freeze({
-        req: options.hfmRequest,
-        pool: hfmRuntime.pool,
-        env: process.env
-      });
+    if (hfmWorkLearningEnabled) {
+      const hfmRuntime = hfmMemoryReadRuntime;
       plannerOptions.preflightWorkLearning = async () => {
         const memory = await retrieveProjectMemory({
           pool: hfmRuntime.pool,
