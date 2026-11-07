@@ -19,13 +19,14 @@ const validPrincipal = {
 };
 const registered = buildTrustedActorContext({
   role: "user", sessionID: sessionId,
-  session: { authenticated: true, role: "user", hfmPrincipal: validPrincipal, userId: validPrincipal.subject }
+  session: { authenticated: true, role: "user", hfmPrincipal: validPrincipal, userId: validPrincipal.subject, hfmActiveProjectId: "hfm_0123456789abcdef0123456789abcdef" }
 });
 assert.equal(registered.status, "ACTOR_RESOLVED");
 assert.equal(registered.actor.actorId, "mira:mira.users:" + validPrincipal.subject);
 assert.equal(registered.actor.principal.actorType, "HUMAN");
 assert.equal(registered.verifiedPrincipal.verified, true);
 assert.equal(registered.verifiedPrincipal.authenticationRef, sessionId);
+assert.equal(registered.activeProjectId, "hfm_0123456789abcdef0123456789abcdef");
 assert.equal(Object.isFrozen(registered.verifiedPrincipal), true);
 assert.equal(registered.actor.principal.authenticationMethod, "USER_SESSION");
 assert.equal(Object.isFrozen(registered), true);
