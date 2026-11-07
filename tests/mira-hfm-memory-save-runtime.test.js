@@ -73,6 +73,7 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitDailyActivitySaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো।'), true);
   assert.equal(hasExplicitDailyActivitySaveIntent('Remember this: I completed Python practice.'), false);
   assert.equal(hasExplicitDailyActivitySaveIntent('Do not save daily activity.'), false);
+  assert.equal(hasExplicitDailyActivitySaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো না।'), false);
   assert.equal(hasExplicitSaveIntent('Store this in my memory.'), true);
   assert.equal(hasExplicitSaveIntent('Add this to Mira memory.'), true);
   assert.equal(hasExplicitSaveIntent('Do not remember this.'), false);
