@@ -188,7 +188,23 @@ function authorizedResult(overrides = {}) {
     error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
   );
   console.log('HFM_WORK_PREFLIGHT_MICROSECOND_ISSUED_AT_AND_EXPIRY_BOUNDARIES=PASS');
+  const nanosecondFutureIssuedAt = authorizedResult({
+    hostAuthorizationContext: {
+      ...context,
+      issuedAt: '2026-11-07T01:00:00.000000001Z'
+    }
+  });
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      now: boundaryNow,
+      readMemory: async () => nanosecondFutureIssuedAt
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
   console.log('HFM_WORK_PREFLIGHT_MICROSECOND_RFC3339_OFFSET_BOUNDARIES=PASS');
+  console.log('HFM_WORK_PREFLIGHT_NANOSECOND_RFC3339_BOUNDARY=PASS');
 
   console.log('HFM_WORK_PREFLIGHT_REJECTS_EXPIRED_AND_FUTURE_AUTHORITY=PASS');
 
