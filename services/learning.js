@@ -655,7 +655,7 @@ async function improveExistingKnowledge({
 async function applyKnowledgeImprovement(
   existingMatch,
   proposedLearning
- ) {
+) {
   assertLegacyLearningStorageAllowed();
   const result =
     await updateLearning(
