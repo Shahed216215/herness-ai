@@ -108,6 +108,27 @@ test('v1.2.0 accepts source_reference only with a validated private source paylo
     access: { classification: 'PROJECT_PRIVATE', allowedProjectIds: ['project-001'] }
   });
   assert.equal(validateCanonicalRecord(candidate).valid, true);
+  const falseReachable = {
+    ...candidate,
+    trust: { status: 'SOURCE_REACHABLE' }
+  };
+  assert.ok(validateCanonicalRecord(falseReachable).errors.includes(
+    'record.source_reference.reachable_requires_available_or_partial'
+  ));
+  const falseVerified = {
+    ...candidate,
+    trust: { status: 'CONTENT_VERIFIED' }
+  };
+  assert.ok(validateCanonicalRecord(falseVerified).errors.includes(
+    'record.source_reference.verified_requires_content_digest_and_capture'
+  ));
+  const quarantineMismatch = {
+    ...candidate,
+    trust: { status: 'QUARANTINED' }
+  };
+  assert.ok(validateCanonicalRecord(quarantineMismatch).errors.includes(
+    'record.source_reference.quarantine_state_mismatch'
+  ));
   const trashedCopy = { ...candidate, lifecycle: 'TRASHED' };
   assert.equal(validateCanonicalRecord(trashedCopy).valid, true);
   const publicDailyActivity = record({
