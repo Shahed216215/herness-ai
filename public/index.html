@@ -1447,6 +1447,18 @@
               <button id="hfmV02LoadActiveDrafts" class="primary-button" type="button">Load Active Drafts</button>
               <button id="hfmV02LoadTrash" class="secondary-button" type="button">View Trash</button>
             </div>
+            <div class="card" id="hfmV02StandingReadAuthority" style="margin-top:14px;">
+              <h3>365-Day Standing Read Authority</h3>
+              <p class="muted">One explicit admin approval enables repeated, audited reads for this selected project for up to 365 days. Scope: <strong>memory.read</strong> on Learning and Knowledge records only. No Memory writes, edits, Trash, Restore, Facebook publishing, or Local/Drive fallback. Pause or revoke at any time.</p>
+              <div class="button-row">
+                <button id="hfmV02StandingRefresh" class="secondary-button" type="button">Check Authority</button>
+                <button id="hfmV02StandingIssue" class="primary-button" type="button">Approve 365-Day Read Access</button>
+                <button id="hfmV02StandingPause" class="secondary-button" type="button" hidden>Pause</button>
+                <button id="hfmV02StandingResume" class="secondary-button" type="button" hidden>Resume</button>
+                <button id="hfmV02StandingRevoke" class="danger-button" type="button" hidden>Revoke</button>
+              </div>
+              <div id="hfmV02StandingStatus" class="muted" role="status" aria-live="polite" style="margin-top:10px;">No standing-authority status checked yet.</div>
+            </div>
             <div id="hfmV02SocialDraftStatus" class="muted" role="status" aria-live="polite" style="margin-top:12px;">
               HFM routes remain unavailable until the approved Neon schema, dedicated roles and runtime settings are configured.
             </div>
