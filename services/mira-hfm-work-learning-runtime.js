@@ -48,6 +48,9 @@ function buildHfmAuthorizeRequest(hostContext, recordIds) {
 
 async function retrieveHfmWorkLearning(options = {}) {
   const env = options.env || process.env;
+  const now = options.now instanceof Date && Number.isFinite(options.now.getTime())
+    ? options.now
+    : new Date();
   if (env.MIRA_HFM_WORK_LEARNING_ENABLED !== 'true') {
     return Object.freeze({
       status: 'DISABLED',
@@ -98,7 +101,8 @@ async function retrieveHfmWorkLearning(options = {}) {
       lifecycle: 'ACTIVE',
       env
     },
-    maxPages: options.maxPages === undefined ? MAX_STANDING_READ_PAGES : options.maxPages
+    maxPages: options.maxPages === undefined ? MAX_STANDING_READ_PAGES : options.maxPages,
+    now
   });
   if (pages.candidateScanMayBeIncomplete) {
     fail('HFM_WORK_LEARNING_SCAN_INCOMPLETE');
@@ -143,7 +147,7 @@ async function retrieveHfmWorkLearning(options = {}) {
     taskText,
     currentTaskId,
     limit: options.limit === undefined ? 5 : options.limit,
-    now: options.now || new Date()
+    now
   });
   return Object.freeze({
     ...result,
