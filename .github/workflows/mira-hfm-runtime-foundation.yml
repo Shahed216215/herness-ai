@@ -15,6 +15,7 @@ on:
       - "services/mira-work-execution-engine.js"
       - "services/tool-runner.js"
       - "tools/index.js"
+      - "tools/daily-activity-save.js"
       - "tools/hfm-database-status.js"
       - "migrations/hfm/**"
       - "tests/mira-hfm-*.test.js"
@@ -33,6 +34,7 @@ on:
       - "services/mira-work-execution-engine.js"
       - "services/tool-runner.js"
       - "tools/index.js"
+      - "tools/daily-activity-save.js"
       - "tools/hfm-database-status.js"
       - "migrations/hfm/**"
       - "tests/mira-hfm-*.test.js"
@@ -80,6 +82,7 @@ jobs:
           node --check tools/index.js
           node --check tools/memory-save.js
           node --check tools/knowledge-save.js
+          node --check tools/daily-activity-save.js
           node --check tools/knowledge-review-queue.js
           node --check tools/hfm-database-status.js
       - name: Run focused canonical identity contracts
