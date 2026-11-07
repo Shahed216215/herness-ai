@@ -111,7 +111,7 @@ CREATE POLICY hfm_writer_memory_record_select_scope
   FOR SELECT TO mira_hfm_memory_writer
   USING (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND resource = 'memory:' || memory_id
+    AND current_setting('mira.resource', true) = 'memory:' || memory_id
     AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
     AND lifecycle IN ('ACTIVE', 'PENDING_REVIEW', 'TRASHED')
     AND EXISTS (
@@ -147,7 +147,7 @@ CREATE POLICY hfm_writer_memory_record_insert_scope
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND owner_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND resource = 'memory:' || memory_id
+    AND current_setting('mira.resource', true) = 'memory:' || memory_id
     AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
     AND lifecycle IN ('ACTIVE', 'PENDING_REVIEW')
     AND current_setting('mira.operation', true) = 'memory.write'
@@ -183,7 +183,7 @@ CREATE POLICY hfm_writer_memory_record_update_scope
   FOR UPDATE TO mira_hfm_memory_writer
   USING (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND resource = 'memory:' || memory_id
+    AND current_setting('mira.resource', true) = 'memory:' || memory_id
     AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
     AND lifecycle IN ('ACTIVE', 'TRASHED')
     AND current_setting('mira.operation', true) IN ('memory.trash', 'memory.restore')
@@ -213,7 +213,7 @@ CREATE POLICY hfm_writer_memory_record_update_scope
   )
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND resource = 'memory:' || memory_id
+    AND current_setting('mira.resource', true) = 'memory:' || memory_id
     AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
     AND lifecycle IN ('ACTIVE', 'TRASHED')
     AND EXISTS (
@@ -248,7 +248,7 @@ CREATE POLICY hfm_writer_memory_version_insert_scope
   FOR INSERT TO mira_hfm_memory_writer
   WITH CHECK (
     project_id = NULLIF(current_setting('mira.project_id', true), '')
-    AND resource = 'memory:' || memory_id
+    AND current_setting('mira.resource', true) = 'memory:' || memory_id
     AND classification IN ('PUBLIC', 'PROJECT_PRIVATE')
     AND EXISTS (
       SELECT 1 FROM mira_hfm.memory_records parent_record
@@ -453,6 +453,7 @@ CREATE POLICY hfm_reader_memory_membership_authority_scope
             AND standing_row.actor_id = NULLIF(current_setting('mira.actor_id', true), '')
             AND standing_row.operation = 'memory.read'
             AND standing_row.resource = 'memory:project:' || memory_records.project_id
+            AND standing_row.resource = NULLIF(current_setting('mira.resource', true), '')
             AND standing_row.status = 'ACTIVE'
             AND standing_row.valid_from <= clock_timestamp()
             AND standing_row.expires_at > clock_timestamp()
