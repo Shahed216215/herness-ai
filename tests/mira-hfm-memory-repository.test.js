@@ -262,7 +262,7 @@ test('project-scoped list supports an allowlisted social-draft filter', async ()
   const client = fakeClient({
     query: async (sql, params) => {
       if (sql.startsWith('SELECT memory_id') && sql.includes('ORDER BY updated_at')) {
-        assert.deepEqual(params, ['project-001', 'ACTIVE', 'social_post_draft', 25]);
+        assert.deepEqual(params, ['project-001', 'ACTIVE', ['social_post_draft'], 25]);
         return { rowCount: 1, rows: [row] };
       }
       return { rowCount: 0, rows: [] };
