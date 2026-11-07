@@ -3,27 +3,6 @@ name: Mira HFM PostgreSQL migration integration
 # Keep this disposable PostgreSQL chain in the clean-integration PR gate; it applies 001–018 only to an ephemeral CI database.
 
 on:
-  push:
-    branches:
-      - work/mira-hfm-v02-runtime-integration
-      - work/mira-hfm-v02-clean-integration-20261107
-    paths:
-      - "migrations/hfm/**"
-      - "services/mira-hfm-authority-issuer-runtime.js"
-      - "services/mira-hfm-authority-approval.js"
-      - "services/mira-hfm-authority-transaction.js"
-      - "services/mira-hfm-standing-read-authority.js"
-      - "tests/mira-hfm-standing-read-authority*.test.js"
-      - ".github/workflows/hfm-postgres-migrations.yml"
-  pull_request:
-    paths:
-      - "migrations/hfm/**"
-      - "services/mira-hfm-authority-issuer-runtime.js"
-      - "services/mira-hfm-authority-approval.js"
-      - "services/mira-hfm-authority-transaction.js"
-      - "services/mira-hfm-standing-read-authority.js"
-      - "tests/mira-hfm-standing-read-authority*.test.js"
-      - ".github/workflows/hfm-postgres-migrations.yml"
   workflow_dispatch:
 
 permissions:
