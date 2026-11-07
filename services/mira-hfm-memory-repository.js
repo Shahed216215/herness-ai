@@ -396,6 +396,15 @@ function getStandingReadMemoryRecord(options = {}) {
   ).then(result => {
     const row = result.rows && result.rows[0];
     if (!row) return { status: 'NOT_FOUND', record: null };
+    if (row.memory_id !== memoryId ||
+        row.project_id !== context.projectId ||
+        !recordTypes.includes(row.record_type) ||
+        row.lifecycle !== 'ACTIVE' ||
+        !['PUBLIC', 'PROJECT_PRIVATE'].includes(row.classification) ||
+        row.integrity_status !== 'VERIFIED' ||
+        !['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(row.trust_status)) {
+      throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+    }
     return {
       status: 'FOUND',
       record: decodeStoredRow(row, {
