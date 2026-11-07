@@ -65,6 +65,9 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSaveIntent('এটা মনে রাখবে: আমার শেখার পরিকল্পনা।'), true);
   assert.equal(hasExplicitSaveIntent('Please save this to your memory.'), true);
   assert.equal(hasExplicitSaveIntent('Save this learning note to my knowledge base.'), true);
+  assert.equal(hasExplicitSaveIntent('Save this daily activity summary to Mira Memory.'), true);
+  assert.equal(hasExplicitSaveIntent('Do not record daily activity.'), false);
+  assert.equal(hasExplicitSaveIntent('দৈনিক কাজের সারাংশ সংরক্ষণ করো।'), true);
   assert.equal(hasExplicitSaveIntent('Store this in my memory.'), true);
   assert.equal(hasExplicitSaveIntent('Add this to Mira memory.'), true);
   assert.equal(hasExplicitSaveIntent('Do not remember this.'), false);
@@ -192,6 +195,41 @@ function baseOptions(overrides = {}) {
     /HFM_KNOWLEDGE_REVIEW_EXPLICIT_USER_INTENT_REQUIRED/
   );
 
+  const dailyActivityContent = 'Completed Python practice. Contact user@example.com or +8801712345678; budget BDT 5,000; source https://example.com/private.';
+  const dailyActivityRecord = buildCanonicalMemoryRecord({
+    projectId: 'project-001',
+    memoryId: 'mem-daily-activity-001',
+    kind: 'daily_activity_save',
+    content: dailyActivityContent,
+    userIntent: 'Save this daily activity summary: ' + dailyActivityContent,
+    now: '2026-11-07T07:00:00.000Z'
+  });
+  assert.equal(validateCanonicalRecord(dailyActivityRecord).valid, true);
+  assert.equal(dailyActivityRecord.recordType, 'daily_activity');
+  assert.equal(dailyActivityRecord.source.sourceType, 'manual');
+  assert.equal(dailyActivityRecord.source.sourceId, 'user-confirmed-daily-activity');
+  assert.equal(dailyActivityRecord.trust.status, 'HUMAN_VERIFIED');
+  assert.equal(dailyActivityRecord.lifecycle, 'ACTIVE');
+  assert.equal(dailyActivityRecord.access.classification, 'PROJECT_PRIVATE');
+  assert.equal(dailyActivityRecord.content.includes('user@example.com'), false);
+  assert.equal(dailyActivityRecord.content.includes('+880'), false);
+  assert.equal(dailyActivityRecord.content.includes('5,000'), false);
+  assert.equal(dailyActivityRecord.content.includes('https://'), false);
+  assert.throws(() => buildCanonicalMemoryRecord({
+    projectId: 'project-001',
+    memoryId: 'mem-daily-activity-sensitive',
+    kind: 'daily_activity_save',
+    content: 'Client email and bank account details were shared.',
+    userIntent: 'Save this daily activity summary: Client email and bank account details were shared.'
+  }), /HFM_DAILY_ACTIVITY_SENSITIVE_CONTENT_REQUIRES_VAULT/);
+  assert.throws(() => buildCanonicalMemoryRecord({
+    projectId: 'project-001',
+    memoryId: 'mem-daily-activity-not-user-authored',
+    kind: 'daily_activity_save',
+    content: 'Mira completed a task.',
+    userIntent: 'Save this daily activity summary.'
+  }), /HFM_DAILY_ACTIVITY_CONTENT_NOT_PRESENT_IN_USER_INTENT/);
+
   const memoryRecord = buildCanonicalMemoryRecord({
     projectId: 'project-001', memoryId: 'mem-1234567890abcdef',
     kind: 'memory_save', content: 'Remembered preference.',
@@ -275,6 +313,18 @@ function baseOptions(overrides = {}) {
     /HFM_MEMORY_SAVE_EXPLICIT_USER_INTENT_REQUIRED/
   );
 
+  const dailySaveResult = await saveHfmMemoryRecord(baseOptions({
+    kind: 'daily_activity_save',
+    content: 'Completed the Python practice task.',
+    userIntent: 'Save this daily activity summary: Completed the Python practice task.',
+    toolName: 'daily_activity_save'
+  }));
+  assert.equal(dailySaveResult.recordType, 'daily_activity');
+  assert.equal(dailySaveResult.trust, 'HUMAN_VERIFIED');
+  assert.equal(dailySaveResult.lifecycle, 'ACTIVE');
+  assert.equal(dailySaveResult.searchEligible, true);
+  assert.equal(dailySaveResult.contentRedacted, false);
+
   const pendingResult = await saveHfmMemoryRecord(baseOptions({
     kind: 'knowledge_save',
     title: 'Source title',
@@ -318,6 +368,10 @@ function baseOptions(overrides = {}) {
       error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
     );
     await assert.rejects(
+      () => executeTool('daily_activity_save', { content: 'Daily activity.' }, null),
+      error => error && error.code === 'HFM_MEMORY_WRITE_CONTEXT_REQUIRED'
+    );
+    await assert.rejects(
       () => executeTool('knowledge_search', { query: 'test' }, null),
       error => error && error.code === 'HFM_MEMORY_READ_MODE_REQUIRED'
     );
@@ -337,6 +391,7 @@ function baseOptions(overrides = {}) {
     const directMemorySave = require('../tools/memory-save');
     const directKnowledgeSave = require('../tools/knowledge-save');
     const directLearningSave = require('../tools/learning-save');
+    const directDailyActivitySave = require('../tools/daily-activity-save');
     const directLearningResult = await directLearningSave.execute({ content: 'Learning source.' })
       .then(value => JSON.parse(value))
       .catch(error => ({ code: error && error.code }));
@@ -350,6 +405,10 @@ function baseOptions(overrides = {}) {
       .catch(error => ({ code: error && error.code }));
     assert.ok(['HFM_TOOL_ROUTER_REQUIRED', 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'].includes(directMemoryResult.code));
     assert.ok(['HFM_TOOL_ROUTER_REQUIRED', 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'].includes(directKnowledgeResult.code));
+    const directDailyActivityResult = await directDailyActivitySave.execute({ content: 'Daily activity.' })
+      .then(value => JSON.parse(value))
+      .catch(error => ({ code: error && error.code }));
+    assert.equal(directDailyActivityResult.code, 'HFM_TOOL_ROUTER_REQUIRED');
 
     let routedOptions = null;
     const routed = JSON.parse(await executeHfmMemorySave(
@@ -380,6 +439,36 @@ function baseOptions(overrides = {}) {
     assert.equal(routedOptions.kind, 'memory_save');
     assert.equal(routedOptions.content, 'I prefer concise Bengali explanations.');
     assert.match(routedOptions.userIntent, /Remember this/);
+    const dailyActivityRoutedOptions = {};
+    const dailyActivityRouted = JSON.parse(await executeHfmMemorySave(
+      'daily_activity_save',
+      { content: 'Completed a user-confirmed daily activity.' },
+      {
+        hfmWrite: {
+          req: { session: { authenticated: true, role: 'admin' } },
+          writerPool: { connect: async () => ({}) },
+          issuerPool: { connect: async () => ({}) },
+          userIntent: 'Save this daily activity summary: Completed a user-confirmed daily activity.',
+          taskId: 'task-003', toolCallId: 'call-003', toolName: 'daily_activity_save'
+        }
+      },
+      async options => {
+        Object.assign(dailyActivityRoutedOptions, options);
+        return {
+          success: true, saved: true, status: 'CREATED',
+          memoryId: 'mem-daily-activity-tool-0001', recordType: 'daily_activity',
+          lifecycle: 'ACTIVE', classification: 'PROJECT_PRIVATE',
+          trust: 'HUMAN_VERIFIED', contentRedacted: false,
+          searchEligible: true, localFallback: false, driveFallback: false
+        };
+      }
+    ));
+    assert.equal(dailyActivityRouted.source, 'HFM_V02_CANONICAL');
+    assert.equal(dailyActivityRouted.recordType, 'daily_activity');
+    assert.equal(dailyActivityRoutedOptions.kind, 'daily_activity_save');
+    assert.equal(dailyActivityRoutedOptions.content, 'Completed a user-confirmed daily activity.');
+    assert.match(dailyActivityRouted.message, /Daily activity saved privately/);
+
     const learningRoutedOptions = {};
     const learningRouted = JSON.parse(await executeHfmMemorySave(
       'learning_save',
