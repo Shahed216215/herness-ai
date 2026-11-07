@@ -371,10 +371,15 @@ async function getMemoryRecord(options = {}) {
 
 function getStandingReadMemoryRecord(options = {}) {
   const { client, context } = requireTransaction(options);
-  if (context.operation !== 'memory.read' ||
-      context.authorityContext !== STANDING_READ_CONTEXT ||
-      context.resource !== 'memory:project:' + context.projectId) {
-    throw fail('HFM_STANDING_READ_RECORD_SCOPE_INVALID');
+  const expectedResource = `memory:project:${context.projectId}`;
+  if (context.operation !== 'memory.read') {
+    throw fail('HFM_STANDING_READ_OPERATION_INVALID');
+  }
+  if (context.authorityContext !== STANDING_READ_CONTEXT) {
+    throw fail('HFM_STANDING_READ_AUTHORITY_CONTEXT_INVALID');
+  }
+  if (context.resource !== expectedResource) {
+    throw fail('HFM_STANDING_READ_RESOURCE_SCOPE_INVALID');
   }
   const memoryId = boundedText(options.memoryId, 128, 'HFM_MEMORY_ID_INVALID');
   const recordTypes = options.recordTypes === undefined
