@@ -254,6 +254,8 @@ Target inspected: project steep-grass-38696226, branch br-crimson-sun-a13xzreh, 
 - Registries are empty at inspection: project owners 0, project memberships 0, operation authorities 0, Memory records 0.
 - The observed SQL role attributes do not match the intended hardened issuer contract: mira_hfm_authority_issuer.rolinherit = true, while source Migration 011 requires NOINHERIT. SQL also reports mira_hfm_authority_issuer_login.rolcanlogin = true and rolinherit = true; the Neon role-list metadata simultaneously labels that principal no_login. This control-plane/SQL discrepancy requires reconciliation before any runtime credential is used.
 - The baseline issuer and writer grants/policies are not the final reader/issuer split described by source migrations 010–014. Migrations 010–014 are not applied on this production branch; no standing-read-authority table or nonce registry was observed.
+- Database trigger inspection found append-only guards on both audit tables and record-version history (no update/delete and no truncate triggers); writer-role table grants do not include audit UPDATE/DELETE or version UPDATE/DELETE. This is useful baseline evidence, but it does not remedy the missing reader role, issuer attribute drift, or unapplied 010–014 chain.
+- Current GitHub compare evidence against main is diverged: 749 commits ahead, 3 behind, and 111 changed files. PR #79 must not be merged as-is; a separately reviewed clean integration path is required.
 - No production SQL write, migration, role change, seed, or data mutation was performed. The test branch with existing owner/membership/authority/Memory rows remains preserved and is not a bootstrap target.
 
 ### Render runtime — read-only inspection
