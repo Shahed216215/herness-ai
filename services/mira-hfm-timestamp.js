@@ -28,9 +28,9 @@ function compareTimestampToNow(value, nowMs) {
     const nowNanos = BigInt(Math.trunc(nowMs)) * 1000000n;
     return valueNanos < nowNanos ? -1 : valueNanos > nowNanos ? 1 : 0;
   }
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return null;
-  return parsed < nowMs ? -1 : parsed > nowMs ? 1 : 0;
+  // Authorization and cursor timestamps must be explicit RFC3339 values.
+  // Do not accept implementation-dependent Date.parse formats or local time.
+  return null;
 }
 
 module.exports = Object.freeze({ compareTimestampToNow });
