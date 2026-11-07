@@ -97,12 +97,23 @@ function createApprovalTokenVerifier(options = {}) {
     if (parts.length !== 2 || !parts[0] || !parts[1]) {
       throw fail('HFM_APPROVAL_TOKEN_FORMAT_INVALID');
     }
+    if (!/^[A-Za-z0-9_-]+$/.test(parts[0]) ||
+        !/^[A-Za-z0-9_-]+$/.test(parts[1])) {
+      throw fail('HFM_APPROVAL_TOKEN_FORMAT_INVALID');
+    }
+    const payloadBytes = Buffer.from(parts[0], 'base64url');
+    if (payloadBytes.toString('base64url') !== parts[0]) {
+      throw fail('HFM_APPROVAL_TOKEN_PAYLOAD_INVALID');
+    }
     const expectedSignature = crypto.createHmac('sha256', key)
       .update(parts[0], 'utf8').digest();
     let suppliedSignature;
     try {
       suppliedSignature = Buffer.from(parts[1], 'base64url');
     } catch (_error) {
+      throw fail('HFM_APPROVAL_TOKEN_SIGNATURE_INVALID');
+    }
+    if (suppliedSignature.toString('base64url') !== parts[1]) {
       throw fail('HFM_APPROVAL_TOKEN_SIGNATURE_INVALID');
     }
     if (suppliedSignature.length !== expectedSignature.length ||
@@ -112,7 +123,7 @@ function createApprovalTokenVerifier(options = {}) {
 
     let parsed;
     try {
-      parsed = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+      parsed = JSON.parse(payloadBytes.toString('utf8'));
     } catch (_error) {
       throw fail('HFM_APPROVAL_TOKEN_PAYLOAD_INVALID');
     }
