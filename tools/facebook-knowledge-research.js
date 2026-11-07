@@ -25,7 +25,9 @@ module.exports = {
         !trustedContext.verifiedPrincipal || !trustedContext.actor?.actorId) {
       return JSON.stringify({ status: 'IDENTITY_UNAVAILABLE', results: [] });
     }
-    if (typeof projectId !== 'string' || !projectId.trim() ||
+    const selectedProjectId = typeof projectId === 'string' && projectId.trim()
+      ? projectId.trim() : trustedContext.activeProjectId;
+    if (typeof selectedProjectId !== 'string' || !selectedProjectId.trim() ||
         typeof sourceUrl !== 'string' || !sourceUrl.trim()) {
       return JSON.stringify({ status: 'INVALID_SOURCE', results: [] });
     }
