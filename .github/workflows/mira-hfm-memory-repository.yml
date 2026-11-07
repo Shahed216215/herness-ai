@@ -50,6 +50,8 @@ on:
       - "services/mira-hfm-standing-read-pages.js"
       - "services/mira-hfm-record-schema.js"
       - "services/mira-hfm-vault-crypto.js"
+      - "migrations/hfm/018_restricted_vault_write_authority.sql"
+      - "tests/mira-hfm-vault-write-authority-migration-contract.test.js"
       - "tests/mira-hfm-memory-repository.test.js"
       - "tests/mira-hfm-authority-transaction.test.js"
       - "tests/mira-hfm-standing-read-pages.test.js"
