@@ -98,3 +98,17 @@ The earlier **NOT_VERIFIED** statement above is historical and is superseded for
 - The nine pull-request workflows on this exact HEAD (including the disposable PostgreSQL migration chain) completed successfully. The Render live HTTP smoke remains skipped by design.
 
 This evidence proves migration-chain compatibility only in a disposable PostgreSQL 16 CI database. It does **not** prove compatibility with the live Neon target and does not authorize live application. Render-to-Neon identity remains **INCONCLUSIVE**; migrations 010–018 remain **NOT_APPLIED** to live Neon; the PR remains Draft/unmerged; no Render deployment, Neon write, role change, or secret/configuration change occurred.
+
+## 2026-11-07 follow-up: disposable migration chain evidence
+
+The prior statement that 001–018 migration validation was NOT_VERIFIED is superseded for disposable CI validation only. A dedicated workflow, `.github/workflows/hfm-v02-disposable-migrations.yml`, applies migrations 001–018 in order to an ephemeral PostgreSQL 16 database and checks that all eight protected HFM tables have RLS and FORCE RLS enabled.
+
+At exact branch HEAD `0f750ce0f733cd0972c634af6af98cec4053cc99`, both GitHub Actions runs passed:
+- Push run `42379282025`: migrations 001–018 applied; forced-RLS assertion passed.
+- Pull-request run `42379284821`: same migration chain and assertion passed.
+
+This proves the complete source chain executes successfully in a fresh disposable PostgreSQL database at that commit. It does **not** prove live Neon compatibility, role mapping, data migration safety, or approval to apply the migrations to any persistent branch.
+
+The legacy `.github/workflows/hfm-postgres-migrations.yml` still creates a failed zero-job run and is not the trusted CI evidence source. The dedicated workflow above is the current disposable migration gate.
+
+The Memory repository contract suite and HFM runtime foundation suite also passed at the same HEAD, including full repository regression runs. PR #80 remains Draft/unmerged. Live Neon remains unchanged; the Render-to-Neon target remains inconclusive. Migration 013 remains prohibited on the non-empty staging branch.
