@@ -75,6 +75,12 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, env = process.e
     now
   });
   const results = report.records
+    // Defense in depth: only expose canonical records that are independently
+    // ACTIVE, integrity-verified and in an eligible trusted state. The unified
+    // facade already enforces this; repeat it at the public search boundary.
+    .filter(record => record.lifecycle === 'ACTIVE' &&
+      record.integrity?.status === 'VERIFIED' &&
+      ['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(record.trust?.status))
     .filter(record => ['knowledge_item', 'learning_note'].includes(record.recordType))
     .map(record => ({ record, score: scoreRecord(query, record) }))
     .filter(item => item.score > 0)
