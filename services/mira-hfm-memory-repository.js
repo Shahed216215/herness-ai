@@ -164,6 +164,10 @@ async function completeOperation(client, operationId, resultCode) {
 }
 
 async function appendAudit(client, context, operationId, memoryId, eventType, resultStatus, details = {}) {
+  // Serialize the per-project hash-chain append within the caller-owned transaction.
+  // Without this transaction-scoped lock, concurrent writers can read the same
+  // previous hash and create two valid-looking but disconnected audit branches.
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [context.projectId]);
   const previousResult = await client.query(
     'SELECT event_hash FROM mira_hfm.memory_audit_events WHERE project_id = $1 ORDER BY event_sequence DESC LIMIT 1',
     [context.projectId]
