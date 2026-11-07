@@ -215,7 +215,7 @@ function validateFinancialVaultPayload(payload) {
   }
   for (const field of ['transactionDate', 'dueDate']) {
     if (payload[field] !== undefined &&
-        !isCalendarDate(payload[field]))) {
+        !isCalendarDate(payload[field])) {
       errors.push('financial.' + field + '_invalid');
     }
   }
