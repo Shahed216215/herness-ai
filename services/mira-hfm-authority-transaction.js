@@ -176,6 +176,55 @@ async function executeWithConsumedAuthority(options = {}) {
 }
 
 
+const STANDING_READ_DENIAL_CODES = new Set([
+  "HFM_PROJECT_OWNER_NOT_ACTIVE",
+  "HFM_PROJECT_MEMBERSHIP_NOT_ACTIVE",
+  "HFM_OPERATION_NOT_GRANTED",
+  "HFM_STANDING_READ_AUTHORITY_MISSING_PAUSED_OR_EXPIRED",
+  "HFM_STANDING_READ_AUTHORITY_REVISION_STALE",
+  "HFM_STANDING_READ_AUTHORITY_SCOPE_MISMATCH"
+]);
+
+async function persistStandingReadFailureAudit(client, {
+  projectId, actorId, resource, requestId, error
+}) {
+  const denied = STANDING_READ_DENIAL_CODES.has(error && error.code);
+  const eventType = denied
+    ? "STANDING_READ_AUTHORITY_DENIED"
+    : "STANDING_READ_AUTHORITY_FAILED";
+  const rawCode = error && typeof error.code === "string" ? error.code : "";
+  const reasonCode = /^[A-Z0-9_]{1,128}$/.test(rawCode)
+    ? rawCode
+    : "HFM_STANDING_READ_FAILED";
+  let auditTransactionOpen = false;
+  try {
+    await client.query("BEGIN");
+    auditTransactionOpen = true;
+    await client.query("SET LOCAL statement_timeout = '5000ms'");
+    await client.query("SELECT set_config('mira.project_id', $1, true)", [projectId]);
+    await client.query("SELECT set_config('mira.actor_id', $1, true)", [actorId]);
+    await client.query("SELECT set_config('mira.operation', 'memory.read', true)");
+    await client.query("SELECT set_config('mira.resource', $1, true)", [resource]);
+    await client.query("SELECT set_config('mira.request_id', $1, true)", [requestId]);
+    await client.query("SELECT set_config('mira.standing_read_authority', 'true', true)");
+    await client.query(
+      "INSERT INTO mira_hfm.authority_audit_events " +
+      "(event_id, project_id, actor_id, event_type, request_id, occurred_at, details) " +
+      "VALUES ($1,$2,$3,$4,$5,clock_timestamp(),$6::jsonb)",
+      [randomUUID(), projectId, actorId, eventType, requestId,
+        JSON.stringify({ operation: "memory.read", resource, decision: denied ? "DENY" : "FAILED", reasonCode })]
+    );
+    await client.query("COMMIT");
+    auditTransactionOpen = false;
+    return "RECORDED";
+  } catch (auditError) {
+    if (auditTransactionOpen) {
+      try { await client.query("ROLLBACK"); } catch (_rollbackError) {}
+    }
+    return "FAILED";
+  }
+}
+
 async function executeWithStandingReadAuthority(options = {}) {
   const projectId = bounded(options.projectId, "projectId", 256);
   const resource = bounded(options.resource || ("memory:project:" + projectId), "resource", 512);
@@ -313,7 +362,15 @@ async function executeWithStandingReadAuthority(options = {}) {
   } catch (error) {
     if (transactionOpen) {
       try { await client.query("ROLLBACK"); } catch (_rollbackError) {}
+      transactionOpen = false;
     }
+    error.auditStatus = await persistStandingReadFailureAudit(client, {
+      projectId,
+      actorId: trustedActor.actorId,
+      resource,
+      requestId,
+      error
+    });
     throw error;
   } finally {
     try { client.release(); } catch (_releaseError) {}
