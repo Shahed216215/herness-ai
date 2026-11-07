@@ -59,6 +59,15 @@ BEGIN
   END IF;
 
   IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'mira_hfm'
+      AND tablename IN ('project_owners','project_memberships','operation_authorities','authority_audit_events')
+      AND (SELECT oid FROM pg_roles WHERE rolname = 'mira_hfm_authority_issuer') = ANY(roles)
+  ) THEN
+    RAISE EXCEPTION 'HFM_AUTHORITY_ISSUER_PREEXISTING_POLICY_CONFLICT';
+  END IF;
+
+  IF EXISTS (
     SELECT 1 FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'mira_hfm'
@@ -119,6 +128,8 @@ CREATE POLICY hfm_authority_issuer_authority_insert
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND status = 'ISSUED'
     AND operation = 'memory.read'
+    AND valid_from <= clock_timestamp()
+    AND expires_at > clock_timestamp()
     AND expires_at <= clock_timestamp() + interval '5 minutes'
   );
 
