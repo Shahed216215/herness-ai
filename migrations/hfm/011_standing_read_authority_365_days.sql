@@ -201,7 +201,7 @@ CREATE TRIGGER standing_read_authority_scope_immutable
 CREATE FUNCTION mira_hfm.audit_standing_read_authority_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $$
 DECLARE
   audit_event_id TEXT;
   audit_event_type TEXT;
@@ -242,7 +242,7 @@ BEGIN
   );
   RETURN NEW;
 END;
-$;
+$$;
 
 CREATE TRIGGER standing_read_authority_audit
   AFTER INSERT OR UPDATE ON mira_hfm.standing_read_authorities
