@@ -297,8 +297,31 @@ test('revision writes append-only history and advances the current revision', as
   const update = client.calls.find(call => call.sql.startsWith('UPDATE mira_hfm.memory_records SET revision'));
   assert.ok(update);
   assert.equal(update.params[2], 2);
-  assert.doesNotMatch(update.sql, /trust_status/);
+  assert.doesNotMatch(update.sql, /trust_status|integrity_status/);
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
+
+  const alteredIntegrity = {
+    ...revised,
+    integrity: { ...revised.integrity, status: 'UNVERIFIED' }
+  };
+  const integrityClient = fakeClient({
+    query: async sql => {
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith('SELECT memory_id') && sql.includes('FOR UPDATE')) return { rowCount: 1, rows: [row] };
+      if (sql.startsWith('SELECT event_hash')) return { rowCount: 0, rows: [] };
+      return { rowCount: 1, rows: [{}] };
+    }
+  });
+  await assert.rejects(() => repository.reviseMemoryRecord({
+    client: integrityClient,
+    context: { ...context, operation: 'memory.update' },
+    memoryId: original.memoryId,
+    record: alteredIntegrity,
+    idempotencyKey: 'revise-public-integrity-tamper',
+    env
+  }), /HFM_MEMORY_REVISION_IDENTITY_OR_ORDER_INVALID/);
+  assert.equal(integrityClient.calls.some(call =>
+    call.sql.startsWith('UPDATE mira_hfm.memory_records SET revision')), false);
 
   const promoted = { ...revised, trust: { status: 'HUMAN_VERIFIED' } };
   const promotionClient = fakeClient({
