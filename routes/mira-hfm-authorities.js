@@ -5,11 +5,14 @@ const { buildTrustedActorContext } = require('../services/mira-hfm-runtime-ident
 const { normalizeTrustedActorIdentity } = require('../services/mira-memory-host-identity-contract');
 
 const PURPOSES = Object.freeze({
-  'memory.read': new Set(['facebook-knowledge-search','facebook-public-web-search','facebook-knowledge-read','memory-core-read']),
+  'memory.read': new Set(['facebook-knowledge-search','facebook-public-web-search','facebook-knowledge-read','memory-core-read','social-post-archive-read','social-post-status-read']),
   'memory.write': new Set(['facebook-knowledge-import','daily-knowledge-generate','memory-core-write']),
   'memory.update': new Set(['facebook-knowledge-update','memory-core-update']),
   'memory.trash': new Set(['facebook-knowledge-trash','memory-core-trash']),
-  'memory.restore': new Set(['facebook-knowledge-restore','memory-core-restore'])
+  'memory.restore': new Set(['facebook-knowledge-restore','memory-core-restore']),
+  'memory.social_post.copy': new Set(['social-post-copy']),
+  'memory.social_post.confirm_published': new Set(['social-post-user-confirmed-published']),
+  'memory.social_post.delete_payload': new Set(['social-post-payload-erasure'])
 });
 const ALLOWED_OPERATIONS = Object.freeze(Object.keys(PURPOSES));
 

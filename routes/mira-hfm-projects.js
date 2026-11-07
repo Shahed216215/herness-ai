@@ -61,7 +61,7 @@ async function createOwnedProject(options = {}) {
       if (!membership.rows?.[0] || membership.rows[0].status !== 'ACTIVE') {
         throw fail('HFM_PROJECT_MEMBERSHIP_REPAIR_REQUIRED');
       }
-      const requiredOperations = ['memory.read','memory.write','memory.update','memory.trash','memory.restore'];
+      const requiredOperations = ['memory.read','memory.write','memory.update','memory.trash','memory.restore','memory.social_post.copy','memory.social_post.confirm_published','memory.social_post.delete_payload'];
       if (!requiredOperations.every(operation => Array.isArray(membership.rows[0].permissions?.operations) && membership.rows[0].permissions.operations.includes(operation))) {
         throw fail('HFM_PROJECT_PERMISSION_REPAIR_REQUIRED');
       }
@@ -76,7 +76,7 @@ async function createOwnedProject(options = {}) {
     const approvalRef = 'authenticated-session-project-create:' + requestId;
     const evidenceRef = 'session:' + (options.sessionId || 'authenticated-session');
     const permissions = {
-      operations: ['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore']
+      operations: ['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore', 'memory.social_post.copy', 'memory.social_post.confirm_published', 'memory.social_post.delete_payload']
     };
     await client.query(
       'INSERT INTO mira_hfm.project_owners (project_id, owner_actor_id, status, revision, assignment_evidence_ref, approval_ref, assigned_by_actor_id, assigned_at, updated_at) VALUES ($1,$2,\'ACTIVE\',1,$3,$4,$2,$5,$5)',

@@ -22,6 +22,28 @@ test('Facebook Knowledge UI exposes import, public research, search, view, updat
   assert.match(server, /registerDailyKnowledgeRoutes\(app, requireAgentAuth\)/);
 });
 
+test('manual Facebook draft workflow is wired to Neon with text-only clipboard and exact-record actions', () => {
+  for (const id of ['loadSocialPostsBtn','socialPostArchive','socialPostStatus']) {
+    assert.match(html, new RegExp('id="' + id + '"'));
+  }
+  assert.match(html, /navigator\.clipboard\.writeText\(draft\.content\)/);
+  assert.match(html, /COPY_FAILED/);
+  assert.match(html, /social-post-archive-read/);
+  assert.match(html, /memory\.social_post\.copy/);
+  assert.match(html, /memory\.social_post\.confirm_published/);
+  assert.match(html, /memory\.social_post\.delete_payload/);
+  assert.match(html, /USER_CONFIRMED_PUBLISHED/);
+  assert.match(html, /DELETE_STATUS_UNKNOWN/);
+  assert.match(html, /Delete Draft Payload/);
+  assert.match(html, /draft\.memoryId/);
+  assert.match(html, /draft\.source/);
+  assert.match(html, /draft\.createdAt/);
+  assert.match(html, /payloadErased/);
+  assert.match(html, /not Facebook-verified/);
+  assert.match(html, /No Facebook publishing occurs/);
+  assert.doesNotMatch(html, /graph\.facebook\.com|access_token|facebook\.com\/login|document\.cookie/i);
+});
+
 test('UI uses same-origin authenticated requests and does not contain Facebook API or login automation', () => {
   assert.match(html, /credentials: 'same-origin'/);
   assert.doesNotMatch(html, /graph\.facebook\.com|access_token|facebook\.com\/login|document\.cookie/i);

@@ -46,6 +46,14 @@ small{color:var(--muted)}
   </section>
 
   <section class="card">
+    <h2>Facebook Post Drafts — Neon Archive</h2>
+    <p>Copy only the post text, publish it yourself on Facebook, then optionally confirm publication. Delete removes only the selected draft payload and its retained version payloads; metadata and sanitized audit remain.</p>
+    <div class="actions"><button class="primary" id="loadSocialPostsBtn">Load / Refresh Draft Archive</button></div>
+    <div id="socialPostStatus" class="status" role="status">Archive not loaded.</div>
+    <div id="socialPostArchive"></div>
+  </section>
+
+  <section class="card">
     <h2>Add Facebook source / Import post</h2>
     <p>Public Page/Group links can be searched in public web indexes. If content is unavailable, paste the post text or import it manually. Nothing is scraped behind login or access controls.</p>
     <div class="grid">
@@ -94,7 +102,7 @@ small{color:var(--muted)}
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { selected: null };
+  const state = { selected: null, socialPostCopyStatus: Object.create(null) };
   function status(message, bad = false) {
     $('status').textContent = message;
     $('status').style.color = bad ? '#fb7185' : '#91a0bd';
@@ -123,6 +131,149 @@ small{color:var(--muted)}
   function withAuthority(data, grant) {
     return { ...data, authorityId: grant.authorityId, requestId: grant.requestId, projectId: grant.projectId };
   }
+  function socialPostStatus(message, bad = false) {
+    $('socialPostStatus').textContent = message;
+    $('socialPostStatus').style.color = bad ? '#fb7185' : '#91a0bd';
+  }
+  function renderSocialPostDrafts(drafts) {
+    const root = $('socialPostArchive');
+    root.replaceChildren();
+    if (!drafts.length) {
+      root.textContent = 'No Facebook Post Drafts found in this project.';
+      return;
+    }
+    for (const draft of drafts) {
+      const card = document.createElement('article');
+      card.className = 'result';
+      const heading = document.createElement('strong');
+      heading.textContent = draft.memoryId;
+      const meta = document.createElement('small');
+      const source = draft.source || {};
+      meta.textContent = 'Created: ' + (draft.createdAt || 'unknown') +
+        ' • Revision: ' + (draft.revision || 'unknown') +
+        ' • Source / Provenance: ' + (source.sourceType || 'unknown') +
+        ' • Source ID: ' + (source.sourceId || 'not supplied') +
+        ' • Observed: ' + (source.observedAt || 'not supplied');
+      const recordStatus = document.createElement('p');
+      recordStatus.textContent = 'Neon Status: ' + (draft.status || 'SAVED') +
+        ' • Payload: ' + (draft.payloadErased ? 'ERASED' : 'RETAINED');
+      const copyStatus = document.createElement('small');
+      copyStatus.textContent = 'Copy Status: ' + (state.socialPostCopyStatus[draft.memoryId] || 'NOT_COPIED');
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      const copy = document.createElement('button');
+      copy.textContent = 'Copy Post';
+      copy.disabled = draft.payloadErased || typeof draft.content !== 'string' || !draft.content;
+      copy.addEventListener('click', async () => {
+        try {
+          if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+            throw new Error('CLIPBOARD_UNAVAILABLE');
+          }
+          await navigator.clipboard.writeText(draft.content);
+          state.socialPostCopyStatus[draft.memoryId] = 'COPIED';
+          copyStatus.textContent = 'Copy Status: COPIED';
+          socialPostStatus('Post text copied. Updating Neon copy acknowledgement...');
+          try {
+            const grant = await authority('memory.social_post.copy', 'memory:' + draft.memoryId, 'social-post-copy');
+            const saved = await request('/api/hfm/social-posts/' + encodeURIComponent(draft.memoryId) + '/copy', {
+              method: 'POST',
+              body: JSON.stringify(withAuthority({
+                idempotencyKey: crypto.randomUUID(),
+                clipboardCopySucceeded: true
+              }, grant))
+            });
+            recordStatus.textContent = 'Neon Status: ' + saved.status + ' • Payload: RETAINED';
+            socialPostStatus('COPIED — Neon acknowledgement saved.');
+          } catch (syncError) {
+            socialPostStatus('COPIED — clipboard succeeded, but Neon acknowledgement needs retry: ' + syncError.message, true);
+          }
+        } catch (_copyError) {
+          state.socialPostCopyStatus[draft.memoryId] = 'COPY_FAILED';
+          copyStatus.textContent = 'Copy Status: COPY_FAILED';
+          socialPostStatus('COPY_FAILED — clipboard was not updated.', true);
+        }
+      });
+      const published = document.createElement('button');
+      published.textContent = 'Mark as Published';
+      published.disabled = draft.payloadErased || !['COPIED','USER_CONFIRMED_PUBLISHED'].includes(draft.status);
+      published.addEventListener('click', async () => {
+        if (!confirm('তুমি কি নিজে Facebook-এ এই পোস্ট প্রকাশ করেছ? Mira Facebook থেকে এটি যাচাই করবে না।')) return;
+        try {
+          const grant = await authority('memory.social_post.confirm_published', 'memory:' + draft.memoryId, 'social-post-user-confirmed-published');
+          const result = await request('/api/hfm/social-posts/' + encodeURIComponent(draft.memoryId) + '/published', {
+            method: 'POST',
+            body: JSON.stringify(withAuthority({
+              idempotencyKey: crypto.randomUUID(),
+              userConfirmedPublished: true
+            }, grant))
+          });
+          recordStatus.textContent = 'Neon Status: ' + result.status + ' • Confirmation: USER ACTION (not Facebook-verified)';
+          published.disabled = true;
+          socialPostStatus('USER_CONFIRMED_PUBLISHED — তোমার confirmation Neon-এ সংরক্ষিত হয়েছে।');
+        } catch (error) {
+          socialPostStatus('Published confirmation failed: ' + error.message, true);
+        }
+      });
+      const remove = document.createElement('button');
+      remove.className = 'danger';
+      remove.textContent = 'Delete Draft Payload';
+      remove.disabled = draft.payloadErased;
+      remove.addEventListener('click', async () => {
+        if (!confirm('তুমি কি এই Facebook Post Draft-এর মূল Memory record Neon থেকে Delete করতে চাও? শুধু এই record ও এর version payload মুছবে; metadata ও sanitized audit থাকবে।')) return;
+        socialPostStatus('DELETE_PENDING — waiting for Neon confirmation.');
+        try {
+          const grant = await authority('memory.social_post.delete_payload', 'memory:' + draft.memoryId, 'social-post-payload-erasure');
+          const result = await request('/api/hfm/social-posts/' + encodeURIComponent(draft.memoryId), {
+            method: 'DELETE',
+            body: JSON.stringify(withAuthority({
+              idempotencyKey: crypto.randomUUID(),
+              userConfirmedDelete: true
+            }, grant))
+          });
+          if (result.status !== 'DELETED') {
+            socialPostStatus('DELETE_STATUS_UNKNOWN — Neon did not confirm payload erasure.', true);
+            return;
+          }
+          socialPostStatus('DELETED — Neon confirmed deletion of this record payload and its version payloads.');
+          await loadSocialPostArchive();
+        } catch (error) {
+          const unknown = /UNKNOWN|DATABASE|CONNECTION|TIMEOUT|WRITER|PREFLIGHT/.test(error.message);
+          socialPostStatus((unknown ? 'DELETE_STATUS_UNKNOWN' : 'DELETE_FAILED') + ' — ' + error.message, true);
+          if (unknown) {
+            try { await loadSocialPostArchive(); } catch (_refreshError) {}
+          }
+        }
+      });
+      actions.append(copy, published, remove);
+      card.append(heading, meta, recordStatus, copyStatus, actions);
+      if (typeof draft.content === 'string' && draft.content) {
+        const preview = document.createElement('p');
+        preview.textContent = draft.content;
+        card.append(preview);
+      } else if (draft.payloadErased) {
+        const erased = document.createElement('small');
+        erased.textContent = 'Original post payload has been erased. Record metadata is retained.';
+        card.append(erased);
+      }
+      root.append(card);
+    }
+  }
+  async function loadSocialPostArchive() {
+    try {
+      const grant = await authority('memory.read', 'memory:project:' + projectId(), 'social-post-archive-read');
+      const query = new URLSearchParams(withAuthority({}, grant));
+      const result = await request('/api/hfm/social-posts?' + query.toString());
+      renderSocialPostDrafts(result.drafts || []);
+      socialPostStatus('Archive loaded from Neon: ' + (result.count || 0) + ' record(s).');
+      return result;
+    } catch (error) {
+      socialPostStatus('Archive load failed: ' + error.message, true);
+      throw error;
+    }
+  }
+  $('loadSocialPostsBtn').addEventListener('click', () => {
+    loadSocialPostArchive().catch(() => {});
+  });
   function renderResults(items) {
     const root = $('results');
     root.replaceChildren();
@@ -324,15 +475,17 @@ small{color:var(--muted)}
       status('History loaded: ' + (result.events || []).length + ' sanitized event(s).');
     } catch (error) { status(error.message, true); }
   });
-  request('/api/hfm/projects/active').then(data => {
+  request('/api/hfm/projects/active').then(async data => {
     if (data.projectId) $('projectId').value = data.projectId;
     status(data.projectId ? 'Authenticated session active. Project: ' + data.projectId : 'Authenticated. Create your HFM project to begin.');
+    if (data.projectId) await loadSocialPostArchive().catch(() => {});
   }).catch(() => status('Sign in to Mira before using Facebook Knowledge.', true));
   $('dailyGenerateBtn').addEventListener('click', async () => {
     try {
       const result = await request('/api/hfm/daily-knowledge/generate', { method: 'POST', body: JSON.stringify({}) });
       $('dailyDraft').value = result.draft?.content || '';
       status(result.status + (result.memoryId ? ' • ' + result.memoryId : '') + ' • Manual review required; no Facebook publishing occurs.');
+      await loadSocialPostArchive().catch(() => {});
     } catch (error) { status(error.message, true); }
   });
   $('createProjectBtn').addEventListener('click', async () => {

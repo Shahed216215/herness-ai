@@ -44,7 +44,7 @@ test('project bootstrap binds owner and membership to the verified session princ
   assert.equal(ownerInsert.params[1], 'mira:mira.users:' + principal.subject);
   assert.equal(membershipInsert.params[2], 'mira:mira.users:' + principal.subject);
   assert.deepEqual(JSON.parse(membershipInsert.params[3]), {
-    operations: ['memory.read','memory.write','memory.update','memory.trash','memory.restore']
+    operations: ['memory.read','memory.write','memory.update','memory.trash','memory.restore','memory.social_post.copy','memory.social_post.confirm_published','memory.social_post.delete_payload']
   });
   assert.ok(calls.some(x => x.sql.includes('pg_advisory_xact_lock(74291')));
   assert.ok(calls.some(x => x.sql.startsWith('COMMIT')));
@@ -59,7 +59,7 @@ test('project bootstrap is idempotent for the same active owner and membership',
         return { rows: [{ owner_actor_id: 'mira:mira.users:' + principal.subject, status: 'ACTIVE', revision: 1 }] };
       }
       if (sql.includes('FROM mira_hfm.project_memberships')) {
-        return { rows: [{ membership_id: 'mbr_existing', status: 'ACTIVE', permissions: { operations: ['memory.read','memory.write','memory.update','memory.trash','memory.restore'] } }] };
+        return { rows: [{ membership_id: 'mbr_existing', status: 'ACTIVE', permissions: { operations: ['memory.read','memory.write','memory.update','memory.trash','memory.restore','memory.social_post.copy','memory.social_post.confirm_published','memory.social_post.delete_payload'] } }] };
       }
       return { rows: [], rowCount: 1 };
     },
@@ -73,6 +73,26 @@ test('project bootstrap is idempotent for the same active owner and membership',
   assert.equal(result.status, 'ALREADY_EXISTS');
   assert.ok(calls.some(sql => sql.includes('FROM mira_hfm.project_memberships')));
   assert.equal(calls.some(sql => sql.startsWith('INSERT INTO mira_hfm.project_owners')), false);
+});
+
+test('existing project with legacy permissions is not silently expanded', async () => {
+  const client = {
+    async query(sql) {
+      if (sql.includes('FROM mira_hfm.project_owners')) {
+        return { rows: [{ owner_actor_id: 'mira:mira.users:' + principal.subject, status: 'ACTIVE', revision: 1 }] };
+      }
+      if (sql.includes('FROM mira_hfm.project_memberships')) {
+        return { rows: [{ membership_id: 'mbr_existing', status: 'ACTIVE', permissions: { operations: ['memory.read','memory.write','memory.update','memory.trash','memory.restore'] } }] };
+      }
+      return { rows: [], rowCount: 1 };
+    },
+    release() {}
+  };
+  await assert.rejects(() => projects.createOwnedProject({
+    pool: { connect: async () => client },
+    verifiedPrincipal: principal,
+    projectId: 'hfm_0123456789abcdef0123456789abcdef'
+  }), /HFM_PROJECT_PERMISSION_REPAIR_REQUIRED/);
 });
 
 test('project bootstrap fails closed when another owner already holds the ID', async () => {

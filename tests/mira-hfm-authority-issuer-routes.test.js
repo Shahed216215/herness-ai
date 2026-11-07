@@ -27,6 +27,26 @@ test('only supported HFM operation and purpose pairs can be issued', () => {
     projectId: 'project-001', operation: 'facebook.publish',
     resource: 'memory:fbk_12345678', purpose: 'facebook-knowledge-import'
   }), /HFM_AUTHORITY_ISSUE_SCOPE_NOT_ALLOWED/);
+
+  const socialOperations = [
+    ['memory.social_post.copy', 'social-post-copy'],
+    ['memory.social_post.confirm_published', 'social-post-user-confirmed-published'],
+    ['memory.social_post.delete_payload', 'social-post-payload-erasure']
+  ];
+  for (const [operation, purpose] of socialOperations) {
+    assert.deepEqual(routes.validateIssueRequest({
+      projectId: 'project-001', operation,
+      resource: 'memory:post_12345678', purpose
+    }), { projectId: 'project-001', operation, resource: 'memory:post_12345678', purpose });
+  }
+  assert.deepEqual(routes.validateIssueRequest({
+    projectId: 'project-001', operation: 'memory.read',
+    resource: 'memory:project:project-001', purpose: 'social-post-archive-read'
+  }).purpose, 'social-post-archive-read');
+  assert.throws(() => routes.validateIssueRequest({
+    projectId: 'project-001', operation: 'memory.social_post.delete_payload',
+    resource: 'memory:post_12345678', purpose: 'social-post-copy'
+  }), /HFM_AUTHORITY_ISSUE_SCOPE_NOT_ALLOWED/);
 });
 
 test('project permission must explicitly include the exact operation', () => {
