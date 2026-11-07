@@ -75,10 +75,19 @@ function registerDailyKnowledgeRoutes(app, requireAgentAuth) {
           );
           const row = existing.rows && existing.rows[0];
           if (row) {
+            const existingRecord = repository.decodeStoredRow(row, {
+              allowPrivateRead: true,
+              env: process.env
+            });
+            if (existingRecord.recordType !== 'social_post_draft' ||
+                existingRecord.access.classification !== 'PROJECT_PRIVATE') {
+              throw fail('HFM_DAILY_POST_RECORD_TYPE_MISMATCH');
+            }
             return {
               status: row.lifecycle === 'TRASHED' ? 'EXISTS_IN_TRASH' : 'ALREADY_GENERATED',
               memoryId,
-              revision: Number(row.revision)
+              revision: Number(row.revision),
+              draft: { content: existingRecord.content, timestamps: existingRecord.timestamps }
             };
           }
           const sourceRows = await client.query(
