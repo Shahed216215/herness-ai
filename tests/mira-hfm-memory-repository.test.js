@@ -314,6 +314,22 @@ test('private read requires explicit authorization and verifies encrypted record
   });
   assert.equal(result.status, 'FOUND');
   assert.equal(result.record.content, privateRecord.content);
+  const trustMismatchClient = fakeClient({
+    query: async sql => sql.startsWith('SELECT memory_id')
+      ? { rowCount: 1, rows: [{ ...row, trust_status: 'HUMAN_VERIFIED' }] }
+      : { rowCount: 0, rows: [] }
+  });
+  await assert.rejects(
+    repository.getMemoryRecord({
+      client: trustMismatchClient,
+      context: { ...context, operation: 'memory.read' },
+      memoryId: row.memory_id,
+      allowPrivateRead: true,
+      env
+    }),
+    error => error.code === 'HFM_MEMORY_STORED_RECORD_METADATA_MISMATCH'
+  );
+  console.log('HFM_REPOSITORY_STORED_TRUST_METADATA_MUST_MATCH_PAYLOAD=PASS');
 });
 
 test('standing-read exact record lookup is project, type, lifecycle, trust and integrity scoped', async () => {
