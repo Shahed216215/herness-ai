@@ -544,3 +544,22 @@ Migration source review also found migrations 016–018, while the lineage docum
 Migration 016 and the canonical Memory repository revision path were hardened so `memory.update` cannot change `integrity_status` or `trust_status`. The writer's column-level UPDATE grant excludes `integrity_status`; the trigger rejects any integrity/trust metadata change; the repository validates the incoming integrity status against the stored row and no longer updates that column. Regression coverage rejects integrity-status tampering and confirms the revision UPDATE statement does not touch trust/integrity metadata.
 
 Exact branch HEAD `4a4fb954c31e7dd76c2bc55935a010224c0754ca` completed the eight existing PR workflow checks successfully: HFM runtime foundation, Memory repository contracts, session persistence, Render host binding, dependency remediation, Run Agent regression, Competitor Intelligence, and approval diagnostic. Render live HTTP smoke was skipped. The standalone `hfm-postgres-migrations.yml` push run still produced a failed run with zero jobs; no disposable PostgreSQL 001–018 execution evidence was obtained. Its migration-chain status remains **NOT_VERIFIED** (not PASS). This branch remains Draft and unmerged; Render and Neon were not changed.
+
+## 2026-11-07 follow-up: disposable PostgreSQL chain validated
+
+A separate, minimal workflow `.github/workflows/hfm-v02-disposable-migrations.yml` was added to avoid depending on the legacy `hfm-postgres-migrations.yml` workflow, whose push run continues to fail before creating a job. The new workflow uses an ephemeral PostgreSQL 16 service only; it does not connect to Neon or Render.
+
+Exact branch HEAD `0f750ce0f733cd0972c634af6af98cec4053cc99` produced successful runs for both push (run `42379282025`) and pull_request (run `42379284821`). Each run completed all steps: isolated database and legacy role creation, migrations 001–018 applied in order, and verification that all eight protected HFM tables have both RLS and FORCE RLS enabled. The migration chain is therefore **PASS on disposable PostgreSQL at this exact HEAD**.
+
+At the same HEAD, the Memory repository contract workflow (run `42379284770`) and HFM runtime foundation workflow (run `42379284644`) completed successfully, including focused tests and the full repository regression suite. The current branch's observed PR checks are 9/9 successful; Render live HTTP smoke remains skipped.
+
+This evidence validates the migration SQL chain in an isolated CI database only. It does not authorize or establish compatibility with any live Neon branch. The legacy workflow's zero-job failure remains recorded; the new workflow is the active disposable migration evidence source.
+
+### Updated release disposition
+
+- Disposable PostgreSQL migrations 001–018 at `0f750ce0f733cd0972c634af6af98cec4053cc99`: **PASS**.
+- Memory repository and HFM foundation tests at same HEAD: **PASS**.
+- Observed PR checks: **9/9 PASS**; Render live HTTP smoke: **SKIPPED**.
+- Render-to-Neon identity: **INCONCLUSIVE**.
+- Live Neon migrations 010–018: **NOT_APPLIED / NOT_APPROVED**.
+- HFM v0.2 production deployment: **BLOCKED**. PR #80 remains Draft and unmerged.
