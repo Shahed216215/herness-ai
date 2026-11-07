@@ -12946,9 +12946,13 @@ document.querySelectorAll(
   const projectField = byId("hfmV02ProjectId");
   const statusNode = byId("hfmV02SocialDraftStatus");
   const listNode = byId("hfmV02SocialDraftList");
+  const standingStatusNode = byId("hfmV02StandingStatus");
+  let standingAuthorityId = null;
   const controls = [
     byId("hfmV02SelectProject"), byId("hfmV02BootstrapProject"),
-    byId("hfmV02GenerateDraft"), byId("hfmV02LoadActiveDrafts"), byId("hfmV02LoadTrash")
+    byId("hfmV02GenerateDraft"), byId("hfmV02LoadActiveDrafts"), byId("hfmV02LoadTrash"),
+    byId("hfmV02StandingRefresh"), byId("hfmV02StandingIssue"),
+    byId("hfmV02StandingPause"), byId("hfmV02StandingResume"), byId("hfmV02StandingRevoke")
   ];
 
   function setStatus(message, kind = "muted") {
@@ -12976,6 +12980,83 @@ document.querySelectorAll(
     }
     return data;
   }
+  async function refreshStandingAuthority() {
+    try {
+      const data = await postJson("/api/hfm/memory/standing-authority/status", {});
+      const authority = data.authority;
+      standingAuthorityId = authority ? authority.standingAuthorityId : null;
+      if (!authority) {
+        standingStatusNode.textContent = "No standing read authority exists for this project.";
+        byId("hfmV02StandingPause").hidden = true;
+        byId("hfmV02StandingResume").hidden = true;
+        byId("hfmV02StandingRevoke").hidden = true;
+        byId("hfmV02StandingIssue").hidden = false;
+        return;
+      }
+      const expiry = new Date(authority.expiresAt).toLocaleString();
+      standingStatusNode.textContent = "Authority: " + authority.authorityStatus +
+        " · Expires: " + expiry + " · ID: " + authority.standingAuthorityId;
+      const active = authority.authorityStatus === "ACTIVE";
+      const paused = authority.authorityStatus === "PAUSED";
+      byId("hfmV02StandingPause").hidden = !active;
+      byId("hfmV02StandingResume").hidden = !paused;
+      byId("hfmV02StandingRevoke").hidden = !(active || paused);
+      byId("hfmV02StandingIssue").hidden = active || paused;
+    } catch (error) {
+      standingAuthorityId = null;
+      standingStatusNode.textContent = "Standing authority status unavailable: " + error.message;
+      byId("hfmV02StandingPause").hidden = true;
+      byId("hfmV02StandingResume").hidden = true;
+      byId("hfmV02StandingRevoke").hidden = true;
+      byId("hfmV02StandingIssue").hidden = false;
+    }
+  }
+  async function issueStandingAuthority() {
+    try { requireProjectInput(); }
+    catch (error) { standingStatusNode.textContent = error.message; return; }
+    const approved = window.confirm(
+      "Approve 365 days of standing HFM memory.read access for the selected project? " +
+      "Mira may repeatedly read ACTIVE learning_note and knowledge_item records without asking again. " +
+      "Every read is audited. No writes, edits, Trash, Restore, publishing, or Local/Drive fallback are allowed. " +
+      "You can pause or revoke this authority at any time."
+    );
+    if (!approved) return;
+    byId("hfmV02StandingIssue").disabled = true;
+    standingStatusNode.textContent = "Issuing the 365-day project-scoped read authority…";
+    try {
+      const data = await postJson("/api/hfm/memory/standing-authority/issue", {
+        confirm: true,
+        purpose: "Admin-approved 365-day standing read access for this project's Learning and Knowledge records."
+      });
+      standingStatusNode.textContent = "Standing authority issued. Expires: " +
+        new Date(data.expiresAt).toLocaleString() + ".";
+      await refreshStandingAuthority();
+    } catch (error) {
+      standingStatusNode.textContent = "Standing authority was not issued: " + error.message;
+    } finally {
+      byId("hfmV02StandingIssue").disabled = false;
+    }
+  }
+  async function updateStandingAuthority(action) {
+    if (!standingAuthorityId) {
+      standingStatusNode.textContent = "Check the current standing authority first.";
+      return;
+    }
+    if (action === "revoke" &&
+        !window.confirm("Revoke this standing read authority permanently? It cannot be resumed.")) return;
+    const button = byId("hfmV02Standing" + action.charAt(0).toUpperCase() + action.slice(1));
+    button.disabled = true;
+    try {
+      await postJson("/api/hfm/memory/standing-authority/" + action, {
+        standingAuthorityId
+      });
+      await refreshStandingAuthority();
+    } catch (error) {
+      standingStatusNode.textContent = "Standing authority update failed: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
   function requireProjectInput() {
     const value = selectedProjectId();
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(value)) {
@@ -12990,6 +13071,7 @@ document.querySelectorAll(
     try {
       const data = await postJson("/api/hfm/projects/select", { projectId });
       setStatus("Project selected: " + data.project.projectId + " (" + data.project.membershipRole + ").", "success");
+      await refreshStandingAuthority();
       return data;
     } catch (error) {
       setStatus("Project selection not completed: " + error.message, "error");
@@ -13193,6 +13275,12 @@ document.querySelectorAll(
   });
   byId("hfmV02LoadActiveDrafts").addEventListener("click", () => loadDrafts("ACTIVE"));
   byId("hfmV02LoadTrash").addEventListener("click", () => loadDrafts("TRASHED"));
+  byId("hfmV02StandingRefresh").addEventListener("click", refreshStandingAuthority);
+  byId("hfmV02StandingIssue").addEventListener("click", issueStandingAuthority);
+  byId("hfmV02StandingPause").addEventListener("click", () => updateStandingAuthority("pause"));
+  byId("hfmV02StandingResume").addEventListener("click", () => updateStandingAuthority("resume"));
+  byId("hfmV02StandingRevoke").addEventListener("click", () => updateStandingAuthority("revoke"));
+
 })();
 </script>
 
