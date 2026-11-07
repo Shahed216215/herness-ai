@@ -27,6 +27,7 @@ The branch now preserves the exact previously applied 007–009 migration files 
 | 012 | `012_authority_approval_nonce_registry.sql` | Persistent single-use approval nonce registry |
 | 013 | `013_one_time_initial_project_bootstrap.sql` | One-time initial-project bootstrap latch and role |
 | 014 | `014_standing_read_authority_365_days.sql` | Project-scoped, revocable, 365-day standing read authority |
+| 015 | `015_actor_membership_operation_rls.sql` | RESTRICTIVE actor-bound writer/reader RLS for active owner/member, operation permission, exact resource, and live/consumed authority |
 
 The 007–009 files are copied byte-for-byte from the previously verified Memory Core branch. The new 011 migration uses the existing issuer role rather than creating a second migration identity. It changes the role to NOINHERIT, removes the old project-only/owner-insert issuer policies, and installs the newer actor-bound policies. The dedicated issuer LOGIN principal remains the only intended member and inherits the group because the LOGIN role itself has INHERIT.
 
@@ -46,7 +47,7 @@ A separate Memory Core branch contains `006_social_post_manual_publish_payload_e
 
 ## Validation boundary
 
-The updated disposable PostgreSQL 16 workflow applied 001–009 in canonical order, then 010–014, and passed on code commit `645af36db7a3150d2f53f8570228b93cebab7ba6`. Bootstrap/issuer nonce flow, 365-day standing-read RLS and audit behavior, forced RLS, and exact role-boundary checks all completed successfully. The later `80aedfabd5c07d2f573c9f222eced0178605aeb8` commit changed documentation only; it did not alter migration SQL or the workflow. Disposable-CI migration validation is **PASS**; live Neon target compatibility remains **NOT_VERIFIED**.
+The disposable PostgreSQL 16 workflow applies 001–009 in canonical order, then 010–015. Exact PR-head commit `0c9aeed03938cd1a3a966d5b0151729dc4d7b055` passed workflow `42366089608`, including bootstrap/issuer nonce flow, actor-bound writer and reader membership/operation RLS, standing-read RLS and audit behavior, forced RLS, and exact role-boundary checks. The actor-bound negative writer fixture uses an EXPIRED historical membership to satisfy the authority revision FK while verifying that RLS still rejects the write. The standing-read fixture asserts the exact eligible record IDs and excludes pending Knowledge/Social Draft records. Disposable-CI migration validation for 001–015 is **PASS**; live Neon target compatibility remains **NOT_VERIFIED**. No migration was applied to Neon.
 
 No Neon migration, production data write, role change, Render environment change, feature-flag enablement, merge, or deployment was performed as part of this source-lineage correction.
 
