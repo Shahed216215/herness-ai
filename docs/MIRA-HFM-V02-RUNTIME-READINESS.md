@@ -286,6 +286,7 @@ Target inspected: project steep-grass-38696226, branch br-crimson-sun-a13xzreh, 
 - Render runtime: INCONCLUSIVE — service configuration observed; HFM environment names/values not available from the inspected endpoint.
 - Deployment and PR merge: NOT_APPROVED — explicit user approval and all live gates remain required.
 - Migration rollback design is prepared in [MIRA-HFM-V02-MIGRATION-ROLLBACK-PLAN.md](MIRA-HFM-V02-MIGRATION-ROLLBACK-PLAN.md). It is a non-destructive, design-only plan; no snapshot, restore rehearsal, migration, or rollback operation has been performed.
+- Render runtime read-only evidence (2026-11-07): service `mira-ai-agent` is Live on the Free plan, tracks `main`, has Auto Deploy on commit, and currently deploys main SHA `881a1deebf5d97a7590aa2b14242a8f32aadf627`. Startup logs show `MIRA_SESSION_STORE_READY=1` and `MIRA_SERVER_READY=1`; no `MIRA_HFM` runtime log entries were found. Render's service inspection response exposes no environment-variable key inventory, and its healthCheckPath is empty; therefore HFM env-var presence/values and HFM health/authorization/read/write readiness remain INCONCLUSIVE. No secrets were retrieved or changed. The PR branch is not the Render deployment branch.
 - The rollback plan remains DESIGN ONLY: no Neon snapshot or restore rehearsal has been created, and no down migration has been executed.
 
 
