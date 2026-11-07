@@ -97,9 +97,9 @@ This is structural preflight evidence only. No migration, role creation, grant, 
 
 ## Validation evidence
 
-The HFM runtime, repository, session, dependency, route, UI, and PostgreSQL migration-chain checks all passed on code commit `62456d2bc2e0e8c8e3f8fd3968b3e17ae83b7753` (10/10 GitHub Actions checks). The PostgreSQL migration workflow is configured to apply migrations 001–011 only to its disposable PostgreSQL 16 CI database and exercised bootstrap, issuer nonce, trash-authority RLS, and hard-delete denial. The embedded social-draft UI script also has parser-level syntax validation.
+The HFM runtime, repository, session, dependency, route, UI, and PostgreSQL migration-chain checks all passed on code commit `92b3042cdfa2d2f3a63783c393cc9d879e932d4b` (11/11 GitHub check runs, including the PostgreSQL 001–011 disposable-database migration chain). The PostgreSQL migration workflow is configured to apply migrations 001–011 only to its disposable PostgreSQL 16 CI database and exercised bootstrap, issuer nonce, trash-authority RLS, and hard-delete denial. The embedded social-draft UI script also has parser-level syntax validation.
 
-These are synthetic/offline or disposable-CI results. They are not live Neon or Render evidence. No live HFM database write or migration has been performed. The newly added 365-day standing-authority path is not considered validated until the updated GitHub Actions run passes.
+These are synthetic/offline or disposable-CI results. They are not live Neon or Render evidence. No live HFM database write or migration has been performed. The 365-day standing-authority migration and synthetic route/service/UI contracts passed disposable PostgreSQL CI. This does not validate the live Neon staging database or Render runtime.
 
 ## Release and deployment gates
 
