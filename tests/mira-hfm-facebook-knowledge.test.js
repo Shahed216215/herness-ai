@@ -285,3 +285,13 @@ test('keyword retrieval returns source evidence and audits only non-content meta
     else delete require.cache[modulePath];
   }
 });
+
+test('extracts only post text columns from CSV exports with quoted commas and newlines', () => {
+  const content = extractImportedContent('post_id,message,date\n1,"বাংলা পোস্ট, AI নিয়ে আলোচনা","2026-11-07"\n2,"দ্বিতীয় লাইন\nএখানে","2026-11-08"', {
+    fileName: 'facebook-export.csv', mimeType: 'text/csv'
+  });
+  assert.match(content, /বাংলা পোস্ট, AI নিয়ে আলোচনা/);
+  assert.match(content, /দ্বিতীয় লাইন\nএখানে/);
+  assert.doesNotMatch(content, /post_id|2026-11-07|2026-11-08/);
+  assert.throws(() => extractImportedContent('id,date\n1,today', { fileName: 'export.csv' }), /HFM_IMPORT_CSV_NO_TEXT_COLUMN/);
+});
