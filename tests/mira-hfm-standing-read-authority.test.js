@@ -446,7 +446,29 @@ const pool = { async connect() { return client; } };
   assert.match(failureAuditScript, /ci-standing-denied-no-flag/);
   assert.match(failureAuditScript, /ci-standing-denied-wrong-operation/);
   assert.match(failureAuditScript, /ci-standing-denied-wrong-resource/);
-  assert.match(failureAuditScript, /to_char\(\$\$2026-11-07T00:00:00[.]123456Z\$\$::timestamptz AT TIME ZONE/);
+  assert.ok(failureAuditScript.includes('to_char($ts$2026-11-07T00:00:00.123456Z$ts$::timestamptz AT TIME ZONE $tz$UTC$tz
+  assert.match(failureAuditScript, /HFM_STANDING_READ_DB_TIMESTAMP_SERIALIZATION_MICROSECONDS=PASS/);
+  console.log('HFM_STANDING_READ_FAILURE_AUDIT_SCRIPT_COVERS_RESTRICTIVE_CONTEXT=PASS');
+  console.log('HFM_STANDING_READ_FAILURE_AUDIT_POLICY_SCOPED_TO_PROJECT_ACTOR_REQUEST=PASS');
+  console.log('HFM_STANDING_READ_MIGRATION_RLS_IMMUTABLE_SCOPE_365D=PASS');
+
+  const readRoute = fs.readFileSync(
+    path.join(__dirname, '..', 'routes/mira-hfm-memory-read.js'), 'utf8'
+  );
+  assert.match(readRoute, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED/);
+  assert.match(readRoute, /\['learning_note', 'knowledge_item'\]/);
+  assert.match(readRoute, /ACTIVE records only/);
+  console.log('HFM_STANDING_READ_RUNTIME_FLAG_AND_RECORD_SCOPE=PASS');
+
+  console.log('NETWORK_REQUESTS=0');
+  console.log('LOCAL_FALLBACK=NO');
+  console.log('MEMORY_WRITES=0');
+  console.log('TESTS_FAILED=0');
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
+));
   assert.match(failureAuditScript, /HFM_STANDING_READ_DB_TIMESTAMP_SERIALIZATION_MICROSECONDS=PASS/);
   console.log('HFM_STANDING_READ_FAILURE_AUDIT_SCRIPT_COVERS_RESTRICTIVE_CONTEXT=PASS');
   console.log('HFM_STANDING_READ_FAILURE_AUDIT_POLICY_SCOPED_TO_PROJECT_ACTOR_REQUEST=PASS');
