@@ -304,6 +304,9 @@ async function ingestFacebookKnowledge(options = {}) {
 }
 
 async function appendKnowledgeSearchAudit(client, context, resultCount, queryLength) {
+  // Use the same project-scoped transaction lock as repository writes so concurrent
+  // search audits cannot fork the per-project hash chain.
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [context.projectId]);
   const previous = await client.query(
     'SELECT event_hash FROM mira_hfm.memory_audit_events WHERE project_id = $1 ORDER BY event_sequence DESC LIMIT 1',
     [context.projectId]
@@ -343,7 +346,7 @@ async function searchFacebookKnowledge(options = {}) {
   if (!terms.length) return Object.freeze({ status: 'NO_MATCHES', results: [], count: 0 });
   const limit = Number.isInteger(options.limit) ? Math.min(Math.max(options.limit, 1), 25) : 10;
   const result = await client.query(
-    "SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, integrity_status, trust_status, public_payload, encrypted_envelope, created_at, updated_at FROM mira_hfm.memory_records WHERE project_id = $1 AND classification = 'PUBLIC' AND record_type = 'knowledge_item' AND lifecycle = 'ACTIVE' AND integrity_status <> 'FAILED' AND trust_status <> 'QUARANTINED' ORDER BY updated_at DESC, memory_id ASC LIMIT 500",
+    "SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, integrity_status, trust_status, public_payload, encrypted_envelope, created_at, updated_at FROM mira_hfm.memory_records WHERE project_id = $1 AND classification = 'PUBLIC' AND record_type = 'knowledge_item' AND lifecycle = 'ACTIVE' AND integrity_status NOT IN ('FAILED','QUARANTINED') AND trust_status <> 'QUARANTINED' ORDER BY updated_at DESC, memory_id ASC LIMIT 500",
     [context.projectId]
   );
   const scored = [];
