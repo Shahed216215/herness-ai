@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integration/hfm-v02-mainline-20261107
+      - work/mira-hfm-v02-runtime-integration
     paths:
       - "server.js"
       - "package.json"
