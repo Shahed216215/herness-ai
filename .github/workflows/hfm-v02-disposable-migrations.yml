@@ -342,3 +342,40 @@ jobs:
           SQL
           echo "HFM_V02_READER_WRITER_FORBIDDEN_OPERATION_PROBES=PASS"
           echo "HFM_V02_PROBE_SCOPE=DISPOSABLE_POSTGRESQL_ONLY"
+
+      - name: Rehearse disposable database snapshot and isolated restore
+        env:
+          PGPASSWORD: hfm-ci-password
+        run: |
+          set -euo pipefail
+          pg_dump -h localhost -U postgres --format=custom --file=/tmp/hfm-v02-disposable.dump neondb
+          createdb -h localhost -U postgres neondb_restore_rehearsal
+          pg_restore -h localhost -U postgres --exit-on-error --dbname=neondb_restore_rehearsal /tmp/hfm-v02-disposable.dump
+
+          source_fingerprint="$(psql -h localhost -U postgres -d neondb -At -v ON_ERROR_STOP=1 -c "
+            SELECT concat_ws(':',
+              (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm' AND c.relkind IN ('r','p')),
+              (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm' AND c.relkind IN ('r','p') AND c.relrowsecurity AND c.relforcerowsecurity),
+              (SELECT count(*) FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm'),
+              (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm' AND NOT t.tgisinternal),
+              has_table_privilege('mira_hfm_memory_reader_login','mira_hfm.memory_records','SELECT'),
+              has_table_privilege('mira_hfm_memory_reader_login','mira_hfm.memory_records','INSERT'),
+              has_table_privilege('mira_hfm_memory_writer','mira_hfm.memory_records','INSERT'),
+              has_table_privilege('mira_hfm_memory_writer','mira_hfm.memory_records','DELETE')
+            )")"
+          restored_fingerprint="$(psql -h localhost -U postgres -d neondb_restore_rehearsal -At -v ON_ERROR_STOP=1 -c "
+            SELECT concat_ws(':',
+              (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm' AND c.relkind IN ('r','p')),
+              (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm' AND c.relkind IN ('r','p') AND c.relrowsecurity AND c.relforcerowsecurity),
+              (SELECT count(*) FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm'),
+              (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm' AND NOT t.tgisinternal),
+              has_table_privilege('mira_hfm_memory_reader_login','mira_hfm.memory_records','SELECT'),
+              has_table_privilege('mira_hfm_memory_reader_login','mira_hfm.memory_records','INSERT'),
+              has_table_privilege('mira_hfm_memory_writer','mira_hfm.memory_records','INSERT'),
+              has_table_privilege('mira_hfm_memory_writer','mira_hfm.memory_records','DELETE')
+            )")"
+
+          test "$source_fingerprint" = "$restored_fingerprint"
+          test "$(psql -h localhost -U postgres -d neondb_restore_rehearsal -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mira_hfm' AND c.relkind IN ('r','p')")" = "11"
+          echo "HFM_V02_DISPOSABLE_SNAPSHOT_RESTORE_REHEARSAL=PASS"
+          echo "HFM_V02_RESTORE_TARGET=ISOLATED_DISPOSABLE_DATABASE"
