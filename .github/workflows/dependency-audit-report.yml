@@ -1,0 +1,78 @@
+name: Dependency security audit report
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/dependency-audit-report.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-security-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run npm audit and preserve machine-readable report
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit-report.json
+          audit_exit=$?
+          set -e
+          export NPM_AUDIT_EXIT_CODE="$audit_exit"
+          node <<'NODE'
+          const fs = require("node:fs");
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync("npm-audit-report.json", "utf8"));
+          } catch {
+            console.error("AUDIT_REPORT_PARSE=FAIL");
+            process.exit(0);
+          }
+          const meta = report.metadata?.vulnerabilities || {};
+          console.log("AUDIT_TOTAL=" + (meta.total ?? "UNKNOWN"));
+          for (const severity of ["critical", "high", "moderate", "low", "info"]) {
+            console.log("AUDIT_" + severity.toUpperCase() + "=" + (meta[severity] ?? 0));
+          }
+          for (const [name, item] of Object.entries(report.vulnerabilities || {})) {
+            const via = (item.via || []).map(v => typeof v === "string" ? v : v.title).filter(Boolean);
+            console.log(JSON.stringify({
+              package: name,
+              severity: item.severity,
+              direct: item.isDirect,
+              range: item.range,
+              via,
+              fixAvailable: item.fixAvailable ?? null
+            }));
+          }
+          console.log("NPM_AUDIT_EXIT_CODE=" + process.env.NPM_AUDIT_EXIT_CODE);
+          NODE
+
+      - name: Upload full npm audit JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit-report.json
+          if-no-files-found: warn
+          retention-days: 14
