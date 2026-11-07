@@ -4,15 +4,9 @@
 // When any HFM Memory mode is active, never write a local fallback.
 function persistConversationMessage(message, options = {}) {
   const env = options.env || process.env;
-  const addMemory = options.addMemory;
   if (!env || typeof env !== 'object') {
     const error = new TypeError('MIRA_CONVERSATION_MEMORY_ENV_INVALID');
     error.code = 'MIRA_CONVERSATION_MEMORY_ENV_INVALID';
-    throw error;
-  }
-  if (typeof addMemory !== 'function') {
-    const error = new TypeError('MIRA_CONVERSATION_MEMORY_WRITER_REQUIRED');
-    error.code = 'MIRA_CONVERSATION_MEMORY_WRITER_REQUIRED';
     throw error;
   }
   const hfmMode = env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === 'true' ||
@@ -25,6 +19,12 @@ function persistConversationMessage(message, options = {}) {
       localFallback: false,
       driveFallback: false
     });
+  }
+  const addMemory = options.addMemory || require('../memory').addMemory;
+  if (typeof addMemory !== 'function') {
+    const error = new TypeError('MIRA_CONVERSATION_MEMORY_WRITER_REQUIRED');
+    error.code = 'MIRA_CONVERSATION_MEMORY_WRITER_REQUIRED';
+    throw error;
   }
   addMemory(message);
   return Object.freeze({
