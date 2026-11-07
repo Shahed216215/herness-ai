@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const assert = require('node:assert/strict');
 
 const ROOT = path.resolve(__dirname, '..');
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'tests', 'docs', 'reports', 'backups', 'coverage']);
@@ -30,8 +31,10 @@ function walk(directory, relative = '') {
 
 const findings = [];
 const consumerFiles = new Map();
+const sourceByRelative = new Map();
 for (const file of walk(ROOT)) {
   const source = fs.readFileSync(file.full, 'utf8');
+  sourceByRelative.set(file.relative, source);
   const lines = source.split(/\r?\n/);
   const filters = {
     trusted: TRUST_FILTER.test(source),
@@ -60,6 +63,37 @@ const unguardedFiles = [...consumerFiles.entries()]
   .filter(([, filters]) => (!filters.trusted || !filters.quarantine) && !filters.legacyGuarded)
   .map(([file]) => file)
   .sort();
+
+const requiredBoundaryContracts = [
+  ['google-drive.js', /async function loadKnowledgeFromDrive\(\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'Drive Knowledge reader'],
+  ['google-drive.js', /async function loadMemoryFromDrive\(\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'Drive Memory reader'],
+  ['google-drive.js', /async function saveKnowledgeToDrive\(data\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'Drive Knowledge writer'],
+  ['google-drive.js', /async function saveMemoryToDrive\(data\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'Drive Memory writer'],
+  ['knowledge.js', /function loadKnowledge\(\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'local Knowledge reader'],
+  ['knowledge.js', /function saveLocalKnowledge\(data\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'local Knowledge writer'],
+  ['memory.js', /function loadMemory\(\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'local Memory reader'],
+  ['memory.js', /function saveMemory\(memory\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'local Memory writer'],
+  ['knowledge-memory-evolution.js', /function readJsonFile\(filePath\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'legacy evolution JSON reader'],
+  ['knowledge-memory-evolution.js', /function atomicWriteJson\(filePath, value\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'legacy evolution JSON writer'],
+  ['autonomous-learning-controlled-apply.js', /function readLocalKnowledge\(\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'controlled-learning local reader'],
+  ['autonomous-learning-controlled-apply.js', /function writeLocalKnowledge\(data\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'controlled-learning local writer'],
+  ['knowledge-controlled-apply.js', /async function applyKnowledgeImprovementControlled\(\s*options = \{\}\s*\)\s*\{\s*assertLegacyStorageDisabled\(\);/, 'controlled Knowledge apply boundary'],
+  ['services/learning.js', /async function learnFromContent\([\s\S]{0,180}?\)\s*\{\s*assertLegacyLearningStorageAllowed\(\);/, 'Learning source save boundary'],
+  ['services/learning.js', /async function improveExistingKnowledge\([\s\S]{0,180}?\)\s*\{\s*assertLegacyLearningStorageAllowed\(\);/, 'Learning improvement boundary'],
+  ['services/learning.js', /async function applyKnowledgeImprovement\([\s\S]{0,180}?\)\s*\{\s*assertLegacyLearningStorageAllowed\(\);/, 'Learning apply boundary'],
+  ['routes/knowledge-improvements.js', /app\.get\(\s*"\\/api\\/admin\\/knowledge-improvements",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "listing"\)/, 'Knowledge improvement list route'],
+  ['routes/knowledge-improvements.js', /app\.get\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "detail read"\)/, 'Knowledge improvement detail route'],
+  ['routes/knowledge-improvements.js', /app\.post\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id\\/approve",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "approval"\)/, 'Knowledge improvement approval route'],
+  ['routes/knowledge-improvements.js', /app\.post\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id\\/reject",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "rejection"\)/, 'Knowledge improvement rejection route'],
+  ['routes/knowledge-improvements.js', /app\.post\(\s*"\\/api\\/admin\\/knowledge-improvements\/:id\\/apply",[\s\S]{0,350}?denyLegacyKnowledgeImprovementAccess\(req, res, "apply"\)/, 'Knowledge improvement apply route']
+];
+
+for (const [file, pattern, label] of requiredBoundaryContracts) {
+  const source = sourceByRelative.get(file);
+  assert.ok(source, 'Required legacy storage boundary file missing: ' + file);
+  assert.match(source, pattern, 'HFM fail-closed guard missing at ' + label);
+}
+console.log('MIRA_HFM_LEGACY_STORAGE_BOUNDARY_GUARDS=PASS');
 
 console.log('MIRA_HFM_RETRIEVAL_CALLSITE_INVENTORY=GENERATED');
 console.log('MIRA_HFM_RETRIEVAL_CALL_COUNT=' + findings.length);
