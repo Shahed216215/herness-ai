@@ -14,6 +14,8 @@ This document records the HFM v0.2 runtime boundary and exact release gates. It 
 - Server-only authority issuer. It supports only short-lived, single-use `memory.read`, `memory.write`, `memory.trash`, and `memory.restore` authorities after checking active owner/membership and a consumed signed approval. Permanent purge is not an allowed operation.
 - HMAC approval-token signer/verifier. It binds project, actor, approver, operation, resource, purpose and expiry; verifies signatures in constant time; and requires atomic nonce redemption.
 - Recent-admin approval service. It requires a stable configured admin subject, fresh authenticated admin session, verified project binding, active owner/membership, explicit confirmation, and a purpose.
+- 365-day Standing Read Authority. A single explicit admin approval creates a separate, project-bound `memory.read` grant for `learning_note` and `knowledge_item` records only. It does not reuse or weaken the one-time authority table; every read is rechecked against active owner/membership revisions and appended to the authority audit log. The grant can be paused, resumed, or permanently revoked, and expires after 365 days. No per-read approval is required while it remains active. It grants no Memory write/edit/trash/restore/purge or Facebook publishing capability.
+- Standing-authority management routes and Knowledge & Memory UI controls require explicit confirmation for issuance and expose status, pause, resume, and revoke. Standing reads remain disabled unless `MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED=true`; the default remains disabled.
 - Persistent approval nonce ledger. Raw HMAC tokens are not stored. Nonces are hashed, scoped, short-lived, single-use and audited on issuance/consumption.
 - One-time initial-project bootstrap route and source-only Migration 010. It creates only the initial owner, matching ADMIN membership, one-time bootstrap latch and audit row in one transaction; it imports no legacy Memory.
 - Daily social-draft generation route. It reads eligible active daily activity/learning notes using a one-time `memory.read` authority, builds a Bangladesh-time-zone daily post, and writes a private `social_post_draft` through a separate one-time `memory.write` authority and dedicated writer transaction.
@@ -22,12 +24,17 @@ This document records the HFM v0.2 runtime boundary and exact release gates. It 
   - `POST /api/hfm/projects/select`
   - `POST /api/hfm/memory/authorize`
   - `POST /api/hfm/memory/read`
+  - `POST /api/hfm/memory/standing-authority/status`
+  - `POST /api/hfm/memory/standing-authority/issue`
+  - `POST /api/hfm/memory/standing-authority/pause`
+  - `POST /api/hfm/memory/standing-authority/resume`
+  - `POST /api/hfm/memory/standing-authority/revoke`
   - `POST /api/hfm/bootstrap/initial-project`
   - `POST /api/hfm/social-drafts/generate-daily`
   - `POST /api/hfm/social-drafts/trash`
   - `POST /api/hfm/social-drafts/restore`
-- The authorize route stores the resulting grant in the server-side session and never returns the grant or approval token to the browser. The read route removes the session grant before starting retrieval; database authority consumption is independently atomic.
-- Migrations 007–010 are source-only drafts for the Memory reader, allowlisted authority issuer, persistent approval nonce ledger and one-time bootstrap role.
+- The one-time authorize route stores its grant in the server-side session and never returns the grant or approval token to the browser. The read route removes that session grant before one-time retrieval; database authority consumption is independently atomic. In standing mode, the read route accepts no client-supplied grant: it discovers the active database grant using the verified actor/project session and performs the read plus audit in one serializable transaction.
+- Migrations 007–011 are source-only drafts for the Memory reader, allowlisted authority issuer, persistent approval nonce ledger, one-time bootstrap role, and 365-day standing read authority.
 - Synthetic tests cover project selection → authorized Memory retrieval, approval signing/replay protection, admin approval issuance, route authentication/origin checks, server-side grant storage, grant removal, and retrieval flow.
 
 ## Runtime environment variable names
@@ -41,6 +48,7 @@ Values must be supplied only after the target database and role credentials are 
 | One-time authority issuer | `MIRA_HFM_AUTHORITY_ISSUER_ENABLED`, `MIRA_HFM_AUTHORITY_ISSUER_DATABASE_URL`, `MIRA_HFM_AUTHORITY_ISSUER_ROLE` |
 | One-time bootstrap | `MIRA_HFM_BOOTSTRAP_ENABLED`, `MIRA_HFM_BOOTSTRAP_DATABASE_URL`, `MIRA_HFM_BOOTSTRAP_ROLE` |
 | Signed approval flow | `MIRA_HFM_APPROVAL_TOKEN_SECRET` (minimum 32 bytes) |
+| Standing read authority | `MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED` (must remain `false` until Migration 011 and reader/issuer preflights are verified) |
 | Memory writer (separate existing path) | `MIRA_HFM_MEMORY_WRITE_ENABLED`, `MIRA_HFM_MEMORY_DATABASE_URL`, `MIRA_HFM_MEMORY_WRITER_ROLE` |
 | Stable admin principal | `MIRA_ADMIN_SUBJECT_ID` |
 
@@ -54,19 +62,20 @@ Feature flags must remain disabled until database readiness, target mapping, rol
 4. Migration 008 defines the separate NOLOGIN authority-issuer role, active owner/membership reads, and narrowly scoped insertion for the four allowlisted Memory operations.
 5. Migration 009 defines the forced-RLS hashed nonce registry. The issuer can SELECT/INSERT scoped nonce rows and update only `consumed_at`; it cannot update nonce identity/scope fields, DELETE, or TRUNCATE.
 6. Migration 010 defines the one-time initial-project bootstrap latch and insert-only owner/membership/audit path. It does not seed or import Memory.
-7. Separately provision a dedicated LOGIN role for each runtime group role. Each login must inherit only its matching NOLOGIN group role, must not own database objects, and must have no elevated privileges.
-8. Configure the application with the matching dedicated credentials and exact target database. Runtime preflights must verify database identity, role identity, effective privileges, RLS and exact policies before the routes can operate.
+7. Migration 011 adds a separate forced-RLS standing read authority registry, immutable scope, 365-day maximum lifetime, audit events, and issuer/reader-specific policies. It is source-only until separately approved.
+8. Separately provision a dedicated LOGIN role for each runtime group role. Each login must inherit only its matching NOLOGIN group role, must not own database objects, and must have no elevated privileges.
+9. Configure the application with the matching dedicated credentials and exact target database. Runtime preflights must verify database identity, role identity, effective privileges, RLS and exact policies before the routes can operate.
 
-Migrations 007–010 are source-only drafts. Do not execute them until the target database is unambiguously mapped, a backup/recovery point is confirmed, and explicit staging approval is obtained.
+Migrations 007–011 are source-only drafts. Do not execute them until the target database is unambiguously mapped, a backup/recovery point is confirmed, and explicit staging approval is obtained.
 
 ## Outstanding blockers
 
 - Latest read-only staging inspection shows `project_owners=1`, `project_memberships=1`, `memory_records=1`, `operation_authorities=0`, and `authority_audit_events=2`; one active owner row matches one active ADMIN membership. The membership currently grants `memory.read` but not `memory.write`, `memory.trash`, or `memory.restore`. Row provenance has not been independently certified. Preserve all existing rows; do not treat staging as empty or run the one-time bootstrap migration against it.
 - The admin HFM subject must be provisioned and match `MIRA_ADMIN_SUBJECT_ID`.
-- Migrations 007–010 are not applied in the inspected staging database; the nonce registry, bootstrap latch and new runtime role grants are not present there.
+- Migrations 007–011 are not applied in the inspected staging database; the nonce registry, bootstrap latch, standing-authority registry and new runtime role grants are not present there.
 - Dedicated LOGIN credentials for the project reader, Memory reader, authority issuer, bootstrap operator and Memory writer have not been provisioned or verified.
 - HFM runtime feature flags and database credentials remain disabled/unconfigured in Render; no live HFM read/write/trash/restore has been verified.
-- The manual social-draft UI is implemented but cannot function against the live service until the database and runtime gates above are completed.
+- The manual social-draft UI and standing-authority controls are implemented but cannot function against the live service until the database and runtime gates above are completed. Keep the standing-read feature flag disabled until Migration 011 is applied to the verified target and both reader/issuer preflights pass.
 - The staging-to-Render production Neon target cannot be conclusively mapped while duplicate Neon projects exist. Do not guess which project is production.
 - Legacy Memory and Knowledge consumers remain in service. The retrieval callsite inventory reports 36 calls across 15 files, all requiring review. The Work Learning bridge is currently defined and unit-tested but has no runtime callsite in `server.js` or `services/learning.js`; those paths still call legacy `searchKnowledge`. Do not describe the bridge as integrated into live learning until a caller is wired and behavior tests prove the HFM eligibility/authorization boundary. Migrate consumers in bounded groups with explicit behavior tests before HFM becomes the source of truth.
 - A successful synthetic test does not prove a live Neon policy, credential, session-store, or Render environment is correct.
@@ -86,9 +95,9 @@ This is structural preflight evidence only. No migration, role creation, grant, 
 
 ## Validation evidence
 
-The HFM runtime, repository, session, dependency, route, UI, and PostgreSQL migration-chain checks all passed on code commit `62456d2bc2e0e8c8e3f8fd3968b3e17ae83b7753` (10/10 GitHub Actions checks). The PostgreSQL migration workflow applied migrations 001–010 only to its disposable PostgreSQL 16 CI database and exercised bootstrap, issuer nonce, trash-authority RLS, and hard-delete denial. The embedded social-draft UI script also has parser-level syntax validation.
+The HFM runtime, repository, session, dependency, route, UI, and PostgreSQL migration-chain checks all passed on code commit `62456d2bc2e0e8c8e3f8fd3968b3e17ae83b7753` (10/10 GitHub Actions checks). The PostgreSQL migration workflow is configured to apply migrations 001–011 only to its disposable PostgreSQL 16 CI database and exercised bootstrap, issuer nonce, trash-authority RLS, and hard-delete denial. The embedded social-draft UI script also has parser-level syntax validation.
 
-These are synthetic/offline or disposable-CI results. They are not live Neon or Render evidence. No live HFM database write or migration has been performed.
+These are synthetic/offline or disposable-CI results. They are not live Neon or Render evidence. No live HFM database write or migration has been performed. The newly added 365-day standing-authority path is not considered validated until the updated GitHub Actions run passes.
 
 ## Release and deployment gates
 
