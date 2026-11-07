@@ -1,6 +1,7 @@
 'use strict';
 
 const { retrieveProjectMemory } = require('./mira-hfm-authorized-memory-reader');
+const { collectStandingReadPages, MAX_STANDING_READ_PAGES } = require('./mira-hfm-standing-read-pages');
 const { retrieveCanonicalRecordsWithReport } = require('./mira-memory-unified-facade');
 const { buildHfmAuthorizeRequest } = require('./mira-hfm-work-learning-runtime');
 
@@ -10,7 +11,7 @@ function fail(code) {
   throw error;
 }
 function queryTerms(value) {
-  return new Set(String(value || '').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}_-]{1,}/gu) || []);
+  return new Set(String(value || '').toLowerCase().match(/[\\p{L}\\p{N}][\\p{L}\\p{N}_-]{1,}/gu) || []);
 }
 function extractKnowledgeTitle(record) {
   const content = typeof record?.content === 'string' ? record.content.trim() : '';
@@ -23,7 +24,7 @@ function extractKnowledgeTitle(record) {
       // Fall through to the first content line for non-JSON records.
     }
   }
-  const firstLine = content.split(/\r?\n/, 1)[0].trim();
+  const firstLine = content.split(/\\r?\\n/, 1)[0].trim();
   const sourceId = typeof record?.source?.sourceId === 'string' ? record.source.sourceId : 'Untitled memory';
   return (firstLine || sourceId).slice(0, 300);
 }
@@ -40,7 +41,10 @@ function scoreRecord(query, record) {
   return score / tokens.size;
 }
 
-async function searchHfmKnowledge({ req, pool, query, limit = 5, cursor, env = process.env, now = new Date(), readMemory = retrieveProjectMemory } = {}) {
+async function searchHfmKnowledge({
+  req, pool, query, limit = 5, cursor, maxPages = MAX_STANDING_READ_PAGES,
+  env = process.env, now = new Date(), readMemory = retrieveProjectMemory
+} = {}) {
   if (typeof query !== 'string' || !query.trim() || query.length > 2000) {
     fail('HFM_KNOWLEDGE_SEARCH_QUERY_INVALID');
   }
@@ -51,44 +55,27 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, cursor, env = p
     fail('HFM_KNOWLEDGE_STANDING_READ_AUTHORITY_DISABLED');
   }
   if (typeof readMemory !== 'function') fail('HFM_KNOWLEDGE_READ_RUNTIME_INVALID');
-  const memory = await readMemory({
-    pool, req, standingReadAuthority: true,
-    recordTypes: ['knowledge_item', 'learning_note'], lifecycle: 'ACTIVE', limit: 100, cursor, env
+
+  const pages = await collectStandingReadPages({
+    readMemory,
+    readOptions: {
+      pool, req, standingReadAuthority: true,
+      recordTypes: ['knowledge_item', 'learning_note'],
+      lifecycle: 'ACTIVE', cursor, env
+    },
+    maxPages
   });
-  if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
-      memory.standingAuthority !== true || memory.approvalRequiredPerRead !== false ||
-      !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
-    fail('HFM_KNOWLEDGE_AUTHORIZED_MEMORY_READ_REQUIRED');
-  }
-  // Older injected readers may omit count; the returned bounded array is
-  // still an exact count of scanned candidates. A full 100-row page remains
-  // conservatively marked as potentially incomplete.
-  const candidateScanCount = memory.count === undefined ? memory.records.length : memory.count;
-  if (!Number.isInteger(candidateScanCount) || candidateScanCount < 0 ||
-      candidateScanCount > 100 || candidateScanCount !== memory.records.length) {
-    fail('HFM_KNOWLEDGE_SCAN_COUNT_INVALID');
-  }
-  const hostContext = memory.hostAuthorizationContext;
-  if (hostContext.projectId !== memory.projectId ||
-      typeof hostContext.actorId !== 'string' || !hostContext.actorId.startsWith('mira:')) {
-    fail('HFM_KNOWLEDGE_HOST_AUTHORIZATION_CONTEXT_INVALID');
-  }
+  const hostContext = pages.hostAuthorizationContext;
   const report = retrieveCanonicalRecordsWithReport({
-    records: memory.records,
-    projectId: hostContext.projectId,
+    records: pages.records,
+    projectId: pages.projectId,
     requestContext: hostContext,
     authorizeRequest: buildHfmAuthorizeRequest(
-      hostContext, memory.records.map(record => record.memoryId)
+      hostContext, pages.records.map(record => record.memoryId)
     ),
     now
   });
-  const candidateScanMayBeIncomplete =
-    (typeof memory.nextCursor === 'string' && memory.nextCursor.length > 0) ||
-    (memory.nextCursor === undefined && candidateScanCount === 100);
   const results = report.records
-    // Defense in depth: only expose canonical records that are independently
-    // ACTIVE, integrity-verified and in an eligible trusted state. The unified
-    // facade already enforces this; repeat it at the public search boundary.
     .filter(record => record.lifecycle === 'ACTIVE' &&
       record.integrity?.status === 'VERIFIED' &&
       ['CONTENT_VERIFIED', 'HUMAN_VERIFIED'].includes(record.trust?.status))
@@ -114,21 +101,24 @@ async function searchHfmKnowledge({ req, pool, query, limit = 5, cursor, env = p
       trust: record.trust.status,
       integrity: record.integrity.status
     }));
+
   return Object.freeze({
     success: true,
     status: 'AUTHORIZED_AND_COMMITTED',
-    projectId: memory.projectId,
+    projectId: pages.projectId,
     count: results.length,
     results: Object.freeze(results),
-    candidateScanCount,
-    candidateScanLimit: 100,
-    nextCursor: memory.nextCursor || null,
-    candidateScanMayBeIncomplete,
+    candidateScanCount: pages.candidateScanCount,
+    candidateScanLimit: pages.candidateScanLimit,
+    scannedPages: pages.pageCount,
+    nextCursor: pages.nextCursor,
+    candidateScanMayBeIncomplete: pages.candidateScanMayBeIncomplete,
     standingAuthority: true,
-    authorityExpiresAt: memory.authorityExpiresAt,
+    authorityExpiresAt: hostContext.expiresAt,
     approvalRequiredPerRead: false,
     localFallback: false,
-    driveFallback: false
+    driveFallback: false,
+    memoryWrites: false
   });
 }
 
