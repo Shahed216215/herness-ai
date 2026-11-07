@@ -104,7 +104,7 @@ const pool = { async connect() { return client; } };
   );
   console.log('HFM_BOOTSTRAP_ADMIN_SUBJECT_MISMATCH_BLOCK=PASS');
 
-  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/010_one_time_initial_project_bootstrap.sql'), 'utf8');
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/013_one_time_initial_project_bootstrap.sql'), 'utf8');
   assert.match(migration, /CREATE TABLE mira_hfm\.bootstrap_registry/);
   assert.match(migration, /bootstrap_key text PRIMARY KEY CHECK \(bootstrap_key = 'initial'\)/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
