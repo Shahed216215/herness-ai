@@ -37,8 +37,8 @@ assert.equal(path.basename(writerRuntimeModulePath), 'mira-hfm-memory-postgres-r
 assert.equal(typeof writerRuntimeModule.createMemoryWriterPool, 'function');
 assert.match(approvalRoute, /app\.post\('\/api\/hfm\/memory\/authorize'/);
 assert.match(memoryRoute, /app\.post\('\/api\/hfm\/memory\/read'/);
-assert.match(standingRoute, /app\\.post\\('\\/api\\/hfm\\/memory\\/standing-authority\\/issue'/);
-assert.match(standingRoute, /app\\.post\\('\\/api\\/hfm\\/memory\\/standing-authority\\/status'/);
+assert.match(standingRoute, /app\.post\('\/api\/hfm\/memory\/standing-authority\/issue'/);
+assert.match(standingRoute, /app\.post\('\/api\/hfm\/memory\/standing-authority\/status'/);
 assert.match(bootstrapRoute, /app\.post\('\/api\/hfm\/bootstrap\/initial-project'/);
 assert.match(trashRoute, /app\.post\('\/api\/hfm\/social-drafts\/trash'/);
 assert.match(trashRoute, /expectedRecordType: 'social_post_draft'/);
