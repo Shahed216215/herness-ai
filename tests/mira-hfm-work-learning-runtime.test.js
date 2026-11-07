@@ -196,6 +196,8 @@ const req = { session: { hfmPrincipal: { verified: true } } };
       localFallback: false,
       driveFallback: false,
       scanStartedAt: '2026-11-07T04:00:00.000Z',
+      standingAuthorityId: hostAuthorizationContext.authorityRef,
+      authorityExpiresAt: hostAuthorizationContext.expiresAt,
       hostAuthorizationContext,
       records: [makeRecord('project-beta')],
       count: 1
