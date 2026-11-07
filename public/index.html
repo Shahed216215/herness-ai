@@ -13099,6 +13099,7 @@ document.querySelectorAll(
       restoreButton.type = "button";
       restoreButton.className = "secondary-button";
       restoreButton.textContent = "Restore Draft";
+      let restoreIdempotencyKey = null;
       restoreButton.addEventListener("click", async () => {
         if (!window.confirm("Restore this social draft from Neon Trash to Active drafts?")) return;
         restoreButton.disabled = true;
@@ -13108,7 +13109,7 @@ document.querySelectorAll(
             confirm: true,
             memoryId: record.memoryId,
             purpose: "Admin requested restoration of a social draft from recoverable Trash.",
-            idempotencyKey: window.crypto.randomUUID()
+            idempotencyKey: restoreIdempotencyKey || (restoreIdempotencyKey = window.crypto.randomUUID())
           });
           card.remove();
           setStatus("Draft restored to Active. It is not published to Facebook.", "success");
