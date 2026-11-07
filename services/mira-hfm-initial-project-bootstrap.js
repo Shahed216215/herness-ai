@@ -98,7 +98,7 @@ async function bootstrapInitialHfmProject(options = {}) {
       "valid_from, expires_at, granted_by_actor_id, approval_ref) " +
       "VALUES ($1,$2,$3,'ADMIN',$4::jsonb,'ACTIVE',1,$5,NULL,$3,$6)",
       [crypto.randomUUID(), projectId, actorId,
-        JSON.stringify({ operations: ['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore'] }), now, approvalRef]
+        JSON.stringify({ operations: ['memory.read', 'memory.write', 'memory.vault.write', 'memory.update', 'memory.trash', 'memory.restore'] }), now, approvalRef]
     );
     if (membership.rowCount !== 1) fail('HFM_BOOTSTRAP_ADMIN_MEMBERSHIP_INSERT_FAILED');
 
@@ -111,7 +111,7 @@ async function bootstrapInitialHfmProject(options = {}) {
           bootstrapVersion: 'HFM_INITIAL_PROJECT_V1',
           ownerActorId: actorId,
           membershipRole: 'ADMIN',
-          permissions: ['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore'],
+          permissions: ['memory.read', 'memory.write', 'memory.vault.write', 'memory.update', 'memory.trash', 'memory.restore'],
           oneTimeOnly: true
         })]
     );
@@ -124,7 +124,7 @@ async function bootstrapInitialHfmProject(options = {}) {
       projectId,
       ownerActorId: actorId,
       membershipRole: 'ADMIN',
-      permissions: Object.freeze(['memory.read', 'memory.write', 'memory.update', 'memory.trash', 'memory.restore']),
+      permissions: Object.freeze(['memory.read', 'memory.write', 'memory.vault.write', 'memory.update', 'memory.trash', 'memory.restore']),
       approvalRef,
       oneTimeOnly: true,
       memoryRecordsImported: 0
