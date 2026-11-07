@@ -84,7 +84,7 @@ function registerFacebookKnowledgeRoutes(app, requireAgentAuth, options = {}) {
       const value = await perform(req, body, 'memory.write', 'memory:' + memoryId, PURPOSE.IMPORT,
         (client, context) => knowledge.ingestFacebookKnowledge({
           client, context, memoryId,
-          content: body.content,
+          content: knowledge.extractImportedContent(body.content, { fileName: body.importFileName, mimeType: body.importMimeType }),
           sourceType: body.sourceType,
           sourceId: body.sourceId,
           sourceUrl: body.sourceUrl,
