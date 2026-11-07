@@ -425,17 +425,25 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     status: 'AUTHORIZED_AND_COMMITTED',
     projectId: 'project-alpha',
     records: [],
+    count: 0,
     standingAuthority: true,
     authorityConsumed: false,
     approvalRequiredPerRead: false,
     memoryWrites: false,
     localFallback: false,
     driveFallback: false,
+    standingAuthorityId: 'standing-authority-001',
+    authorityExpiresAt: '2027-11-07T04:00:00.000Z',
+    scanStartedAt: '2026-11-07T04:00:00.000Z',
     hostAuthorizationContext: {
       actorId: 'mira:actor-001',
+      actorType: 'HUMAN',
       projectId: 'project-alpha',
+      purpose: 'approved Work preflight',
+      requestId: 'standing-preflight-request-001',
       authorityRef: 'standing-authority-001',
-      expiresAt: expiresAt
+      issuedAt: '2026-11-07T04:00:00.000Z',
+      expiresAt: '2027-11-07T04:00:00.000Z'
     }
   };
   const preflightReq = { serverHeld: true };
