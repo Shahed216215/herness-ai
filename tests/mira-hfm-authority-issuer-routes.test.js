@@ -16,6 +16,13 @@ test('only supported HFM operation and purpose pairs can be issued', () => {
     projectId: 'project-001', operation: 'memory.write',
     resource: 'memory:project:project-001', purpose: 'facebook-knowledge-import'
   }), /HFM_AUTHORITY_ISSUE_RESOURCE_INVALID/);
+  assert.deepEqual(routes.validateIssueRequest({
+    projectId: 'project-001', operation: 'memory.write',
+    resource: 'memory:mem_12345678', purpose: 'memory-core-write'
+  }), {
+    projectId: 'project-001', operation: 'memory.write',
+    resource: 'memory:mem_12345678', purpose: 'memory-core-write'
+  });
   assert.throws(() => routes.validateIssueRequest({
     projectId: 'project-001', operation: 'facebook.publish',
     resource: 'memory:fbk_12345678', purpose: 'facebook-knowledge-import'
