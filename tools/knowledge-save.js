@@ -6,7 +6,7 @@ module.exports = {
   declaration: {
     name: "knowledge_save",
     description:
-      "Save useful information to Mira's knowledge memory. Duplicate entries are skipped safely.",
+      "Save a user-requested knowledge source. In HFM mode it is stored privately as SOURCE_RECORDED/PENDING_REVIEW and is excluded from trusted search until verified; never use legacy local or Google Drive storage when HFM mode is active.",
     parameters: {
       type: "object",
       properties: {
