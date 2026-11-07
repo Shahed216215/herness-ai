@@ -396,7 +396,10 @@ function getStandingReadMemoryRecord(options = {}) {
     'AND integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\')',
     [context.projectId, memoryId, recordTypes]
   ).then(result => {
-    const row = result.rows && result.rows[0];
+    if (!result || !Array.isArray(result.rows) || result.rows.length > 1) {
+      throw fail('HFM_STANDING_READ_RECORD_QUERY_RESULT_INVALID');
+    }
+    const row = result.rows[0];
     if (!row) return { status: 'NOT_FOUND', record: null };
     if (row.memory_id !== memoryId ||
         row.project_id !== context.projectId ||
