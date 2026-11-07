@@ -9,7 +9,7 @@ Date: 2026-11-07
 - `knowledge_item`: user-authored facts and saved knowledge records.
 - `learning_note`: user-requested learning material. The save path records it as a canonical HFM item.
 
-Both record types use the same project-scoped canonical repository and the standing-read authorization boundary. Phone-local JSON and Google Drive are not read fallbacks in HFM mode.
+Both record types use the same project-scoped canonical repository and the standing-read authorization boundary. Phone-local JSON and Google Drive are not read fallbacks in HFM mode. The legacy conversation transcript writer is also disabled when any of `MIRA_HFM_MEMORY_READ_ENABLED`, `MIRA_HFM_MEMORY_WRITE_ENABLED`, `MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED`, or `MIRA_HFM_WORK_LEARNING_ENABLED` is active; canonical daily-activity/transcript persistence remains unimplemented rather than silently writing to the phone.
 
 ## Save and trust lifecycle
 
