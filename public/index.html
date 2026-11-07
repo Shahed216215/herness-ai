@@ -12922,5 +12922,238 @@ document.querySelectorAll(
 })();
 </script>
 
+
+<script>
+/* MIRA_HFM_V02_MANUAL_FACEBOOK_DRAFT_WORKFLOW */
+(() => {
+  "use strict";
+  const root = document.getElementById("hfmV02SocialDraftWorkspace");
+  if (!root) return;
+  const byId = id => document.getElementById(id);
+  const projectField = byId("hfmV02ProjectId");
+  const statusNode = byId("hfmV02SocialDraftStatus");
+  const listNode = byId("hfmV02SocialDraftList");
+  const controls = [
+    byId("hfmV02SelectProject"), byId("hfmV02BootstrapProject"),
+    byId("hfmV02LoadActiveDrafts"), byId("hfmV02LoadTrash")
+  ];
+
+  function setStatus(message, kind = "muted") {
+    statusNode.className = kind;
+    statusNode.textContent = message;
+  }
+  function setBusy(value) {
+    controls.forEach(button => { if (button) button.disabled = value; });
+  }
+  function selectedProjectId() {
+    return projectField.value.trim();
+  }
+  async function postJson(url, body) {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    let data;
+    try { data = await response.json(); }
+    catch (_error) { throw new Error("Server returned an unreadable response (" + response.status + ")."); }
+    if (!response.ok || !data || data.success !== true) {
+      throw new Error(data && data.error ? data.error : "Request failed (" + response.status + ").");
+    }
+    return data;
+  }
+  function requireProjectInput() {
+    const value = selectedProjectId();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(value)) {
+      throw new Error("Enter a valid HFM Project ID (3–128 characters).");
+    }
+    return value;
+  }
+  async function selectProject() {
+    const projectId = requireProjectInput();
+    setBusy(true);
+    setStatus("Verifying active project membership…");
+    try {
+      const data = await postJson("/api/hfm/projects/select", { projectId });
+      setStatus("Project selected: " + data.project.projectId + " (" + data.project.membershipRole + ").", "success");
+      return data;
+    } catch (error) {
+      setStatus("Project selection not completed: " + error.message, "error");
+      throw error;
+    } finally {
+      setBusy(false);
+    }
+  }
+  byId("hfmV02SelectProject").addEventListener("click", () => {
+    selectProject().catch(() => {});
+  });
+  byId("hfmV02BootstrapProject").addEventListener("click", async () => {
+    let projectId;
+    try { projectId = requireProjectInput(); }
+    catch (error) { setStatus(error.message, "error"); return; }
+    if (!window.confirm("Create the one-time initial HFM project '" + projectId + "' and assign this verified admin as owner? This writes owner, membership and audit rows to Neon. It does not import legacy Memory.")) return;
+    setBusy(true);
+    setStatus("Checking the one-time HFM bootstrap gate…");
+    try {
+      const data = await postJson("/api/hfm/bootstrap/initial-project", {
+        confirm: true, projectId
+      });
+      setStatus("Initial project created. Verifying and selecting it…", "success");
+      await postJson("/api/hfm/projects/select", { projectId });
+      setStatus("Initial HFM project created and selected: " + data.projectId + ".", "success");
+    } catch (error) {
+      setStatus("Initial project setup not completed: " + error.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  function createDraftCard(record, lifecycle) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.style.margin = "0";
+    const heading = document.createElement("h3");
+    heading.textContent = record.source && record.source.sourceId
+      ? record.source.sourceId : "Facebook-ready post draft";
+    const meta = document.createElement("div");
+    meta.className = "muted";
+    meta.style.fontSize = "11px";
+    meta.textContent = "ID: " + record.memoryId + " · Revision: " +
+      (record.version && record.version.revision ? record.version.revision : "—");
+    const content = document.createElement("pre");
+    content.style.whiteSpace = "pre-wrap";
+    content.style.overflowWrap = "anywhere";
+    content.style.font = "inherit";
+    content.style.lineHeight = "1.55";
+    content.style.margin = "12px 0";
+    content.textContent = typeof record.content === "string" ? record.content : "";
+    card.append(heading, meta, content);
+
+    const actions = document.createElement("div");
+    actions.className = "button-row";
+    if (lifecycle === "ACTIVE") {
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "primary-button";
+      copyButton.textContent = "Copy Post";
+      const publishedLabel = document.createElement("label");
+      publishedLabel.style.display = "inline-flex";
+      publishedLabel.style.alignItems = "center";
+      publishedLabel.style.gap = "7px";
+      const publishedCheck = document.createElement("input");
+      publishedCheck.type = "checkbox";
+      const publishedText = document.createElement("span");
+      publishedText.textContent = "I manually published this in Facebook";
+      publishedLabel.append(publishedCheck, publishedText);
+      const trashButton = document.createElement("button");
+      trashButton.type = "button";
+      trashButton.className = "danger-button";
+      trashButton.textContent = "Move to Neon Trash";
+      trashButton.disabled = true;
+      let copied = false;
+      let idempotencyKey = null;
+      copyButton.addEventListener("click", async () => {
+        try {
+          if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+            throw new Error("Clipboard access is unavailable. Open Mira over HTTPS and allow clipboard access.");
+          }
+          await navigator.clipboard.writeText(content.textContent);
+          copied = true;
+          trashButton.disabled = !(copied && publishedCheck.checked);
+          setStatus("Copied to clipboard. Paste and publish it yourself in Facebook. Mira has not published it.", "success");
+        } catch (error) {
+          setStatus("Copy failed: " + error.message, "error");
+        }
+      });
+      publishedCheck.addEventListener("change", () => {
+        trashButton.disabled = !(copied && publishedCheck.checked);
+        if (publishedCheck.checked && copied) {
+          setStatus("You confirmed manual Facebook publication. The recoverable Trash action is available.", "warning");
+        }
+      });
+      trashButton.addEventListener("click", async () => {
+        if (!copied || !publishedCheck.checked) return;
+        if (!window.confirm("You confirmed this draft was manually published in Facebook. Move only this social_post_draft to recoverable Neon Trash? No permanent deletion will occur.")) return;
+        if (!idempotencyKey) idempotencyKey = window.crypto.randomUUID();
+        trashButton.disabled = true;
+        setStatus("Requesting one-time authority and committing recoverable Neon Trash…");
+        try {
+          await postJson("/api/hfm/social-drafts/trash", {
+            confirm: true,
+            memoryId: record.memoryId,
+            purpose: "Admin confirmed manual Facebook publication before moving this social draft to recoverable Trash.",
+            idempotencyKey
+          });
+          card.remove();
+          setStatus("Moved to Neon Trash. The record remains recoverable; no permanent deletion occurred.", "success");
+        } catch (error) {
+          trashButton.disabled = false;
+          setStatus("Trash outcome not confirmed: " + error.message + ". Check Trash before retrying.", "error");
+        }
+      });
+      actions.append(copyButton, publishedLabel, trashButton);
+    } else {
+      const restoreButton = document.createElement("button");
+      restoreButton.type = "button";
+      restoreButton.className = "secondary-button";
+      restoreButton.textContent = "Restore Draft";
+      restoreButton.addEventListener("click", async () => {
+        if (!window.confirm("Restore this social draft from Neon Trash to Active drafts?")) return;
+        restoreButton.disabled = true;
+        setStatus("Requesting one-time restore authority…");
+        try {
+          await postJson("/api/hfm/social-drafts/restore", {
+            confirm: true,
+            memoryId: record.memoryId,
+            purpose: "Admin requested restoration of a social draft from recoverable Trash.",
+            idempotencyKey: window.crypto.randomUUID()
+          });
+          card.remove();
+          setStatus("Draft restored to Active. It is not published to Facebook.", "success");
+        } catch (error) {
+          restoreButton.disabled = false;
+          setStatus("Restore outcome not confirmed: " + error.message, "error");
+        }
+      });
+      actions.append(restoreButton);
+    }
+    card.append(actions);
+    return card;
+  }
+
+  async function loadDrafts(lifecycle) {
+    setBusy(true);
+    listNode.replaceChildren();
+    setStatus(lifecycle === "TRASHED" ? "Loading recoverable Trash…" : "Loading active Facebook-ready drafts…");
+    try {
+      await postJson("/api/hfm/memory/authorize", {
+        confirm: true,
+        purpose: lifecycle === "TRASHED"
+          ? "List this project's recoverable social post drafts in Trash."
+          : "List this project's active social post drafts for manual Facebook publication."
+      });
+      const data = await postJson("/api/hfm/memory/read", {
+        limit: 100,
+        recordType: "social_post_draft",
+        lifecycle
+      });
+      if (!Array.isArray(data.records) || data.records.length === 0) {
+        setStatus(lifecycle === "TRASHED" ? "Trash is empty for this project." : "No active social post drafts were found.", "muted");
+        return;
+      }
+      data.records.forEach(record => listNode.append(createDraftCard(record, lifecycle)));
+      setStatus(data.records.length + (lifecycle === "TRASHED" ? " recoverable draft(s) in Trash." : " active draft(s) ready for manual review."), "success");
+    } catch (error) {
+      setStatus("HFM draft retrieval not completed: " + error.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  byId("hfmV02LoadActiveDrafts").addEventListener("click", () => loadDrafts("ACTIVE"));
+  byId("hfmV02LoadTrash").addEventListener("click", () => loadDrafts("TRASHED"));
+})();
+</script>
+
 </body>
 </html>
