@@ -124,7 +124,7 @@ const PREFLIGHT_SQL = [
   "EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'mira_hfm' " +
     "AND tablename = 'memory_records' AND policyname = 'hfm_standing_reader_memory_scope' " +
     "AND permissive = 'RESTRICTIVE' AND $1 = ANY(roles) " +
-    "AND qual LIKE '%learning_note%' AND qual LIKE '%knowledge_item%' AND qual LIKE '%integrity_status%' AND qual LIKE '%trust_status%') " +
+    "AND qual LIKE '%learning_note%' AND qual LIKE '%knowledge_item%' AND qual LIKE '%ACTIVE%' AND qual LIKE '%PUBLIC%' AND qual LIKE '%PROJECT_PRIVATE%' AND qual LIKE '%integrity_status%' AND qual LIKE '%trust_status%') " +
     "AS standing_read_scope_policy_present,",
   'FROM pg_roles r WHERE r.rolname = current_user'
 ].join(' ');
