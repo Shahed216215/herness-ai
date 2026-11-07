@@ -121,7 +121,9 @@ async function executeHfmMemorySave(kind, args, trustedContext, save = require("
   const result = await save({
     ...context,
     kind,
-    content: typeof args?.content === "string" ? args.content : "",
+    content: kind === "client_vault_save" || kind === "financial_vault_save"
+      ? JSON.stringify(args?.payload)
+      : (typeof args?.content === "string" ? args.content : ""),
     ...(kind === "knowledge_save" ? {
       title: args?.title,
       url: args?.url
@@ -140,9 +142,11 @@ async function executeHfmMemorySave(kind, args, trustedContext, save = require("
     driveFallback: false,
     message: result.recordType === "source_reference"
       ? "Source reference saved privately as NOT_FETCHED provenance metadata; source content was not fetched or verified and is not trusted search content."
-      : result.lifecycle === "PENDING_REVIEW"
-        ? "Knowledge or learning source saved privately as pending review; it is excluded from trusted retrieval until verified."
-        : result.recordType === "daily_activity"
+      : result.recordType === "client_vault_record" || result.recordType === "financial_vault_record"
+        ? "Restricted vault record saved using the encrypted canonical HFM envelope as SOURCE_RECORDED/PENDING_REVIEW; it is excluded from trusted retrieval."
+        : result.lifecycle === "PENDING_REVIEW"
+          ? "Knowledge or learning source saved privately as pending review; it is excluded from trusted retrieval until verified."
+          : result.recordType === "daily_activity"
           ? (result.contentRedacted
             ? "Daily activity saved privately to canonical HFM Memory; obvious sensitive values were redacted."
             : "Daily activity saved privately to canonical HFM Memory from the exact user-authored summary.")
@@ -189,7 +193,13 @@ async function executeTool(name, args, trustedContext = null) {
   if (hfmWriteMode && name === "source_reference_save") {
     return executeHfmMemorySave("source_reference_save", args, trustedContext);
   }
-  if (hfmMemoryMode && /^(memory|knowledge|learning|daily_activity|source_reference)_/.test(String(name || ""))) {
+  if (hfmWriteMode && name === "client_vault_save") {
+    return executeHfmMemorySave("client_vault_save", args, trustedContext);
+  }
+  if (hfmWriteMode && name === "financial_vault_save") {
+    return executeHfmMemorySave("financial_vault_save", args, trustedContext);
+  }
+  if (hfmMemoryMode && /^(memory|knowledge|learning|daily_activity|source_reference|client_vault|financial_vault)_/.test(String(name || ""))) {
     const error = new Error("Legacy Memory, Knowledge, Learning, and daily activity storage is disabled in HFM mode unless routed through the canonical HFM writer; unsupported operations fail closed without local or Drive fallback.");
     error.code = "HFM_LEGACY_STORAGE_DISABLED";
     throw error;
