@@ -1,7 +1,9 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const { createContentHash, validateCanonicalRecord } = require('./mira-hfm-record-schema');
+const { createContentHash, validateCanonicalRecord, SCHEMA_V1_2 } = require('./mira-hfm-record-schema');
+const { normalizeTrustedActorIdentity } = require('./mira-memory-host-identity-contract');
+const { buildUserSuppliedSourceReferencePayload } = require('./mira-hfm-source-reference-schema');
 const { createMemoryRecord } = require('./mira-hfm-memory-repository');
 const { approveAndIssueMemoryOperationAuthority } = require('./mira-hfm-authority-approval');
 const { executeWithConsumedAuthority } = require('./mira-hfm-authority-transaction');
@@ -55,6 +57,17 @@ function hasExplicitDailyActivitySaveIntent(value) {
     /(?:কাজের\s*সারাংশ|অ্যাক্টিভিটি\s*লগ).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ)/u.test(value) ||
     /(?:সংরক্ষণ|সেভ|রেকর্ড|লিখে\s*রাখ).{0,100}(?:দৈনিক|আজকের).{0,80}(?:কাজ|কার্যক্রম|অ্যাক্টিভিটি)/u.test(value);
   return english || bengali;
+}
+
+function hasExplicitSourceReferenceSaveIntent(value) {
+  if (typeof value !== 'string' || !value.trim() || value.length > 20000) return false;
+  const text = value.toLowerCase();
+  if (/\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,80}\b(?:source|reference|link|url)\b/i.test(text) ||
+      /(?:সোর্স|উৎস|রেফারেন্স|লিংক|ইউআরএল).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,10}না/u.test(value)) return false;
+  return /\b(?:save|store|record|keep|add)\b.{0,100}\b(?:source|reference|link|url)\b/i.test(value) ||
+    /\b(?:source|reference|link|url)\b.{0,100}\b(?:save|store|record|keep|add)\b/i.test(value) ||
+    /(?:সোর্স|উৎস|রেফারেন্স|লিংক|ইউআরএল).{0,80}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ)/u.test(value) ||
+    /(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,80}(?:সোর্স|উৎস|রেফারেন্স|লিংক|ইউআরএল)/u.test(value);
 }
 
 function hasExplicitSaveIntent(value) {
@@ -125,7 +138,7 @@ function buildCanonicalMemoryRecord(options = {}) {
   if (!Number.isFinite(Date.parse(now))) fail('HFM_MEMORY_SAVE_TIMESTAMP_INVALID');
 
   const kind = options.kind;
-  if (!['memory_save', 'knowledge_save', 'learning_save', 'daily_activity_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
+  if (!['memory_save', 'knowledge_save', 'learning_save', 'daily_activity_save', 'source_reference_save'].includes(kind)) fail('HFM_MEMORY_SAVE_KIND_INVALID');
   const body = boundedText(options.content, MAX_CONTENT_CHARS, 'HFM_MEMORY_SAVE_CONTENT_REQUIRED');
   if (kind === 'daily_activity_save' &&
       !hasExplicitDailyActivitySaveIntent(options.userIntent)) {
@@ -144,6 +157,7 @@ function buildCanonicalMemoryRecord(options = {}) {
   let recordType = 'knowledge_item';
   let trustStatus = 'HUMAN_VERIFIED';
   let lifecycle = 'ACTIVE';
+  let schemaVersion = '1.1.0';
 
   if (kind === 'daily_activity_save') {
     if (hasVaultOnlyDailyActivityContent(body)) {
@@ -153,6 +167,40 @@ function buildCanonicalMemoryRecord(options = {}) {
     if (!content) fail('HFM_DAILY_ACTIVITY_CONTENT_EMPTY_AFTER_REDACTION');
     sourceId = 'user-confirmed-daily-activity';
     recordType = 'daily_activity';
+  }
+
+  if (kind === 'source_reference_save') {
+    if (!hasExplicitSourceReferenceSaveIntent(options.userIntent)) {
+      fail('HFM_SOURCE_REFERENCE_EXPLICIT_USER_INTENT_REQUIRED');
+    }
+    if (!isUserAuthoredMemoryContent(options.userIntent, options.url)) {
+      fail('HFM_SOURCE_REFERENCE_URL_NOT_PRESENT_IN_USER_INTENT');
+    }
+    let actor;
+    try {
+      actor = normalizeTrustedActorIdentity({ verifiedPrincipal: options.req?.session?.hfmPrincipal });
+    } catch (_error) {
+      fail('HFM_SOURCE_REFERENCE_TRUSTED_ACTOR_REQUIRED');
+    }
+    const eventSeed = boundedText(options.taskId, 256, 'HFM_MEMORY_SAVE_TASK_ID_REQUIRED') + '\u0000' +
+      boundedText(options.toolCallId, 256, 'HFM_MEMORY_SAVE_TOOL_CALL_ID_REQUIRED') + '\u0000' +
+      boundedText(options.toolName || kind, 64, 'HFM_MEMORY_SAVE_TOOL_NAME_REQUIRED');
+    const provenanceEventId = 'evt-' + crypto.createHash('sha256').update(eventSeed, 'utf8').digest('hex');
+    const payload = buildUserSuppliedSourceReferencePayload({
+      url: options.url,
+      sourceType: options.sourceType || 'web',
+      provenanceActor: actor.actorId,
+      provenanceEventId,
+      retrievedAt: now
+    });
+    content = JSON.stringify(payload);
+    sourceType = payload.sourceType;
+    sourceId = payload.sourceId;
+    sourceUrl = payload.canonicalUrl;
+    recordType = 'source_reference';
+    trustStatus = 'SOURCE_RECORDED';
+    lifecycle = 'ACTIVE';
+    schemaVersion = SCHEMA_V1_2;
   }
 
   if (kind === 'knowledge_save' || kind === 'learning_save') {
@@ -176,7 +224,7 @@ function buildCanonicalMemoryRecord(options = {}) {
   }
 
   const record = {
-    schemaVersion: '1.1.0',
+    schemaVersion,
     memoryId,
     projectId,
     recordType,
@@ -238,7 +286,9 @@ async function saveHfmMemoryRecord(options = {}) {
       ? 'User explicitly requested to save a learning note privately as an unverified item for review.'
       : kind === 'daily_activity_save'
         ? 'User explicitly requested to save an exact user-authored daily activity summary privately.'
-        : 'User explicitly requested to save this private memory item.';
+        : kind === 'source_reference_save'
+          ? 'User explicitly requested to save this exact user-supplied public source URL as a private, not-yet-fetched source reference.'
+          : 'User explicitly requested to save this private memory item.';
   const env = options.env || process.env;
   if (env.MIRA_HFM_MEMORY_WRITE_ENABLED !== 'true') fail('HFM_MEMORY_WRITE_DISABLED');
   if (env.MIRA_HFM_AUTHORITY_ISSUER_ENABLED !== 'true') fail('HFM_AUTHORITY_ISSUER_DISABLED');
@@ -303,6 +353,7 @@ async function saveHfmMemoryRecord(options = {}) {
 module.exports = Object.freeze({
   hasExplicitSaveIntent,
   hasExplicitDailyActivitySaveIntent,
+  hasExplicitSourceReferenceSaveIntent,
   redactDailyActivityContent,
   hasVaultOnlyDailyActivityContent,
   normalizeIntentText,
