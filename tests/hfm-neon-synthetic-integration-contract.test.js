@@ -11,6 +11,7 @@ test('synthetic Neon writes require an exact separately approved test endpoint h
   assert.match(integration, /MIRA_HFM_TEST_DATABASE_HOST/);
   assert.match(integration, /TEST_DATABASE_URL_HOST_MISMATCH/);
   assert.match(integration, /TEST_DATABASE_HOST_MUST_DIFFER_FROM_PRODUCTION/);
+  assert.ok(integration.includes('replace(/-pooler(?=\\.)/, "")'));
   assert.ok(
     integration.indexOf('TEST_DATABASE_URL_HOST_MISMATCH') < integration.indexOf('adapter.createPool'),
     'endpoint mismatch must fail before database pool creation'
