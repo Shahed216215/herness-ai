@@ -68,7 +68,7 @@ test('payload erasure guards permit only payload fields to change', () => {
 test('migration PL/pgSQL blocks use valid balanced dollar-quote delimiters', () => {
   assert.doesNotMatch(sql, /^DO \$(?!\$)/m);
   assert.doesNotMatch(sql, /^\$;$/m);
-  assert.equal((sql.match(/^DO \$\$/gm) || []).length,
+  assert.equal((sql.match(/^(?:DO|AS) \$\$/gm) || []).length,
     (sql.match(/^\$\$;$/gm) || []).length);
 });
 
