@@ -30,6 +30,10 @@ module.exports = {
         query: {
           type: "string",
           description: "The topic, title, URL, or phrase to search for"
+        },
+        cursor: {
+          type: "string",
+          description: "Opaque HFM next-page cursor returned by a previous search; omit for the first page."
         }
       },
       required: ["query"]
