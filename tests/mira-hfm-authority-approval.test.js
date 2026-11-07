@@ -2,6 +2,8 @@
 
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   issueApprovalToken, createDatabaseApprovalVerifier
 } = require('../services/mira-hfm-authority-approval');
@@ -140,6 +142,16 @@ const env = {
     error => error.code === 'HFM_APPROVAL_ADMIN_SUBJECT_NOT_CONFIGURED'
   );
   console.log('HFM_APPROVAL_ADMIN_SUBJECT_MISMATCH_BLOCK=PASS');
+
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/009_authority_approval_nonce_registry.sql'), 'utf8');
+  assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/);
+  assert.match(migration, /GRANT UPDATE \\(consumed_at\\)/);
+  assert.match(migration, /consumed_at IS NULL/);
+  assert.match(migration, /consumed_at IS NOT NULL/);
+  assert.doesNotMatch(migration, /GRANT[^;]+DELETE/i);
+  assert.doesNotMatch(migration, /GRANT[^;]+TRUNCATE/i);
+  console.log('HFM_APPROVAL_NONCE_MIGRATION_LEAST_PRIVILEGE=PASS');
 
   console.log('NETWORK_REQUESTS=0');
   console.log('DATABASE_WRITES=0');
