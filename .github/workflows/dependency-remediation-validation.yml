@@ -15,6 +15,7 @@ on:
   push:
     branches:
       - fix/dependency-security-remediation-20261106
+      - work/mira-hfm-v02-runtime-integration
   workflow_dispatch:
 
 permissions:
