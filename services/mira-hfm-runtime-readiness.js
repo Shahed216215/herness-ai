@@ -9,7 +9,7 @@ function vaultStatus(env) {
     return Object.freeze({ status: 'NOT_CONFIGURED', reason: 'VAULT_ACTIVE_KEY_VERSION_MISSING' });
   }
   const encoded = env['MIRA_VAULT_KEK_' + version.toUpperCase()];
-  if (typeof encoded !== 'string' || !encoded) {
+  if (typeof encoded !== 'string' || encoded.length !== 44) {
     return Object.freeze({ status: 'NOT_CONFIGURED', reason: 'VAULT_KEY_MISSING' });
   }
   const key = Buffer.from(encoded, 'base64');
@@ -32,7 +32,7 @@ function safeConfig(read, env, fallbackReason) {
   } catch (error) {
     return Object.freeze({
       status: 'INVALID',
-      reason: typeof error.code === 'string' && /^[A-Z0-9_]+$/.test(error.code)
+      reason: error && typeof error.code === 'string' && /^[A-Z0-9_]+$/.test(error.code)
         ? error.code : 'CONFIGURATION_INVALID'
     });
   }
