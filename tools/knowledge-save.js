@@ -29,6 +29,18 @@ module.exports = {
   },
 
   execute: async ({
+    if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true") {
+      return JSON.stringify({
+        success: false,
+        saved: false,
+        code: "HFM_TOOL_ROUTER_REQUIRED",
+        localFallback: false,
+        driveFallback: false
+      });
+    }
+
     title,
     url,
     content
