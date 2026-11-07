@@ -428,7 +428,7 @@ function getStandingReadMemoryRecord(options = {}) {
 
 function isStandingReadCursorTimestamp(value) {
   return typeof value === 'string' &&
-    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$/.test(value) &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(value) &&
     Number.isFinite(Date.parse(value));
 }
 
@@ -529,7 +529,7 @@ async function listMemoryRecords(options = {}) {
     let scanStartedAt = cursor && cursor.scanStartedAt;
     if (!scanStartedAt) {
       const started = await client.query(
-        "SELECT to_char(transaction_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS scan_started_at'
+        `SELECT to_char(transaction_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS scan_started_at`
       );
       if (!started.rows?.[0]?.scan_started_at) {
         throw fail('HFM_MEMORY_PAGE_SCAN_TIMESTAMP_REQUIRED');
