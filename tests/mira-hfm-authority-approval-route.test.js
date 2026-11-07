@@ -10,6 +10,7 @@ const fakeIssueAuthority = async options => {
     status: 'AUTHORITY_ISSUED',
     projectId: 'project-alpha',
     operation: 'memory.read',
+    resource: 'memory:project:project-alpha',
     grant: { authorityId: 'authority-001', purpose: 'approved retrieval', requestId: 'request-001' },
     singleUse: true,
     expiresAt: new Date(Date.now() + 60000).toISOString(),
@@ -32,7 +33,7 @@ function makeReq(overrides = {}) {
       authenticated: true,
       role: 'admin',
       hfmPrincipal: { verified: true },
-      hfmProjectBinding: { verified: true },
+      hfmProjectBinding: { verified: true, projectId: 'project-alpha' },
       save(callback) { callback(null); }
     },
     body: { confirm: true, purpose: 'approved retrieval' },
