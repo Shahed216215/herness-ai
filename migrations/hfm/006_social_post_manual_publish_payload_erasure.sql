@@ -179,6 +179,8 @@ END;
 $$;
 
 GRANT UPDATE ON TABLE mira_hfm.memory_record_versions TO mira_hfm_memory_writer;
+GRANT SELECT (project_id, memory_id, record_type, classification, payload_erased_at, revision)
+  ON TABLE mira_hfm.memory_record_versions TO mira_hfm_memory_writer;
 GRANT SELECT, INSERT, UPDATE ON TABLE mira_hfm.memory_social_post_state TO mira_hfm_memory_writer;
 
 ALTER TABLE mira_hfm.memory_social_post_state ENABLE ROW LEVEL SECURITY;

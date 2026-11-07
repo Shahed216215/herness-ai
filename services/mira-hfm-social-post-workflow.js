@@ -175,7 +175,10 @@ async function markSocialPostCopied(options = {}) {
   validateWorkflowContext(context, OPERATIONS.COPY, memoryId);
   assertSocialPostRecord(await loadRecord(client, context, memoryId), context);
   const operation = await beginOperation(client, context, memoryId, OPERATIONS.COPY, options.idempotencyKey);
-  if (operation.duplicate) return { status: 'COPIED', duplicate: true };
+  if (operation.duplicate) {
+    const existing = await getStateRow(client, context.projectId, memoryId);
+    return { status: existing ? existing.status : 'DELETE_STATUS_UNKNOWN', duplicate: true };
+  }
   const current = await getStateRow(client, context.projectId, memoryId);
   const status = nextSocialPostStatus(current && current.status, 'COPY');
   await updateStatus(client, context, memoryId, status, { copiedAt: new Date().toISOString() });
@@ -192,7 +195,10 @@ async function confirmSocialPostPublished(options = {}) {
   assertSocialPostRecord(await loadRecord(client, context, memoryId), context);
   if (options.userConfirmedPublished !== true) throw fail('HFM_SOCIAL_POST_USER_CONFIRMATION_REQUIRED');
   const operation = await beginOperation(client, context, memoryId, OPERATIONS.PUBLISH, options.idempotencyKey);
-  if (operation.duplicate) return { status: 'USER_CONFIRMED_PUBLISHED', duplicate: true };
+  if (operation.duplicate) {
+    const existing = await getStateRow(client, context.projectId, memoryId);
+    return { status: existing ? existing.status : 'DELETE_STATUS_UNKNOWN', duplicate: true };
+  }
   const current = await getStateRow(client, context.projectId, memoryId);
   const status = nextSocialPostStatus(current && current.status, 'PUBLISH');
   const confirmedAt = new Date().toISOString();

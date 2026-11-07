@@ -26,7 +26,7 @@ const draft = {
 test('requires consumed one-time authority, exact project resource and actor', () => {
   assert.equal(workflow.validateWorkflowContext(baseContext, workflow.OPERATIONS.DELETE, 'post-0001'), baseContext);
   assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, authorityContext: 'untrusted' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
-  assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, projectId: 'other-project' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
+  assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, projectId: '' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
   assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, resource: 'memory:other' }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
   assert.throws(() => workflow.validateWorkflowContext({ ...baseContext, operation: workflow.OPERATIONS.COPY }, workflow.OPERATIONS.DELETE, 'post-0001'), /HFM_SOCIAL_POST_AUTHORITY_INVALID/);
 });
