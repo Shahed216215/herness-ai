@@ -19,6 +19,7 @@ assert.ok(sql.includes('HFM_MEMORY_READER_GROUP_MUST_NOT_INHERIT_OTHER_ROLES'));
 assert.ok(sql.includes('HFM_MEMORY_READER_GROUP_MUST_NOT_OWN_DATABASE_OBJECTS'));
 assert.ok(sql.includes('HFM_MEMORY_READER_LOGIN_ATTRIBUTES_NOT_LEAST_PRIVILEGE'));
 assert.ok(sql.includes('HFM_MEMORY_READER_LOGIN_HAS_UNEXPECTED_ROLE_MEMBERSHIP'));
+assert.ok(sql.includes('roleid <> reader_oid OR admin_option'));
 assert.ok(sql.includes('HFM_MEMORY_READER_LOGIN_MUST_NOT_OWN_DATABASE_OBJECTS'));
 assert.ok(sql.includes('GRANT mira_hfm_memory_reader TO mira_hfm_memory_reader_login'));
 assert.ok(sql.includes('NOT rolcanlogin OR NOT rolinherit'));
