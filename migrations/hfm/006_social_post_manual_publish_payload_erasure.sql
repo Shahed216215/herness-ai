@@ -31,6 +31,7 @@ ALTER TABLE mira_hfm.memory_records
   ADD CONSTRAINT memory_records_payload_representation_check CHECK (
     (
       payload_erased_at IS NOT NULL
+      AND payload_erased_by_actor_id IS NOT NULL
       AND payload_erased_by_actor_id LIKE 'mira:%'
       AND public_payload IS NULL AND encrypted_envelope IS NULL
       AND record_type = 'social_post_draft'
@@ -80,8 +81,12 @@ ALTER TABLE mira_hfm.memory_record_versions
 
 ALTER TABLE mira_hfm.memory_records
   ADD CONSTRAINT memory_records_payload_erasure_actor_check
-  CHECK (payload_erased_by_actor_id IS NULL OR
-    (payload_erased_at IS NOT NULL AND payload_erased_by_actor_id LIKE 'mira:%'));
+  CHECK (
+    (payload_erased_at IS NULL AND payload_erased_by_actor_id IS NULL)
+    OR
+    (payload_erased_at IS NOT NULL AND payload_erased_by_actor_id IS NOT NULL
+      AND payload_erased_by_actor_id LIKE 'mira:%')
+  );
 ALTER TABLE mira_hfm.memory_record_versions
   ADD CONSTRAINT memory_versions_payload_erasure_actor_check
   CHECK (payload_erased_by_actor_id IS NULL OR
