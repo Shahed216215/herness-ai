@@ -14,7 +14,8 @@ assert.match(sql, /Do not execute on production or staging without separate appr
 assert.match(sql, /CREATE ROLE mira_hfm_memory_reader[\s\S]*NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/);
 assert.match(sql, /HFM_MEMORY_READER_GROUP_MUST_NOT_INHERIT_OTHER_ROLES/);
 assert.match(sql, /HFM_MEMORY_READER_GROUP_MUST_NOT_OWN_DATABASE_OBJECTS/);
-assert.match(sql, /GRANT SELECT, UPDATE ON TABLE mira_hfm\.operation_authorities/);
+assert.match(sql, /GRANT SELECT ON TABLE mira_hfm\.operation_authorities/);
+assert.match(sql, /GRANT UPDATE \\(status, consumed_at\\) ON TABLE mira_hfm\.operation_authorities/);
 assert.match(sql, /GRANT INSERT ON TABLE mira_hfm\.authority_audit_events/);
 assert.match(sql, /GRANT SELECT ON TABLE mira_hfm\.memory_records/);
 assert.match(sql, /GRANT SELECT ON TABLE[\s\S]*mira_hfm\.project_owners[\s\S]*mira_hfm\.project_memberships/);
@@ -25,6 +26,7 @@ assert.doesNotMatch(sql, /GRANT\s+DELETE|GRANT\s+TRUNCATE|GRANT\s+ALL/i);
 assert.match(sql, /hfm_memory_reader_authority_consume_update/);
 assert.match(sql, /status = 'ISSUED'/);
 assert.match(sql, /status = 'CONSUMED'/);
+assert.match(sql, /event_type = 'AUTHORITY_CONSUMED'/);
 assert.match(sql, /actor_id = NULLIF\(current_setting\('mira\.actor_id', true\), ''\)/);
 assert.match(sql, /classification IN \('PUBLIC', 'PROJECT_PRIVATE'\)/);
 assert.match(sql, /lifecycle = 'ACTIVE'/);
