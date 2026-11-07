@@ -242,6 +242,64 @@ const verifiedLearning = {
   assert.equal(exactKnowledge.memoryWrites, false);
   console.log('HFM_KNOWLEDGE_EXACT_DETAIL_READ_USES_STANDING_AUTHORITY=PASS');
 
+  const nearExpiryContext = {
+    ...hostAuthorizationContext,
+    expiresAt: '2026-11-07T08:00:00.000001Z'
+  };
+  const nearExpiryRead = await getHfmKnowledgeById({
+    req: { session: { hfmPrincipal: { verified: true } } },
+    pool: { connect: async () => ({}) },
+    memoryId: knowledge.memoryId,
+    now,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readRecord: async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId,
+      recordStatus: 'FOUND',
+      record: knowledge,
+      standingAuthority: true,
+      standingAuthorityId: nearExpiryContext.authorityRef,
+      authorityExpiresAt: nearExpiryContext.expiresAt,
+      authorityConsumed: false,
+      approvalRequiredPerRead: false,
+      memoryWrites: false,
+      localFallback: false,
+      driveFallback: false,
+      hostAuthorizationContext: nearExpiryContext
+    })
+  });
+  assert.equal(nearExpiryRead.entry.id, knowledge.memoryId,
+    'a grant valid for one more microsecond must not be rejected by millisecond truncation');
+
+  const futureIssuedContext = {
+    ...hostAuthorizationContext,
+    issuedAt: '2026-11-07T08:00:00.000001Z',
+    expiresAt: '2026-11-07T08:05:00.000000Z'
+  };
+  await assert.rejects(() => getHfmKnowledgeById({
+    req: { session: { hfmPrincipal: { verified: true } } },
+    pool: { connect: async () => ({}) },
+    memoryId: knowledge.memoryId,
+    now,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readRecord: async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED',
+      projectId,
+      recordStatus: 'FOUND',
+      record: knowledge,
+      standingAuthority: true,
+      standingAuthorityId: futureIssuedContext.authorityRef,
+      authorityExpiresAt: futureIssuedContext.expiresAt,
+      authorityConsumed: false,
+      approvalRequiredPerRead: false,
+      memoryWrites: false,
+      localFallback: false,
+      driveFallback: false,
+      hostAuthorizationContext: futureIssuedContext
+    })
+  }), /HFM_KNOWLEDGE_AUTHORIZED_EXACT_READ_REQUIRED/);
+  console.log('HFM_KNOWLEDGE_EXACT_READ_USES_MICROSECOND_PRECISE_AUTHORITY_TIME=PASS');
+
   const exactMissing = await getHfmKnowledgeById({
     req: { session: { hfmPrincipal: { verified: true } } },
     pool: { connect: async () => ({}) },
