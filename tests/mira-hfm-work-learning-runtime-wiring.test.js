@@ -6,6 +6,10 @@ const path = require('node:path');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
+
+const localWorkLearning = read('services/mira-work-learning-engine.js');
+assert.match(localWorkLearning, /function loadStore\(\) \{\s*assertLegacyStorageDisabled\(\);/);
+assert.match(localWorkLearning, /function saveStore\(store\) \{\s*assertLegacyStorageDisabled\(\);/);
 const { resolveHfmReadToolContext, resolveHfmWriteToolContext } = require('../services/mira-work-execution-engine');
 
 const { assertLegacyLearningStorageAllowed } = require('../services/learning');
@@ -335,6 +339,30 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
   console.log('HFM_MEMORY_WRITE_CONTEXT_BINDS_VERIFIED_WRITER_AND_ISSUER=PASS');
   console.log('HFM_MEMORY_WRITE_CONTEXT_FAILS_CLOSED_WHEN_UNAVAILABLE=PASS');
   console.log('HFM_STANDING_READ_TOOL_CONTEXT_AVAILABLE_WITHOUT_WORK_LEARNING=PASS');
+
+  const oldPlannerStanding = process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+  const oldPlannerWork = process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  try {
+    process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = 'true';
+    delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    const standingOnlyPlan = buildPlanFromUnderstanding({
+      id: 'standing-only-task', title: 'Prepare a simple research summary',
+      description: 'Prepare a simple research summary', requirements: []
+    }, 'Prepare a simple research summary', { persist: false });
+    assert.deepEqual(standingOnlyPlan.experienceGuidance.strategies, []);
+    assert.deepEqual(standingOnlyPlan.experienceGuidance.crossTaskLearning.transfers, []);
+    const { listLearningRecords } = require('../services/mira-work-learning-engine');
+    assert.throws(
+      () => listLearningRecords({ limit: 1 }),
+      error => error.code === 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE'
+    );
+  } finally {
+    if (oldPlannerStanding === undefined) delete process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED;
+    else process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED = oldPlannerStanding;
+    if (oldPlannerWork === undefined) delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+    else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldPlannerWork;
+  }
+  console.log('HFM_STANDING_READ_MODE_BLOCKS_LOCAL_CROSS_TASK_LEARNING=PASS');
   console.log('HFM_STANDING_READ_CONTEXT_FAILS_CLOSED_WHEN_UNAVAILABLE=PASS');
 
   const now = new Date().toISOString();
