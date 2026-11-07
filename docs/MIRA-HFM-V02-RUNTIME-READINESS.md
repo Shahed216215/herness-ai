@@ -50,6 +50,7 @@ Values must be supplied only after the target database and role credentials are 
 
 | Purpose | Environment variables |
 |---|---|
+| Shared Neon endpoint validation | `MIRA_HFM_DATABASE_URL` (validated Neon PostgreSQL endpoint; runtime-specific URLs are separately supplied below) |
 | Project-selection reader | `MIRA_HFM_PROJECT_READ_ENABLED`, `MIRA_HFM_PROJECT_READ_DATABASE_URL`, `MIRA_HFM_PROJECT_READ_ROLE` |
 | Memory retrieval reader | `MIRA_HFM_MEMORY_READ_ENABLED`, `MIRA_HFM_MEMORY_READ_DATABASE_URL`, `MIRA_HFM_MEMORY_READ_ROLE` |
 | One-time authority issuer | `MIRA_HFM_AUTHORITY_ISSUER_ENABLED`, `MIRA_HFM_AUTHORITY_ISSUER_DATABASE_URL`, `MIRA_HFM_AUTHORITY_ISSUER_ROLE` |
@@ -59,6 +60,7 @@ Values must be supplied only after the target database and role credentials are 
 | HFM Work Learning integration | `MIRA_HFM_WORK_LEARNING_ENABLED` (must remain `false` until standing-read authority and HFM Work Learning record availability are verified) |
 | Memory writer (separate existing path) | `MIRA_HFM_MEMORY_WRITE_ENABLED`, `MIRA_HFM_MEMORY_DATABASE_URL`, `MIRA_HFM_MEMORY_WRITER_ROLE` |
 | Stable admin principal | `MIRA_ADMIN_SUBJECT_ID` |
+| Application envelope encryption | `MIRA_VAULT_ACTIVE_KEK_VERSION`, matching versioned `MIRA_VAULT_KEK_Vn` (key material must remain secret; no default key) |
 
 Feature flags must remain disabled until database readiness, target mapping, role provisioning and owner/membership bootstrap are verified. No secret values are recorded in this document.
 
