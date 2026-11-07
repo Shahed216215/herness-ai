@@ -348,9 +348,11 @@ jobs:
           PGPASSWORD: hfm-ci-password
         run: |
           set -euo pipefail
-          pg_dump -h localhost -U postgres --format=custom --file=/tmp/hfm-v02-disposable.dump neondb
-          createdb -h localhost -U postgres neondb_restore_rehearsal
-          pg_restore -h localhost -U postgres --exit-on-error --dbname=neondb_restore_rehearsal /tmp/hfm-v02-disposable.dump
+          postgres_container="$(docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /^postgres:16/ {print $1; exit}')"
+          test -n "$postgres_container"
+          docker exec "$postgres_container" pg_dump -U postgres --format=custom --file=/tmp/hfm-v02-disposable.dump neondb
+          docker exec "$postgres_container" createdb -U postgres neondb_restore_rehearsal
+          docker exec "$postgres_container" pg_restore -U postgres --exit-on-error --dbname=neondb_restore_rehearsal /tmp/hfm-v02-disposable.dump
 
           source_fingerprint="$(psql -h localhost -U postgres -d neondb -At -v ON_ERROR_STOP=1 -c "
             SELECT concat_ws(':',
