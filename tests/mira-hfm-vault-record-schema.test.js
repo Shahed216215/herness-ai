@@ -115,7 +115,9 @@ test('migration 018 requires separate one-time memory.vault.write authority for 
   assert.match(migration, /trust_status = 'SOURCE_RECORDED'/);
   assert.match(migration, /integrity_status = 'VERIFIED'/);
   assert.match(migration, /authority_row\.status = 'CONSUMED'/);
-  assert.match(migration, /authority_row\.purpose LIKE 'hfm-vault:%'/);
+  assert.match(migration, /authority_row\.purpose = 'hfm-vault:' \|\| memory_records\.record_type \|\| ':explicit-user-request'/);
+  assert.match(migration, /authority_row\.purpose = 'hfm-vault:' \|\| memory_record_versions\.record_type \|\| ':explicit-user-request'/);
+  assert.doesNotMatch(migration, /authority_row\.purpose LIKE 'hfm-vault:%'/);
   assert.match(migration, /memory_record_versions/);
   assert.match(migration, /SOURCE-ONLY DRAFT/);
 });
