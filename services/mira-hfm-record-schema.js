@@ -220,7 +220,7 @@ function validateCanonicalRecord(record) {
     }
   }
 
-  if (schemaVersion === SCHEMA_V1_1) {
+  if ([SCHEMA_V1_1, SCHEMA_V1_2].includes(schemaVersion)) {
     if (['client_vault_record', 'financial_vault_record'].includes(record.recordType) &&
         record.access?.classification !== 'RESTRICTED') {
       errors.push('record.vault_record.must_be_RESTRICTED');
