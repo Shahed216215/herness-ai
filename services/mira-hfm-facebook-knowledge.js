@@ -206,7 +206,7 @@ async function researchFacebookSource(options = {}) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       api_key: apiKey,
-      query: 'site:facebook.com' + pagePath + ' public posts',
+      query: 'site:facebook.com' + pagePath + ' ' + [...new URL(sourceUrl).searchParams.entries()].map(([key, value]) => key + ':' + value).join(' ') + ' public posts',
       search_depth: 'basic',
       include_domains: ['facebook.com'],
       max_results: 5,
