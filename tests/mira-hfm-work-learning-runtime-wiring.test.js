@@ -140,6 +140,23 @@ const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-ru
   assert.equal(result.results[0].content, content);
   assert.equal(result.localFallback, false);
   assert.equal(result.driveFallback, false);
+  const exact = await searchHfmKnowledge({
+    req: {}, pool: {}, query: 'memory-knowledge-001', limit: 5,
+    env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' },
+    readMemory: async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha',
+      records: [record], standingAuthority: true,
+      approvalRequiredPerRead: false,
+      hostAuthorizationContext: {
+        actorId: 'mira:actor-001', actorType: 'HUMAN',
+        projectId: 'project-alpha', purpose: 'knowledge detail',
+        requestId: 'request-knowledge-detail-001', authorityRef: 'standing-001',
+        issuedAt: new Date(Date.now() - 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 86400000).toISOString()
+      }
+    })
+  });
+  assert.equal(exact.results[0].id, 'memory-knowledge-001');
   await assert.rejects(() => searchHfmKnowledge({
     req: {}, pool: {}, query: 'Python',
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'false' }
