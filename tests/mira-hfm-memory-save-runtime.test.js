@@ -71,6 +71,9 @@ function baseOptions(overrides = {}) {
   assert.equal(hasExplicitSaveIntent("Don't forget to remember this."), true);
   assert.equal(hasExplicitSaveIntent("I don't think you should remember this."), false);
   assert.equal(hasExplicitSaveIntent('এটা মনে রাখবে না।'), false);
+  assert.equal(hasExplicitSaveIntent('এই নোটটি সংরক্ষণ করো।'), false);
+  assert.equal(hasExplicitSaveIntent('এটা মেমোরিতে সংরক্ষণ করো।'), true);
+  assert.equal(hasExplicitSaveIntent('এই শেখাটা জ্ঞানভাণ্ডারে রাখো।'), true);
   assert.equal(hasExplicitSaveIntent('Explain how memory works.'), false);
   assert.equal(isUserAuthoredMemoryContent(
     'Remember this: I prefer concise Bengali explanations.',
