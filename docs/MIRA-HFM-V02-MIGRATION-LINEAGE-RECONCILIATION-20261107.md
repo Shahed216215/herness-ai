@@ -79,3 +79,9 @@ Inspected using read-only SQL on 2026-11-07; no schema or data was changed:
 - Same-name second project `fancy-wave-81945737` has no `mira_hfm` tables on its inspected default branch. Project names alone do not establish the Render target.
 
 The Render service's active database target still cannot be read through the available secret-safe service-inspection surface. Do not infer that Render uses either Neon project. No migration, role change, data write, or environment mutation was performed.
+
+## 2026-11-07 follow-up: revision integrity guard and current PR CI
+
+Migration 016 and the canonical Memory repository revision path were hardened so `memory.update` cannot change `integrity_status` or `trust_status`. The writer's column-level UPDATE grant excludes `integrity_status`; the trigger rejects any integrity/trust metadata change; the repository validates the incoming integrity status against the stored row and no longer updates that column. Regression coverage rejects integrity-status tampering and confirms the revision UPDATE statement does not touch trust/integrity metadata.
+
+Exact branch HEAD `4a4fb954c31e7dd76c2bc55935a010224c0754ca` completed the eight existing PR workflow checks successfully: HFM runtime foundation, Memory repository contracts, session persistence, Render host binding, dependency remediation, Run Agent regression, Competitor Intelligence, and approval diagnostic. Render live HTTP smoke was skipped. The standalone `hfm-postgres-migrations.yml` push run still produced a failed run with zero jobs; no disposable PostgreSQL 001–018 execution evidence was obtained. Its migration-chain status remains **NOT_VERIFIED** (not PASS). This branch remains Draft and unmerged; Render and Neon were not changed.
