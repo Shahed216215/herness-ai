@@ -1,3 +1,4 @@
+const { assertLegacyStorageDisabled } = require('./services/mira-hfm-legacy-storage-guard');
 const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
@@ -54,6 +55,7 @@ const ALLOWED_DIFFICULTIES = [
 ];
 
 function loadKnowledge() {
+  assertLegacyStorageDisabled();
   if (!fs.existsSync(KNOWLEDGE_FILE)) {
     return [];
   }
@@ -75,6 +77,7 @@ function loadKnowledge() {
 }
 
 function saveLocalKnowledge(data) {
+  assertLegacyStorageDisabled();
   fs.writeFileSync(
     KNOWLEDGE_FILE,
     JSON.stringify(data, null, 2),
