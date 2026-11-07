@@ -122,6 +122,7 @@ const pool = { async connect() { return client; } };
   }, expected), /HFM_STANDING_READ_APPROVAL_RECEIPT_INVALID/);
   console.log('HFM_STANDING_READ_SINGLE_HUMAN_APPROVAL_RECEIPT_REQUIRED=PASS');
 
+  const issuanceCallStart = calls.length;
   const issued = await issueStandingReadAuthority({
     req, pool, env, purpose: expected.purpose, approvalConfirmed: true
   });
@@ -133,7 +134,13 @@ const pool = { async connect() { return client; } };
   assert.deepEqual(issued.recordTypes, ['learning_note', 'knowledge_item']);
   assert.equal(issued.writesAllowed, false);
   assert.equal(issued.requiresApprovalPerRead, false);
-    assert.ok(calls.some(c => typeof c.sql === 'string' && c.sql.startsWith('INSERT INTO mira_hfm.standing_read_authorities')));
+  assert.ok(calls.slice(issuanceCallStart).some(c =>
+    typeof c.sql === 'string' && c.sql.includes('pg_advisory_xact_lock') &&
+    c.params?.[0] === 'hfm-standing-read:' + projectId + ':' + actorId
+  ), 'issuance serializes on the same project/actor lock as reads and lifecycle changes');
+  assert.ok(calls.slice(issuanceCallStart).some(c =>
+    typeof c.sql === 'string' && c.sql.startsWith('INSERT INTO mira_hfm.standing_read_authorities')
+  ));
   console.log('HFM_STANDING_READ_365_DAY_PROJECT_SCOPED_ISSUE=PASS');
   const statusResult = await getStandingReadAuthorityStatus({ req, pool, env });
   assert.equal(statusResult.status, 'STANDING_READ_AUTHORITY_FOUND');
