@@ -41,6 +41,11 @@ function registerMiraHfmMemoryReadRoute(app, getRuntime, requireAdmin, readMemor
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         return res.status(400).json({ success: false, error: 'limit must be an integer from 1 to 100.' });
       }
+      const allowedRecordTypes = ['daily_activity', 'learning_note', 'knowledge_item',
+        'social_post_draft', 'client_vault_record', 'financial_vault_record'];
+      if (body.recordType !== undefined && !allowedRecordTypes.includes(body.recordType)) {
+        return res.status(400).json({ success: false, error: 'Unsupported Memory recordType filter.' });
+      }
       try {
         const runtime = await getRuntime();
         if (!runtime || runtime.status !== 'MEMORY_READ_READY' ||
@@ -63,6 +68,7 @@ function registerMiraHfmMemoryReadRoute(app, getRuntime, requireAdmin, readMemor
               req,
               authorityGrant: grant,
               limit,
+              recordType: body.recordType,
               env: process.env
             });
             return res.json({
