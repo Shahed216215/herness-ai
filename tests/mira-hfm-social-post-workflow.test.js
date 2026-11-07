@@ -124,3 +124,73 @@ test('archive rejects wrong project scope and does not return restricted records
     /HFM_SOCIAL_POST_AUTHORITY_INVALID/
   );
 });
+
+test('delete transaction is exact-record scoped and writes sanitized audit only', async () => {
+  const calls = [];
+  const row = { ...draft, payload_erased_at: null };
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql, params });
+      if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) return { rows: [row] };
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 1, rows: [{ operation_id: 'op-001' }] };
+      if (sql.startsWith('SELECT status, copied_at')) return { rows: [] };
+      if (sql.startsWith("SELECT set_config('mira.memory_payload_erasure_operation_id'")) return { rows: [{ set_config: 'op-001' }] };
+      if (sql.startsWith('UPDATE mira_hfm.memory_social_post_state')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith('UPDATE mira_hfm.memory_record_versions')) return { rowCount: 2, rows: [{ revision: 1 }, { revision: 2 }] };
+      if (sql.startsWith('UPDATE mira_hfm.memory_records')) return { rowCount: 1, rows: [{ memory_id: 'post-0001' }] };
+      if (sql.startsWith('SELECT event_hash FROM mira_hfm.memory_audit_events')) return { rows: [] };
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')) return { rowCount: 1, rows: [] };
+      if (sql.startsWith("UPDATE mira_hfm.memory_operation_registry SET status = 'COMPLETED'")) return { rowCount: 1, rows: [{ operation_id: 'op-001' }] };
+      throw new Error('unexpected SQL: ' + sql);
+    }
+  };
+  const context = { ...baseContext, operation: workflow.OPERATIONS.DELETE };
+  const result = await workflow.deleteSocialPostPayload({
+    client, context, memoryId: 'post-0001',
+    idempotencyKey: 'delete-post-0001',
+    userConfirmedDelete: true
+  });
+  assert.equal(result.status, 'DELETED');
+  assert.equal(result.versionsErased, 2);
+  const versionUpdate = calls.find(x => x.sql.startsWith('UPDATE mira_hfm.memory_record_versions'));
+  assert.deepEqual(versionUpdate.params, ['project-001', 'post-0001', 'mira:creator-001']);
+  const currentUpdate = calls.find(x => x.sql.startsWith('UPDATE mira_hfm.memory_records'));
+  assert.deepEqual(currentUpdate.params, ['project-001', 'post-0001', 'mira:creator-001']);
+  assert.equal(calls.some(x => /DELETE FROM|TRUNCATE/i.test(x.sql)), false);
+  const auditInsert = calls.find(x => x.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events'));
+  const auditDetails = JSON.parse(auditInsert.params[11]);
+  assert.equal(auditDetails.versionsErased, 2);
+  assert.equal(auditDetails.payloadErased, true);
+  assert.equal(JSON.stringify(auditDetails).includes('private post body'), false);
+});
+
+test('delete fails closed before any payload write for restricted or unconfirmed records', async () => {
+  let writes = 0;
+  const client = {
+    async query(sql) {
+      if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) {
+        return { rows: [{ ...draft, classification: 'RESTRICTED' }] };
+      }
+      if (/^UPDATE |^INSERT |^DELETE |^TRUNCATE /i.test(sql)) writes += 1;
+      throw new Error('unexpected SQL');
+    }
+  };
+  await assert.rejects(
+    workflow.deleteSocialPostPayload({
+      client, context: { ...baseContext, operation: workflow.OPERATIONS.DELETE },
+      memoryId: 'post-0001', idempotencyKey: 'delete-restricted',
+      userConfirmedDelete: true
+    }),
+    /HFM_SOCIAL_POST_CLASSIFICATION_INVALID/
+  );
+  assert.equal(writes, 0);
+  await assert.rejects(
+    workflow.deleteSocialPostPayload({
+      client, context: { ...baseContext, operation: workflow.OPERATIONS.DELETE },
+      memoryId: 'post-0001', idempotencyKey: 'delete-no-confirm',
+      userConfirmedDelete: false
+    }),
+    /HFM_SOCIAL_POST_DELETE_CONFIRMATION_REQUIRED/
+  );
+  assert.equal(writes, 0);
+});
