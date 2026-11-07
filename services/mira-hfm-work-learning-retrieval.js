@@ -65,7 +65,7 @@ function retrieveProjectScopedWorkLearning({
   let malformedLearningPayloads = 0;
 
   for (const canonical of report.records) {
-    if (canonical.recordType !== 'lesson' ||
+    if (canonical.recordType !== 'learning_note' ||
         canonical.source?.sourceType !== 'legacy_import') continue;
     let payload;
     try {
