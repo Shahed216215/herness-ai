@@ -5,6 +5,39 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
+const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
+
+const planned = buildPlanFromUnderstanding({
+  task: {
+    id: 'task-hfm-functional-test',
+    title: 'Python automation',
+    description: 'Improve Python automation reliability',
+    requirements: [],
+    deliverables: ['Verified plan'],
+    type: 'research'
+  }
+}, 'Improve Python automation reliability', {
+  useHfmWorkLearning: true,
+  hfmWorkLearning: {
+    engineVersion: 'HFM_V02',
+    taskId: 'task-hfm-functional-test',
+    count: 1,
+    transfers: [{
+      memoryId: 'memory-learning-001',
+      learningId: 'learning-previous-001',
+      sourceTaskId: 'task-previous',
+      lessons: ['Validate Python automation output before delivery'],
+      task: { title: 'Python automation', description: 'Validate Python automation output' },
+      governance: { readOnly: true, executable: false, modifiesCode: false, bypassesPolicy: false, requiresNormalTaskChecks: true }
+    }]
+  }
+});
+assert.equal(planned.experienceGuidance.crossTaskLearning.count, 1);
+assert.equal(planned.experienceGuidance.strategies.length, 0);
+assert.equal(planned.experienceGuidance.appliedToPlanning, true);
+assert.ok(planned.plan.verificationPlan.some(item => item.checkId === 'cross-task-experience-1'));
+console.log('HFM_WORK_LEARNING_RETRIEVED_LESSONS_REACH_TASK_PLAN=PASS');
+
 const planner = read('services/mira-task-planner.js');
 const execution = read('services/mira-work-execution-engine.js');
 const server = read('server.js');
