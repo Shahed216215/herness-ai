@@ -67,6 +67,7 @@ async function retrieveProjectMemory(options = {}) {
       limit,
       lifecycle: options.lifecycle || 'ACTIVE',
       recordType: options.recordType,
+      recordTypes: options.recordTypes,
       allowPrivateRead: true,
       env: options.env || process.env
     })
