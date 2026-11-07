@@ -254,7 +254,7 @@ console.log('HFM_GENERIC_KNOWLEDGE_SEARCH_AND_CHAT_USE_STANDING_READ=PASS');
 
 const { createContentHash } = require('../services/mira-hfm-record-schema');
 const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-runtime');
-const { executeTool } = require('../tools');
+const { executeTool, executeHfmKnowledgeSearch } = require('../tools');
 const { verifyEvolutionState } = require('../knowledge-memory-evolution');
 const legacyEvolution = read('knowledge-memory-evolution.js');
 assert.match(legacyEvolution, /function readJsonFile\(filePath\) \{\s*assertLegacyStorageDisabled\(\);/);
@@ -351,6 +351,39 @@ assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*
     else process.env.MIRA_HFM_WORK_LEARNING_ENABLED = oldToolWork;
   }
   console.log('HFM_AUTHORITY_MODE_BLOCKS_LEGACY_MEMORY_KNOWLEDGE_LEARNING_TOOLS=PASS');
+  const hfmToolContext = {
+    hfmReadOnly: { req: { serverHeld: true }, pool: { connect: async () => ({}) }, env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' } }
+  };
+  let searchInput;
+  const hfmToolResult = await executeHfmKnowledgeSearch(
+    { query: 'Python automation' },
+    hfmToolContext,
+    async input => {
+      searchInput = input;
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED', standingAuthority: true,
+        count: 1, results: [{ id: 'hfm-knowledge-1' }],
+        localFallback: false, driveFallback: false
+      };
+    }
+  );
+  assert.equal(searchInput.req.serverHeld, true);
+  assert.equal(searchInput.query, 'Python automation');
+  assert.equal(searchInput.limit, 5);
+  assert.equal(JSON.parse(hfmToolResult).source, 'HFM_V02_STANDING_READ');
+  assert.equal(JSON.parse(hfmToolResult).localFallback, false);
+  await assert.rejects(
+    () => executeHfmKnowledgeSearch({ query: 'Python' }, null, async () => ({})),
+    error => error.code === 'HFM_KNOWLEDGE_TOOL_HFM_CONTEXT_REQUIRED'
+  );
+  await assert.rejects(
+    () => executeHfmKnowledgeSearch({ query: 'Python' }, hfmToolContext, async () => ({
+      status: 'AUTHORIZED_AND_COMMITTED', standingAuthority: true,
+      count: 1, results: [], localFallback: true, driveFallback: false
+    })),
+    error => error.code === 'HFM_KNOWLEDGE_TOOL_AUTHORIZED_READ_REQUIRED'
+  );
+  console.log('HFM_KNOWLEDGE_SEARCH_TOOL_USES_SERVER_HELD_STANDING_READ_CONTEXT=PASS');
   await assert.rejects(() => searchHfmKnowledge({
     req: {}, pool: {}, query: 'Python',
     env: { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'false' }
