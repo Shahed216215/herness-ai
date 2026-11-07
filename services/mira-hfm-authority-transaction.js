@@ -218,12 +218,18 @@ async function executeWithStandingReadAuthority(options = {}) {
       throw fail("HFM_OPERATION_NOT_GRANTED");
     }
 
+    // Serialize each read against pause/resume/revoke without granting the
+    // memory-reader role any UPDATE privilege on the authority table.
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+      [options.standingAuthorityLockKey || ("hfm-standing-read:" + projectId + ":" + trustedActor.actorId)]
+    );
     const authorityResult = await client.query(
       "SELECT standing_authority_id, project_id, actor_id, operation, resource, purpose, " +
       "owner_revision, membership_revision, status, approval_ref, valid_from, expires_at " +
       "FROM mira_hfm.standing_read_authorities WHERE project_id = $1 AND actor_id = $2 " +
       "AND operation = 'memory.read' AND resource = $3 AND status = 'ACTIVE' " +
-      "AND valid_from <= clock_timestamp() AND expires_at > clock_timestamp() FOR SHARE",
+      "AND valid_from <= clock_timestamp() AND expires_at > clock_timestamp()",
       [projectId, trustedActor.actorId, resource]
     );
     const authority = authorityResult.rows && authorityResult.rows[0];
