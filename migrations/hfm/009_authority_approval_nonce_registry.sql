@@ -30,7 +30,7 @@ CREATE TABLE mira_hfm.authority_approval_nonces (
     CHECK (actor_id LIKE 'mira:%' AND length(actor_id) <= 512),
   approver_actor_id text NOT NULL
     CHECK (approver_actor_id LIKE 'mira:%' AND length(approver_actor_id) <= 512),
-  operation text NOT NULL CHECK (operation = 'memory.read'),
+  operation text NOT NULL CHECK (operation IN ('memory.read','memory.write','memory.trash','memory.restore')),
   resource text NOT NULL CHECK (length(btrim(resource)) BETWEEN 1 AND 512),
   purpose text NOT NULL CHECK (length(btrim(purpose)) BETWEEN 1 AND 512),
   issued_at timestamptz NOT NULL,
@@ -74,8 +74,35 @@ CREATE POLICY hfm_authority_issuer_approval_nonce_insert
     project_id = NULLIF(current_setting('mira.project_id', true), '')
     AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
     AND approver_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
-    AND operation = 'memory.read'
-    AND resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), '')
+    AND (
+      (operation = 'memory.read' AND resource = 'memory:project:' || NULLIF(current_setting('mira.project_id', true), ''))
+      OR (operation IN ('memory.write','memory.trash','memory.restore') AND resource ~ '^memory:[A-Za-z0-9][A-Za-z0-9._:-]{2,127}
+    AND consumed_at IS NULL
+    AND issued_at <= clock_timestamp()
+    AND expires_at > clock_timestamp()
+    AND expires_at <= clock_timestamp() + interval '5 minutes'
+  );
+
+CREATE POLICY hfm_authority_issuer_approval_nonce_consume
+  ON mira_hfm.authority_approval_nonces
+  FOR UPDATE TO mira_hfm_authority_issuer
+  USING (
+    project_id = NULLIF(current_setting('mira.project_id', true), '')
+    AND actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND approver_actor_id = NULLIF(current_setting('mira.actor_id', true), '')
+    AND consumed_at IS NULL
+    AND expires_at > clock_timestamp()
+  )
+  -- The column-level GRANT permits changing only consumed_at. The USING
+  -- clause scopes the existing row; this CHECK validates the sole mutable field.
+  WITH CHECK (consumed_at IS NOT NULL);
+
+COMMENT ON TABLE mira_hfm.authority_approval_nonces IS
+  'HFM v0.2 hashed nonce ledger for signed, single-use, short-lived human approval tokens.';
+
+COMMIT;
+)
+    )
     AND consumed_at IS NULL
     AND issued_at <= clock_timestamp()
     AND expires_at > clock_timestamp()
