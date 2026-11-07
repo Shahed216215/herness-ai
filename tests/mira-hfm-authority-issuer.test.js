@@ -161,7 +161,7 @@ const pool = { async connect() { return client; } };
   }), /HFM_AUTHORITY_APPROVAL_VERIFIER_REQUIRED/);
   console.log('HFM_AUTHORITY_ISSUER_MISSING_VERIFIER_BLOCK=PASS');
 
-  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/008_authority_issuer_role.sql'), 'utf8');
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations/hfm/011_authority_issuer_role_hardening.sql'), 'utf8');
   assert.match(migration, /NOLOGIN NOINHERIT NOSUPERUSER/);
   assert.match(migration, /GRANT INSERT ON TABLE mira_hfm\.operation_authorities/);
   assert.ok(migration.includes("event_type IN ('AUTHORITY_ISSUED','APPROVAL_TOKEN_ISSUED','APPROVAL_TOKEN_CONSUMED')"));
