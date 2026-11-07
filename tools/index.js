@@ -90,7 +90,7 @@ async function executeHfmKnowledgeReviewQueue(args, trustedContext, review = req
   });
 }
 
-async function executeHfmMemorySave(kind, args, trustedContext) {
+async function executeHfmMemorySave(kind, args, trustedContext, save = require("../services/mira-hfm-memory-save-runtime").saveHfmMemoryRecord) {
   const context = trustedContext && trustedContext.hfmWrite;
   if (!context || !context.req || !context.writerPool || !context.issuerPool ||
       typeof context.writerPool.connect !== "function" ||
@@ -99,7 +99,6 @@ async function executeHfmMemorySave(kind, args, trustedContext) {
     error.code = "HFM_MEMORY_WRITE_CONTEXT_REQUIRED";
     throw error;
   }
-  const save = require("../services/mira-hfm-memory-save-runtime").saveHfmMemoryRecord;
   const result = await save({
     ...context,
     kind,
