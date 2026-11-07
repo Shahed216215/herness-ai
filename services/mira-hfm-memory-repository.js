@@ -478,11 +478,11 @@ async function listMemoryRecords(options = {}) {
       'WHERE project_id = $1 AND lifecycle = $2 AND record_type = ANY($3::text[]) ' +
       'AND classification <> \'RESTRICTED\' ' +
       'AND integrity_status = \'VERIFIED\' AND trust_status IN (\'CONTENT_VERIFIED\', \'HUMAN_VERIFIED\') ' +
-      'AND updated_at <= $7::timestamptz ' +
-      'AND ($8::timestamptz IS NULL OR updated_at < $8::timestamptz OR ' +
-      '(updated_at = $8::timestamptz AND memory_id > $9)) ' +
+      'AND updated_at <= $5::timestamptz ' +
+      'AND ($6::timestamptz IS NULL OR updated_at < $6::timestamptz OR ' +
+      '(updated_at = $6::timestamptz AND memory_id > $7)) ' +
       'ORDER BY updated_at DESC, memory_id ASC LIMIT $4',
-      [context.projectId, lifecycle, recordTypes, limit + 1, true, true,
+      [context.projectId, lifecycle, recordTypes, limit + 1,
         scanStartedAt, cursor ? cursor.updatedAt : null, cursor ? cursor.memoryId : null]
     );
     const rows = result.rows || [];
