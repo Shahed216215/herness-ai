@@ -17,6 +17,8 @@ test('configuration diagnostic reports missing services without connecting or ex
   assert.equal(report.vault.status, 'NOT_CONFIGURED');
   assert.equal(report.legacyMemoryKnowledge, 'NOT_INTEGRATED');
   assert.equal(report.productionReadiness, 'NOT_CERTIFIED');
+  const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../services/mira-hfm-runtime-readiness.js'), 'utf8');
+  assert.doesNotMatch(source, /createPool|\\.connect\\s*\\(/);
   assert.equal(JSON.stringify(report).includes('placeholder-password'), false);
 });
 
@@ -53,5 +55,7 @@ test('invalid vault key and malformed role fail closed without returning values'
   });
   assert.equal(report.authorityIssuer.status, 'INVALID');
   assert.equal(report.vault.status, 'INVALID');
+  const oversizedKey = inspectHfmRuntimeConfiguration({ MIRA_VAULT_ACTIVE_KEK_VERSION: 'v1', MIRA_VAULT_KEK_V1: 'A'.repeat(1000000) });
+  assert.equal(oversizedKey.vault.status, 'INVALID');
   assert.equal(report.status, 'NOT_CONFIGURED');
 });
