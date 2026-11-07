@@ -6,6 +6,8 @@ const test = require('node:test');
 
 const sql = fs.readFileSync('migrations/hfm/006_social_post_manual_publish_payload_erasure.sql', 'utf8');
 const provenanceSql = fs.readFileSync('migrations/hfm/010_social_post_provenance_retention.sql', 'utf8');
+const neonIntegration = fs.readFileSync('tests/hfm-neon-synthetic-integration.test.js', 'utf8');
+const neonWorkflow = fs.readFileSync('.github/workflows/mira-hfm-neon-synthetic-integration.yml', 'utf8');
 
 test('migration is explicitly source-only and transaction-wrapped', () => {
   assert.match(sql, /SOURCE-ONLY/i);
@@ -47,7 +49,6 @@ test('migration does not grant delete or truncate permissions', () => {
   assert.doesNotMatch(sql, /DROP\s+TABLE/i);
 });
 
-
 test('payload erasure trigger uses an unambiguous operation id variable', () => {
   assert.match(sql, /v_operation_id := NULLIF\(current_setting\('mira\.memory_payload_erasure_operation_id'/);
   assert.match(sql, /op\.operation_id = v_operation_id/);
@@ -55,7 +56,6 @@ test('payload erasure trigger uses an unambiguous operation id variable', () => 
   assert.doesNotMatch(sql, /IF operation_id IS NOT NULL/);
   assert.equal((sql.match(/v_operation_id IS NOT NULL/g) || []).length, 2);
 });
-
 
 test('payload erasure guards permit only payload fields to change', () => {
   assert.match(sql, /NEW\.revision = OLD\.revision/);
@@ -72,7 +72,6 @@ test('migration PL/pgSQL blocks use valid balanced dollar-quote delimiters', () 
     (sql.match(/^\$\$;$/gm) || []).length);
 });
 
-
 test('provenance retention migration is source-only and retains only allowlisted metadata', () => {
   assert.match(provenanceSql, /SOURCE-ONLY/i);
   assert.match(provenanceSql, /memory_social_post_state/);
@@ -87,4 +86,20 @@ test('optional originalPublishedAt provenance is limited to JSON null or string'
   assert.match(provenanceSql, /NOT \(provenance_metadata \? 'originalPublishedAt'\)/);
   assert.match(provenanceSql, /provenance_metadata->'originalPublishedAt' = 'null'::jsonb/);
   assert.match(provenanceSql, /jsonb_typeof\(provenance_metadata->'originalPublishedAt'\) = 'string'/);
+});
+
+test('synthetic Neon writes require an exact separately approved test endpoint host', () => {
+  assert.match(neonIntegration, /MIRA_HFM_TEST_DATABASE_HOST/);
+  assert.match(neonIntegration, /TEST_DATABASE_URL_HOST_MISMATCH/);
+  assert.match(neonIntegration, /TEST_DATABASE_HOST_MUST_DIFFER_FROM_PRODUCTION/);
+  assert.ok(neonIntegration.includes('replace(/-pooler(?=\\.)/, "")'));
+  assert.ok(
+    neonIntegration.indexOf('TEST_DATABASE_URL_HOST_MISMATCH') < neonIntegration.indexOf('adapter.createPool'),
+    'endpoint mismatch must fail before database pool creation'
+  );
+});
+
+test('synthetic Neon workflow requires and passes the disposable endpoint host allowlist', () => {
+  assert.match(neonWorkflow, /MIRA_HFM_TEST_DATABASE_HOST: \$\{\{ vars\.MIRA_HFM_TEST_DATABASE_HOST \}\}/);
+  assert.match(neonWorkflow, /\|\| -z "\$\{MIRA_HFM_TEST_DATABASE_HOST:-\}"/);
 });
