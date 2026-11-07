@@ -132,6 +132,20 @@ try {
   }, () => assert.fail('router must deny Work Learning mode'));
   assert.equal(workDenied, true);
   delete process.env.MIRA_HFM_WORK_LEARNING_ENABLED;
+  for (const flag of ['MIRA_HFM_MEMORY_READ_ENABLED', 'MIRA_HFM_MEMORY_WRITE_ENABLED']) {
+    process.env[flag] = 'true';
+    let modeDenied = false;
+    autonomousGuard({}, {
+      status(code) { assert.equal(code, 403); return this; },
+      json(payload) {
+        modeDenied = true;
+        assert.equal(payload.code, 'HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_AUTONOMOUS_LEARNING');
+        return this;
+      }
+    }, () => assert.fail(flag + ' must block legacy autonomous learning'));
+    assert.equal(modeDenied, true);
+    delete process.env[flag];
+  }
   let continued = false;
   autonomousGuard({}, {}, () => { continued = true; });
   assert.equal(continued, true);
