@@ -48,6 +48,15 @@ function registerLearningHistoryRoutes(
     "/lessons",
     requireSystemAdmin,
     (req, res) => {
+      if (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+        return res.status(403).json({
+          success: false,
+          blocked: true,
+          code: "HFM_READ_ONLY_AUTHORITY_BLOCKS_LOCAL_EXPERIENCE_LESSONS",
+          error: "Local experience lessons are not an authorized HFM memory source."
+        });
+      }
       try {
         const limit =
           Math.min(
