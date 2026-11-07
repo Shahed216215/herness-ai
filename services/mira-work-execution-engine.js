@@ -151,6 +151,13 @@ const TOOL_POLICIES = Object.freeze({
     explicitConfirmation: false
   },
 
+  facebook_knowledge_search: {
+    operation: "read",
+    autonomous: true,
+    humanApprovalRequired: false,
+    explicitConfirmation: false
+  },
+
   learning_save: {
     operation: "file_modify",
     autonomous: true,
