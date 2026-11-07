@@ -95,6 +95,10 @@ async function getHfmKnowledgeById({
       !result.hostAuthorizationContext.purpose ||
       typeof result.hostAuthorizationContext.requestId !== 'string' ||
       !result.hostAuthorizationContext.requestId ||
+      typeof result.hostAuthorizationContext.issuedAt !== 'string' ||
+      !Number.isFinite(Date.parse(result.hostAuthorizationContext.issuedAt)) ||
+      typeof result.hostAuthorizationContext.expiresAt !== 'string' ||
+      !Number.isFinite(Date.parse(result.hostAuthorizationContext.expiresAt)) ||
       result.hostAuthorizationContext.authorityRef !== result.standingAuthorityId ||
       result.hostAuthorizationContext.expiresAt !== result.authorityExpiresAt ||
       !['FOUND', 'NOT_FOUND'].includes(result.recordStatus) ||
