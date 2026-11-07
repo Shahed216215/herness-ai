@@ -1,10 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const reader = require('../services/mira-hfm-authorized-memory-reader');
-const original = reader.retrieveProjectMemory;
 let retrievalCalls = 0;
-reader.retrieveProjectMemory = async options => {
+const fakeReadMemory = async options => {
   retrievalCalls += 1;
   assert.equal(options.authorityGrant.authorityId, 'authority-001');
   assert.equal(options.limit, 25);
@@ -19,7 +17,6 @@ reader.retrieveProjectMemory = async options => {
   };
 };
 const { registerMiraHfmMemoryReadRoute } = require('../routes/mira-hfm-memory-read');
-reader.retrieveProjectMemory = original;
 
 function makeReq(overrides = {}) {
   return {
@@ -61,7 +58,7 @@ async function invoke(req, runtime = async () => ({
   let captured;
   const res = response();
   const app = { post(_path, middleware, handler) { captured = { middleware, handler }; } };
-  registerMiraHfmMemoryReadRoute(app, runtime, (_req, _res, next) => next());
+  registerMiraHfmMemoryReadRoute(app, runtime, (_req, _res, next) => next(), fakeReadMemory);
   await captured.middleware(req, res, () => {});
   if (res.payload) return res;
   await captured.handler(req, res);
