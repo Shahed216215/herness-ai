@@ -100,11 +100,13 @@ function registerFacebookKnowledgeRoutes(app, requireAgentAuth, options = {}) {
   app.get('/api/hfm/facebook-knowledge/research', requireAgentAuth, async (req, res) => {
     try {
       const projectId = text(req.query.projectId);
-      const value = await perform(req, req.query, 'memory.read',
+      const authorization = await perform(req, req.query, 'memory.read',
         'memory:project:' + projectId, PURPOSE.RESEARCH,
-        async () => knowledge.researchFacebookSource({
-          sourceUrl: req.query.sourceUrl
-        }));
+        async () => ({ status: 'AUTHORIZED' }));
+      if (authorization.status !== 'AUTHORIZED') throw fail('HFM_FACEBOOK_RESEARCH_AUTHORIZATION_FAILED');
+      const value = await knowledge.researchFacebookSource({
+        sourceUrl: req.query.sourceUrl
+      });
       return res.json({ ok: true, ...value });
     } catch (error) { return sendError(res, error); }
   });
