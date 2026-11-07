@@ -4,7 +4,7 @@ const { getAuthorityIssuerPool } = require('../services/mira-hfm-authority-issue
 const { getMemoryWriterPool } = require('../services/mira-hfm-memory-writer-pool');
 const { issueAuthorityForTrustedActor } = require('../routes/mira-hfm-authorities');
 const { executeWithConsumedAuthority } = require('../services/mira-hfm-authority-transaction');
-const { researchFacebookSource } = require('../services/mira-hfm-facebook-knowledge');
+const { researchFacebookSource, normalizeFacebookUrl } = require('../services/mira-hfm-facebook-knowledge');
 
 module.exports = {
   name: 'facebook_knowledge_research',
@@ -36,23 +36,25 @@ module.exports = {
         resource: 'memory:project:' + projectId.trim(),
         purpose: 'facebook-public-web-search'
       };
+      const normalizedUrl = normalizeFacebookUrl(sourceUrl.trim());
       const grant = await issueAuthorityForTrustedActor({
         pool: await getAuthorityIssuerPool(),
         verifiedPrincipal: trustedContext.verifiedPrincipal,
         request,
         sessionId: trustedContext.verifiedPrincipal.authenticationRef
       });
-      const result = await executeWithConsumedAuthority({
+      const authorization = await executeWithConsumedAuthority({
         pool: await getMemoryWriterPool(),
         verifiedPrincipal: trustedContext.verifiedPrincipal,
         request: grant,
-        perform: async () => researchFacebookSource({ sourceUrl: sourceUrl.trim() })
+        perform: async () => ({ status: 'AUTHORIZED' })
       });
-      if (result.status !== 'AUTHORIZED_AND_COMMITTED') {
+      if (authorization.status !== 'AUTHORIZED_AND_COMMITTED') {
         return JSON.stringify({ status: 'INCONCLUSIVE', results: [] });
       }
+      const research = await researchFacebookSource({ sourceUrl: normalizedUrl });
       return JSON.stringify({
-        ...result.value,
+        ...research,
         evidencePolicy: 'PARTIAL_UNVERIFIED_PUBLIC_SEARCH_RESULTS'
       });
     } catch (error) {
