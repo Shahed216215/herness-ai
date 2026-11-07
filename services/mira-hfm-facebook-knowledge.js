@@ -25,7 +25,12 @@ function normalizeFacebookUrl(value) {
     throw fail('HFM_FACEBOOK_SOURCE_URL_NOT_ALLOWED');
   }
   url.hostname = 'www.facebook.com';
+  const allowedQueryKeys = new Set(['story_fbid', 'id', 'fbid', 'comment_id']);
+  const retained = [...url.searchParams.entries()]
+    .filter(([key, value]) => allowedQueryKeys.has(key) && /^[A-Za-z0-9_-]{1,128}$/.test(value))
+    .sort(([aKey, aValue], [bKey, bValue]) => aKey.localeCompare(bKey) || aValue.localeCompare(bValue));
   url.search = '';
+  for (const [key, value] of retained) url.searchParams.append(key, value);
   return url.toString().replace(/\/$/, '');
 }
 
@@ -40,6 +45,51 @@ function redactSensitiveText(input) {
     .replace(/(?:\b\d{1,3}[,.]\d{2,}\b|৳\s?\d[\d,.]*|BDT\s?\d[\d,.]*)/gi, '[REDACTED_AMOUNT]');
   if (!content.trim() || Buffer.byteLength(content, 'utf8') > MAX_CONTENT_BYTES) throw fail('HFM_KNOWLEDGE_CONTENT_INVALID');
   return Object.freeze({ content, redacted: content !== input.normalize('NFC').replace(/\r\n?/g, '\n').trim() });
+}
+
+function extractImportedContent(input, options = {}) {
+  if (typeof input !== 'string' || !input.trim() || Buffer.byteLength(input, 'utf8') > 30000) {
+    throw fail('HFM_IMPORT_FILE_CONTENT_INVALID');
+  }
+  const name = String(options.fileName || '').toLowerCase();
+  const mime = String(options.mimeType || '').toLowerCase();
+  let content = input;
+  if (name.endsWith('.json') || mime.includes('json')) {
+    let parsed;
+    try { parsed = JSON.parse(input); } catch (_error) { throw fail('HFM_IMPORT_JSON_INVALID'); }
+    const preferred = new Set(['text','message','content','title','description','post','caption','body']);
+    const pieces = [];
+    const visit = (value, key = '') => {
+      if (typeof value === 'string') {
+        if (preferred.has(key.toLowerCase()) && value.trim()) pieces.push(value.trim());
+        return;
+      }
+      if (Array.isArray(value)) { for (const item of value) visit(item, key); return; }
+      if (value && typeof value === 'object') {
+        for (const [childKey, child] of Object.entries(value)) visit(child, childKey);
+      }
+    };
+    visit(parsed);
+    content = pieces.length ? [...new Set(pieces)].join('\n\n') : '';
+    if (!content) throw fail('HFM_IMPORT_JSON_NO_TEXT');
+  } else if (name.endsWith('.html') || mime.includes('html') || /<html[\s>]/i.test(input)) {
+    content = input
+      .replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<\/(p|div|article|section|li|h[1-6]|br|tr)>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&#(\d+);/g, (_m, n) => String.fromCodePoint(Math.min(Number(n), 0x10ffff)))
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n[ \t]+/g, '\n')
+      .trim();
+  }
+  if (!content.trim()) throw fail('HFM_IMPORT_FILE_NO_TEXT');
+  return content.slice(0, 25000);
 }
 
 function tokenize(value) {
@@ -285,6 +335,7 @@ async function searchFacebookKnowledge(options = {}) {
 
 module.exports = Object.freeze({
   normalizeFacebookUrl,
+  extractImportedContent,
   redactSensitiveText,
   buildKnowledgeRecord,
   ingestFacebookKnowledge,
