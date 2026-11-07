@@ -69,6 +69,7 @@ jobs:
           node --check services/mira-hfm-runtime-identity-context.js
           node --check services/mira-hfm-authority-transaction.js
           node --check services/mira-hfm-standing-read-authority.js
+          node --check services/mira-hfm-timestamp.js
           node --check routes/mira-hfm-standing-read-authority.js
           node --check services/mira-hfm-postgres.js
           node --check services/mira-hfm-memory-save-runtime.js
