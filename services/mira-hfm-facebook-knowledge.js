@@ -62,6 +62,7 @@ function extractImportedContent(input, options = {}) {
   if (typeof input !== 'string' || !input.trim() || Buffer.byteLength(input, 'utf8') > 30000) {
     throw fail('HFM_IMPORT_FILE_CONTENT_INVALID');
   }
+  input = input.replace(/^\\uFEFF/, '');
   const name = String(options.fileName || '').toLowerCase();
   const mime = String(options.mimeType || '').toLowerCase();
   let content = input;
@@ -104,7 +105,7 @@ function extractImportedContent(input, options = {}) {
     row.push(cell);
     if (row.some(value => value.trim())) rows.push(row);
     const headers = (rows.shift() || []).map(value => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
-    const textColumns = headers.map((header, index) => /^(message|text|content|post|post_text|caption|body|description|title)$/.test(header) ? index : -1).filter(index => index >= 0);
+    const textColumns = headers.map((header, index) => /^(message|text|content|post|post_text|post_message|caption|body|description|title)$/.test(header) ? index : -1).filter(index => index >= 0);
     if (!textColumns.length) throw fail('HFM_IMPORT_CSV_NO_TEXT_COLUMN');
     content = rows.map(values => textColumns.map(index => String(values[index] || '').trim()).filter(Boolean).join('\n'))
       .filter(Boolean).join('\n\n');
