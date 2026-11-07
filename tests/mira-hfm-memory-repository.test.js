@@ -327,4 +327,26 @@ test('restore clears trash metadata and preserves a new immutable revision', asy
   assert.equal(version.params[13], null);
 });
 
+test('audit hash-chain append is serialized per project inside the caller transaction', async () => {
+  const client = fakeClient();
+  const result = await repository.createMemoryRecord({
+    client, context, record: record(), idempotencyKey: 'idem-audit-lock',
+    allowPrivateWrite: true, env
+  });
+  assert.equal(result.status, 'CREATED');
+  const lockIndex = client.calls.findIndex(call =>
+    call.sql === 'SELECT pg_advisory_xact_lock(hashtext($1))' &&
+    call.params[0] === context.projectId
+  );
+  const previousHashIndex = client.calls.findIndex(call =>
+    call.sql.startsWith('SELECT event_hash FROM mira_hfm.memory_audit_events')
+  );
+  const auditInsertIndex = client.calls.findIndex(call =>
+    call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')
+  );
+  assert.ok(lockIndex >= 0, 'project-scoped transaction lock must be acquired');
+  assert.ok(previousHashIndex > lockIndex, 'previous hash must be read after lock acquisition');
+  assert.ok(auditInsertIndex > previousHashIndex, 'audit event must be appended after previous hash read');
+});
+
 console.log('HFM_MEMORY_REPOSITORY_UNIT_TESTS=PASS');
