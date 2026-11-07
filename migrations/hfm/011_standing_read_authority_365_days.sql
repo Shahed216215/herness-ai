@@ -246,6 +246,11 @@ CREATE TRIGGER standing_read_authority_audit
   AFTER INSERT OR UPDATE ON mira_hfm.standing_read_authorities
   FOR EACH ROW EXECUTE FUNCTION mira_hfm.audit_standing_read_authority_change();
 
+REVOKE ALL ON FUNCTION mira_hfm.guard_standing_read_authority_scope() FROM PUBLIC;
+REVOKE ALL ON FUNCTION mira_hfm.audit_standing_read_authority_change() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION mira_hfm.guard_standing_read_authority_scope() TO mira_hfm_authority_issuer;
+GRANT EXECUTE ON FUNCTION mira_hfm.audit_standing_read_authority_change() TO mira_hfm_authority_issuer;
+
 COMMENT ON TABLE mira_hfm.standing_read_authorities IS
   'HFM v0.2 human-approved project-scoped memory.read standing grants; max 365 days; pause/revoke supported; no write permissions.';
 
