@@ -341,7 +341,7 @@ assert.match(authorizedMemoryReaderSource, /memoryWrites:\s*false/);
 assert.match(server, /selectRecentMessages\(previousMemory\)/);
 assert.match(server, /hfmRecallEnabled/);
 assert.match(server, /candidateScanMayBeIncomplete/);
-assert.match(server, /cursor: typeof req\.query\.cursor === "string" \? req\.query\.cursor : undefined/);
+assert.match(server, /const cursor =\s*typeof req\.query\.cursor === "string" \? req\.query\.cursor : undefined/);
 assert.match(server, /nextCursor: hfmSearch \? hfmSearch\.nextCursor : null/);
 assert.match(server, /nextCursor: hfmSearch \? hfmSearch\.nextCursor/);
 assert.match(server, /cursor,/);
