@@ -9,7 +9,9 @@ function assertLegacyStorageDisabled(env = process.env) {
     throw new TypeError('HFM_LEGACY_STORAGE_ENV_INVALID');
   }
   if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === 'true' ||
-      env.MIRA_HFM_WORK_LEARNING_ENABLED === 'true') {
+      env.MIRA_HFM_WORK_LEARNING_ENABLED === 'true' ||
+      env.MIRA_HFM_MEMORY_READ_ENABLED === 'true' ||
+      env.MIRA_HFM_MEMORY_WRITE_ENABLED === 'true') {
     const error = new Error('HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE');
     error.code = 'HFM_LEGACY_STORAGE_DISABLED_IN_HFM_MODE';
     throw error;
