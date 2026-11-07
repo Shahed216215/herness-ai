@@ -16,8 +16,8 @@ function hasExplicitReviewIntent(value) {
     /(?:দেখিও\s*না|দেখাবেন\s*না|রিভিউ\s*করো\s*না|পর্যালোচনা\s*করো\s*না)/u.test(value);
   if (negative) return false;
   const english = /\b(?:show|list|review|inspect)\b.{0,80}\b(?:pending|unverified|review)\b.{0,80}\b(?:knowledge|source|item|record)s?\b/i.test(value) ||
-    /\b(?:pending knowledge|knowledge review queue|unverified sources)\b/i.test(value);
-  const bengali = /(?:অযাচাইকৃত|যাচাইয়ের\s*জন্য|রিভিউ|পর্যালোচনা).{0,60}(?:জ্ঞান|তথ্য|সোর্স|রেকর্ড)|(?:জ্ঞান|তথ্য|সোর্স).{0,60}(?:রিভিউ|পর্যালোচনা|যাচাইয়ের\s*জন্য)/u.test(value);
+    /\b(?:pending knowledge|knowledge review queue|unverified sources|pending learning notes|learning review queue)\b/i.test(value);
+  const bengali = /(?:অযাচাইকৃত|যাচাইয়ের\s*জন্য|রিভিউ|পর্যালোচনা).{0,60}(?:জ্ঞান|তথ্য|সোর্স|রেকর্ড|শেখা|লার্নিং)|(?:জ্ঞান|তথ্য|সোর্স|শেখা|লার্নিং).{0,60}(?:রিভিউ|পর্যালোচনা|যাচাইয়ের\s*জন্য)/u.test(value);
   return english || bengali;
 }
 
