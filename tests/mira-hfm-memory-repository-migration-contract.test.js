@@ -104,7 +104,9 @@ test('memory.update cannot alter integrity or trust status and has no integrity-
   assert.match(revisionSql, /SOURCE-ONLY DRAFT/);
   assert.match(revisionSql, /NEW\.trust_status IS DISTINCT FROM OLD\.trust_status/);
   assert.match(revisionSql, /NEW\.integrity_status IS DISTINCT FROM OLD\.integrity_status/);
-  assert.doesNotMatch(revisionSql, /GRANT UPDATE \([\s\S]*?integrity_status/);
+  const updateGrant = revisionSql.match(/GRANT UPDATE \(([\s\S]*?)\) ON TABLE mira_hfm\.memory_records/);
+  assert.ok(updateGrant, 'memory writer must have an explicit column-level UPDATE grant');
+  assert.doesNotMatch(updateGrant[1], /integrity_status/);
   assert.match(revisionSql, /HFM_MEMORY_REVISION_TRANSITION_INVALID/);
   assert.match(revisionSql, /HFM_MEMORY_RECORD_IDENTITY_IMMUTABLE/);
 });
