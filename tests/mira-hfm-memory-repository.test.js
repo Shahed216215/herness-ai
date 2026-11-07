@@ -104,6 +104,11 @@ test('private memory is encrypted before any database insert', async () => {
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_record_versions')));
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
   assert.ok(client.calls.some(call => call.sql.startsWith('UPDATE mira_hfm.memory_operation_registry')));
+  const operationInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry'));
+  assert.notEqual(operationInsert.params[7], repository.digest(record()), 'private idempotency digest must be keyed');
+  const auditInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events'));
+  assert.equal(auditInsert.params[11].includes('contentHash'), false, 'private content hash must not enter audit metadata');
+  assert.equal(auditInsert.params[11].includes(record().content), false, 'private content must not enter audit metadata');
 });
 
 test('private and restricted writes fail closed without explicit classification grants', async () => {
@@ -231,11 +236,6 @@ test('revision writes append-only history and advances the current revision', as
   assert.ok(update);
   assert.equal(update.params[2], 2);
   assert.ok(client.calls.some(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events')));
-  const operationInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry'));
-  assert.notEqual(operationInsert.params[7], repository.digest(record()), 'private idempotency digest must be keyed');
-  const auditInsert = client.calls.find(call => call.sql.startsWith('INSERT INTO mira_hfm.memory_audit_events'));
-  assert.equal(auditInsert.params[11].includes('contentHash'), false, 'private content hash must not enter audit metadata');
-  assert.equal(auditInsert.params[11].includes(record().content), false, 'private content must not enter audit metadata');
 });
 
 test('private read requires explicit authorization and verifies encrypted record context', async () => {
