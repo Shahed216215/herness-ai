@@ -277,9 +277,23 @@ test('keyword retrieval returns source evidence and audits only non-content meta
     assert.equal(result.status, 'FOUND');
     assert.equal(result.results[0].source.sourceUrl, 'https://www.facebook.com/example.page/posts/1');
     assert.equal(result.results[0].revision, 2);
-    const auditInsert = queries.find(item => item.sql.includes('INSERT INTO mira_hfm.memory_audit_events'));
-    assert.ok(auditInsert);
-    assert.equal(JSON.stringify(auditInsert.params).includes('বাংলাদেশ AI'), false);
+    const searchSql = queries.find(item => item.sql.includes('FROM mira_hfm.memory_records'));
+    assert.ok(searchSql);
+    assert.match(searchSql.sql, /integrity_status NOT IN \\('FAILED','QUARANTINED'\\)/);
+    const lockIndex = queries.findIndex(item =>
+      item.sql === 'SELECT pg_advisory_xact_lock(hashtext($1))' &&
+      item.params[0] === 'project-001'
+    );
+    const previousHashIndex = queries.findIndex(item =>
+      item.sql.includes('SELECT event_hash FROM mira_hfm.memory_audit_events')
+    );
+    const auditInsertIndex = queries.findIndex(item =>
+      item.sql.includes('INSERT INTO mira_hfm.memory_audit_events')
+    );
+    assert.ok(lockIndex >= 0, 'search audit must acquire the project hash-chain lock');
+    assert.ok(previousHashIndex > lockIndex, 'previous hash must be read after acquiring the lock');
+    assert.ok(auditInsertIndex > previousHashIndex, 'audit event must be inserted after reading the locked chain head');
+    assert.equal(JSON.stringify(queries[auditInsertIndex].params).includes('বাংলাদেশ AI'), false);
   } finally {
     if (original) require.cache[modulePath] = original;
     else delete require.cache[modulePath];
