@@ -68,6 +68,22 @@ const PREFLIGHT_SQL = [
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'SELECT') AS audit_select,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'UPDATE') AS audit_update,",
   "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'DELETE') AS audit_delete,",
+  "has_any_column_privilege(current_user, 'mira_hfm.project_owners', 'INSERT') AS owners_column_insert,",
+  "has_any_column_privilege(current_user, 'mira_hfm.project_owners', 'UPDATE') AS owners_column_update,",
+  "has_any_column_privilege(current_user, 'mira_hfm.project_owners', 'REFERENCES') AS owners_column_references,",
+  "has_any_column_privilege(current_user, 'mira_hfm.project_memberships', 'INSERT') AS memberships_column_insert,",
+  "has_any_column_privilege(current_user, 'mira_hfm.project_memberships', 'UPDATE') AS memberships_column_update,",
+  "has_any_column_privilege(current_user, 'mira_hfm.project_memberships', 'REFERENCES') AS memberships_column_references,",
+  "has_any_column_privilege(current_user, 'mira_hfm.operation_authorities', 'UPDATE') AS authorities_column_update,",
+  "has_any_column_privilege(current_user, 'mira_hfm.operation_authorities', 'REFERENCES') AS authorities_column_references,",
+  "has_any_column_privilege(current_user, 'mira_hfm.authority_audit_events', 'UPDATE') AS audit_column_update,",
+  "has_any_column_privilege(current_user, 'mira_hfm.authority_audit_events', 'REFERENCES') AS audit_column_references,",
+  "has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'SELECT') AS audit_sequence_select,",
+  "has_sequence_privilege(current_user, 'mira_hfm.authority_audit_events_event_sequence_seq', 'UPDATE') AS audit_sequence_update,",
+  "has_table_privilege(current_user, 'mira_hfm.project_owners', 'TRUNCATE') AS owners_truncate,",
+  "has_table_privilege(current_user, 'mira_hfm.project_memberships', 'TRUNCATE') AS memberships_truncate,",
+  "has_table_privilege(current_user, 'mira_hfm.operation_authorities', 'TRUNCATE') AS authorities_truncate,",
+  "has_table_privilege(current_user, 'mira_hfm.authority_audit_events', 'TRUNCATE') AS audit_truncate,"
   "(SELECT count(*) = 4 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " +
     "WHERE n.nspname = 'mira_hfm' AND c.relname IN ('project_owners','project_memberships','operation_authorities','authority_audit_events') " +
     "AND c.relrowsecurity AND c.relforcerowsecurity) AS issuer_rls_forced,",
