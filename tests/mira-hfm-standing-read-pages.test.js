@@ -126,6 +126,20 @@ function record(memoryId) {
     now: new Date('2026-11-07T12:00:00.000Z')
   }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
   console.log('HFM_STANDING_READ_PAGES_MICROSECOND_TIMESTAMP_VALIDATION=PASS');
+  for (const invalidTimestamp of [
+    '2026-13-07T00:00:00.123456Z',
+    '2026-02-30T00:00:00.123456Z',
+    '2026-11-07T24:00:00.123456Z',
+    '2026-11-07T00:60:00.123456Z',
+    '2026-11-07T00:00:60.123456Z'
+  ]) {
+    await assert.rejects(() => collectStandingReadPages({
+      readMemory: async () => page([], null, { scanStartedAt: invalidTimestamp }),
+      readOptions: {},
+      now: new Date('2026-11-07T12:00:00.000Z')
+    }), /HFM_STANDING_READ_PAGE_CONTEXT_INVALID/);
+  }
+  console.log('HFM_STANDING_READ_PAGES_REJECT_INVALID_CALENDAR_TIMESTAMPS=PASS');
 
   await assert.rejects(() => collectStandingReadPages({
     readMemory: async () => page([record('memory-expired')], null, {
