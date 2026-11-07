@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const test = require('node:test');
 const workflow = require('../services/mira-hfm-social-post-workflow');
 
@@ -193,4 +194,40 @@ test('delete fails closed before any payload write for restricted or unconfirmed
     /HFM_SOCIAL_POST_DELETE_CONFIRMATION_REQUIRED/
   );
   assert.equal(writes, 0);
+});
+
+test('delete retry confirms erased payload and DELETED state before returning DELETED', async () => {
+  const context = { ...baseContext, operation: workflow.OPERATIONS.DELETE };
+  const payloadDigest = crypto.createHash('sha256')
+    .update(workflow.stableJson({
+      operation: workflow.OPERATIONS.DELETE,
+      resource: 'memory:post-0001',
+      projectId: 'project-001'
+    }), 'utf8').digest('hex');
+  const client = {
+    async query(sql) {
+      if (sql.startsWith('SELECT memory_id, project_id, owner_actor_id')) {
+        return { rows: [{ ...draft, payload_erased_at: '2026-11-07T00:02:00Z' }] };
+      }
+      if (sql.startsWith('INSERT INTO mira_hfm.memory_operation_registry')) return { rowCount: 0, rows: [] };
+      if (sql.includes('FROM mira_hfm.memory_operation_registry')) return {
+        rows: [{
+          operation_id: 'op-001', actor_id: context.actorId,
+          operation: workflow.OPERATIONS.DELETE, resource: 'memory:post-0001',
+          purpose: workflow.OPERATIONS.DELETE, payload_digest: payloadDigest,
+          status: 'COMPLETED', result_code: 'post-0001'
+        }]
+      };
+      if (sql.startsWith('SELECT status, copied_at')) return {
+        rows: [{ status: 'DELETED', payload_erased_at: '2026-11-07T00:02:00Z' }]
+      };
+      throw new Error('unexpected SQL: ' + sql);
+    }
+  };
+  const result = await workflow.deleteSocialPostPayload({
+    client, context, memoryId: 'post-0001',
+    idempotencyKey: 'delete-post-0001', userConfirmedDelete: true
+  });
+  assert.equal(result.status, 'DELETED');
+  assert.equal(result.duplicate, true);
 });
