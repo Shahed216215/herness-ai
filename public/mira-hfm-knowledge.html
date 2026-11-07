@@ -221,6 +221,7 @@ small{color:var(--muted)}
                 sourceType: $('sourceType').value,
                 sourceId: $('sourceId').value.trim() || item.title || 'Public Facebook search result',
                 sourceUrl: item.url,
+                originalPublishedAt: item.publishedAt || null,
                 content: snippet,
                 collectionMethod: 'public_url_preview',
                 publicContentConfirmed: true
