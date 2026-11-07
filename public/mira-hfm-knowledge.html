@@ -184,7 +184,7 @@ small{color:var(--muted)}
             });
             draft.status = saved.status;
             recordStatus.textContent = 'Neon Status: ' + saved.status + ' • Payload: RETAINED';
-            published.disabled = false;
+            published.disabled = saved.status !== 'COPIED';
             socialPostStatus('COPIED — Neon acknowledgement saved.');
           } catch (syncError) {
             socialPostStatus('COPIED — clipboard succeeded, but Neon acknowledgement needs retry: ' + syncError.message, true);
@@ -197,7 +197,7 @@ small{color:var(--muted)}
       });
       const published = document.createElement('button');
       published.textContent = 'Mark as Published';
-      published.disabled = draft.payloadErased || !['COPIED','USER_CONFIRMED_PUBLISHED'].includes(draft.status);
+      published.disabled = draft.payloadErased || draft.status !== 'COPIED';
       published.addEventListener('click', async () => {
         if (!confirm('তুমি কি নিজে Facebook-এ এই পোস্ট প্রকাশ করেছ? Mira Facebook থেকে এটি যাচাই করবে না।')) return;
         try {
