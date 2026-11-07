@@ -8,6 +8,19 @@ const {
 } = require("../knowledge");
 
 const MAX_SOURCE_CONTENT = 30000;
+
+// The legacy Learning service reads/writes local JSON and may sync Google Drive.
+// HFM v0.2 currently grants memory.read only, so those paths must not silently
+// continue when HFM authority mode is enabled. Fail closed until a separately
+// authorized HFM learning-write workflow exists.
+function assertLegacyLearningStorageAllowed(env = process.env) {
+  if (env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
+      env.MIRA_HFM_WORK_LEARNING_ENABLED === "true") {
+    const error = new Error("HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE");
+    error.code = "HFM_READ_ONLY_AUTHORITY_BLOCKS_LEGACY_LEARNING_STORAGE";
+    throw error;
+  }
+}
 const MAX_LEARNING_CONTENT = 20000;
 const LEARNING_MODEL = "openai/gpt-oss-120b";
 
@@ -396,6 +409,7 @@ async function learnFromContent({
   sourceTitle = "",
   sourceUrl = ""
 }) {
+  assertLegacyLearningStorageAllowed();
   const safeContent = cleanText(
     content,
     MAX_SOURCE_CONTENT
@@ -500,6 +514,7 @@ async function improveExistingKnowledge({
   sourceTitle = "",
   sourceUrl = ""
 }) {
+  assertLegacyLearningStorageAllowed();
   const safeContent = cleanText(
     content,
     MAX_SOURCE_CONTENT
@@ -640,7 +655,8 @@ async function improveExistingKnowledge({
 async function applyKnowledgeImprovement(
   existingMatch,
   proposedLearning
-) {
+ ) {
+  assertLegacyLearningStorageAllowed();
   const result =
     await updateLearning(
       existingMatch,
@@ -669,5 +685,6 @@ module.exports = {
   buildLearningPrompt,
   buildImprovePrompt,
   validateLearningResult,
-  extractJson
+  extractJson,
+  assertLegacyLearningStorageAllowed
 };
