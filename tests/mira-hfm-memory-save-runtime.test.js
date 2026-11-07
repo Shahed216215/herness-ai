@@ -203,6 +203,7 @@ function baseOptions(overrides = {}) {
   let issued = null;
   let saved = null;
   const result = await saveHfmMemoryRecord(baseOptions({
+    userIntent: 'Remember this: The user prefers concise Bengali explanations.',
     issueAuthority: async input => {
       issued = input;
       return {
