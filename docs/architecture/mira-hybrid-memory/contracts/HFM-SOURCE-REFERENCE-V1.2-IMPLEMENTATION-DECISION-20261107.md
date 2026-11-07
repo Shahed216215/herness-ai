@@ -57,6 +57,7 @@ Initial record state:
 - searchEligible=false
 
 NOT_FETCHED and SOURCE_RECORDED are independent from content accuracy. URL reachability, search snippets, or matching hashes do not automatically promote trust.
+The schema permits SOURCE_REACHABLE only with AVAILABLE/PARTIAL access evidence; CONTENT_VERIFIED and HUMAN_VERIFIED require a content digest and an actual capture method. QUARANTINED trust and lifecycle must be paired. These states are validation contracts only; this writer never sets them and no promotion workflow is active.
 
 The canonical schema accepts the existing lifecycle vocabulary so a reference can remain historically represented. The currently wired authorized transitions are:
 
