@@ -1736,26 +1736,28 @@ app.post(
         });
       }
 
-      const previousMemory =
+      const hfmRecallEnabled =
         process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true"
-          ? []
-          : getMemory();
+        process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
+        process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true";
+
+      const previousMemory = hfmRecallEnabled ? [] : getMemory();
 
       const messages =
         selectRecentMessages(previousMemory);
 
-      const recalledKnowledge = (process.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED === "true" ||
-          process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true" ||
-          process.env.MIRA_HFM_MEMORY_READ_ENABLED === "true" ||
-          process.env.MIRA_HFM_MEMORY_WRITE_ENABLED === "true")
-        ? (await searchHfmKnowledge({
+      const hfmRecall = hfmRecallEnabled
+        ? await searchHfmKnowledge({
             req,
             pool: (await getHfmMemoryReadRuntime()).pool,
             query: cleanCommand,
             limit: 2,
             env: process.env
-          })).results
+          })
+        : null;
+      const recalledKnowledge = hfmRecallEnabled
+        ? hfmRecall.results
         : searchKnowledge(cleanCommand, 2);
 
       if (
@@ -1842,9 +1844,12 @@ app.post(
             "If the user explicitly asks for an answer according to stored knowledge, use only the retrieved stored-knowledge fields as the factual basis of that answer. " +
             "Do not add outside facts and do not present outside facts as if they came from stored knowledge. " +
             "You may explain or organize the retrieved information, but preserve its meaning. " +
-            "If a requested detail is absent from the retrieved knowledge, say that it is not stored rather than guessing. " +
+            "If a requested detail is absent from the retrieved knowledge, say that it was not found in the retrieved candidates rather than guessing. " +
+            "If retrieval coverage is marked incomplete, do not claim the information is not stored; explain that older records may not have been scanned. " +
             "If the retrieved knowledge is insufficient, say so clearly.\n\n" +
-            knowledgeContext
+            knowledgeContext + (hfmRecall?.candidateScanMayBeIncomplete === true
+              ? "\\n\\nRETRIEVAL_COVERAGE_LIMITATION: Only the newest 100 eligible candidates were scanned; older records may not have been included."
+              : "")
         });
       }
 
