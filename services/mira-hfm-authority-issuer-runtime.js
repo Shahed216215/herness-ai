@@ -217,7 +217,7 @@ SELECT
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'mira_hfm' AND c.relname = 'standing_read_authorities'
       AND t.tgname IN ('standing_read_authority_scope_immutable','standing_read_authority_audit')
-      AND NOT t.tgisinternal) AS standing_authority_triggers_present,
+      AND NOT t.tgisinternal AND t.tgenabled = 'O') AS standing_authority_triggers_present,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'mira_hfm'
