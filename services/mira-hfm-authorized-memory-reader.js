@@ -96,10 +96,6 @@ async function retrieveProjectMemory(options = {}) {
   }
 
   const grant = validateAuthorityGrant(options.authorityGrant);
-  const limit = options.limit === undefined ? 100 : options.limit;
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-    fail('HFM_MEMORY_READ_LIMIT_INVALID');
-  }
 
   const result = await executeWithConsumedAuthority({
     pool,
