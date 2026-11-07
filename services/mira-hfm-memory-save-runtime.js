@@ -79,7 +79,8 @@ function hasExplicitVaultSaveIntent(kind, value) {
     ? /\b(?:client|customer)\b.{0,100}\b(?:vault|record|details)\b/i
     : /\b(?:financial|finance|transaction|invoice|payment)\b.{0,100}\b(?:vault|record|details)\b/i;
   const negative = /\b(?:do not|don't|never|should not|shouldn't|must not|avoid)\b.{0,100}\b(?:client|customer|financial|finance|transaction|invoice|payment)\b/i.test(value);
-  if (negative) return false;
+  const bengaliNegative = /(?:ক্লায়েন্ট|ক্লায়েন্ট|গ্রাহক|আর্থিক|লেনদেন|ইনভয়েস|ইনভয়েস|পেমেন্ট).{0,100}(?:সংরক্ষণ|সেভ|রেকর্ড|রাখ).{0,10}না/u.test(value);
+  if (negative || bengaliNegative) return false;
   const english = /\b(?:save|store|record|keep)\b.{0,100}/i.test(value) && terms.test(value) ||
     terms.test(value) && /\b(?:save|store|record|keep)\b/i.test(value);
   const bengali = client
