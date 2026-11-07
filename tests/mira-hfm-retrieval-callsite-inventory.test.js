@@ -73,7 +73,7 @@ for (const item of findings) {
 for (const file of unfilteredFiles) {
   console.log('MIRA_HFM_RETRIEVAL_REVIEW_REQUIRED=' + file);
 }
-console.log('MIRA_HFM_RETRIEVAL_TRUST_FILTER_COVERAGE=REVIEW_REQUIRED');
+console.log('MIRA_HFM_LEGACY_RETRIEVAL_GUARD_COVERAGE=' + (unfilteredFiles.length === 0 ? 'PASS' : 'REVIEW_REQUIRED'));\nconsole.log('MIRA_HFM_RETRIEVAL_TRUST_FILTER_COVERAGE=' + (unfilteredFiles.length === 0 ? 'PASS_WITH_FAIL_CLOSED_LEGACY_GUARDS' : 'REVIEW_REQUIRED'));
 console.log('PRODUCTION_MEMORY_KNOWLEDGE_TOUCHED=NO');
 console.log('NETWORK_REQUESTS=0');
 console.log('EXTERNAL_ACTIONS=0');
