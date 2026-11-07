@@ -38,6 +38,7 @@ test('client vault schema accepts bounded client identity/contact data and rejec
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', unknownField: 'not-allowed' }).valid, false);
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', phone: '1234567890123456' }).valid, false);
   assert.equal(validateClientVaultPayload({ clientName: 'Example Client', website: 'https://example.com/?access_token=secret' }).valid, false);
+  assert.equal(validateClientVaultPayload({ clientName: 'Example Client', notes: '4111111111111111' }).valid, false);
 });
 
 test('financial vault schema accepts transaction metadata and rejects full account/card credentials', () => {
@@ -57,6 +58,10 @@ test('financial vault schema accepts transaction metadata and rejects full accou
   assert.equal(validateFinancialVaultPayload({
     ...financialPayload,
     notes: 'Bearer abcdefghijklmnopqrstuvwxyz'
+  }).valid, false);
+  assert.equal(validateFinancialVaultPayload({
+    ...financialPayload,
+    notes: 'Bank account number: 123456789012'
   }).valid, false);
   assert.equal(validateFinancialVaultPayload({
     ...financialPayload,
