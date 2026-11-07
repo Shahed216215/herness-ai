@@ -89,6 +89,24 @@ function record(memoryId) {
   }), /HFM_STANDING_READ_PAGE_CONTEXT_CHANGED/);
   console.log('HFM_STANDING_READ_PAGES_SNAPSHOT_CONSISTENCY=PASS');
 
+  await assert.rejects(() => collectStandingReadPages({
+    readMemory: async options => options.cursor
+      ? page([record('memory-002')], null, {
+          hostAuthorizationContext: { ...context, actorId: 'mira:actor-other' }
+        })
+      : page([record('memory-001')], 'actor-drift-cursor'),
+    readOptions: {}
+  }), /HFM_STANDING_READ_PAGE_CONTEXT_CHANGED/);
+  console.log('HFM_STANDING_READ_PAGES_ACTOR_BINDING_STABLE=PASS');
+
+  await assert.rejects(() => collectStandingReadPages({
+    readMemory: async options => options.cursor
+      ? page([record('memory-001')])
+      : page([record('memory-001')], 'duplicate-record-cursor'),
+    readOptions: {}
+  }), /HFM_STANDING_READ_PAGE_DUPLICATE_RECORD/);
+  console.log('HFM_STANDING_READ_PAGES_DUPLICATE_RECORD_BLOCKED=PASS');
+
   const bounded = await collectStandingReadPages({
     readMemory: async options => page([record(options.cursor ? 'memory-next' : 'memory-first')], 'more-' + (options.cursor || 'start')),
     readOptions: {},
