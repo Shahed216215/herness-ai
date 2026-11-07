@@ -15,8 +15,8 @@ function fail(code) {
 
 function timestampCompareToNow(value, nowMs) {
   if (typeof value !== 'string') return null;
-  const microsecond = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$/.test(value);
-  const nowIso = new Date(nowMs).toISOString().replace(/\\.(\\d{3})Z$/, (_, ms) => '.' + ms + '000Z');
+  const microsecond = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{6}Z$/.test(value);
+  const nowIso = new Date(nowMs).toISOString().slice(0, 23) + '000Z';
   if (microsecond) return value < nowIso ? -1 : value > nowIso ? 1 : 0;
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) return null;
