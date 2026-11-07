@@ -172,7 +172,7 @@ SELECT
          AND with_check LIKE '%resource%' AND with_check LIKE '%expires_at%'
        WHEN 'hfm_authority_issuer_approval_nonce_consume' THEN
          cmd = 'UPDATE' AND qual LIKE '%consumed_at%' AND qual LIKE '%expires_at%'
-         AND with_check LIKE '%consumed_at%' AND with_check LIKE '%project_id%'
+         AND with_check LIKE '%consumed_at%' AND with_check NOT LIKE '%project_id%'
        ELSE false
      END
    )
