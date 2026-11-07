@@ -15,6 +15,7 @@ const { executeWithStandingReadAuthority } = require('../services/mira-hfm-autho
 const subject = '11111111-1111-4111-8111-111111111111';
 const actorId = 'mira:mira.admins:' + subject;
 const projectId = 'project-alpha';
+const resource = 'memory:project:' + projectId;
 const sessionID = 'standing-read-test-session';
 const now = Date.now();
 const req = {
