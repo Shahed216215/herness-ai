@@ -42,7 +42,7 @@ function registerLearningHistoryRoutes(
     return next();
   }
 
-  router.use(denyLegacyLearningHistory);
+  router.use(requireSystemAdmin, denyLegacyLearningHistory);
 
   router.get(
     "/stats",
