@@ -38,6 +38,7 @@ const {
 } = require("../capability-profile");
 
 const { retrieveHfmWorkLearning } = require("./mira-hfm-work-learning-runtime");
+const { retrieveProjectMemory } = require("./mira-hfm-authorized-memory-reader");
 
 /*
  * Stage 5.4
@@ -1161,6 +1162,11 @@ async function executeWork(
   const startedAt = now();
 
   let planning;
+  const hfmWorkLearningEnabled = process.env.MIRA_HFM_WORK_LEARNING_ENABLED === "true";
+
+  if (hfmWorkLearningEnabled && options.plan && typeof options.plan === "object") {
+    throw new Error("HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED");
+  }
 
   if (
     options.plan &&
@@ -1192,12 +1198,31 @@ async function executeWork(
           !hfmRuntime.pool || typeof hfmRuntime.pool.connect !== "function") {
         throw new Error("HFM_WORK_LEARNING_MEMORY_READER_NOT_READY");
       }
-      plannerOptions.retrieveWorkLearning = async ({ task }) =>
+      plannerOptions.preflightWorkLearning = async () => {
+        const memory = await retrieveProjectMemory({
+          pool: hfmRuntime.pool,
+          req: options.hfmRequest,
+          standingReadAuthority: true,
+          recordTypes: ["learning_note", "knowledge_item"],
+          lifecycle: "ACTIVE",
+          limit: 100,
+          env: process.env
+        });
+        if (!memory || memory.status !== "AUTHORIZED_AND_COMMITTED" ||
+            memory.standingAuthority !== true ||
+            memory.approvalRequiredPerRead !== false ||
+            !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
+          throw new Error("HFM_WORK_LEARNING_AUTHORIZED_MEMORY_READ_REQUIRED");
+        }
+        return memory;
+      };
+      plannerOptions.retrieveWorkLearning = async ({ task, preflight }) =>
         retrieveHfmWorkLearning({
           req: options.hfmRequest,
           pool: hfmRuntime.pool,
           task,
-          env: process.env
+          env: process.env,
+          readMemory: async () => preflight
         });
     }
     planning =
