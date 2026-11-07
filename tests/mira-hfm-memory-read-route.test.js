@@ -34,6 +34,8 @@ function makeReq(overrides = {}) {
       hfmProjectBinding: { verified: true, projectId: 'project-alpha' },
       hfmPendingMemoryAuthority: {
         projectId: 'project-alpha',
+        operation: 'memory.read',
+        resource: 'memory:project:project-alpha',
         grant: { authorityId: 'authority-001', purpose: 'approved retrieval', requestId: 'request-001' },
         expiresAt: new Date(Date.now() + 60000).toISOString()
       },
@@ -87,6 +89,8 @@ async function invoke(req, runtime = async () => ({
       hfmProjectBinding: { verified: true, projectId: 'project-beta' },
       hfmPendingMemoryAuthority: {
         projectId: 'project-alpha',
+        operation: 'memory.read',
+        resource: 'memory:project:project-alpha',
         grant: { authorityId: 'authority-001', purpose: 'approved retrieval', requestId: 'request-001' },
         expiresAt: new Date(Date.now() + 60000).toISOString()
       },
