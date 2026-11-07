@@ -791,6 +791,8 @@ test('trash requires explicit private lifecycle grant and writes a recoverable r
   assert.equal(result.status, 'TRASHED');
   const update = client.calls.find(call => call.sql.startsWith('UPDATE mira_hfm.memory_records'));
   assert.ok(update);
+  assert.match(update.sql, /SET lifecycle = \$3, trashed_at = \$4, trashed_by_actor_id = \$5, revision = \$6, updated_at = \$7/);
+  assert.doesNotMatch(update.sql, /public_payload|encrypted_envelope|trust_status|integrity_status/);
   assert.equal(update.params[2], 'TRASHED');
   assert.equal(update.params[3] !== null, true);
   assert.equal(update.params[4], context.actorId);
@@ -836,6 +838,8 @@ test('restore clears trash metadata and preserves a new immutable revision', asy
   assert.equal(result.revision, 3);
   const update = client.calls.find(call => call.sql.startsWith('UPDATE mira_hfm.memory_records'));
   assert.ok(update);
+  assert.match(update.sql, /SET lifecycle = \$3, trashed_at = \$4, trashed_by_actor_id = \$5, revision = \$6, updated_at = \$7/);
+  assert.doesNotMatch(update.sql, /public_payload|encrypted_envelope|trust_status|integrity_status/);
   assert.equal(update.params[2], 'ACTIVE');
   assert.equal(update.params[3], null);
   assert.equal(update.params[4], null);
