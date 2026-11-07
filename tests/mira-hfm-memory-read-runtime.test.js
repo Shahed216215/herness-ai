@@ -51,6 +51,7 @@ function preflightRow(overrides = {}) {
     standing_authorities_update: false, standing_authorities_delete: false, standing_authorities_truncate: false,
     audit_sequence_usage: true, audit_sequence_select: false, audit_sequence_update: false,
     retrieval_rls_forced: true, retrieval_policies_present: true, no_public_retrieval_policies: true,
+    reader_actor_scope_policies_present: true, standing_read_scope_policy_present: true,
     ...overrides
   };
 }
@@ -75,6 +76,7 @@ for (const patch of [
   { standing_authorities_update: true }, { standing_authorities_delete: true },
   { schema_create: true }, { retrieval_rls_forced: false },
   { retrieval_policies_present: false }, { no_public_retrieval_policies: false },
+  { reader_actor_scope_policies_present: false }, { standing_read_scope_policy_present: false },
   { current_role: 'wrong_role' }, { database_name: 'production' }
 ]) {
   assert.throws(() => runtime.verifyMemoryReadPreflight(preflightRow(patch), config));
