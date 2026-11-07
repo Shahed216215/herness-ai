@@ -18,7 +18,7 @@ test('configuration diagnostic reports missing services without connecting or ex
   assert.equal(report.legacyMemoryKnowledge, 'NOT_INTEGRATED');
   assert.equal(report.productionReadiness, 'NOT_CERTIFIED');
   const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../services/mira-hfm-runtime-readiness.js'), 'utf8');
-  assert.doesNotMatch(source, /createPool|\\.connect\\s*\\(/);
+  assert.doesNotMatch(source, /createPool|\.connect\s*\(/);
   assert.equal(JSON.stringify(report).includes('placeholder-password'), false);
 });
 
