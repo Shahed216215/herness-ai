@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 const { buildPlanFromUnderstanding } = require('../services/mira-task-planner');
+const { resolveHfmReadToolContext } = require('../services/mira-work-execution-engine');
 
 const { assertLegacyLearningStorageAllowed } = require('../services/learning');
 const { assertLegacyStorageDisabled } = require('../services/mira-hfm-legacy-storage-guard');
@@ -260,6 +261,43 @@ const legacyEvolution = read('knowledge-memory-evolution.js');
 assert.match(legacyEvolution, /function readJsonFile\(filePath\) \{\s*assertLegacyStorageDisabled\(\);/);
 assert.match(legacyEvolution, /function atomicWriteJson\(filePath, value\) \{\s*assertLegacyStorageDisabled\(\);/);
 (async () => {
+  const serverHeldReq = { serverHeld: true };
+  const readerPool = { connect: async () => ({ release() {} }) };
+  const standingOnlyContext = await resolveHfmReadToolContext({
+    hfmRequest: serverHeldReq,
+    getHfmMemoryReadRuntime: async () => ({ status: 'MEMORY_READ_READY', pool: readerPool })
+  }, { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' });
+  assert.equal(standingOnlyContext.runtime.status, 'MEMORY_READ_READY');
+  assert.equal(standingOnlyContext.toolContext.req, serverHeldReq);
+  assert.equal(standingOnlyContext.toolContext.pool, readerPool);
+  assert.equal(standingOnlyContext.toolContext.env.MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED, 'true');
+  assert.deepEqual(await resolveHfmReadToolContext({}, {}), { runtime: null, toolContext: null });
+  await assert.rejects(
+    () => resolveHfmReadToolContext({}, { MIRA_HFM_WORK_LEARNING_ENABLED: 'true' }),
+    /HFM_WORK_LEARNING_STANDING_AUTHORITY_DISABLED/
+  );
+  await assert.rejects(
+    () => resolveHfmReadToolContext({}, { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }),
+    /HFM_STANDING_READ_AUTHENTICATED_RUNTIME_REQUIRED/
+  );
+  await assert.rejects(
+    () => resolveHfmReadToolContext({
+      hfmRequest: serverHeldReq,
+      getHfmMemoryReadRuntime: async () => ({ status: 'DISABLED', pool: null })
+    }, { MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true' }),
+    /HFM_STANDING_READ_MEMORY_READER_NOT_READY/
+  );
+  const bothFlagsContext = await resolveHfmReadToolContext({
+    hfmRequest: serverHeldReq,
+    getHfmMemoryReadRuntime: async () => ({ status: 'MEMORY_READ_READY', pool: readerPool })
+  }, {
+    MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true',
+    MIRA_HFM_WORK_LEARNING_ENABLED: 'true'
+  });
+  assert.equal(bothFlagsContext.toolContext.pool, readerPool);
+  console.log('HFM_STANDING_READ_TOOL_CONTEXT_AVAILABLE_WITHOUT_WORK_LEARNING=PASS');
+  console.log('HFM_STANDING_READ_CONTEXT_FAILS_CLOSED_WHEN_UNAVAILABLE=PASS');
+
   const now = new Date().toISOString();
   const content = 'Verified Python automation research and reproducible testing notes.';
   const record = {
@@ -429,6 +467,8 @@ assert.match(execution, /HFM_WORK_LEARNING_PRECOMPUTED_PLAN_NOT_ALLOWED/);
 assert.match(execution, /readMemory: async \(\) => preflight/);
 assert.match(execution, /HFM_WORK_LEARNING_AUTHENTICATED_RUNTIME_REQUIRED/);
 assert.match(execution, /hfmToolContext = Object\.freeze/);
+assert.match(execution, /resolveHfmReadToolContext/);
+assert.match(execution, /hfmStandingReadEnabled \|\| hfmWorkLearningEnabled/);
 assert.match(execution, /hfmReadOnly: hfmToolContext/);
 assert.match(execution, /options\.hfmRequest/);
 assert.match(execution, /MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED !== "true"/);
