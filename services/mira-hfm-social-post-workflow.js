@@ -72,8 +72,9 @@ function sha256(value) {
 async function loadRecord(client, context, memoryId, options = {}) {
   const lockClause = options.forUpdate === false ? '' : ' FOR UPDATE';
   const result = await client.query(
-    'SELECT memory_id, project_id, owner_actor_id, record_type, classification, lifecycle, revision, ' +
-    'payload_erased_at FROM mira_hfm.memory_records WHERE project_id = $1 AND memory_id = $2' + lockClause,
+    'SELECT memory_id, project_id, owner_actor_id, record_type, schema_version, classification, lifecycle, revision, ' +
+    'integrity_status, trust_status, public_payload, encrypted_envelope, created_at, updated_at, payload_erased_at ' +
+    'FROM mira_hfm.memory_records WHERE project_id = $1 AND memory_id = $2' + lockClause,
     [context.projectId, memoryId]
   );
   return result.rows && result.rows[0];
@@ -161,15 +162,19 @@ async function appendSanitizedAudit(client, context, operationId, memoryId, even
 async function updateStatus(client, context, memoryId, status, extra = {}) {
   await client.query(
     'INSERT INTO mira_hfm.memory_social_post_state ' +
-    '(memory_id, project_id, owner_actor_id, status, copied_at, published_confirmed_at, payload_erased_at, updated_at) ' +
-    'VALUES ($1,$2,$3,$4,$5,$6,$7,clock_timestamp()) ' +
+    '(memory_id, project_id, owner_actor_id, status, copied_at, published_confirmed_at, payload_erased_at, source_metadata, provenance_metadata, updated_at) ' +
+    'VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,clock_timestamp()) ' +
     'ON CONFLICT (project_id, memory_id) DO UPDATE SET status = EXCLUDED.status, ' +
     'copied_at = COALESCE(EXCLUDED.copied_at, mira_hfm.memory_social_post_state.copied_at), ' +
     'published_confirmed_at = COALESCE(EXCLUDED.published_confirmed_at, mira_hfm.memory_social_post_state.published_confirmed_at), ' +
     'payload_erased_at = COALESCE(EXCLUDED.payload_erased_at, mira_hfm.memory_social_post_state.payload_erased_at), ' +
+    'source_metadata = COALESCE(mira_hfm.memory_social_post_state.source_metadata, EXCLUDED.source_metadata), ' +
+    'provenance_metadata = COALESCE(mira_hfm.memory_social_post_state.provenance_metadata, EXCLUDED.provenance_metadata), ' +
     'updated_at = clock_timestamp()',
     [memoryId, context.projectId, context.actorId, status,
-      extra.copiedAt || null, extra.publishedAt || null, extra.erasedAt || null]
+      extra.copiedAt || null, extra.publishedAt || null, extra.erasedAt || null,
+      extra.sourceMetadata ? JSON.stringify(extra.sourceMetadata) : null,
+      extra.provenanceMetadata ? JSON.stringify(extra.provenanceMetadata) : null]
   );
 }
 
@@ -264,6 +269,33 @@ async function confirmSocialPostPublished(options = {}) {
   return { status, duplicate: false, confirmationSource: 'USER_ACTION_NOT_FACEBOOK_VERIFIED' };
 }
 
+function cleanMetadataText(value, max = 128) {
+  if (typeof value !== 'string') return null;
+  const clean = value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').replace(/\\s+/g, ' ').trim();
+  return clean ? clean.slice(0, max) : null;
+}
+
+function sanitizedSourceMetadata(source = {}) {
+  return Object.freeze({
+    sourceType: cleanMetadataText(source.sourceType, 48),
+    sourceId: cleanMetadataText(source.sourceId, 128),
+    observedAt: typeof source.observedAt === 'string' && Number.isFinite(Date.parse(source.observedAt))
+      ? new Date(source.observedAt).toISOString() : null
+  });
+}
+
+function sanitizedProvenanceMetadata(provenance = {}) {
+  const methods = new Set(['manual_copy','user_file_import','public_url_preview','internal_generation','unknown']);
+  const verification = new Set(['SOURCE_RECORDED','USER_CONFIRMED','UNVERIFIED','UNKNOWN']);
+  return Object.freeze({
+    collectionMethod: methods.has(provenance.collectionMethod) ? provenance.collectionMethod : 'unknown',
+    verificationStatus: verification.has(provenance.verificationStatus) ? provenance.verificationStatus : 'UNKNOWN',
+    originalPublishedAt: typeof provenance.originalPublishedAt === 'string' && Number.isFinite(Date.parse(provenance.originalPublishedAt))
+      ? new Date(provenance.originalPublishedAt).toISOString() : null,
+    redactionApplied: provenance.redactionApplied === true
+  });
+}
+
 async function deleteSocialPostPayload(options = {}) {
   const { client, context, memoryId } = options;
   validateWorkflowContext(context, OPERATIONS.DELETE, memoryId);
@@ -279,9 +311,17 @@ async function deleteSocialPostPayload(options = {}) {
     return { status: 'DELETE_STATUS_UNKNOWN', duplicate: true, memoryId };
   }
   if (row.payload_erased_at) throw fail('HFM_SOCIAL_POST_PAYLOAD_ALREADY_ERASED');
+  const decoded = (options.decodeStoredRow || decodeStoredRow)(row, {
+    allowPrivateRead: true,
+    env: options.env || process.env
+  });
+  const sourceMetadata = sanitizedSourceMetadata(decoded.source || {});
+  const provenanceMetadata = sanitizedProvenanceMetadata(decoded.provenance || {});
   const current = await getStateRow(client, context.projectId, memoryId);
   const pendingStatus = nextSocialPostStatus(current && current.status, 'DELETE');
-  await updateStatus(client, context, memoryId, pendingStatus);
+  await updateStatus(client, context, memoryId, pendingStatus, {
+    sourceMetadata, provenanceMetadata
+  });
 
   await client.query("SELECT set_config('mira.memory_payload_erasure_operation_id', $1, true)", [operation.operationId]);
   const versions = await client.query(
@@ -340,5 +380,5 @@ module.exports = Object.freeze({
   listSocialPostDrafts,
   validateWorkflowContext, assertSocialPostRecord, nextSocialPostStatus,
   markSocialPostCopied, confirmSocialPostPublished, deleteSocialPostPayload,
-  getSocialPostStatus
+  sanitizedSourceMetadata, sanitizedProvenanceMetadata, getSocialPostStatus
 });

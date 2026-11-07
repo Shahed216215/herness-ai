@@ -103,6 +103,8 @@ CREATE TABLE IF NOT EXISTS mira_hfm.memory_social_post_state (
   copied_at TIMESTAMPTZ,
   published_confirmed_at TIMESTAMPTZ,
   payload_erased_at TIMESTAMPTZ,
+  source_metadata JSONB,
+  provenance_metadata JSONB,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
   PRIMARY KEY (project_id, memory_id),
   FOREIGN KEY (memory_id, project_id)
@@ -111,7 +113,15 @@ CREATE TABLE IF NOT EXISTS mira_hfm.memory_social_post_state (
   CHECK (
     (status <> 'DELETED' AND payload_erased_at IS NULL)
     OR (status = 'DELETED' AND payload_erased_at IS NOT NULL)
-  )
+  ),
+  CHECK (source_metadata IS NULL OR (
+    jsonb_typeof(source_metadata) = 'object'
+    AND NOT (source_metadata ?| ARRAY['content','postBody','accessToken','token','encrypted_envelope'])
+  )),
+  CHECK (provenance_metadata IS NULL OR (
+    jsonb_typeof(provenance_metadata) = 'object'
+    AND NOT (provenance_metadata ?| ARRAY['content','postBody','accessToken','token','encrypted_envelope'])
+  ))
 );
 
 CREATE INDEX IF NOT EXISTS memory_social_post_state_project_status_idx

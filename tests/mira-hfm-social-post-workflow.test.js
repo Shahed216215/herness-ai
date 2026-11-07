@@ -156,7 +156,11 @@ test('delete transaction is exact-record scoped and writes sanitized audit only'
   const result = await workflow.deleteSocialPostPayload({
     client, context, memoryId: 'post-0001',
     idempotencyKey: 'delete-post-0001',
-    userConfirmedDelete: true
+    userConfirmedDelete: true,
+    decodeStoredRow: () => ({
+      source: { sourceType: 'facebook_page', sourceId: 'synthetic-page-01', observedAt: '2026-11-07T00:00:00Z' },
+      provenance: { collectionMethod: 'manual_copy', verificationStatus: 'SOURCE_RECORDED', originalPublishedAt: null, redactionApplied: true }
+    })
   });
   assert.equal(result.status, 'DELETED');
   assert.equal(result.versionsErased, 2);
@@ -170,6 +174,10 @@ test('delete transaction is exact-record scoped and writes sanitized audit only'
   assert.equal(auditDetails.versionsErased, 2);
   assert.equal(auditDetails.payloadErased, true);
   assert.equal(JSON.stringify(auditDetails).includes('private post body'), false);
+  const stateWrite = calls.find(x => x.sql.startsWith('INSERT INTO mira_hfm.memory_social_post_state'));
+  assert.equal(JSON.parse(stateWrite.params[7]).sourceId, 'synthetic-page-01');
+  assert.equal(JSON.parse(stateWrite.params[8]).collectionMethod, 'manual_copy');
+  assert.equal(JSON.stringify(stateWrite.params).includes('private post body'), false);
 });
 
 test('delete fails closed before any payload write for restricted or unconfirmed records', async () => {
