@@ -128,8 +128,8 @@ SELECT
    )
    FROM pg_policies
    WHERE schemaname = 'mira_hfm'
-     AND policyname IN ('hfm_bootstrap_registry_insert','hfm_bootstrap_owner_insert',
-       'hfm_bootstrap_membership_insert','hfm_bootstrap_audit_insert')
+     AND policyname IN ('hfm_bootstrap_registry_insert','hfm_bootstrap_registry_select',
+       'hfm_bootstrap_owner_insert','hfm_bootstrap_membership_insert','hfm_bootstrap_audit_insert')
      AND $1::name = ANY(roles)) AS bootstrap_policy_semantics_exact,
   NOT EXISTS (
     SELECT 1 FROM pg_policies
