@@ -182,6 +182,7 @@ BEGIN
      (OLD.status = 'PAUSED' AND NEW.status NOT IN ('PAUSED','ACTIVE','REVOKED','EXPIRED')) OR
      (OLD.status = 'ACTIVE' AND NEW.status NOT IN ('ACTIVE','PAUSED','REVOKED','EXPIRED')) OR
      (NEW.status = 'EXPIRED' AND OLD.expires_at > clock_timestamp()) OR
+     (NEW.status = 'ACTIVE' AND NEW.expires_at <= clock_timestamp()) OR
      (NEW.status = 'REVOKED' AND NEW.revoked_at IS NULL) OR
      (NEW.status = 'PAUSED' AND NEW.paused_at IS NULL) OR
      (NEW.status IN ('ACTIVE','EXPIRED') AND (NEW.paused_at IS NOT NULL OR NEW.revoked_at IS NOT NULL)) THEN
