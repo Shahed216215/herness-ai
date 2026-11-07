@@ -92,9 +92,15 @@ const req = { session: { hfmPrincipal: { verified: true } } };
         status: 'AUTHORIZED_AND_COMMITTED',
         projectId: 'project-alpha',
         standingAuthority: true,
+        authorityConsumed: false,
         approvalRequiredPerRead: false,
+        memoryWrites: false,
+        localFallback: false,
+        driveFallback: false,
+        scanStartedAt: '2026-11-07T04:00:00.000Z',
         hostAuthorizationContext,
-        records: [makeRecord()]
+        records: [makeRecord()],
+        count: 1
       };
     }
   });
@@ -106,9 +112,45 @@ const req = { session: { hfmPrincipal: { verified: true } } };
   assert.equal(result.localFallback, false);
   assert.equal(result.driveFallback, false);
   assert.equal(result.memoryWrites, false);
+  assert.equal(result.scannedPages, 1);
+  assert.equal(result.scannedRecords, 1);
   console.log('HFM_WORK_LEARNING_STANDING_GRANT_GOVERNED_RETRIEVAL=PASS');
 
-  const crossProject = await retrieveHfmWorkLearning({
+  const secondPageRecord = { ...makeRecord(), memoryId: 'memory-learning-002' };
+  const pageCursors = [];
+  const paginated = await retrieveHfmWorkLearning({
+    req, pool: {}, task, now,
+    env: {
+      MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
+      MIRA_HFM_STANDING_READ_AUTHORITY_ENABLED: 'true'
+    },
+    readMemory: async options => {
+      pageCursors.push(options.cursor || null);
+      const first = !options.cursor;
+      return {
+        status: 'AUTHORIZED_AND_COMMITTED',
+        projectId: 'project-alpha',
+        standingAuthority: true,
+        authorityConsumed: false,
+        approvalRequiredPerRead: false,
+        memoryWrites: false,
+        localFallback: false,
+        driveFallback: false,
+        scanStartedAt: '2026-11-07T04:00:00.000Z',
+        hostAuthorizationContext,
+        records: first ? [makeRecord()] : [secondPageRecord],
+        count: 1,
+        nextCursor: first ? 'work-learning-next-page' : null
+      };
+    }
+  });
+  assert.deepEqual(pageCursors, [null, 'work-learning-next-page']);
+  assert.equal(paginated.scannedPages, 2);
+  assert.equal(paginated.scannedRecords, 2);
+  assert.equal(paginated.count, 2);
+  console.log('HFM_WORK_LEARNING_CROSS_PAGE_AGGREGATION=PASS');
+
+  await assert.rejects(() => retrieveHfmWorkLearning({
     req, pool: {}, task, now,
     env: {
       MIRA_HFM_WORK_LEARNING_ENABLED: 'true',
@@ -118,13 +160,18 @@ const req = { session: { hfmPrincipal: { verified: true } } };
       status: 'AUTHORIZED_AND_COMMITTED',
       projectId: 'project-alpha',
       standingAuthority: true,
+      authorityConsumed: false,
       approvalRequiredPerRead: false,
+      memoryWrites: false,
+      localFallback: false,
+      driveFallback: false,
+      scanStartedAt: '2026-11-07T04:00:00.000Z',
       hostAuthorizationContext,
-      records: [makeRecord('project-beta')]
+      records: [makeRecord('project-beta')],
+      count: 1
     })
-  });
-  assert.equal(crossProject.count, 0);
-  console.log('HFM_WORK_LEARNING_CROSS_PROJECT_RECORD_EXCLUDED=PASS');
+  }), /HFM_STANDING_READ_PAGE_RECORD_SCOPE_INVALID/);
+  console.log('HFM_WORK_LEARNING_CROSS_PROJECT_RECORD_REJECTED=PASS');
 
   await assert.rejects(() => retrieveHfmWorkLearning({
     req, pool: {}, task, now,
@@ -134,9 +181,12 @@ const req = { session: { hfmPrincipal: { verified: true } } };
     },
     readMemory: async () => ({
       status: 'AUTHORIZED_AND_COMMITTED', standingAuthority: true,
-      approvalRequiredPerRead: false, records: [makeRecord()]
+      authorityConsumed: false, approvalRequiredPerRead: false,
+      memoryWrites: false, localFallback: false, driveFallback: false,
+      scanStartedAt: '2026-11-07T04:00:00.000Z',
+      records: [makeRecord()], count: 1
     })
-  }), /HFM_WORK_LEARNING_AUTHORIZED_MEMORY_READ_REQUIRED/);
+  }), /HFM_STANDING_READ_PAGE_AUTHORIZATION_REQUIRED/);
   console.log('HFM_WORK_LEARNING_MISSING_HOST_AUTHORIZATION_FAILS_CLOSED=PASS');
   console.log('NETWORK_REQUESTS=0');
   console.log('MEMORY_WRITES=0');
