@@ -167,7 +167,24 @@ This proposal remains NOT APPROVED until the contract owner explicitly decides:
 
 Approval must identify this exact document ID and revision. Approval does not itself authorize migration, grants, credentials, production writes, runtime activation, merge, or deployment.
 
-## 11. Current implementation disposition
+## 11. Implementation decision and current disposition
+
+The representation choice has been resolved for the HFM v0.2 implementation by HFM-SRC-DECISION-2026-11-07-01: Option B is selected as a separately versioned canonical record type, source_reference under schema 1.2.0. This does not modify the v1.1.0 type vocabulary.
+
+Implemented in the integration branch:
+- v1.2.0 source_reference payload validation and compatibility tests;
+- source-only migration 017 for memory_records and memory_record_versions;
+- exact user-supplied HTTPS URL writer with NOT_FETCHED access state, SOURCE_RECORDED trust, server-derived provenance, project-private encryption, one-time memory.write authority, idempotency, and audit;
+- recoverable trash/restore through existing Memory lifecycle authority.
+
+Still not implemented:
+- source-reference read/list/count API;
+- explicit Knowledge/Learning-to-source-reference linking;
+- fetched-content capture and content-digest verification;
+- trust promotion or source-specific archive/quarantine transitions;
+- retention, export, and deletion policy beyond existing canonical Memory behavior.
+
+The source-reference writer is a provenance metadata writer only. It does not fetch URLs, access private Facebook content, or make a source trusted. Production migration, environment changes, deployment, and merge remain outside this decision.
 
 Until formal approval and implementation:
 - The v1.1.0 nested `source` object remains the only implemented provenance metadata; no independent source-reference registry or canonical record type exists.
