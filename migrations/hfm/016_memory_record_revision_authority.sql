@@ -1,5 +1,6 @@
 -- SOURCE-ONLY DRAFT: HFM v0.2 authorized canonical Memory revision support.
 -- Do not execute on production. Review and approve the complete migration chain first.
+-- CI validation uses a disposable PostgreSQL 16 database only; no live data is touched.
 -- This migration adds exact-resource memory.update authority for PROJECT_PRIVATE/PUBLIC
 -- canonical records while preserving trust immutability and append-only version history.
 
