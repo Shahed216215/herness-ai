@@ -132,6 +132,29 @@ assert.ok(authorizationCalls.some(x => x.operation === 'LIST'));
 assert.ok(authorizationCalls.some(x => x.operation === 'READ'));
 console.log('WORK_LEARNING_PROJECT_SCOPED_FILTER_BEFORE_RANKING_PASS');
 
+const bengaliLearning = record({
+  id: 'memory-bengali-learning-001',
+  taskId: 'task-bengali-previous',
+  title: 'বাংলা অটোমেশন নির্ভরযোগ্যতা',
+  lessons: ['বাংলা অটোমেশন নিরাপত্তা যাচাই']
+});
+const bengaliResult = retrieveProjectScopedWorkLearning({
+  records: [bengaliLearning],
+  pendingConflicts: [],
+  projectId: 'project-alpha',
+  requestContext,
+  authorizeRequest: authorize,
+  taskText: 'বাংলা অটোমেশন',
+  currentTaskId: 'task-bengali-current',
+  limit: 5,
+  now
+});
+assert.equal(bengaliResult.count, 1);
+assert.equal(bengaliResult.transfers[0].learningId, 'memory-bengali-learning-001');
+assert.equal(bengaliResult.transfers[0].relevance.score, 1);
+console.log('WORK_LEARNING_BENGALI_UNICODE_RELEVANCE_PASS');
+
+
 assert.throws(() => retrieveProjectScopedWorkLearning({
   records: [activeOtherTask], pendingConflicts: [],
   projectId: 'project-alpha',
