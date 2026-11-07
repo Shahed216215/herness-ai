@@ -37,7 +37,7 @@ small{color:var(--muted)}
     <h2>Project authorization</h2>
     <p>Enter the HFM project ID assigned to your authenticated account. Each action requests a short-lived, single-use authority; project ownership and membership are checked on the server.</p>
     <label for="projectId">Project ID</label>
-    <input id="projectId" autocomplete="off" placeholder="Your HFM project ID">
+    <input id="projectId" autocomplete="off" placeholder="Create a new HFM project or enter an existing ID">\n    <div class="actions"><button class="primary" id="createProjectBtn">Create / Activate My HFM Project</button></div>
     <div id="status" class="status" role="status">Not connected yet. Sign in to Mira first.</div>
   </section>
 
@@ -267,7 +267,7 @@ small{color:var(--muted)}
       status('History loaded: ' + (result.events || []).length + ' sanitized event(s).');
     } catch (error) { status(error.message, true); }
   });
-  request('/api/me').then(data => status('Authenticated session detected. Project ownership is checked for each operation.')).catch(() => status('Sign in to Mira before using Facebook Knowledge.', true));
+  request('/api/hfm/projects/active').then(data => {\n    if (data.projectId) $('projectId').value = data.projectId;\n    status(data.projectId ? 'Authenticated session active. Project: ' + data.projectId : 'Authenticated. Create your HFM project to begin.');\n  }).catch(() => status('Sign in to Mira before using Facebook Knowledge.', true));\n  $('createProjectBtn').addEventListener('click', async () => {\n    try {\n      let id = $('projectId').value.trim();\n      if (!/^hfm_[0-9a-f]{32}$/.test(id)) id = 'hfm_' + crypto.randomUUID().replace(/-/g, '');\n      $('projectId').value = id;\n      const result = await request('/api/hfm/projects/create', { method: 'POST', body: JSON.stringify({ projectId: id }) });\n      status((result.status === 'CREATED' ? 'Project created and activated: ' : 'Project activated: ') + result.projectId);\n    } catch (error) { status(error.message, true); }\n  });
 })();
 </script>
 </body>
