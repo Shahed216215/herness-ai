@@ -623,6 +623,7 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
         localFallback: false,
         driveFallback: false,
         scanStartedAt: now,
+        standingAuthorityId: 'standing-001',
         authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
         hostAuthorizationContext: {
           actorId: 'mira:actor-001', actorType: 'HUMAN',
@@ -646,7 +647,12 @@ console.log('HFM_ALL_KNOWN_LEGACY_CONSUMERS_HAVE_READ_ONLY_BOUNDARY=PASS');
     readMemory: async () => ({
       status: 'AUTHORIZED_AND_COMMITTED', projectId: 'project-alpha',
       records: [record], count: 1, standingAuthority: true,
+      authorityConsumed: false,
       approvalRequiredPerRead: false,
+      memoryWrites: false, localFallback: false, driveFallback: false,
+      scanStartedAt: now,
+      standingAuthorityId: 'standing-001',
+      authorityExpiresAt: new Date(Date.now() + 86400000).toISOString(),
       hostAuthorizationContext: {
         actorId: 'mira:actor-001', actorType: 'HUMAN',
         projectId: 'project-alpha', purpose: 'knowledge detail',
