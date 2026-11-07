@@ -74,6 +74,9 @@ async function executeWithConsumedAuthority(options = {}) {
       "SELECT set_config('mira.actor_id', $1, true)",
       [trustedActor.actorId]
     );
+    await client.query("SELECT set_config('mira.operation', $1, true)", [request.operation]);
+    await client.query("SELECT set_config('mira.resource', $1, true)", [request.resource]);
+    await client.query("SELECT set_config('mira.request_id', $1, true)", [request.requestId]);
 
     // Read owner and membership under SERIALIZABLE isolation without row-lock privileges.
     // PostgreSQL SSI detects concurrent owner/membership changes and aborts a conflicting
@@ -197,6 +200,9 @@ async function executeWithStandingReadAuthority(options = {}) {
     await client.query("SET LOCAL lock_timeout = '3000ms'");
     await client.query("SELECT set_config('mira.project_id', $1, true)", [projectId]);
     await client.query("SELECT set_config('mira.actor_id', $1, true)", [trustedActor.actorId]);
+    await client.query("SELECT set_config('mira.operation', 'memory.read', true)");
+    await client.query("SELECT set_config('mira.resource', $1, true)", [resource]);
+    await client.query("SELECT set_config('mira.request_id', $1, true)", [requestId]);
     await client.query("SELECT set_config('mira.standing_read_authority', 'true', true)");
 
     const ownerResult = await client.query(
