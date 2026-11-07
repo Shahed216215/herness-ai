@@ -196,6 +196,56 @@ CREATE TRIGGER standing_read_authority_scope_immutable
   BEFORE UPDATE ON mira_hfm.standing_read_authorities
   FOR EACH ROW EXECUTE FUNCTION mira_hfm.guard_standing_read_authority_scope();
 
+-- State changes and grant creation are audited inside the same database transaction.
+-- The issuer role cannot update/pause/revoke a grant without the append-only audit row.
+CREATE FUNCTION mira_hfm.audit_standing_read_authority_change()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+DECLARE
+  audit_event_id TEXT;
+  audit_event_type TEXT;
+BEGIN
+  audit_event_id := gen_random_uuid()::text;
+  IF TG_OP = 'INSERT' THEN
+    audit_event_type := 'STANDING_READ_AUTHORITY_ISSUED';
+  ELSE
+    IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
+      RETURN NEW;
+    END IF;
+    CASE NEW.status
+      WHEN 'PAUSED' THEN audit_event_type := 'STANDING_READ_AUTHORITY_PAUSED';
+      WHEN 'ACTIVE' THEN audit_event_type := 'STANDING_READ_AUTHORITY_RESUMED';
+      WHEN 'REVOKED' THEN audit_event_type := 'STANDING_READ_AUTHORITY_REVOKED';
+      WHEN 'EXPIRED' THEN audit_event_type := 'STANDING_READ_AUTHORITY_EXPIRED';
+      ELSE RAISE EXCEPTION 'HFM_STANDING_READ_AUTHORITY_AUDIT_TRANSITION_INVALID';
+    END CASE;
+  END IF;
+
+  INSERT INTO mira_hfm.authority_audit_events
+    (event_id, project_id, actor_id, event_type, request_id, occurred_at, approval_ref, details)
+  VALUES (
+    audit_event_id, NEW.project_id, NEW.actor_id, audit_event_type,
+    audit_event_id, clock_timestamp(), NEW.approval_ref,
+    jsonb_build_object(
+      'standingAuthorityId', NEW.standing_authority_id,
+      'operation', NEW.operation,
+      'resource', NEW.resource,
+      'purpose', NEW.purpose,
+      'status', NEW.status,
+      'priorStatus', CASE WHEN TG_OP = 'UPDATE' THEN OLD.status ELSE NULL END,
+      'expiresAt', NEW.expires_at,
+      'durationDays', floor(extract(epoch FROM (NEW.expires_at - NEW.valid_from)) / 86400)
+    )
+  );
+  RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER standing_read_authority_audit
+  AFTER INSERT OR UPDATE ON mira_hfm.standing_read_authorities
+  FOR EACH ROW EXECUTE FUNCTION mira_hfm.audit_standing_read_authority_change();
+
 COMMENT ON TABLE mira_hfm.standing_read_authorities IS
   'HFM v0.2 human-approved project-scoped memory.read standing grants; max 365 days; pause/revoke supported; no write permissions.';
 
