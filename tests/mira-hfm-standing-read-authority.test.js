@@ -139,6 +139,7 @@ const pool = { async connect() { return client; } };
   assert.ok(calls.some(c => c.sql.includes('STANDING_READ_AUTHORITY_REVOKED')));
   console.log('HFM_STANDING_READ_PAUSE_RESUME_REVOKE_AUDITED=PASS');
 
+  standingRow.status = 'ACTIVE';
   const readCalls = [];
   const readClient = {
     async query(sql, params = []) {
