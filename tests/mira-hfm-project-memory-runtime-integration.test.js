@@ -69,6 +69,9 @@ const authority = {
 const memoryClient = {
   async query(sql, params = []) {
     memoryCalls.push({ sql, params });
+    if (sql.startsWith("SELECT (status = 'ACTIVE'")) {
+      return { rows: [{ membership_valid: true }], rowCount: 1 };
+    }
     if (sql.includes('FROM mira_hfm.project_owners')) {
       return { rows: [{
         project_id: projectId, owner_actor_id: 'mira:mira.users:owner',
