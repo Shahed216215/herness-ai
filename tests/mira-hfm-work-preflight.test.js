@@ -94,6 +94,19 @@ function authorizedResult(overrides = {}) {
     );
   }
   console.log('HFM_WORK_PREFLIGHT_REJECTS_INVALID_AUDIT_AND_SCOPE_CONTEXT=PASS');
+  await assert.rejects(
+    () => preflightHfmStandingRead({
+      pool: { connect: async () => ({}) },
+      req: {},
+      now: new Date('2026-11-07T01:00:00.000Z'),
+      readMemory: async () => authorizedResult({
+        scanStartedAt: '2026-11-07T01:00:00.000001Z'
+      })
+    }),
+    error => error.code === 'HFM_STANDING_READ_PREFLIGHT_AUTHORIZATION_REQUIRED'
+  );
+  console.log('HFM_WORK_PREFLIGHT_REJECTS_MICROSECOND_FUTURE_SCAN_TIMESTAMP=PASS');
+
   console.log('HFM_WORK_PREFLIGHT_REJECTS_EXPIRED_AND_FUTURE_AUTHORITY=PASS');
 
   await assert.rejects(
