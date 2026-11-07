@@ -24,13 +24,19 @@ const knowledge = buildCanonicalMemoryRecord({
   userIntent: 'Remember this: Python automation should validate input and output.',
   now: '2026-11-07T07:00:00.000Z'
 });
-const learning = buildCanonicalMemoryRecord({
+const pendingLearning = buildCanonicalMemoryRecord({
   projectId, memoryId: 'mem-learning-search-001',
   kind: 'learning_save', title: 'Python automation lesson',
   content: 'Use bounded inputs and verify every generated output.',
   userIntent: 'Save this learning note to my knowledge base.',
   now: '2026-11-07T07:30:00.000Z'
 });
+
+const verifiedLearning = {
+  ...pendingLearning,
+  trust: { status: 'HUMAN_VERIFIED' },
+  lifecycle: 'ACTIVE'
+};
 
 (async () => {
   let readRequest;
@@ -46,7 +52,7 @@ const learning = buildCanonicalMemoryRecord({
       return {
         status: 'AUTHORIZED_AND_COMMITTED',
         projectId,
-        records: [knowledge, learning],
+        records: [knowledge, verifiedLearning, pendingLearning],
         standingAuthority: true,
         approvalRequiredPerRead: false,
         authorityExpiresAt: hostAuthorizationContext.expiresAt,
@@ -59,12 +65,13 @@ const learning = buildCanonicalMemoryRecord({
   assert.equal(result.status, 'AUTHORIZED_AND_COMMITTED');
   assert.equal(result.count, 2);
   assert.deepEqual(result.results.map(item => item.type).sort(), ['knowledge', 'learning']);
-  const learningResult = result.results.find(item => item.id === learning.memoryId);
+  const learningResult = result.results.find(item => item.id === verifiedLearning.memoryId);
   assert.ok(learningResult);
   assert.equal(learningResult.title, 'Python automation lesson');
   assert.equal(learningResult.category, 'Learning');
   assert.equal(learningResult.trust, 'HUMAN_VERIFIED');
   assert.equal(learningResult.integrity, 'VERIFIED');
+  assert.equal(result.results.some(item => item.id === pendingLearning.memoryId), false);
   assert.equal(result.localFallback, false);
   assert.equal(result.driveFallback, false);
   console.log('HFM_KNOWLEDGE_SEARCH_INCLUDES_VERIFIED_LEARNING_NOTES=PASS');
