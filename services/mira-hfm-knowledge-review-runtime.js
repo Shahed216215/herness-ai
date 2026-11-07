@@ -2,6 +2,7 @@
 
 const { retrieveProjectMemory } = require('./mira-hfm-authorized-memory-reader');
 const { extractKnowledgeTitle } = require('./mira-hfm-knowledge-search-runtime');
+const { approveAndIssueMemoryOperationAuthority } = require('./mira-hfm-authority-approval');
 
 function fail(code) {
   const error = new Error(code);
@@ -52,17 +53,35 @@ async function listPendingHfmKnowledgeForReview({
   if (!binding || binding.verified !== true || typeof binding.projectId !== 'string' || !binding.projectId.trim()) {
     fail('HFM_KNOWLEDGE_REVIEW_VERIFIED_PROJECT_REQUIRED');
   }
-  if (!pool || typeof pool.connect !== 'function' || typeof readMemory !== 'function') {
-    fail('HFM_KNOWLEDGE_REVIEW_READ_RUNTIME_REQUIRED');
+  const issuerPool = arguments[0]?.issuerPool;
+  if (!pool || typeof pool.connect !== 'function' ||
+      !issuerPool || typeof issuerPool.connect !== 'function' ||
+      typeof readMemory !== 'function') {
+    fail('HFM_KNOWLEDGE_REVIEW_READ_AND_ISSUER_RUNTIMES_REQUIRED');
+  }
+
+  const projectId = binding.projectId;
+  const issueAuthority = arguments[0]?.issueAuthority || approveAndIssueMemoryOperationAuthority;
+  const authority = await issueAuthority({
+    req, pool: issuerPool, env,
+    operation: 'memory.read',
+    resource: 'memory:project:' + projectId,
+    purpose: 'User explicitly requested a read-only review of pending HFM knowledge items.',
+    approvalConfirmed: true
+  });
+  if (!authority || authority.status !== 'AUTHORITY_ISSUED' ||
+      authority.projectId !== projectId || authority.operation !== 'memory.read' ||
+      authority.resource !== 'memory:project:' + projectId || !authority.grant) {
+    fail('HFM_KNOWLEDGE_REVIEW_ONE_TIME_READ_AUTHORITY_NOT_VERIFIED');
   }
 
   const memory = await readMemory({
-    pool, req, standingReadAuthority: true,
+    pool, req, authorityGrant: authority.grant,
     recordTypes: ['knowledge_item'], lifecycle: 'PENDING_REVIEW',
     limit, env, now
   });
   if (!memory || memory.status !== 'AUTHORIZED_AND_COMMITTED' ||
-      memory.standingAuthority !== true || memory.approvalRequiredPerRead !== false ||
+      memory.authorityConsumed !== true || memory.standingAuthority !== false ||
       !Array.isArray(memory.records) || !memory.hostAuthorizationContext) {
     fail('HFM_KNOWLEDGE_REVIEW_AUTHORIZED_READ_REQUIRED');
   }
@@ -100,9 +119,10 @@ async function listPendingHfmKnowledgeForReview({
     projectId: binding.projectId,
     count: items.length,
     items: Object.freeze(items),
-    standingAuthority: true,
-    authorityExpiresAt: memory.authorityExpiresAt || null,
-    approvalRequiredPerRead: false,
+    standingAuthority: false,
+    authorityConsumed: true,
+    authorityExpiresAt: authority.grant.expiresAt || null,
+    approvalRequiredPerRead: true,
     promotionSupported: false,
     writeAllowed: false,
     localFallback: false,
