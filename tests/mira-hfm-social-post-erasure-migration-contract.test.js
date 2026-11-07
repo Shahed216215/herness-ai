@@ -50,4 +50,6 @@ test('payload erasure trigger uses an unambiguous operation id variable', () => 
   assert.match(sql, /v_operation_id := NULLIF\(current_setting\('mira\.memory_payload_erasure_operation_id'/);
   assert.match(sql, /op\.operation_id = v_operation_id/);
   assert.doesNotMatch(sql, /op\.operation_id = operation_id/);
+  assert.doesNotMatch(sql, /IF operation_id IS NOT NULL/);
+  assert.equal((sql.match(/v_operation_id IS NOT NULL/g) || []).length, 2);
 });

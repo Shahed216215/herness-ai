@@ -161,7 +161,7 @@ DECLARE
   v_operation_id TEXT;
 BEGIN
   v_operation_id := NULLIF(current_setting('mira.memory_payload_erasure_operation_id', true), '');
-  IF operation_id IS NOT NULL
+  IF v_operation_id IS NOT NULL
      AND OLD.record_type = 'social_post_draft'
      AND OLD.classification = 'PROJECT_PRIVATE'
      AND OLD.payload_erased_at IS NULL
