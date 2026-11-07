@@ -119,6 +119,9 @@ function registerMiraHfmSocialPostRoutes(app, requireAgentAuth, options = {}) {
     try {
       const memoryId = requiredText(req.params.memoryId, 128);
       requiredText(req.body && req.body.projectId);
+      if (!req.body || req.body.userConfirmedPublished !== true) {
+        throw fail('HFM_SOCIAL_POST_USER_CONFIRMATION_REQUIRED');
+      }
       const value = await perform(req, req.body, workflow.OPERATIONS.PUBLISH,
         'memory:' + memoryId, PURPOSES.PUBLISH,
         (client, context) => workflow.confirmSocialPostPublished({
@@ -134,6 +137,9 @@ function registerMiraHfmSocialPostRoutes(app, requireAgentAuth, options = {}) {
     try {
       const memoryId = requiredText(req.params.memoryId, 128);
       requiredText(req.body && req.body.projectId);
+      if (!req.body || req.body.userConfirmedDelete !== true) {
+        throw fail('HFM_SOCIAL_POST_DELETE_CONFIRMATION_REQUIRED');
+      }
       const value = await perform(req, req.body, workflow.OPERATIONS.DELETE,
         'memory:' + memoryId, PURPOSES.DELETE,
         (client, context) => workflow.deleteSocialPostPayload({
