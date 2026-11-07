@@ -28,6 +28,8 @@ console.log('MEMORY_READ_CONFIG_FAILS_CLOSED=PASS');
 assert.match(runtime.PREFLIGHT_SQL, /reader_actor_scope_policies_present/);
 assert.match(runtime.PREFLIGHT_SQL, /hfm_reader_memory_membership_authority_scope/);
 assert.match(runtime.PREFLIGHT_SQL, /standing_read_scope_policy_present/);
+assert.match(runtime.PREFLIGHT_SQL, /hfm_memory_reader_trashed_social_draft_select/);
+assert.match(runtime.PREFLIGHT_SQL, /reader_trashed_draft_scope_policy_present/);
 assert.match(runtime.PREFLIGHT_SQL, /permissive = 'RESTRICTIVE'/);
 console.log('MEMORY_READ_PREFLIGHT_REQUIRES_ACTOR_BOUND_STANDING_RLS=PASS');
 
@@ -57,6 +59,7 @@ function preflightRow(overrides = {}) {
     audit_sequence_usage: true, audit_sequence_select: false, audit_sequence_update: false,
     retrieval_rls_forced: true, retrieval_policies_present: true, no_public_retrieval_policies: true,
     reader_actor_scope_policies_present: true, standing_read_scope_policy_present: true,
+    trashed_social_draft_select_policy_present: true, reader_trashed_draft_scope_policy_present: true,
     ...overrides
   };
 }
@@ -82,6 +85,7 @@ for (const patch of [
   { schema_create: true }, { retrieval_rls_forced: false },
   { retrieval_policies_present: false }, { no_public_retrieval_policies: false },
   { reader_actor_scope_policies_present: false }, { standing_read_scope_policy_present: false },
+  { trashed_social_draft_select_policy_present: false }, { reader_trashed_draft_scope_policy_present: false },
   { current_role: 'wrong_role' }, { database_name: 'production' }
 ]) {
   assert.throws(() => runtime.verifyMemoryReadPreflight(preflightRow(patch), config));
