@@ -284,14 +284,15 @@ function sanitizedSourceMetadata(source = {}) {
   });
 }
 
-function sanitizedProvenanceMetadata(provenance = {}) {
+function sanitizedProvenanceMetadata(provenance = {}, fallback = {}) {
   const methods = new Set(['manual_copy','user_file_import','public_url_preview','web_search']);
   const verification = new Set(['SOURCE_RECORDED','SOURCE_REACHABLE','CONTENT_VERIFIED','HUMAN_VERIFIED']);
   return Object.freeze({
-    collectionMethod: methods.has(provenance.collectionMethod) ? provenance.collectionMethod : null,
+    collectionMethod: methods.has(provenance.collectionMethod) ? provenance.collectionMethod : 'unknown',
     capturedAt: typeof provenance.capturedAt === 'string' && Number.isFinite(Date.parse(provenance.capturedAt))
-      ? new Date(provenance.capturedAt).toISOString() : null,
-    verificationStatus: verification.has(provenance.verificationStatus) ? provenance.verificationStatus : null,
+      ? new Date(provenance.capturedAt).toISOString()
+      : (typeof fallback.capturedAt === 'string' && Number.isFinite(Date.parse(fallback.capturedAt)) ? new Date(fallback.capturedAt).toISOString() : '1970-01-01T00:00:00.000Z'),
+    verificationStatus: verification.has(provenance.verificationStatus) ? provenance.verificationStatus : 'UNKNOWN',
     originalPublishedAt: typeof provenance.originalPublishedAt === 'string' && Number.isFinite(Date.parse(provenance.originalPublishedAt))
       ? new Date(provenance.originalPublishedAt).toISOString() : null,
     redactionApplied: provenance.redactionApplied === true
@@ -318,7 +319,7 @@ async function deleteSocialPostPayload(options = {}) {
     env: options.env || process.env
   });
   const sourceMetadata = sanitizedSourceMetadata(decoded.source || {});
-  const provenanceMetadata = sanitizedProvenanceMetadata(decoded.provenance || {});
+  const provenanceMetadata = sanitizedProvenanceMetadata(decoded.provenance || {}, { capturedAt: decoded.timestamps && decoded.timestamps.createdAt || decoded.source && decoded.source.observedAt });
   const current = await getStateRow(client, context.projectId, memoryId);
   const pendingStatus = nextSocialPostStatus(current && current.status, 'DELETE');
   await updateStatus(client, context, memoryId, pendingStatus, {

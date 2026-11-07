@@ -58,6 +58,18 @@ test('Delete is available only from allowed draft states and never from restrict
   assert.throws(() => workflow.nextSocialPostStatus('DELETED', 'DELETE'), /HFM_SOCIAL_POST_STATUS_TRANSITION_INVALID/);
 });
 
+test('missing provenance is represented with explicit non-verified metadata defaults', () => {
+  assert.deepEqual(workflow.sanitizedProvenanceMetadata({}, {
+    capturedAt: '2026-11-07T00:01:00Z'
+  }), {
+    collectionMethod: 'unknown',
+    capturedAt: '2026-11-07T00:01:00.000Z',
+    verificationStatus: 'UNKNOWN',
+    originalPublishedAt: null,
+    redactionApplied: false
+  });
+});
+
 test('retained source and provenance metadata is allowlisted and excludes payload and credentials', () => {
   assert.deepEqual(workflow.sanitizedSourceMetadata({
     sourceType: 'facebook_page',
