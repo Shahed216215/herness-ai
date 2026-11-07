@@ -100,7 +100,7 @@ const { searchHfmKnowledge } = require('../services/mira-hfm-knowledge-search-ru
     projectId: 'project-alpha',
     recordType: 'knowledge_item',
     content,
-    source: { sourceType: 'web_search', sourceId: 'python-automation-guide', sourceUrl: 'https://example.test/python', observedAt: now },
+    source: { sourceType: 'web', sourceId: 'python-automation-guide', sourceUrl: 'https://example.test/python', observedAt: now },
     timestamps: { createdAt: now, updatedAt: now },
     version: { revision: 1, contentHash: createContentHash(content) },
     integrity: { status: 'VERIFIED', algorithm: 'SHA-256' },
