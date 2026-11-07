@@ -24,6 +24,9 @@ const registered = buildTrustedActorContext({
 assert.equal(registered.status, "ACTOR_RESOLVED");
 assert.equal(registered.actor.actorId, "mira:mira.users:" + validPrincipal.subject);
 assert.equal(registered.actor.principal.actorType, "HUMAN");
+assert.equal(registered.verifiedPrincipal.verified, true);
+assert.equal(registered.verifiedPrincipal.authenticationRef, sessionId);
+assert.equal(Object.isFrozen(registered.verifiedPrincipal), true);
 assert.equal(registered.actor.principal.authenticationMethod, "USER_SESSION");
 assert.equal(Object.isFrozen(registered), true);
 assert.equal(Object.isFrozen(registered.actor), true);
