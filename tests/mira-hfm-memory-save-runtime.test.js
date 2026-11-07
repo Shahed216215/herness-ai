@@ -195,7 +195,7 @@ function baseOptions(overrides = {}) {
     now: '2026-11-07T07:00:00.000Z'
   });
   assert.equal(validateCanonicalRecord(memoryRecord).valid, true);
-  assert.equal(memoryRecord.recordType, 'fact');
+  assert.equal(memoryRecord.recordType, 'knowledge_item');
   assert.equal(memoryRecord.access.classification, 'PROJECT_PRIVATE');
   assert.equal(memoryRecord.trust.status, 'HUMAN_VERIFIED');
   assert.equal(memoryRecord.lifecycle, 'ACTIVE');
