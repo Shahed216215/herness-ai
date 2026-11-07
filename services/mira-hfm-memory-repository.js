@@ -644,7 +644,9 @@ async function changeLifecycle(options, targetLifecycle) {
     allowPrivateRead: options.allowPrivateLifecycle === true,
     allowRestrictedRead: options.allowRestrictedLifecycle === true
   });
-  const priorUpdatedAtMs = Date.parse(row.updated_at);
+  const priorUpdatedAtMs = row.updated_at instanceof Date
+    ? row.updated_at.getTime()
+    : Date.parse(row.updated_at);
   if (!Number.isFinite(priorUpdatedAtMs)) throw fail('HFM_MEMORY_TIMESTAMP_INVALID');
   const now = new Date(Math.max(Date.now(), priorUpdatedAtMs + 1)).toISOString();
   const nextRecord = {
